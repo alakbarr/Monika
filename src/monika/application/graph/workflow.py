@@ -47,7 +47,20 @@ def _extract_tokens_from_result(node_name: str, res: Any) -> tuple[int, int]:
             out += int(res.get("output_tokens", 0) or 0)
         sum_dict = res.get("summary")
         if isinstance(sum_dict, dict):
-            for k in (node_name, "fundamental", "per_asset", "debate", "risk_gate", "execution"):
+            # Target only this node's key or relevant sub-section to prevent duplicate counting
+            target_keys = {node_name}
+            if "fundamental" in node_name:
+                target_keys.add("fundamental")
+            elif "per_asset" in node_name:
+                target_keys.add("per_asset")
+            elif "debate" in node_name:
+                target_keys.add("debate")
+            elif "risk" in node_name:
+                target_keys.add("risk_gate")
+            elif "execution" in node_name:
+                target_keys.add("execution")
+
+            for k in target_keys:
                 sub = sum_dict.get(k)
                 if isinstance(sub, dict):
                     if "input_tokens" in sub or "output_tokens" in sub:
@@ -204,7 +217,11 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
         @functools.wraps(node_fn)
         async def _traced_async_node_fn(state: Any, *args, **kwargs):
             cycle_id = state.get("cycle_id") if isinstance(state, dict) else None
-            sym = state.get("symbol", "") if isinstance(state, dict) else ""
+            sym = ""
+            if isinstance(state, dict):
+                sym = str(state.get("symbol") or "")
+                if not sym and state.get("symbols"):
+                    sym = ", ".join(state.get("symbols", []))
             emit_analysis_event("analysis_step_start", {"cycle_id": cycle_id, "step": node_name, "symbol": sym})
             t0 = time.time()
             res = None
@@ -249,7 +266,11 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
         @functools.wraps(node_fn)
         def _traced_sync_node_fn(state: Any, *args, **kwargs):
             cycle_id = state.get("cycle_id") if isinstance(state, dict) else None
-            sym = state.get("symbol", "") if isinstance(state, dict) else ""
+            sym = ""
+            if isinstance(state, dict):
+                sym = str(state.get("symbol") or "")
+                if not sym and state.get("symbols"):
+                    sym = ", ".join(state.get("symbols", []))
             emit_analysis_event("analysis_step_start", {"cycle_id": cycle_id, "step": node_name, "symbol": sym})
             t0 = time.time()
             res = None

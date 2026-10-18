@@ -63,7 +63,17 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
         analysis_id = r.get("analysis_id")
 
         if not original_context or not verified_bull_claim:
-            return sym, (sym, r), None
+            logger.warning(f"[{sym}] Missing bull advocacy or original context — failing closed.")
+            return (
+                sym,
+                None,
+                {
+                    "final_decision": "avoid",
+                    "decision": "wait",
+                    "reason": "missing_bull_advocacy",
+                    "risk_multiplier": 0.0,
+                },
+            )
 
         async with semaphore:
             try:

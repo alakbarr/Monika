@@ -99,9 +99,7 @@ class VerifiedMarketSnapshotHandler(ToolHandler):
                 from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
                 client = get_mt5_client()
-                from unittest.mock import Mock
-
-                if getattr(client, "_connected", False) or isinstance(client, Mock):
+                if client and (getattr(client, "_connected", False) or getattr(client, "connected", False)):
                     tick = await client.get_current_price(symbol)
                     if tick:
                         last_bar = {

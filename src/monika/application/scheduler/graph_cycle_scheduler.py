@@ -775,7 +775,18 @@ class GraphCycleScheduler(CycleScheduler):
 
                 appr = final_state.get("approved_trades", [])
                 if appr:
-                    dec_list = [f"{t.get('symbol')} {t.get('direction')}" for t in appr if isinstance(t, dict)]
+                    dec_list = []
+                    for t in appr:
+                        if isinstance(t, dict):
+                            dec_list.append(f"{t.get('symbol')} {t.get('direction', '').upper()}".strip())
+                        elif isinstance(t, tuple) and len(t) == 2:
+                            sym, plan = t
+                            d = ""
+                            if isinstance(plan, dict):
+                                d = plan.get("direction", "")
+                            elif hasattr(plan, "direction"):
+                                d = getattr(plan, "direction", "")
+                            dec_list.append(f"{sym} {str(d).upper()}".strip())
                     dec_str = ", ".join(dec_list) if dec_list else "APPROVED"
                 else:
                     dec_str = "WAIT" if not final_state.get("errors") else "ERROR"

@@ -202,11 +202,9 @@ class MacroToolHandlers:
             return {"events": [], "count": 0, "error": str(e)}
 
     async def get_cot_report(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
-        from unittest.mock import Mock
-
         from monika.infrastructure.data_ingestion.sources.cftc_cot import CFTCCOTFetcher
 
-        if kwargs.get("fetch") or isinstance(getattr(CFTCCOTFetcher, "fetch_all", None), Mock):
+        if kwargs.get("fetch"):
             if session:
                 try:
                     fetcher = CFTCCOTFetcher(session, config=self.settings.get("data_sources", {}).get("cftc_cot", {}))
@@ -220,11 +218,9 @@ class MacroToolHandlers:
         return await handle_get_cot_report(kwargs, session=session, settings=self.settings)
 
     async def get_bond_yield_spreads(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
-        from unittest.mock import Mock
-
         from monika.infrastructure.data_ingestion.sources.bond_yields_fetcher import BondYieldFetcher
 
-        if kwargs.get("fetch") or isinstance(getattr(BondYieldFetcher, "fetch", None), Mock):
+        if kwargs.get("fetch"):
             if session:
                 try:
                     fetcher = BondYieldFetcher(session)
@@ -238,11 +234,9 @@ class MacroToolHandlers:
         return await handle_get_bond_yield_spreads(kwargs, session=session, settings=self.settings)
 
     async def get_vix(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
-        from unittest.mock import Mock
-
         from monika.infrastructure.data_ingestion.sources.vix_yfinance import VIXFetcher
 
-        if kwargs.get("fetch") or isinstance(getattr(VIXFetcher, "fetch", None), Mock):
+        if kwargs.get("fetch"):
             if session:
                 try:
                     fetcher = VIXFetcher(session)
@@ -256,11 +250,9 @@ class MacroToolHandlers:
         return await handle_get_vix(kwargs, session=session, settings=self.settings)
 
     async def get_dxy(self, session: Optional[AsyncSession] = None, **kwargs) -> Dict[str, Any]:
-        from unittest.mock import Mock
-
         from monika.infrastructure.data_ingestion.sources.dxy_yfinance import DXYFetcher
 
-        if kwargs.get("fetch") or isinstance(getattr(DXYFetcher, "fetch", None), Mock):
+        if kwargs.get("fetch"):
             if session:
                 try:
                     fetcher = DXYFetcher(session)

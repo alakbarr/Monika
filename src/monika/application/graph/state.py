@@ -7,7 +7,7 @@ def merge_dicts(a: Optional[Dict], b: Optional[Dict]) -> Dict:
     Deep merge two dicts. Top-level keys from b override a,
     but nested dicts are merged recursively (not overwritten).
     This prevents data loss when nodes update the same nested key.
-    Supports tombstoning: if a value in b is None or '_DELETED_', the key is removed.
+    Supports tombstoning: if a value in b is '_DELETED_', the key is removed.
     """
     merged = (a or {}).copy()
     for k, v in (b or {}).items():
@@ -183,7 +183,11 @@ class TradingState(TypedDict):
     refinement_count: int
     rejection_feedback: Optional[Dict[str, Any]]
     is_negotiable_rejection: bool
+    negotiable_rejections: Optional[List[Dict[str, Any]]]
     archived_payloads: Optional[Dict[str, Any]]
+
+    # Stage 1 Brief ID
+    brief_id: Optional[int]
 
     # Dynamic Desk Swarm & Execution Metadata
     metadata: Annotated[Dict[str, Any], merge_dicts]

@@ -10,6 +10,9 @@ from monika.infrastructure.database.models import AssetAnalysis
 logger = logging.getLogger("TradingAgent.Graph.PlanRefinementNode")
 
 
+import re
+
+
 def _is_reason_negotiable(reason: str) -> bool:
     """Determine if a rejection reason can be resolved via parameter refinement."""
     r_lower = str(reason).lower()
@@ -23,27 +26,33 @@ def _is_reason_negotiable(reason: str) -> bool:
         "symbol wr <",
         "permanent_error",
         "blacklisted",
+        "slippage",
+        "spread ceiling",
+        "max spread",
+        "cost exceeds",
+        "liquidity",
+        "market closed",
     ]
     if any(tok in r_lower for tok in non_negotiable):
         return False
 
-    negotiable = [
-        "geometry",
-        "sl",
-        "stop loss",
-        "tp",
-        "take profit",
-        "lot",
-        "heat",
-        "sizing",
-        "risk_multiplier",
-        "drift",
-        "staleness",
-        "cone",
-        "rr",
-        "ratio",
+    negotiable_patterns = [
+        r"\bgeometry\b",
+        r"\bsl\b",
+        r"\bstop\s*loss\b",
+        r"\btp\b",
+        r"\btake\s*profit\b",
+        r"\blot\b",
+        r"\bheat\b",
+        r"\bsizing\b",
+        r"\brisk_multiplier\b",
+        r"\bdrift\b",
+        r"\bstaleness\b",
+        r"\bcone\b",
+        r"\brr\b",
+        r"\bratio\b",
     ]
-    return any(tok in r_lower for tok in negotiable)
+    return any(re.search(pat, r_lower) for pat in negotiable_patterns)
 
 
 async def plan_refinement_node(state: TradingState, config: Optional[RunnableConfig] = None) -> Dict[str, Any]:
@@ -136,22 +145,25 @@ async def plan_refinement_node(state: TradingState, config: Optional[RunnableCon
                     f"SL widened to {new_sl} and TP adjusted to {new_tp} (R:R 2.0:1) to clear noise cone."
                 )
 
-            # 3. Adjust for entry price drift / staleness
+            # 3. Adjust for entry price drift / staleness (use updated SL/TP if adjusted by step 2)
             if any(tok in " ".join(reasons).lower() for tok in ["drift", "staleness"]):
                 live_price = item.get("current_price")
                 if live_price and float(live_price) > 0:
-                    drift_offset = float(live_price) - entry
+                    current_entry = float(trade.get("entry_price") or entry)
+                    current_sl = float(trade.get("stop_loss") or sl)
+                    current_tp = float(trade.get("take_profit") or tp)
+                    drift_offset = float(live_price) - current_entry
                     new_entry = float(live_price)
                     trade["entry_price"] = new_entry
-                    trade["stop_loss"] = round(sl + drift_offset, 5)
-                    trade["take_profit"] = round(tp + drift_offset, 5)
+                    trade["stop_loss"] = round(current_sl + drift_offset, 5)
+                    trade["take_profit"] = round(current_tp + drift_offset, 5)
                     adjusted = True
                     adjustment_notes.append(
                         f"Entry recalibrated to live price {new_entry} (offset {drift_offset:+.5f})."
                     )
 
             if adjusted:
-                # Recalculate position sizing after risk multiplier or SL/TP adjustment (Fix 4.12)
+                # Recalculate position sizing fail-closed
                 try:
                     from monika.domain.risk.position_sizing import PositionSizer
 
@@ -167,11 +179,19 @@ async def plan_refinement_node(state: TradingState, config: Optional[RunnableCon
                         account_equity=equity,
                         risk_percent_override=float(trade.get("risk_multiplier", 1.0)) * sizer.risk_percent,
                     )
+                    if sizing_res.recommended_lots <= 0:
+                        logger.warning(
+                            f"[PlanRefinementNode] Recalculated size for {sym} is <= 0 ({sizing_res.recommended_lots}). Dropping trade."
+                        )
+                        continue
                     trade["lot_size"] = sizing_res.recommended_lots
                     trade["sizing"] = sizing_res
                     adjustment_notes.append(f"Position size recalculated to {sizing_res.recommended_lots} lots.")
                 except Exception as sz_err:
-                    logger.debug(f"[PlanRefinementNode] Sizing recalculation notice: {sz_err}")
+                    logger.error(
+                        f"[PlanRefinementNode] Sizing recalculation failed for {sym}: {sz_err}. Dropping trade."
+                    )
+                    continue
 
                 # Update DB AssetAnalysis record
                 if analysis_id:

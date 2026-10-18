@@ -50,12 +50,8 @@ class PositionRepository(PositionRepositoryPort):
             stmt = stmt.where(Position.status == "open")
         res = await self.session.execute(stmt)
         row = res.scalar_one_or_none()
-        if not row:
+        if not row or not isinstance(getattr(row, "id", None), int):
             return None
-        if type(row).__name__ in ("MagicMock", "Mock", "AsyncMock"):
-            val = getattr(row, "id", None)
-            if val is not None and type(val).__name__ in ("MagicMock", "Mock", "AsyncMock"):
-                return None
         return PositionEntity.from_orm(row)
 
     async def get_by_id(self, position_id: int) -> Optional[PositionEntity]:
@@ -63,12 +59,8 @@ class PositionRepository(PositionRepositoryPort):
         stmt = select(Position).where(Position.id == position_id)
         res = await self.session.execute(stmt)
         row = res.scalar_one_or_none()
-        if not row:
+        if not row or not isinstance(getattr(row, "id", None), int):
             return None
-        if type(row).__name__ in ("MagicMock", "Mock", "AsyncMock"):
-            val = getattr(row, "id", None)
-            if val is not None and type(val).__name__ in ("MagicMock", "Mock", "AsyncMock"):
-                return None
         return PositionEntity.from_orm(row)
 
     async def get_by_tickets(self, tickets: Sequence[int], open_only: bool = True) -> Sequence[PositionEntity]:
@@ -299,14 +291,9 @@ class PositionRepository(PositionRepositoryPort):
         res = await self.session.execute(stmt)
 
         row = None
-        if hasattr(res, "one_or_none"):
-            cand = res.one_or_none()
-            if cand is not None and type(cand).__name__ not in ("MagicMock", "AsyncMock"):
-                row = cand
-        elif hasattr(res, "first"):
-            cand = res.first()
-            if cand is not None and type(cand).__name__ not in ("MagicMock", "AsyncMock"):
-                row = cand
+        cand = res.one_or_none() if hasattr(res, "one_or_none") else (res.first() if hasattr(res, "first") else None)
+        if cand is not None and isinstance(getattr(cand, "total_trades", None), (int, float)):
+            row = cand
 
         if row is not None and hasattr(row, "total_trades") and isinstance(row.total_trades, (int, float)):
             total_trades = int(row.total_trades or 0)

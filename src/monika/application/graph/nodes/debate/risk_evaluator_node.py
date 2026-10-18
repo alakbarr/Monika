@@ -104,7 +104,7 @@ async def risk_evaluator_node(state: TradingState, config: Optional[RunnableConf
                 async with get_session() as s_inner:
                     ana = await s_inner.get(AssetAnalysis, analysis_id)
                     if not ana:
-                        return sym, (sym, r), None, None
+                        return sym, None, None, {"approval": False, "reason": "missing_analysis_record"}
 
                     entry_zone_data = json.loads(ana.entry_zone) if ana.entry_zone else {}
                     entry_price = entry_zone_data.get("price") or ana.price_at_analysis
@@ -191,7 +191,7 @@ async def risk_evaluator_node(state: TradingState, config: Optional[RunnableConf
                     return sym, survived_item, single_risk_debate, pm_decision
             except Exception as e:
                 logger.error(f"[{sym}] Risk evaluation failed: {e}", exc_info=True)
-                return sym, (sym, r), None, None
+                return sym, None, None, {"approval": False, "reason": f"risk_evaluator_exception: {e}"}
 
     tasks = [_process_single(sym, r) for sym, r in actionable]
     results = await asyncio.gather(*tasks)

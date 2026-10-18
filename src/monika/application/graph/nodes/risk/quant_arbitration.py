@@ -227,7 +227,10 @@ async def run_quant_arbitration(
                     session.add(ana)
                     await session.flush()
                     if ana.id is None:
-                        ana.id = 1
+                        logger.error(
+                            f"[QuantArbitration] Database flush failed to generate ID for {sym} — failing closed."
+                        )
+                        continue
                     r["analysis_id"] = ana.id
 
                 # Single-pass level resolution and geometry repair

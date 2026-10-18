@@ -59,18 +59,54 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
         else:
             is_active = hour >= start_hr or hour < end_hr
 
+        trades_to_execute = list(actionable)
         if not is_active:
-            logger.info(f"[Step 7b] auto_execute skipped: Outside active hours ({hour} UTC not in {start_hr}-{end_hr})")
-            summary["execution"] = {"status": "skipped_outside_active_hours"}
-            try:
-                from monika.application.graph.nodes.risk.proposal_notifier import send_proposal_notifications
+            # Check Asian session assets (Tokyo 00:00 - 09:00 UTC) and 24/7 crypto
+            ASIA_SESSION_SYMBOLS = {"USDJPY", "AUDUSD", "NZDUSD", "AUDJPY", "BTCUSD", "ETHUSD"}
+            is_asian_session = 0 <= hour < 9
 
-                await send_proposal_notifications(
-                    actionable,
-                    banner_notice=f"Auto-execution bypassed: Outside active trading hours ({hour}:00 UTC not in {start_hr}:00-{end_hr}:00 UTC).",
+            eligible_outside = []
+            bypassed_outside = []
+            for item in actionable:
+                sym = item[0] if isinstance(item, tuple) else (item.get("symbol") if isinstance(item, dict) else "")
+                if sym in ASIA_SESSION_SYMBOLS and (is_asian_session or "BTC" in sym or "ETH" in sym):
+                    eligible_outside.append(item)
+                else:
+                    bypassed_outside.append(item)
+
+            if eligible_outside:
+                logger.info(
+                    f"[Step 7b] Outside active hours ({hour} UTC), but {len(eligible_outside)} Asian/Crypto eligible trades proceed to auto-execution: {[t[0] if isinstance(t, tuple) else t.get('symbol') for t in eligible_outside]}"
                 )
-            except Exception as notify_err:
-                logger.error(f"Failed to dispatch fallback proposal: {notify_err}")
+                trades_to_execute = eligible_outside
+                if bypassed_outside:
+                    try:
+                        from monika.application.graph.nodes.risk.proposal_notifier import send_proposal_notifications
+
+                        await send_proposal_notifications(
+                            bypassed_outside,
+                            banner_notice=f"Auto-execution bypassed: Outside active trading hours ({hour}:00 UTC not in {start_hr}:00-{end_hr}:00 UTC).",
+                        )
+                    except Exception as notify_err:
+                        logger.error(f"Failed to dispatch fallback proposal: {notify_err}")
+            else:
+                logger.info(
+                    f"[Step 7b] auto_execute skipped: Outside active hours ({hour} UTC not in {start_hr}-{end_hr})"
+                )
+                summary["execution"] = {"status": "skipped_outside_active_hours"}
+                try:
+                    from monika.application.graph.nodes.risk.proposal_notifier import send_proposal_notifications
+
+                    await send_proposal_notifications(
+                        actionable,
+                        banner_notice=f"Auto-execution bypassed: Outside active trading hours ({hour}:00 UTC not in {start_hr}:00-{end_hr}:00 UTC).",
+                    )
+                except Exception as notify_err:
+                    logger.error(f"Failed to dispatch fallback proposal: {notify_err}")
+                trades_to_execute = []
+
+        if not trades_to_execute:
+            pass
         else:
             logger.info("[Step 7b] auto_execute=true — executing orders immediately...")
 
@@ -104,7 +140,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                 return {"summary": summary}
 
             exec_results = {}
-            for sym, r in actionable:
+            for sym, r in trades_to_execute:
                 analysis_id = r.get("analysis_id")
                 if analysis_id is None:
                     logger.error(
@@ -360,7 +396,27 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                                     await session.commit()
                                     continue
                         except Exception as sim_err:
-                            logger.error(f"[SlippageSandbox] Simulation check error for {sym}: {sim_err}")
+                            logger.error(
+                                f"[SlippageSandbox] Simulation check error for {sym}: {sim_err} — failing closed to avoid unverified execution risk.",
+                                exc_info=True,
+                            )
+                            exec_results[sym] = "blocked_slippage_simulation_error"
+                            ana.execution_status = "rejected"
+                            ana.execution_notes = f"Slippage simulation error: {sim_err}"
+                            await DecisionLogger.log_paper_whatif(
+                                session,
+                                analysis_id,
+                                sym,
+                                r.get("decision", "wait"),
+                                r.get("confidence", 0),
+                                cs,
+                                f"Slippage simulation error: {sim_err}",
+                                "slippage_sim_error",
+                                context_snapshot_id=ana.context_snapshot_id,
+                                ssvp_cds_score=ana.ssvp_cds_score_at_analysis,
+                            )
+                            await session.commit()
+                            continue
 
                         try:
                             result = await exec_svc.execute_analysis(session, ana, equity)
@@ -406,6 +462,18 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
         stage2_out = sum(
             r.get("output_tokens", 0) for r in summary.get("per_asset", {}).values() if isinstance(r, dict)
         )
+        for cog_key in ("debate", "reflection", "plan_refinements", "risk_gate"):
+            cog_data = summary.get(cog_key)
+            if isinstance(cog_data, dict):
+                if "input_tokens" in cog_data or "output_tokens" in cog_data:
+                    stage2_in += int(cog_data.get("input_tokens", 0) or 0)
+                    stage2_out += int(cog_data.get("output_tokens", 0) or 0)
+                else:
+                    for sub_v in cog_data.values():
+                        if isinstance(sub_v, dict):
+                            stage2_in += int(sub_v.get("input_tokens", 0) or 0)
+                            stage2_out += int(sub_v.get("output_tokens", 0) or 0)
+
         cycle_id_val = state.get("cycle_id")
 
         async with get_session() as session:

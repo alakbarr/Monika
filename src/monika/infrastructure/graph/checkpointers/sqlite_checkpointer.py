@@ -104,7 +104,7 @@ class SqliteCheckpointSaver(InMemorySaver):
             try:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    SELECT thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_type, metadata_blob 
+                    SELECT thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_type, metadata_blob
                     FROM checkpoints
                     WHERE thread_id IN (
                         SELECT DISTINCT thread_id FROM checkpoints ORDER BY rowid DESC LIMIT 50
@@ -125,7 +125,7 @@ class SqliteCheckpointSaver(InMemorySaver):
                 logger.debug(f"[SqliteCheckpointer] Loaded {len(rows)} persistent checkpoints from {self.db_path}")
 
                 cursor.execute("""
-                    SELECT thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, value_type, value_blob 
+                    SELECT thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, value_type, value_blob
                     FROM writes
                     WHERE thread_id IN (
                         SELECT DISTINCT thread_id FROM checkpoints ORDER BY rowid DESC LIMIT 50
@@ -180,7 +180,7 @@ class SqliteCheckpointSaver(InMemorySaver):
             try:
                 conn.execute(
                     """
-                    INSERT OR REPLACE INTO checkpoints 
+                    INSERT OR REPLACE INTO checkpoints
                     (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_type, metadata_blob)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
@@ -235,7 +235,7 @@ class SqliteCheckpointSaver(InMemorySaver):
                     await conn.execute("PRAGMA busy_timeout = 30000")
                     await conn.execute(
                         """
-                        INSERT OR REPLACE INTO checkpoints 
+                        INSERT OR REPLACE INTO checkpoints
                         (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_type, metadata_blob)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         """,
@@ -274,7 +274,7 @@ class SqliteCheckpointSaver(InMemorySaver):
         try:
             conn.execute(
                 """
-                INSERT OR REPLACE INTO checkpoints 
+                INSERT OR REPLACE INTO checkpoints
                 (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_type, metadata_blob)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
@@ -385,3 +385,69 @@ class SqliteCheckpointSaver(InMemorySaver):
             conn.commit()
         finally:
             conn.close()
+
+    def _load_thread_from_sqlite(self, thread_id: str) -> None:
+        """Load a specific thread's checkpoints and writes from SQLite into memory on cache miss."""
+        if not thread_id:
+            return
+        try:
+            conn = self._get_connection()
+            try:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_type, metadata_blob
+                    FROM checkpoints
+                    WHERE thread_id = ?
+                    """,
+                    (thread_id,),
+                )
+                rows = cursor.fetchall()
+                for t_id, ns, c_id, p_id, c_type, c_blob, m_type, m_blob in rows:
+                    if t_id not in self.storage:
+                        self.storage[t_id] = {}
+                    if ns not in self.storage[t_id]:
+                        self.storage[t_id][ns] = {}
+
+                    self.storage[t_id][ns][c_id] = (
+                        (str(c_type), bytes(c_blob)),
+                        (str(m_type), bytes(m_blob)),
+                        str(p_id) if p_id is not None else None,
+                    )
+
+                cursor.execute(
+                    """
+                    SELECT thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, value_type, value_blob
+                    FROM writes
+                    WHERE thread_id = ?
+                    """,
+                    (thread_id,),
+                )
+                write_rows = cursor.fetchall()
+                for t_id, ns, c_id, task_id, idx, channel, v_type, v_blob in write_rows:
+                    outer_key = (t_id, ns, c_id)
+                    inner_key = (task_id, idx)
+                    self.writes[outer_key][inner_key] = (
+                        task_id,
+                        channel,
+                        (str(v_type), bytes(v_blob)),
+                        "",
+                    )
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.warning(f"[SqliteCheckpointer] Failed loading thread {thread_id} from SQLite: {e}")
+
+    def get_tuple(self, config: RunnableConfig) -> Optional[Any]:
+        cfg = getattr(config, "get", lambda k, d=None: {})("configurable", {}) or {}
+        thread_id = cfg.get("thread_id", "")
+        if thread_id and thread_id not in self.storage:
+            self._load_thread_from_sqlite(thread_id)
+        return super().get_tuple(config)
+
+    async def aget_tuple(self, config: RunnableConfig) -> Optional[Any]:
+        cfg = getattr(config, "get", lambda k, d=None: {})("configurable", {}) or {}
+        thread_id = cfg.get("thread_id", "")
+        if thread_id and thread_id not in self.storage:
+            await asyncio.to_thread(self._load_thread_from_sqlite, thread_id)
+        return await super().aget_tuple(config)

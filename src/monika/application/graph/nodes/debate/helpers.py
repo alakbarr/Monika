@@ -339,6 +339,9 @@ async def inject_telemetry_reliability_into_fact_sheet(session, fact_sheet: dict
     return fact_sheet
 
 
+_FACADE_BASELINE_ATTRS: Dict[str, Any] = {}
+
+
 def sync_facade_patches():
     """Propagate any monkey-patched module attributes from debate_node facade to sub-agent modules."""
     curr_mod = sys.modules.get("monika.application.graph.nodes.debate_node") or sys.modules.get(
@@ -379,14 +382,18 @@ def sync_facade_patches():
         "analyze_risk_neutral_llm",
         "make_portfolio_decision",
     ]
-    try:
-        from unittest.mock import Base as MockBase
-    except ImportError:
-        MockBase = tuple()
+
+    global _FACADE_BASELINE_ATTRS
+    if not _FACADE_BASELINE_ATTRS:
+        for p in props:
+            if hasattr(curr_mod, p):
+                _FACADE_BASELINE_ATTRS[p] = getattr(curr_mod, p)
 
     for p in props:
         if hasattr(curr_mod, p):
             val = getattr(curr_mod, p)
-            if isinstance(val, MockBase) or type(val).__name__ in ("MagicMock", "AsyncMock", "Mock"):
+            # Only propagate if curr_mod was actively patched away from baseline
+            if p in _FACADE_BASELINE_ATTRS and val is not _FACADE_BASELINE_ATTRS[p]:
                 for m in mods:
-                    setattr(m, p, val)
+                    if hasattr(m, p) and getattr(m, p) is not val:
+                        setattr(m, p, val)

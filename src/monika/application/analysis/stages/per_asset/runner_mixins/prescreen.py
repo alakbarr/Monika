@@ -334,7 +334,16 @@ Rule:
                         )
                     ).scalar_one_or_none()
                     if brief and brief.confidence and brief.confidence >= 0.85:
-                        matrix = getattr(brief, "per_asset_macro_matrix", {}) or {}
+                        matrix = getattr(brief, "per_asset_macro_matrix", None)
+                        if not matrix and brief.structured_json:
+                            try:
+                                import json
+
+                                b_data = json.loads(brief.structured_json)
+                                matrix = b_data.get("per_asset_macro_matrix", {})
+                            except Exception:
+                                matrix = {}
+                        matrix = matrix or {}
                         sym_entry = matrix.get(symbol) or matrix.get(symbol.replace("/", ""))
                         if sym_entry and sym_entry.get("tactical_catalyst"):
                             logger.info(

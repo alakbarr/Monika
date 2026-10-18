@@ -191,16 +191,42 @@ async def confluence_filter_node(state: ReactiveState, config: Optional[Runnable
         for sym, r in actionable:
             analysis_id = r.get("analysis_id")
             if not analysis_id:
-                surviving.append((sym, r))
+                logger.warning(f"[ReactiveGraph:ConfluenceFilter] Missing analysis_id for {sym} — failing closed.")
+                filtered.append((sym, r))
                 continue
 
             ana = await session.get(AssetAnalysis, analysis_id)
             if not ana:
-                surviving.append((sym, r))
+                logger.warning(
+                    f"[ReactiveGraph:ConfluenceFilter] AssetAnalysis {analysis_id} not found for {sym} — failing closed."
+                )
+                filtered.append((sym, r))
                 continue
 
-            conf = float(ana.confidence or r.get("confidence", 0.0))
-            confluence = int(ana.confluence_score or 0)
+            # Analysis age check (max 4.0 hours for reactive execution)
+            ana_time = getattr(ana, "created_at", None) or getattr(ana, "timestamp", None)
+            if isinstance(ana_time, datetime):
+                if ana_time.tzinfo is None:
+                    ana_time = ana_time.replace(tzinfo=timezone.utc)
+                age_h = (clock.now() - ana_time).total_seconds() / 3600.0
+                if age_h > 4.0:
+                    logger.info(
+                        f"[ReactiveGraph:ConfluenceFilter] {sym} filtered out: analysis age {age_h:.1f}h > 4.0h limit."
+                    )
+                    filtered.append((sym, r))
+                    continue
+
+            conf = float(getattr(ana, "confidence", 0.0) or r.get("confidence", 0.0) or 0.0)
+            try:
+                from monika.core.calibration.confidence_calibrator import get_calibrated_confidence
+
+                calibrated_conf = await get_calibrated_confidence(
+                    session, conf, regime=r.get("market_regime") or state.get("market_regime")
+                )
+            except Exception:
+                calibrated_conf = conf
+
+            confluence = int(getattr(ana, "confluence_score", 0) or 0)
 
             # Per-trade confidence threshold override (e.g. forced via operator or proposal)
             conf_override = r.get("confidence_override") or (
@@ -217,11 +243,11 @@ async def confluence_filter_node(state: ReactiveState, config: Optional[Runnable
                 effective_min_conf = min_confidence
                 effective_min_confluence = min_confluence
 
-            if conf >= effective_min_conf and confluence >= effective_min_confluence:
+            if calibrated_conf >= effective_min_conf and confluence >= effective_min_confluence:
                 surviving.append((sym, r))
             else:
                 logger.info(
-                    f"[ReactiveGraph:ConfluenceFilter] {sym} filtered out: conf={conf:.2f} (min {effective_min_conf:.2f}), "
+                    f"[ReactiveGraph:ConfluenceFilter] {sym} filtered out: conf={calibrated_conf:.2f} (min {effective_min_conf:.2f}), "
                     f"confluence={confluence} (min {effective_min_confluence})"
                 )
                 filtered.append((sym, r))
@@ -467,10 +493,10 @@ async def reactive_checkpoint_node(state: ReactiveState, config: Optional[Runnab
 
 
 def route_after_ingest(state: ReactiveState) -> str:
-    """Route after event ingestion: edge signals and price triggers go to risk_gate; empty trades to checkpoint."""
+    """Route after event ingestion: edge signals go to risk_gate; price triggers and standard events route through confluence."""
     if not state.get("actionable_trades"):
         return "checkpoint"
-    if state.get("event_type") in ("edge_signal", "price_trigger"):
+    if state.get("event_type") == "edge_signal":
         return "risk_gate"
     return "confluence_filter"
 

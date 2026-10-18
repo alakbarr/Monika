@@ -192,28 +192,43 @@ class PreFlightTurnGate:
                 # 4. Empirical Spread Expansion Evaluation
                 raw_spread = getattr(tick, "spread", None)
                 if raw_spread is not None:
-                    curr_spread = float(raw_spread)
-                    baseline_med = EMPIRICAL_ACTIVE_MEDIANS.get(sym_clean, 10.0)
-                    hard_ceiling = ACTIVE_SPREAD_HARD_CEILINGS.get(sym_clean, baseline_med * 2.0)
+                    try:
+                        curr_spread = float(raw_spread)
+                    except ValueError, TypeError:
+                        curr_spread = -1.0
 
-                    # Active Hours (06:00 - 21:00 UTC) threshold: 2.0x median or hard ceiling
-                    if 6 <= hour < 21:
-                        if curr_spread > (baseline_med * 2.0) or curr_spread > hard_ceiling:
-                            reason = (
-                                f"Abnormal active spread expansion: {curr_spread:.1f} pts "
-                                f"(median={baseline_med:.1f}, threshold=2.0x / {hard_ceiling:.1f} pts)."
-                            )
-                            logger.info(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")
+                    import math
+
+                    if math.isnan(curr_spread) or curr_spread <= 0:
+                        is_dry_run = cfg.get("trading", {}).get("dry_run", False) or not cfg.get("trading", {}).get(
+                            "auto_execute", False
+                        )
+                        if not is_dry_run:
+                            reason = f"Invalid or non-positive spread ({raw_spread}) for {sym_clean} in live mode."
+                            logger.warning(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")
                             return False, reason
                     else:
-                        # Asian Session (02:00 - 06:00 UTC) threshold: 2.5x median
-                        if curr_spread > (baseline_med * 2.5):
-                            reason = (
-                                f"Off-peak Asian spread expansion: {curr_spread:.1f} pts "
-                                f"(median={baseline_med:.1f}, threshold=2.5x)."
-                            )
-                            logger.info(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")
-                            return False, reason
+                        baseline_med = EMPIRICAL_ACTIVE_MEDIANS.get(sym_clean, 10.0)
+                        hard_ceiling = ACTIVE_SPREAD_HARD_CEILINGS.get(sym_clean, baseline_med * 2.0)
+
+                        # Active Hours (06:00 - 21:00 UTC) threshold: 2.0x median or hard ceiling
+                        if 6 <= hour < 21:
+                            if curr_spread > (baseline_med * 2.0) or curr_spread > hard_ceiling:
+                                reason = (
+                                    f"Abnormal active spread expansion: {curr_spread:.1f} pts "
+                                    f"(median={baseline_med:.1f}, threshold=2.0x / {hard_ceiling:.1f} pts)."
+                                )
+                                logger.info(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")
+                                return False, reason
+                        else:
+                            # Asian Session (02:00 - 06:00 UTC) threshold: 2.5x median
+                            if curr_spread > (baseline_med * 2.5):
+                                reason = (
+                                    f"Off-peak Asian spread expansion: {curr_spread:.1f} pts "
+                                    f"(median={baseline_med:.1f}, threshold=2.5x)."
+                                )
+                                logger.info(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")
+                                return False, reason
             else:
                 is_dry_run = cfg.get("trading", {}).get("dry_run", False) or not cfg.get("trading", {}).get(
                     "auto_execute", False

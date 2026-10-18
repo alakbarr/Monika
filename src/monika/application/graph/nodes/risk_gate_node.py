@@ -156,8 +156,8 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                     confluence_val = float(raw_conf_score) if raw_conf_score is not None else 0.0
 
                     reasoning_text = ""
-                    if ana and hasattr(ana, "rationale") and not hasattr(ana.rationale, "_mock_name"):
-                        reasoning_text = str(ana.rationale or "")
+                    if ana and isinstance(getattr(ana, "rationale", None), str):
+                        reasoning_text = str(ana.rationale)
 
                     conf_override = r.get("confidence_override") or (
                         r.get("metadata", {}).get("confidence_override")

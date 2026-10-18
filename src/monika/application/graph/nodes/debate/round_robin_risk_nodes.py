@@ -189,7 +189,7 @@ async def aggressive_risk_node(state: TradingState, config: Optional[RunnableCon
                     # Inject conservative concerns for round-robin dialetics
                     cons_prior = risk_debate_states.get(sym, {}).get("conservative", {})
                     strict_context["conservative_concerns"] = cons_prior.get("concerns", [])
-                    strict_context["conservative_approval"] = cons_prior.get("approval", True)
+                    strict_context["conservative_approval"] = cons_prior.get("approval", False)
 
                     if use_deterministic:
                         agg_risk = analyze_risk_aggressive(strict_context, min_rr_ratio=min_rr)
@@ -299,7 +299,7 @@ async def portfolio_judge_node(state: TradingState, config: Optional[RunnableCon
                         session, sym, r, state, scheduler
                     )
                     if not strict_context or not ana:
-                        return sym, (sym, r), None
+                        return sym, None, {"approval": False, "reason": "missing_strict_context_or_analysis"}
 
                     single_risk_debate = risk_debate_states.get(sym, {})
                     if use_deterministic:
@@ -339,7 +339,7 @@ async def portfolio_judge_node(state: TradingState, config: Optional[RunnableCon
                     return sym, survived_item, pm_decision
             except Exception as e:
                 logger.error(f"[{sym}] Portfolio judge evaluation failed: {e}", exc_info=True)
-                return sym, (sym, r), None
+                return sym, None, {"approval": False, "reason": f"portfolio_judge_exception: {e}"}
 
     results = await asyncio.gather(*[_process_single(sym, r) for sym, r in actionable])
     for sym, survived_item, pm_decision in results:

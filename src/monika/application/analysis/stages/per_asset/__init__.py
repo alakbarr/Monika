@@ -12,6 +12,12 @@ from monika.application.analysis.stages.per_asset.context_builder import (
     _render_specialist_prompt,
 )
 from monika.application.analysis.stages.per_asset.runner import PerAssetRunner
+from monika.application.analysis.stages.per_asset.specialist_council import (
+    SpecialistCouncil,
+    SpecialistRole,
+    SpecialistVote,
+    TradeAction,
+)
 from monika.application.analysis.stages.per_asset.specialist_pipeline import SpecialistPipelineMixin
 from monika.application.analysis.stages.per_asset.verifiers import VerifiersMixin, _get_symbol_sl_streak
 
@@ -19,6 +25,10 @@ __all__ = [
     "PerAssetRunner",
     "ContextBuilderMixin",
     "SpecialistPipelineMixin",
+    "SpecialistCouncil",
+    "SpecialistRole",
+    "SpecialistVote",
+    "TradeAction",
     "VerifiersMixin",
     "SYMBOL_TO_COT",
     "SYSTEM_PROMPT_STATIC",

@@ -82,7 +82,7 @@ async def test_macro_handlers_and_session_info():
     ) as mock_cot:
         mock_cot.return_value = 5
         mock_session = create_mock_async_session()
-        cot_res = await handlers.get_cot_report(session=mock_session)
+        cot_res = await handlers.get_cot_report(session=mock_session, fetch=True)
         assert cot_res["status"] == "success"
         assert cot_res["new_records"] == 5
 
@@ -91,7 +91,7 @@ async def test_macro_handlers_and_session_info():
     ) as mock_vix:
         mock_vix.return_value = 3
         mock_session = create_mock_async_session()
-        vix_res = await handlers.get_vix(session=mock_session)
+        vix_res = await handlers.get_vix(session=mock_session, fetch=True)
         assert vix_res["new_records"] == 3
 
 

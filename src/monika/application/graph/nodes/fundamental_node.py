@@ -99,6 +99,21 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
         if fund_result and fund_result.get("success"):
             break
 
+        # Check for permanent error inside returned result dict
+        err_str = str((fund_result or {}).get("error") or "")
+        PERMANENT_PATTERNS = [
+            "AuthenticationError",
+            "invalid_api_key",
+            "API key",
+            "Invalid model",
+            "model_not_found",
+        ]
+        if any(p in err_str for p in PERMANENT_PATTERNS):
+            logger.critical(f"Permanent error in Stage 1 result, stopping retry: {err_str}")
+            if fund_result is not None:
+                fund_result["_permanent"] = True
+            break
+
     fund_result = fund_result or {}
 
     summary["fundamental"] = {
@@ -308,7 +323,10 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
             market_regime = "unknown"
             vix_level = None
             brief_confidence = None
+            extracted_brief_id = fund_result.get("brief_id")
             if brief:
+                if not extracted_brief_id:
+                    extracted_brief_id = getattr(brief, "id", None)
                 brief_confidence = brief.confidence
                 if brief.risk_sentiment:
                     market_regime = brief.risk_sentiment
@@ -351,6 +369,7 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
 
         return {
             "summary": summary,
+            "brief_id": extracted_brief_id,
             "market_regime": str(market_regime),
             "vix_level": vix_level,
             "brief_confidence": brief_confidence,

@@ -21,8 +21,8 @@ logger = logging.getLogger("TradingAgent.Graph.Risk.LevelSynthesizer")
 
 
 def _safe_num(val: Any, default: float = 0.0) -> float:
-    """Sanitizes numerical inputs, stripping currency symbols and handling mocks/NaNs."""
-    if val is None or hasattr(val, "_mock_name") or hasattr(val, "_mock_return_value"):
+    """Sanitizes numerical inputs, stripping currency symbols and handling NaNs."""
+    if val is None:
         return default
     try:
         if isinstance(val, str):
@@ -57,7 +57,7 @@ async def resolve_and_repair_levels(
     # 1. Resolve entry_price if missing
     if entry_p <= 0.0 and ana:
         entry_p = _safe_num(getattr(ana, "entry_price", None))
-        if entry_p <= 0.0 and getattr(ana, "entry_zone", None) and not hasattr(ana.entry_zone, "_mock_name"):
+        if entry_p <= 0.0 and getattr(ana, "entry_zone", None) and isinstance(ana.entry_zone, (str, dict)):
             try:
                 ez = json.loads(ana.entry_zone) if isinstance(ana.entry_zone, str) else ana.entry_zone
                 if isinstance(ez, dict):
@@ -158,12 +158,7 @@ async def resolve_and_repair_levels(
             or (dec_u == "SELL" and (sl_p <= entry_p or tp_p >= entry_p))
         ):
             atr_val = _safe_num(r.get("atr") or r.get("atr_14"))
-            if (
-                atr_val <= 0.0
-                and ana
-                and getattr(ana, "indicators", None)
-                and not hasattr(ana.indicators, "_mock_name")
-            ):
+            if atr_val <= 0.0 and ana and getattr(ana, "indicators", None) and isinstance(ana.indicators, (str, dict)):
                 try:
                     inds = json.loads(ana.indicators) if isinstance(ana.indicators, str) else ana.indicators
                     if isinstance(inds, dict):

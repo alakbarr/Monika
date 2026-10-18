@@ -29,10 +29,6 @@ class SessionSearchEngine:
 
     def _is_postgres_session(self, session: AsyncSession) -> bool:
         """Check if active session connects to a PostgreSQL backend."""
-        from unittest.mock import Mock
-
-        if isinstance(session, Mock):
-            return False
         try:
             bind = session.get_bind() if hasattr(session, "get_bind") else getattr(session, "bind", None)
             dialect_name = getattr(getattr(bind, "dialect", None), "name", "")
@@ -44,9 +40,7 @@ class SessionSearchEngine:
         """Auto-detect if PostgreSQL has the pgvector extension active."""
         if self._has_pgvector is not None:
             return self._has_pgvector
-        from unittest.mock import Mock
-
-        if isinstance(session, Mock):
+        if not isinstance(session, AsyncSession):
             self._has_pgvector = False
             return False
         try:

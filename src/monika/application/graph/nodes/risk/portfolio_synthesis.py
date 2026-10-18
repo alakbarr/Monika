@@ -137,11 +137,21 @@ Respond in JSON:
 
     client = get_client_for_task("portfolio_synthesis", settings)
     result = await client.classify_json(prompt=prompt, schema=PORTFOLIO_SYNTHESIS_SCHEMA, temperature=0.0)
-    return result or {
-        "recommendation": "execute_all",
-        "keep": [t["symbol"] for t in proposed_trades],
-        "size_adjustments": {},
-        "reasoning": "fallback: synthesis call failed",
+    if result:
+        return result
+
+    # Fail-closed institutional fallback: under LLM synthesis outage, damp portfolio risk.
+    # Keep only the single highest-confidence candidate and scale size to 0.5x
+    top_candidate = (
+        max(proposed_trades, key=lambda t: float(t.get("confidence", 0.0) or 0.0))
+        if proposed_trades
+        else {"symbol": ""}
+    )
+    return {
+        "recommendation": "reduce",
+        "keep": [top_candidate["symbol"]] if top_candidate.get("symbol") else [],
+        "size_adjustments": {t["symbol"]: 0.5 for t in proposed_trades},
+        "reasoning": "fail_closed_fallback: portfolio synthesis call failed, constrained to top candidate at 0.5x size",
     }
 
 

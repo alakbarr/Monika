@@ -30,25 +30,23 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
 
         analyses_dict = dict(actionable)
         contradictions = compute_cross_pair_contradictions(analyses_dict)
-        if contradictions:
-            logger.warning(f"[Reflection] Cross-pair contradictions detected: {contradictions[0]['description']}")
+        for c in contradictions:
+            logger.warning(f"[Reflection] Cross-pair contradictions detected: {c['description']}")
             # Keep only the recommended direction if there is a conflict
-            recommended = contradictions[0].get("recommended_filter")
+            recommended = c.get("recommended_filter")
             if recommended in ("USD_STRONG", "KEEP_STRONG_USD"):
-                kept_symbols = set(contradictions[0].get("strong_usd_symbols", []))
+                kept_symbols = set(c.get("strong_usd_symbols", []))
                 actionable = [
-                    (sym, r)
-                    for sym, r in actionable
-                    if sym in kept_symbols or sym not in contradictions[0].get("weak_usd_symbols", [])
+                    (sym, r) for sym, r in actionable if sym in kept_symbols or sym not in c.get("weak_usd_symbols", [])
                 ]
             elif recommended in ("USD_WEAK", "KEEP_WEAK_USD"):
-                kept_symbols = set(contradictions[0].get("weak_usd_symbols", []))
+                kept_symbols = set(c.get("weak_usd_symbols", []))
                 actionable = [
                     (sym, r)
                     for sym, r in actionable
-                    if sym in kept_symbols or sym not in contradictions[0].get("strong_usd_symbols", [])
+                    if sym in kept_symbols or sym not in c.get("strong_usd_symbols", [])
                 ]
-            summary["reflection_contradiction_filtered"] = contradictions[0]["description"]
+            summary["reflection_contradiction_filtered"] = c["description"]
     except Exception as e:
         logger.debug(f"[Reflection] Cross-pair contradiction check failed: {e}")
 
@@ -132,19 +130,19 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
         vix_value = 25.0
         logger.warning(f"[Reflection] VIX query failed ({e}). Applying defensive default VIX=25.0")
 
-    if vix_value > 38:
+    if vix_value >= 38.0:
         # Extreme VIX: only keep highest confidence trade
         if len(actionable) > 1:
             actionable = sorted(actionable, key=lambda x: x[1].get("confidence", 0), reverse=True)[:1]
-            summary["reflection_vix_filtered"] = f"VIX={vix_value:.1f} > 38: limited to 1 trade"
+            summary["reflection_vix_filtered"] = f"VIX={vix_value:.1f} >= 38: limited to 1 trade"
             logger.info(
                 f"[Reflection] VIX={vix_value:.1f}: filtered to 1 highest-confidence trade (extreme volatility)"
             )
-    elif vix_value > 25:
+    elif vix_value >= 25.0:
         # Elevated VIX: keep top 2 highest confidence trades
         if len(actionable) > 2:
             actionable = sorted(actionable, key=lambda x: x[1].get("confidence", 0), reverse=True)[:2]
-            summary["reflection_vix_filtered"] = f"VIX={vix_value:.1f} > 25: limited to top 2 trades"
+            summary["reflection_vix_filtered"] = f"VIX={vix_value:.1f} >= 25: limited to top 2 trades"
             logger.info(f"[Reflection] VIX={vix_value:.1f}: filtered to top 2 trades (elevated volatility)")
 
     # --- MACRO NARRATIVE CROSS-VALIDATION ---

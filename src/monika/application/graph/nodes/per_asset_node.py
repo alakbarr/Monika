@@ -55,7 +55,12 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
     end_hr = trading_cfg.get("auto_execute_active_hours_utc_end", 22)
     auto_execute = trading_cfg.get("auto_execute", False)
 
-    is_outside_active_hours = not (start_hr <= hour < end_hr)
+    # Support overnight windows (e.g., start=22, end=6)
+    if start_hr <= end_hr:
+        is_inside_active_hours = start_hr <= hour < end_hr
+    else:
+        is_inside_active_hours = hour >= start_hr or hour < end_hr
+    is_outside_active_hours = not is_inside_active_hours
     is_weekday = weekday < 5
 
     symbols_override = weekend_symbols_override or scheduler.asset_universe

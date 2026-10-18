@@ -159,5 +159,39 @@ def prune_before_execution(state: TradingState, *args, **kwargs) -> Dict[str, An
         else:
             clean_actionable.append(item)
 
-    logger.debug(f"[StatePruner] Pruned {len(clean_actionable)} actionable trades before execution")
-    return {"actionable_trades": clean_actionable}
+    approved = list(state.get("approved_trades", []) or [])
+    clean_approved = []
+    for item in approved:
+        if isinstance(item, dict):
+            cleaned = dict(item)
+            for heavy in (
+                "full_history",
+                "raw_chart_base64",
+                "all_candles",
+                "raw_indicators_df",
+                "raw_mt5_ticks",
+                "deep_analysis_dump",
+                "context_messages",
+            ):
+                cleaned.pop(heavy, None)
+            clean_approved.append(cleaned)
+        elif isinstance(item, tuple) and len(item) == 2 and isinstance(item[1], dict):
+            plan = dict(item[1])
+            for heavy in (
+                "full_history",
+                "raw_chart_base64",
+                "all_candles",
+                "raw_indicators_df",
+                "raw_mt5_ticks",
+                "deep_analysis_dump",
+                "context_messages",
+            ):
+                plan.pop(heavy, None)
+            clean_approved.append((item[0], plan))
+        else:
+            clean_approved.append(item)
+
+    logger.debug(
+        f"[StatePruner] Pruned {len(clean_actionable)} actionable and {len(clean_approved)} approved trades before execution"
+    )
+    return {"actionable_trades": clean_actionable, "approved_trades": clean_approved}

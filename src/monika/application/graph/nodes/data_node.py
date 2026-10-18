@@ -596,5 +596,6 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         "stale_assets": list(critical_stale_assets),
         "should_pause": should_pause,
         "market_regime": macro_regime,
+        "vix_level": vix_latest_close,
         "user_market_intel": active_user_intel,
     }

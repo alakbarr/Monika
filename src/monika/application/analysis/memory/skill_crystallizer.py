@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from sqlalchemy import desc, select
+from sqlalchemy.engine import Row as SARow
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.skills.loader import invalidate_cache
@@ -95,48 +96,30 @@ class SkillCrystallizer:
                 stmt = stmt.where(DecisionReflection.symbol == clean_sym)
 
             raw_res = await session.execute(stmt)
-            # Handle both SQLAlchemy Row tuples from outerjoin and mock objects configured with .scalars().all()
+            # Handle both SQLAlchemy Row tuples from outerjoin and results configured with .scalars().all()
             if hasattr(raw_res, "scalars"):
                 try:
-                    all_items = raw_res.all()
-                    if (
-                        hasattr(all_items, "_mock_return_value")
-                        or str(type(all_items)).find("Mock") != -1
-                        or not all_items
-                    ):
-                        results = raw_res.scalars().all()
-                    else:
-                        results = all_items
-                except Exception:
                     results = raw_res.scalars().all()
+                except Exception:
+                    results = raw_res.all() if hasattr(raw_res, "all") else []
             else:
                 results = raw_res.all() if hasattr(raw_res, "all") else []
 
-            if not results or hasattr(results, "_mock_return_value") or str(type(results)).find("Mock") != -1:
+            if not isinstance(results, (list, tuple)):
                 return []
 
             # 2. Group by (symbol, regime)
             clusters: Dict[str, List[Any]] = {}
             for row in results:
-                is_mock_row = hasattr(row, "_mock_return_value") or "Mock" in type(row).__name__
-                if isinstance(row, (tuple, list)):
+                # SQLAlchemy outerjoin returns Row tuples (reflection, regime)
+                if isinstance(row, (tuple, list, SARow)):
                     r = row[0] if len(row) > 0 else row
                     regime_raw = row[1] if len(row) > 1 else None
-                elif not is_mock_row and hasattr(row, "_mapping") and hasattr(row, "__getitem__"):
-                    try:
-                        getitem = getattr(row, "__getitem__")
-                        r = getitem(0)
-                        regime_raw = getitem(1)
-                    except IndexError, TypeError, KeyError:
-                        r = row
-                        regime_raw = getattr(r, "market_regime_at_analysis", None)
                 else:
                     r = row
                     regime_raw = getattr(r, "market_regime_at_analysis", None)
 
-                if regime_raw is not None and (
-                    hasattr(regime_raw, "_mock_return_value") or str(type(regime_raw)).find("Mock") != -1
-                ):
+                if not isinstance(regime_raw, str):
                     regime_raw = None
 
                 ref_text = getattr(r, "reflection_text", None)

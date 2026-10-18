@@ -9069,7 +9069,7 @@
   - `async reactive_risk_gate_node(state: ReactiveState, config: Optional[RunnableConfig]) -> Dict[str, Any]`: Run institutional RiskGate verification (fail-closed, exposure, drawdown).
   - `async reactive_execution_node(state: ReactiveState, config: Optional[RunnableConfig]) -> Dict[str, Any]`: Execute risk-approved trades via ExecutionService with proper DB status updates.
   - `async reactive_checkpoint_node(state: ReactiveState, config: Optional[RunnableConfig]) -> Dict[str, Any]`: Persist final execution log and record reactive activity.
-  - `route_after_ingest(state: ReactiveState) -> str`: Route after event ingestion: edge signals and price triggers go to risk_gate; empty trades to checkpoint.
+  - `route_after_ingest(state: ReactiveState) -> str`: Route after event ingestion: edge signals go to risk_gate; price triggers and standard events route through confluence.
   - `route_after_confluence(state: ReactiveState) -> str`: Route after confluence filter: surviving trades proceed to fast_debate.
   - `route_after_debate(state: ReactiveState) -> str`: Route after debate: approved trades proceed to risk_gate.
   - `route_after_risk(state: ReactiveState) -> str`: Route after risk gate: approved trades proceed to execution.
@@ -11638,6 +11638,8 @@
     - `async aput(config: RunnableConfig, checkpoint: Checkpoint, metadata: CheckpointMetadata, ...) -> RunnableConfig`
     - `put_writes(config: RunnableConfig, writes: Sequence[tuple[str, Any]], task_id: str, ...) -> None`
     - `async aput_writes(config: RunnableConfig, writes: Sequence[tuple[str, Any]], task_id: str, ...) -> None`
+    - `get_tuple(config: RunnableConfig) -> Optional[Any]`
+    - `async aget_tuple(config: RunnableConfig) -> Optional[Any]`
 
 ### Folder: `src/monika/infrastructure/infra` <a id="folder-srcmonikainfrastructureinfra"></a>
 
