@@ -2211,6 +2211,7 @@ Monika/
 │   │   ├── test_market_intelligence_tools.py
 │   │   ├── test_market_snapshot.py
 │   │   ├── test_mechanical_risk_gate.py
+│   │   ├── test_memory_subagent_copula_remediation.py
 │   │   ├── test_multi_timeframe_tool.py
 │   │   ├── test_news_digest.py
 │   │   ├── test_openai_provider.py
@@ -2962,4 +2963,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 251 | **Total Tracked Files**: 2681
+**Total Tracked Directories**: 251 | **Total Tracked Files**: 2682
