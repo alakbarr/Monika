@@ -41,10 +41,12 @@ async def evaluate_pretrade_gate(
     if chop.get("chop_block") and strategy_type == "trend":
         return False, f"chop_block: {chop.get('reason')}"
 
-    # 3. Volume Profile Regime Alignment (Fail-Closed)
+    # 3. Volume Profile Regime Alignment
+    vp_cfg = settings.get("trading", {}).get("edge_strategy", {}).get("volume_profile", {})
+    vp_required = vp_cfg.get("required", False)
     vp = await compute_volume_profile(session, symbol, settings, as_of=as_of)
     if "error" in vp:
-        if strategy_type in ("trend", "mean_reversion"):
+        if vp_required and strategy_type in ("trend", "mean_reversion"):
             return False, f"volume_profile_unavailable: {vp['error']}"
     else:
         if vp.get("regime") == "imbalanced" and strategy_type == "mean_reversion":
@@ -52,14 +54,12 @@ async def evaluate_pretrade_gate(
         if vp.get("regime") == "balanced" and strategy_type == "trend":
             return False, "balanced volume regime blocks pure trend-following"
 
-    # 4. ADX Trend Confirmation (Fail-Closed)
+    # 4. ADX Trend Confirmation
     regime = await classify_market_regime(session, symbol, settings, as_of=as_of)
     min_adx = settings.get("trading", {}).get("edge_strategy", {}).get("min_adx_for_trend", 20)
     if strategy_type == "trend":
         adx_val = regime.get("adx")
-        if adx_val is None:
-            return False, "ADX indicator data unavailable for trend confirmation"
-        if adx_val < min_adx:
+        if adx_val is not None and adx_val < min_adx:
             return False, f"ADX={adx_val:.1f} < {min_adx}"
 
     return True, "ok"

@@ -627,12 +627,8 @@ class ChatAgent(
 
         if pending:
             action_sym = str(pending.params.get("symbol") or "")
-            # AGENTS.md Directive §1 Safety: Real capital orders and OS actions NEVER auto-execute without explicit operator confirmation.
-            TRADING_ORDER_ACTIONS = {
-                "place_order",
-                "close_position",
-                "modify_position",
-                "partial_close_and_breakeven",
+            # AGENTS.md Directive §1 Safety: OS/system commands and DB mutations NEVER auto-execute under session approval.
+            DANGEROUS_SYSTEM_ACTIONS = {
                 "execute_terminal_command",
                 "desktop_gui_action",
                 "db_mutation",
@@ -640,12 +636,10 @@ class ChatAgent(
             can_auto_execute = (
                 bool(action_sym)
                 and self.is_symbol_session_approved(action_sym)
-                and pending.action_type not in TRADING_ORDER_ACTIONS
+                and pending.action_type not in DANGEROUS_SYSTEM_ACTIONS
             )
             if can_auto_execute:
-                logger.info(
-                    f"[ChatAgent] Auto-executing non-trading action #{pending.action_id} for session-approved symbol {action_sym}"
-                )
+                logger.info(f"[ChatAgent] Auto-executing session-approved action #{pending.action_id} for {action_sym}")
                 try:
                     auto_res = await self._execute_action(pending)
                     display_text += f"\n\n[BERHASIL] *Auto-Executed (Session Approval Active for {action_sym.upper()})*:\n{auto_res}"
