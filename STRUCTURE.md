@@ -2751,6 +2751,7 @@ Monika/
 │   ├── test_debate_concurrency.py
 │   ├── test_debate_node.py
 │   ├── test_debate_node_smoke.py
+│   ├── test_domain_layer_audit_hardening.py
 │   ├── test_econometric_models.py
 │   ├── test_engine_critical_fixes.py
 │   ├── test_enhancements_verification.py
@@ -2958,4 +2959,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 251 | **Total Tracked Files**: 2677
+**Total Tracked Directories**: 251 | **Total Tracked Files**: 2678

@@ -86,11 +86,14 @@ async def run_trade_autopsy(session: AsyncSession, trade: PaperTradeRecord) -> d
                 }
             )
 
-    # Pattern 5: Confluence factors present for losses
-    if analysis.confluence_factors_json and was_loss:
-        factors = json.loads(analysis.confluence_factors_json)
-        # Track which factors were present in losing trades
-        await _update_factor_failure_stats(session, factors, trade.symbol)
+    # Pattern 5: Confluence factors tracking across trades
+    if analysis.confluence_factors_json:
+        try:
+            factors = json.loads(analysis.confluence_factors_json)
+            # Track which factors were present in trades with win/loss attribution
+            await _update_factor_failure_stats(session, factors, trade.symbol, was_loss=was_loss)
+        except Exception:
+            pass
 
     if patterns:
         # Save patterns to SystemConfig for future reference
@@ -115,8 +118,8 @@ async def run_trade_autopsy(session: AsyncSession, trade: PaperTradeRecord) -> d
     return {"patterns": patterns, "trade_id": trade.id}
 
 
-async def _update_factor_failure_stats(session: AsyncSession, factors: list, symbol: str):
-    """Track which confluence factors consistently appear in losing trades."""
+async def _update_factor_failure_stats(session: AsyncSession, factors: list, symbol: str, was_loss: bool = True):
+    """Track which confluence factors consistently appear in winning vs losing trades."""
     key = "factor_failure_stats"
     cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
 
@@ -132,7 +135,8 @@ async def _update_factor_failure_stats(session: AsyncSession, factors: list, sym
         if composite_key not in stats:
             stats[composite_key] = {"failures": 0, "total": 0}
         stats[composite_key]["total"] += 1
-        stats[composite_key]["failures"] += 1  # Dipanggil hanya untuk losses
+        if was_loss:
+            stats[composite_key]["failures"] += 1
 
     if cfg:
         cfg.value = json.dumps(stats)

@@ -46,8 +46,14 @@ class ConfigReloader:
             if self.last_mtime is not None and current_mtime <= self.last_mtime:
                 return False
 
-            with open(self.config_path, encoding="utf-8") as f:
-                new_config = yaml.safe_load(f)
+            try:
+                from monika.core.config.settings import load_settings
+
+                new_config = load_settings(self.config_path)
+            except Exception as load_err:
+                logger.debug(f"[HotReload] load_settings fallback to yaml.safe_load: {load_err}")
+                with open(self.config_path, encoding="utf-8") as f:
+                    new_config = yaml.safe_load(f)
 
             if new_config and isinstance(new_config, dict):
                 # Extract risk section and validate
@@ -59,10 +65,8 @@ class ConfigReloader:
 
                 if isinstance(risk_dict, dict) and risk_dict and self.risk_gate is not None:
                     try:
-                        try:
-                            from monika.core.config.schemas import RiskConfig
-                        except ImportError:
-                            from .schemas import RiskConfig
+                        from monika.core.config.schemas import RiskConfig
+
                         RiskConfig.model_validate(risk_dict)
                     except Exception as val_err:
                         logger.warning(

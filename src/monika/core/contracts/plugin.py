@@ -123,10 +123,48 @@ class TradingPlugin(ABC):
         self.config: Dict[str, Any] = config or {}
         self.context: Optional[Any] = kwargs.get("context", None)
         self.is_enabled: bool = True
-        self.status: str = PluginState.INITIALIZED.value
-        self.state: PluginState = PluginState.INITIALIZED
+        self._state: PluginState = PluginState.INITIALIZED
+        self._status: str = PluginState.INITIALIZED.value
         self.status_message: str = ""
         self._disposers: List[Callable[[], Any]] = []
+
+    @property
+    def status(self) -> str:
+        """Returns string representation of the current plugin state or specific status code."""
+        return self._status
+
+    @status.setter
+    def status(self, val: Any) -> None:
+        """Sets plugin status string and synchronizes with PluginState enum."""
+        raw_val = val.value if isinstance(val, PluginState) else str(val)
+        self._status = raw_val
+        try:
+            self._state = PluginState(raw_val)
+        except ValueError:
+            raw_upper = raw_val.upper()
+            if "FAIL" in raw_upper or "TIMEOUT" in raw_upper:
+                self._state = PluginState.FAILED
+            elif "DEGRADED" in raw_upper:
+                self._state = PluginState.DEGRADED
+            elif "STOP" in raw_upper:
+                self._state = PluginState.STOPPED
+            else:
+                self._state = PluginState.INITIALIZED
+
+    @property
+    def state(self) -> PluginState:
+        """Returns strongly-typed PluginState enum."""
+        return self._state if isinstance(self._state, PluginState) else PluginState.INITIALIZED
+
+    @state.setter
+    def state(self, val: Any) -> None:
+        """Sets strongly-typed PluginState enum."""
+        if isinstance(val, PluginState):
+            if self._status == self._state.value:
+                self._status = val.value
+            self._state = val
+        else:
+            self.status = val
 
     def add_disposer(self, disposer: Callable[[], Any]) -> None:
         """Register a cleanup callable to be executed when the plugin stops (LIFO order)."""

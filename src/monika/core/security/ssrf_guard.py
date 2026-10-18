@@ -144,7 +144,13 @@ def validate_request_url(url: str, allowed_ports: set[int] | None = None) -> str
     if hostname in BLOCKED_HOSTNAMES or raw_hostname in BLOCKED_HOSTNAMES:
         raise SSRFViolationError(f"Access to blocked internal host '{raw_hostname}' is denied.")
 
-    port = parsed.port or (443 if parsed.scheme.lower() == "https" else 80)
+    if parsed.port is not None:
+        port = parsed.port
+        if port <= 0 or port > 65535:
+            raise SSRFViolationError(f"Access to invalid port {port} is denied by SSRF policy.")
+    else:
+        port = 443 if parsed.scheme.lower() == "https" else 80
+
     valid_ports = allowed_ports or ALLOWED_DEFAULT_PORTS
     if port not in valid_ports:
         raise SSRFViolationError(f"Access to non-standard port {port} is denied by SSRF policy.")

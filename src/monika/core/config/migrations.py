@@ -66,34 +66,12 @@ except ImportError:
 
 
 def _apply_v1_to_v2(cfg: dict[str, Any]) -> dict[str, Any]:
-    v2_subsets = ["token_budget", "execution", "paper_trading", "learning_loop"]
-    import copy
-
-    migrated = copy.deepcopy(cfg)
-    for section in v2_subsets:
-        default_vals = DEFAULT_SUBSETS.get(section, {})
-        if section not in migrated:
-            migrated[section] = copy.deepcopy(default_vals)
-        elif isinstance(default_vals, dict) and isinstance(migrated[section], dict):
-            for k, v in default_vals.items():
-                if k not in migrated[section]:
-                    migrated[section][k] = copy.deepcopy(v)
+    migrated, _ = migrate_settings(cfg)
     return migrated
 
 
 def _apply_v2_to_v3(cfg: dict[str, Any]) -> dict[str, Any]:
-    v3_subsets = ["harness", "evals", "benchmark", "security"]
-    import copy
-
-    migrated = copy.deepcopy(cfg)
-    for section in v3_subsets:
-        default_vals = DEFAULT_SUBSETS.get(section, {})
-        if section not in migrated:
-            migrated[section] = copy.deepcopy(default_vals)
-        elif isinstance(default_vals, dict) and isinstance(migrated[section], dict):
-            for k, v in default_vals.items():
-                if k not in migrated[section]:
-                    migrated[section][k] = copy.deepcopy(v)
+    migrated, _ = migrate_settings(cfg)
     return migrated
 
 

@@ -148,10 +148,10 @@ class DataTemporalValidator:
                 )
 
         # H4 data staleness check (aware of forex weekend vs crypto 24/7)
-        is_crypto = symbol.upper() in ("BTCUSD", "ETHUSD", "SOLUSD", "BTC", "ETH")
-        is_forex_weekend = (
-            now.weekday() == 5 or (now.weekday() == 6 and now.hour < 21) or (now.weekday() == 4 and now.hour >= 22)
-        )
+        from monika.core.validation.data_validator import is_crypto_symbol, is_forex_market_closed
+
+        is_crypto = is_crypto_symbol(symbol)
+        is_forex_weekend = is_forex_market_closed(now)
 
         if not is_crypto and is_forex_weekend:
             if h4_age_hours > 60:

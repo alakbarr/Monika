@@ -102,7 +102,12 @@ async def _compute_cds_calibration(session: AsyncSession, settings: dict) -> dic
         is_win = trade.exit_reason == "tp_hit"
 
         for bucket_name, bucket in buckets.items():
-            if bucket["min"] <= cds < bucket["max"]:
+            in_bucket = (
+                (bucket["min"] <= cds <= bucket["max"])
+                if bucket["max"] >= 1.0
+                else (bucket["min"] <= cds < bucket["max"])
+            )
+            if in_bucket:
                 bucket["total"] += 1
                 if is_win:
                     bucket["wins"] += 1
@@ -137,7 +142,7 @@ async def _compute_cds_calibration(session: AsyncSession, settings: dict) -> dic
     new_thresholds = current_thresholds.copy()
     recommendations = []
 
-    if not is_predictive and (buckets["low"]["total"] + buckets["medium"]["total"] + buckets["high"]["total"]) >= 25:
+    if not is_predictive and sum(b["total"] for b in buckets.values()) >= 25:
         recommendations.append(
             "CDS not yet predictive (sample N>=25). Consider lowering warning threshold by 0.05 "
             "to capture more divergence early."

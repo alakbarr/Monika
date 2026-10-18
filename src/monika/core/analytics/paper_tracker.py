@@ -386,16 +386,41 @@ class PaperTracker:
                     exit_price = trade.take_profit + spread / 2 + slippage * 0.5
 
             # Kalkulasi P&L
-            if trade.entry_price and trade.stop_loss and exit_price:
-                sl_distance = abs(trade.entry_price - trade.stop_loss)
+            if trade.entry_price and exit_price:
                 if trade.direction == "buy":
                     actual_move = exit_price - trade.entry_price
                 else:
                     actual_move = trade.entry_price - exit_price
 
-                if sl_distance > 0:
-                    rr_achieved = actual_move / sl_distance
-                    pnl_pct = risk_pct * rr_achieved
+                # Check for Breakeven exit (exit_reason or virtually zero price difference)
+                is_breakeven = False
+                if exit_reason in ("breakeven", "breakeven_sl", "be_hit"):
+                    is_breakeven = True
+                elif abs(exit_price - trade.entry_price) < 1e-5:
+                    is_breakeven = True
+
+                if is_breakeven:
+                    rr_achieved = 0.0
+                    pnl_pct = 0.0
+                elif trade.stop_loss:
+                    # Determine initial SL distance if available via analysis or current SL
+                    initial_sl = None
+                    if getattr(trade, "analysis_id", None):
+                        try:
+                            analysis_obj = getattr(trade, "analysis", None)
+                            if analysis_obj and getattr(analysis_obj, "stop_loss", None):
+                                initial_sl = analysis_obj.stop_loss
+                        except Exception:
+                            pass
+                    sl_ref = initial_sl if initial_sl is not None else trade.stop_loss
+                    sl_distance = abs(trade.entry_price - sl_ref)
+
+                    if sl_distance > 1e-6:
+                        rr_achieved = actual_move / sl_distance
+                        pnl_pct = risk_pct * rr_achieved
+                    else:
+                        rr_achieved = 0.0 if abs(actual_move) < 1e-5 else (1.0 if actual_move > 0 else -1.0)
+                        pnl_pct = 0.0 if abs(actual_move) < 1e-5 else (risk_pct if actual_move > 0 else -risk_pct)
                 else:
                     rr_achieved = None
                     pnl_pct = risk_pct if exit_reason == "tp_hit" else -risk_pct
@@ -416,7 +441,12 @@ class PaperTracker:
                 if swap_enabled:
                     from monika.domain.market.swap_estimator import estimate_swap_cost
 
-                    lots = getattr(trade, "lots", None) or getattr(trade, "volume", None) or 1.0
+                    lots = (
+                        getattr(trade, "requested_lot", None)
+                        or getattr(trade, "volume", None)
+                        or getattr(trade, "lots", None)
+                        or 0.01
+                    )
                     mt5_client = getattr(self, "_mt5", None)
                     swap_abs = await estimate_swap_cost(
                         symbol=trade.symbol,
@@ -465,6 +495,7 @@ class PaperTracker:
 
             for trade in open_trades:
                 result = None
+                current_closed_item = None
                 try:
                     # NEW: Force close sangat tua trades yang mungkin stuck karena data issue
                     if trade.opened_at:
@@ -504,7 +535,12 @@ class PaperTracker:
                                 if swap_enabled:
                                     from monika.domain.market.swap_estimator import estimate_swap_cost
 
-                                    lots = getattr(trade, "lots", None) or getattr(trade, "volume", None) or 1.0
+                                    lots = (
+                                        getattr(trade, "requested_lot", None)
+                                        or getattr(trade, "volume", None)
+                                        or getattr(trade, "lots", None)
+                                        or 0.01
+                                    )
                                     swap_abs = await estimate_swap_cost(
                                         symbol=trade.symbol,
                                         direction=trade.direction,
@@ -529,9 +565,12 @@ class PaperTracker:
                             logger.warning(
                                 f"[PAPER] Force-closed {trade.symbol} after {age_hours:.0f}h (max holding time)"
                             )
-                            closed.append(
-                                {"symbol": trade.symbol, "exit_reason": "max_holding_time", "pnl_pct": pnl_pct}
-                            )
+                            current_closed_item = {
+                                "symbol": trade.symbol,
+                                "exit_reason": "max_holding_time",
+                                "pnl_pct": pnl_pct,
+                            }
+                            closed.append(current_closed_item)
                             try:
                                 await self._record_factor_outcomes(session, trade)
                             except Exception as e:
@@ -577,6 +616,7 @@ class PaperTracker:
                                 break
 
                     if result:
+                        current_closed_item = result
                         closed.append(result)
                         await self._close_linked_position(session, trade)
                         logger.info(
@@ -623,8 +663,8 @@ class PaperTracker:
                     except Exception:
                         pass
                     # If this trade had partially appended a result before failing, remove it
-                    if result and result in closed:
-                        closed.remove(result)
+                    if current_closed_item and current_closed_item in closed:
+                        closed.remove(current_closed_item)
                     continue
 
             if closed or any(t.status == "closed" and t.exit_reason == "expired_limit" for t in open_trades):
@@ -1210,22 +1250,20 @@ class PaperTracker:
             if dd > max_dd:
                 max_dd = dd
 
-        # Sharpe & Sortino ratios (annualized scaling)
+        # Sharpe & Sortino ratios (annualized scaling based on 252 trading days)
         if len(pnl_values) >= 2:
             mean_ret = sum(pnl_values) / len(pnl_values)
             variance = sum((p - mean_ret) ** 2 for p in pnl_values) / (len(pnl_values) - 1)
             std_dev = math.sqrt(variance) if variance > 0 else 0.0
-            sharpe_ratio = (mean_ret / std_dev) * math.sqrt(min(252, len(pnl_values))) if std_dev > 0 else 0.0
+            sharpe_ratio = (mean_ret / std_dev) * math.sqrt(252) if std_dev > 0 else 0.0
 
             downside_pnl = [p for p in pnl_values if p < 0]
             if downside_pnl:
                 downside_var = sum(p**2 for p in downside_pnl) / len(downside_pnl)
                 downside_std = math.sqrt(downside_var) if downside_var > 0 else 0.0
-                sortino_ratio = (
-                    (mean_ret / downside_std) * math.sqrt(min(252, len(pnl_values))) if downside_std > 0 else 0.0
-                )
+                sortino_ratio = (mean_ret / downside_std) * math.sqrt(252) if downside_std > 0 else 0.0
             else:
-                sortino_ratio = sharpe_ratio * 1.5 if sharpe_ratio > 0 else 0.0
+                sortino_ratio = sharpe_ratio if sharpe_ratio > 0 else 0.0
         else:
             sharpe_ratio = 0.0
             sortino_ratio = 0.0

@@ -121,3 +121,20 @@ def _register_builtins():
 
 
 _register_builtins()
+
+
+def get_broker(name: str = "mt5", **kwargs: Any) -> Optional[Any]:
+    """Retrieve or instantiate a registered broker adapter by name."""
+    return BrokerAdapterRegistry.get(name, **kwargs)
+
+
+def get_active_broker(**kwargs: Any) -> Optional[Any]:
+    """Retrieve the currently active broker adapter."""
+    return BrokerAdapterRegistry.get_active(**kwargs)
+
+
+__all__ = [
+    "BrokerAdapterRegistry",
+    "get_broker",
+    "get_active_broker",
+]

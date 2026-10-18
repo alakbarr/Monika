@@ -24,6 +24,7 @@ EMOJI_PATTERN = re.compile(
     "\U00002b50-\U00002b55"  # Stars / Circles
     "\U0001f1e6-\U0001f1ff"  # Flags
     "\U0000fe00-\U0000fe0f"  # Variation Selectors
+    "\U0000200d"  # Zero-Width Joiner (ZWJ)
     "]+",
     flags=re.UNICODE,
 )

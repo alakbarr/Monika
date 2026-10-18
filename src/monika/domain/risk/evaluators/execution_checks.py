@@ -104,11 +104,20 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
                 return (True, f"consecutive_losses_paper_ok({consecutive_losses}/{max_consecutive})")
 
         # Mode strict / Live Trading:
-        import importlib
+        from monika.domain.risk.ports import get_default_suspended_symbols_provider
 
-        tracker_mod = importlib.import_module("monika.core.analytics.paper_tracker")
-        tracker_cls = getattr(tracker_mod, "PaperTracker")
-        suspended = await tracker_cls(self.settings).get_suspended_symbols(session)
+        provider_factory = get_default_suspended_symbols_provider()
+        if provider_factory is not None:
+            suspended = await provider_factory(self.settings).get_suspended_symbols(session)
+        else:
+            try:
+                import importlib
+
+                tracker_mod = importlib.import_module("monika.core.analytics.paper_tracker")
+                tracker_cls = getattr(tracker_mod, "PaperTracker")
+                suspended = await tracker_cls(self.settings).get_suspended_symbols(session)
+            except Exception:
+                suspended = []
         if symbol in suspended:
             return (False, f"{symbol} is suspended due to consecutive losses")
 

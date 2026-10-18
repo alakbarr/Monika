@@ -1098,7 +1098,6 @@ async def classify_news_batch_with_jev(
     only the omitted items to Gemini Flash Lite.
     """
     import asyncio
-    import unittest.mock as _mock
 
     try:
         import importlib
@@ -1114,7 +1113,13 @@ async def classify_news_batch_with_jev(
 
     # Resolve underlying TypeSafe client / provider if wrapped (guard against mock auto-attributes)
     raw_jev = client
-    is_mock = isinstance(client, (_mock.NonCallableMock, _mock.MagicMock))
+    client_cls = type(client)
+    is_mock = client_cls.__name__ in (
+        "MagicMock",
+        "Mock",
+        "AsyncMock",
+        "NonCallableMock",
+    ) or client_cls.__module__.startswith("unittest.mock")
     if not is_mock:
         try:
             if hasattr(type(client), "_get_client"):

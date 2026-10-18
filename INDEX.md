@@ -577,6 +577,10 @@
   - `class PluginMetadata`
   - `class TradingPlugin(ABC)`: Universal Plugin Contract for Monika Trading Harness.
     - `__init__() -> None`
+    - `status() -> str` - *Returns string representation of the current plugin state or specific status code.*
+    - `status(val: Any) -> None` - *Sets plugin status string and synchronizes with PluginState enum.*
+    - `state() -> PluginState` - *Returns strongly-typed PluginState enum.*
+    - `state(val: Any) -> None` - *Sets strongly-typed PluginState enum.*
     - `add_disposer(disposer: Callable[[], Any]) -> None` - *Register a cleanup callable to be executed when the plugin stops (LIFO order).*
     - `on_context_ready(ctx: Any) -> None` - *Invoked when Universal PluginContext is bound to this plugin.*
     - `async on_register(container: ServiceContainerProtocol, event_bus: EventBusProtocol) -> None` - *Register services, singletons, factories into DI container & subscribe to EventBus.*
@@ -872,6 +876,9 @@
   - `get_stream_lease_coordinator() -> StreamWriterLeaseCoordinator`: Returns the process-wide StreamWriterLeaseCoordinator singleton.
 
 ### Folder: `src/monika/core/telemetry` <a id="folder-srcmonikacoretelemetry"></a>
+
+#### `__init__.py` - *Monika Core Telemetry Package.*
+- **Path**: [`src/monika/core/telemetry/__init__.py`](src/monika/core/telemetry/__init__.py)
 
 #### `activity_logger.py` - *Activity Logger: Unified Structured Logging (Python logging stdlib & DB `activity_log`).*
 - **Path**: [`src/monika/core/telemetry/activity_logger.py`](src/monika/core/telemetry/activity_logger.py)
@@ -4386,6 +4393,8 @@
   - `class RiskPortRegistry`: Centralized, resettable registry for domain risk pluggable providers and callbacks.
     - `reset() -> None` - *Reset all registered factories and hooks to default None state (for tests).*
 - **Top-Level Functions**:
+  - `register_suspended_symbols_provider(provider: Any) -> None`: Register provider for querying/clearing suspended trading symbols.
+  - `get_default_suspended_symbols_provider() -> Any`: Returns registered suspended symbols provider or None.
   - `register_risk_data_provider_factory(factory: Any) -> None`: Register concrete RiskDataProvider factory from infrastructure layer.
   - `get_default_risk_data_provider(settings: dict[str, Any] | None, session: Any | None) -> Any`: Resolves default RiskDataProvider registered by infrastructure layer.
   - `register_regime_classifier(fn: Any) -> None`: Register market regime classification provider from application layer.
@@ -8833,6 +8842,9 @@
     - `get_active() -> Optional[Any]` - *Retrieve the currently active broker adapter.*
     - `list_registered() -> List[str]` - *List all registered adapter identifiers.*
     - `reset() -> None` - *Reset internal registries (primarily for testing).*
+- **Top-Level Functions**:
+  - `get_broker(name: str) -> Optional[Any]`: Retrieve or instantiate a registered broker adapter by name.
+  - `get_active_broker() -> Optional[Any]`: Retrieve the currently active broker adapter.
 
 #### `effect_gate.py` - *Effect Gate (Synchronous Side-Effect Admission Gate).*
 - **Path**: [`src/monika/application/execution/effect_gate.py`](src/monika/application/execution/effect_gate.py)

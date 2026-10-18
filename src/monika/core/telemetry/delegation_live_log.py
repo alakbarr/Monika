@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import threading
 import time
 from pathlib import Path
@@ -33,7 +34,8 @@ class LiveTranscriptWriter:
     """
 
     def __init__(self, subagent_id: str, log_dir: Path | None = None):
-        self.subagent_id = subagent_id
+        safe_id = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", str(subagent_id))
+        self.subagent_id = safe_id
         self.log_dir = Path(log_dir or DEFAULT_LOG_DIR).resolve()
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_path = self.log_dir / f"{self.subagent_id}.jsonl"

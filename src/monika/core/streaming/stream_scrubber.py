@@ -64,6 +64,7 @@ class StatefulStreamScrubber:
             self._target_tags.update(
                 ["memory-context", "market-memory-context", "untrusted_external_content", "volatile_overlay"]
             )
+        self._trailing_token_buf: str = ""
 
     @property
     def accumulated_thinking(self) -> str:
@@ -157,16 +158,33 @@ class StatefulStreamScrubber:
             emitted = EMOJI_PATTERN.sub("", emitted)
             emitted = ASCII_EMOTICON_PATTERN.sub("", emitted)
             emitted = re.sub(r"[ \t]{2,}", " ", emitted)
-        if self.redact_secrets and emitted:
-            emitted = self._apply_redactions(emitted)
+
+        if self.redact_secrets:
+            candidate = self._trailing_token_buf + emitted
+            redacted = self._apply_redactions(candidate)
+            incomplete_pattern = re.compile(
+                r"(?:sk-[A-Za-z0-9_-]{1,25}|bot\d{1,12}(?::[A-Za-z0-9_-]{0,34})?|(?:api[_-]?key|token|secret|password|bearer)\s*[:=]\s*['\"]?[A-Za-z0-9_.-]{1,12})$",
+                re.IGNORECASE,
+            )
+            m = incomplete_pattern.search(redacted)
+            if m:
+                tail = m.group(0)
+                safe_text = redacted[: -len(tail)]
+                self._trailing_token_buf = tail
+                return safe_text
+            else:
+                self._trailing_token_buf = ""
+                return redacted
+
         return emitted
 
     def flush(self) -> str:
         """
         Flush any remaining buffered text when stream finishes.
         """
-        remaining = self._buffer
+        remaining = self._trailing_token_buf + self._buffer
         self._buffer = ""
+        self._trailing_token_buf = ""
         if self._in_think or self._in_internal_tag:
             return ""
         if self.strip_emojis and remaining:

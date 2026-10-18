@@ -34,8 +34,9 @@ class TurnMarkerManager:
         if marker_dir:
             self.marker_dir = Path(marker_dir)
         else:
-            base_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            self.marker_dir = base_dir / "data" / "markers"
+            from monika.core.paths import DATA_DIR
+
+            self.marker_dir = DATA_DIR / "markers"
         self.marker_dir.mkdir(parents=True, exist_ok=True)
         self.marker_file = self.marker_dir / "interrupted_turns.json"
 

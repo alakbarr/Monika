@@ -7,10 +7,13 @@ enabling exact cycle replay and recursive provenance tracing from orders to sign
 import hashlib
 import json
 import logging
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone, UTC
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
+
+from monika.core.paths import DATA_DIR
 
 logger = logging.getLogger("TradingAgent.TradingCycleEventLog")
 
@@ -77,7 +80,7 @@ class TradingCycleEventLog:
         cls._instance = None
 
     def __init__(self, storage_dir: Path | None = None):
-        self.storage_dir = Path(storage_dir) if storage_dir else Path("data/cycle_events")
+        self.storage_dir = Path(storage_dir) if storage_dir else (DATA_DIR / "cycle_events")
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         # In-memory index: cycle_id -> list of CycleEvent
         self._cycle_stores: dict[str, list[CycleEvent]] = {}
@@ -132,7 +135,8 @@ class TradingCycleEventLog:
 
         # Persist append-only to disk JSONL
         try:
-            log_file = self.storage_dir / f"{cid}.jsonl"
+            safe_cid = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", cid)
+            log_file = self.storage_dir / f"{safe_cid}.jsonl"
             with open(log_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(event.to_dict()) + "\n")
         except Exception as e:
@@ -147,7 +151,8 @@ class TradingCycleEventLog:
             return list(self._cycle_stores[cid])
 
         # Load from disk if available
-        log_file = self.storage_dir / f"{cid}.jsonl"
+        safe_cid = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", cid)
+        log_file = self.storage_dir / f"{safe_cid}.jsonl"
         events = []
         if log_file.exists():
             try:

@@ -73,7 +73,9 @@ PRICING: dict[str, Price] = {
     "claude-3-5-sonnet": Price(3.00, 0.30, 15.00),
     "claude-3-5-sonnet-20241022": Price(3.00, 0.30, 15.00),
     "claude-3-5-haiku": Price(0.80, 0.08, 4.00),
-    "claude-3-5-haiku-20241022": Price(0.80, 0.08, 4.00),
+    "claude-3-opus": Price(15.00, 3.75, 75.00),
+    "claude-3-opus-20240229": Price(15.00, 3.75, 75.00),
+    "claude-opus-3": Price(15.00, 3.75, 75.00),
     # --- Google Gemini Models ---
     "gemini-4-argon": Price(2.00, 0.10, 10.00, "Google Gemini 4 Argon frontier reasoning rate"),
     "gemini-3.8-flash": Price(1.50, 0.15, 7.50),
@@ -92,6 +94,8 @@ PRICING: dict[str, Price] = {
     "gemini-2.5-pro": Price(1.25, 0.125, 10.00),
     "gemini-2.5-flash": Price(0.15, 0.0375, 0.60),
     "gemini-2.0-flash": Price(0.10, 0.025, 0.40),
+    "gemini-1.5-pro": Price(1.25, 0.3125, 5.00),
+    "gemini-1.5-flash": Price(0.075, 0.01875, 0.30),
     # --- OpenAI Models ---
     "gpt-6-astra": Price(2.00, 0.10, 10.00),
     "gpt-6.1-sol": Price(2.00, 0.10, 10.00),
@@ -118,6 +122,9 @@ PRICING: dict[str, Price] = {
     "o1": Price(15.00, 7.50, 60.00),
     "o3-mini": Price(1.10, 0.55, 4.40),
     # --- DeepSeek Models ---
+    "deepseek-r1": Price(0.55, 0.14, 2.19, "DeepSeek R1 official API rate"),
+    "deepseek/deepseek-r1": Price(0.55, 0.14, 2.19),
+    "deepseek-reasoner": Price(0.55, 0.14, 2.19),
     "deepseek-v4-pro": Price(0.66, 0.022, 1.98, "off-peak; peak=1.32/0.044/3.96"),
     "deepseek-v4-pro-0813": Price(0.66, 0.022, 1.98),
     "deepseek-v4.1-flash": Price(0.30, 0.006, 1.20),
@@ -464,8 +471,15 @@ def get_price(model_name: str) -> Price:
 
     # 5. Fuzzy match prefix/substring
     for k, price_obj in PRICING.items():
-        if k in clean_name or clean_name in k:
+        if k in clean_name or (len(clean_name) >= 4 and clean_name in k):
             return price_obj
+
+    # Warn if unpriced model is encountered
+    if not (clean_name in ("local", "ollama") or clean_name.startswith(("ollama/", "local/"))):
+        logger.warning(
+            f"[Pricing] Model '{model_name}' not found in PRICING table or FREE_TIER_MODELS. "
+            "Defaulting to $0.00 rate. Please verify model pricing in pricing.py."
+        )
 
     return _FREE
 

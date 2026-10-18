@@ -158,6 +158,7 @@ class EventBus:
         self._queues: dict[str, asyncio.Queue] = {}
         self._queue_stats: dict[str, dict[str, int]] = {}
         self._worker_tasks: dict[str, asyncio.Task] = {}
+        self._pending_tasks: set[asyncio.Task] = set()
         self._running: bool = True
 
     # --------------------------------------------------------------------------
@@ -307,8 +308,10 @@ class EventBus:
         try:
             loop = asyncio.get_running_loop()
             task = loop.create_task(self.publish(event))
+            self._pending_tasks.add(task)
 
             def _handle_done(t: asyncio.Task):
+                self._pending_tasks.discard(t)
                 if not t.cancelled():
                     exc = t.exception()
                     if exc:
@@ -511,12 +514,18 @@ class EventBus:
             while self._running:
                 try:
                     event = await queue.get()
-                    await self.publish(event)
-                    queue.task_done()
                 except asyncio.CancelledError:
                     break
+
+                try:
+                    await self.publish(event)
+                except asyncio.CancelledError:
+                    queue.task_done()
+                    raise
                 except Exception as e:
                     logger.error(f"[EventBus] Worker error in '{queue_name}': {e}")
+                finally:
+                    queue.task_done()
             logger.info(f"[EventBus] Queue worker stopped for '{queue_name}'")
 
         loop = asyncio.get_running_loop()
@@ -539,6 +548,10 @@ class EventBus:
     def clear(self) -> None:
         """Clear all subscribers, queues, and worker tasks (useful for testing)."""
         self.stop_workers()
+        for t in list(self._pending_tasks):
+            if not t.done():
+                t.cancel()
+        self._pending_tasks.clear()
         self._subscribers.clear()
         self._queues.clear()
         self._running = True

@@ -121,7 +121,7 @@ class SystemDoctor:
 
     async def check_directories(self) -> None:
         """Verify required directories exist and are writable."""
-        from monika.infrastructure.infra.paths import get_repo_root
+        from monika.core.paths import get_repo_root
 
         base_dir = str(get_repo_root())
         req_dirs = [
@@ -227,12 +227,10 @@ class SystemDoctor:
 
     def check_market_session(self) -> None:
         """Checks whether the global financial markets are open or in weekend closure."""
-        now_utc = datetime.datetime.now(datetime.timezone.utc)
-        weekday = now_utc.weekday()  # 0=Mon, 4=Fri, 5=Sat, 6=Sun
-        hour = now_utc.hour
+        from monika.core.validation.data_validator import is_forex_market_closed
 
-        # Forex closes Friday ~21:00 UTC and reopens Sunday ~21:00 UTC
-        is_weekend = (weekday == 5) or (weekday == 4 and hour >= 21) or (weekday == 6 and hour < 21)
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        is_weekend = is_forex_market_closed(now_utc)
         if is_weekend:
             self._record(
                 "Market",
@@ -379,29 +377,15 @@ class SystemDoctor:
             db_type_label = "SQLite" if "sqlite" in os.getenv("DATABASE_URL", "") else "PostgreSQL"
             self._record("Database", db_type_label, "OK", f"{db_type_label} connection successful (SELECT 1 passed).")
         except Exception as e:
-            self._record("Database", "PostgreSQL", "FAIL", f"Database connection failed: {str(e)[:150]}")
+            db_type_label = "SQLite" if "sqlite" in os.getenv("DATABASE_URL", "") else "PostgreSQL"
+            self._record("Database", db_type_label, "FAIL", f"Database connection failed: {str(e)[:150]}")
             if self.fix:
-                self._record("Database", "AutoFix", "INFO", "Attempting alembic migration...")
-                try:
-                    import subprocess
-
-                    from monika.infrastructure.infra.paths import get_repo_root
-
-                    base_dir = str(get_repo_root())
-                    env = os.environ.copy()
-                    db_url = env.get("DATABASE_URL", "")
-                    if "+asyncpg" in db_url:
-                        env["DATABASE_URL"] = db_url.replace("postgresql+asyncpg://", "postgresql://")
-                    subprocess.run(["alembic", "upgrade", "head"], cwd=base_dir, env=env, check=False)
-                except Exception:
-                    pass
-        finally:
-            try:
-                from monika.infrastructure.database.db import close_db
-
-                await close_db()
-            except Exception:
-                pass
+                self._record(
+                    "Database",
+                    "AutoFix",
+                    "WARN",
+                    "Automatic DB migrations are disabled for safety. Run 'alembic upgrade head' manually.",
+                )
 
     async def check_startup_checker_suite(self, settings: dict) -> None:
         """Execute unified 11-step StartupChecker from agent/startup_checks.py."""
@@ -424,19 +408,12 @@ class SystemDoctor:
                     self._record("PreFlight", "Check", "WARN", w.strip())
         except Exception as e:
             self._record("PreFlight", "StartupCheckerSuite", "FAIL", f"StartupChecker error: {e}")
-        finally:
-            try:
-                from monika.infrastructure.database.db import close_db
-
-                await close_db()
-            except Exception:
-                pass
 
     def check_wal_integrity_and_repair(self) -> None:
         """Verify SQLite WAL database files integrity and clear stale locks."""
         import sqlite3
 
-        from monika.infrastructure.infra.paths import DATA_DIR
+        from monika.core.paths import DATA_DIR
 
         wal_dbs = [
             DATA_DIR / "session_db.sqlite",
@@ -550,7 +527,7 @@ class SystemDoctor:
         try:
             from alembic.config import Config
             from alembic.script import ScriptDirectory
-            from monika.infrastructure.infra.paths import get_repo_root
+            from monika.core.paths import get_repo_root
 
             alembic_ini = get_repo_root() / "alembic.ini"
             if alembic_ini.exists():

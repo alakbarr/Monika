@@ -271,6 +271,22 @@ def build_application_container(
 
     container.register("settings", cfg)
 
+    # Configure credential pool cooldowns if declared in settings
+    llm_cfg = cfg.get("llm") if isinstance(cfg, dict) else None
+    if isinstance(llm_cfg, dict):
+        cp_cfg = llm_cfg.get("credential_pool")
+        if isinstance(cp_cfg, dict):
+            try:
+                from monika.infrastructure.credentials.credential_pool import get_credential_pool
+
+                pool = get_credential_pool()
+                if "base_cooldown_seconds" in cp_cfg:
+                    pool.base_cooldown_seconds = float(cp_cfg["base_cooldown_seconds"])
+                if "max_cooldown_seconds" in cp_cfg:
+                    pool.max_cooldown_seconds = float(cp_cfg["max_cooldown_seconds"])
+            except Exception as cp_err:
+                logger.debug(f"Credential pool configuration skipped: {cp_err}")
+
     # Core singletons and factories
     from monika.core.primitives.event_bus import get_event_bus
 
@@ -371,7 +387,7 @@ def build_application_container(
 
         from monika.application.analysis.calculators.adaptive_policy import AdaptiveRiskPolicy
 
-        register_adaptive_risk_policy_factory(lambda settings=None: AdaptiveRiskPolicy(settings=settings))
+        register_adaptive_risk_policy_factory(lambda settings=None: AdaptiveRiskPolicy(settings=settings or {}))
 
         from monika.application.analysis.strategies.evidence_store import EvidenceStore
 
@@ -394,6 +410,11 @@ def build_application_container(
         register_broker_client_factory(
             lambda s: get_broker(s.get("broker", {}).get("active_broker", "mt5") if isinstance(s, dict) else "mt5")
         )
+
+        from monika.domain.risk.ports import register_suspended_symbols_provider
+        from monika.core.analytics.paper_tracker import PaperTracker
+
+        register_suspended_symbols_provider(lambda settings=None: PaperTracker(settings))
 
         from monika.application.plugins.manager.manager import PluginHook, get_plugin_manager
 

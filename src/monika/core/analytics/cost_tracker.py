@@ -157,22 +157,31 @@ class CostTracker:
 
         # 1. Query SSOT dari TokenUsageLog untuk MTD, Daily Cost, dan Daily Token Usage per Provider
         try:
-            from unittest.mock import AsyncMock, MagicMock
-
             from monika.infrastructure.database.models import TokenUsageLog
+
+            def _is_mock(obj: Any) -> bool:
+                if obj is None:
+                    return False
+                cls = type(obj)
+                return cls.__name__ in (
+                    "MagicMock",
+                    "Mock",
+                    "AsyncMock",
+                    "NonCallableMock",
+                ) or cls.__module__.startswith("unittest.mock")
 
             def _extract_scalar(res: Any, default: float = 0.0) -> float:
                 if hasattr(res, "scalar_one") and callable(res.scalar_one):
                     try:
                         v: Any = res.scalar_one()
-                        if v is not None and not isinstance(v, (MagicMock, AsyncMock)):
+                        if v is not None and not _is_mock(v):
                             return float(v)
                     except Exception:
                         pass
                 if hasattr(res, "scalar") and callable(res.scalar):
                     try:
                         v: Any = res.scalar()
-                        if v is not None and not isinstance(v, (MagicMock, AsyncMock)):
+                        if v is not None and not _is_mock(v):
                             return float(v)
                     except Exception:
                         pass
@@ -202,11 +211,7 @@ class CostTracker:
             token_map = {}
             if isinstance(provider_token_rows, (list, tuple)):
                 for row in provider_token_rows:
-                    if (
-                        isinstance(row, (list, tuple))
-                        and len(row) >= 2
-                        and not isinstance(row[0], (MagicMock, AsyncMock))
-                    ):
+                    if isinstance(row, (list, tuple)) and len(row) >= 2 and not _is_mock(row[0]):
                         try:
                             token_map[str(row[0])] = int(row[1])
                         except ValueError, TypeError:

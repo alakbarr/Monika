@@ -36,7 +36,7 @@ class InMemoryTraceStore:
     def __init__(self, capacity: int = 2000, evicted_flush_batch: int = 20):
         self._capacity = capacity
         self._spans: deque[TraceRecord] = deque(maxlen=capacity)
-        self._evicted_buffer: list[TraceRecord] = []
+        self._evicted_buffer: deque[TraceRecord] = deque(maxlen=1000)
         self._evicted_flush_batch = evicted_flush_batch
 
     def record_span(self, record: TraceRecord):
@@ -62,25 +62,21 @@ class InMemoryTraceStore:
         if not self._evicted_buffer:
             return 0
         to_flush = list(self._evicted_buffer)
-        self._evicted_buffer.clear()
         try:
             from ..sinks import get_telemetry_sink
 
             sink = get_telemetry_sink()
             if sink is not None:
                 await sink.persist_spans(to_flush)
+                self._evicted_buffer.clear()
                 return len(to_flush)
         except Exception:
             pass
 
         try:
-            try:
-                from monika.infrastructure.database.db import get_session
-                from monika.infrastructure.database.models import TradingEvent
-            except ImportError:
-                from monika.infrastructure.database.db import get_session
-                from monika.infrastructure.database.models import TradingEvent
             import uuid
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.models import TradingEvent
 
             count = 0
             async with get_session() as session:
@@ -97,13 +93,11 @@ class InMemoryTraceStore:
                     session.add(event)
                     count += 1
                 await session.commit()
+            self._evicted_buffer.clear()
             logger.debug(f"[TraceStore] Persisted {count} evicted trace spans to DB.")
             return count
         except Exception as e:
             logger.debug(f"[TraceStore] Could not persist evicted spans to DB: {e}")
-            # Re-buffer in case of transient DB failure (capped to avoid memory leak)
-            if len(self._evicted_buffer) < 500:
-                self._evicted_buffer.extend(to_flush)
             return 0
 
     def search_spans(

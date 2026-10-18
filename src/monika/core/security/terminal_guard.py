@@ -21,14 +21,17 @@ from monika.core.security.nt_guard import SecurityViolationError, is_dangerous_n
 HARDLINE_BLOCKLIST_PATTERNS = [
     # System destruction & formatting
     re.compile(
-        r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f*|-f*r[a-zA-Z]*)\s+(?:/|/etc|/usr|/bin|/var|~|\$HOME|\*)(?:/|\*|\s|$|;)",
+        r"\brm\s+(?=.*?(?:-[a-zA-Z]*r|--recursive))(?=.*?(?:/|/etc|/usr|/bin|/var|~|\$HOME|\*))",
         re.IGNORECASE,
     ),
     re.compile(
-        r"\b(?:Remove-Item|ri)\s+.*(?:-r|-recurse).*(?:-force)?.*(?:\/|\\|C:\\|C:\/|\*|env:|filesystem::)",
+        r"\b(?:Remove-Item|ri)\s+(?=.*?(?:-r\b|-recurse\b))(?=.*?(?:/|\\|C:\\|C:/|\*|env:|filesystem::))",
         re.IGNORECASE,
     ),
-    re.compile(r"\b(del|erase|rd|rmdir)\s+.*(/s|/q).*(\\|C:\\|C:/)(?:\s|$|;)", re.IGNORECASE),
+    re.compile(
+        r"\b(?:del|erase|rd|rmdir)\s+(?=.*?(?:/s|/q))(?=.*?(?:\\|/|C:\\|C:/))",
+        re.IGNORECASE,
+    ),
     re.compile(r"\b(mkfs|format|Format-Volume)\b", re.IGNORECASE),
     re.compile(r"\bdd\s+.*of=(/dev/|\\\\.\b)", re.IGNORECASE),
     # Forkbomb & Process Sabotage
@@ -216,10 +219,12 @@ def assert_safe_write_path(target_path: str, safe_root: str | None = None) -> st
             f"Path traversal blocked: '{target_path}' is outside designated safe root '{root_path}'."
         )
 
-    # 2. Check protected file names
+    # 2. Check protected file names and secret credential files
     base_name = target.name.lower()
-    if base_name in {p.lower() for p in PROTECTED_TARGETS}:
-        raise SecurityViolationError(f"Access denied: Target '{target.name}' is a protected system asset.")
+    if is_secret_credential_file(base_name) or base_name in {p.lower() for p in PROTECTED_TARGETS}:
+        raise SecurityViolationError(
+            f"Access denied: Target '{target.name}' is a protected system asset or secret credential."
+        )
 
     # 3. Check protected directories in path parts
     for part in target.parts:

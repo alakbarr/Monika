@@ -260,7 +260,7 @@ async def compute_confidence_calibration(session: AsyncSession) -> dict:
         status = "calibrated"
         recommendation = "MAINTAIN"
     else:
-        status = "calibrated"
+        status = "uncalibrated"
         highest_band = bands_with_data[-1]
         lowest_band = bands_with_data[0]
         if highest_band[1]["win_rate"] < lowest_band[1]["win_rate"]:

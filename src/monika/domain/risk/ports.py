@@ -225,6 +225,17 @@ class RiskPortRegistry:
         cls.evt_tail_calculator = None
         cls.strategy_factor_family_resolver = None
         cls.broker_client_factory = None
+        cls.suspended_symbols_provider = None
+
+
+def register_suspended_symbols_provider(provider: Any) -> None:
+    """Register provider for querying/clearing suspended trading symbols."""
+    RiskPortRegistry.suspended_symbols_provider = provider
+
+
+def get_default_suspended_symbols_provider() -> Any:
+    """Returns registered suspended symbols provider or None."""
+    return RiskPortRegistry.suspended_symbols_provider
 
 
 def register_risk_data_provider_factory(factory: Any) -> None:

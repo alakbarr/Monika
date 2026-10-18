@@ -71,7 +71,7 @@ class _WindowsCredManager:
                     ("Comment", wintypes.LPWSTR),
                     ("LastWritten", wintypes.FILETIME),
                     ("CredentialBlobSize", wintypes.DWORD),
-                    ("CredentialBlob", ctypes.c_char_p),
+                    ("CredentialBlob", ctypes.c_void_p),
                     ("Persist", wintypes.DWORD),
                     ("AttributeCount", wintypes.DWORD),
                     ("Attributes", ctypes.c_void_p),
@@ -118,7 +118,7 @@ class _WindowsCredManager:
             cred.Type = 1  # CRED_TYPE_GENERIC
             cred.TargetName = target
             cred.CredentialBlobSize = len(secret_bytes)
-            cred.CredentialBlob = secret_bytes
+            cred.CredentialBlob = self.ctypes.cast(self.ctypes.c_char_p(secret_bytes), self.ctypes.c_void_p)
             cred.Persist = 2  # CRED_PERSIST_LOCAL_MACHINE
             cred.UserName = user_name
             return bool(self.CredWriteW(self.ctypes.byref(cred), 0))
@@ -133,9 +133,13 @@ class _WindowsCredManager:
             p_cred = self.ctypes.POINTER(self.CREDENTIALW)()
             res = self.CredReadW(target, 1, 0, self.ctypes.byref(p_cred))
             if res and p_cred:
-                raw_bytes = self.ctypes.string_at(p_cred.contents.CredentialBlob, p_cred.contents.CredentialBlobSize)
-                self.CredFree(p_cred)
-                return raw_bytes.decode("utf-8")
+                try:
+                    raw_bytes = self.ctypes.string_at(
+                        p_cred.contents.CredentialBlob, p_cred.contents.CredentialBlobSize
+                    )
+                    return raw_bytes.decode("utf-8")
+                finally:
+                    self.CredFree(p_cred)
             return None
         except Exception as e:
             logger.debug(f"Failed to read credential from Windows Credential Manager: {e}")
@@ -172,7 +176,12 @@ class _EncryptedFileVault:
 
         self._fernet = None
         self._raw_key: bytes | None = None
-        self._init_backend()
+        self._initialized: bool = False
+
+    def _ensure_initialized(self) -> None:
+        if not self._initialized:
+            self._init_backend()
+            self._initialized = True
 
     def _init_backend(self) -> None:
         try:
@@ -216,6 +225,7 @@ class _EncryptedFileVault:
             logger.debug(f"EncryptedFileVault init skipped: {e}")
 
     def _encrypt(self, plaintext: str) -> bytes:
+        self._ensure_initialized()
         data = plaintext.encode("utf-8")
         if self._fernet is not None:
             return self._fernet.encrypt(data)
@@ -237,6 +247,7 @@ class _EncryptedFileVault:
         return nonce + tag + cipher
 
     def _decrypt(self, ciphertext: bytes) -> str | None:
+        self._ensure_initialized()
         if not ciphertext or not self._raw_key:
             return None
         if self._fernet is not None:
@@ -283,6 +294,7 @@ class _EncryptedFileVault:
         return plain.decode("utf-8", errors="replace")
 
     def load_store(self) -> dict[str, str]:
+        self._ensure_initialized()
         if not self.vault_path.exists():
             return {}
         try:
@@ -295,6 +307,7 @@ class _EncryptedFileVault:
         return {}
 
     def save_store(self, data: dict[str, str]) -> bool:
+        self._ensure_initialized()
         try:
             payload = json.dumps(data)
             encrypted = self._encrypt(payload)

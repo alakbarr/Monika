@@ -835,11 +835,12 @@ class RiskGate(
 
         # Bersihkan juga suspended symbols saat resume trading dipanggil
         try:
-            import importlib
+            from monika.domain.risk.ports import get_default_suspended_symbols_provider
 
-            tracker_mod = importlib.import_module("monika.core.analytics.paper_tracker")
-            tracker_cls = getattr(tracker_mod, "PaperTracker")
-            await tracker_cls(self.settings).unsuspend_all(session)
+            provider_factory = get_default_suspended_symbols_provider()
+            if provider_factory is not None:
+                tracker = provider_factory(self.settings)
+                await tracker.unsuspend_all(session)
         except Exception as e:
             logger.debug(f"Failed to clear suspended symbols on resume: {e}")
 

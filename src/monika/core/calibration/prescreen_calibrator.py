@@ -103,7 +103,31 @@ async def compute_prescreen_skip_quality(session) -> dict:
                     return (atr_val / price_row) * 100
         except Exception:
             pass
-        return 1.5 if symbol == "BTCUSD" else 0.5
+
+        # Fallback: compute empirical ATR from recent 14 H4 OHLCV bars
+        try:
+            recent_bars = (
+                (
+                    await session.execute(
+                        select(PriceOHLCV)
+                        .where(PriceOHLCV.symbol == symbol)
+                        .where(PriceOHLCV.timeframe == "H4")
+                        .order_by(PriceOHLCV.timestamp.desc())
+                        .limit(14)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            if recent_bars and len(recent_bars) >= 5:
+                avg_range = sum(abs(b.high - b.low) for b in recent_bars) / len(recent_bars)
+                ref_close = recent_bars[0].close
+                if ref_close > 0:
+                    return (avg_range / ref_close) * 100
+        except Exception:
+            pass
+
+        return 0.5
 
     # Cache ATR per symbol to avoid repeated DB hits
     atr_cache = {}

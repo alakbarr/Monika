@@ -99,7 +99,9 @@ class RunCardGenerator:
         now_dt = datetime.now(UTC).isoformat()
         run_id = f"runcard_{int(now)}_{uuid.uuid4().hex[:8]}"
 
-        root_dir = base_dir or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        from monika.core.paths import get_repo_root
+
+        root_dir = base_dir or str(get_repo_root())
         cfg = settings or {}
 
         # 1. Git Provenance
