@@ -130,8 +130,8 @@ Respond in valid JSON format ONLY conforming to the schema."""
     logger.error(f"Failed to parse Bear Analyst JSON after 2 attempts: {last_err}")
     return {
         "bear_dissent": f"Failed to generate dissent due to parse error: {last_err}",
-        "risk_severity": 5,
-        "evidence_cited": ["Context data evaluated via fallback"],
+        "risk_severity": 10,
+        "evidence_cited": [],
         "parse_error": True,
     }
 
@@ -229,7 +229,8 @@ Respond in valid JSON format ONLY conforming to the schema."""
     logger.error(f"Failed to parse Bear Analyst Rebuttal JSON after 2 attempts: {last_err}")
     return {
         "rebuttal_thesis": f"Failed to generate rebuttal due to parse error: {last_err}",
-        "rebuttal_strength": 5,
-        "rebuttal_evidence": ["Context evaluated via fallback"],
+        "rebuttal_strength": 0,
+        "rebuttal_evidence": [],
         "conceded_points": [],
+        "parse_error": True,
     }

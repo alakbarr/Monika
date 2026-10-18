@@ -51,11 +51,27 @@ class DebateOrchestrator:
         regime_info = raw_data.get("get_volatility_regime_H4") or {}
         vix_info = raw_data.get("get_vix") or {}
 
+        # Resolve initial decision without bias: default to NEUTRAL if not explicitly proposed
+        decision_prop = str(data.get("decision") or data.get("direction") or "WAIT").upper()
+        if decision_prop in ("BUY", "LONG"):
+            initial_decision = "BUY"
+        elif decision_prop in ("SELL", "SHORT"):
+            initial_decision = "SELL"
+        else:
+            initial_decision = "NEUTRAL"
+
+        # Resolve VIX with Fail-Closed defensive default (25.0) if missing
+        raw_vix = vix_info.get("current") or raw_data.get("vix") or data.get("vix")
+        try:
+            vix_val = float(raw_vix) if raw_vix is not None and float(raw_vix) > 0 else 25.0
+        except ValueError, TypeError:
+            vix_val = 25.0
+
         original_context: dict[str, Any] = {
             "symbol": clean_symbol,
-            "decision": "BUY",
+            "decision": initial_decision,
             "market_regime": regime_info.get("regime", "ranging"),
-            "vix": vix_info.get("current", 16.0),
+            "vix": vix_val,
         }
 
         bull_client = get_client_for_task("debate_bull", self.settings)
@@ -107,6 +123,37 @@ class DebateOrchestrator:
         bear_summary = str(bear_dissent.get("dissent_summary") or bear_dissent.get("argument") or "")
         confluence_score = float(judge_verdict.get("confluence_score") or 0.0)
 
+        # Database Persistence mandated by PRD.md §237
+        transcript_id = None
+        if session is not None:
+            try:
+                from monika.infrastructure.database.models import DebateTranscript
+
+                cycle_id = str(data.get("cycle_id") or f"deb_{clean_symbol}")
+                t_record = DebateTranscript(
+                    cycle_id=cycle_id,
+                    symbol=clean_symbol,
+                    timeframe=str(data.get("timeframe", "H1")),
+                    bull_perspective=bull_claim,
+                    bear_perspective=bear_dissent,
+                    judge_adjudication=judge_verdict,
+                    final_decision=decision.lower(),
+                    confidence=confidence,
+                    confluence_score=confluence_score,
+                    risk_multiplier=float(judge_verdict.get("risk_multiplier") or 0.0),
+                    meta={
+                        "market_regime": original_context.get("market_regime"),
+                        "vix": vix_val,
+                        "initial_decision": initial_decision,
+                    },
+                )
+                session.add(t_record)
+                await session.flush()
+                transcript_id = t_record.id
+                logger.info(f"[{clean_symbol}] Persisted debate transcript (id={transcript_id}).")
+            except Exception as e:
+                logger.warning(f"[{clean_symbol}] Failed to persist debate transcript to DB: {e}")
+
         return {
             "decision": decision,
             "confidence": confidence,
@@ -119,6 +166,7 @@ class DebateOrchestrator:
             "entry_zone": judge_verdict.get("recommended_entry_zone"),
             "stop_loss": judge_verdict.get("recommended_sl"),
             "take_profit": judge_verdict.get("recommended_tp"),
+            "transcript_id": transcript_id,
             "transcript": [
                 {"role": "bull_specialist", "content": bull_summary},
                 {"role": "bear_specialist", "content": bear_summary},

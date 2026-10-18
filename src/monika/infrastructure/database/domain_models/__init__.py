@@ -14,6 +14,7 @@ from monika.infrastructure.database.domain_models.analysis import (
     AssetAnalysis,
     ConfluenceFactorOutcome,
     CyclePerformance,
+    DebateTranscript,
     FundamentalBrief,
     PlaybookRuleAttribution,
     PrescreenLog,
@@ -146,6 +147,7 @@ __all__ = [
     "ConfluenceFactorOutcome",
     "PlaybookRuleAttribution",
     "TimesFMForecast",
+    "DebateTranscript",
     # Trading
     "Trade",
     "TradeTrigger",

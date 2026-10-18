@@ -97,16 +97,58 @@ class DebateBlackboard:
             }
         )
 
-        # 2. Structural price level conflicts
-        bull_levels = set(latest_bull.get("key_levels", []))
-        bear_levels = set(latest_bear.get("key_levels", []))
-        level_overlap = bull_levels & bear_levels
-        if level_overlap:
+        # 2. Structural price level conflicts with pip distance tolerance
+        raw_bull_lvls = latest_bull.get("key_levels", []) or []
+        raw_bear_lvls = latest_bear.get("key_levels", []) or []
+
+        bull_levels = []
+        for lvl in raw_bull_lvls:
+            try:
+                bull_levels.append(float(lvl))
+            except ValueError, TypeError:
+                pass
+
+        bear_levels = []
+        for lvl in raw_bear_lvls:
+            try:
+                bear_levels.append(float(lvl))
+            except ValueError, TypeError:
+                pass
+
+        pip_size = 0.0001
+        sym = self.symbol.upper()
+        if "JPY" in sym:
+            pip_size = 0.01
+        elif "XAU" in sym or "GOLD" in sym:
+            pip_size = 0.10
+        elif "BTC" in sym or "ETH" in sym:
+            pip_size = 1.0
+        elif "XBR" in sym or "OIL" in sym:
+            pip_size = 0.01
+
+        threshold = 2.0 * pip_size
+        contested_pairs = []
+        matched_bear_indices = set()
+        for bl in bull_levels:
+            for idx, brl in enumerate(bear_levels):
+                if idx not in matched_bear_indices and abs(bl - brl) <= threshold:
+                    matched_bear_indices.add(idx)
+                    contested_pairs.append(
+                        {
+                            "bull_level": bl,
+                            "bear_level": brl,
+                            "mid_point": round((bl + brl) / 2.0, 5),
+                        }
+                    )
+                    break
+
+        if contested_pairs:
             contradictions.append(
                 {
                     "type": "contested_price_levels",
-                    "levels": list(level_overlap),
-                    "note": "Both sides targeting identical structural levels with opposing biases.",
+                    "contested_zones": contested_pairs,
+                    "levels": [p["mid_point"] for p in contested_pairs],
+                    "note": "Both sides targeting identical structural zones with opposing biases.",
                 }
             )
 

@@ -36,6 +36,7 @@ from monika.infrastructure.database.domain_models import (
     CronJob,
     CycleEvent,
     CyclePerformance,
+    DebateTranscript,
     DecisionMemory,
     DecisionReflection,
     DeliveryRecord,
@@ -147,6 +148,7 @@ __all__ = [
     "ConfluenceFactorOutcome",
     "PlaybookRuleAttribution",
     "TimesFMForecast",
+    "DebateTranscript",
     # Trading
     "Trade",
     "TradeTrigger",

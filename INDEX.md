@@ -11321,6 +11321,7 @@
   - `class ConfluenceFactorOutcome(Base)`: IMP-11: Track individual confluence factor contribution per trade outcome.
   - `class PlaybookRuleAttribution(Base)`: Playbook rule outcome attribution and closed-loop evolution tracking (SOTA Phase 4).
   - `class TimesFMForecast(Base)`: Proyeksi probabilistik kuantil dan metrik dispersi dari Google TimesFM 3.0.
+  - `class DebateTranscript(Base)`: Multi-round Bull/Bear debate arguments, cross-examinations, and judge verdicts (PRD.md §237).
 
 #### `base.py` - *Base SQLAlchemy declarative base and utilities.*
 - **Path**: [`src/monika/infrastructure/database/domain_models/base.py`](src/monika/infrastructure/database/domain_models/base.py)
@@ -12308,6 +12309,8 @@
     - `__init__(content, stop_reason, input_tokens, ...)`
   - `class BaseLLMClient(LlmPort, ABC)`: Abstract base — setiap provider WAJIB implement SEMUA method ini.
     - `__init__(model: str, max_tokens: int, max_tool_turns: int, ...)`
+    - `provider_name() -> str` - *Name of the underlying LLM provider (e.g. gemini, anthropic, openai).*
+    - `provider_name(value: str) -> None`
     - `set_thinking_budget(budget: int) -> None` - *Set dynamic reasoning/thinking token budget for this client instance.*
     - `async generate(prompt: str, system: str, temperature: Optional[float], ...) -> Optional[str]` - *Single-turn text generation. Returns plain text or None.*
     - `async generate_content(system_prompt: str, user_message: str, response_schema: Optional[dict], ...) -> Optional[str]` - *Generate content with optional JSON schema enforcement.*
@@ -12396,6 +12399,7 @@
   - `class FallbackClientWrapper(BaseLLMClient)`: Wrapper that tries primary model, and if it fails, tries fallback models.
     - `__init__(factory: LLMFactory, primary: str, fallbacks: list[str], ...)`
     - `provider_name() -> str` - *Returns the provider name of the currently active model slot.*
+    - `provider_name(value: str) -> None`
     - `set_thinking_budget(budget: int) -> None` - *Sets thinking budget dynamically for wrapper and upcoming provider invocations.*
     - `async generate(prompt: str, system: str, temperature: Optional[float], ...) -> Optional[str]`
     - `async generate_content(system_prompt: str, user_message: str, response_schema: Optional[dict], ...) -> Optional[str]`

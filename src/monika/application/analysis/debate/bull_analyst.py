@@ -130,9 +130,9 @@ Respond in valid JSON format ONLY conforming to the schema."""
 
     logger.error(f"Failed to parse Bull Analyst JSON after 2 attempts: {last_err}")
     return {
-        "bull_thesis": f"Fallback to original rationale due to parse error: {last_err}",
-        "strength_score": 5,
-        "evidence_cited": ["Context data evaluated via fallback"],
+        "bull_thesis": f"Failed to generate advocacy due to parse error: {last_err}",
+        "strength_score": 0,
+        "evidence_cited": [],
         "parse_error": True,
     }
 
@@ -228,7 +228,7 @@ Respond in valid JSON format ONLY conforming to the schema."""
 
     logger.error(f"Failed to parse Bull Rebuttal JSON after 2 attempts: {last_err}")
     return {
-        "rebuttal_thesis": f"Fallback rebuttal due to parse error: {last_err}",
+        "rebuttal_thesis": f"Failed to generate rebuttal due to parse error: {last_err}",
         "rebuttal_strength": 5,
         "rebuttal_evidence": ["Fact Sheet verified via fallback"],
         "conceded_points": [],

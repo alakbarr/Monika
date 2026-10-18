@@ -631,7 +631,11 @@ class FallbackClientWrapper(BaseLLMClient):
             active_model = self.model or self.primary
             return self.factory._resolve_provider(active_model)
         except Exception:
-            return ""
+            return getattr(self, "_provider_name", "") or ""
+
+    @provider_name.setter
+    def provider_name(self, value: str) -> None:
+        self._provider_name = value
 
     def _maybe_restore_primary(self) -> bool:
         """Check if primary provider cooldown has expired and restore it."""

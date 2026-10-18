@@ -264,6 +264,18 @@ Respond in valid JSON format conforming to the schema."""
         if not parsed or not isinstance(parsed, dict):
             raise ValueError(f"Empty or invalid response from LLM: {parsed}")
 
+        # Enforce fail-closed safety if either debate participant experienced a parse or upstream failure
+        if (bull_claim or {}).get("parse_error") or (bear_dissent or {}).get("parse_error"):
+            logger.warning(
+                f"[{symbol}] Corrupted or failed debate inputs detected. Enforcing fail-closed capital protection."
+            )
+            parsed["final_decision"] = "avoid"
+            parsed["risk_multiplier"] = 0.0
+            parsed["reason"] = "CRITICAL: Debate inputs contained parse errors or corrupted arguments. Trade avoided."
+            parsed["fail_closed_triggered"] = True
+            parsed["regime_weights_used"] = regime_weights
+            return parsed
+
         # Ensure risk multiplier is bounded with Bayesian rebuttal mitigation
         final_dec = str(parsed.get("final_decision", "")).lower()
         is_sell = decision == "SELL"

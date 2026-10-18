@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     Numeric,
     String,
     Text,
@@ -337,6 +338,28 @@ class TimesFMForecast(Base):
     __table_args__ = (Index("idx_timesfm_sym_time", "symbol", "timeframe", "generated_at"),)
 
 
+class DebateTranscript(Base):
+    """Multi-round Bull/Bear debate arguments, cross-examinations, and judge verdicts (PRD.md §237)."""
+
+    __tablename__ = "debate_transcripts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    cycle_id: Mapped[Optional[str]] = mapped_column(String(64), index=True, nullable=True)
+    symbol: Mapped[str] = mapped_column(String(20), index=True, nullable=False)
+    timeframe: Mapped[Optional[str]] = mapped_column(String(10), default="H1", nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+    bull_perspective: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    bear_perspective: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    judge_adjudication: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    final_decision: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    confluence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    risk_multiplier: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    meta: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    __table_args__ = (Index("idx_debate_transcript_sym_created", "symbol", "created_at"),)
+
+
 __all__ = [
     "FundamentalBrief",
     "AssetAnalysis",
@@ -345,4 +368,5 @@ __all__ = [
     "ConfluenceFactorOutcome",
     "PlaybookRuleAttribution",
     "TimesFMForecast",
+    "DebateTranscript",
 ]

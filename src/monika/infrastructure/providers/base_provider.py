@@ -443,7 +443,16 @@ class BaseLLMClient(LlmPort, ABC):
         from monika.infrastructure.providers.capabilities import get_model_capabilities
 
         self.capabilities = get_model_capabilities(model)
-        self.provider_name = kwargs.get("provider_name", "")
+        self._provider_name = kwargs.get("provider_name", "")
+
+    @property
+    def provider_name(self) -> str:
+        """Name of the underlying LLM provider (e.g. gemini, anthropic, openai)."""
+        return getattr(self, "_provider_name", "") or ""
+
+    @provider_name.setter
+    def provider_name(self, value: str) -> None:
+        self._provider_name = value
 
     def set_thinking_budget(self, budget: int) -> None:
         """Set dynamic reasoning/thinking token budget for this client instance."""

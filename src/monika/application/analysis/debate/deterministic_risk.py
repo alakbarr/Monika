@@ -123,10 +123,19 @@ def make_portfolio_decision_deterministic(risk_debate_states: dict) -> dict:
         neu.get("recommended_multiplier", 1.0),
     ]
     veto_count = sum(1 for d in (cons, agg, neu) if d.get("veto_trade"))
-    avg_multiplier = sum(multipliers) / len(multipliers)
+
+    # Unilateral Veto: Conservative persona represents mechanical hard risk limits.
+    # If Conservative persona vetoes, it cannot be overridden by aggressive/neutral personas.
+    if cons.get("veto_trade"):
+        assessment = cons.get("risk_profile_assessment", "Conservative hard limit breach")
+        return {
+            "approval": False,
+            "recommended_risk_multiplier": 0.0,
+            "reason": f"Deterministic PM: Conservative persona enforced unilateral veto ({assessment}).",
+        }
+
     approval = veto_count < 2
-    if not approval:
-        avg_multiplier = 0.0
+    avg_multiplier = sum(multipliers) / len(multipliers) if approval else 0.0
     reason = (
         f"Deterministic PM: avg_multiplier={avg_multiplier:.3f} "
         f"(C={multipliers[0]:.2f}, A={multipliers[1]:.2f}, N={multipliers[2]:.2f}), "
