@@ -1270,7 +1270,7 @@ class SubmitFundamentalBriefSchema(BaseModel):
                     "priced_in_score": 5,
                     "sell_the_news_risk": "medium",
                     "key_unpriced_drivers": ["Middle East escalation", "labor market deterioration"],
-                    "cot_positioning_percentile": 50.0,
+                    "cot_positioning_percentile": None,
                 }
             elif isinstance(data.get("priced_in_assessment"), str):
                 try:
@@ -1281,7 +1281,7 @@ class SubmitFundamentalBriefSchema(BaseModel):
                         "priced_in_score": 5,
                         "sell_the_news_risk": "medium",
                         "key_unpriced_drivers": [],
-                        "cot_positioning_percentile": 50.0,
+                        "cot_positioning_percentile": None,
                     }
 
             # Auto-heal checklist if missing or stringified
@@ -1298,10 +1298,8 @@ class SubmitFundamentalBriefSchema(BaseModel):
             if not kdp or not isinstance(kdp, dict):
                 narrative = str(data.get("macro_narrative", ""))
                 vix_match = re.search(r"\bvix\b[^\d]*(\d+(?:\.\d+)?)", narrative, re.IGNORECASE)
-                vix_val = float(vix_match.group(1)) if vix_match else 16.7
-                dxy_trend = (
-                    "strengthening" if "dxy" in narrative.lower() and "bull" in narrative.lower() else "pullback_retest"
-                )
+                vix_val = float(vix_match.group(1)) if vix_match else None
+                dxy_trend = "strengthening" if "dxy" in narrative.lower() and "bull" in narrative.lower() else "neutral"
                 data["key_data_points_used"] = {
                     "dxy_trend_5d": dxy_trend,
                     "vix_close": vix_val,
@@ -1312,9 +1310,9 @@ class SubmitFundamentalBriefSchema(BaseModel):
                 }
             elif isinstance(kdp, dict):
                 if not kdp.get("dxy_trend_5d"):
-                    kdp["dxy_trend_5d"] = "strengthening"
+                    kdp["dxy_trend_5d"] = "neutral"
                 if kdp.get("vix_close") is None:
-                    kdp["vix_close"] = 16.7
+                    kdp["vix_close"] = None
 
             # Auto-heal invalidation_conditions for non-neutral biases
             cb = data.get("currency_bias")

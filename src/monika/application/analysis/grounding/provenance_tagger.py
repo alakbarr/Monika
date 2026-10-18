@@ -190,16 +190,22 @@ class ProvenanceLedger:
             return False, f"Ungrounded lot size {lot_size}: exceeds safety ceiling of 100.0 lots."
 
         if account_equity and account_equity > 0:
-            sym_u = symbol.upper()
-            contract_size = 100000.0
-            if "XAU" in sym_u or "GOLD" in sym_u:
-                contract_size = 100.0
-            elif "BTC" in sym_u:
-                contract_size = 1.0
-            elif "ETH" in sym_u:
-                contract_size = 10.0
-            elif "XTI" in sym_u or "XBR" in sym_u:
-                contract_size = 1000.0
+            sym_u = symbol.upper().replace("/", "")
+            try:
+                from monika.domain.risk.position_sizing import get_instrument_spec
+
+                spec = get_instrument_spec(sym_u)
+                contract_size = float(spec.contract_size)
+            except Exception:
+                contract_size = 100000.0
+                if "XAU" in sym_u or "GOLD" in sym_u:
+                    contract_size = 100.0
+                elif any(k in sym_u for k in ("BTC", "US500", "NAS100", "SPX", "US30", "GER40")):
+                    contract_size = 1.0
+                elif "ETH" in sym_u:
+                    contract_size = 10.0
+                elif "XTI" in sym_u or "XBR" in sym_u or "OIL" in sym_u:
+                    contract_size = 1000.0
 
             eff_price = entry_price if (entry_price and entry_price > 0) else 1.0
             is_usd_base = sym_u.startswith("USD") and not any(k in sym_u for k in ("BTC", "ETH", "XAU", "XTI", "XBR"))

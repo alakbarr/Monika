@@ -9,6 +9,7 @@ Replaces quadratic O(N^2) multi-turn debate transcripts with an O(N) shared stru
 
 import json
 import logging
+import threading
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -28,6 +29,7 @@ class DebateBlackboard:
         self.falsification_triggers: List[Dict[str, Any]] = []
         self.contradictions: List[Dict[str, Any]] = []
         self.created_at = datetime.now(timezone.utc).isoformat()
+        self._lock = threading.RLock()
 
     def add_bull_thesis(
         self,
@@ -37,18 +39,19 @@ class DebateBlackboard:
         falsification_triggers: Optional[List[str]] = None,
     ) -> None:
         """Appends concise bull claim and falsification criteria to blackboard."""
-        triggers = falsification_triggers or []
-        self.bull_claims.append(
-            {
-                "thesis": thesis[:400],
-                "key_levels": key_levels or [],
-                "confidence": confidence,
-                "falsification_triggers": triggers,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-        )
-        for trig in triggers:
-            self.falsification_triggers.append({"side": "bull", "trigger": trig})
+        with self._lock:
+            triggers = falsification_triggers or []
+            self.bull_claims.append(
+                {
+                    "thesis": thesis[:400],
+                    "key_levels": key_levels or [],
+                    "confidence": confidence,
+                    "falsification_triggers": triggers,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            for trig in triggers:
+                self.falsification_triggers.append({"side": "bull", "trigger": trig})
 
     def add_bear_thesis(
         self,
@@ -58,24 +61,29 @@ class DebateBlackboard:
         falsification_triggers: Optional[List[str]] = None,
     ) -> None:
         """Appends concise bear counter-claim and falsification criteria to blackboard."""
-        triggers = falsification_triggers or []
-        self.bear_claims.append(
-            {
-                "thesis": thesis[:400],
-                "key_levels": key_levels or [],
-                "confidence": confidence,
-                "falsification_triggers": triggers,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-        )
-        for trig in triggers:
-            self.falsification_triggers.append({"side": "bear", "trigger": trig})
+        with self._lock:
+            triggers = falsification_triggers or []
+            self.bear_claims.append(
+                {
+                    "thesis": thesis[:400],
+                    "key_levels": key_levels or [],
+                    "confidence": confidence,
+                    "falsification_triggers": triggers,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            for trig in triggers:
+                self.falsification_triggers.append({"side": "bear", "trigger": trig})
 
     def extract_sparse_contradictions(self) -> List[Dict[str, Any]]:
         """
         Deterministic Python extractor: Identifies direct opposing friction points
         between bull and bear claims without requiring intermediate LLM calls.
         """
+        with self._lock:
+            return self._extract_sparse_contradictions_locked()
+
+    def _extract_sparse_contradictions_locked(self) -> List[Dict[str, Any]]:
         contradictions = []
         if not self.bull_claims or not self.bear_claims:
             return contradictions
@@ -160,34 +168,36 @@ class DebateBlackboard:
         Renders dense, telegraphic summary for the Investment Judge.
         Replaces 10k token raw debate transcript with a 250-token structured board.
         """
-        latest_bull = self.bull_claims[-1]["thesis"] if self.bull_claims else "No bullish thesis"
-        latest_bear = self.bear_claims[-1]["thesis"] if self.bear_claims else "No bearish counter-thesis"
+        with self._lock:
+            latest_bull = self.bull_claims[-1]["thesis"] if self.bull_claims else "No bullish thesis"
+            latest_bear = self.bear_claims[-1]["thesis"] if self.bear_claims else "No bearish counter-thesis"
 
-        contradictions = self.extract_sparse_contradictions()
+            contradictions = self._extract_sparse_contradictions_locked()
 
-        triggers_summary = (
-            "\n".join(f"  - [{t['side'].upper()}]: {t['trigger']}" for t in self.falsification_triggers)
-            if self.falsification_triggers
-            else "None specified"
-        )
+            triggers_summary = (
+                "\n".join(f"  - [{t['side'].upper()}]: {t['trigger']}" for t in self.falsification_triggers)
+                if self.falsification_triggers
+                else "None specified"
+            )
 
-        board = (
-            f"=== S²-MAD SPARSE DEBATE BLACKBOARD [{self.symbol}] ===\n"
-            f"[BULL ADVOCATE THESIS]: {latest_bull}\n"
-            f"[BEAR DISSENT THESIS]: {latest_bear}\n"
-            f"[FALSIFICATION TRIGGERS]:\n{triggers_summary}\n"
-            f"[KEY CONTRADICTIONS]: {json.dumps(contradictions, default=str)}\n"
-            f"=== END BLACKBOARD ==="
-        )
-        return board
+            board = (
+                f"=== S²-MAD SPARSE DEBATE BLACKBOARD [{self.symbol}] ===\n"
+                f"[BULL ADVOCATE THESIS]: {latest_bull}\n"
+                f"[BEAR DISSENT THESIS]: {latest_bear}\n"
+                f"[FALSIFICATION TRIGGERS]:\n{triggers_summary}\n"
+                f"[KEY CONTRADICTIONS]: {json.dumps(contradictions, default=str)}\n"
+                f"=== END BLACKBOARD ==="
+            )
+            return board
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            "symbol": self.symbol,
-            "fact_sheet": self.fact_sheet,
-            "bull_claims": self.bull_claims,
-            "bear_claims": self.bear_claims,
-            "falsification_triggers": self.falsification_triggers,
-            "contradictions": self.contradictions,
-            "created_at": self.created_at,
-        }
+        with self._lock:
+            return {
+                "symbol": self.symbol,
+                "fact_sheet": dict(self.fact_sheet),
+                "bull_claims": list(self.bull_claims),
+                "bear_claims": list(self.bear_claims),
+                "falsification_triggers": list(self.falsification_triggers),
+                "contradictions": list(self.contradictions),
+                "created_at": self.created_at,
+            }

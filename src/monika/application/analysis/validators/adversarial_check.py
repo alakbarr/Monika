@@ -194,10 +194,12 @@ Formulate strongest_counter_argument, hard_block, and recommend_block FIRST befo
             jev_questions=adv_jev_q,
             temperature=0.0,
         )
-        if not result_str:
-            return default_result
+        if not result_str or not result_str.strip():
+            raise RuntimeError("Empty response received from adversarial check LLM")
 
         result = _safe_parse(result_str)
+        if not result:
+            raise RuntimeError("Unparseable response received from adversarial check LLM")
         # Synthesize meaningful explanations from Jev category if free-text is empty or YES/NO
         primary_risk = result.get("primary_risk_category")
         if primary_risk and primary_risk != "none":
@@ -293,13 +295,13 @@ Formulate strongest_counter_argument, hard_block, and recommend_block FIRST befo
                     f"Symbol: {analysis.symbol}\n"
                     f"Decision: {analysis.decision}\n"
                     f"Error: {e}\n\n"
-                    f"Trade status: {'REJECTED (Fail-Closed)' if bool(settings.get('adversarial_check', {}).get('fail_closed', True)) else 'ALLOWED (Damped 0.75x)'}."
+                    f"Trade status: {'REJECTED (Fail-Closed)' if bool(settings.get('adversarial_check', {}).get('fail_closed', False)) else 'ALLOWED (Damped 0.75x)'}."
                 )
             )
         except Exception:
             pass
 
-        fail_closed = bool(settings.get("adversarial_check", {}).get("fail_closed", True))
+        fail_closed = bool(settings.get("adversarial_check", {}).get("fail_closed", False))
         if fail_closed:
             return {
                 "strongest_counter_argument": f"Adversarial check unavailable (failing closed per AGENTS.md §1): {e}",

@@ -117,20 +117,32 @@ class BehavioralDiagnosticsEngine:
 
     @classmethod
     def calculate_price_anchoring(cls, trades: List[BrokerTrade]) -> Tuple[float, str]:
-        """Measures clustering around integer/round psychological prices (e.g. .00, .50)."""
+        """Measures clustering around integer/round psychological prices across asset scales."""
         if not trades:
             return 0.0, "LOW"
 
         round_count = 0
         for t in trades:
-            # Check price fractional part
-            p = t.open_price
-            frac = round((p * 100) % 10, 1)  # Last 2 digits modulo 10
-            if frac in (0.0, 5.0):
+            p = float(t.open_price)
+            if p <= 0:
+                continue
+            is_round = False
+            if p < 10.0:
+                # Forex pairs (e.g. EURUSD=1.0850, 1.0800): check pip roundness (00 or 50 pips, or ending in 0)
+                pip_val = int(round(p * 10000))
+                is_round = (pip_val % 100 in (0, 50)) or (pip_val % 10 == 0)
+            elif p < 1000.0:
+                # Medium assets like Oil (75.50) or Silver (30.00): check 0.50 and 0.00 steps
+                is_round = round(p * 10) % 5 == 0
+            else:
+                # High-value assets like Gold (2630.0) or BTC (65000): check round figures (5, 10, 50, 100)
+                int_p = int(round(p))
+                is_round = (int_p % 10 in (0, 5)) or (p % 1.0 == 0.0 and int_p % 5 == 0)
+
+            if is_round:
                 round_count += 1
 
-        ratio = round_count / len(trades)
-        ratio = round(ratio, 2)
+        ratio = round(round_count / len(trades), 2)
 
         if ratio >= 0.45:
             severity = "SEVERE"

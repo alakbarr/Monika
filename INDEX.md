@@ -5482,6 +5482,7 @@
   - `class TaylorRuleResult`
   - `class TaylorRuleCalculator`: Computes Taylor Rule equilibrium rate benchmarks.
     - `calculate_fed_taylor_rule(actual_effr: float, current_inflation: float, r_star: float, ...) -> TaylorRuleResult` - *Calculates Fed Taylor Rule implied rate:*
+    - `calculate_central_bank_taylor_rule(central_bank: str, actual_rate: float, current_inflation: float, ...) -> TaylorRuleResult` - *Calculates Taylor Rule using calibrated parameters for specified central bank.*
 
 #### `timesfm_alpha.py` - *TimesFM Quantile Asymmetry Skew Alpha Calculator.*
 - **Path**: [`src/monika/application/analysis/calculators/timesfm_alpha.py`](src/monika/application/analysis/calculators/timesfm_alpha.py)
@@ -5771,7 +5772,7 @@
   - `class BehavioralDiagnosticsEngine`: Diagnoses human cognitive biases directly from historical trade records.
     - `calculate_disposition_effect(trades: List[BrokerTrade]) -> Tuple[float, str]` - *Calculates ratio of avg holding duration: losing trades vs winning trades.*
     - `calculate_overtrading_drag(trades: List[BrokerTrade]) -> Tuple[float, str]` - *Compares daily PnL on high-activity days (trades > 75th percentile) vs calm days.*
-    - `calculate_price_anchoring(trades: List[BrokerTrade]) -> Tuple[float, str]` - *Measures clustering around integer/round psychological prices (e.g. .00, .50).*
+    - `calculate_price_anchoring(trades: List[BrokerTrade]) -> Tuple[float, str]` - *Measures clustering around integer/round psychological prices across asset scales.*
     - `diagnose(trades: List[BrokerTrade]) -> BehavioralDiagnosis`
 
 #### `journal_parser.py` - *Multi-broker trade statement parser with resilient encoding and format detection.*
@@ -5782,7 +5783,8 @@
     - `read_text_with_fallback(raw_bytes: bytes) -> str` - *Decodes raw statement bytes trying multiple encodings.*
     - `parse_csv(text_content: str) -> List[BrokerTrade]` - *Parses CSV formats (MetaTrader CSV, cTrader, Binance, Generic).*
     - `parse_html_report(html_content: str) -> List[BrokerTrade]` - *Parses MetaTrader 4/5 HTML report tables.*
-    - `parse_statement(file_content: Union[str, bytes]) -> List[BrokerTrade]` - *Auto-detects format (HTML vs CSV) and decodes statements.*
+    - `parse_json(json_text: str) -> List[BrokerTrade]` - *Parses JSON-encoded trade statements or lists of trade objects.*
+    - `parse_statement(file_content: Union[str, bytes]) -> List[BrokerTrade]` - *Auto-detects format (HTML vs CSV vs JSON) and decodes statements.*
 
 #### `shadow_extractor.py` - *Unsupervised Shadow Strategy Rule Extractor.*
 - **Path**: [`src/monika/application/analysis/journal/shadow_extractor.py`](src/monika/application/analysis/journal/shadow_extractor.py)
@@ -5971,7 +5973,7 @@
   - `class LayeredMemoryManager`: Manages 4-layer memory hierarchy for optimal context efficiency.
     - `__init__(settings: Optional[dict])`
     - `async get_frozen_snapshot(session: Optional[AsyncSession])` - *Retrieve frozen memory snapshot for prompt cache preservation.*
-    - `get_identity() -> str` - *Layer 0: Permanent trading soul identity (100% cacheable).*
+    - `get_identity() -> str` - *Layer 0: Permanent trading soul identity (100% cacheable, capped at <=300 tokens).*
     - `async get_stable_core_memory(session: Optional[AsyncSession]) -> str` - *Layer 1A: Stable curated memory (<=600 tok), invariant within cycle. 100% System Prompt cache-safe.*
     - `async get_volatile_portfolio_memory(session: Optional[AsyncSession]) -> str` - *Layer 1B: Volatile portfolio heat & equity state (<=200 tok). Injected into User Message tail to protect Prefix Cache.*
     - `async get_core_memory(session: Optional[AsyncSession]) -> str` - *Layer 1: Combined curated memory (<=800 tok). Maintained for backward compatibility.*

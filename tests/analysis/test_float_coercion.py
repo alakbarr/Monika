@@ -43,6 +43,8 @@ def test_coerce_optional_float_commas():
 def test_coerce_optional_float_european_commas():
     # European decimal comma without dot
     assert coerce_optional_float("1,0850") == 1.0850
+    assert coerce_optional_float("1,085") == 1.085
+    assert coerce_optional_float("0,123") == 0.123
     assert coerce_optional_float("0,75") == 0.75
     assert coerce_optional_float("155,20") == 155.20
     # European thousands with dot and decimal with comma

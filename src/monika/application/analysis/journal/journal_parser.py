@@ -262,12 +262,89 @@ class JournalParser:
         return trades
 
     @classmethod
+    def parse_json(cls, json_text: str) -> List[BrokerTrade]:
+        """Parses JSON-encoded trade statements or lists of trade objects."""
+        import json
+
+        trades: List[BrokerTrade] = []
+        try:
+            data = json.loads(json_text)
+            if isinstance(data, dict):
+                items = data.get("trades") or data.get("positions") or data.get("orders") or [data]
+            elif isinstance(data, list):
+                items = data
+            else:
+                return []
+
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                ticket = str(item.get("ticket") or item.get("id") or item.get("order_id") or "0")
+                symbol = str(item.get("symbol") or "").upper().replace("/", "")
+                action = str(item.get("action") or item.get("type") or item.get("side") or "buy").lower()
+                if "buy" in action:
+                    action = "buy"
+                elif "sell" in action:
+                    action = "sell"
+                lots = cls._parse_float(
+                    item.get("lots") or item.get("volume") or item.get("size") or item.get("qty"), 0.01
+                )
+                open_price = cls._parse_float(
+                    item.get("open_price") or item.get("entry_price") or item.get("price"), 0.0
+                )
+                close_price = cls._parse_float(item.get("close_price") or item.get("exit_price"), open_price)
+                open_time = cls._parse_datetime(
+                    str(item.get("open_time") or item.get("created_at") or item.get("timestamp") or "")
+                )
+                close_time = cls._parse_datetime(str(item.get("close_time") or item.get("closed_at") or ""))
+                if not open_time:
+                    open_time = datetime.now(timezone.utc)
+                if not close_time:
+                    close_time = open_time
+
+                sl = cls._parse_float(item.get("sl") or item.get("stop_loss"), 0.0)
+                tp = cls._parse_float(item.get("tp") or item.get("take_profit"), 0.0)
+                pnl = cls._parse_float(item.get("pnl") or item.get("profit"), 0.0)
+                commission = cls._parse_float(item.get("commission") or item.get("fee"), 0.0)
+                swap = cls._parse_float(item.get("swap"), 0.0)
+                holding_sec = max(0.0, (close_time - open_time).total_seconds())
+
+                trades.append(
+                    BrokerTrade(
+                        ticket=ticket,
+                        symbol=symbol,
+                        action=action,
+                        lots=lots,
+                        open_time=open_time,
+                        close_time=close_time,
+                        open_price=open_price,
+                        close_price=close_price,
+                        sl=sl,
+                        tp=tp,
+                        pnl=pnl,
+                        commission=commission,
+                        swap=swap,
+                        holding_seconds=holding_sec,
+                        comment=str(item.get("comment") or ""),
+                    )
+                )
+        except Exception as e:
+            logger.debug(f"JSON journal parsing failed: {e}")
+        return trades
+
+    @classmethod
     def parse_statement(cls, file_content: Union[str, bytes]) -> List[BrokerTrade]:
-        """Auto-detects format (HTML vs CSV) and decodes statements."""
+        """Auto-detects format (HTML vs CSV vs JSON) and decodes statements."""
         if isinstance(file_content, bytes):
             text = cls.read_text_with_fallback(file_content)
         else:
             text = file_content
+
+        trimmed = text.strip()
+        if (trimmed.startswith("{") and trimmed.endswith("}")) or (trimmed.startswith("[") and trimmed.endswith("]")):
+            trades = cls.parse_json(trimmed)
+            if trades:
+                return trades
 
         if "<html" in text.lower() or "<table" in text.lower():
             trades = cls.parse_html_report(text)

@@ -76,9 +76,13 @@ class SentimentAggregator:
             signal = str(actual_cot.get("signal") or actual_cot.get("bias") or "").lower()
             flag = str(actual_cot.get("flag") or "").lower()
 
-            # Handle contract-to-pair directional inversion for USDJPY:
-            # CME 097741 is JPY futures. Long JPY = JPY strengthens = USDJPY falls (Bearish pair).
-            if sym_clean in ("USDJPY", "097741") and "pair_signal" not in actual_cot:
+            # Handle contract-to-pair directional inversion for USD-base pairs:
+            # CME currency futures quote Foreign/USD (097741=JPY, 090741=CAD, 092741=CHF).
+            # Long foreign currency = foreign currency strengthens = USD pair falls (Bearish pair).
+            if (
+                sym_clean in ("USDJPY", "USDCAD", "USDCHF", "097741", "090741", "092741")
+                and "pair_signal" not in actual_cot
+            ):
                 if "extreme_long" in flag or signal in ("extreme_long", "strong_bullish"):
                     signal = "strong_bearish"
                     flag = "extreme_short"

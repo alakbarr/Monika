@@ -136,7 +136,8 @@ class TradePreCommitGate:
                             f"(max allowed drift: {max_allowed_drift:.5f})."
                         )
             except Exception as e:
-                logger.debug(f"Pre-commit price staleness check error: {e}")
+                logger.warning(f"Pre-commit price staleness check error: {e}")
+                failures.append(f"STALENESS_CHECK_ERROR: Price staleness check failed: {e}")
 
         # -------------------------------------------------------------
         # 2b. Ground-Truth Market Snapshot Validation (H-1)
@@ -161,7 +162,8 @@ class TradePreCommitGate:
                     for issue in snap_issues:
                         failures.append(f"SNAPSHOT_VALIDATION: {issue}")
         except Exception as snap_err:
-            logger.debug(f"Pre-commit snapshot validation non-fatal error: {snap_err}")
+            logger.warning(f"Pre-commit snapshot validation error: {snap_err}")
+            failures.append(f"SNAPSHOT_ERROR: Pre-commit snapshot validation failed: {snap_err}")
 
         # -------------------------------------------------------------
         # 3. Crisis Regime Coherence Assertion
@@ -182,7 +184,8 @@ class TradePreCommitGate:
                         f"Trades with confluence < 10 (got {confluence}) are prohibited during market panic."
                     )
         except Exception as e:
-            logger.debug(f"Pre-commit VIX regime check error: {e}")
+            logger.warning(f"Pre-commit VIX regime check error: {e}")
+            failures.append(f"VIX_CHECK_ERROR: Pre-commit VIX check failed: {e}")
 
         # -------------------------------------------------------------
         # 4. High-Impact Event Proximity Assertion
@@ -214,7 +217,8 @@ class TradePreCommitGate:
                     "Pre-commit blocked to avoid immediate news spread widening and slippage."
                 )
         except Exception as e:
-            logger.debug(f"Pre-commit calendar check error: {e}")
+            logger.warning(f"Pre-commit calendar check error: {e}")
+            failures.append(f"CALENDAR_CHECK_ERROR: Pre-commit calendar check failed: {e}")
 
         passed = len(failures) == 0
         if not passed:

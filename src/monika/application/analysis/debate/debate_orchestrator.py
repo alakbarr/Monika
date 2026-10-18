@@ -119,9 +119,21 @@ class DebateOrchestrator:
         decision = str(judge_verdict.get("final_decision") or judge_verdict.get("verdict") or "WAIT").upper()
         confidence = float(judge_verdict.get("confidence") or 0.0)
         rationale = str(judge_verdict.get("synthesis_rationale") or judge_verdict.get("rationale") or "")
-        bull_summary = str(bull_claim.get("thesis_summary") or bull_claim.get("argument") or "")
-        bear_summary = str(bear_dissent.get("dissent_summary") or bear_dissent.get("argument") or "")
         confluence_score = float(judge_verdict.get("confluence_score") or 0.0)
+        bull_summary = str(
+            bull_claim.get("bull_thesis")
+            or bull_claim.get("rebuttal_thesis")
+            or bull_claim.get("thesis_summary")
+            or bull_claim.get("argument")
+            or ""
+        )
+        bear_summary = str(
+            bear_dissent.get("bear_dissent")
+            or bear_dissent.get("rebuttal_thesis")
+            or bear_dissent.get("dissent_summary")
+            or bear_dissent.get("argument")
+            or ""
+        )
 
         # Database Persistence mandated by PRD.md §237
         transcript_id = None

@@ -25,10 +25,15 @@ def _resolve_lookback_days(symbol: str, settings: dict) -> int:
 def _trimmed_average(ranges: list[float]) -> float:
     """Drop the single highest range (news-day outlier) when >=5 samples, so ADR
     reflects a *typical* day rather than one anomalous session."""
-    if len(ranges) >= 5:
-        trimmed = sorted(ranges)[:-1]
+    if not ranges:
+        return 0.0
+    valid_ranges = [float(r) for r in ranges if isinstance(r, (int, float)) and r >= 0.0]
+    if not valid_ranges:
+        return 0.0
+    if len(valid_ranges) >= 5:
+        trimmed = sorted(valid_ranges)[:-1]
         return sum(trimmed) / len(trimmed)
-    return sum(ranges) / len(ranges)
+    return sum(valid_ranges) / len(valid_ranges)
 
 
 from typing import Optional

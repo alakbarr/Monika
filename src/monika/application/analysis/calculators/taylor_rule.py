@@ -33,6 +33,19 @@ class TaylorRuleResult:
     interpretation: str = ""
 
 
+import math
+
+CENTRAL_BANK_DEFAULTS = {
+    "Federal Reserve": {"r_star": 1.0, "target": 2.0, "nairu": 4.2},
+    "ECB": {"r_star": 0.5, "target": 2.0, "nairu": 6.5},
+    "BOE": {"r_star": 1.25, "target": 2.0, "nairu": 4.5},
+    "BOJ": {"r_star": -0.25, "target": 2.0, "nairu": 2.5},
+    "SNB": {"r_star": 0.25, "target": 1.0, "nairu": 2.2},
+    "RBA": {"r_star": 1.25, "target": 2.5, "nairu": 4.0},
+    "BOC": {"r_star": 1.0, "target": 2.0, "nairu": 6.0},
+}
+
+
 class TaylorRuleCalculator:
     """
     Computes Taylor Rule equilibrium rate benchmarks.
@@ -52,12 +65,27 @@ class TaylorRuleCalculator:
         alpha_output: float = 0.5,
         smoothing_rho: float = 0.80,
         previous_effr: Optional[float] = None,
+        central_bank: str = "Federal Reserve",
     ) -> TaylorRuleResult:
         """
         Calculates Fed Taylor Rule implied rate:
         Standard: R = r* + pi + alpha_pi*(pi - pi*) + alpha_y*(y - y*)
         If output_gap is None, estimates output gap via Okun's Law: y - y* = -2.0 * (u - u*)
         """
+        if not math.isfinite(actual_effr) or not math.isfinite(current_inflation):
+            return TaylorRuleResult(
+                central_bank=central_bank,
+                actual_policy_rate=actual_effr if math.isfinite(actual_effr) else 0.0,
+                taylor_implied_rate=0.0,
+                inertial_implied_rate=0.0,
+                rate_gap=0.0,
+                policy_stance="DATA_UNAVAILABLE",
+                neutral_rate_r_star=r_star,
+                inflation_rate=current_inflation if math.isfinite(current_inflation) else 0.0,
+                inflation_target=inflation_target,
+                output_gap=0.0,
+                interpretation="Inflation or policy rate data missing or non-finite; cannot calculate Taylor Rule.",
+            )
         # Determine output gap
         u_gap = None
         if output_gap is None:
@@ -130,7 +158,7 @@ class TaylorRuleCalculator:
         }
 
         return TaylorRuleResult(
-            central_bank="Federal Reserve",
+            central_bank=central_bank,
             actual_policy_rate=actual_effr,
             taylor_implied_rate=taylor_rate,
             inertial_implied_rate=inertial_rate,
@@ -144,4 +172,28 @@ class TaylorRuleCalculator:
             formula_breakdown=breakdown,
             market_implications=market_impl,
             interpretation=interp,
+        )
+
+    @classmethod
+    def calculate_central_bank_taylor_rule(
+        cls,
+        central_bank: str,
+        actual_rate: float,
+        current_inflation: float,
+        output_gap: Optional[float] = None,
+        unemployment_rate: Optional[float] = None,
+        previous_rate: Optional[float] = None,
+    ) -> TaylorRuleResult:
+        """Calculates Taylor Rule using calibrated parameters for specified central bank."""
+        cb_conf = CENTRAL_BANK_DEFAULTS.get(central_bank, CENTRAL_BANK_DEFAULTS["Federal Reserve"])
+        return cls.calculate_fed_taylor_rule(
+            actual_effr=actual_rate,
+            current_inflation=current_inflation,
+            r_star=cb_conf["r_star"],
+            inflation_target=cb_conf["target"],
+            output_gap=output_gap,
+            unemployment_rate=unemployment_rate,
+            natural_unemployment_u_star=cb_conf["nairu"],
+            previous_effr=previous_rate,
+            central_bank=central_bank,
         )

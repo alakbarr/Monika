@@ -59,3 +59,26 @@ def test_sentiment_aggregator_crypto_funding():
     # Weights: COT(35% of 8 = 2.8), Retail(25% of 5 = 1.25), Risk(20% of 5 = 1.0), Funding(20% of 2 = 0.4) -> 5.45 -> 5.5
     assert res.overall_score == 5.5
     assert "liquidation risk" in res.narrative
+
+
+def test_sentiment_aggregator_usd_base_pairs_inversion():
+    agg = SentimentAggregator({})
+
+    cot_cad_bullish = {"signal": "bullish", "flag": "extreme_long"}
+    retail_neutral = {"long_pct": 50}
+    risk_neutral = {"close": 20}
+
+    # USDCAD: CME CAD futures long means CAD strengthens -> USDCAD is bearish!
+    res_cad = agg.aggregate_sentiment(cot_cad_bullish, retail_neutral, risk_neutral, symbol="USDCAD")
+    assert "extreme short" in res_cad.narrative or "bearish" in res_cad.narrative
+    assert res_cad.overall_score < 5.0
+
+    # USDCHF: CME CHF futures long means CHF strengthens -> USDCHF is bearish!
+    res_chf = agg.aggregate_sentiment(cot_cad_bullish, retail_neutral, risk_neutral, symbol="USDCHF")
+    assert "extreme short" in res_chf.narrative or "bearish" in res_chf.narrative
+    assert res_chf.overall_score < 5.0
+
+    # USDJPY: CME JPY futures long means JPY strengthens -> USDJPY is bearish!
+    res_jpy = agg.aggregate_sentiment(cot_cad_bullish, retail_neutral, risk_neutral, symbol="USDJPY")
+    assert "extreme short" in res_jpy.narrative or "bearish" in res_jpy.narrative
+    assert res_jpy.overall_score < 5.0

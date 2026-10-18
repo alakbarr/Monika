@@ -46,10 +46,14 @@ def compute_ebbinghaus_retention(
     if timestamp is None:
         return 0.50
     now = now_dt or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
     if timestamp.tzinfo is None:
         timestamp = timestamp.replace(tzinfo=timezone.utc)
+    if not isinstance(stability_days, (int, float)) or not math.isfinite(stability_days) or stability_days <= 0.0:
+        stability_days = 14.0
     elapsed_days = max(0.0, (now - timestamp).total_seconds() / 86400.0)
-    retention = math.exp(-elapsed_days / max(1.0, stability_days))
+    retention = math.exp(-elapsed_days / max(1.0, float(stability_days)))
     return float(retention)
 
 
@@ -76,12 +80,13 @@ class LayeredMemoryManager:
         return await get_frozen_snapshot_manager(self.settings).get_snapshot(session=session)
 
     def get_identity(self) -> str:
-        """Layer 0: Permanent trading soul identity (100% cacheable)."""
+        """Layer 0: Permanent trading soul identity (100% cacheable, capped at <=300 tokens)."""
         if self._soul_cache is None:
             soul_path = resolve_config_path("TRADING_SOUL.md")
             if soul_path.exists():
                 try:
-                    self._soul_cache = soul_path.read_text(encoding="utf-8")
+                    raw_soul = soul_path.read_text(encoding="utf-8")
+                    self._soul_cache = truncate_to_budget(raw_soul, 300)
                 except Exception as e:
                     logger.warning(f"Failed to read TRADING_SOUL.md: {e}")
                     self._soul_cache = ""

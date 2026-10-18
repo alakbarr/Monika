@@ -287,8 +287,9 @@ class MacroPreprocessor:
             result[m_code] = cot_entry
             if symbol:
                 sym_entry = dict(cot_entry)
-                # Invert for USDJPY since CME 097741 is JPY futures (Long JPY = Bearish USDJPY)
-                if symbol == "USDJPY":
+                # Invert for USD-base pairs since foreign currency CME futures (JPY 097741, CAD 090741, CHF 092741)
+                # quote Foreign/USD. Long foreign currency = USD pair falls (Bearish pair).
+                if symbol in ("USDJPY", "USDCAD", "USDCHF"):
                     if signal == "bullish":
                         sym_entry["signal"] = "bearish"
                     elif signal == "bearish":

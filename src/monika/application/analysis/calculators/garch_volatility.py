@@ -83,8 +83,29 @@ class GarchVolatilityEngine:
         else:
             returns = series.dropna()
 
+        # Retain only finite returns
+        returns = returns[np.isfinite(returns)]
+
         if len(returns) < 25:
-            return cls._create_error_result("Insufficient return observations (minimum 25 required)")
+            return cls._create_error_result("Insufficient finite return observations (minimum 25 required)")
+
+        sample_var = float(np.var(returns))
+        if sample_var < 1e-12 or not np.isfinite(sample_var):
+            base_vol = 1e-4
+            ann_vol = round(base_vol * annualization_factor * 100.0, 2)
+            return GarchForecastResult(
+                status="SUCCESS",
+                model_type="ZERO_VARIANCE_BASELINE",
+                current_volatility=base_vol,
+                forecasted_volatility_1step=base_vol,
+                annualized_current_vol=ann_vol,
+                annualized_forecast_vol=ann_vol,
+                persistence=0.0,
+                half_life_bars=None,
+                unconditional_volatility=0.0,
+                volatility_regime="LOW",
+                notes="Flat market / zero variance detected; returned baseline steady state.",
+            )
 
         # Scale returns by 100 for numerical stability in optimizer
         scaled_returns = returns * 100.0

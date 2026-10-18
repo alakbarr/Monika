@@ -131,7 +131,7 @@ Respond in valid JSON format ONLY conforming to the schema."""
     return {
         "bear_dissent": f"Failed to generate dissent due to parse error: {last_err}",
         "risk_severity": 10,
-        "evidence_cited": [],
+        "evidence_cited": [f"Fallback: LLM generation error ({last_err})"],
         "parse_error": True,
     }
 

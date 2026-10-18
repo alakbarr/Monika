@@ -250,7 +250,13 @@ class SignalArbitrator:
 
         quant_dir = str(_get_q("direction", "") or "").lower()
         quant_strat_id = str(_get_q("strategy_id", "unknown") or "unknown")
-        quant_is_valid = bool(quant_signal is not None and _get_q("valid", True) and quant_dir in ("buy", "sell"))
+        try:
+            _raw_q_conf = float(_get_q("confidence", 0.0) or 0.0)
+        except ValueError, TypeError:
+            _raw_q_conf = 0.0
+        quant_is_valid = bool(
+            quant_signal is not None and _get_q("valid", True) and quant_dir in ("buy", "sell") and _raw_q_conf > 0.0
+        )
 
         # Volatile Chop Protection: Proteksi modal holistik di awal sebelum skenario concordant / conflict
         chop_block = (
@@ -299,7 +305,7 @@ class SignalArbitrator:
             return ArbitrationResult(
                 symbol=symbol,
                 decision=direction,
-                confidence=float(_get_q("confidence", 0.7) or 0.7),
+                confidence=round(_raw_q_conf, 4),
                 risk_multiplier=round(risk_mult, 2),
                 selected_source="quant",
                 arbitration_reason=reason,
@@ -323,8 +329,21 @@ class SignalArbitrator:
         # 2. Hanya keputusan LLM yang tersedia (atau sinyal Quant tidak valid)
         if llm_decision is not None and not quant_is_valid:
             direction = str(llm_decision.get("decision", "avoid")).lower()
-            conf = float(llm_decision.get("confidence", 0.7) or 0.7)
-            risk_mult = float(llm_decision.get("risk_multiplier", 1.0) or 1.0)
+            raw_c = llm_decision.get("confidence")
+            try:
+                conf = float(raw_c) if isinstance(raw_c, (int, float, str)) and str(raw_c).strip() != "" else 0.0
+            except ValueError, TypeError:
+                conf = 0.0
+
+            raw_r = llm_decision.get("risk_multiplier")
+            try:
+                risk_mult = (
+                    float(raw_r)
+                    if isinstance(raw_r, (int, float, str)) and str(raw_r).strip() != ""
+                    else (1.0 if raw_r is None else 0.0)
+                )
+            except ValueError, TypeError:
+                risk_mult = 0.0
 
             if direction not in ("buy", "sell", "wait", "avoid"):
                 logger.warning(
@@ -340,6 +359,22 @@ class SignalArbitrator:
                     meta={"conflict_detected": False, "llm_signal": direction},
                 )
                 await self._log_arbitration_telemetry(symbol, quant_signal, direction, conf, market_regime, res)
+                return res
+
+            if direction in ("buy", "sell") and (conf <= 0.0 or risk_mult <= 0.0):
+                logger.warning(
+                    f"[{symbol}] LLM directional trade '{direction}' has non-positive confidence ({conf}) or risk_multiplier ({risk_mult}). Failing closed -> AVOID."
+                )
+                res = ArbitrationResult(
+                    symbol=symbol,
+                    decision="avoid",
+                    confidence=0.0,
+                    risk_multiplier=0.0,
+                    selected_source="fail_closed_zero_conviction",
+                    arbitration_reason=f"Fail-closed: LLM directional signal '{direction}' has zero or missing confidence/risk_multiplier.",
+                    meta={"conflict_detected": False, "llm_signal": direction, "raw_confidence": conf},
+                )
+                await self._log_arbitration_telemetry(symbol, quant_signal, direction, 0.0, market_regime, res)
                 return res
 
             return ArbitrationResult(
@@ -360,8 +395,12 @@ class SignalArbitrator:
             q_dir = quant_dir
             l_dir = str(llm_decision.get("decision", "avoid")).lower()
 
-            q_conf = float(_get_q("confidence", 0.7) or 0.7)
-            l_conf = float(llm_decision.get("confidence", 0.7) or 0.7)
+            q_conf = round(_raw_q_conf, 4)
+            raw_lc = llm_decision.get("confidence")
+            try:
+                l_conf = float(raw_lc) if isinstance(raw_lc, (int, float, str)) and str(raw_lc).strip() != "" else 0.0
+            except ValueError, TypeError:
+                l_conf = 0.0
 
             if l_dir not in ("buy", "sell", "wait", "avoid"):
                 logger.warning(

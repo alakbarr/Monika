@@ -34,12 +34,21 @@ def coerce_optional_float(value: Any) -> Optional[float]:
             # Format: 1.234,56 -> remove dots, replace comma with dot
             cleaned = cleaned.replace(".", "").replace(",", ".")
     elif "," in cleaned:
-        # Only comma present. E.g. "1,0850", "0,75", "1,234", "1,000,000"
-        if re.match(r"^\d{1,3}(?:,\d{3})+$", cleaned):
-            # Standard integer with thousands separator: e.g. "1,000", "1,000,000"
+        # Only comma present. E.g. "1,0850", "0,75", "1,085", "1,000,000"
+        if cleaned.count(",") > 1 and re.match(r"^\d{1,3}(?:,\d{3})+$", cleaned):
+            # Multiple thousands separators: e.g. "1,000,000"
             cleaned = cleaned.replace(",", "")
+        elif re.match(r"^[1-9]\d{0,2},\d{3}$", cleaned):
+            # Ambiguous single comma: e.g. "1,000", "10,000" vs "1,085"
+            leading = cleaned.split(",")[0]
+            if len(leading) >= 2 or cleaned.endswith(",000"):
+                # "10,000", "100,000" or "1,000" are thousands
+                cleaned = cleaned.replace(",", "")
+            else:
+                # "1,085", "1,234" in FX context are European decimals (1.085, 1.234)
+                cleaned = cleaned.replace(",", ".")
         else:
-            # European decimal comma: e.g. "1,0850", "0,75", "155,20"
+            # European decimal comma: e.g. "1,0850", "0,75", "0,123", "155,20"
             cleaned = cleaned.replace(",", ".")
 
     try:

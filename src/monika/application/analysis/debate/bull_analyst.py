@@ -132,7 +132,7 @@ Respond in valid JSON format ONLY conforming to the schema."""
     return {
         "bull_thesis": f"Failed to generate advocacy due to parse error: {last_err}",
         "strength_score": 0,
-        "evidence_cited": [],
+        "evidence_cited": [f"Fallback: LLM generation error ({last_err})"],
         "parse_error": True,
     }
 

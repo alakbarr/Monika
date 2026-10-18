@@ -16,6 +16,7 @@ instead of dumping massive raw unparsed text histories into subsequent turns.
 
 import json
 import logging
+import threading
 from typing import Any, Dict, List, Optional
 
 from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
@@ -38,24 +39,31 @@ class SubagentBlackboard:
             "adjudication_consensus": {},
         }
         self._history_log: List[Dict[str, Any]] = []
+        self._lock = threading.RLock()
 
     def set_slot(self, slot_name: str, data: Any) -> None:
         """Sets data for a specific blackboard slot."""
-        if slot_name in self.slots:
-            self.slots[slot_name] = data
-            self._history_log.append({"slot": slot_name, "data": data})
-            logger.debug(f"[{self.symbol}] Blackboard: slot '{slot_name}' updated.")
-        else:
-            logger.warning(f"[{self.symbol}] Blackboard: unknown slot '{slot_name}' rejected.")
+        with self._lock:
+            if slot_name in self.slots:
+                self.slots[slot_name] = data
+                self._history_log.append({"slot": slot_name, "data": data})
+                logger.debug(f"[{self.symbol}] Blackboard: slot '{slot_name}' updated.")
+            else:
+                logger.warning(f"[{self.symbol}] Blackboard: unknown slot '{slot_name}' rejected.")
 
     def get_slot(self, slot_name: str, default: Any = None) -> Any:
         """Retrieves data from a specific blackboard slot."""
-        return self.slots.get(slot_name, default)
+        with self._lock:
+            return self.slots.get(slot_name, default)
 
     def export_distilled_context(self, max_tokens: int = 1200) -> str:
         """
         Exports a high-density, structured summary of the blackboard state for LLM injection.
         """
+        with self._lock:
+            return self._export_distilled_context_locked(max_tokens=max_tokens)
+
+    def _export_distilled_context_locked(self, max_tokens: int = 1200) -> str:
         sections = []
 
         # 1. Market Invariants

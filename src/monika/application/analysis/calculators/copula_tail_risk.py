@@ -131,26 +131,28 @@ def fit_copula_from_tau(
     """
     u_arr = np.asarray(u, dtype=np.float64)
     v_arr = np.asarray(v, dtype=np.float64)
-    valid = ~np.isnan(u_arr) & ~np.isnan(v_arr)
+    valid = np.isfinite(u_arr) & np.isfinite(v_arr)
 
     if np.sum(valid) < 10:
-        return (1.0, 0.0)
+        return (0.0, 0.0)
 
     tau = _kendall_tau_numpy(u_arr[valid], v_arr[valid])
     if np.isnan(tau):
         tau = 0.0
 
     # Bound tau away from boundaries to avoid divide-by-zero
-    tau_clipped = float(np.clip(tau, 0.01, 0.95))
+    tau_clipped = float(np.clip(tau, 0.0, 0.95))
+    if tau_clipped <= 0.001:
+        return (0.0, 0.0)
 
     c_type = copula_type.lower().strip()
     if c_type == "clayton":
         theta = (2.0 * tau_clipped) / (1.0 - tau_clipped)
-        lambda_l = float(2.0 ** (-1.0 / theta))
+        lambda_l = float(2.0 ** (-1.0 / theta)) if theta > 0 else 0.0
         return (theta, lambda_l)
     elif c_type == "gumbel":
         theta = 1.0 / (1.0 - tau_clipped)
-        lambda_u = float(2.0 - 2.0 ** (1.0 / theta))
+        lambda_u = float(2.0 - 2.0 ** (1.0 / theta)) if theta > 0 else 0.0
         return (theta, lambda_u)
     else:
         raise ValueError(f"Unsupported copula type: {copula_type}")
@@ -165,14 +167,32 @@ def evaluate_joint_tail_risk(
     Evaluates joint crash probability and tail dependence between two assets.
     Returns quantitative tail risk report and risk haircut multiplier.
     """
+    independent_prob = tail_quantile * tail_quantile
+
+    s_a = pd.Series(returns_a).dropna()
+    s_b = pd.Series(returns_b).dropna()
+
+    if len(s_a) < 10 or len(s_b) < 10:
+        return {
+            "theta": 0.0,
+            "lambda_lower_tail": 0.0,
+            "joint_crash_prob": round(independent_prob, 5),
+            "independent_prob": round(independent_prob, 5),
+            "crash_excess_ratio": 1.0,
+            "recommended_haircut": 1.0,
+            "risk_level": "INSUFFICIENT_DATA",
+        }
+
     u = empirical_cdf(returns_a)
     v = empirical_cdf(returns_b)
 
     theta, lambda_lower = fit_copula_from_tau(u, v, copula_type="clayton")
-    joint_crash_prob = float(clayton_copula_cdf(tail_quantile, tail_quantile, theta))
+    if theta <= 0.0:
+        joint_crash_prob = independent_prob
+    else:
+        joint_crash_prob = float(clayton_copula_cdf(tail_quantile, tail_quantile, theta))
 
     # Independent benchmark: tail_quantile^2 (e.g. 0.05 * 0.05 = 0.0025)
-    independent_prob = tail_quantile * tail_quantile
     crash_multiplier = joint_crash_prob / independent_prob if independent_prob > 0 else 1.0
 
     # Risk sizing haircut recommendation:

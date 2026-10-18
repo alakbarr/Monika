@@ -66,7 +66,8 @@ def fit_gpd_tail(
     Returns:
         TailRiskProfile containing tail shape, classification, and recommended sizing multiplier.
     """
-    clean_rets = np.asarray(returns[~np.isnan(returns)], dtype=np.float64)
+    arr = np.asarray(returns, dtype=np.float64) if returns is not None else np.array([], dtype=np.float64)
+    clean_rets = arr[np.isfinite(arr)]
     if len(clean_rets) < 50:
         # Insufficient data to fit EVT tail reliably; default to neutral
         return TailRiskProfile(
