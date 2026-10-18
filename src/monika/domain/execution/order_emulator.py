@@ -66,12 +66,22 @@ class PendingOrder:
 def evaluate_pending_order(order: Any, bar: Any) -> Optional[Dict[str, Any]]:
     """
     Evaluasi apakah pending order terpicu oleh bar harga dengan gap slippage handling.
+    Supports both dict and object representations for order and bar.
     """
-    order_type = getattr(order, "type", "")
-    order_price = getattr(order, "price", 0.0)
-    bar_open = getattr(bar, "open", 0.0)
-    bar_high = getattr(bar, "high", bar_open)
-    bar_low = getattr(bar, "low", bar_open)
+
+    def _val(obj: Any, key: str, default: Any = None) -> Any:
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+        return getattr(obj, key, default)
+
+    order_type = str(_val(order, "type", "")).lower()
+    order_price = float(_val(order, "price", 0.0) or 0.0)
+    bar_open = float(_val(bar, "open", 0.0) or 0.0)
+    bar_high = float(_val(bar, "high", bar_open) or bar_open)
+    bar_low = float(_val(bar, "low", bar_open) or bar_open)
+
+    if order_price <= 0.0 or bar_open <= 0.0:
+        return None
 
     triggered = False
     if order_type == "buy_stop":
@@ -87,18 +97,18 @@ def evaluate_pending_order(order: Any, bar: Any) -> Optional[Dict[str, Any]]:
         return None
 
     # If price gaps past the trigger level, use the gap-adjusted price
-    if order.type == "buy_stop" and bar.open > order.price:
-        fill_price = bar.open  # slippage due to gap
-    elif order.type == "sell_stop" and bar.open < order.price:
-        fill_price = bar.open
+    if order_type == "buy_stop" and bar_open > order_price:
+        fill_price = bar_open  # slippage due to gap
+    elif order_type == "sell_stop" and bar_open < order_price:
+        fill_price = bar_open
     else:
-        fill_price = order.price
+        fill_price = order_price
 
     return {
         "triggered": True,
         "fill_price": fill_price,
         "order": order,
-        "gap_slippage": fill_price != order.price,
+        "gap_slippage": fill_price != order_price,
     }
 
 
@@ -134,6 +144,38 @@ class ClientOrderEmulator:
             self.subscribe(self.event_bus)
 
     evaluate_pending_order = staticmethod(evaluate_pending_order)
+
+    @staticmethod
+    def get_symbol_digits(symbol: str) -> int:
+        """Deterministically resolves decimal precision digits for any traded symbol."""
+        from monika.domain.risk.instruments.instruments import DEFAULT_INSTRUMENTS
+
+        clean_sym = symbol.upper().replace("/", "").replace(".", "")
+        spec = DEFAULT_INSTRUMENTS.get(clean_sym)
+        if spec is not None:
+            return spec.digits
+        if any(
+            x in clean_sym
+            for x in (
+                "JPY",
+                "XAU",
+                "GOLD",
+                "BTC",
+                "ETH",
+                "XTI",
+                "XBR",
+                "OIL",
+                "US30",
+                "SPX",
+                "NAS",
+                "USTEC",
+                "US500",
+            )
+        ):
+            return 2
+        elif "XAG" in clean_sym or "SILVER" in clean_sym:
+            return 3
+        return 5
 
     def subscribe(self, event_bus: EventBus) -> None:
         """Berlangganan ke TickPriceEvent dengan priority 1."""
@@ -369,13 +411,10 @@ class ClientOrderEmulator:
                 if (current_sl - trail_sl) >= min_step and (new_sl is None or trail_sl < new_sl):
                     new_sl = trail_sl
                     reason = f"trailing_stop (profit={profit_distance:.5f}, trail={trail_sl:.5f})"
-
         if new_sl is not None:
-            # Round new_sl to instrument precision
             digits = getattr(pos, "digits", None)
             if digits is None:
-                sym_up = pos.symbol.upper()
-                digits = 2 if ("JPY" in sym_up or "XAU" in sym_up or "BTC" in sym_up or "ETH" in sym_up) else 5
+                digits = self.get_symbol_digits(pos.symbol)
             new_sl = round(new_sl, digits)
             old_sl = pos.current_sl
 

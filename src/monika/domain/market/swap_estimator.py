@@ -55,11 +55,28 @@ async def estimate_swap_cost(
         try:
             info = await mt5_client.get_symbol_info(symbol)
             if info:
-                per_night = info.get("swap_long") if is_buy else info.get("swap_short")
+                raw_swap = info.get("swap_long") if is_buy else info.get("swap_short")
+                swap_mode = info.get("swap_mode", 1)  # 1 = by points, 2 = in symbol currency
+                point = info.get("point")
+                tick_value = info.get("trade_tick_value")
+                tick_size = info.get("trade_tick_size")
+
+                if raw_swap is not None:
+                    if swap_mode == 1:  # in points
+                        if point is not None and tick_value is not None and tick_size is not None:
+                            point_val = (
+                                (float(tick_value) / float(tick_size) * float(point)) if float(tick_size) > 0 else 0.1
+                            )
+                        else:
+                            # In points mode without full broker tick specs, 1 point represents 0.1 pip ($0.10)
+                            point_val = 0.1
+                        per_night = float(raw_swap) * point_val
+                    else:
+                        per_night = float(raw_swap)
         except Exception as e:
             logger.warning(f"Failed to fetch live swap for {symbol}: {e}")
 
     if per_night is None:
         per_night = FALLBACK_SWAP.get(symbol, {}).get("long" if is_buy else "short", -3.0)
 
-    return round(per_night * lots * effective_nights, 2)
+    return round(float(per_night) * lots * effective_nights, 2)

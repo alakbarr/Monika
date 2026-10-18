@@ -86,8 +86,16 @@ class OrderStateMachine:
             "filled_volume": filled_volume,
         }
 
-    @staticmethod
+    _lifecycle_handler: Optional[Any] = None
+
+    @classmethod
+    def set_lifecycle_handler(cls, handler: Any) -> None:
+        """Set lifecycle transition handler from application layer."""
+        cls._lifecycle_handler = handler
+
+    @classmethod
     async def transition_order_state(
+        cls,
         session: Any,
         order: Any,
         new_status: Any,
@@ -99,26 +107,26 @@ class OrderStateMachine:
         filled_volume: Optional[float] = None,
     ) -> Any:
         """
-        Backward-compatibility facade method.
-        Delegates persistence and event orchestration to OrderLifecycleService.
+        Delegates persistence and event orchestration to registered lifecycle handler.
+        Falls back to pure in-memory transition if no handler is registered.
         """
-        import sys
+        if cls._lifecycle_handler is not None:
+            return await cls._lifecycle_handler(
+                session=session,
+                order=order,
+                new_status=new_status,
+                reason=reason,
+                details=details,
+                executed_price=executed_price,
+                ticket=ticket,
+                slippage_pips=slippage_pips,
+                filled_volume=filled_volume,
+            )
 
-        mod = sys.modules.get("monika.application.execution.service.order_lifecycle_service")
-        if mod and hasattr(mod, "OrderLifecycleService"):
-            svc = mod.OrderLifecycleService
-        else:
-            import importlib
-
-            mod = importlib.import_module("monika.application.execution.service.order_lifecycle_service")
-            svc = getattr(mod, "OrderLifecycleService")
-
-        return await svc.transition_order_state(
-            session=session,
+        return cls.transition(
             order=order,
             new_status=new_status,
             reason=reason,
-            details=details,
             executed_price=executed_price,
             ticket=ticket,
             slippage_pips=slippage_pips,

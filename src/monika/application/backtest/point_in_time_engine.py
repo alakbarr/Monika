@@ -391,7 +391,7 @@ class PointInTimeBacktestEngine:
 
                         if confluence_score >= req_threshold:
                             from monika.application.backtest.outcome_evaluator import DEFAULT_FRICTION_PROFILE
-                            from monika.domain.risk.domain.instruments import DEFAULT_INSTRUMENTS
+                            from monika.domain.risk.instruments.instruments import DEFAULT_INSTRUMENTS
 
                             spec = DEFAULT_INSTRUMENTS.get(symbol)
                             if spec:

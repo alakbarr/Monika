@@ -138,12 +138,18 @@ class CryptographicAuditLedger:
             with open(self.ledger_path, "a", encoding="utf-8") as f:
                 fd = f.fileno()
                 # Cross-process OS locking
+                locked_win = False
                 try:
                     if sys.platform == "win32":
                         import msvcrt
 
                         # Seek to file end before locking
                         f.seek(0, os.SEEK_END)
+                        try:
+                            msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+                            locked_win = True
+                        except OSError, IOError:
+                            pass
                     else:
                         import fcntl
 
@@ -153,7 +159,16 @@ class CryptographicAuditLedger:
                     f.flush()
                     os.fsync(fd)
                 finally:
-                    if sys.platform != "win32":
+                    if sys.platform == "win32":
+                        if locked_win:
+                            try:
+                                import msvcrt
+
+                                f.seek(0, os.SEEK_END)
+                                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+                            except OSError, IOError:
+                                pass
+                    else:
                         try:
                             import fcntl
 

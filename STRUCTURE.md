@@ -1467,9 +1467,6 @@ Monika/
 │       │   │   ├── repository.py
 │       │   │   └── unit_of_work.py
 │       │   ├── risk/
-│       │   │   ├── domain/
-│       │   │   │   ├── __init__.py
-│       │   │   │   └── instruments.py
 │       │   │   ├── evaluators/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base.py
@@ -2154,6 +2151,7 @@ Monika/
 │   │   ├── test_adjudication_and_risk.py
 │   │   ├── test_adjudication_framework.py
 │   │   ├── test_adjustment_validator.py
+│   │   ├── test_advanced_quant_tools.py
 │   │   ├── test_adversarial_dialectic_debate.py
 │   │   ├── test_agent_harness_steering_truncation.py
 │   │   ├── test_arbitrator_borderline_guard.py
@@ -2193,6 +2191,7 @@ Monika/
 │   │   ├── test_gemini_token_governance.py
 │   │   ├── test_groq_provider.py
 │   │   ├── test_hierarchical_risk_parity.py
+│   │   ├── test_hmm_regime.py
 │   │   ├── test_hypothesis_and_evidence.py
 │   │   ├── test_in_harness_grounding.py
 │   │   ├── test_invariant_calculator.py
@@ -2959,4 +2958,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 252 | **Total Tracked Files**: 2677
+**Total Tracked Directories**: 251 | **Total Tracked Files**: 2677

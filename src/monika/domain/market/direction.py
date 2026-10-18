@@ -15,7 +15,9 @@ def normalize_direction(direction: Optional[str]) -> str:
     Normalize trade direction string to lowercase ('buy' or 'sell').
     Raises ValueError if input is invalid or cannot be recognized.
     """
-    d = (direction or "").strip().lower()
+    if not isinstance(direction, str):
+        raise ValueError(f"Invalid market direction: {direction!r}. Expected string 'buy' or 'sell'.")
+    d = direction.strip().lower()
     if d in ("buy", "long"):
         return "buy"
     if d in ("sell", "short"):
@@ -28,5 +30,5 @@ def is_valid_direction(direction: Optional[str]) -> bool:
     try:
         normalize_direction(direction)
         return True
-    except ValueError, TypeError:
+    except ValueError, TypeError, AttributeError:
         return False

@@ -60,7 +60,8 @@ class ScanPatternSimilarityHandler(ToolHandler):
                 tf = timeframes[0] if timeframes else "D1"
                 return await engine.compare_specific_date(symbol=symbol, target_date_str=compare_to_date, timeframe=tf)
 
-            result = await engine.screen(symbol=symbol, timeframes=timeframes)
+            llm_client = getattr(executor, "llm_client", None)
+            result = await engine.screen(symbol=symbol, timeframes=timeframes, llm_client=llm_client)
             return result.format_for_prompt()
         except Exception as e:
             logger.error(f"Error in scan_pattern_similarity for {symbol}: {e}", exc_info=True)

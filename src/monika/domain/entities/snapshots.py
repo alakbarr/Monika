@@ -39,8 +39,8 @@ class AccountSnapshot(BaseModel):
     @property
     def drawdown_pct(self) -> float:
         """Current equity drawdown percentage relative to balance."""
-        if self.balance <= 0.0:
-            return 0.0
+        if self.balance <= 0.0 or self.equity <= 0.0:
+            return 100.0
         if self.equity >= self.balance:
             return 0.0
         return ((self.balance - self.equity) / self.balance) * 100.0
@@ -96,15 +96,26 @@ class CalendarRiskEvents(BaseModel):
         Check if current_time falls within window_minutes of any high-impact event
         affecting base or quote currency of symbol.
         """
+        from datetime import timezone
         from monika.domain.market.currency_utils import get_symbol_currencies
 
         now = current_time or clock.now()
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        else:
+            now = now.astimezone(timezone.utc)
+
         base_curr, quote_curr = get_symbol_currencies(symbol)
         currencies = {base_curr.upper(), quote_curr.upper()} if base_curr and quote_curr else set()
 
         for evt in self.events:
             if evt.currency.upper() in currencies and evt.impact.lower() in ("high", "critical"):
-                diff_seconds = abs((evt.event_time - now).total_seconds())
+                evt_time = evt.event_time
+                if evt_time.tzinfo is None:
+                    evt_time = evt_time.replace(tzinfo=timezone.utc)
+                else:
+                    evt_time = evt_time.astimezone(timezone.utc)
+                diff_seconds = abs((evt_time - now).total_seconds())
                 if diff_seconds <= (self.window_minutes * 60):
                     return True
         return False

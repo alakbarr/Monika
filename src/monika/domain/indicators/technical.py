@@ -101,14 +101,14 @@ class TechnicalIndicatorCalculator:
         await calc.compute_and_save("XAUUSD", "H1")
     """
 
-    def __init__(self, session: Any, settings: dict):
+    def __init__(self, session: Any, settings: Optional[dict] = None):
         """
         Args:
             session: Async SQLAlchemy session.
             settings: trading.indicators section from settings.yaml.
         """
         self.session = session
-        cfg = settings.get("trading", {}).get("indicators", {}) or settings.get("indicators", {})
+        cfg = (settings or {}).get("trading", {}).get("indicators", {}) or (settings or {}).get("indicators", {})
         self.ma_periods: list[int] = cfg.get("ma_periods", [20, 50, 200])
         self.rsi_period: int = cfg.get("rsi_period", 14)
         self.stoch_k: int = cfg.get("stochastic_k", 14)
@@ -132,6 +132,11 @@ class TechnicalIndicatorCalculator:
         Returns:
             Jumlah baris indikator yang disimpan.
         """
+        if not self.session:
+            logger.warning(
+                f"No DB session provided to TechnicalIndicatorCalculator, cannot compute and save for {symbol}/{timeframe}"
+            )
+            return 0
         df = await self._load_ohlcv(symbol, timeframe)
         if df is None:
             logger.warning(f"No OHLCV data for {symbol}/{timeframe}")
@@ -249,7 +254,7 @@ class TechnicalIndicatorCalculator:
         from sqlalchemy import select
 
         PriceOHLCV = resolve_model("PriceOHLCV")
-        if not PriceOHLCV:
+        if not PriceOHLCV or not self.session:
             return None
 
         result = await self.session.execute(
@@ -592,7 +597,7 @@ class TechnicalIndicatorCalculator:
         from sqlalchemy import delete
 
         TechnicalIndicator = resolve_model("TechnicalIndicator")
-        if not TechnicalIndicator:
+        if not TechnicalIndicator or not self.session:
             return 0
 
         await self.session.execute(
@@ -628,7 +633,7 @@ class TechnicalIndicatorCalculator:
         from sqlalchemy import select
 
         TechnicalIndicator = resolve_model("TechnicalIndicator")
-        if not TechnicalIndicator:
+        if not TechnicalIndicator or not self.session:
             return None
 
         result = await self.session.execute(
@@ -654,7 +659,7 @@ class TechnicalIndicatorCalculator:
         from sqlalchemy import select
 
         TechnicalIndicator = resolve_model("TechnicalIndicator")
-        if not TechnicalIndicator:
+        if not TechnicalIndicator or not self.session:
             return {}
 
         fetch_limit = max(2, min(series_depth, 30))

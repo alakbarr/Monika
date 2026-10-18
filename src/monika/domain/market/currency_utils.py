@@ -28,11 +28,18 @@ def get_symbol_currencies(symbol: str) -> Tuple[str, ...]:
     Contoh:
         get_symbol_currencies("GBPUSD") -> ("GBP", "USD")
         get_symbol_currencies("XTIUSD") -> ("OIL", "USD")
+        get_symbol_currencies("GOLD")   -> ("XAU", "USD")
         get_symbol_currencies("USDCAD") -> ("USD", "CAD")
     """
-    sym = (symbol or "").strip().upper()
-    if sym in SYMBOL_CURRENCIES:
-        return SYMBOL_CURRENCIES[sym]
-    if len(sym) == 6 and sym.isalpha():
-        return (sym[:3], sym[3:])
+    sym = (symbol or "").strip().upper().replace("/", "").replace("_", "").replace(".", "").replace("-", "")
+    if not sym:
+        return ("USD",)
+
+    from monika.domain.market.instrument_identity import ALIAS_MAP
+
+    canonical = ALIAS_MAP.get(sym, sym)
+    if canonical in SYMBOL_CURRENCIES:
+        return SYMBOL_CURRENCIES[canonical]
+    if len(canonical) == 6 and canonical.isalpha():
+        return (canonical[:3], canonical[3:])
     return ("USD",)

@@ -454,31 +454,40 @@ class PositionSizer:
         # 5. Round to lot step and clamp
         recommended_lots = self._round_lots(raw_lots, spec.lot_step)
         max_risk_cap = float(self.settings.get("trading", {}).get("risk", {}).get("max_risk_amount_usd", 1000.0))
+        is_cent = False
+        if isinstance(self.settings, dict):
+            is_cent = bool(self.settings.get("trading", {}).get("risk", {}).get("is_cent_account", False))
+
         if raw_lots > 0.0 and recommended_lots < spec.min_lot:
             min_lot_risk_usd = spec.min_lot * sl_distance_pips * spec.pip_value_per_lot
-            if min_lot_risk_usd <= max_risk_cap:
+            if is_cent:
+                min_lot_risk_usd /= 100.0
+            if min_lot_risk_usd <= risk_amount_usd * 1.05 and min_lot_risk_usd <= max_risk_cap:
                 recommended_lots = spec.min_lot
                 logger.debug(
                     f"Lot size bumped from {raw_lots:.4f} to broker minimum {spec.min_lot} "
-                    f"(risk ${min_lot_risk_usd:.2f} <= cap ${max_risk_cap:.2f})"
+                    f"(risk ${min_lot_risk_usd:.2f} <= budget ${risk_amount_usd:.2f})"
                 )
             else:
                 rejections.append(
-                    f"Broker minimum lot ({spec.min_lot}) exceeds maximum risk limit (${max_risk_cap:.2f})"
+                    f"Calculated lot size ({raw_lots:.4f}) is below broker minimum ({spec.min_lot}), "
+                    f"and broker minimum lot risk (${min_lot_risk_usd:.2f}) exceeds risk budget (${risk_amount_usd:.2f})"
                 )
+                recommended_lots = 0.0
         elif raw_lots <= 0.0:
             recommended_lots = 0.0
             rejections.append("Calculated lot size is zero or non-positive")
+
+        if len(rejections) == 0 and recommended_lots > 0.0:
+            recommended_lots = max(spec.min_lot, recommended_lots)
+        else:
+            recommended_lots = 0.0
 
         actual_risk_usd = recommended_lots * sl_distance_pips * spec.pip_value_per_lot
         if actual_risk_usd > max_risk_cap:
             rejections.append(
                 f"Actual risk (${actual_risk_usd:.2f}) exceeds configured risk limit of ${max_risk_cap:.2f}"
             )
-        if raw_lots > 0.0:
-            recommended_lots = max(spec.min_lot, recommended_lots)
-        else:
-            recommended_lots = 0.0
 
         # TAMBAHKAN: cap to max_lot
         if spec.max_lot > 0:
@@ -770,21 +779,25 @@ class PositionSizer:
         max_risk_cap = float(self.settings.get("trading", {}).get("risk", {}).get("max_risk_amount_usd", 1000.0))
         if raw_lots > 0.0 and recommended_lots < spec.min_lot:
             min_lot_risk_usd = spec.min_lot * sl_distance_pips * spec.pip_value_per_lot
-            if min_lot_risk_usd <= max_risk_cap:
+            if is_cent:
+                min_lot_risk_usd /= 100.0
+            if min_lot_risk_usd <= risk_amount_usd * 1.05 and min_lot_risk_usd <= max_risk_cap:
                 recommended_lots = spec.min_lot
                 logger.info(
                     f"[{symbol}] Lot size clamped from {raw_lots:.4f} to broker minimum {spec.min_lot} "
-                    f"(risk ${min_lot_risk_usd:.2f} <= cap ${max_risk_cap:.2f})"
+                    f"(risk ${min_lot_risk_usd:.2f} <= budget ${risk_amount_usd:.2f})"
                 )
             else:
                 rejections.append(
-                    f"Broker minimum lot ({spec.min_lot}) exceeds maximum risk limit "
-                    f"(${max_risk_cap:.2f}): risk would be ${min_lot_risk_usd:.2f}"
+                    f"Calculated lot size ({raw_lots:.4f}) is below broker minimum ({spec.min_lot}), "
+                    f"and broker minimum lot risk (${min_lot_risk_usd:.2f}) exceeds risk budget (${risk_amount_usd:.2f})"
                 )
+                recommended_lots = 0.0
         elif raw_lots <= 0.0:
             recommended_lots = 0.0
             rejections.append("Calculated lot size is zero or non-positive")
-        if raw_lots > 0.0:
+
+        if len(rejections) == 0 and recommended_lots > 0.0:
             recommended_lots = max(spec.min_lot, recommended_lots)
         else:
             recommended_lots = 0.0

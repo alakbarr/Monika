@@ -26,3 +26,11 @@ async def get_brent_price() -> float | None:
 
         logging.getLogger("BrentYfinance").warning(f"Failed to fetch Brent price: {e}")
         return None
+
+
+try:
+    from monika.domain.market.brent_yfinance import register_brent_price_fn
+
+    register_brent_price_fn(get_brent_price)
+except Exception:
+    pass

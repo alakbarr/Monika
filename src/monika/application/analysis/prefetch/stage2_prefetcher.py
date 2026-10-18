@@ -745,7 +745,9 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
                     from monika.infrastructure.database.models import PatternScreeningCache
 
                     ps_engine = PatternSimilarityEngine(session=self.executor.session, settings=self.settings)
-                    ps_result = await ps_engine.screen(symbol=symbol)
+                    ps_result = await ps_engine.screen(
+                        symbol=symbol, llm_client=getattr(self.executor, "llm_client", None)
+                    )
 
                     if ps_result:
                         lines.append(ps_result.format_for_prompt())

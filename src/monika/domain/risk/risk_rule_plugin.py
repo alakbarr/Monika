@@ -172,14 +172,9 @@ class ModularRiskRegistry:
                         rejection_reasons.append(verdict.rejection_reason)
             except Exception as e:
                 logger.error(f"Error evaluating RiskRulePlugin [{rule_id}]: {e}", exc_info=True)
-                # Fail-closed for core risk plugins, fail-open with warning for auxiliary
-                is_core = getattr(getattr(rule, "metadata", None), "is_core", False)
-                if is_core:
-                    all_passed = False
-                    checks_failed.append(rule_id)
-                    rejection_reasons.append(f"Core rule [{rule_id}] runtime failure: {e}")
-                else:
-                    checks_passed.append(f"{rule_id}_degraded_bypass")
+                all_passed = False
+                checks_failed.append(rule_id)
+                rejection_reasons.append(f"Risk rule [{rule_id}] runtime failure (fail-closed): {e}")
 
         return all_passed, checks_passed, checks_failed, rejection_reasons
 

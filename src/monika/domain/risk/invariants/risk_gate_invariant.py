@@ -61,36 +61,55 @@ def assert_risk_gate_invariants(
         or getattr(proposal, "tp", None)
     )
 
-    if entry is not None and sl is not None and tp is not None:
+    if entry is not None and sl is not None:
         try:
             e_val = float(entry)
             sl_val = float(sl)
-            tp_val = float(tp)
 
-            # 2. Strict order geometry invariant
+            if e_val <= 0 or sl_val <= 0:
+                raise InvariantViolationError(f"Entry ({e_val}) and SL ({sl_val}) must be positive.")
+
+            # 2. Strict order geometry invariant for SL
             if action == "buy":
-                if not (sl_val < e_val < tp_val):
+                if sl_val >= e_val:
                     raise InvariantViolationError(
-                        f"Geometry breach for BUY: must satisfy SL ({sl_val}) < Entry ({e_val}) < TP ({tp_val})."
+                        f"Geometry breach for BUY: must satisfy SL ({sl_val}) < Entry ({e_val})."
                     )
                 risk = e_val - sl_val
-                reward = tp_val - e_val
             else:  # sell
-                if not (tp_val < e_val < sl_val):
+                if sl_val <= e_val:
                     raise InvariantViolationError(
-                        f"Geometry breach for SELL: must satisfy TP ({tp_val}) < Entry ({e_val}) < SL ({sl_val})."
+                        f"Geometry breach for SELL: must satisfy SL ({sl_val}) > Entry ({e_val})."
                     )
                 risk = sl_val - e_val
-                reward = e_val - tp_val
 
-            # 3. Minimum mathematical Risk:Reward invariant
             if risk <= 0:
                 raise InvariantViolationError(f"Invalid risk distance: {risk} <= 0.")
-            rr = reward / risk
-            if rr < min_rr_ratio:
-                raise InvariantViolationError(
-                    f"R:R invariant breach: calculated R:R ({rr:.2f}) < required min ({min_rr_ratio:.2f})."
-                )
+
+            # 3. If TP is provided, validate TP geometry and R:R ratio
+            if tp is not None:
+                tp_val = float(tp)
+                if tp_val <= 0:
+                    raise InvariantViolationError(f"TP ({tp_val}) must be positive.")
+
+                if action == "buy":
+                    if tp_val <= e_val:
+                        raise InvariantViolationError(
+                            f"Geometry breach for BUY: must satisfy Entry ({e_val}) < TP ({tp_val})."
+                        )
+                    reward = tp_val - e_val
+                else:  # sell
+                    if tp_val >= e_val:
+                        raise InvariantViolationError(
+                            f"Geometry breach for SELL: must satisfy TP ({tp_val}) < Entry ({e_val})."
+                        )
+                    reward = e_val - tp_val
+
+                rr = reward / risk
+                if rr < min_rr_ratio:
+                    raise InvariantViolationError(
+                        f"R:R invariant breach: calculated R:R ({rr:.2f}) < required min ({min_rr_ratio:.2f})."
+                    )
         except (ValueError, TypeError) as conv_err:
             raise InvariantViolationError(f"Corrupt numerical parameters in proposal: {conv_err}")
 

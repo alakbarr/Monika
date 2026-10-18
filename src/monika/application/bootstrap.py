@@ -337,6 +337,75 @@ def build_application_container(
         ),
     )
 
+    # Wire domain risk ports with application and infrastructure providers
+    try:
+        from monika.domain.risk.ports import (
+            register_adaptive_risk_policy_factory,
+            register_broker_client_factory,
+            register_copula_tail_risk_fitter,
+            register_evidence_store_factory,
+            register_evt_tail_calculator,
+            register_regime_classifier,
+            register_risk_data_provider_factory,
+            register_risk_hook_emitter,
+            register_strategy_factor_family_resolver,
+            register_timesfm_alpha_calculator,
+        )
+        from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
+
+        register_risk_data_provider_factory(
+            lambda session=None, settings=None: SqlAlchemyRiskRepository(session=session, settings=settings)
+        )
+
+        from monika.application.analysis.calculators.regime_classifier import classify_market_regime
+
+        register_regime_classifier(classify_market_regime)
+
+        from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
+
+        register_timesfm_alpha_calculator(TimesFMAlphaCalculator)
+
+        from monika.application.analysis.calculators.evt_tail_calculator import fit_evt_peaks_over_threshold
+
+        register_evt_tail_calculator(fit_evt_peaks_over_threshold)
+
+        from monika.application.analysis.calculators.adaptive_policy import AdaptiveRiskPolicy
+
+        register_adaptive_risk_policy_factory(lambda settings=None: AdaptiveRiskPolicy(settings=settings))
+
+        from monika.application.analysis.strategies.evidence_store import EvidenceStore
+
+        register_evidence_store_factory(lambda: EvidenceStore())
+
+        from monika.application.analysis.calculators.copula_tail_risk import fit_clayton_copula
+
+        register_copula_tail_risk_fitter(fit_clayton_copula)
+
+        from monika.application.analysis.strategies.registry import StrategyRegistry
+
+        def _resolve_family(strat_id: str | None) -> str:
+            cls = StrategyRegistry.get_strategy(strat_id) if strat_id else None
+            return str(getattr(cls, "factor_family", "trend")) if cls else "trend"
+
+        register_strategy_factor_family_resolver(_resolve_family)
+
+        from monika.application.execution.broker_registry import get_broker
+
+        register_broker_client_factory(
+            lambda s: get_broker(s.get("broker", {}).get("active_broker", "mt5") if isinstance(s, dict) else "mt5")
+        )
+
+        from monika.application.plugins.manager.manager import PluginHook, get_plugin_manager
+
+        async def _emit_hook(name: str, **kw: Any) -> None:
+            hook_enum = getattr(PluginHook, name, None)
+            if hook_enum:
+                await get_plugin_manager().emit(hook_enum, **kw)
+
+        register_risk_hook_emitter(_emit_hook)
+    except Exception as e:
+        logger.warning(f"Error wiring domain risk ports at bootstrap: {e}")
+
     if overrides:
         for k, v in overrides.items():
             container.register(k, v)

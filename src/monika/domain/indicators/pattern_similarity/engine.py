@@ -331,15 +331,7 @@ class PatternSimilarityEngine:
     ) -> None:
         """Invokes LLM context verifier on top matches."""
         if not llm_client:
-            try:
-                import importlib
-
-                mod = importlib.import_module("monika.infrastructure.providers.llm_factory")
-                get_client = getattr(mod, "get_client_for_task", None)
-                if get_client:
-                    llm_client = get_client("pattern_context_verifier", self.settings)
-            except Exception:
-                return
+            return
 
         curr_ctx = self.context_scorer._current_context
         if not curr_ctx:

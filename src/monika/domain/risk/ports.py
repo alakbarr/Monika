@@ -248,21 +248,8 @@ def register_regime_classifier(fn: Any) -> None:
 
 
 def get_default_regime_classifier() -> Any:
-    """Dynamically resolves default regime classifier function without static application coupling."""
-    if RiskPortRegistry.regime_classifier_fn is not None:
-        return RiskPortRegistry.regime_classifier_fn
-    try:
-        import sys
-
-        mod = sys.modules.get("monika.application.analysis.calculators.regime_classifier")
-        if mod and hasattr(mod, "classify_market_regime"):
-            return mod.classify_market_regime
-        import importlib
-
-        mod = importlib.import_module("monika.application.analysis.calculators.regime_classifier")
-        return getattr(mod, "classify_market_regime", None)
-    except Exception:
-        return None
+    """Returns registered default regime classifier function or None."""
+    return RiskPortRegistry.regime_classifier_fn
 
 
 def register_timesfm_alpha_calculator(calc: Any) -> None:
@@ -271,21 +258,8 @@ def register_timesfm_alpha_calculator(calc: Any) -> None:
 
 
 def get_default_timesfm_alpha_calculator() -> Any:
-    """Dynamically resolves default TimesFM alpha calculator without static application coupling."""
-    if RiskPortRegistry.timesfm_alpha_calculator is not None:
-        return RiskPortRegistry.timesfm_alpha_calculator
-    try:
-        import sys
-
-        mod = sys.modules.get("monika.application.analysis.calculators.timesfm_alpha")
-        if mod and hasattr(mod, "TimesFMAlphaCalculator"):
-            return mod.TimesFMAlphaCalculator
-        import importlib
-
-        mod = importlib.import_module("monika.application.analysis.calculators.timesfm_alpha")
-        return getattr(mod, "TimesFMAlphaCalculator", None)
-    except Exception:
-        return None
+    """Returns registered default TimesFM alpha calculator or None."""
+    return RiskPortRegistry.timesfm_alpha_calculator
 
 
 def register_evt_tail_calculator(calc: Any) -> None:
@@ -294,21 +268,8 @@ def register_evt_tail_calculator(calc: Any) -> None:
 
 
 def get_default_evt_tail_calculator() -> Any:
-    """Dynamically resolves default EVT tail calculator without static application coupling."""
-    if RiskPortRegistry.evt_tail_calculator is not None:
-        return RiskPortRegistry.evt_tail_calculator
-    try:
-        import sys
-
-        mod = sys.modules.get("monika.application.analysis.calculators.evt_tail_calculator")
-        if mod and hasattr(mod, "fit_evt_peaks_over_threshold"):
-            return mod.fit_evt_peaks_over_threshold
-        import importlib
-
-        mod = importlib.import_module("monika.application.analysis.calculators.evt_tail_calculator")
-        return getattr(mod, "fit_evt_peaks_over_threshold", None)
-    except Exception:
-        return None
+    """Returns registered default EVT tail calculator or None."""
+    return RiskPortRegistry.evt_tail_calculator
 
 
 def register_risk_hook_emitter(emitter: Any) -> None:
@@ -317,7 +278,7 @@ def register_risk_hook_emitter(emitter: Any) -> None:
 
 
 async def emit_risk_hook(hook_name: str, **kwargs: Any) -> None:
-    """Safely emit a risk lifecycle hook without static application plugin coupling."""
+    """Safely emit a risk lifecycle hook via registered emitter."""
     if RiskPortRegistry.risk_hook_emitter is not None:
         try:
             res = RiskPortRegistry.risk_hook_emitter(hook_name, **kwargs)
@@ -327,27 +288,6 @@ async def emit_risk_hook(hook_name: str, **kwargs: Any) -> None:
                 await res
         except Exception:
             pass
-        return
-
-    try:
-        import sys
-
-        mod = sys.modules.get("monika.application.plugins.manager.manager")
-        if mod and hasattr(mod, "get_plugin_manager") and hasattr(mod, "PluginHook"):
-            hook_enum = getattr(mod.PluginHook, hook_name, None)
-            if hook_enum:
-                pm = mod.get_plugin_manager()
-                await pm.emit(hook_enum, **kwargs)
-        else:
-            import importlib
-
-            mod = importlib.import_module("monika.application.plugins.manager.manager")
-            hook_enum = getattr(mod.PluginHook, hook_name, None)
-            if hook_enum:
-                pm = mod.get_plugin_manager()
-                await pm.emit(hook_enum, **kwargs)
-    except Exception:
-        pass
 
 
 def register_adaptive_risk_policy_factory(factory: Any) -> None:
@@ -356,22 +296,10 @@ def register_adaptive_risk_policy_factory(factory: Any) -> None:
 
 
 def get_default_adaptive_risk_policy(settings: dict[str, Any] | None = None) -> Any:
-    """Dynamically resolves default AdaptiveRiskPolicy instance without static coupling."""
+    """Returns registered default AdaptiveRiskPolicy instance or None."""
     if RiskPortRegistry.adaptive_risk_policy_factory is not None:
         return RiskPortRegistry.adaptive_risk_policy_factory(settings=settings)
-    try:
-        import sys
-
-        mod = sys.modules.get("monika.application.analysis.calculators.adaptive_policy")
-        if mod and hasattr(mod, "AdaptiveRiskPolicy"):
-            return mod.AdaptiveRiskPolicy(settings=settings)
-        import importlib
-
-        mod = importlib.import_module("monika.application.analysis.calculators.adaptive_policy")
-        cls = getattr(mod, "AdaptiveRiskPolicy", None)
-        return cls(settings=settings) if cls else None
-    except Exception:
-        return None
+    return None
 
 
 def register_evidence_store_factory(factory: Any) -> None:
@@ -379,16 +307,9 @@ def register_evidence_store_factory(factory: Any) -> None:
     RiskPortRegistry.evidence_store_factory = factory
 
 
-def get_default_evidence_store() -> Any:
-    """Dynamically resolves EvidenceStore instance without static application coupling."""
-    if RiskPortRegistry.evidence_store_factory is not None:
-        return RiskPortRegistry.evidence_store_factory()
+def _load_fallback_evidence_store() -> Any:
+    """Lazy fallback loader for EvidenceStore when running without full application bootstrap."""
     try:
-        import sys
-
-        mod = sys.modules.get("monika.application.analysis.strategies.evidence_store")
-        if mod and hasattr(mod, "EvidenceStore"):
-            return mod.EvidenceStore()
         import importlib
 
         mod = importlib.import_module("monika.application.analysis.strategies.evidence_store")
@@ -398,27 +319,21 @@ def get_default_evidence_store() -> Any:
         return None
 
 
+def get_default_evidence_store() -> Any:
+    """Returns registered EvidenceStore instance or fallback."""
+    if RiskPortRegistry.evidence_store_factory is not None:
+        return RiskPortRegistry.evidence_store_factory()
+    return _load_fallback_evidence_store()
+
+
 def register_copula_tail_risk_fitter(fitter: Any) -> None:
     """Register Archimedean copula tail risk fitting function from application layer."""
     RiskPortRegistry.copula_tail_risk_fitter = fitter
 
 
 def get_default_copula_tail_risk_fitter() -> Any:
-    """Dynamically resolves fit_clayton_copula without static application coupling."""
-    if RiskPortRegistry.copula_tail_risk_fitter is not None:
-        return RiskPortRegistry.copula_tail_risk_fitter
-    try:
-        import sys
-
-        mod = sys.modules.get("monika.application.analysis.calculators.copula_tail_risk")
-        if mod and hasattr(mod, "fit_clayton_copula"):
-            return mod.fit_clayton_copula
-        import importlib
-
-        mod = importlib.import_module("monika.application.analysis.calculators.copula_tail_risk")
-        return getattr(mod, "fit_clayton_copula", None)
-    except Exception:
-        return None
+    """Returns registered fit_clayton_copula or None."""
+    return RiskPortRegistry.copula_tail_risk_fitter
 
 
 def register_strategy_factor_family_resolver(resolver: Any) -> None:
@@ -427,24 +342,10 @@ def register_strategy_factor_family_resolver(resolver: Any) -> None:
 
 
 def get_strategy_factor_family(strategy_id: str | None) -> str:
-    """Resolves factor family for given strategy id without static StrategyRegistry import."""
+    """Resolves factor family for given strategy id via registered resolver."""
     if RiskPortRegistry.strategy_factor_family_resolver is not None:
         return str(RiskPortRegistry.strategy_factor_family_resolver(strategy_id))
-    try:
-        import sys
-
-        mod = sys.modules.get("monika.application.analysis.strategies.registry")
-        if mod and hasattr(mod, "StrategyRegistry"):
-            strat_cls = mod.StrategyRegistry.get_strategy(strategy_id) if strategy_id else None
-            return str(getattr(strat_cls, "factor_family", "trend")) if strat_cls else "trend"
-        import importlib
-
-        mod = importlib.import_module("monika.application.analysis.strategies.registry")
-        reg = getattr(mod, "StrategyRegistry", None)
-        strat_cls = reg.get_strategy(strategy_id) if (reg and strategy_id) else None
-        return str(getattr(strat_cls, "factor_family", "trend")) if strat_cls else "trend"
-    except Exception:
-        return "trend"
+    return "trend"
 
 
 def register_broker_client_factory(factory: Any) -> None:
@@ -453,27 +354,7 @@ def register_broker_client_factory(factory: Any) -> None:
 
 
 def get_default_broker_client(settings: Any | None = None) -> Any:
-    """Dynamically resolves default broker client without static coupling."""
+    """Returns registered default broker client or None."""
     if RiskPortRegistry.broker_client_factory is not None:
         return RiskPortRegistry.broker_client_factory(settings)
-    try:
-        import sys
-
-        mod = sys.modules.get("monika.application.execution.broker_registry")
-        if mod and hasattr(mod, "get_broker"):
-            broker_name = (
-                settings.get("broker", {}).get("active_broker", "mt5") if isinstance(settings, dict) else "mt5"
-            )
-            return mod.get_broker(broker_name)
-        import importlib
-
-        mod = importlib.import_module("monika.application.execution.broker_registry")
-        get_broker_fn = getattr(mod, "get_broker", None)
-        if get_broker_fn is not None:
-            broker_name = (
-                settings.get("broker", {}).get("active_broker", "mt5") if isinstance(settings, dict) else "mt5"
-            )
-            return get_broker_fn(broker_name)
-    except Exception:
-        pass
     return None

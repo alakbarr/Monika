@@ -110,16 +110,16 @@ class MarketStructureAnalyzer:
         await analyzer.analyze("XAUUSD", "H4")
     """
 
-    def __init__(self, session: Any, settings: dict):
+    def __init__(self, session: Any = None, settings: Optional[dict] = None):
         """
         Args:
             session: Async SQLAlchemy session.
             settings: Dictionary konfigurasi lengkap atau khusus trading.
         """
         self.session = session
-        self.settings = settings
+        self.settings = settings or {}
         # Kompatibilitas untuk dict konfigurasi penuh atau khusus trading
-        indicators_cfg = settings.get("trading", {}).get("indicators", {}) or settings.get("indicators", {})
+        indicators_cfg = self.settings.get("trading", {}).get("indicators", {}) or self.settings.get("indicators", {})
         self.swing_window: int = indicators_cfg.get("swing_window", 5)
         self.sr_tolerance: float = indicators_cfg.get("sr_tolerance", 0.002)  # 0.2%
         self.sr_min_touches: int = indicators_cfg.get("sr_min_touches", 2)
@@ -295,7 +295,7 @@ class MarketStructureAnalyzer:
 
             LiquidityZone = resolve_model("LiquidityZone")
             SwingPoint = resolve_model("SwingPoint")
-            if not LiquidityZone or not SwingPoint:
+            if not LiquidityZone or not SwingPoint or not self.session:
                 return
 
             await self.session.execute(
@@ -322,7 +322,7 @@ class MarketStructureAnalyzer:
         from sqlalchemy import select
 
         PriceOHLCV = resolve_model("PriceOHLCV")
-        if not PriceOHLCV:
+        if not PriceOHLCV or not self.session:
             return None
 
         result = await self.session.execute(
@@ -1254,7 +1254,7 @@ class MarketStructureAnalyzer:
         SRZone = resolve_model("SRZone")
         StructureBreak = resolve_model("StructureBreak")
         SwingPoint = resolve_model("SwingPoint")
-        if not all([FVGZone, LiquidityZone, OrderBlock, SRZone, StructureBreak, SwingPoint]):
+        if not self.session or not all([FVGZone, LiquidityZone, OrderBlock, SRZone, StructureBreak, SwingPoint]):
             return {}
 
         # Swing points (last 10 highs and lows)
@@ -1337,3 +1337,7 @@ class MarketStructureAnalyzer:
                 {"price": r.price, "type": r.type, "dir": r.direction, "formed": r.formed_at.isoformat()} for r in sb
             ],
         }
+
+
+# Alias for backward compatibility and calculation semantics
+MarketStructureCalculator = MarketStructureAnalyzer

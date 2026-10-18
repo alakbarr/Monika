@@ -107,10 +107,16 @@ VALID_ORDER_TRANSITIONS: Dict[OrderStatus, Set[OrderStatus]] = {
         OrderStatus.EXPIRED,
         OrderStatus.INTERRUPTED,
     },
+    OrderStatus.ABORT_REQUESTED: {
+        OrderStatus.ABORT_REQUESTED,
+        OrderStatus.CANCELLED,
+        OrderStatus.FILLED,
+        OrderStatus.REJECTED,
+        OrderStatus.INTERRUPTED,
+    },
     OrderStatus.FILLED: set(),
     OrderStatus.REJECTED: set(),
     OrderStatus.EXPIRED: set(),
     OrderStatus.CANCELLED: set(),
     OrderStatus.INTERRUPTED: set(),
-    OrderStatus.ABORT_REQUESTED: set(),
 }

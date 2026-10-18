@@ -27,8 +27,15 @@ class SizingCalculator:
         from reference_price (price_at_analysis).
         Returns (is_valid, drift_percentage).
         """
-        if reference_price <= 0:
-            return True, 0.0
+        if (
+            reference_price <= 0
+            or current_market_price <= 0
+            or math.isnan(reference_price)
+            or math.isnan(current_market_price)
+            or math.isinf(reference_price)
+            or math.isinf(current_market_price)
+        ):
+            return False, float("inf")
 
         drift_pct = abs(current_market_price - reference_price) / reference_price * 100.0
         is_valid = drift_pct <= max_drift_pct

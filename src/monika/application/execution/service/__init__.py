@@ -17,6 +17,11 @@ from monika.domain.execution.order_creator import OrderCreator
 from monika.domain.execution.sizing_calculator import SizingCalculator
 from monika.domain.execution.state_machine import OrderStateMachine
 from monika.infrastructure.brokers.audit_logger import TradeAuditLogger
+from monika.infrastructure.database.models import Order
+
+# Register ORM Order model and lifecycle transition handler for application execution service
+OrderCreator.set_order_class(Order)
+OrderStateMachine.set_lifecycle_handler(OrderLifecycleService.transition_order_state)
 
 __all__ = [
     "ExecutionResult",

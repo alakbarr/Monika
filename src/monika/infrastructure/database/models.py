@@ -220,3 +220,12 @@ _current_mod = sys.modules[__name__]
 _proxy_mod = _ModelsFacadeModule(__name__, __doc__)
 _proxy_mod.__dict__.update(_current_mod.__dict__)
 sys.modules[__name__] = _proxy_mod
+
+try:
+    from monika.domain.models_resolver import register_model
+
+    for _name in __all__:
+        if _name in globals():
+            register_model(_name, globals()[_name])
+except Exception:
+    pass

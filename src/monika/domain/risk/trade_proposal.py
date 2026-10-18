@@ -108,9 +108,7 @@ class TradeProposal(BaseModel):
     @classmethod
     def compute_reasoning_hash(cls, reasoning_text: Any) -> str:
         """Computes SHA-256 hash of reasoning text."""
-        if hasattr(reasoning_text, "_mock_return_value") or hasattr(reasoning_text, "_mock_name"):
-            encoded = b"mock_reasoning"
-        elif isinstance(reasoning_text, str):
+        if isinstance(reasoning_text, str):
             encoded = reasoning_text.strip().encode("utf-8")
         elif isinstance(reasoning_text, (bytes, bytearray)):
             encoded = bytes(reasoning_text)

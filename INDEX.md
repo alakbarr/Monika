@@ -33,7 +33,6 @@
 - [`src/monika/domain/market`](#folder-srcmonikadomainmarket)
 - [`src/monika/domain/ports`](#folder-srcmonikadomainports)
 - [`src/monika/domain/risk`](#folder-srcmonikadomainrisk)
-- [`src/monika/domain/risk/domain`](#folder-srcmonikadomainriskdomain)
 - [`src/monika/domain/risk/evaluators`](#folder-srcmonikadomainriskevaluators)
 - [`src/monika/domain/risk/instruments`](#folder-srcmonikadomainriskinstruments)
 - [`src/monika/domain/risk/invariants`](#folder-srcmonikadomainriskinvariants)
@@ -1158,7 +1157,10 @@
 #### `models_resolver.py` - *Dynamic model resolver for Domain layer.*
 - **Path**: [`src/monika/domain/models_resolver.py`](src/monika/domain/models_resolver.py)
 - **Top-Level Functions**:
-  - `resolve_model(name: str) -> Any`: Dynamically resolves a database model by class name from infrastructure.
+  - `register_model(name: str, model_cls: Any) -> None`: Register a database model class into the domain registry.
+  - `register_models(models_dict: dict[str, Any]) -> None`: Batch register model classes into the domain registry.
+  - `resolve_model(name: str) -> Any`: Resolves a registered database model by class name.
+  - `clear_registered_models() -> None`: Clears registered models (for testing).
 
 ### Folder: `src/monika/domain/entities` <a id="folder-srcmonikadomainentities"></a>
 
@@ -1172,7 +1174,7 @@
     - `is_terminal() -> bool` - *Returns True if the order is in a terminal state.*
     - `can_transition_to(target: Union[OrderStatus, str]) -> bool` - *Check whether transition to target state is legally permissible.*
     - `transition_to(new_status: Union[OrderStatus, str], reason: Optional[str], executed_price: Optional[float], ...) -> Dict[str, Any]` - *Pure in-memory transition to a new status.*
-    - `from_orm(obj: Any) -> OrderEntity` - *Create domain OrderEntity from SQLAlchemy model.*
+    - `from_orm(obj: Any) -> OrderEntity` - *Create domain OrderEntity from ORM model or compatible object.*
     - `to_dict() -> Dict[str, Any]` - *Convert entity to a plain dictionary.*
 
 #### `order_status.py` - *Order Status Domain Enum and State Transition Graph.*
@@ -1187,7 +1189,7 @@
 - **Path**: [`src/monika/domain/entities/position.py`](src/monika/domain/entities/position.py)
 - **Classes**:
   - `class PositionEntity(BaseModel)`: Pure domain entity representing a trading position.
-    - `from_orm(obj: Any) -> PositionEntity` - *Create domain PositionEntity from SQLAlchemy model.*
+    - `from_orm(obj: Any) -> PositionEntity` - *Create domain PositionEntity from ORM model or compatible object.*
     - `to_dict() -> Dict[str, Any]` - *Convert entity to a plain dictionary.*
 
 #### `snapshots.py` - *Domain Value Objects & Snapshots for Risk and Portfolio Evaluation.*
@@ -1207,7 +1209,7 @@
 - **Path**: [`src/monika/domain/entities/trade_trigger.py`](src/monika/domain/entities/trade_trigger.py)
 - **Classes**:
   - `class TradeTriggerEntity(BaseModel)`: Pure domain entity representing a conditional trade trigger.
-    - `from_orm(obj: Any) -> TradeTriggerEntity` - *Create domain TradeTriggerEntity from SQLAlchemy model.*
+    - `from_orm(obj: Any) -> TradeTriggerEntity` - *Create domain TradeTriggerEntity from ORM model or compatible object.*
     - `to_dict() -> Dict[str, Any]` - *Convert entity to a plain dictionary.*
 
 ### Folder: `src/monika/domain/execution` <a id="folder-srcmonikadomainexecution"></a>
@@ -1252,7 +1254,7 @@
 - **Path**: [`src/monika/domain/execution/order_creator.py`](src/monika/domain/execution/order_creator.py)
 - **Classes**:
   - `class OrderCreator`: Helper for constructing and validating Order instances.
-    - `get_order_class() -> Any` - *Dynamically resolves order class without static infrastructure coupling.*
+    - `get_order_class() -> Any` - *Resolves order class (defaults to pure domain OrderEntity).*
     - `set_order_class(order_cls: Optional[Any]) -> None` - *Explicitly set or override order model/entity class.*
     - `reset() -> None` - *Reset cached order class to None (for test isolation).*
     - `create_order(symbol: str, order_type: str, direction: str, ...) -> Any` - *Instantiates an Order record with PENDING_SUBMIT status.*
@@ -1267,6 +1269,7 @@
   - `class PendingOrder`: Representasi pending order untuk evaluasi emulator.
   - `class ClientOrderEmulator`: Sub-second event-driven client-side order emulator for Trailing Stop & Breakeven.
     - `__init__(execution_service: Optional[Any], event_bus: Optional[EventBus], settings: Optional[Dict[str, Any]], ...)`
+    - `get_symbol_digits(symbol: str) -> int` - *Deterministically resolves decimal precision digits for any traded symbol.*
     - `subscribe(event_bus: EventBus) -> None` - *Berlangganan ke TickPriceEvent dengan priority 1.*
     - `unsubscribe(event_bus: EventBus) -> None` - *Berhenti berlangganan dari TickPriceEvent.*
     - `async register_position(ticket: int, symbol: str, direction: str, ...) -> TrackedPosition` - *Daftarkan posisi aktif ke emulator in-memory.*
@@ -1291,7 +1294,8 @@
   - `class OrderStateMachine`: Pure domain state machine for order lifecycle transitions.
     - `can_transition(current_status: Union[OrderStatus, str], new_status: Union[OrderStatus, str]) -> bool` - *Check if target state is a valid transition from current state.*
     - `transition(order: Any, new_status: Union[OrderStatus, str], reason: Optional[str], ...) -> Any` - *Pure in-memory transition for an order entity or model.*
-    - `async transition_order_state(session: Any, order: Any, new_status: Any, ...) -> Any` - *Backward-compatibility facade method.*
+    - `set_lifecycle_handler(handler: Any) -> None` - *Set lifecycle transition handler from application layer.*
+    - `async transition_order_state(session: Any, order: Any, new_status: Any, ...) -> Any` - *Delegates persistence and event orchestration to registered lifecycle handler.*
 
 #### `verification_engine.py` - *Evidence-First Verification Engine.*
 - **Path**: [`src/monika/domain/execution/verification_engine.py`](src/monika/domain/execution/verification_engine.py)
@@ -1492,7 +1496,7 @@
   - `class LiquidityZoneData`
   - `class StructureBreakData`
   - `class MarketStructureAnalyzer`: Detects and persists market structure primitives from historical and real-time OHLCV.
-    - `__init__(session: Any, settings: dict)` - *Args:*
+    - `__init__(session: Any, settings: Optional[dict])` - *Args:*
     - `async analyze(symbol: str, timeframe: str) -> dict[str, int]` - *Menjalankan analisis struktur pasar (Swing, S/R, Liq, FVG, OB, BOS).*
     - `async analyze_all(symbols: list[str], timeframes: list[str]) -> dict[str, dict[str, int]]` - *Menjalankan analisis untuk kumpulan symbol dan timeframe.*
     - `async get_structure_snapshot(symbol: str, timeframe: str) -> dict` - *Snapshot ringkas struktur pasar (Swings, S/R, FVG, dll).*
@@ -1503,7 +1507,7 @@
 - **Path**: [`src/monika/domain/indicators/technical.py`](src/monika/domain/indicators/technical.py)
 - **Classes**:
   - `class TechnicalIndicatorCalculator`: Menghitung dan menyimpan indikator dari data OHLCV.
-    - `__init__(session: Any, settings: dict)` - *Args:*
+    - `__init__(session: Any, settings: Optional[dict])` - *Args:*
     - `async compute_and_save(symbol: str, timeframe: str) -> int` - *Menjalankan alur lengkap: load OHLCV -> hitung -> simpan.*
     - `async compute_all_symbols(symbols: list[str], timeframes: list[str]) -> dict[str, int]` - *Menjalankan komputasi untuk semua aset dan timeframe.*
     - `async get_latest(symbol: str, timeframe: str, indicator_name: str) -> Optional[dict]` - *Mengambil metrik indikator terbaru untuk suatu symbol/timeframe.*
@@ -4038,6 +4042,9 @@
 
 #### `brent_yfinance.py` - *Backward-compatibility re-export shim for brent_yfinance.*
 - **Path**: [`src/monika/domain/market/brent_yfinance.py`](src/monika/domain/market/brent_yfinance.py)
+- **Top-Level Functions**:
+  - `register_brent_price_fn(fn: Callable[..., Any]) -> None`
+  - `get_brent_price() -> Any`: Fetch Brent crude price using registered provider or loaded module.
 
 #### `currency_utils.py` - *Utilitas pemetaan simbol instrumen trading ke mata uang terkait.*
 - **Path**: [`src/monika/domain/market/currency_utils.py`](src/monika/domain/market/currency_utils.py)
@@ -4382,23 +4389,23 @@
   - `register_risk_data_provider_factory(factory: Any) -> None`: Register concrete RiskDataProvider factory from infrastructure layer.
   - `get_default_risk_data_provider(settings: dict[str, Any] | None, session: Any | None) -> Any`: Resolves default RiskDataProvider registered by infrastructure layer.
   - `register_regime_classifier(fn: Any) -> None`: Register market regime classification provider from application layer.
-  - `get_default_regime_classifier() -> Any`: Dynamically resolves default regime classifier function without static application coupling.
+  - `get_default_regime_classifier() -> Any`: Returns registered default regime classifier function or None.
   - `register_timesfm_alpha_calculator(calc: Any) -> None`: Register TimesFM alpha calculator from application layer.
-  - `get_default_timesfm_alpha_calculator() -> Any`: Dynamically resolves default TimesFM alpha calculator without static application coupling.
+  - `get_default_timesfm_alpha_calculator() -> Any`: Returns registered default TimesFM alpha calculator or None.
   - `register_evt_tail_calculator(calc: Any) -> None`: Register EVT tail risk calculator from application layer.
-  - `get_default_evt_tail_calculator() -> Any`: Dynamically resolves default EVT tail calculator without static application coupling.
+  - `get_default_evt_tail_calculator() -> Any`: Returns registered default EVT tail calculator or None.
   - `register_risk_hook_emitter(emitter: Any) -> None`: Register risk lifecycle hook emitter from application layer.
-  - `async emit_risk_hook(hook_name: str) -> None`: Safely emit a risk lifecycle hook without static application plugin coupling.
+  - `async emit_risk_hook(hook_name: str) -> None`: Safely emit a risk lifecycle hook via registered emitter.
   - `register_adaptive_risk_policy_factory(factory: Any) -> None`: Register adaptive risk policy factory from application layer.
-  - `get_default_adaptive_risk_policy(settings: dict[str, Any] | None) -> Any`: Dynamically resolves default AdaptiveRiskPolicy instance without static coupling.
+  - `get_default_adaptive_risk_policy(settings: dict[str, Any] | None) -> Any`: Returns registered default AdaptiveRiskPolicy instance or None.
   - `register_evidence_store_factory(factory: Any) -> None`: Register evidence store factory from application layer.
-  - `get_default_evidence_store() -> Any`: Dynamically resolves EvidenceStore instance without static application coupling.
+  - `get_default_evidence_store() -> Any`: Returns registered EvidenceStore instance or fallback.
   - `register_copula_tail_risk_fitter(fitter: Any) -> None`: Register Archimedean copula tail risk fitting function from application layer.
-  - `get_default_copula_tail_risk_fitter() -> Any`: Dynamically resolves fit_clayton_copula without static application coupling.
+  - `get_default_copula_tail_risk_fitter() -> Any`: Returns registered fit_clayton_copula or None.
   - `register_strategy_factor_family_resolver(resolver: Any) -> None`: Register strategy factor family resolver from application layer.
-  - `get_strategy_factor_family(strategy_id: str | None) -> str`: Resolves factor family for given strategy id without static StrategyRegistry import.
+  - `get_strategy_factor_family(strategy_id: str | None) -> str`: Resolves factor family for given strategy id via registered resolver.
   - `register_broker_client_factory(factory: Any) -> None`: Register factory providing broker client implementation to domain risk.
-  - `get_default_broker_client(settings: Any | None) -> Any`: Dynamically resolves default broker client without static coupling.
+  - `get_default_broker_client(settings: Any | None) -> Any`: Returns registered default broker client or None.
 
 #### `position_sizing.py` - *Position Sizing Engine — Perhitungan lot berbasis risiko persentase (fixed-fractional).*
 - **Path**: [`src/monika/domain/risk/position_sizing.py`](src/monika/domain/risk/position_sizing.py)
@@ -4471,14 +4478,6 @@
     - `from_analysis(symbol: str, decision: str, entry_price: float, ...) -> TradeProposal` - *Factory helper creating a validated TradeProposal with automated reasoning hash.*
   - `class FortressAdmissionValidator`: Independent Financial Fortress Gatekeeper.
     - `validate_proposal(proposal: TradeProposal, max_age_seconds: float, require_provenance: bool, ...) -> tuple[bool, list[str]]` - *Validates that a proposal satisfies Financial Fortress admission rules:*
-
-### Folder: `src/monika/domain/risk/domain` <a id="folder-srcmonikadomainriskdomain"></a>
-
-#### `__init__.py` - *Alias for instruments package.*
-- **Path**: [`src/monika/domain/risk/domain/__init__.py`](src/monika/domain/risk/domain/__init__.py)
-
-#### `instruments.py` - *Alias for instruments module.*
-- **Path**: [`src/monika/domain/risk/domain/instruments.py`](src/monika/domain/risk/domain/instruments.py)
 
 ### Folder: `src/monika/domain/risk/evaluators` <a id="folder-srcmonikadomainriskevaluators"></a>
 

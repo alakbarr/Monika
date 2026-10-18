@@ -8,6 +8,7 @@ Constructs validated Order entities before submission to broker adapter.
 """
 
 import logging
+import math
 import uuid
 from typing import Any, Optional, Tuple
 
@@ -29,23 +30,11 @@ class OrderCreator:
 
     @classmethod
     def get_order_class(cls) -> Any:
-        """Dynamically resolves order class without static infrastructure coupling."""
+        """Resolves order class (defaults to pure domain OrderEntity)."""
         if cls._order_class is None:
-            import sys
+            from monika.domain.entities.order import OrderEntity
 
-            models = sys.modules.get("monika.infrastructure.database.models")
-            if models and hasattr(models, "Order"):
-                cls._order_class = getattr(models, "Order")
-            else:
-                try:
-                    import importlib
-
-                    mod = importlib.import_module("monika.infrastructure.database.models")
-                    cls._order_class = getattr(mod, "Order")
-                except Exception:
-                    from monika.domain.entities.order import OrderEntity
-
-                    cls._order_class = OrderEntity
+            cls._order_class = OrderEntity
         return cls._order_class
 
     @classmethod
@@ -99,21 +88,26 @@ class OrderCreator:
         - direction is BUY or SELL
         - entry price is positive
         - SL is correctly positioned relative to entry (SL < entry for BUY, SL > entry for SELL)
+        - SL and TP are strictly positive if provided
         """
         dir_clean = direction.strip().upper()
         if dir_clean not in ("BUY", "SELL"):
             return False, f"Invalid direction '{direction}': must be BUY or SELL"
 
-        if entry_price <= 0:
+        if entry_price <= 0 or math.isnan(entry_price):
             return False, f"Invalid entry price {entry_price}: must be > 0"
 
-        if sl is not None and sl > 0:
+        if sl is not None:
+            if sl <= 0 or math.isnan(sl):
+                return False, f"Invalid Stop Loss {sl}: must be > 0"
             if dir_clean == "BUY" and sl >= entry_price:
                 return False, f"Invalid BUY SL {sl}: must be below entry {entry_price}"
             if dir_clean == "SELL" and sl <= entry_price:
                 return False, f"Invalid SELL SL {sl}: must be above entry {entry_price}"
 
-        if tp is not None and tp > 0:
+        if tp is not None:
+            if tp <= 0 or math.isnan(tp):
+                return False, f"Invalid Take Profit {tp}: must be > 0"
             if dir_clean == "BUY" and tp <= entry_price:
                 return False, f"Invalid BUY TP {tp}: must be above entry {entry_price}"
             if dir_clean == "SELL" and tp >= entry_price:
