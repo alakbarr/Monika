@@ -406,7 +406,7 @@ class GraphCycleScheduler(CycleScheduler):
 
             if not leased_symbols:
                 logger.info(f"[GraphCycleScheduler] All symbols actively leased during trigger '{reason}'. Skipping.")
-                return
+                return {"status": "skipped", "reason": "all_symbols_leased"}
 
             from monika.infrastructure.database.db import get_session as _gs
 
@@ -689,7 +689,7 @@ class GraphCycleScheduler(CycleScheduler):
             active_symbols = [s for s in base_symbols if s in leased_symbols]
             if not active_symbols:
                 logger.info("[Graph] No symbols acquired for execution cycle. All symbols actively leased. Skipping.")
-                return
+                return {"status": "skipped", "reason": "all_symbols_leased"}
 
             state = {
                 "symbols": active_symbols,

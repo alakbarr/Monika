@@ -32,8 +32,6 @@ class TypeSafeProvider(BaseLLMClient):
     Specialized for fast, typed classification, scoring, and boolean decision-making.
     """
 
-    provider_name: str = "typesafe"
-
     def __init__(
         self,
         model: str = "jev-latest",
@@ -65,6 +63,7 @@ class TypeSafeProvider(BaseLLMClient):
         elif clean_model.lower() in ("mercury-decide", "mercury/decide"):
             clean_model = "mercury/decide"
 
+        kwargs.setdefault("provider_name", "typesafe")
         super().__init__(
             model=clean_model,
             max_tokens=max_tokens,
@@ -74,6 +73,7 @@ class TypeSafeProvider(BaseLLMClient):
             temperature=temperature,
             **kwargs,
         )
+        self.provider_name = "typesafe"
 
         # Base URL resolution
         if base_url:

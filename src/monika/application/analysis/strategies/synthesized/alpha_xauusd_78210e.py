@@ -60,7 +60,7 @@ class SynthesizedStrategy_alpha_xauusd_78210e(EdgeStrategy):
             # Sanitize NaNs and Infs
             df["atr_ratio"] = df["atr_ratio"].replace([np.inf, -np.inf], np.nan).ffill().bfill()
             df["price_deviation"] = df["price_deviation"].replace([np.inf, -np.inf], np.nan).ffill().bfill()
-            if df["atr_ratio"].isna().any() or df["price_deviation"].isna().any():
+            if bool(df["atr_ratio"].isna().any()) or bool(df["price_deviation"].isna().any()):
                 return EdgeSignal(
                     strategy_id=self.strategy_id,
                     symbol=symbol,

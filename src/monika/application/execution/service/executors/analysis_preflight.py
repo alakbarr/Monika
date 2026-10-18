@@ -1008,8 +1008,9 @@ class AnalysisPreflightMixin(_ExecutionServiceMixinBase):
                 elapsed = int((clock.now() - start).total_seconds() * 1000)
                 return ExecutionResult(
                     symbol=symbol,
+                    analysis_id=analysis.id,
                     decision=decision,
-                    direction=order_type,
+                    sizing=sizing,
                     risk_approved=False,
                     risk_checks_passed=verdict.checks_passed,
                     risk_checks_failed=verdict.checks_failed + ["adversarial_recommend_block"],
