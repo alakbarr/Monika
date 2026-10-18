@@ -996,13 +996,35 @@ class AnalysisPreflightMixin(_ExecutionServiceMixinBase):
                     elapsed_ms=elapsed,
                 ), None
             if adv.get("recommend_block") and adv.get("overall_quality") == "low":
-                logger.warning(f"[{symbol}] Adversarial check recommends block: {adv.get('block_reason')}")
+                logger.warning(
+                    f"[{symbol}] Adversarial check recommends block: {adv.get('block_reason')}. Failing closed -> blocking trade."
+                )
                 try:
                     await AgentNotifier().send_warning(
-                        f"[PERINGATAN] Adversarial Check — {symbol}\n{adv.get('strongest_counter_argument', '')[:200]}"
+                        f"[PERINGATAN] Adversarial Check Blocked Trade — {symbol}\n{adv.get('strongest_counter_argument', '')[:200]}"
                     )
                 except Exception:
                     pass
+                elapsed = int((clock.now() - start).total_seconds() * 1000)
+                return ExecutionResult(
+                    symbol=symbol,
+                    decision=decision,
+                    direction=order_type,
+                    risk_approved=False,
+                    risk_checks_passed=verdict.checks_passed,
+                    risk_checks_failed=verdict.checks_failed + ["adversarial_recommend_block"],
+                    risk_rejection_reasons=[
+                        adv.get("block_reason", "Adversarial check recommended block with low quality")
+                    ],
+                    executed=False,
+                    mt5_ticket=None,
+                    executed_price=None,
+                    executed_lots=None,
+                    mt5_error=None,
+                    position_id=None,
+                    timestamp=start,
+                    elapsed_ms=elapsed,
+                ), None
 
         ctx = PreflightContext(
             start=start,

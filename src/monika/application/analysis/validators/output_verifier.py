@@ -102,18 +102,7 @@ class OutputVerifier:
                     logger.warning(f"[{symbol}] Self-correction attempt {attempt + 1} failed: {e}")
                     break
 
-        critical_failures = []
-        for f in failures:
-            if "R:R =" in f and "< minimum" in f:
-                import re
-
-                m = re.search(r"R:R = ([0-9.]+)", f)
-                if m and float(m.group(1)) >= 1.15:
-                    logger.info(
-                        f"[{symbol}] OutputVerifier: R:R {m.group(1)} >= 1.15 tolerated under structural constraints."
-                    )
-                    continue
-            critical_failures.append(f)
+        critical_failures = list(failures)
 
         if critical_failures:
             logger.warning(
@@ -181,9 +170,13 @@ class OutputVerifier:
                 if 0 < anchor_dist <= max_snap_dist:
                     old_entry = entry
                     entry = round(nearest_anchor, digits)
+                    sl_dist = abs(entry - sl)
                     if isinstance(output.get("entry_condition"), dict):
                         output["entry_condition"]["price"] = entry
                     snaps.append(f"Deterministic snap: anchored Entry from {old_entry} to structural level {entry}")
+
+        if sl_dist <= 0 or entry == sl:
+            return output, []
 
         # SL Distance Snapping (SOTA Invariant Enforcement): ensure SL is at least 1.0x ATR away
         if atr_val and atr_val > 0:
@@ -315,7 +308,12 @@ class OutputVerifier:
 
         if decision in ("wait", "avoid"):
             if decision == "wait" and not output.get("reevaluation_trigger"):
-                failures.append("reevaluation_trigger is REQUIRED for WAIT decision.")
+                output["reevaluation_trigger"] = {
+                    "type": "time",
+                    "timeframe": "H4",
+                    "condition": "Default re-evaluation after 4 hours for WAIT stance",
+                    "reevaluate_after_hours": 4,
+                }
             return failures  # Only validate trade parameters for buy/sell
 
         # BUY / SELL Validation

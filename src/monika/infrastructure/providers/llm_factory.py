@@ -624,6 +624,15 @@ class FallbackClientWrapper(BaseLLMClient):
             self.thinking_budget = 4096
             self._dynamic_thinking_budget = 4096
 
+    @property
+    def provider_name(self) -> str:
+        """Returns the provider name of the currently active model slot."""
+        try:
+            active_model = self.model or self.primary
+            return self.factory._resolve_provider(active_model)
+        except Exception:
+            return ""
+
     def _maybe_restore_primary(self) -> bool:
         """Check if primary provider cooldown has expired and restore it."""
         import time

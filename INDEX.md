@@ -12395,6 +12395,7 @@
     - `get_client_for_task(task_role: str) -> 'BaseLLMClient'` - *Buat client untuk task role tertentu.*
   - `class FallbackClientWrapper(BaseLLMClient)`: Wrapper that tries primary model, and if it fails, tries fallback models.
     - `__init__(factory: LLMFactory, primary: str, fallbacks: list[str], ...)`
+    - `provider_name() -> str` - *Returns the provider name of the currently active model slot.*
     - `set_thinking_budget(budget: int) -> None` - *Sets thinking budget dynamically for wrapper and upcoming provider invocations.*
     - `async generate(prompt: str, system: str, temperature: Optional[float], ...) -> Optional[str]`
     - `async generate_content(system_prompt: str, user_message: str, response_schema: Optional[dict], ...) -> Optional[str]`

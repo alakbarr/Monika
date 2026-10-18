@@ -180,6 +180,7 @@ class GeminiProvider(BaseLLMClient):
         **kwargs,
     ):
         super().__init__(model, max_tokens, max_tool_turns, thinking_level, settings, temperature, **kwargs)
+        self.provider_name = "gemini"
         self.resolved_model = GEMINI_MODEL_ALIASES.get(model, model)
         self.thinking_level = thinking_level or "none"
         self.resolved_thinking_level = GEMINI_THINKING_LEVEL_MAP.get(str(self.thinking_level).lower(), "MINIMAL")

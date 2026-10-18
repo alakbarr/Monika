@@ -96,18 +96,33 @@ class SignalArbitrator:
             if quant_signal is not None:
                 if isinstance(quant_signal, dict):
                     q_meta = quant_signal.get("meta", {}) or {}
-                else:
-                    q_meta = getattr(quant_signal, "meta", {}) or {}
+                elif hasattr(quant_signal, "meta") and isinstance(quant_signal.meta, dict):
+                    q_meta = quant_signal.meta
 
-            wfe = q_meta.get("wfe") or q_meta.get("walk_forward_efficiency") or kwargs.get("wfe")
-            sharpe = q_meta.get("sharpe") or q_meta.get("sharpe_ratio") or kwargs.get("sharpe")
+            wfe = None
+            sharpe = None
+            if isinstance(q_meta, dict):
+                wfe = q_meta.get("wfe") or q_meta.get("walk_forward_efficiency")
+                sharpe = q_meta.get("sharpe") or q_meta.get("sharpe_ratio")
+            if wfe is None:
+                wfe = kwargs.get("wfe")
+            if sharpe is None:
+                sharpe = kwargs.get("sharpe")
+
+            if wfe is not None and not isinstance(wfe, (int, float, str)):
+                wfe = None
+            if sharpe is not None and not isinstance(sharpe, (int, float, str)):
+                sharpe = None
 
             is_borderline = False
             borderline_reasons = []
+            sub_baseline_reasons = []
             if wfe is not None:
                 try:
                     wfe_val = float(wfe)
-                    if 0.55 <= wfe_val <= 0.65:
+                    if wfe_val < 0.55:
+                        sub_baseline_reasons.append(f"WFE {wfe_val:.2f} below minimum threshold 0.55")
+                    elif 0.55 <= wfe_val <= 0.65:
                         is_borderline = True
                         borderline_reasons.append(f"WFE {wfe_val:.2f} in borderline band [0.55, 0.65]")
                 except ValueError, TypeError:
@@ -115,13 +130,29 @@ class SignalArbitrator:
             if sharpe is not None:
                 try:
                     sharpe_val = float(sharpe)
-                    if 1.40 <= sharpe_val <= 1.60:
+                    if sharpe_val < 1.40:
+                        sub_baseline_reasons.append(f"Sharpe {sharpe_val:.2f} below minimum threshold 1.40")
+                    elif 1.40 <= sharpe_val <= 1.60:
                         is_borderline = True
                         borderline_reasons.append(f"Sharpe {sharpe_val:.2f} in borderline band [1.40, 1.60]")
                 except ValueError, TypeError:
                     pass
 
-            if is_borderline:
+            if sub_baseline_reasons:
+                old_mult = res.risk_multiplier
+                new_mult = round(old_mult * 0.25, 2)
+                res.risk_multiplier = new_mult
+                res.arbitration_reason += f" [Sub-Baseline Buffer Guard: {' & '.join(sub_baseline_reasons)} -> risk damped 0.25x to {new_mult:.2f}]"
+                if not isinstance(res.meta, dict):
+                    res.meta = {}
+                res.meta["borderline_buffer_guard"] = {
+                    "applied": True,
+                    "sub_baseline": True,
+                    "reasons": sub_baseline_reasons,
+                    "original_risk_multiplier": old_mult,
+                    "damped_risk_multiplier": new_mult,
+                }
+            elif is_borderline:
                 old_mult = res.risk_multiplier
                 new_mult = round(old_mult * 0.60, 2)
                 res.risk_multiplier = new_mult
@@ -130,6 +161,7 @@ class SignalArbitrator:
                     res.meta = {}
                 res.meta["borderline_buffer_guard"] = {
                     "applied": True,
+                    "sub_baseline": False,
                     "reasons": borderline_reasons,
                     "original_risk_multiplier": old_mult,
                     "damped_risk_multiplier": new_mult,
@@ -183,8 +215,8 @@ class SignalArbitrator:
                     correlation_id=str(kwargs.get("cycle_id", f"arb_{symbol}")),
                     actor="signal_arbitrator",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[{symbol}] Failed to emit arbitration event telemetry: {e}")
         return res
 
     async def _do_arbitrate(
@@ -219,6 +251,36 @@ class SignalArbitrator:
         quant_dir = str(_get_q("direction", "") or "").lower()
         quant_strat_id = str(_get_q("strategy_id", "unknown") or "unknown")
         quant_is_valid = bool(quant_signal is not None and _get_q("valid", True) and quant_dir in ("buy", "sell"))
+
+        # Volatile Chop Protection: Proteksi modal holistik di awal sebelum skenario concordant / conflict
+        chop_block = (
+            bool(regime_info.get("volatility_chop", {}).get("chop_block", False))
+            if isinstance(regime_info, dict)
+            else False
+        )
+        is_volatile_chop = market_regime in ("volatile_chop", "chop", "turbulent_chop") or chop_block
+        if is_volatile_chop and (quant_is_valid or llm_decision is not None):
+            l_dir_raw = str(llm_decision.get("decision", "wait")).lower() if llm_decision else "wait"
+            logger.warning(
+                f"[{symbol}] Volatile chop regime detected ({market_regime}, chop_block={chop_block}). "
+                f"Suppressing all directional execution (Quant={quant_dir}, LLM={l_dir_raw}) -> AVOID."
+            )
+            res = ArbitrationResult(
+                symbol=symbol,
+                decision="avoid",
+                confidence=0.0,
+                risk_multiplier=0.0,
+                selected_source="chop_block_suppression",
+                arbitration_reason=f"Arbitrator suppressed signal: Volatile chop regime detected ({market_regime}). Quant execution blocked while LLM is in {l_dir_raw} stance.",
+                meta={
+                    "quant_signal": quant_dir,
+                    "llm_signal": l_dir_raw,
+                    "market_regime": market_regime,
+                    "chop_block": chop_block,
+                },
+            )
+            await self._log_arbitration_telemetry(symbol, quant_signal, l_dir_raw, 0.0, market_regime, res)
+            return res
 
         # 1. Hanya sinyal Quant yang valid tersedia
         if quant_is_valid and llm_decision is None:
@@ -615,17 +677,23 @@ class SignalArbitrator:
                     fav_entry = _get_q("entry_price") if favored_source == "quant" else llm_decision.get("entry_price")
                     fav_sl = _get_q("stop_loss") if favored_source == "quant" else llm_decision.get("stop_loss")
                     fav_tp = _get_q("take_profit") if favored_source == "quant" else llm_decision.get("take_profit")
+                    fav_conf = q_conf if favored_source == "quant" else l_conf
+                    base_risk = (
+                        quant_priority_risk_mult
+                        if favored_source == "quant"
+                        else float(llm_decision.get("risk_multiplier", 1.0) or 1.0)
+                    )
                     return ArbitrationResult(
                         symbol=symbol,
                         decision=tfm_favors,
-                        confidence=0.75,
-                        risk_multiplier=round(quant_priority_risk_mult * 0.85, 2),
+                        confidence=round(fav_conf * 0.95, 2),
+                        risk_multiplier=round(base_risk * 0.85, 2),
                         selected_source=f"timesfm_tie_break_{favored_source}",
                         arbitration_reason=f"TimesFM 3.0 statistical skew ({tfm_skew:+.2f}) resolved conflict in favor of {favored_source.upper()} {tfm_favors.upper()}.",
                         entry_price=fav_entry,
                         stop_loss=fav_sl,
                         take_profit=fav_tp,
-                        meta={"conflict_resolved": True, "timesfm_skew": tfm_skew},
+                        meta={"conflict_resolved": True, "timesfm_skew": tfm_skew, "favored_confidence": fav_conf},
                     )
 
             # Conviction delta resolution: higher conviction source takes precedence with damped risk

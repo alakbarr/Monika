@@ -293,13 +293,13 @@ Formulate strongest_counter_argument, hard_block, and recommend_block FIRST befo
                     f"Symbol: {analysis.symbol}\n"
                     f"Decision: {analysis.decision}\n"
                     f"Error: {e}\n\n"
-                    f"Trade status: {'REJECTED (Fail-Closed)' if bool(settings.get('adversarial_check', {}).get('fail_closed', False)) else 'ALLOWED (Damped 0.75x)'}."
+                    f"Trade status: {'REJECTED (Fail-Closed)' if bool(settings.get('adversarial_check', {}).get('fail_closed', True)) else 'ALLOWED (Damped 0.75x)'}."
                 )
             )
         except Exception:
             pass
 
-        fail_closed = bool(settings.get("adversarial_check", {}).get("fail_closed", False))
+        fail_closed = bool(settings.get("adversarial_check", {}).get("fail_closed", True))
         if fail_closed:
             return {
                 "strongest_counter_argument": f"Adversarial check unavailable (failing closed per AGENTS.md §1): {e}",

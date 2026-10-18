@@ -70,7 +70,11 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
         )
         rejected_candidates.extend(arb_rejected)
     except Exception as e:
-        logger.debug(f"[RiskGateNode] SignalArbitrator check non-fatal error: {e}")
+        logger.critical(
+            f"[RiskGateNode] SignalArbitrator check failed with error: {e}. Failing closed -> stopping actionable trades.",
+            exc_info=True,
+        )
+        actionable = []
 
     if not actionable:
         return {"summary": summary, "actionable_trades": [], "approved_trades": []}
@@ -253,7 +257,11 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
 
             actionable = precommit_approved
         except Exception as e:
-            logger.debug(f"[RiskGateNode] TradePreCommitGate check non-fatal error: {e}")
+            logger.critical(
+                f"[RiskGateNode] TradePreCommitGate check failed with error: {e}. Failing closed -> clearing actionable trades.",
+                exc_info=True,
+            )
+            actionable = []
 
     summary["portfolio_synthesis_approved"] = [sym for sym, r in actionable]
 

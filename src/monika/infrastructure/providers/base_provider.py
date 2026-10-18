@@ -443,6 +443,7 @@ class BaseLLMClient(LlmPort, ABC):
         from monika.infrastructure.providers.capabilities import get_model_capabilities
 
         self.capabilities = get_model_capabilities(model)
+        self.provider_name = kwargs.get("provider_name", "")
 
     def set_thinking_budget(self, budget: int) -> None:
         """Set dynamic reasoning/thinking token budget for this client instance."""
