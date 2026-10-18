@@ -207,7 +207,7 @@ async def compute_bollinger_donchian_chop(
     bb_stmt = bb_stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(lookback)
     bb_rows = (await session.execute(bb_stmt)).scalars().all()
     if len(bb_rows) < 10:
-        return {"chop_block": False, "reason": "insufficient_history_fail_open"}
+        return {"chop_block": False, "reason": "insufficient_history"}
     widths = []
     for row in bb_rows:
         try:
@@ -217,7 +217,7 @@ async def compute_bollinger_donchian_chop(
         except Exception:
             continue
     if len(widths) < 10:
-        return {"chop_block": False, "reason": "insufficient_valid_samples_fail_open"}
+        return {"chop_block": False, "reason": "insufficient_valid_samples"}
     current = widths[0]
     ranked = sorted(widths)
     percentile = ranked.index(min(ranked, key=lambda x: abs(x - current))) / len(ranked) * 100

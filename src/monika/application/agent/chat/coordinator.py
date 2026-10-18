@@ -627,9 +627,24 @@ class ChatAgent(
 
         if pending:
             action_sym = str(pending.params.get("symbol") or "")
-            if action_sym and self.is_symbol_session_approved(action_sym):
+            # AGENTS.md Directive §1 Safety: Real capital orders and OS actions NEVER auto-execute without explicit operator confirmation.
+            TRADING_ORDER_ACTIONS = {
+                "place_order",
+                "close_position",
+                "modify_position",
+                "partial_close_and_breakeven",
+                "execute_terminal_command",
+                "desktop_gui_action",
+                "db_mutation",
+            }
+            can_auto_execute = (
+                bool(action_sym)
+                and self.is_symbol_session_approved(action_sym)
+                and pending.action_type not in TRADING_ORDER_ACTIONS
+            )
+            if can_auto_execute:
                 logger.info(
-                    f"[ChatAgent] Auto-executing action #{pending.action_id} for session-approved symbol {action_sym}"
+                    f"[ChatAgent] Auto-executing non-trading action #{pending.action_id} for session-approved symbol {action_sym}"
                 )
                 try:
                     auto_res = await self._execute_action(pending)

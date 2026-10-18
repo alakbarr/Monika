@@ -66,15 +66,23 @@ class ActionExecutionMixin(_ChatAgentMixinBase):
                 # Slippage validation: Only apply price drift check to market orders. For limit/stop, validate entry side.
                 order_type = str(params.get("order_type", "market")).lower()
                 curr_price, is_stale, _ = await svc._get_current_price(symbol, direction)
+                if is_stale:
+                    return f"[GAGAL] Order ditolak: Data harga broker untuk {symbol} kedaluwarsa (stale price). Silakan periksa koneksi feed broker."
+                if curr_price is None:
+                    return f"[GAGAL] Order ditolak: Gagal mengambil harga pasar terkini untuk {symbol} dari broker."
+
                 proposed_entry = params.get("entry_price")
-                if order_type == "market" and curr_price and proposed_entry:
+                if order_type == "market":
+                    if proposed_entry is None:
+                        proposed_entry = curr_price
+                        params["entry_price"] = curr_price
                     atr_res = await executor.execute("get_atr", {"symbol": symbol, "timeframe": "H1"})
                     atr = (atr_res.get("atr_14") if isinstance(atr_res, dict) else None) or (curr_price * 0.005)
                     max_allowed_slippage = atr * 0.5
                     price_drift = abs(curr_price - proposed_entry)
                     if price_drift > max_allowed_slippage:
                         return f"[GAGAL] Order kedaluwarsa karena harga bergerak melebihi batas toleransi slippage (0.5 ATR / {price_drift:.5f} vs max {max_allowed_slippage:.5f}). Silakan ajukan ulang."
-                elif order_type in ("limit", "buy_limit", "sell_limit") and curr_price and proposed_entry:
+                elif order_type in ("limit", "buy_limit", "sell_limit") and proposed_entry:
                     if direction == "buy" and proposed_entry >= curr_price:
                         return f"[GAGAL] Buy Limit entry ({proposed_entry:.5f}) harus berada di bawah harga pasar saat ini ({curr_price:.5f})."
                     elif direction == "sell" and proposed_entry <= curr_price:
@@ -506,6 +514,8 @@ class ActionExecutionMixin(_ChatAgentMixinBase):
             return await self._execute_db_mutation(params)
 
         elif action.action_type == "execute_terminal_command":
+            if not getattr(self, "is_admin", False):
+                return "[GAGAL] Akses Ditolak: Perintah terminal hanya diizinkan untuk Admin."
             from monika.application.analysis.tools.tool_executor import ToolExecutor
 
             async with get_session() as session:
@@ -514,6 +524,8 @@ class ActionExecutionMixin(_ChatAgentMixinBase):
                 return f"[TERMINAL OUTPUT]\n{res}"
 
         elif action.action_type == "desktop_gui_action":
+            if not getattr(self, "is_admin", False):
+                return "[GAGAL] Akses Ditolak: Aksi desktop GUI hanya diizinkan untuk Admin."
             from monika.application.analysis.tools.tool_executor import ToolExecutor
 
             async with get_session() as session:

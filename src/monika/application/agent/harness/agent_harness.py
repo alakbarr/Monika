@@ -747,6 +747,14 @@ class AgentHarness:
         session = session or getattr(self, "db_session", None)
         effective_max_turns = max_tool_turns or self.max_tool_turns
         stage_symbol = stage_name.replace("per_asset_", "") if stage_name.startswith("per_asset_") else None
+        if stage_symbol:
+            try:
+                from monika.application.agent.turn_lease_manager import SymbolTurnLeaseManager
+
+                await SymbolTurnLeaseManager.get_instance().attach_harness_for_symbol(stage_symbol, self)
+            except Exception as e:
+                logger.debug(f"Failed to attach harness to lease for {stage_symbol}: {e}")
+
         turn_timeout = float(kwargs.get("turn_timeout_seconds") or getattr(self, "per_turn_timeout_seconds", 90.0))
 
         # Minify tool definitions to eliminate verbose schema bloat across multi-turn ReAct loop

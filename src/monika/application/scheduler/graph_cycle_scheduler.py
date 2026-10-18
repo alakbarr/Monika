@@ -404,12 +404,16 @@ class GraphCycleScheduler(CycleScheduler):
                 if await lease_mgr.acquire_lease(sym, holder_id=session_holder_id, ttl_seconds=300.0):
                     leased_symbols.append(sym)
 
+            if not leased_symbols:
+                logger.info(f"[GraphCycleScheduler] All symbols actively leased during trigger '{reason}'. Skipping.")
+                return
+
             from monika.infrastructure.database.db import get_session as _gs
 
             try:
                 pa_results = await self._per_asset.run_all(
                     session_factory=_gs,
-                    symbols=self.asset_universe,
+                    symbols=leased_symbols,
                     is_secondary=True,
                     use_session_trigger_client=True,
                     extra_context=(
@@ -681,8 +685,14 @@ class GraphCycleScheduler(CycleScheduler):
                     f"[Graph] Forex market closed for weekend. Restricting symbols to crypto 24/7: {weekend_symbols_override}"
                 )
 
+            base_symbols = weekend_symbols_override if weekend_symbols_override is not None else self.asset_universe
+            active_symbols = [s for s in base_symbols if s in leased_symbols]
+            if not active_symbols:
+                logger.info("[Graph] No symbols acquired for execution cycle. All symbols actively leased. Skipping.")
+                return
+
             state = {
-                "symbols": self.asset_universe,
+                "symbols": active_symbols,
                 "market_regime": "unknown",
                 "vix_level": None,
                 "brief_confidence": None,

@@ -243,21 +243,20 @@ class EdgeStrategyRunner:
                             if "mean_reversion" in sig.tags
                             else "trend"
                             if "trend" in sig.tags
-                            else None
+                            else getattr(sig, "factor_family", None)
                         )
-                        if strat_type:
-                            allowed, reason = await evaluate_pretrade_gate(session, symbol, self.settings, strat_type)
-                            if not allowed:
-                                gate_key = (sig.strategy_id, symbol, str(reason))
-                                last_rej = self._gate_rejection_log_time.get(gate_key, 0.0)
-                                if now_ts - last_rej >= self.cooldown_seconds:
-                                    self._gate_rejection_log_time[gate_key] = now_ts
-                                    logger.info(
-                                        f"[{sig.strategy_id}/{symbol}] pretrade gate: {reason} (throttled {self.cooldown_seconds:.0f}s)"
-                                    )
-                                else:
-                                    logger.debug(f"[{sig.strategy_id}/{symbol}] pretrade gate: {reason}")
-                                continue
+                        allowed, reason = await evaluate_pretrade_gate(session, symbol, self.settings, strat_type)
+                        if not allowed:
+                            gate_key = (sig.strategy_id, symbol, str(reason))
+                            last_rej = self._gate_rejection_log_time.get(gate_key, 0.0)
+                            if now_ts - last_rej >= self.cooldown_seconds:
+                                self._gate_rejection_log_time[gate_key] = now_ts
+                                logger.info(
+                                    f"[{sig.strategy_id}/{symbol}] pretrade gate: {reason} (throttled {self.cooldown_seconds:.0f}s)"
+                                )
+                            else:
+                                logger.debug(f"[{sig.strategy_id}/{symbol}] pretrade gate: {reason}")
+                            continue
 
                         candidates.append(sig)
                     except Exception as e:

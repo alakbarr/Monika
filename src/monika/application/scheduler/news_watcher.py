@@ -861,9 +861,15 @@ class NewsWatcher:
                 if await lease_mgr.acquire_lease(sym, holder_id=holder_id, ttl_seconds=300.0):
                     acquired_symbols.append(sym)
 
+            if not acquired_symbols:
+                logger.info(
+                    f"[NewsWatcher] No symbol leases acquired from candidate list {symbols}; skipping reanalysis."
+                )
+                return
+
             pa_results = await self._per_asset_stage.run_all(
                 session_factory=get_session,
-                symbols=symbols,
+                symbols=acquired_symbols,
                 is_secondary=True,
                 use_session_trigger_client=True,
                 extra_context=context,

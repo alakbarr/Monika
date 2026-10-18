@@ -8,6 +8,7 @@ PendingAction lifecycle, session approvals, proposal confirmation, and denial ci
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
@@ -107,19 +108,23 @@ class ActionStateMixin(_ChatAgentMixinBase):
             logger.debug(f"[ChatAgent] Could not restore pending action {action_id}: {e}")
         return None
 
+    def _get_action_lock(self) -> asyncio.Lock:
+        if not hasattr(self, "_action_lock") or self._action_lock is None:
+            self._action_lock = asyncio.Lock()
+        return self._action_lock
+
     async def approve_for_session(self, action_id: str) -> tuple[bool, str]:
-        """Eksekusi aksi dan aktifkan approval berdurasi 4 jam untuk simbol yang diajukan."""
+        """Eksekusi aksi dan aktifkan approval sesi hanya jika eksekusi berhasil."""
         action = await self.get_pending_action(action_id)
         if not action:
             return False, "Action not found or already processed."
         symbol = str(action.params.get("symbol") or "")
-        if symbol:
-            self.add_session_approval(symbol)
         success, msg = await self.confirm_action(action_id)
         if success and symbol:
+            self.add_session_approval(symbol)
             msg += (
-                f"\n\n *Izin Sesi Aktif*: Proposal trading untuk `{symbol.upper()}` "
-                f"diizinkan otomatis selama {self.SESSION_APPROVAL_TTL_HOURS} jam ke depan."
+                f"\n\n *Izin Sesi Aktif*: Sesi aktif untuk `{symbol.upper()}` "
+                f"selama {self.SESSION_APPROVAL_TTL_HOURS} jam ke depan."
             )
         return success, msg
 
@@ -144,22 +149,27 @@ class ActionStateMixin(_ChatAgentMixinBase):
     async def confirm_action(self, action_id: str) -> tuple[bool, str]:
         """
         Mengeksekusi usulan aksi setelah user konfirmasi.
+        Dilindungi oleh lock konkurensi untuk mencegah eksekusi ganda (double-execution race).
         Returns: (success, message)
         """
-        action = await self.get_pending_action(action_id)
-        if not action:
-            return False, "Action not found or already processed."
-        if action.is_expired():
+        async with self._get_action_lock():
+            action = await self.get_pending_action(action_id)
+            if not action:
+                return False, "Action not found or already processed."
+            if action.is_expired():
+                self._pending_actions.pop(action_id, None)
+                await self._delete_persisted_pending_action(action_id)
+                return False, "Action expired (90-second timeout). Please request again."
+
+            # Pop immediately within the lock to claim exclusive ownership
             self._pending_actions.pop(action_id, None)
             await self._delete_persisted_pending_action(action_id)
-            return False, "Action expired (90-second timeout). Please request again."
+            self._consecutive_denials = 0  # Reset on approval
 
-        self._pending_actions.pop(action_id, None)
-        await self._delete_persisted_pending_action(action_id)
-        self._consecutive_denials = 0  # Reset on approval
-
+        # Execute claimed action outside the lock to avoid blocking other actions
         try:
             result_msg = await self._execute_action(action)
+            is_success = not result_msg.startswith("[GAGAL]") and not result_msg.startswith("[ERROR]")
             async with get_session() as session:
                 session.add(
                     ActivityLog(
@@ -169,7 +179,7 @@ class ActionStateMixin(_ChatAgentMixinBase):
                     )
                 )
                 await session.commit()
-            return True, result_msg
+            return is_success, result_msg
         except Exception as e:
             logger.error(f"Action execution failed: {e}")
             return False, f"Execution failed: {e}"

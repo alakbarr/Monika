@@ -59,7 +59,18 @@ class SymbolTurnLeaseManager:
 
     def __init__(self):
         self._leases: Dict[str, SymbolLease] = {}
-        self._lock = asyncio.Lock()
+        self._lock: Optional[asyncio.Lock] = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
+
+    def _prune_expired_locked(self) -> None:
+        now = datetime.now(timezone.utc)
+        expired = [k for k, v in self._leases.items() if v.expires_at <= now]
+        for k in expired:
+            del self._leases[k]
 
     def _normalize(self, symbol: str) -> str:
         return (symbol or "").upper().replace("/", "").replace("_", "").strip()
@@ -79,7 +90,8 @@ class SymbolTurnLeaseManager:
         if not clean:
             return False
 
-        async with self._lock:
+        async with self._get_lock():
+            self._prune_expired_locked()
             existing = self._leases.get(clean)
             if existing is not None and not existing.is_expired and existing.holder_id != holder_id:
                 logger.info(
@@ -97,10 +109,21 @@ class SymbolTurnLeaseManager:
             logger.debug(f"[SymbolTurnLeaseManager] Lease on '{clean}' granted to '{holder_id}' (TTL: {ttl_seconds}s).")
             return True
 
+    async def attach_harness_for_symbol(self, symbol: str, harness: Any) -> bool:
+        """Attach active harness to existing unexpired lease for symbol."""
+        clean = self._normalize(symbol)
+        async with self._get_lock():
+            existing = self._leases.get(clean)
+            if existing and not existing.is_expired:
+                existing.active_harness = harness
+                logger.debug(f"[SymbolTurnLeaseManager] Attached active harness to '{clean}'.")
+                return True
+            return False
+
     async def attach_harness(self, symbol: str, holder_id: str, harness: Any) -> bool:
         """Attach active harness to an existing unexpired lease."""
         clean = self._normalize(symbol)
-        async with self._lock:
+        async with self._get_lock():
             existing = self._leases.get(clean)
             if existing and not existing.is_expired and existing.holder_id == holder_id:
                 existing.active_harness = harness
@@ -111,7 +134,8 @@ class SymbolTurnLeaseManager:
     async def release_lease(self, symbol: str, holder_id: str) -> bool:
         """Release active lease if held by the requesting holder."""
         clean = self._normalize(symbol)
-        async with self._lock:
+        async with self._get_lock():
+            self._prune_expired_locked()
             existing = self._leases.get(clean)
             if existing and (existing.holder_id == holder_id or existing.is_expired):
                 del self._leases[clean]
@@ -131,7 +155,8 @@ class SymbolTurnLeaseManager:
         Returns True if coalesced; False if no active lease exists (caller must run new analysis).
         """
         clean = self._normalize(symbol)
-        async with self._lock:
+        async with self._get_lock():
+            self._prune_expired_locked()
             existing = self._leases.get(clean)
             if not existing or existing.is_expired:
                 return False
@@ -153,14 +178,16 @@ class SymbolTurnLeaseManager:
     async def is_symbol_leased(self, symbol: str) -> bool:
         """Check if symbol currently has an active, unexpired lease."""
         clean = self._normalize(symbol)
-        async with self._lock:
+        async with self._get_lock():
+            self._prune_expired_locked()
             existing = self._leases.get(clean)
             return existing is not None and not existing.is_expired
 
     async def get_lease_holder(self, symbol: str) -> Optional[str]:
         """Retrieve current leaseholder ID for symbol if active."""
         clean = self._normalize(symbol)
-        async with self._lock:
+        async with self._get_lock():
+            self._prune_expired_locked()
             existing = self._leases.get(clean)
             if existing and not existing.is_expired:
                 return existing.holder_id

@@ -4842,6 +4842,7 @@
     - `reset() -> None`
     - `__init__()`
     - `async acquire_lease(symbol: str, holder_id: str, ttl_seconds: float, ...) -> bool` - *Attempt to acquire an exclusive analysis lease for a symbol.*
+    - `async attach_harness_for_symbol(symbol: str, harness: Any) -> bool` - *Attach active harness to existing unexpired lease for symbol.*
     - `async attach_harness(symbol: str, holder_id: str, harness: Any) -> bool` - *Attach active harness to an existing unexpired lease.*
     - `async release_lease(symbol: str, holder_id: str) -> bool` - *Release active lease if held by the requesting holder.*
     - `async coalesce_event(symbol: str, event_text: str, sender: str) -> bool` - *Check if an active analysis lease exists for the symbol and coalesce the event*
@@ -4932,7 +4933,7 @@
     - `is_symbol_session_approved(symbol: str) -> bool` - *Periksa apakah simbol memiliki izin approval aktif pada level sesi.*
     - `add_session_approval(symbol: str) -> datetime` - *Berikan izin sesi berdurasi 4 jam untuk simbol tertentu.*
     - `async get_pending_action(action_id: str) -> Optional[PendingAction]` - *Fetch pending action from memory or restore from DB.*
-    - `async approve_for_session(action_id: str) -> tuple[bool, str]` - *Eksekusi aksi dan aktifkan approval berdurasi 4 jam untuk simbol yang diajukan.*
+    - `async approve_for_session(action_id: str) -> tuple[bool, str]` - *Eksekusi aksi dan aktifkan approval sesi hanya jika eksekusi berhasil.*
     - `is_proposals_paused() -> bool` - *Check if trading action proposals are currently paused by denial circuit breaker.*
     - `record_denial() -> tuple[bool, str]` - *Record a denial; if consecutive denials reach threshold, trip circuit breaker.*
     - `resume_proposals() -> str` - *Reset denial circuit breaker and re-enable action proposals.*
