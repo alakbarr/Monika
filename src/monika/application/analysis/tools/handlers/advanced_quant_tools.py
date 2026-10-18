@@ -405,8 +405,20 @@ async def handle_evaluate_debate_efficacy(args: dict, **ctx) -> dict:
     unmod_wins = sum(1 for t in trades if float(t.pnl_usd or 0) > 0 and not getattr(t, "was_debate_modified", False))
     unmod_total = sum(1 for t in trades if not getattr(t, "was_debate_modified", False))
 
-    wr_modified = round((mod_wins / mod_total) * 100.0, 1) if mod_total > 0 else 58.5
-    wr_unmodified = round((unmod_wins / unmod_total) * 100.0, 1) if unmod_total > 0 else 51.2
+    wr_modified = round((mod_wins / mod_total) * 100.0, 1) if mod_total > 0 else None
+    wr_unmodified = round((unmod_wins / unmod_total) * 100.0, 1) if unmod_total > 0 else None
+    alpha_added = (
+        round(wr_modified - wr_unmodified, 1) if wr_modified is not None and wr_unmodified is not None else None
+    )
+
+    if wr_modified is None or wr_unmodified is None:
+        verdict = "INSUFFICIENT_DATA: Requires at least 1 closed debate-modified and 1 unmodified trade."
+    elif alpha_added is not None and alpha_added > 0:
+        verdict = f"Debate engine added positive alpha (+{alpha_added}% win rate differential)."
+    elif alpha_added is not None and alpha_added < 0:
+        verdict = f"Debate engine reduced win rate ({alpha_added}% win rate differential)."
+    else:
+        verdict = "Debate engine had neutral effect on win rate."
 
     return {
         "status": "success",
@@ -419,8 +431,8 @@ async def handle_evaluate_debate_efficacy(args: dict, **ctx) -> dict:
         ),
         "win_rate_with_debate_pct": wr_modified,
         "win_rate_without_debate_pct": wr_unmodified,
-        "alpha_added_pct": round(wr_modified - wr_unmodified, 1),
-        "verdict": "Debate engine adds positive alpha by filtering out retail FOMO and confirming liquidity sweeps.",
+        "alpha_added_pct": alpha_added,
+        "verdict": verdict,
     }
 
 

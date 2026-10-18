@@ -41,19 +41,20 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
                 if account_info:
                     raw_balance = account_info.get("balance")
                     raw_equity = account_info.get("equity")
-                    if raw_balance is not None:
-                        balance = float(raw_balance)
-                    else:
-                        fallback_bal = float(
-                            getattr(agent, "settings", {}).get("paper_trading", {}).get("initial_balance", 10000.0)
+                    if raw_balance is None or raw_equity is None:
+                        logger.error(
+                            f"[DrawdownMonitor] Account balance or equity missing (balance={raw_balance}, equity={raw_equity}). Skipping cycle (fail-closed)."
                         )
-                        logger.warning(f"Account balance missing; falling back to initial_balance {fallback_bal}")
-                        balance = fallback_bal
-
-                    if raw_equity is not None:
+                        continue
+                    try:
+                        balance = float(raw_balance)
                         equity = float(raw_equity)
-                    else:
-                        equity = balance
+                    except (ValueError, TypeError) as conv_err:
+                        logger.error(f"[DrawdownMonitor] Unparseable account numbers: {conv_err}. Skipping cycle.")
+                        continue
+                    if balance <= 0:
+                        logger.error(f"[DrawdownMonitor] Non-positive account balance ({balance}). Skipping cycle.")
+                        continue
                     try:
                         from sqlalchemy import select as _sel
 

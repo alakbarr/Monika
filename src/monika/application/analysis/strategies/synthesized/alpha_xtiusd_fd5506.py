@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any, List
 import math, numpy as np, pandas as pd, datetime, logging, decimal
 
+
 class SynthesizedStrategy_alpha_xtiusd_fd5506(EdgeStrategy):
     strategy_id: str = "alpha_xtiusd_fd5506"
     applicable_symbols: set = {"XTIUSD"}
@@ -28,14 +29,11 @@ class SynthesizedStrategy_alpha_xtiusd_fd5506(EdgeStrategy):
                     valid=False,
                     confidence=0.0,
                     rationale=f"Symbol {symbol} not supported by this strategy.",
-                    tags=["unsupported_symbol"]
+                    tags=["unsupported_symbol"],
                 )
 
             candles = await self.get_historical_candles(
-                session=session,
-                symbol=symbol,
-                timeframe=self.timeframe,
-                limit=self.history_limit
+                session=session, symbol=symbol, timeframe=self.timeframe, limit=self.history_limit
             )
 
             min_required = max(self.atr_period, self.ema_period, self.rsi_period) + 10
@@ -47,7 +45,7 @@ class SynthesizedStrategy_alpha_xtiusd_fd5506(EdgeStrategy):
                     valid=False,
                     confidence=0.0,
                     rationale="Insufficient historical candle data for ATR exhaustion calculation.",
-                    tags=["insufficient_data"]
+                    tags=["insufficient_data"],
                 )
 
             # Build DataFrame
@@ -57,12 +55,7 @@ class SynthesizedStrategy_alpha_xtiusd_fd5506(EdgeStrategy):
                 c_high = float(c.high) if hasattr(c, "high") else float(c["high"])
                 c_low = float(c.low) if hasattr(c, "low") else float(c["low"])
                 c_close = float(c.close) if hasattr(c, "close") else float(c["close"])
-                records.append({
-                    "open": c_open,
-                    "high": c_high,
-                    "low": c_low,
-                    "close": c_close
-                })
+                records.append({"open": c_open, "high": c_high, "low": c_low, "close": c_close})
 
             df = pd.DataFrame(records)
 
@@ -89,7 +82,17 @@ class SynthesizedStrategy_alpha_xtiusd_fd5506(EdgeStrategy):
             df["rsi"] = df["rsi"].fillna(50.0)
 
             # Clean and sanitize NaNs
-            df = df.ffill().bfill().fillna(0.0)
+            df = df.replace([np.inf, -np.inf], np.nan).dropna(subset=["high", "low", "close", "open"]).ffill().bfill()
+            if df.empty or len(df) < max(self.atr_period, self.ema_period, self.rsi_period) + 2:
+                return EdgeSignal(
+                    strategy_id=self.strategy_id,
+                    symbol=symbol,
+                    direction=None,
+                    valid=False,
+                    confidence=0.0,
+                    rationale="Insufficient valid candle history after sanitization.",
+                    tags=["insufficient_data"],
+                )
 
             curr = df.iloc[-1]
             prev = df.iloc[-2]
@@ -110,7 +113,7 @@ class SynthesizedStrategy_alpha_xtiusd_fd5506(EdgeStrategy):
                     valid=False,
                     confidence=0.0,
                     rationale="Calculated ATR is zero or invalid.",
-                    tags=["invalid_atr"]
+                    tags=["invalid_atr"],
                 )
 
             # Normalized distance from mean in ATR units
@@ -144,7 +147,7 @@ class SynthesizedStrategy_alpha_xtiusd_fd5506(EdgeStrategy):
                     rationale_parts.append(
                         f"Upside exhaustion: Close {close_val:.2f} is +{atr_distance:.2f} ATR above EMA {ema_val:.2f}."
                     )
-                    rationale_parts.append(f"RSI: {rsi_val:.1f}, Upper wick: {upper_wick_pct*100:.1f}%.")
+                    rationale_parts.append(f"RSI: {rsi_val:.1f}, Upper wick: {upper_wick_pct * 100:.1f}%.")
                     tags.append("exhaustion_sell")
 
             # Overextended Downside -> Long Mean Reversion
@@ -163,7 +166,7 @@ class SynthesizedStrategy_alpha_xtiusd_fd5506(EdgeStrategy):
                     rationale_parts.append(
                         f"Downside exhaustion: Close {close_val:.2f} is {atr_distance:.2f} ATR below EMA {ema_val:.2f}."
                     )
-                    rationale_parts.append(f"RSI: {rsi_val:.1f}, Lower wick: {lower_wick_pct*100:.1f}%.")
+                    rationale_parts.append(f"RSI: {rsi_val:.1f}, Lower wick: {lower_wick_pct * 100:.1f}%.")
                     tags.append("exhaustion_buy")
 
             if direction is not None:
@@ -175,7 +178,7 @@ class SynthesizedStrategy_alpha_xtiusd_fd5506(EdgeStrategy):
                     valid=True,
                     confidence=round(confidence, 4),
                     rationale=rationale_str,
-                    tags=tags
+                    tags=tags,
                 )
 
             return EdgeSignal(
@@ -185,7 +188,7 @@ class SynthesizedStrategy_alpha_xtiusd_fd5506(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale=f"No exhaustion edge. Distance: {atr_distance:.2f} ATR, RSI: {rsi_val:.1f}.",
-                tags=["neutral"]
+                tags=["neutral"],
             )
 
         except Exception as e:
@@ -196,5 +199,5 @@ class SynthesizedStrategy_alpha_xtiusd_fd5506(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale=f"Calculation error: {e}",
-                tags=["error"]
+                tags=["error"],
             )

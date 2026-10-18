@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any, List
 import math, numpy as np, pandas as pd, datetime, logging, decimal
 
+
 class SynthesizedStrategy_alpha_xauusd_a6d004(EdgeStrategy):
     strategy_id: str = "alpha_xauusd_a6d004"
     applicable_symbols: set = {"XAUUSD"}
@@ -25,15 +26,10 @@ class SynthesizedStrategy_alpha_xauusd_a6d004(EdgeStrategy):
                     valid=False,
                     confidence=0.0,
                     rationale=f"Symbol {symbol} not applicable for this strategy.",
-                    tags=["inapplicable_symbol"]
+                    tags=["inapplicable_symbol"],
                 )
 
-            candles = await self.get_historical_candles(
-                session=session,
-                symbol=symbol,
-                timeframe='H1',
-                limit=100
-            )
+            candles = await self.get_historical_candles(session=session, symbol=symbol, timeframe="H1", limit=100)
 
             if not candles or len(candles) < max(self.donchian_period, self.ema_trend_period) + 10:
                 return EdgeSignal(
@@ -43,14 +39,16 @@ class SynthesizedStrategy_alpha_xauusd_a6d004(EdgeStrategy):
                     valid=False,
                     confidence=0.0,
                     rationale="Insufficient historical candle data.",
-                    tags=["insufficient_data"]
+                    tags=["insufficient_data"],
                 )
 
             # Extract OHLCV arrays safely without getattr/eval
-            closes = pd.Series([float(c.close if hasattr(c, 'close') else c['close']) for c in candles], dtype=float)
-            highs = pd.Series([float(c.high if hasattr(c, 'high') else c['high']) for c in candles], dtype=float)
-            lows = pd.Series([float(c.low if hasattr(c, 'low') else c['low']) for c in candles], dtype=float)
-            volumes = pd.Series([float(c.volume if hasattr(c, 'volume') else c.get('volume', 1.0)) for c in candles], dtype=float)
+            closes = pd.Series([float(c.close if hasattr(c, "close") else c["close"]) for c in candles], dtype=float)
+            highs = pd.Series([float(c.high if hasattr(c, "high") else c["high"]) for c in candles], dtype=float)
+            lows = pd.Series([float(c.low if hasattr(c, "low") else c["low"]) for c in candles], dtype=float)
+            volumes = pd.Series(
+                [float(c.volume if hasattr(c, "volume") else c.get("volume", 1.0)) for c in candles], dtype=float
+            )
 
             # Handle zero or flat volumes gracefully
             volumes = volumes.replace(0.0, 1.0).ffill().bfill()
@@ -66,7 +64,9 @@ class SynthesizedStrategy_alpha_xauusd_a6d004(EdgeStrategy):
             upper_donchian = highs.shift(1).rolling(window=self.donchian_period, min_periods=1).max().ffill().bfill()
             lower_donchian = lows.shift(1).rolling(window=self.donchian_period, min_periods=1).min().ffill().bfill()
             donchian_width = upper_donchian - lower_donchian
-            donchian_width_ma = donchian_width.rolling(window=self.donchian_period, min_periods=1).mean().ffill().bfill()
+            donchian_width_ma = (
+                donchian_width.rolling(window=self.donchian_period, min_periods=1).mean().ffill().bfill()
+            )
 
             # 3. Relative Volume (RVOL) calculation
             volume_ma = volumes.rolling(window=self.volume_ma_period, min_periods=1).mean().ffill().bfill()
@@ -127,7 +127,7 @@ class SynthesizedStrategy_alpha_xauusd_a6d004(EdgeStrategy):
                         f"No breakout condition met. Close={curr_close:.2f}, Upper={curr_upper:.2f}, "
                         f"Lower={curr_lower:.2f}, RVOL={curr_rvol:.2f}, Width={curr_width:.2f}."
                     ),
-                    tags=["no_signal", "ranging"]
+                    tags=["no_signal", "ranging"],
                 )
 
             return EdgeSignal(
@@ -137,7 +137,7 @@ class SynthesizedStrategy_alpha_xauusd_a6d004(EdgeStrategy):
                 valid=True,
                 confidence=confidence,
                 rationale=rationale,
-                tags=tags
+                tags=tags,
             )
 
         except Exception as e:
@@ -148,5 +148,5 @@ class SynthesizedStrategy_alpha_xauusd_a6d004(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale=f"Calculation error: {e}",
-                tags=["error"]
+                tags=["error"],
             )

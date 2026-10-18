@@ -278,12 +278,10 @@ class StreamingMixin(_ChatAgentMixinBase):
                     typing_callback=typing_callback,
                     status_callback=status_callback,
                 )
-                if token_callback:
-                    chunk_size = 30
-                    for i in range(0, len(reply), chunk_size):
-                        res = token_callback(reply[i : i + chunk_size])
-                        if asyncio.iscoroutine(res):
-                            await res
+                if token_callback and reply:
+                    res = token_callback(reply)
+                    if asyncio.iscoroutine(res):
+                        await res
                 self._last_turn_streamed = True
                 self.was_last_turn_streamed = True
                 return reply, pending

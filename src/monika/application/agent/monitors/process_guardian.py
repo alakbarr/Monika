@@ -18,6 +18,7 @@ Key Capabilities:
 
 from __future__ import annotations
 
+import asyncio
 import http.server
 import json
 import logging
@@ -220,10 +221,12 @@ def _run_guardian_loop(
                     if age > HEARTBEAT_STALE_THRESHOLD_SECONDS:
                         logger.critical(
                             f"[GuardianProcess] WARNING: Primary trading loop unresponsive! "
-                            f"Heartbeat age: {age:.1f}s > {HEARTBEAT_STALE_THRESHOLD_SECONDS}s."
+                            f"Heartbeat age: {age:.1f}s > {HEARTBEAT_STALE_THRESHOLD_SECONDS}s. "
+                            f"Triggering emergency kill switch!"
                         )
-                except Exception:
-                    pass
+                        trigger_emergency_kill(source=f"HeartbeatStale_{age:.0f}s")
+                except Exception as hb_err:
+                    logger.debug(f"[GuardianProcess] Error reading heartbeat: {hb_err}")
 
             # Verify primary PID is still alive
             if primary_pid:
@@ -300,6 +303,19 @@ class GuardianSupervisor:
         while self._running:
             self._write_heartbeat()
             time.sleep(5.0)
+
+    async def start_async_heartbeat(self, stop_event: Optional[asyncio.Event] = None) -> None:
+        """Periodic heartbeat writer executing directly inside the main asyncio event loop."""
+        while self._running:
+            self._write_heartbeat()
+            if stop_event:
+                try:
+                    await asyncio.wait_for(stop_event.wait(), timeout=5.0)
+                    break
+                except asyncio.TimeoutError:
+                    continue
+            else:
+                await asyncio.sleep(5.0)
 
     def stop(self) -> None:
         """Signal and join the Guardian child process."""

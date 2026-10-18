@@ -258,10 +258,8 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
                 else:
                     resp = await self._run_tier_lite(system_prompt, history, message, tool_executor=tool_executor)
                     reply = resp.get("reply", "")
-                    chunk_size = 20
-                    for i in range(0, len(reply), chunk_size):
-                        yield reply[i : i + chunk_size]
-                        await asyncio.sleep(0.01)
+                    if reply:
+                        yield reply
 
             return _generator()
         return await self._run_tier_lite(system_prompt, history, message, tool_executor=tool_executor)
@@ -285,10 +283,8 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
                 else:
                     resp = await self._run_tier_deep(system_prompt, history, message, tool_executor=tool_executor)
                     reply = resp.get("reply", "")
-                    chunk_size = 20
-                    for i in range(0, len(reply), chunk_size):
-                        yield reply[i : i + chunk_size]
-                        await asyncio.sleep(0.01)
+                    if reply:
+                        yield reply
 
             return _generator()
         return await self._run_tier_deep(system_prompt, history, message, tool_executor=tool_executor)

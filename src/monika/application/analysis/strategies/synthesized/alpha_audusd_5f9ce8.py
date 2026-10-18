@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any, List
 import math, numpy as np, pandas as pd, datetime, logging, decimal
 
+
 class SynthesizedStrategy_alpha_audusd_5f9ce8(EdgeStrategy):
     strategy_id: str = "alpha_audusd_5f9ce8"
     applicable_symbols: set = {"AUDUSD"}
@@ -40,13 +41,15 @@ class SynthesizedStrategy_alpha_audusd_5f9ce8(EdgeStrategy):
         for i in range(window, n - window):
             current_h = highs[i]
             current_l = lows[i]
-            
-            if all(current_h > highs[i - k] for k in range(1, window + 1)) and \
-               all(current_h >= highs[i + k] for k in range(1, window + 1)):
+
+            if all(current_h > highs[i - k] for k in range(1, window + 1)) and all(
+                current_h >= highs[i + k] for k in range(1, window + 1)
+            ):
                 pivot_highs.append(float(current_h))
 
-            if all(current_l < lows[i - k] for k in range(1, window + 1)) and \
-               all(current_l <= lows[i + k] for k in range(1, window + 1)):
+            if all(current_l < lows[i - k] for k in range(1, window + 1)) and all(
+                current_l <= lows[i + k] for k in range(1, window + 1)
+            ):
                 pivot_lows.append(float(current_l))
 
         return pivot_highs, pivot_lows
@@ -56,15 +59,11 @@ class SynthesizedStrategy_alpha_audusd_5f9ce8(EdgeStrategy):
         low = df["low"].values
         close = df["close"].values
         tr = np.zeros(len(df))
-        
+
         tr[0] = high[0] - low[0]
         for i in range(1, len(df)):
-            tr[i] = max(
-                high[i] - low[i],
-                abs(high[i] - close[i - 1]),
-                abs(low[i] - close[i - 1])
-            )
-        
+            tr[i] = max(high[i] - low[i], abs(high[i] - close[i - 1]), abs(low[i] - close[i - 1]))
+
         atr = pd.Series(tr).rolling(window=period, min_periods=period).mean().bfill()
         return np.asarray(atr, dtype=float)
 
@@ -77,7 +76,7 @@ class SynthesizedStrategy_alpha_audusd_5f9ce8(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale="Symbol not applicable for AUDUSD liquidity sweep strategy.",
-                tags=["ineligible_symbol"]
+                tags=["ineligible_symbol"],
             )
 
         htf_candles = await self.get_historical_candles(
@@ -95,7 +94,7 @@ class SynthesizedStrategy_alpha_audusd_5f9ce8(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale="Insufficient HTF candle data.",
-                tags=["insufficient_htf_data"]
+                tags=["insufficient_htf_data"],
             )
 
         if not ltf_candles or len(ltf_candles) < self.ltf_lookback * 0.5:
@@ -106,7 +105,7 @@ class SynthesizedStrategy_alpha_audusd_5f9ce8(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale="Insufficient LTF candle data.",
-                tags=["insufficient_ltf_data"]
+                tags=["insufficient_ltf_data"],
             )
 
         df_htf = self._to_dataframe(htf_candles)
@@ -121,7 +120,7 @@ class SynthesizedStrategy_alpha_audusd_5f9ce8(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale="No distinct HTF liquidity pools detected.",
-                tags=["no_pivots"]
+                tags=["no_pivots"],
             )
 
         # Recent key liquidity targets within 20 HTF bars
@@ -131,7 +130,7 @@ class SynthesizedStrategy_alpha_audusd_5f9ce8(EdgeStrategy):
         atr_ltf = self._calculate_atr(df_ltf, period=14)
         latest_atr = atr_ltf[-1]
 
-        recent_ltf_slice = df_ltf.iloc[-self.sweep_lookback_ltf:]
+        recent_ltf_slice = df_ltf.iloc[-self.sweep_lookback_ltf :]
         current_candle = df_ltf.iloc[-1]
         prev_candle = df_ltf.iloc[-2]
 
@@ -140,17 +139,17 @@ class SynthesizedStrategy_alpha_audusd_5f9ce8(EdgeStrategy):
         body_ratio = current_body / current_range if current_range > 0 else 0.0
 
         is_displacement_bullish = (
-            current_candle["close"] > current_candle["open"] and
-            current_range >= latest_atr * self.displacement_atr_mult and
-            body_ratio >= self.min_body_ratio and
-            current_candle["close"] > prev_candle["high"]
+            current_candle["close"] > current_candle["open"]
+            and current_range >= latest_atr * self.displacement_atr_mult
+            and body_ratio >= self.min_body_ratio
+            and current_candle["close"] > prev_candle["high"]
         )
 
         is_displacement_bearish = (
-            current_candle["close"] < current_candle["open"] and
-            current_range >= latest_atr * self.displacement_atr_mult and
-            body_ratio >= self.min_body_ratio and
-            current_candle["close"] < prev_candle["low"]
+            current_candle["close"] < current_candle["open"]
+            and current_range >= latest_atr * self.displacement_atr_mult
+            and body_ratio >= self.min_body_ratio
+            and current_candle["close"] < prev_candle["low"]
         )
 
         # 1. Bullish Liquidity Sweep & Displacement Check
@@ -172,7 +171,7 @@ class SynthesizedStrategy_alpha_audusd_5f9ce8(EdgeStrategy):
                     valid=True,
                     confidence=float(round(confidence, 4)),
                     rationale=f"Bullish sell-side liquidity sweep at {p_low:.5f} with impulsive displacement reclamation.",
-                    tags=["liquidity_sweep", "ssl_sweep", "bullish_displacement", "audusd"]
+                    tags=["liquidity_sweep", "ssl_sweep", "bullish_displacement", "audusd"],
                 )
 
         # 2. Bearish Liquidity Sweep & Displacement Check
@@ -194,7 +193,7 @@ class SynthesizedStrategy_alpha_audusd_5f9ce8(EdgeStrategy):
                     valid=True,
                     confidence=float(round(confidence, 4)),
                     rationale=f"Bearish buy-side liquidity sweep at {p_high:.5f} with impulsive displacement rejection.",
-                    tags=["liquidity_sweep", "bsl_sweep", "bearish_displacement", "audusd"]
+                    tags=["liquidity_sweep", "bsl_sweep", "bearish_displacement", "audusd"],
                 )
 
         return EdgeSignal(
@@ -204,5 +203,5 @@ class SynthesizedStrategy_alpha_audusd_5f9ce8(EdgeStrategy):
             valid=False,
             confidence=0.0,
             rationale="No active multi-timeframe liquidity sweep displacement pattern identified.",
-            tags=["no_setup"]
+            tags=["no_setup"],
         )

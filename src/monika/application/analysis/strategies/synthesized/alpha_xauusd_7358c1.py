@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any, List
 import math, numpy as np, pandas as pd, datetime, logging, decimal
 
+
 class SynthesizedStrategy_alpha_xauusd_7358c1(EdgeStrategy):
     strategy_id: str = "alpha_xauusd_7358c1"
     applicable_symbols: set = {"XAUUSD"}
@@ -25,15 +26,12 @@ class SynthesizedStrategy_alpha_xauusd_7358c1(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale=f"Symbol {symbol} is not supported by {self.strategy_id}",
-                tags=["unsupported_symbol"]
+                tags=["unsupported_symbol"],
             )
 
         try:
             candles = await self.get_historical_candles(
-                session=session,
-                symbol=symbol,
-                timeframe=self.timeframe,
-                limit=self.history_limit
+                session=session, symbol=symbol, timeframe=self.timeframe, limit=self.history_limit
             )
 
             if not candles or len(candles) < max(self.donchian_period, self.atr_period, self.volume_ma_period) + 5:
@@ -44,33 +42,47 @@ class SynthesizedStrategy_alpha_xauusd_7358c1(EdgeStrategy):
                     valid=False,
                     confidence=0.0,
                     rationale="Insufficient historical candle data for evaluation",
-                    tags=["insufficient_data"]
+                    tags=["insufficient_data"],
                 )
 
             data: List[Dict[str, float]] = []
             for c in candles:
                 if isinstance(c, dict):
-                    data.append({
-                        "open": float(c.get("open", 0.0)),
-                        "high": float(c.get("high", 0.0)),
-                        "low": float(c.get("low", 0.0)),
-                        "close": float(c.get("close", 0.0)),
-                        "volume": float(c.get("volume", 1.0))
-                    })
+                    data.append(
+                        {
+                            "open": float(c.get("open", 0.0)),
+                            "high": float(c.get("high", 0.0)),
+                            "low": float(c.get("low", 0.0)),
+                            "close": float(c.get("close", 0.0)),
+                            "volume": float(c.get("volume", 1.0)),
+                        }
+                    )
                 else:
                     vol = float(c.volume) if hasattr(c, "volume") else 1.0
-                    data.append({
-                        "open": float(c.open),
-                        "high": float(c.high),
-                        "low": float(c.low),
-                        "close": float(c.close),
-                        "volume": vol
-                    })
+                    data.append(
+                        {
+                            "open": float(c.open),
+                            "high": float(c.high),
+                            "low": float(c.low),
+                            "close": float(c.close),
+                            "volume": vol,
+                        }
+                    )
 
             df = pd.DataFrame(data)
 
             # Sanitize inputs
-            df = df.replace([np.inf, -np.inf], np.nan).ffill().bfill().fillna(0.0)
+            df = df.replace([np.inf, -np.inf], np.nan).dropna(subset=["high", "low", "close"]).ffill().bfill()
+            if df.empty or len(df) < max(self.atr_period, self.volume_ma_period) + 2:
+                return EdgeSignal(
+                    strategy_id=self.strategy_id,
+                    symbol=symbol,
+                    direction=None,
+                    valid=False,
+                    confidence=0.0,
+                    rationale="Insufficient valid candle history after sanitization.",
+                    tags=["insufficient_data"],
+                )
 
             # ATR Calculation
             df["prev_close"] = df["close"].shift(1).ffill()
@@ -86,22 +98,32 @@ class SynthesizedStrategy_alpha_xauusd_7358c1(EdgeStrategy):
 
             # Volume-Weighted Dynamic Donchian Channels
             # Shifted by 1 bar to strictly detect the fresh expansion breakout on the latest bar
-            df["donchian_high"] = df["high"].shift(1).rolling(window=self.donchian_period, min_periods=1).max().ffill().bfill()
-            df["donchian_low"] = df["low"].shift(1).rolling(window=self.donchian_period, min_periods=1).min().ffill().bfill()
+            df["donchian_high"] = (
+                df["high"].shift(1).rolling(window=self.donchian_period, min_periods=1).max().ffill().bfill()
+            )
+            df["donchian_low"] = (
+                df["low"].shift(1).rolling(window=self.donchian_period, min_periods=1).min().ffill().bfill()
+            )
             df["donchian_mid"] = (df["donchian_high"] + df["donchian_low"]) / 2.0
 
             # Dynamic Donchian Width and Expansion
             df["channel_width"] = (df["donchian_high"] - df["donchian_low"]).replace(0.0, 0.0001)
-            df["width_ma"] = df["channel_width"].rolling(window=self.donchian_period, min_periods=1).mean().ffill().bfill()
+            df["width_ma"] = (
+                df["channel_width"].rolling(window=self.donchian_period, min_periods=1).mean().ffill().bfill()
+            )
             df["width_expansion"] = df["channel_width"] / df["width_ma"].replace(0.0, np.nan).fillna(1.0)
 
             # VWAP proxy over Donchian window
             df["typical_price"] = (df["high"] + df["low"] + df["close"]) / 3.0
             df["tp_vol"] = df["typical_price"] * df["volume"]
             df["vwap"] = (
-                df["tp_vol"].rolling(window=self.donchian_period, min_periods=1).sum() /
-                df["volume"].rolling(window=self.donchian_period, min_periods=1).sum().replace(0.0, np.nan)
-            ).ffill().bfill()
+                (
+                    df["tp_vol"].rolling(window=self.donchian_period, min_periods=1).sum()
+                    / df["volume"].rolling(window=self.donchian_period, min_periods=1).sum().replace(0.0, np.nan)
+                )
+                .ffill()
+                .bfill()
+            )
 
             last_idx = len(df) - 1
             curr_close = float(df["close"].iloc[last_idx])
@@ -162,7 +184,7 @@ class SynthesizedStrategy_alpha_xauusd_7358c1(EdgeStrategy):
                 valid=direction is not None,
                 confidence=round(confidence, 4),
                 rationale=" | ".join(rationale_parts),
-                tags=tags
+                tags=tags,
             )
 
         except Exception as e:
@@ -173,5 +195,5 @@ class SynthesizedStrategy_alpha_xauusd_7358c1(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale=f"Calculation error: {str(e)}",
-                tags=["error", "exception"]
+                tags=["error", "exception"],
             )

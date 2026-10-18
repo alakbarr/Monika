@@ -5153,6 +5153,7 @@
   - `class GuardianSupervisor`: Manages the lifecycle of the independent GuardianProcess from the main trading application.
     - `__init__(settings: Optional[dict[str, Any]], port: int)`
     - `start() -> None` - *Spawn the independent Guardian process.*
+    - `async start_async_heartbeat(stop_event: Optional[asyncio.Event]) -> None` - *Periodic heartbeat writer executing directly inside the main asyncio event loop.*
     - `stop() -> None` - *Signal and join the Guardian child process.*
 - **Top-Level Functions**:
   - `trigger_emergency_kill(source: str) -> bool`: Trip the emergency kill switch flags immediately across filesystem.

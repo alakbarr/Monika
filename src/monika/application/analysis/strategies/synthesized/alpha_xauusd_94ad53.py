@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any, List
 import math, numpy as np, pandas as pd, datetime, logging, decimal
 
+
 class SynthesizedStrategy_alpha_xauusd_94ad53(EdgeStrategy):
     strategy_id: str = "alpha_xauusd_94ad53"
     applicable_symbols: set = {"XAUUSD"}
@@ -38,16 +39,18 @@ class SynthesizedStrategy_alpha_xauusd_94ad53(EdgeStrategy):
                     v = 0.0
             records.append({"open": o, "high": h, "low": l, "close": cl, "volume": v})
         df = pd.DataFrame(records)
-        return df.replace([np.inf, -np.inf], np.nan).ffill().fillna(0.0)
+        if df.empty:
+            return df
+        return df.replace([np.inf, -np.inf], np.nan).dropna(subset=["high", "low", "close"]).ffill().bfill()
 
     def _calculate_atr(self, df: pd.DataFrame, period: int = 14) -> pd.Series:
         if len(df) < 2:
-            return pd.Series(0.0, index=df.index)
+            return pd.Series(np.nan, index=df.index)
         high_low = df["high"] - df["low"]
         high_prev_close = (df["high"] - df["close"].shift(1)).abs()
         low_prev_close = (df["low"] - df["close"].shift(1)).abs()
         tr = pd.concat([high_low, high_prev_close, low_prev_close], axis=1).max(axis=1)
-        atr = tr.rolling(window=period, min_periods=1).mean().fillna(0.0)
+        atr = tr.rolling(window=period, min_periods=1).mean().ffill().bfill()
         return pd.Series(atr)
 
     async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:
@@ -60,7 +63,7 @@ class SynthesizedStrategy_alpha_xauusd_94ad53(EdgeStrategy):
                     valid=False,
                     confidence=0.0,
                     rationale=f"Symbol {symbol} not supported. Applicable: {self.applicable_symbols}",
-                    tags=["unsupported_symbol"]
+                    tags=["unsupported_symbol"],
                 )
 
             htf_candles = await self.get_historical_candles(
@@ -82,14 +85,14 @@ class SynthesizedStrategy_alpha_xauusd_94ad53(EdgeStrategy):
                     valid=False,
                     confidence=0.0,
                     rationale=f"Insufficient candle history. HTF: {len(df_htf)}, LTF: {len(df_ltf)}",
-                    tags=["insufficient_data"]
+                    tags=["insufficient_data"],
                 )
 
             # Identify prominent HTF Swing Highs and Lows
             w = self.htf_swing_window
             htf_highs = np.asarray(df_htf["high"], dtype=float)
             htf_lows = np.asarray(df_htf["low"], dtype=float)
-            
+
             swing_highs = []
             swing_lows = []
             for i in range(w, len(df_htf) - 1):
@@ -108,7 +111,7 @@ class SynthesizedStrategy_alpha_xauusd_94ad53(EdgeStrategy):
                     valid=False,
                     confidence=0.0,
                     rationale="No clear HTF swing liquidity levels identified.",
-                    tags=["no_swing_levels"]
+                    tags=["no_swing_levels"],
                 )
 
             key_swing_high = float(swing_highs[-1])
@@ -152,13 +155,25 @@ class SynthesizedStrategy_alpha_xauusd_94ad53(EdgeStrategy):
             p_body_ratio = p_body / p_range
 
             is_bullish_displacement = (
-                (c_body_ratio >= self.displacement_body_ratio and current_bar["close"] > current_bar["open"] and c_range >= self.atr_multiplier * current_atr) or
-                (p_body_ratio >= self.displacement_body_ratio and prev_bar["close"] > prev_bar["open"] and p_range >= self.atr_multiplier * current_atr and current_bar["close"] >= prev_bar["close"])
+                c_body_ratio >= self.displacement_body_ratio
+                and current_bar["close"] > current_bar["open"]
+                and c_range >= self.atr_multiplier * current_atr
+            ) or (
+                p_body_ratio >= self.displacement_body_ratio
+                and prev_bar["close"] > prev_bar["open"]
+                and p_range >= self.atr_multiplier * current_atr
+                and current_bar["close"] >= prev_bar["close"]
             )
 
             is_bearish_displacement = (
-                (c_body_ratio >= self.displacement_body_ratio and current_bar["close"] < current_bar["open"] and c_range >= self.atr_multiplier * current_atr) or
-                (p_body_ratio >= self.displacement_body_ratio and prev_bar["close"] < prev_bar["open"] and p_range >= self.atr_multiplier * current_atr and current_bar["close"] <= prev_bar["close"])
+                c_body_ratio >= self.displacement_body_ratio
+                and current_bar["close"] < current_bar["open"]
+                and c_range >= self.atr_multiplier * current_atr
+            ) or (
+                p_body_ratio >= self.displacement_body_ratio
+                and prev_bar["close"] < prev_bar["open"]
+                and p_range >= self.atr_multiplier * current_atr
+                and current_bar["close"] <= prev_bar["close"]
             )
 
             # Fair Value Gap (FVG) detection on LTF
@@ -191,7 +206,7 @@ class SynthesizedStrategy_alpha_xauusd_94ad53(EdgeStrategy):
                     valid=True,
                     confidence=confidence,
                     rationale=rationale_msg,
-                    tags=tags
+                    tags=tags,
                 )
 
             elif bearish_sweep and is_bearish_displacement:
@@ -215,7 +230,7 @@ class SynthesizedStrategy_alpha_xauusd_94ad53(EdgeStrategy):
                     valid=True,
                     confidence=confidence,
                     rationale=rationale_msg,
-                    tags=tags
+                    tags=tags,
                 )
 
             return EdgeSignal(
@@ -225,7 +240,7 @@ class SynthesizedStrategy_alpha_xauusd_94ad53(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale=f"No MTF sweep-displacement confluence. HTF Levels: Low {key_swing_low:.2f}, High {key_swing_high:.2f}.",
-                tags=["neutral", "monitoring"]
+                tags=["neutral", "monitoring"],
             )
 
         except Exception as e:
@@ -236,5 +251,5 @@ class SynthesizedStrategy_alpha_xauusd_94ad53(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale=f"Calculation error: {str(e)}",
-                tags=["error"]
+                tags=["error"],
             )

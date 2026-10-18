@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any, List
 import math, numpy as np, pandas as pd, datetime, logging, decimal
 
+
 class SynthesizedStrategy_alpha_xauusd_a84e8d(EdgeStrategy):
     strategy_id: str = "alpha_xauusd_a84e8d"
     applicable_symbols: set = {"XAUUSD"}
@@ -26,7 +27,7 @@ class SynthesizedStrategy_alpha_xauusd_a84e8d(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale=f"Symbol {symbol} not supported by {self.strategy_id}.",
-                tags=["unsupported_symbol"]
+                tags=["unsupported_symbol"],
             )
 
         donchian_period = int(settings.get("donchian_period", self.donchian_period))
@@ -47,7 +48,7 @@ class SynthesizedStrategy_alpha_xauusd_a84e8d(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale="Insufficient historical candle data for volume-weighted Donchian expansion analysis.",
-                tags=["insufficient_data"]
+                tags=["insufficient_data"],
             )
 
         highs: List[float] = []
@@ -71,12 +72,7 @@ class SynthesizedStrategy_alpha_xauusd_a84e8d(EdgeStrategy):
             closes.append(cl)
             volumes.append(max(v, 1.0))
 
-        df = pd.DataFrame({
-            "high": highs,
-            "low": lows,
-            "close": closes,
-            "volume": volumes
-        })
+        df = pd.DataFrame({"high": highs, "low": lows, "close": closes, "volume": volumes})
 
         # Calculate True Range and ATR
         df["prev_close"] = df["close"].shift(1)
@@ -103,8 +99,12 @@ class SynthesizedStrategy_alpha_xauusd_a84e8d(EdgeStrategy):
         # Dynamic Volume-Weighted Expansion Offsets
         # When volume surges above average, the threshold expands to capture institutional displacement momentum
         df["vol_weight"] = np.clip(df["rvol"], 0.5, 3.0)
-        df["dynamic_upper"] = df["prior_donchian_high"] + (df["atr"] * expansion_factor * (df["vol_weight"] - 1.0).clip(lower=0.0))
-        df["dynamic_lower"] = df["prior_donchian_low"] - (df["atr"] * expansion_factor * (df["vol_weight"] - 1.0).clip(lower=0.0))
+        df["dynamic_upper"] = df["prior_donchian_high"] + (
+            df["atr"] * expansion_factor * (df["vol_weight"] - 1.0).clip(lower=0.0)
+        )
+        df["dynamic_lower"] = df["prior_donchian_low"] - (
+            df["atr"] * expansion_factor * (df["vol_weight"] - 1.0).clip(lower=0.0)
+        )
 
         last_row = df.iloc[-1]
         prev_row = df.iloc[-2]
@@ -170,7 +170,7 @@ class SynthesizedStrategy_alpha_xauusd_a84e8d(EdgeStrategy):
                     f"Close: {curr_close:.2f}, Range: [{dynamic_lower:.2f}, {dynamic_upper:.2f}], "
                     f"RVOL: {curr_rvol:.2f} vs Thresh: {rvol_thresh:.2f}."
                 ),
-                tags=["neutral_consolidation"]
+                tags=["neutral_consolidation"],
             )
 
         return EdgeSignal(
@@ -180,5 +180,5 @@ class SynthesizedStrategy_alpha_xauusd_a84e8d(EdgeStrategy):
             valid=True,
             confidence=round(confidence, 4),
             rationale=rationale,
-            tags=tags
+            tags=tags,
         )

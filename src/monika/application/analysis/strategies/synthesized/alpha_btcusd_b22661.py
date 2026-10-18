@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any, List
 import math, numpy as np, pandas as pd, datetime, logging, decimal
 
+
 class SynthesizedStrategy_alpha_btcusd_b22661(EdgeStrategy):
     strategy_id: str = "alpha_btcusd_b22661"
     applicable_symbols: set = {"BTCUSD"}
@@ -26,11 +27,13 @@ class SynthesizedStrategy_alpha_btcusd_b22661(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale=f"Symbol {symbol} not applicable for this strategy.",
-                tags=["inapplicable_symbol"]
+                tags=["inapplicable_symbol"],
             )
 
         lookback_fetch = max(self.max_lookback + self.volume_ma_period + 10, 100)
-        candles = await self.get_historical_candles(session=session, symbol=symbol, timeframe='H1', limit=lookback_fetch)
+        candles = await self.get_historical_candles(
+            session=session, symbol=symbol, timeframe="H1", limit=lookback_fetch
+        )
 
         if not candles or len(candles) < lookback_fetch * 0.8:
             return EdgeSignal(
@@ -40,7 +43,7 @@ class SynthesizedStrategy_alpha_btcusd_b22661(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale="Insufficient historical candle data for volume-weighted dynamic Donchian evaluation.",
-                tags=["insufficient_data"]
+                tags=["insufficient_data"],
             )
 
         highs = []
@@ -49,35 +52,30 @@ class SynthesizedStrategy_alpha_btcusd_b22661(EdgeStrategy):
         volumes = []
 
         for c in candles:
-            h = float(c.high if hasattr(c, 'high') else c['high'])
-            l = float(c.low if hasattr(c, 'low') else c['low'])
-            cl = float(c.close if hasattr(c, 'close') else c['close'])
-            v = float(c.volume if hasattr(c, 'volume') else c.get('volume', 0.0) if isinstance(c, dict) else 0.0)
+            h = float(c.high if hasattr(c, "high") else c["high"])
+            l = float(c.low if hasattr(c, "low") else c["low"])
+            cl = float(c.close if hasattr(c, "close") else c["close"])
+            v = float(c.volume if hasattr(c, "volume") else c.get("volume", 0.0) if isinstance(c, dict) else 0.0)
             highs.append(h)
             lows.append(l)
             closes.append(cl)
             volumes.append(v)
 
-        df = pd.DataFrame({
-            'high': highs,
-            'low': lows,
-            'close': closes,
-            'volume': volumes
-        })
+        df = pd.DataFrame({"high": highs, "low": lows, "close": closes, "volume": volumes})
 
         # Calculate True Range and ATR
-        df['prev_close'] = df['close'].shift(1)
-        df['tr1'] = df['high'] - df['low']
-        df['tr2'] = (df['high'] - df['prev_close']).abs()
-        df['tr3'] = (df['low'] - df['prev_close']).abs()
-        df['tr'] = df[['tr1', 'tr2', 'tr3']].max(axis=1)
-        df['atr'] = df['tr'].rolling(window=self.atr_period).mean()
-        df['atr_baseline'] = df['atr'].rolling(window=self.atr_period * 2).mean()
+        df["prev_close"] = df["close"].shift(1)
+        df["tr1"] = df["high"] - df["low"]
+        df["tr2"] = (df["high"] - df["prev_close"]).abs()
+        df["tr3"] = (df["low"] - df["prev_close"]).abs()
+        df["tr"] = df[["tr1", "tr2", "tr3"]].max(axis=1)
+        df["atr"] = df["tr"].rolling(window=self.atr_period).mean()
+        df["atr_baseline"] = df["atr"].rolling(window=self.atr_period * 2).mean()
 
         # Volatility ratio to dynamically scale Donchian lookback window
-        df['vol_ratio'] = df['atr'] / (df['atr_baseline'] + 1e-9)
-        latest_vol_ratio = df['vol_ratio'].iloc[-1]
-        
+        df["vol_ratio"] = df["atr"] / (df["atr_baseline"] + 1e-9)
+        latest_vol_ratio = df["vol_ratio"].iloc[-1]
+
         if np.isnan(latest_vol_ratio) or latest_vol_ratio <= 0:
             dynamic_lookback = self.base_lookback
         else:
@@ -86,32 +84,32 @@ class SynthesizedStrategy_alpha_btcusd_b22661(EdgeStrategy):
             dynamic_lookback = max(self.min_lookback, min(self.max_lookback, adjusted))
 
         # Volume MA and RVOL
-        df['vol_ma'] = df['volume'].rolling(window=self.volume_ma_period).mean()
-        df['rvol'] = df['volume'] / (df['vol_ma'] + 1e-9)
+        df["vol_ma"] = df["volume"].rolling(window=self.volume_ma_period).mean()
+        df["rvol"] = df["volume"] / (df["vol_ma"] + 1e-9)
 
         # Dynamic Donchian Channels (shifted by 1 to prevent lookahead bias)
-        df['donchian_high'] = df['high'].shift(1).rolling(window=dynamic_lookback).max()
-        df['donchian_low'] = df['low'].shift(1).rolling(window=dynamic_lookback).min()
-        df['donchian_mid'] = (df['donchian_high'] + df['donchian_low']) / 2.0
-        df['donchian_width'] = (df['donchian_high'] - df['donchian_low']) / (df['donchian_mid'] + 1e-9)
-        df['width_ma'] = df['donchian_width'].rolling(window=self.volume_ma_period).mean()
+        df["donchian_high"] = df["high"].shift(1).rolling(window=dynamic_lookback).max()
+        df["donchian_low"] = df["low"].shift(1).rolling(window=dynamic_lookback).min()
+        df["donchian_mid"] = (df["donchian_high"] + df["donchian_low"]) / 2.0
+        df["donchian_width"] = (df["donchian_high"] - df["donchian_low"]) / (df["donchian_mid"] + 1e-9)
+        df["width_ma"] = df["donchian_width"].rolling(window=self.volume_ma_period).mean()
 
         # Volume-Weighted Price Anchor (VWAP of the dynamic channel lookback)
-        df['typical_price'] = (df['high'] + df['low'] + df['close']) / 3.0
-        df['pv'] = df['typical_price'] * df['volume']
-        rolling_pv = df['pv'].rolling(window=dynamic_lookback).sum()
-        rolling_v = df['volume'].rolling(window=dynamic_lookback).sum()
-        df['vwap_window'] = rolling_pv / (rolling_v + 1e-9)
+        df["typical_price"] = (df["high"] + df["low"] + df["close"]) / 3.0
+        df["pv"] = df["typical_price"] * df["volume"]
+        rolling_pv = df["pv"].rolling(window=dynamic_lookback).sum()
+        rolling_v = df["volume"].rolling(window=dynamic_lookback).sum()
+        df["vwap_window"] = rolling_pv / (rolling_v + 1e-9)
 
-        curr_close = df['close'].iloc[-1]
-        curr_high = df['high'].iloc[-1]
-        curr_low = df['low'].iloc[-1]
-        curr_rvol = df['rvol'].iloc[-1]
-        curr_vwap = df['vwap_window'].iloc[-1]
-        curr_d_high = df['donchian_high'].iloc[-1]
-        curr_d_low = df['donchian_low'].iloc[-1]
-        curr_width = df['donchian_width'].iloc[-1]
-        mean_width = df['width_ma'].iloc[-1]
+        curr_close = df["close"].iloc[-1]
+        curr_high = df["high"].iloc[-1]
+        curr_low = df["low"].iloc[-1]
+        curr_rvol = df["rvol"].iloc[-1]
+        curr_vwap = df["vwap_window"].iloc[-1]
+        curr_d_high = df["donchian_high"].iloc[-1]
+        curr_d_low = df["donchian_low"].iloc[-1]
+        curr_width = df["donchian_width"].iloc[-1]
+        mean_width = df["width_ma"].iloc[-1]
 
         if np.isnan(curr_d_high) or np.isnan(curr_d_low) or np.isnan(curr_rvol):
             return EdgeSignal(
@@ -121,7 +119,7 @@ class SynthesizedStrategy_alpha_btcusd_b22661(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale="Insufficient calculated indicator values.",
-                tags=["indicator_na"]
+                tags=["indicator_na"],
             )
 
         channel_expansion = curr_width / (mean_width + 1e-9) if mean_width > 0 else 1.0
@@ -132,7 +130,7 @@ class SynthesizedStrategy_alpha_btcusd_b22661(EdgeStrategy):
 
         # Long Trigger: Breakout above dynamic Donchian high with volume confirmation and price above dynamic VWAP
         if curr_close > curr_d_high and curr_rvol >= self.rvol_threshold and curr_close > curr_vwap:
-            direction = 'buy'
+            direction = "buy"
             tags.append("bullish_expansion_breakout")
             vol_factor = min((curr_rvol - 1.0) / 2.0, 0.4)
             expansion_factor = min(max((channel_expansion - 1.0), 0.0) * 0.3, 0.3)
@@ -146,7 +144,7 @@ class SynthesizedStrategy_alpha_btcusd_b22661(EdgeStrategy):
 
         # Short Trigger: Breakdown below dynamic Donchian low with volume confirmation and price below dynamic VWAP
         elif curr_close < curr_d_low and curr_rvol >= self.rvol_threshold and curr_close < curr_vwap:
-            direction = 'sell'
+            direction = "sell"
             tags.append("bearish_expansion_breakdown")
             vol_factor = min((curr_rvol - 1.0) / 2.0, 0.4)
             expansion_factor = min(max((channel_expansion - 1.0), 0.0) * 0.3, 0.3)
@@ -172,5 +170,5 @@ class SynthesizedStrategy_alpha_btcusd_b22661(EdgeStrategy):
             valid=is_valid,
             confidence=round(confidence, 4),
             rationale=rationale,
-            tags=tags
+            tags=tags,
         )
