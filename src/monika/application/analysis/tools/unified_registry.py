@@ -376,8 +376,9 @@ class UnifiedToolRegistry:
                         raw_handler = raw_handler()
                     except Exception:
                         pass
-                if hasattr(raw_handler, "execute") and callable(getattr(raw_handler, "execute")):
-                    handler: Callable[..., Any] = raw_handler.execute
+                exec_attr = getattr(raw_handler, "execute", None)
+                if callable(exec_attr):
+                    handler: Callable[..., Any] = exec_attr
                 elif callable(raw_handler):
                     handler = raw_handler
                 else:
