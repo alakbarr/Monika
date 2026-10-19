@@ -23,10 +23,10 @@ $$\text{Lot Size} = \frac{\text{Risk Amount (\$) }}{\text{SL Distance (Points)} 
 - **Calculated Lot Size**: $\frac{\$100.00}{250 \times \$1.00} = \mathbf{0.40\text{ Lots}}$
 
 ## 2. Mandatory Stop Loss & Take Profit Invariants
-- **Structural Placement**: SL MUST be placed strictly beyond a verified swing high/low, Order Block boundary, or FVG invalidation.
-- **ATR Distance Floor**: SL distance MUST be $\ge 1.0\times\text{ ATR}(14, \text{H4})$ ($1.1\times$ for Gold, $1.2\times$ for Crypto/Oil).
-- **ADR Distance Ceiling**: SL distance MUST be $\le 35\%$ of 5-day ADR. If nearest structural protection exceeds 35% ADR $\rightarrow$ Submit `WAIT`.
-- **Take Profit Target Band**: TP must land inside $50\%\text{--}80\%$ of ADR at a verified structural level.
+- **Structural Placement**: SL MUST be placed strictly beyond a verified swing high/low, Order Block boundary, or FVG invalidation (with a 0.15–0.25x ATR buffer).
+- **ATR Distance Floor**: SL distance MUST be $\ge 0.5\times\text{ ATR}(14, \text{H4})$ to ensure the position is not stopped out by spread or micro-noise.
+- **ADR Distance Ceiling**: SL distance should generally be $\le 40\%$ of 5-day ADR, or up to $1.25\times\text{ ATR}(14, \text{H4})$ during contracting or volatile ADR regimes.
+- **Take Profit Target Band**: TP must land inside $40\%\text{--}85\%$ of ADR at a verified structural level.
 - **Reward-to-Risk (R:R)**: Minimum $1.30:1$ (hard floor for intraday execution); preferred target $1:2.00$ or higher.
 - **SL Tampering Prohibition**: NEVER widen or remove a stop loss post-execution.
 

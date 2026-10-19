@@ -584,12 +584,43 @@ class SignalArbitrator:
             )
             is_ranging_regime = market_regime in ("ranging", "mean_reverting", "choppy")
             strat_id = quant_strat_id.lower()
+            q_tags = set(
+                getattr(quant_signal, "tags", [])
+                or (quant_signal.get("tags", []) if isinstance(quant_signal, dict) else [])
+            )
+            q_tags_lower = {str(t).lower() for t in q_tags}
 
-            is_trend_strat = any(k in strat_id for k in ["donchian", "trend", "breakout", "momentum", "expansion"])
-            is_mean_rev_strat = any(k in strat_id for k in ["reversion", "bollinger", "range", "oscillator", "rsi"])
+            is_trend_strat = any(
+                k in strat_id for k in ["donchian", "trend", "breakout", "momentum", "expansion"]
+            ) or any(
+                t in q_tags_lower
+                for t in ["trend", "breakout", "momentum", "expansion", "donchian_breakout", "volume_expansion"]
+            )
+            is_mean_rev_strat = any(
+                k in strat_id for k in ["reversion", "bollinger", "range", "oscillator", "rsi"]
+            ) or any(
+                t in q_tags_lower
+                for t in ["mean_reversion", "atr_exhaustion", "reversal", "bullish_reversal", "bearish_reversal"]
+            )
+
+            # Defensive: Counter-trend mean reversion in a strong trending regime is STRICTLY PROHIBITED
+            if is_trending_regime and is_mean_rev_strat:
+                logger.warning(
+                    f"[{symbol}] Suppressing counter-trend mean-reversion strategy {quant_strat_id} "
+                    f"during strong trending regime ({market_regime}). LLM decision was {l_dir}."
+                )
+                return ArbitrationResult(
+                    symbol=symbol,
+                    decision="wait",
+                    confidence=0.0,
+                    risk_multiplier=0.0,
+                    selected_source="regime_protection",
+                    arbitration_reason=f"Arbitrator suppressed {quant_strat_id}: Counter-trend mean reversion is prohibited during {market_regime}.",
+                    meta={"quant_signal": q_dir, "llm_signal": l_dir, "market_regime": market_regime},
+                )
 
             # A. Strong Trend / Breakout Regime -> Trend Quant strategy precedence
-            if is_trending_regime and q_conf >= min_q_trend_override and (is_trend_strat or not is_mean_rev_strat):
+            if is_trending_regime and q_conf >= min_q_trend_override and is_trend_strat and not is_mean_rev_strat:
                 return ArbitrationResult(
                     symbol=symbol,
                     decision=q_dir,
@@ -649,10 +680,43 @@ class SignalArbitrator:
                 except Exception as tfm_err:
                     logger.debug(f"[{symbol}] TimesFM lookup in arbitrator failed (non-fatal): {tfm_err}")
 
+            # If TimesFM strongly opposes Quant, suppress to avoid false breakout
+            if (q_dir == "buy" and tfm_skew < -0.30) or (q_dir == "sell" and tfm_skew > 0.30):
+                return ArbitrationResult(
+                    symbol=symbol,
+                    decision="avoid",
+                    confidence=0.0,
+                    risk_multiplier=0.0,
+                    selected_source="statistical_suppression",
+                    arbitration_reason=f"Arbitrator suppressed signal: Quant {q_dir.upper()} contradicted by TimesFM statistical skew ({tfm_skew:.2f}) and LLM {l_dir}.",
+                    meta={"quant_signal": q_dir, "tfm_skew": tfm_skew, "llm_signal": l_dir},
+                )
+
             q_meta = (
                 quant_signal.get("meta", {}) if isinstance(quant_signal, dict) else getattr(quant_signal, "meta", {})
             )
             is_incubating = bool(q_meta.get("is_incubating", False)) if isinstance(q_meta, dict) else False
+
+            try:
+                from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+
+                decay_mon = get_strategy_decay_monitor()
+                if not decay_mon.is_tradeable(quant_strat_id):
+                    return ArbitrationResult(
+                        symbol=symbol,
+                        decision=l_dir if l_dir in ("buy", "sell", "wait", "avoid") else "avoid",
+                        confidence=l_conf if l_dir in ("buy", "sell") else 0.0,
+                        risk_multiplier=0.0,
+                        selected_source="decay_quarantine",
+                        arbitration_reason=f"Quant strategy {quant_strat_id} is quarantined/decayed by StrategyDecayMonitor.",
+                        meta={"quarantined_strategy": quant_strat_id},
+                    )
+                strat_health = decay_mon.get_health(quant_strat_id)
+                if not strat_health.is_incubation_passed:
+                    is_incubating = True
+            except Exception as dec_err:
+                logger.debug(f"[{symbol}] Decay monitor check in arbitrator non-fatal: {dec_err}")
+
             if is_incubating and l_dir in ("avoid", "wait"):
                 return ArbitrationResult(
                     symbol=symbol,
@@ -678,18 +742,6 @@ class SignalArbitrator:
 
             # 4b. If LLM is waiting ("wait") and Quant has active valid signal:
             if l_dir == "wait" and q_dir in ("buy", "sell"):
-                # If TimesFM strongly opposes Quant, suppress to avoid false breakout
-                if (q_dir == "buy" and tfm_skew < -0.30) or (q_dir == "sell" and tfm_skew > 0.30):
-                    return ArbitrationResult(
-                        symbol=symbol,
-                        decision="avoid",
-                        confidence=0.0,
-                        risk_multiplier=0.0,
-                        selected_source="statistical_suppression",
-                        arbitration_reason=f"Arbitrator suppressed signal: Quant {q_dir.upper()} contradicted by TimesFM statistical skew ({tfm_skew:.2f}) and LLM {l_dir}.",
-                        meta={"quant_signal": q_dir, "llm_signal": l_dir, "timesfm_skew": tfm_skew},
-                    )
-
                 # If TimesFM confirms Quant, boost caution multiplier
                 effective_mult = quant_priority_risk_mult
                 if (q_dir == "buy" and tfm_skew >= 0.20) or (q_dir == "sell" and tfm_skew <= -0.20):

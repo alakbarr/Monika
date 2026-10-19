@@ -11,7 +11,7 @@ from monika.infrastructure.database.models import PriceOHLCV
 @StrategyRegistry.register
 class BTCDonchianBreakout(EdgeStrategy):
     strategy_id = "btc_donchian_breakout"
-    applicable_symbols = {"BTCUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD", "ETHUSD"}
+    applicable_symbols = {"BTCUSD", "ETHUSD", "SOLUSD"}
     compatible_regimes = {"TREND", "STRONG_TREND", "EXPANDING_FAST"}
     factor_family = "breakout"
 
@@ -98,4 +98,4 @@ class BTCDonchianBreakout(EdgeStrategy):
 @StrategyRegistry.register
 class DonchianBreakoutStrategy(BTCDonchianBreakout):
     strategy_id = "donchian_breakout"
-    applicable_symbols = {"BTCUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD", "ETHUSD"}
+    applicable_symbols = {"BTCUSD", "ETHUSD", "SOLUSD"}

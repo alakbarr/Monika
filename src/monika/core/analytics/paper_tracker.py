@@ -238,7 +238,7 @@ class PaperTracker:
                     select(PriceOHLCV)
                     .where(PriceOHLCV.symbol == trade.symbol)
                     .where(PriceOHLCV.timeframe == timeframe)
-                    .where(PriceOHLCV.timestamp >= start_time - timedelta(hours=4))
+                    .where(PriceOHLCV.timestamp >= start_time)
                     .where(PriceOHLCV.timestamp <= clock.now())
                     .order_by(PriceOHLCV.timestamp.asc())
                     .limit(limit)
@@ -288,7 +288,7 @@ class PaperTracker:
             "USDJPY": {"normal": 0.06, "news": 0.30, "weekend_open": 0.50, "off_peak": 0.12},
             "AUDUSD": {"normal": 0.00012, "news": 0.0008, "weekend_open": 0.0015, "off_peak": 0.0003},
             "XTIUSD": {"normal": 0.15, "news": 1.20, "weekend_open": 2.50, "off_peak": 0.40},
-            "BTCUSD": {"normal": 50.0, "news": 300.0, "weekend_open": 500.0, "off_peak": 150.0},
+            "BTCUSD": {"normal": 5.0, "news": 25.0, "weekend_open": 40.0, "off_peak": 15.0},
         }
         # FIX (P0): pakai model spread realistis per-simbol yang SAMA dengan
         # yang dipakai saat entry (self._get_realistic_spread). Implementasi
@@ -373,11 +373,26 @@ class PaperTracker:
             actual_slippage = slippage * gap_multiplier
             # Apply half-spread symmetrically on exit legs for both long and short positions.
             if sl_hit:
-                exit_reason = "sl_hit"
-                if trade.direction == "buy":
-                    exit_price = trade.stop_loss - spread / 2 - actual_slippage
+                # Check if SL is at or beyond breakeven (entry price)
+                is_be_or_profit_sl = False
+                if trade.entry_price and trade.stop_loss:
+                    if trade.direction == "buy" and trade.stop_loss >= trade.entry_price:
+                        is_be_or_profit_sl = True
+                    elif trade.direction == "sell" and trade.stop_loss <= trade.entry_price:
+                        is_be_or_profit_sl = True
+
+                if is_be_or_profit_sl:
+                    exit_reason = "breakeven"
+                    if trade.direction == "buy":
+                        exit_price = max(trade.entry_price, trade.stop_loss - spread / 2)
+                    else:
+                        exit_price = min(trade.entry_price, trade.stop_loss + spread / 2)
                 else:
-                    exit_price = trade.stop_loss + spread / 2 + actual_slippage
+                    exit_reason = "sl_hit"
+                    if trade.direction == "buy":
+                        exit_price = trade.stop_loss - spread / 2 - actual_slippage
+                    else:
+                        exit_price = trade.stop_loss + spread / 2 + actual_slippage
             else:
                 exit_reason = "tp_hit"
                 if trade.direction == "buy":

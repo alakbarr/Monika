@@ -182,6 +182,13 @@ class PreFlightTurnGate:
                     elif hasattr(mt5_client, "_broker_utc_offset_seconds"):
                         broker_offset = int(getattr(mt5_client, "_broker_utc_offset_seconds", 0) or 0)
 
+                    # Dynamic fallback if broker offset was not detected yet but tick is shifted by whole hours
+                    if broker_offset == 0:
+                        diff_s = tick_ts - now_utc.timestamp()
+                        cand_hours = round(diff_s / 3600.0)
+                        if abs(diff_s - cand_hours * 3600) < 180 and -14 <= cand_hours <= 14 and cand_hours != 0:
+                            broker_offset = int(cand_hours * 3600)
+
                     tick_utc_ts = tick_ts - broker_offset
                     age = abs(now_utc.timestamp() - tick_utc_ts)
                     if age > 180 and not is_24_7:

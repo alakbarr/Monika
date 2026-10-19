@@ -37,7 +37,6 @@ CORE_STRATEGY_IDS: set[str] = {
     "donchian_breakout",
     "gap_fade",
     "liquidity_sweep_edge",
-    "smc_fvg",
     "tri_convergent_alpha",
     "tsm_momentum",
     "xau_trend_engine",

@@ -358,13 +358,21 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
             if asyncio.iscoroutine(spread_info):
                 spread_info = await spread_info
             spread_pts = spread_info.get("spread_points", 0) if isinstance(spread_info, dict) else 0
-            default_spread = DEFAULT_SYMBOL_MAX_SPREAD_POINTS.get(symbol, 100.0)
-            max_spread = float(
-                self.settings.get("trading", {})
-                .get("risk", {})
-                .get("max_spread_points", {})
-                .get(symbol, default_spread)
-            )
+            spread_cost = spread_info.get("spread_cost", 0.0) if isinstance(spread_info, dict) else 0.0
+            bid = spread_info.get("bid", 0.0) if isinstance(spread_info, dict) else 0.0
+            ask = spread_info.get("ask", 0.0) if isinstance(spread_info, dict) else 0.0
+            current_price = (bid + ask) / 2.0 if (bid and ask) else 0.0
+
+            max_spread_cfg = self.settings.get("trading", {}).get("risk", {}).get("max_spread_points") or {}
+            default_spread = DEFAULT_SYMBOL_MAX_SPREAD_POINTS.get(symbol, max_spread_cfg.get("default", 100.0))
+            max_spread = float(max_spread_cfg.get(symbol, default_spread))
+
+            # Relative spread check: For high-nominal assets like crypto, <= 0.05% is institutional grade.
+            if current_price > 0 and spread_cost > 0:
+                spread_pct = spread_cost / current_price
+                if spread_pct <= 0.0005:
+                    return True, "ok"
+
             if spread_pts > max_spread:
                 return False, f"Current spread {spread_pts} pts exceeds maximum allowed {max_spread} pts"
             return True, "ok"

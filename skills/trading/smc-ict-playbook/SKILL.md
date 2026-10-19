@@ -77,10 +77,12 @@ DECISION: __ (BUY/SELL if Total Confluence >= Effective Threshold, WAIT if sub-t
 6. **Contra-Macro Setup without Adjudication**: When currency confidence $\ge 0.70$, submitting BUY/SELL directly opposing the macro brief without explicit `specialist_adjudication` (with conflict_detected=true, resolution_path in ('override_macro', 'cancel_setup', 'hedged_entry', 'scale_out'), and $\ge 40$ chars justification citing structural level breach) is **HARD REJECTED** by the server.
 
 ## Decision Thresholds & Intraday Range Rules
-- **Take Profit Target Band**: 50%–80% of 5-day ADR (via `get_daily_range_context`).
-- **Stop Loss Ceiling**: $\le 35\%$ of ADR.
-- **Stop Loss Floor**: $\ge 1.0\times\text{ ATR}(14, \text{H4})$ AND strictly placed beyond verified structural high/low.
-- **Room Remaining**: `room_remaining_pct < 25%` $\rightarrow$ Submit `WAIT`.
+- **Take Profit Target Band**: 40%–85% of 5-day ADR (via `get_daily_range_context`), placed at a verified structural target.
+- **Stop Loss Sizing & Placement**:
+  - SL MUST be anchored to verified structural invalidation (swing high/low, order block boundary) with a 0.15–0.25x ATR buffer.
+  - SL Floor: $\ge 0.5\times\text{ ATR}(14, \text{H4})$ to ensure the position is not stopped out by spread or micro-noise.
+  - SL Ceiling: Adaptive ceiling $\le \max(0.40\times\text{ADR}, 1.25\times\text{ATR}(14, \text{H4}))$. Never squeeze SL smaller than structural protection.
+- **Room Remaining**: `room_remaining_pct < 15%` $\rightarrow$ Submit `WAIT` (insufficient range left for the session).
 
 ## CRITICAL: Anti-Over-Conservative Directive
 

@@ -129,6 +129,13 @@ export interface HTTPValidationError {
   detail?: ValidationError[];
 }
 
+export interface HarnessCycleRequest {
+  /** Market domain or regime */
+  domain?: string | null;
+  /** Number of candidate proposals */
+  k_candidates?: number;
+}
+
 export interface HealthDiagnostics {
   active_tasks?: number;
   active_threads?: number;
@@ -440,6 +447,15 @@ export interface ApiEndpoints {
   };
   'GET /api/v1/gemini-quota': {
     summary: 'Get Gemini Quota';
+  };
+  'POST /api/v1/harness/cycle': {
+    summary: 'Trigger Harness Cycle';
+  };
+  'GET /api/v1/harness/library': {
+    summary: 'Get Harness Library';
+  };
+  'GET /api/v1/harness/tree': {
+    summary: 'Get Harness Tree';
   };
   'GET /api/v1/health': {
     summary: 'Get Health';

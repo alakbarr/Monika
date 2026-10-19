@@ -119,6 +119,9 @@ class MT5MarketDataMixin(MT5MixinBase):
         """Ambil tick terbaru (bid, ask, last, spread, time) untuk simbol tertentu."""
         from unittest.mock import AsyncMock
 
+        if not await self.ensure_connected():
+            return None
+
         if hasattr(self, "_run") and not isinstance(self._run, AsyncMock):
             return await self._run(_get_last_tick, symbol, priority=PRIORITY_STANDARD)
         loop = asyncio.get_running_loop()
@@ -172,12 +175,12 @@ class MT5MarketDataMixin(MT5MixinBase):
                 for s in symbols_to_check:
                     t = mt5_mod.symbol_info_tick(s)
                     if t and getattr(t, "time", 0) > 0:
+                        diff_s = t.time - now_utc
+                        offset_hours = round(diff_s / 3600.0)
+                        residual_s = abs(diff_s - (offset_hours * 3600))
                         # Abaikan tick yang kadaluarsa (>30 menit) karena pasar tutup (cth: EURUSD di weekend)
-                        if abs(now_utc - t.time) < 1800:
-                            diff_s = t.time - now_utc
-                            offset_hours = round(diff_s / 3600.0)
-                            if -14 <= offset_hours <= 14:
-                                return int(offset_hours * 3600)
+                        if residual_s < 1800 and -14 <= offset_hours <= 14:
+                            return int(offset_hours * 3600)
             except Exception as e:
                 logger.debug(f"Failed to calculate broker UTC offset: {e}")
             return 0

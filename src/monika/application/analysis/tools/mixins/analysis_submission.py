@@ -413,6 +413,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
         atr_value_for_validation: Optional[float] = None
         context_snapshot_id: Optional[str] = None
         context_cds_score: Optional[float] = None
+        min_sl_from_atr: float = 0.0
 
         # Validation rules per spec §7.2
         errors = []
@@ -514,6 +515,9 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 "microstructure_confirmed",
                 "historical_pattern_consensus",
                 "pattern_consensus",
+                "quant_strategy_edge",
+                "rr_ratio_bonus",
+                "adr_target_bonus",
             }
             invalid_factors = [f for f in factors if f not in valid_factors]
             if invalid_factors:
@@ -535,6 +539,9 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     "liquidity_sweep_confirmed": 2,
                     "session_prime": 1,
                     "post_event_entry": 0,
+                    "quant_strategy_edge": 1,
+                    "rr_ratio_bonus": 1,
+                    "adr_target_bonus": 1,
                 }
                 effective_tolerance += sum(v for f, v in BONUS_FACTORS_BEYOND_CORE_14.items() if f in declared_factors)
                 if gap > effective_tolerance:
@@ -700,7 +707,22 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
 
                 chop = await compute_bollinger_donchian_chop(self.session, symbol, "H4", self.settings)
                 if chop.get("chop_block"):
-                    errors.append(f"VOLATILITY REGIME GATE: {chop.get('reason')} — no confirmed breakout. Submit WAIT.")
+                    entry_cond = inp.get("entry_condition") or {}
+                    is_structural_limit = (
+                        isinstance(entry_cond, dict)
+                        and entry_cond.get("type") in ("limit", "order_block", "fvg")
+                        and bool(entry_cond.get("price"))
+                        and int(inp.get("confluence_score", 0) or 0) >= 7
+                    )
+                    if is_structural_limit:
+                        logger.info(
+                            f"[{symbol}] Volatility squeeze detected ({chop.get('reason')}), "
+                            f"allowing structural limit entry with confluence {inp.get('confluence_score')}."
+                        )
+                    else:
+                        errors.append(
+                            f"VOLATILITY REGIME GATE: {chop.get('reason')} — no confirmed breakout. Submit WAIT."
+                        )
         except Exception as e:
             logger.warning(f"Mechanical gates failed (fail-open): {e}")
 
@@ -885,7 +907,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                             )
                             min_sl_from_atr = min(min_sl_from_atr, adr_sl_ceiling * 0.85)
 
-                    if sl_dist < (min_sl_from_atr - 1e-6):
+                    if sl_dist < (min_sl_from_atr - 1e-4):
                         errors.append(
                             f"SL distance ({sl_dist:.5f}) is less than required minimum ({min_sl_multiplier}x ATR_14 or ADR-adjusted floor). {('[FALLBACK ATR USED]' if _using_atr_fallback else '')} Minimum required SL distance: {min_sl_from_atr:.5f}."
                         )
@@ -897,7 +919,12 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 sl_dist_check = abs(entry_price - sl_price)
                 tp_min = adr_ctx_for_validation["target_tp_min_distance"] * (1 - tol)
                 tp_max = adr_ctx_for_validation["target_tp_max_distance"] * (1 + tol)
-                sl_max = adr_ctx_for_validation["target_sl_max_distance"] * (1 + tol)
+                effective_sl_ceiling = (
+                    max(adr_ctx_for_validation["target_sl_max_distance"], min_sl_from_atr * 1.25)
+                    if min_sl_from_atr > 0
+                    else adr_ctx_for_validation["target_sl_max_distance"]
+                )
+                sl_max = effective_sl_ceiling * (1 + tol)
 
                 if tp_dist_check < tp_min:
                     errors.append(

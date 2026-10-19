@@ -596,6 +596,33 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HarnessCycleRequest": {
+        "properties": {
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "METALS__VOLATILITY_EXPANSION",
+            "description": "Market domain or regime",
+            "title": "Domain"
+          },
+          "k_candidates": {
+            "default": 2,
+            "description": "Number of candidate proposals",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "K Candidates",
+            "type": "integer"
+          }
+        },
+        "title": "HarnessCycleRequest",
+        "type": "object"
+      },
       "HealthDiagnostics": {
         "properties": {
           "active_tasks": {
@@ -3122,6 +3149,96 @@
         "tags": [
           "System",
           "System"
+        ]
+      }
+    },
+    "/api/v1/harness/cycle": {
+      "post": {
+        "description": "Trigger an autonomous recursive harnessing cycle (Propose -> Probe -> Contrastive Select -> Compose).",
+        "operationId": "trigger_harness_cycle_api_v1_harness_cycle_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/HarnessCycleRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trigger Harness Cycle",
+        "tags": [
+          "Intelligence & Market Data",
+          "Harness"
+        ]
+      }
+    },
+    "/api/v1/harness/library": {
+      "get": {
+        "description": "Retrieve all registered domain experience catalogs from the Domain Experience Library.",
+        "operationId": "get_harness_library_api_v1_harness_library_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Harness Library",
+        "tags": [
+          "Intelligence & Market Data",
+          "Harness"
+        ]
+      }
+    },
+    "/api/v1/harness/tree": {
+      "get": {
+        "description": "Retrieve the current 8-component Monika agent harness tree and invariant telemetry.",
+        "operationId": "get_harness_tree_api_v1_harness_tree_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Harness Tree",
+        "tags": [
+          "Intelligence & Market Data",
+          "Harness"
         ]
       }
     },

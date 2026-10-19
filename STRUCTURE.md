@@ -2108,6 +2108,7 @@ Monika/
 │   │   │   ├── test_prompt_cache_architecture.py
 │   │   │   ├── test_prompt_tiers_and_state.py
 │   │   │   ├── test_propose_probe_compose.py
+│   │   │   ├── test_runtime_wiring.py
 │   │   │   ├── test_structured_context_engine.py
 │   │   │   ├── test_surface.py
 │   │   │   ├── test_tool_batch_and_repair.py
@@ -2992,4 +2993,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 253 | **Total Tracked Files**: 2709
+**Total Tracked Directories**: 253 | **Total Tracked Files**: 2710

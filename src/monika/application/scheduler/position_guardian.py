@@ -412,8 +412,11 @@ class PositionGuardian:
         async with get_session() as session:
             open_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
 
-            exempted = set(weekend_cfg.get("exempted_symbols", ["BTCUSD", "ETHUSD"]))
-            at_risk = [p for p in open_positions if p.symbol not in exempted]
+            raw_exempted = weekend_cfg.get("exempted_symbols") or ["BTCUSD", "ETHUSD"]
+            exempted = {s.upper() for s in raw_exempted}
+            # 24/7 crypto assets trade continuously and are never subject to forex weekend gaps
+            exempted.update({"BTCUSD", "ETHUSD", "SOLUSD", "LTCUSD"})
+            at_risk = [p for p in open_positions if (p.symbol or "").upper() not in exempted]
 
             if not at_risk:
                 return {"positions_at_risk": 0}

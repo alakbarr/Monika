@@ -8453,6 +8453,8 @@
     - `__init__(value_json: str, timestamp: Optional[datetime])`
   - `class MockStructureBreakRow`
     - `__init__(direction: str, formed_at: Optional[datetime])`
+  - `class MockTimesFMForecastRow`
+    - `__init__(symbol: str, generated_at: Optional[datetime], close_price: float)`
   - `class ZeroLookaheadSliceSession(AsyncSession)`: Proxy AsyncSession providing strictly zero-lookahead temporal slices across multiple timeframes.
     - `__init__(candle_cache: Dict[tuple[str, str], List[CandleDict]], as_of_time: datetime, symbol: str)`
     - `info() -> Dict[str, Any]`

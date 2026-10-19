@@ -36,6 +36,9 @@ FACTOR_POINT_MAP = {
     "pattern_consensus": 1,
     "session_prime": 1,  # modifier tambahan, bukan bagian base-14
     "post_event_entry": 0,  # informational tag, tidak menambah skor
+    "quant_strategy_edge": 1,
+    "rr_ratio_bonus": 1,
+    "adr_target_bonus": 1,
 }
 FACTOR_CONSISTENCY_TOLERANCE = 1
 FACTORS_WITH_VARIABLE_WEIGHT = {"cot_aligned"}

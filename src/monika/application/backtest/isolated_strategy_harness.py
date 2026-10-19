@@ -147,6 +147,30 @@ class MockStructureBreakRow:
         self.formed_at = formed_at or datetime.now(timezone.utc)
 
 
+class MockTimesFMForecastRow:
+    def __init__(self, symbol: str, generated_at: Optional[datetime] = None, close_price: float = 1.0):
+        import json as _json
+
+        self.id = 1
+        self.symbol = symbol
+        self.timeframe = "H1"
+        self.generated_at = generated_at or datetime.now(timezone.utc)
+        self.horizon_steps = 24
+        self.quantiles_json = _json.dumps(
+            {
+                "Q10": [close_price * 0.995] * 24,
+                "Q50": [close_price] * 24,
+                "Q90": [close_price * 1.005] * 24,
+            }
+        )
+        self.expected_range = close_price * 0.01
+        self.quantile_skew = 0.0
+        self.volatility_expansion_ratio = 1.0
+        self.reachability_envelope = _json.dumps([])
+        self.model_backend = "mock_timesfm_backtest"
+        self.is_fallback = False
+
+
 class ZeroLookaheadSliceSession(AsyncSession):
     """
     Proxy AsyncSession providing strictly zero-lookahead temporal slices across multiple timeframes.
@@ -312,7 +336,20 @@ class ZeroLookaheadSliceSession(AsyncSession):
                 return _SliceScalarResult([mock_break])
             return _SliceScalarResult([])
 
-        # 3. Determine timeframe from stmt
+        # 3. TimesFM forecast query dispatch
+        if "TIMESFM" in stmt_str:
+            mock_tfm = MockTimesFMForecastRow(
+                symbol=self.symbol,
+                generated_at=self.as_of_time,
+                close_price=last_close,
+            )
+            return _SliceScalarResult([mock_tfm])
+
+        # 4. Other auxiliary table dispatch (EconomicCalendar, SystemConfig, VIX, etc.)
+        if any(tbl in stmt_str for tbl in ("ECONOMICCALENDAR", "SYSTEMCONFIG", "VIXDATA", "ASSETANALYSIS", "TRADE")):
+            return _SliceScalarResult([])
+
+        # 5. Determine timeframe from stmt
         tf = "H1"
         for candidate_tf in ("M15", "H4", "D1", "H1"):
             if f"'{candidate_tf}'" in stmt_str or f'"{candidate_tf}"' in stmt_str:

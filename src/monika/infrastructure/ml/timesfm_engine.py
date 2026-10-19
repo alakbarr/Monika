@@ -510,7 +510,7 @@ class TimesFMEngine:
             .limit(1)
         )
         record = (await session.execute(stmt)).scalar_one_or_none()
-        if not record:
+        if not record or not hasattr(record, "quantiles_json"):
             return None
 
         try:
