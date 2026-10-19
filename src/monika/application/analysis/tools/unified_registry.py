@@ -371,7 +371,12 @@ class UnifiedToolRegistry:
             if def_tool is not None:
                 desc = getattr(def_tool, "description", "") or (getattr(def_tool, "__doc__", "") or "").strip()
                 raw_handler = getattr(def_tool, "handler", def_tool)
-                if hasattr(raw_handler, "execute"):
+                if inspect.isclass(raw_handler):
+                    try:
+                        raw_handler = raw_handler()
+                    except Exception:
+                        pass
+                if hasattr(raw_handler, "execute") and callable(getattr(raw_handler, "execute")):
                     handler: Callable[..., Any] = raw_handler.execute
                 elif callable(raw_handler):
                     handler = raw_handler

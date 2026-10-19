@@ -604,13 +604,13 @@ class ChronicleWriter:
             return ""
 
     async def maintain_weekly_chronicle_consolidation(
-        self, session: AsyncSession, force: bool = False
+        self, session: AsyncSession, force: bool = False, as_of: Optional[datetime] = None
     ) -> Dict[str, Any]:
         """
         Executes cognitive memory consolidation (Monday morning schedule):
         Processes tactical news events older than 30 days via task role 'macro_chronicle_curator'.
         """
-        now = clock.now()
+        now = as_of or clock.now()
         if not force and now.weekday() != 0:
             return {"status": "skipped", "reason": "Weekly consolidation scheduled only for Monday morning."}
 
@@ -623,19 +623,21 @@ class ChronicleWriter:
             logger.warning(f"[ChronicleWriter] Weekly consolidation error: {e}")
             return {"status": "error", "error": str(e)}
 
-    async def maintain_chronicle_lifecycle(self, session: AsyncSession) -> Dict[str, Any]:
+    async def maintain_chronicle_lifecycle(
+        self, session: AsyncSession, as_of: Optional[datetime] = None
+    ) -> Dict[str, Any]:
         """
         Routine maintenance lifecycle called by database cleanup (cleanup.py):
         1. Executes weekly consolidation if it is Monday morning.
         2. Auto-resolves tactical news events older than 14 days in the active buffer.
         """
-        res = await self.maintain_weekly_chronicle_consolidation(session, force=False)
+        now = as_of or clock.now()
+        res = await self.maintain_weekly_chronicle_consolidation(session, force=False, as_of=now)
 
         # Tactical auto-resolve for active buffer items older than 14 days
         try:
             from sqlalchemy import update
 
-            now = clock.now()
             cutoff = now - timedelta(days=14)
             await session.execute(
                 update(MarketChronicle)

@@ -55,7 +55,7 @@ async def evaluate_pretrade_gate(
         if vp.get("regime") == "imbalanced" and is_mr_like:
             return False, "imbalanced volume regime blocks mean-reversion / stat-arb"
         if vp.get("regime") == "balanced" and is_trend_like:
-            return False, "balanced volume regime blocks pure trend/breakout"
+            return False, "balanced volume regime blocks pure trend-following / breakout"
 
     # 4. ADX Trend Confirmation
     regime = await classify_market_regime(session, symbol, settings, as_of=as_of)

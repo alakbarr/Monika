@@ -97,7 +97,9 @@ class EdgeStrategy(ABC):
         candles = [
             CandleDict(
                 {
-                    "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+                    "timestamp": r.timestamp.isoformat()
+                    if hasattr(r.timestamp, "isoformat")
+                    else (str(r.timestamp) if r.timestamp else None),
                     "open": float(r.open),
                     "high": float(r.high),
                     "low": float(r.low),

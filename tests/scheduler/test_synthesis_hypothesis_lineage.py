@@ -14,7 +14,7 @@ def tmp_hypothesis_file(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_synthesis_tracks_hypothesis_and_lineage(tmp_hypothesis_file):
+async def test_synthesis_tracks_hypothesis_and_lineage(tmp_hypothesis_file, tmp_path):
     reg = HypothesisRegistry(storage_path=tmp_hypothesis_file)
 
     scheduler = StrategySynthesisScheduler(
@@ -29,6 +29,7 @@ async def test_synthesis_tracks_hypothesis_and_lineage(tmp_hypothesis_file):
         }
     )
     scheduler.hypothesis_registry = reg
+    scheduler.SYNTHESIZED_DIR = tmp_path
 
     valid_code = """
 from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
@@ -81,7 +82,7 @@ class MockPassStrategy(EdgeStrategy):
 
 
 @pytest.mark.asyncio
-async def test_synthesis_rejects_and_deduplicates(tmp_hypothesis_file):
+async def test_synthesis_rejects_and_deduplicates(tmp_hypothesis_file, tmp_path):
     reg = HypothesisRegistry(storage_path=tmp_hypothesis_file)
 
     scheduler = StrategySynthesisScheduler(
@@ -96,6 +97,7 @@ async def test_synthesis_rejects_and_deduplicates(tmp_hypothesis_file):
         }
     )
     scheduler.hypothesis_registry = reg
+    scheduler.SYNTHESIZED_DIR = tmp_path
 
     valid_code = """
 from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal

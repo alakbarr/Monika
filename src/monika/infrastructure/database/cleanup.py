@@ -271,7 +271,7 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
             from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
 
             cw = ChronicleWriter(settings)
-            chronicle_res = await cw.maintain_chronicle_lifecycle(session)
+            chronicle_res = await cw.maintain_chronicle_lifecycle(session, as_of=now)
             if isinstance(chronicle_res, dict) and chronicle_res.get("status") == "success":
                 logger.info(f"MarketChronicle weekly consolidation successful: {chronicle_res.get('stats')}")
         except Exception as chron_err:
