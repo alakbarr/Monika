@@ -63,6 +63,7 @@ class ActionStateMixin(_ChatAgentMixinBase):
                     description=f"Telegram pending action: {action.action_type}",
                 )
                 await session.commit()
+                action.is_persisted = True
         except Exception as e:
             logger.debug(f"[ChatAgent] Could not persist pending action {action.action_id}: {e}")
 
@@ -183,10 +184,15 @@ class ActionStateMixin(_ChatAgentMixinBase):
                 return False, "Action expired (90-second timeout). Please request again."
 
             # Pop immediately within the lock to claim exclusive ownership
-            had_mem = self._pending_actions.pop(action_id, None) is not None
-            claimed_db = await self._claim_persisted_pending_action(action_id)
-            if not had_mem and not claimed_db:
-                return False, "Action not found or already processed by another request."
+            if getattr(action, "is_persisted", False):
+                claimed_db = await self._claim_persisted_pending_action(action_id)
+                self._pending_actions.pop(action_id, None)
+                if not claimed_db:
+                    return False, "Action not found or already processed by another request."
+            else:
+                had_mem = self._pending_actions.pop(action_id, None) is not None
+                if not had_mem:
+                    return False, "Action not found or already processed by another request."
             self._consecutive_denials = 0  # Reset on approval
 
         # Execute claimed action outside the lock to avoid blocking other actions

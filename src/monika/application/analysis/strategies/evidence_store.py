@@ -278,7 +278,7 @@ class StrategyEvidenceStore:
         """
         ev = self._store.get(strategy_id)
         if not ev:
-            if strategy_id in ("general", "default") or len(self._store) == 0:
+            if strategy_id in ("general", "default"):
                 return True, f"Strategy {strategy_id} allowed under baseline evidence"
             return False, f"No verified backtest evidence on file for {strategy_id}"
 

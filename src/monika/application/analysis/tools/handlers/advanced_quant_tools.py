@@ -61,15 +61,24 @@ async def handle_simulate_portfolio_drawdown(args: dict, **ctx) -> dict:
 
     # Base equity (fail-closed if unknown)
     equity = 0.0
-    margin_free = 0.0
-    if client and await client.ensure_connected():
+    if client:
         try:
-            acc = await client.get_account_info()
-            if acc:
-                equity = float(acc.get("equity", 0.0))
-                margin_free = float(acc.get("margin_free", equity))
+            import inspect
+
+            conn_call = client.ensure_connected()
+            is_conn = (await conn_call) if inspect.isawaitable(conn_call) else bool(conn_call)
         except Exception:
-            pass
+            is_conn = False
+
+        if is_conn:
+            try:
+                acc_call = client.get_account_info()
+                acc = (await acc_call) if inspect.isawaitable(acc_call) else acc_call
+                if acc and isinstance(acc, dict):
+                    equity = float(acc.get("equity", 0.0))
+                    margin_free = float(acc.get("margin_free", equity))
+            except Exception:
+                pass
 
     if equity <= 0 and settings:
         try:
@@ -103,7 +112,18 @@ async def handle_simulate_portfolio_drawdown(args: dict, **ctx) -> dict:
         from monika.domain.risk.position_sizing import get_instrument_spec
 
         spec = get_instrument_spec(symbol, client)
-        contract_size = float(spec.contract_size) if spec and spec.contract_size > 0 else 100000.0
+        if spec and spec.contract_size > 0:
+            contract_size = float(spec.contract_size)
+        elif any(c in symbol for c in ("BTC", "SOL", "US30", "SPX", "NAS", "CRYPTO")):
+            contract_size = 1.0
+        elif "ETH" in symbol:
+            contract_size = 10.0
+        elif any(m in symbol for m in ("XAU", "GOLD")):
+            contract_size = 100.0
+        elif any(o in symbol for o in ("XTI", "XBR", "OIL", "CL")):
+            contract_size = 1000.0
+        else:
+            contract_size = 100000.0
 
         # Risk amount in USD
         if entry > 0 and sl > 0:

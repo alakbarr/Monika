@@ -303,6 +303,13 @@ tools = _ToolBridge({rpc_port}, "{auth_token}")
             "execute_manual_trade",
             "modify_stop_loss",
             "close_all_positions",
+            "propose_trade",
+            "trade",
+            "buy",
+            "sell",
+            "execute_trade",
+            "order_send",
+            "emergency_stop",
         }
 
         class _RPCServer:
@@ -328,8 +335,13 @@ tools = _ToolBridge({rpc_port}, "{auth_token}")
                     tool_name = request.get("tool", "")
                     tool_args = request.get("args", {})
 
-                    if tool_name in FORBIDDEN_PTC_TOOLS:
-                        result = {"error": f"Tool '{tool_name}' is forbidden in PTC sandbox environment (fail-closed)"}
+                    is_mutating_tool = tool_name in FORBIDDEN_PTC_TOOLS or any(
+                        w in tool_name.lower() for w in ("order", "trade", "position", "kill", "submit_asset")
+                    )
+                    if is_mutating_tool:
+                        result = {
+                            "error": f"Tool '{tool_name}' involves trade/order mutation and is forbidden in PTC environment (fail-closed)"
+                        }
                     elif self.allowed and tool_name not in self.allowed:
                         result = {"error": f"Tool '{tool_name}' not in allowed list"}
                     else:

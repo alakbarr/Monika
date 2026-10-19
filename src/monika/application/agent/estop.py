@@ -73,6 +73,11 @@ def get_estop_candidate_paths() -> list[Path]:
         candidate_paths.append(agent_dir / "ESTOP")
     if (agent_dir.parent / "ESTOP") not in candidate_paths:
         candidate_paths.append(agent_dir.parent / "ESTOP")
+    if (agent_dir.parent.parent / "ESTOP") not in candidate_paths:
+        candidate_paths.append(agent_dir.parent.parent / "ESTOP")
+    cwd_estop = Path.cwd() / "ESTOP"
+    if cwd_estop not in candidate_paths:
+        candidate_paths.append(cwd_estop)
     return candidate_paths
 
 
