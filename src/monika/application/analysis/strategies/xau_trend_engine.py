@@ -91,6 +91,8 @@ class XAUTrendEngine(EdgeStrategy):
 
         if ema_bull and breakout_up:
             sl_p = round(float(ch_mid), 2)
+            if sl_p >= entry_p:
+                sl_p = round(entry_p * 0.99, 2)
             tp_p = round(entry_p + (entry_p - sl_p) * 1.5, 2)
             return EdgeSignal(
                 self.strategy_id,
@@ -109,6 +111,8 @@ class XAUTrendEngine(EdgeStrategy):
             )
         if ema_bear and breakout_down:
             sl_p = round(float(ch_mid), 2)
+            if sl_p <= entry_p:
+                sl_p = round(entry_p * 1.01, 2)
             tp_p = round(entry_p - (sl_p - entry_p) * 1.5, 2)
             return EdgeSignal(
                 self.strategy_id,

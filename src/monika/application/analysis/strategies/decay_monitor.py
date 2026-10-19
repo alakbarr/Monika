@@ -31,6 +31,22 @@ _TRANSITIONS = {
 }
 
 
+CORE_STRATEGY_IDS: set[str] = {
+    "bb_volume_profile",
+    "btc_donchian_breakout",
+    "donchian_breakout",
+    "gap_fade",
+    "liquidity_sweep_edge",
+    "smc_fvg",
+    "tri_convergent_alpha",
+    "tsm_momentum",
+    "xau_trend_engine",
+    "xti_pairs_readiness",
+    "general",
+    "default",
+}
+
+
 @dataclass
 class StrategyHealth:
     strategy_id: str
@@ -42,7 +58,7 @@ class StrategyHealth:
     reason: str = ""
     paper_trades_count: int = 0
     paper_wins_count: int = 0
-    is_incubation_passed: bool = True
+    is_incubation_passed: bool = False
     paper_gross_profit: float = 0.0
     paper_gross_loss: float = 0.0
 
@@ -89,7 +105,7 @@ class StrategyHealth:
             reason=str(data.get("reason", "")),
             paper_trades_count=int(data.get("paper_trades_count", 0)),
             paper_wins_count=int(data.get("paper_wins_count", 0)),
-            is_incubation_passed=bool(data.get("is_incubation_passed", True)),
+            is_incubation_passed=bool(data.get("is_incubation_passed", False)),
             paper_gross_profit=float(data.get("paper_gross_profit", 0.0)),
             paper_gross_loss=float(data.get("paper_gross_loss", 0.0)),
         )
@@ -112,13 +128,13 @@ class StrategyDecayMonitor:
 
     def get_health(self, strategy_id: str) -> StrategyHealth:
         if strategy_id not in self._health_map:
-            is_synth = strategy_id.startswith(("alpha_", "synth_"))
+            is_core = strategy_id in CORE_STRATEGY_IDS
             self._health_map[strategy_id] = StrategyHealth(
                 strategy_id=strategy_id,
-                is_incubation_passed=not is_synth,
-                reason=f"Incubating in paper trading (min {self.min_incubation_trades} trades required)"
-                if is_synth
-                else "",
+                is_incubation_passed=is_core,
+                reason=""
+                if is_core
+                else f"Incubating in paper trading (min {self.min_incubation_trades} trades required)",
             )
         return self._health_map[strategy_id]
 

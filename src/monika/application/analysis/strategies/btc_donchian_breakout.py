@@ -52,6 +52,8 @@ class BTCDonchianBreakout(EdgeStrategy):
 
         if latest.close > ch_high:
             sl_p = round(float(ch_mid), 2)
+            if sl_p >= entry_p:
+                sl_p = round(entry_p * 0.98, 2)
             tp_p = round(entry_p + (entry_p - sl_p) * 1.5, 2)
             return EdgeSignal(
                 self.strategy_id,
@@ -71,6 +73,8 @@ class BTCDonchianBreakout(EdgeStrategy):
             )
         if latest.close < ch_low:
             sl_p = round(float(ch_mid), 2)
+            if sl_p <= entry_p:
+                sl_p = round(entry_p * 1.02, 2)
             tp_p = round(entry_p - (sl_p - entry_p) * 1.5, 2)
             return EdgeSignal(
                 self.strategy_id,
