@@ -260,3 +260,52 @@ async def test_liquidity_sweep_computes_invalidation_stop_loss():
         assert sig_sell.direction == "sell"
         # SL should be sweep_price + (atr * 0.1) = 2700 + 1.0 = 2701.0
         assert sig_sell.stop_loss == 2701.0
+
+
+@pytest.mark.asyncio
+async def test_compute_optimal_levels_default_min_rr_1_8_and_limit_entry():
+    """Verify that compute_optimal_levels defaults to min_rr 1.8 and provides recommended limit pullback entry."""
+    session = create_mock_async_session()
+    # Empty risk settings to test system defaults
+    settings = {"trading": {"risk": {}}}
+
+    mock_adr_ctx = {
+        "adr": 100.0,
+        "target_tp_min_distance": 20.0,
+        "target_tp_max_distance": 80.0,
+        "target_sl_max_distance": 40.0,
+        "room_remaining_pct": 0.80,
+        "entry_allowed": True,
+        "volatility_regime": "normal",
+    }
+
+    with (
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer.compute_daily_range_context",
+            new_callable=AsyncMock,
+        ) as m_adr,
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer._get_atr", new_callable=AsyncMock
+        ) as m_atr,
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer._collect_zones", new_callable=AsyncMock
+        ) as m_zones,
+        patch(
+            "monika.application.analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep",
+            new_callable=AsyncMock,
+        ) as m_sweep,
+    ):
+        m_adr.return_value = mock_adr_ctx
+        m_atr.return_value = 10.0
+        m_sweep.return_value = {"sweep_detected": False}
+        m_zones.return_value = []
+
+        res = await compute_optimal_levels(session, "EURUSD", "buy", entry_price=1.1000, settings=settings)
+
+        assert "error" not in res
+        assert res["min_rr_ratio"] == 1.8
+        assert res["selected_rr"] >= 1.8
+        assert res["recommended_entry_type"] == "LIMIT"
+        assert "pullback_entry_price" in res
+        # Pullback entry for BUY should be below market entry price
+        assert res["pullback_entry_price"] < 1.1000

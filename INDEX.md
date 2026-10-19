@@ -6738,7 +6738,7 @@
     - `get_health(strategy_id: str) -> StrategyHealth`
     - `register_incubating_strategy(strategy_id: str) -> StrategyHealth` - *Register a new alpha/synthesized strategy for paper trading incubation.*
     - `is_tradeable(strategy_id: str) -> bool` - *ACTIVE and MONITORING states are allowed to emit signals.*
-    - `is_live_ready(strategy_id: str) -> bool` - *Check if strategy is healthy and has passed the paper incubation gate.*
+    - `is_live_ready(strategy_id: str) -> bool` - *Check if strategy is healthy, unquarantined, and has passed the paper incubation gate.*
     - `record_trade_outcome(strategy_id: str, win: bool, is_paper: bool, ...) -> StrategyHealth` - *Update state upon individual trade completion (paper or live).*
     - `evaluate(strategy_id: str, recent_trades: List[Any], baseline_win_rate: float) -> StrategyHealth` - *Evaluate strategy against a window of recent trades.*
     - `to_dict() -> Dict[str, Dict[str, Any]]`

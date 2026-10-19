@@ -182,9 +182,10 @@ async def compute_optimal_levels(
     except Exception:
         pass
     risk_cfg = (settings or {}).get("trading", {}).get("risk", {})
-    min_rr = float(risk_cfg.get("min_rr_ratio", 1.3))
+    min_rr = float(risk_cfg.get("min_rr_ratio", 1.8))
     mult_map = risk_cfg.get("min_sl_atr_multiplier_by_symbol", {})
-    min_sl_mult = mult_map.get(symbol, mult_map.get("default", 1.0))
+    min_sl_mult = float(mult_map.get(symbol, mult_map.get("default", 1.0)))
+    sl_buffer_mult = float(risk_cfg.get("sl_zone_buffer_atr", 0.15))
 
     is_swing = trade_style.lower() == "swing"
     adr_val = float(adr_ctx.get("adr", atr * 3.0))
@@ -280,7 +281,7 @@ async def compute_optimal_levels(
 
         # For BUY: SL should be placed BELOW the protective support zone (below z['low'])
         # For SELL: SL should be placed ABOVE the protective resistance zone (above z['high'])
-        sl_buffer = 0.15 * atr if atr > 0 else 0.0
+        sl_buffer = max(sl_buffer_mult * atr, 0.0005 * entry_price) if atr > 0 else 0.0
         z_sl_price = (z["low"] - sl_buffer) if direction == "buy" else (z["high"] + sl_buffer)
         dist_to_sl = (entry_price - z_sl_price) if direction == "buy" else (z_sl_price - entry_price)
         if atr > 0 and atr * min_sl_mult <= dist_to_sl <= sl_max * 1.05 and dist_to_sl > 0:
@@ -369,10 +370,15 @@ async def compute_optimal_levels(
     top_sl = sl_candidates[:3]
     selected_rr = round(top_tp[0]["distance"] / max(top_sl[0]["distance"], 1e-9), 2) if top_tp and top_sl else 0.0
 
+    pullback_offset = 0.382 * atr if atr > 0 else 0.002 * entry_price
+    limit_entry = round(entry_price - pullback_offset if direction == "buy" else entry_price + pullback_offset, 5)
+
     res = {
         "symbol": symbol,
         "direction": direction,
         "entry_price": entry_price,
+        "recommended_entry_type": "LIMIT",
+        "pullback_entry_price": limit_entry,
         "adr": adr_ctx["adr"],
         "volatility_regime": adr_ctx.get("volatility_regime", "normal"),
         "room_remaining_pct": adr_ctx.get("room_remaining_pct"),

@@ -188,8 +188,12 @@ class GeminiProvider(BaseLLMClient):
 
         from monika.core.security.credential_vault import vault
 
-        api_keys_raw = vault.get_secret("GEMINI_API_KEYS") or os.getenv("GEMINI_API_KEYS", "")
-        self.free_api_keys = [k.strip() for k in api_keys_raw.split(",") if k.strip()]
+        passed_free_keys = kwargs.get("free_api_keys")
+        if passed_free_keys is not None:
+            self.free_api_keys = list(passed_free_keys)
+        else:
+            api_keys_raw = vault.get_secret("GEMINI_API_KEYS") or os.getenv("GEMINI_API_KEYS", "")
+            self.free_api_keys = [k.strip() for k in api_keys_raw.split(",") if k.strip()]
         cfg_api_key = (self.settings or {}).get("llm", {}).get("providers", {}).get("gemini", {}).get("api_key", "")
         paid_key = vault.get_secret("GEMINI_PAID_API_KEY") or os.getenv("GEMINI_PAID_API_KEY")
         if not paid_key:
@@ -238,9 +242,10 @@ class GeminiProvider(BaseLLMClient):
         return False
 
     def _get_api_key(self) -> Optional[str]:
-        if self.api_key:
-            return self.api_key
-        if "pro" in self.model.lower() or "argon" in self.model.lower():
+        now = time.time()
+        is_paid_model = "pro" in self.model.lower() or "argon" in self.model.lower()
+
+        if is_paid_model:
             try:
                 from monika.infrastructure.auth.antigravity_bridge import resolve_antigravity_access_token
 
@@ -250,20 +255,30 @@ class GeminiProvider(BaseLLMClient):
                     return token
             except Exception:
                 pass
-            if self.paid_api_key:
+            if self.paid_api_key and (
+                self.paid_api_key not in self.__class__._key_cooldowns
+                or self.__class__._key_cooldowns[self.paid_api_key] <= now
+            ):
                 return self.paid_api_key
-            logger.warning(f"Model {self.model} called but GEMINI_PAID_API_KEY is empty. Fallback to free key.")
+            logger.warning(
+                f"Model {self.model} called but GEMINI_PAID_API_KEY is empty or cooling down. Fallback to free key."
+            )
 
-        # 1. Rotate through static GEMINI_API_KEYS if present
+        # 1. Rotate through static GEMINI_API_KEYS if present (respecting active cooldowns)
         if self.free_api_keys:
-            now = time.time()
             for _ in range(len(self.free_api_keys)):
                 key = self.free_api_keys[GeminiProvider._key_index % len(self.free_api_keys)]
                 GeminiProvider._key_index += 1
                 if key not in self.__class__._key_cooldowns or self.__class__._key_cooldowns[key] <= now:
                     return key
 
-        # 2. Rotate through Antigravity Free Accounts Pool (9 free accounts)
+        # 2. Check explicit self.api_key if provided and not in active cooldown
+        if self.api_key and (
+            self.api_key not in self.__class__._key_cooldowns or self.__class__._key_cooldowns[self.api_key] <= now
+        ):
+            return self.api_key
+
+        # 3. Rotate through Antigravity Free Accounts Pool (9 free accounts)
         try:
             from monika.infrastructure.auth.antigravity_bridge import resolve_antigravity_access_token
 
@@ -273,7 +288,19 @@ class GeminiProvider(BaseLLMClient):
         except Exception:
             pass
 
-        return self.paid_api_key if self.paid_api_key else None
+        # 4. If all free keys are in cooldown, pick the one that expires earliest
+        if self.free_api_keys:
+            earliest_key = min(self.free_api_keys, key=lambda k: self.__class__._key_cooldowns.get(k, 0))
+            return earliest_key
+
+        # 5. Fallback to paid key if available
+        if self.paid_api_key and (
+            self.paid_api_key not in self.__class__._key_cooldowns
+            or self.__class__._key_cooldowns[self.paid_api_key] <= now
+        ):
+            return self.paid_api_key
+
+        return self.api_key or self.paid_api_key
 
     @classmethod
     def _is_transient_error(cls, error: Any) -> bool:
@@ -531,7 +558,7 @@ class GeminiProvider(BaseLLMClient):
 
         stream_config = self._build_stream_config()
         timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
-        max_attempts = min(len(self.free_api_keys) if self.free_api_keys else 1, 2)
+        max_attempts = min(max(len(self.free_api_keys) if self.free_api_keys else 1, 1), 5)
         for attempt in range(max_attempts):
             api_key = self._get_api_key()
             if not api_key:
@@ -971,7 +998,7 @@ class GeminiProvider(BaseLLMClient):
         stream_config = self._build_stream_config()
         headers: dict[str, str] = {}
         timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
-        max_attempts = min(len(self.free_api_keys) if self.free_api_keys else 1, 2)
+        max_attempts = min(max(len(self.free_api_keys) if self.free_api_keys else 1, 1), 5)
         for attempt in range(max_attempts):
             api_key = self._get_api_key()
             if not api_key:

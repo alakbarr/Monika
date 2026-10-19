@@ -111,3 +111,53 @@ class TestGeminiAndNewsFixes(unittest.IsolatedAsyncioTestCase):
         vix_val_high = 31.0
         is_defensive_high = vix_val_high >= float(vix_thresholds.get("defensive", 30))
         self.assertTrue(is_defensive_high, "VIX 31 SHOULD trigger defensive threshold (+2 confluence)")
+
+    def test_gemini_key_rotation_free_keys_round_robin(self):
+        """Verify that Flash-Lite models rotate across free_api_keys round-robin."""
+        GeminiProvider._key_index = 0
+        provider = GeminiProvider(
+            model="gemini-3.5-flash-lite",
+            free_api_keys=["key-1", "key-2", "key-3"],
+            api_key="static-cfg-key",
+        )
+        keys_chosen = [provider._get_api_key() for _ in range(3)]
+        self.assertEqual(keys_chosen, ["key-1", "key-2", "key-3"])
+
+    def test_gemini_key_rotation_skips_cooldown(self):
+        """Verify that keys currently in cooldown are skipped."""
+        import time
+
+        provider = GeminiProvider(
+            model="gemini-3.5-flash-lite",
+            free_api_keys=["key-a", "key-b", "key-c"],
+        )
+        # Put key-b in cooldown
+        GeminiProvider._key_cooldowns["key-b"] = time.time() + 100.0
+
+        keys_chosen = [provider._get_api_key() for _ in range(2)]
+        self.assertNotIn("key-b", keys_chosen)
+        self.assertIn("key-a", keys_chosen)
+        self.assertIn("key-c", keys_chosen)
+
+        # Cleanup cooldown
+        GeminiProvider._key_cooldowns.pop("key-b", None)
+
+    @patch("monika.infrastructure.auth.antigravity_bridge.resolve_antigravity_access_token", return_value=None)
+    def test_gemini_key_rotation_fallback_earliest_cooldown(self, _mock_token):
+        """Verify that when all keys are in cooldown, it picks the key that expires earliest."""
+        import time
+
+        now = time.time()
+        provider = GeminiProvider(
+            model="gemini-3.5-flash-lite",
+            free_api_keys=["key-x", "key-y"],
+        )
+        GeminiProvider._key_cooldowns["key-x"] = now + 50.0
+        GeminiProvider._key_cooldowns["key-y"] = now + 10.0  # expires earlier
+
+        chosen = provider._get_api_key()
+        self.assertEqual(chosen, "key-y")
+
+        # Cleanup cooldowns
+        GeminiProvider._key_cooldowns.pop("key-x", None)
+        GeminiProvider._key_cooldowns.pop("key-y", None)

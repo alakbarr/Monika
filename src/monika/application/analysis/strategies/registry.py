@@ -19,6 +19,7 @@ class StrategyRegistry:
     _dynamic_params: dict[str, dict] = {}
     _dynamic_symbol_params: dict[tuple[str, str], dict] = {}
     _blacklisted_ids: set[str] = set()
+    QUARANTINED_STRATEGY_IDS: set[str] = {"smc_fvg", "btc_donchian_breakout"}
     _last_load_time: float = 0.0
     _load_interval: float = 60.0
     MAX_SYNTHESIZED_PER_SYMBOL: int = 5
@@ -401,6 +402,10 @@ class StrategyRegistry:
                     continue
 
                 strat_id = getattr(strat, "strategy_id", None) or strat_name
+
+                if strat_id in cls.QUARANTINED_STRATEGY_IDS or strat_id in cls._blacklisted_ids:
+                    logger.debug(f"[{strat_name}] Suppressed: Quarantined due to empirical negative expectancy.")
+                    continue
 
                 # Apply dynamic parameter overrides from DB SystemConfig / hot-reload
                 dyn_p = dict(cls._dynamic_params.get(strat_id, {}))

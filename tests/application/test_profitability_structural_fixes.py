@@ -180,14 +180,37 @@ def test_donchian_breakout_applicable_symbols_restricted_to_crypto():
     assert "EURUSD" not in BTCDonchianBreakout.applicable_symbols
 
 
-def test_smc_fvg_quarantined_from_core_bypass():
-    """Verify that smc_fvg is not in CORE_STRATEGY_IDS and must undergo standard incubation."""
-    from monika.application.analysis.strategies.decay_monitor import CORE_STRATEGY_IDS, get_strategy_decay_monitor
+@pytest.mark.asyncio
+async def test_smc_fvg_and_btc_donchian_quarantined_from_trading():
+    """Verify that smc_fvg and btc_donchian_breakout are in QUARANTINED_STRATEGY_IDS and suppressed."""
+    from monika.application.analysis.strategies.decay_monitor import (
+        CORE_STRATEGY_IDS,
+        QUARANTINED_STRATEGY_IDS,
+        get_strategy_decay_monitor,
+    )
+    from monika.application.analysis.strategies.registry import StrategyRegistry
 
     assert "smc_fvg" not in CORE_STRATEGY_IDS
+    assert "btc_donchian_breakout" not in CORE_STRATEGY_IDS
+    assert "tsm_momentum" in CORE_STRATEGY_IDS
+
+    assert "smc_fvg" in QUARANTINED_STRATEGY_IDS
+    assert "btc_donchian_breakout" in QUARANTINED_STRATEGY_IDS
+    assert "smc_fvg" in StrategyRegistry.QUARANTINED_STRATEGY_IDS
+    assert "btc_donchian_breakout" in StrategyRegistry.QUARANTINED_STRATEGY_IDS
+
     monitor = get_strategy_decay_monitor()
-    health = monitor.get_health("smc_fvg")
-    assert health.is_incubation_passed is False
+    assert monitor.is_tradeable("smc_fvg") is False
+    assert monitor.is_live_ready("smc_fvg") is False
+    assert monitor.is_tradeable("btc_donchian_breakout") is False
+    assert monitor.is_live_ready("btc_donchian_breakout") is False
+    assert monitor.is_tradeable("tsm_momentum") is True
+
+    session = create_mock_session()
+    signals = await StrategyRegistry.evaluate_all(session=session, symbol="BTCUSD", settings={})
+    emitted_strat_ids = {s.strategy_id for s in signals}
+    assert "btc_donchian_breakout" not in emitted_strat_ids
+    assert "smc_fvg" not in emitted_strat_ids
 
 
 @pytest.mark.asyncio
@@ -352,3 +375,43 @@ async def test_trailing_stop_manager_rejects_suicide_stop_adjustment():
     result = await manager._check_position(session, pos, current_price_override=82100.0)
     assert result == {}  # Rejected, no adjustment made
     exec_mock.modify_position_sl_tp.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_signal_arbitrator_preserves_llm_wait_on_exhaustion_warning():
+    """Verify that when LLM rationale identifies ADR exhaustion, Quant signal is blocked from overriding WAIT."""
+    from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator
+    from monika.application.analysis.strategies.base_strategy import EdgeSignal
+
+    arbitrator = SignalArbitrator(settings={})
+    session = create_mock_session()
+
+    quant_sig = EdgeSignal(
+        strategy_id="tsm_momentum",
+        symbol="EURUSD",
+        direction="buy",
+        valid=True,
+        confidence=0.88,
+        entry_price=1.0900,
+        stop_loss=1.0850,
+        take_profit=1.1000,
+    )
+
+    llm_decision = {
+        "decision": "wait",
+        "confidence": 0.50,
+        "rationale": "Daily ADR 79% exhausted, extreme price extension near high of day. Awaiting pullback.",
+    }
+
+    res = await arbitrator.arbitrate(
+        session=session,
+        symbol="EURUSD",
+        quant_signal=quant_sig,
+        llm_decision=llm_decision,
+        vix_level=16.0,
+        regime_info={"regime": "trend"},
+    )
+
+    assert res.decision == "wait"
+    assert res.selected_source == "llm"
+    assert "exhaustion" in res.arbitration_reason.lower()

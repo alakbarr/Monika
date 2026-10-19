@@ -31,12 +31,16 @@ _TRANSITIONS = {
 }
 
 
+QUARANTINED_STRATEGY_IDS: set[str] = {
+    "smc_fvg",
+    "btc_donchian_breakout",
+}
+
 CORE_STRATEGY_IDS: set[str] = {
     "bb_volume_profile",
-    "btc_donchian_breakout",
-    "donchian_breakout",
     "gap_fade",
     "tri_convergent_alpha",
+    "tsm_momentum",
     "xau_trend",
     "xau_trend_engine",
     "xti_pairs_readiness",
@@ -126,13 +130,17 @@ class StrategyDecayMonitor:
 
     def get_health(self, strategy_id: str) -> StrategyHealth:
         if strategy_id not in self._health_map:
-            is_core = strategy_id in CORE_STRATEGY_IDS
+            is_quarantined = strategy_id in QUARANTINED_STRATEGY_IDS
+            is_core = strategy_id in CORE_STRATEGY_IDS and not is_quarantined
             self._health_map[strategy_id] = StrategyHealth(
                 strategy_id=strategy_id,
+                state=DecayState.DISABLED if is_quarantined else DecayState.ACTIVE,
                 is_incubation_passed=is_core,
-                reason=""
-                if is_core
-                else f"Incubating in paper trading (min {self.min_incubation_trades} trades required)",
+                reason="Quarantined due to empirical negative expectancy (WR < 30% / PF < 1.0)"
+                if is_quarantined
+                else (
+                    "" if is_core else f"Incubating in paper trading (min {self.min_incubation_trades} trades required)"
+                ),
             )
         return self._health_map[strategy_id]
 
@@ -150,13 +158,17 @@ class StrategyDecayMonitor:
     def is_tradeable(self, strategy_id: str) -> bool:
         """
         ACTIVE and MONITORING states are allowed to emit signals.
-        DECAYED and DISABLED states are suppressed from execution.
+        DECAYED, DISABLED, and QUARANTINED states are suppressed from execution.
         """
+        if strategy_id in QUARANTINED_STRATEGY_IDS:
+            return False
         health = self.get_health(strategy_id)
         return health.state in (DecayState.ACTIVE, DecayState.MONITORING)
 
     def is_live_ready(self, strategy_id: str) -> bool:
-        """Check if strategy is healthy and has passed the paper incubation gate."""
+        """Check if strategy is healthy, unquarantined, and has passed the paper incubation gate."""
+        if strategy_id in QUARANTINED_STRATEGY_IDS:
+            return False
         health = self.get_health(strategy_id)
         return self.is_tradeable(strategy_id) and health.is_incubation_passed
 

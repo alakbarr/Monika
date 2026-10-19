@@ -716,12 +716,29 @@ class SignalArbitrator:
                 )
 
             # 4c. Strong Trend / Breakout Regime -> Graduated Trend Quant strategy precedence
+            llm_rationale = str(llm_decision.get("rationale", "") or "").lower()
+            exhaustion_keywords = (
+                "exhausted",
+                "exhaustion",
+                "session close",
+                "session closed",
+                "high spread",
+                "spread too wide",
+                "overextended",
+            )
+            has_llm_exhaustion = any(k in llm_rationale for k in exhaustion_keywords) or (
+                "adr" in llm_rationale
+                and any(k in llm_rationale for k in ("%", "exceed", "full", "limit", "cap", "reach"))
+            )
+
             if (
                 is_trending_regime
                 and not is_incubating
                 and q_conf >= min_q_trend_override
                 and is_trend_strat
                 and not is_mean_rev_strat
+                and not has_llm_exhaustion
+                and not ((q_dir == "buy" and tfm_skew < -0.20) or (q_dir == "sell" and tfm_skew > 0.20))
             ):
                 return ArbitrationResult(
                     symbol=symbol,
@@ -742,7 +759,9 @@ class SignalArbitrator:
                 and not is_incubating
                 and q_conf >= 0.70
                 and is_mean_rev_strat
-                and l_dir in ("avoid", "wait")
+                and l_dir == "wait"
+                and not has_llm_exhaustion
+                and ((q_dir == "buy" and tfm_skew >= 0.20) or (q_dir == "sell" and tfm_skew <= -0.20))
             ):
                 return ArbitrationResult(
                     symbol=symbol,
@@ -750,7 +769,7 @@ class SignalArbitrator:
                     confidence=q_conf,
                     risk_multiplier=round(quant_priority_risk_mult * 0.9, 2),
                     selected_source="quant",
-                    arbitration_reason=f"Mean-reversion strategy {quant_strat_id} executed in ranging regime while LLM is neutral.",
+                    arbitration_reason=f"Mean-reversion strategy {quant_strat_id} executed in ranging regime with TimesFM confirmation while LLM is neutral.",
                     entry_price=_get_q("entry_price"),
                     stop_loss=_get_q("stop_loss"),
                     take_profit=_get_q("take_profit"),
@@ -765,7 +784,7 @@ class SignalArbitrator:
                     and (q_conf - l_conf) >= 0.25
                     and not ((q_dir == "buy" and tfm_skew < -0.15) or (q_dir == "sell" and tfm_skew > 0.15))
                 )
-                if not is_incubating and (tfm_confirms or has_decisive_conviction):
+                if not is_incubating and not has_llm_exhaustion and (tfm_confirms or has_decisive_conviction):
                     effective_mult = min(0.90, quant_priority_risk_mult + (0.15 if tfm_confirms else 0.05))
                     return ArbitrationResult(
                         symbol=symbol,
@@ -773,18 +792,21 @@ class SignalArbitrator:
                         confidence=q_conf,
                         risk_multiplier=effective_mult,
                         selected_source="quant",
-                        arbitration_reason=f"Quant signal {quant_strat_id} executed while LLM is in {l_dir} (TimesFM skew={tfm_skew:+.2f}).",
+                        arbitration_reason=f"Quant signal {quant_strat_id} executed with TimesFM confirmation while LLM is in {l_dir} (TimesFM skew={tfm_skew:+.2f}).",
                         entry_price=_get_q("entry_price"),
                         stop_loss=_get_q("stop_loss"),
                         take_profit=_get_q("take_profit"),
                         meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "timesfm_skew": tfm_skew},
                     )
                 else:
-                    reason = (
-                        f"Quant strategy {quant_strat_id} is incubating — cannot override LLM wait."
-                        if is_incubating
-                        else f"LLM wait stance preserved: Quant {quant_strat_id} lacks TimesFM directional confirmation (skew={tfm_skew:+.2f}, conf={q_conf:.2f})."
-                    )
+                    if has_llm_exhaustion:
+                        reason = (
+                            f"LLM wait stance preserved: LLM identified market exhaustion / high risk in rationale."
+                        )
+                    elif is_incubating:
+                        reason = f"Quant strategy {quant_strat_id} is incubating — cannot override LLM wait."
+                    else:
+                        reason = f"LLM wait stance preserved: Quant {quant_strat_id} lacks TimesFM directional confirmation (|skew| >= 0.25 required, actual={tfm_skew:+.2f})."
                     return ArbitrationResult(
                         symbol=symbol,
                         decision="wait",
@@ -796,6 +818,7 @@ class SignalArbitrator:
                             "preserved_llm_decision": "wait",
                             "suppressed_quant_signal": q_dir,
                             "timesfm_skew": tfm_skew,
+                            "has_exhaustion": has_llm_exhaustion,
                         },
                     )
 

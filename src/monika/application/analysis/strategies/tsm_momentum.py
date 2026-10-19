@@ -12,8 +12,8 @@ from monika.infrastructure.database.models import PriceOHLCV, StructureBreak
 logger = logging.getLogger("TradingAgent.TSMMomentum")
 
 LOOKBACKS = (63, 126, 252)
-PURE_TSM = {"USDJPY", "EURUSD"}
-STRICT_REGIME = {"AUDUSD", "GBPUSD"}
+PURE_TSM = {"EURUSD"}
+STRICT_REGIME = {"AUDUSD", "GBPUSD", "USDJPY", "XAUUSD"}
 
 
 @StrategyRegistry.register
