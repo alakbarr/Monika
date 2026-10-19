@@ -5914,8 +5914,8 @@
     - `async get_chronicle_for_symbol(session: AsyncSession, symbol: str, days_back: int, ...) -> str` - *Fetch ongoing and recent macro chronicles relevant to a specific currency pair/asset.*
     - `async get_condensed_chronicle_bullets(session: AsyncSession, symbol: Optional[str], days_back: int, ...) -> str` - *Fetch ultra-compact (~120 token) bullet points of active structural macro events.*
     - `async get_macro_state_summary(session: AsyncSession) -> str` - *Fetch ultra-compact 1-line tag of ongoing geopolitical & institutional macro states for Layer 1.*
-    - `async maintain_weekly_chronicle_consolidation(session: AsyncSession, force: bool) -> Dict[str, Any]` - *Executes cognitive memory consolidation (Monday morning schedule):*
-    - `async maintain_chronicle_lifecycle(session: AsyncSession) -> Dict[str, Any]` - *Routine maintenance lifecycle called by database cleanup (cleanup.py):*
+    - `async maintain_weekly_chronicle_consolidation(session: AsyncSession, force: bool, as_of: Optional[datetime]) -> Dict[str, Any]` - *Executes cognitive memory consolidation (Monday morning schedule):*
+    - `async maintain_chronicle_lifecycle(session: AsyncSession, as_of: Optional[datetime]) -> Dict[str, Any]` - *Routine maintenance lifecycle called by database cleanup (cleanup.py):*
 
 #### `context_engine.py` - *Adaptive Pluggable Context Engine.*
 - **Path**: [`src/monika/application/analysis/memory/context_engine.py`](src/monika/application/analysis/memory/context_engine.py)
