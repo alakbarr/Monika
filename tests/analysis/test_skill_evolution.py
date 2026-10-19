@@ -26,24 +26,23 @@ async def test_micro_playbook_compiler_compiles_streak(tmp_path):
     mock_execute.scalars.return_value = mock_scalars
     mock_session.execute.return_value = mock_execute
 
-    compiled = await MicroPlaybookCompiler.evaluate_and_compile(
-        session=mock_session,
-        settings={"trading": {"asset_universe": ["EURUSD"]}},
-        min_consecutive_wins=3,
-        min_sample_size=3,
-    )
-    assert len(compiled) == 1
-    assert compiled[0]["symbol"] == "EURUSD"
-    assert compiled[0]["regime"] == "BALANCED"
-    assert compiled[0]["streak"] == 4
+    from unittest.mock import patch
 
-    # Verify file was written
-    playbook_file = PLAYBOOKS_DIR / "eurusd_balanced_playbook.md"
-    assert playbook_file.exists()
-    content = playbook_file.read_text(encoding="utf-8")
-    assert "Micro-Playbook: EURUSD in BALANCED Regime" in content
-    assert "SMC liquidity sweep at London open" in content
+    with patch("monika.application.analysis.memory.skill_evolution.PLAYBOOKS_DIR", tmp_path):
+        compiled = await MicroPlaybookCompiler.evaluate_and_compile(
+            session=mock_session,
+            settings={"trading": {"asset_universe": ["EURUSD"]}},
+            min_consecutive_wins=3,
+            min_sample_size=3,
+        )
+        assert len(compiled) == 1
+        assert compiled[0]["symbol"] == "EURUSD"
+        assert compiled[0]["regime"] == "BALANCED"
+        assert compiled[0]["streak"] == 4
 
-    # Cleanup generated test playbook
-    if playbook_file.exists():
-        playbook_file.unlink()
+        # Verify file was written to tmp_path
+        playbook_file = tmp_path / "eurusd_balanced_playbook.md"
+        assert playbook_file.exists()
+        content = playbook_file.read_text(encoding="utf-8")
+        assert "Micro-Playbook: EURUSD in BALANCED Regime" in content
+        assert "SMC liquidity sweep at London open" in content

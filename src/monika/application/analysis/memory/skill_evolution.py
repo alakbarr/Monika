@@ -196,7 +196,7 @@ sample_size: {len(trades)}
                             PlaybookStatus,
                         )
 
-                        lifecycle = PlaybookLifecycleManager()
+                        lifecycle = PlaybookLifecycleManager(playbooks_dir=str(PLAYBOOKS_DIR))
                         lifecycle.register_playbook(playbook_name, status=PlaybookStatus.ACTIVE)
                     except Exception as lm_err:
                         logger.warning(
