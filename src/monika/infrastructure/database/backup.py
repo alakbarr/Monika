@@ -14,7 +14,10 @@ import asyncio
 import gzip
 import logging
 import os
+import shutil
+import sqlite3
 import subprocess
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
@@ -44,10 +47,6 @@ async def create_backup(settings: dict, force: bool = False) -> Dict[str, Any]:
         return {"error": "DATABASE_URL not set"}
 
     if "sqlite" in db_url:
-        import gzip
-        import shutil
-        import sqlite3
-        import tempfile
         from monika.infrastructure.database.db import get_canonical_db_path
 
         clean_url = db_url.replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")

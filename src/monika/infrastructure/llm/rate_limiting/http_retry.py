@@ -15,7 +15,7 @@ import aiohttp
 try:
     import certifi
 
-    _DEFAULT_SSL_CONTEXT: Optional[ssl.SSLContext] = ssl.create_default_context(cafile=certifi.where())
+    _DEFAULT_SSL_CONTEXT: ssl.SSLContext = ssl.create_default_context(cafile=certifi.where())
     if "SSL_CERT_FILE" not in os.environ:
         os.environ["SSL_CERT_FILE"] = certifi.where()
 except Exception:

@@ -65,6 +65,7 @@ class _PopenStreamReader:
         self._loop = loop
         self._queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._eof = False
+        self._remainder = b""
         self._thread = threading.Thread(target=self._reader_thread, daemon=True)
         self._thread.start()
 
@@ -79,7 +80,35 @@ class _PopenStreamReader:
         except Exception:
             self._loop.call_soon_threadsafe(self._queue.put_nowait, b"")
 
+    async def read(self, n: int = -1) -> bytes:
+        if self._remainder:
+            if n == -1 or len(self._remainder) <= n:
+                res = self._remainder
+                self._remainder = b""
+                return res
+            res = self._remainder[:n]
+            self._remainder = self._remainder[n:]
+            return res
+
+        if self._eof:
+            return b""
+        item = await self._queue.get()
+        if not item:
+            self._eof = True
+            return b""
+        if n == -1 or len(item) <= n:
+            return item
+        self._remainder = item[n:]
+        return item[:n]
+
     async def readline(self) -> bytes:
+        if self._remainder:
+            if b"\n" in self._remainder:
+                line, self._remainder = self._remainder.split(b"\n", 1)
+                return line + b"\n"
+            line = self._remainder
+            self._remainder = b""
+            return line
         if self._eof:
             return b""
         item = await self._queue.get()

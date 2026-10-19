@@ -23,9 +23,12 @@ import sys
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from monika.application.analysis.tools.environments.pty_query_responder import PtyQueryResponder
+
+if TYPE_CHECKING:
+    from monika.infrastructure.mcp.client import _PopenStdioProcess
 
 logger = logging.getLogger("Monika.Infrastructure.Sandboxes.PtyBridge")
 
@@ -39,7 +42,7 @@ class PtySession:
     last_active: float
     cols: int = 80
     rows: int = 24
-    process: Optional[asyncio.subprocess.Process] = None
+    process: Optional[Union[asyncio.subprocess.Process, _PopenStdioProcess]] = None
     query_responder: PtyQueryResponder = field(default_factory=PtyQueryResponder)
     _output_buffer: List[str] = field(default_factory=list)
     _max_buffer_lines: int = 2000

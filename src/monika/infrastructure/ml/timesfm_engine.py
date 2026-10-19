@@ -376,10 +376,10 @@ class TimesFMEngine:
                         "horizon": horizon_steps,
                         "return_quantiles": True,
                     }
-                    if hasattr(covariates, "empty") and not covariates.empty:
+                    if isinstance(covariates, dict) and covariates:
                         covar_dict = {
-                            col: covariates[col].astype(float).to_numpy(dtype=float)
-                            for col in covariates.columns
+                            col: s.astype(float).to_numpy(dtype=float)
+                            for col, s in covariates.items()
                             if col != "timestamp"
                         }
                         if covar_dict:
