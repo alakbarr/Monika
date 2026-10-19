@@ -11,6 +11,7 @@ import os
 import time
 from typing import Any, ClassVar, Dict, Optional
 
+from monika.core.security.log_redactor import mask_credential
 from monika.infrastructure.api.openrouter_rate_limiter import (
     OpenRouterRateLimiter,
     get_all_keys,
@@ -485,7 +486,7 @@ class OpenRouterProvider(OpenAIProvider):
             if (api_key, model) in cls._model_key_cooldowns:
                 del cls._model_key_cooldowns[(api_key, model)]
                 cleared += 1
-            logger.info(f"[OpenRouter] Cooldown reset for key ({api_key[:8]}...) and model ({model}).")
+            logger.info(f"[OpenRouter] Cooldown reset for key ({mask_credential(api_key)}) and model ({model}).")
             return cleared
 
         if api_key and not model:
@@ -497,7 +498,7 @@ class OpenRouterProvider(OpenAIProvider):
                 del cls._model_key_cooldowns[k]
                 cleared += 1
             logger.info(
-                f"[OpenRouter] Cooldown reset for key ({api_key[:8]}...) across all models ({cleared} entries)."
+                f"[OpenRouter] Cooldown reset for key ({mask_credential(api_key)}) across all models ({cleared} entries)."
             )
             return cleared
 
@@ -523,10 +524,10 @@ class OpenRouterProvider(OpenAIProvider):
         status: dict[str, float] = {}
         for k, exp in cls._key_cooldowns.items():
             if exp > now:
-                status[f"{k[:8]}...:*"] = max(0.0, exp - now)
+                status[f"{mask_credential(k)}:*"] = max(0.0, exp - now)
         for (k, m), exp in cls._model_key_cooldowns.items():
             if exp > now:
-                status[f"{k[:8]}...:{m}"] = max(0.0, exp - now)
+                status[f"{mask_credential(k)}:{m}"] = max(0.0, exp - now)
         return status
 
     @classmethod
@@ -573,7 +574,7 @@ class OpenRouterProvider(OpenAIProvider):
         is_402 = "402" in err_str or "insufficient credits" in err_str or "credit" in err_str
 
         model_tag = f"model: {model}, " if model else ""
-        key_tag = f"key: {api_key[:8]}..." if api_key else "key: unknown"
+        key_tag = f"key: {mask_credential(api_key)}" if api_key else "key: unknown"
 
         if is_rpd:
             cooldown_sec = 86400.0
@@ -650,7 +651,7 @@ class OpenRouterProvider(OpenAIProvider):
             if not api_key:
                 return None
             if not await _openrouter_limiter.try_acquire(self.model, api_key=api_key):
-                logger.warning(f"[OpenRouter] Rate limiter reject for key {api_key[:8]}..., trying next key")
+                logger.warning(f"[OpenRouter] Rate limiter reject for key {mask_credential(api_key)}, trying next key")
                 continue
             self.client = self._get_client_for_key(api_key)
             if not self.client:
@@ -702,7 +703,7 @@ class OpenRouterProvider(OpenAIProvider):
             if not api_key:
                 return ""
             if not await _openrouter_limiter.try_acquire(self.model, api_key=api_key):
-                logger.warning(f"[OpenRouter] Rate limiter reject for key {api_key[:8]}..., trying next key")
+                logger.warning(f"[OpenRouter] Rate limiter reject for key {mask_credential(api_key)}, trying next key")
                 continue
             self.client = self._get_client_for_key(api_key)
             if not self.client:
@@ -756,7 +757,7 @@ class OpenRouterProvider(OpenAIProvider):
             if not api_key:
                 return None
             if not await _openrouter_limiter.try_acquire(self.model, api_key=api_key):
-                logger.warning(f"[OpenRouter] Rate limiter reject for key {api_key[:8]}..., trying next key")
+                logger.warning(f"[OpenRouter] Rate limiter reject for key {mask_credential(api_key)}, trying next key")
                 continue
             self.client = self._get_client_for_key(api_key)
             if not self.client:
@@ -798,7 +799,7 @@ class OpenRouterProvider(OpenAIProvider):
             if not api_key:
                 raise RuntimeError(f"[OpenRouter] No valid API key available for model '{self.model}'")
             if not await _openrouter_limiter.try_acquire(self.model, api_key=api_key):
-                logger.warning(f"[OpenRouter] Rate limiter reject for key {api_key[:8]}..., trying next key")
+                logger.warning(f"[OpenRouter] Rate limiter reject for key {mask_credential(api_key)}, trying next key")
                 continue
             self.client = self._get_client_for_key(api_key)
             if not self.client:

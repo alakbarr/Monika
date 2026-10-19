@@ -1147,13 +1147,16 @@ class FallbackClientWrapper(BaseLLMClient):
                                 logger.info(
                                     f"[{self.task_role}] In-flight key rotation for {provider} on {slot_name}. Retrying immediately."
                                 )
-                                if hasattr(client, "api_key"):
-                                    setattr(client, "api_key", next_key)
-                                if hasattr(client, "_api_key"):
-                                    setattr(client, "_api_key", next_key)
-                                underlying = getattr(client, "client", None)
-                                if underlying is not None and hasattr(underlying, "api_key"):
-                                    setattr(underlying, "api_key", next_key)
+                                if hasattr(client, "set_api_key") and callable(client.set_api_key):
+                                    client.set_api_key(next_key)
+                                else:
+                                    if hasattr(client, "api_key"):
+                                        setattr(client, "api_key", next_key)
+                                    if hasattr(client, "_api_key"):
+                                        setattr(client, "_api_key", next_key)
+                                    underlying = getattr(client, "client", None)
+                                    if underlying is not None and hasattr(underlying, "api_key"):
+                                        setattr(underlying, "api_key", next_key)
                                 continue
                         except Exception as pool_err:
                             logger.debug(f"Credential pool rotation pass-through: {pool_err}")

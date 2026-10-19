@@ -389,6 +389,13 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         context_window=256000,
         supports_native_thinking=True,
     ),
+    "deepseek-v4-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=256000,
+        supports_native_thinking=True,
+    ),
     "deepseek-v4": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,

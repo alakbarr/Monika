@@ -86,9 +86,23 @@ class RedactingFormatter(logging.Formatter):
         return redact_sensitive_text(original)
 
 
+def mask_credential(key: str | None) -> str:
+    """
+    Mask a sensitive credential to its trailing 4 characters (...xxxx).
+    Never leaks key prefixes or tokens.
+    """
+    if not key:
+        return "[NONE]"
+    clean = str(key).strip()
+    if len(clean) <= 4:
+        return "[PROTECTED]"
+    return f"...{clean[-4:]}"
+
+
 __all__ = [
     "REDACTION_PATTERNS",
     "redact_sensitive_text",
+    "mask_credential",
     "SensitiveDataFilter",
     "RedactingFormatter",
 ]

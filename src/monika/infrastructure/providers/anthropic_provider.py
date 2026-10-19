@@ -124,6 +124,18 @@ class AnthropicProvider(BaseLLMClient):
                 client_kwargs["api_key"] = api_key
             self.client = anthropic.AsyncAnthropic(**client_kwargs)
 
+    def set_api_key(self, api_key: str) -> None:
+        """Update active API key and underlying AsyncAnthropic client."""
+        super().set_api_key(api_key)
+        self.api_key = api_key
+        try:
+            provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get("anthropic", {})
+            max_retries = provider_cfg.get("max_retries", 3)
+            timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
+            self.client = anthropic.AsyncAnthropic(api_key=api_key, max_retries=max_retries, timeout=timeout_sec)
+        except Exception as e:
+            logger.debug("Failed to re-initialize Anthropic client on key update: %s", e)
+
     def set_thinking_budget(self, budget: int) -> None:
         """Sets thinking budget and resolves corresponding Anthropic thinking parameters."""
         if budget == 0:

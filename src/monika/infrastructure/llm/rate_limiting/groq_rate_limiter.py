@@ -8,7 +8,7 @@ import logging
 import os
 import time
 from collections import defaultdict, deque
-from typing import ClassVar, Optional
+from typing import Any, ClassVar, Optional
 
 logger = logging.getLogger("TradingAgent.GroqRateLimiter")
 
@@ -55,8 +55,21 @@ class GroqRateLimiter:
     _rpm_windows: ClassVar[dict] = defaultdict(deque)
     _daily_counts: ClassVar[dict] = {}
     _cooldowns: ClassVar[dict] = {}
-    _lock: ClassVar[asyncio.Lock] = asyncio.Lock()
+    _lock: ClassVar[Optional[asyncio.Lock]] = None
+    _lock_loop: ClassVar[Any] = None
     _loaded_from_disk: ClassVar[bool] = False
+
+    @classmethod
+    def _get_lock(cls) -> asyncio.Lock:
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+
+        if cls._lock is None or cls._lock_loop != current_loop:
+            cls._lock = asyncio.Lock()
+            cls._lock_loop = current_loop
+        return cls._lock
 
     @classmethod
     def _ensure_loaded(cls):
@@ -93,6 +106,10 @@ class GroqRateLimiter:
         except Exception as e:
             logger.debug(f"Could not save Groq rate limit state to disk: {e}")
 
+    @classmethod
+    async def _save_state_async(cls):
+        await asyncio.to_thread(cls._save_state)
+
     def _resolve_key_id(self, api_key: Optional[str] = None) -> str:
         if api_key:
             return api_key[-8:]
@@ -118,7 +135,7 @@ class GroqRateLimiter:
         now = time.time()
         key_tuple = (model, self._resolve_key_id(api_key))
 
-        async with self._lock:
+        async with self._get_lock():
             # Check cooldown
             if key_tuple in self._cooldowns:
                 cooldown_until = self._cooldowns[key_tuple]
@@ -146,7 +163,7 @@ class GroqRateLimiter:
 
             window.append(now)
             self._daily_counts[key_tuple]["count"] += 1
-            self._save_state()
+            await self._save_state_async()
             return True
 
     async def check_quota(self, model: str, api_key: Optional[str] = None) -> bool:
@@ -154,11 +171,12 @@ class GroqRateLimiter:
         quota = GROQ_QUOTA_PER_KEY.get(model, DEFAULT_QUOTA_PER_KEY)
         today = time.strftime("%Y-%m-%d")
         key_tuple = (model, self._resolve_key_id(api_key))
-        if key_tuple in self._cooldowns and time.time() < self._cooldowns[key_tuple]:
-            return False
-        if self._daily_counts.get(key_tuple, {}).get("date") != today:
-            return True
-        return self._daily_counts[key_tuple]["count"] < quota.get("rpd", 250)
+        async with self._get_lock():
+            if key_tuple in self._cooldowns and time.time() < self._cooldowns[key_tuple]:
+                return False
+            if self._daily_counts.get(key_tuple, {}).get("date") != today:
+                return True
+            return self._daily_counts[key_tuple]["count"] < quota.get("rpd", 250)
 
     async def get_usage(self, model: str, api_key: Optional[str] = None) -> dict:
         self._ensure_loaded()

@@ -18,6 +18,7 @@ Fitur:
 """
 
 import asyncio
+import codecs
 import json
 import logging
 import time
@@ -27,6 +28,14 @@ from typing import Any, Callable, Optional
 import aiohttp
 
 logger = logging.getLogger("TradingAgent.Streaming")
+
+
+class IncompleteStreamError(IOError):
+    """Raised when a stream is interrupted or dropped before normal completion."""
+
+    def __init__(self, message: str, partial_result: Optional[Any] = None):
+        super().__init__(message)
+        self.partial_result = partial_result
 
 
 class StreamTimeoutError(Exception):
@@ -161,6 +170,7 @@ async def consume_sse_stream(
     is_first_chunk = True
 
     buffer = ""
+    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
     heartbeat_monitor = StreamingHeartbeatMonitor(interval=25.0, touch_fn=touch_callback)
     heartbeat_monitor.start()
 
@@ -183,7 +193,10 @@ async def consume_sse_stream(
                 )
 
             if not raw_bytes:
-                # EOF reached
+                # EOF reached: flush remaining bytes from decoder
+                final_text = decoder.decode(b"", final=True)
+                if final_text:
+                    buffer += final_text
                 break
 
             now = time.monotonic()
@@ -205,7 +218,7 @@ async def consume_sse_stream(
                     partial_text=result.text[:500],
                 )
 
-            chunk_text = raw_bytes.decode("utf-8", errors="replace")
+            chunk_text = decoder.decode(raw_bytes)
             buffer += chunk_text
 
             # Process complete SSE events from buffer
@@ -259,11 +272,12 @@ async def consume_sse_stream(
                             return result
 
     except (aiohttp.ClientError, ConnectionError) as e:
-        if result.chunks_received > 0:
-            logger.warning(f"Stream connection lost for {model_name} after {result.chunks_received} chunks: {e}")
-            result.total_duration = time.monotonic() - start_time
-            return result
-        raise
+        result.total_duration = time.monotonic() - start_time
+        logger.error(f"Stream connection interrupted for {model_name} after {result.chunks_received} chunks: {e}")
+        raise IncompleteStreamError(
+            f"Stream connection dropped unexpectedly for {model_name} after {result.chunks_received} chunks: {e}",
+            partial_result=result,
+        ) from e
     finally:
         heartbeat_monitor.stop()
 

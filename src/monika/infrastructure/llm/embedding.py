@@ -74,7 +74,12 @@ async def generate_gemini_embedding(
         logger.debug(f"[Embedding] Migrating deprecated model '{clean_model}' to '{migrated_model}'")
         clean_model = migrated_model
 
-    url = f"{GEMINI_EMBEDDING_BASE_URL}/{clean_model}:embedContent?key={resolved_key}"
+    url = f"{GEMINI_EMBEDDING_BASE_URL}/{clean_model}:embedContent"
+    headers: dict[str, str] = {}
+    if resolved_key.startswith("ya29."):
+        headers["Authorization"] = f"Bearer {resolved_key}"
+    else:
+        headers["x-goog-api-key"] = resolved_key
 
     # Truncate text to reasonable length (e.g. 8000 chars)
     payload: dict[str, Any] = {"content": {"parts": [{"text": text[:8000].strip()}]}}
@@ -94,6 +99,7 @@ async def generate_gemini_embedding(
         data = await fetch_with_retry(
             url=url,
             method="POST",
+            headers=headers,
             json=payload,
             max_retries=2,
             base_delay=1.0,

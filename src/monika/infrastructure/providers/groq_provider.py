@@ -8,6 +8,7 @@ import os
 import time
 from typing import Any, ClassVar, Optional
 
+from monika.core.security.log_redactor import mask_credential
 from monika.infrastructure.api.groq_rate_limiter import GroqRateLimiter, get_api_keys
 from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
@@ -84,6 +85,14 @@ class GroqProvider(OpenAIProvider):
         self.max_tokens = min(self.max_tokens, model_ceiling)
         self.provider_name = "groq"
         self.client = self._get_client_for_key(initial_key) if initial_key else None
+
+    def set_api_key(self, api_key: str) -> None:
+        """Update active API key and underlying client for GroqProvider."""
+        super().set_api_key(api_key)
+        self.api_key = api_key
+        if hasattr(self, "_api_keys") and api_key not in self._api_keys:
+            self._api_keys.append(api_key)
+        self.client = self._get_client_for_key(api_key)
 
     def _get_api_key(self) -> Optional[str]:
         if not self._api_keys:
@@ -181,11 +190,13 @@ class GroqProvider(OpenAIProvider):
         if is_server_error:
             cls._key_cooldowns[api_key] = time.time() + 30.0
             logger.warning(
-                f"Groq key server/capacity overload in {method_name} ({api_key[:8]}...). Cooldown 30s, trying next key."
+                f"Groq key server/capacity overload in {method_name} ({mask_credential(api_key)}). Cooldown 30s, trying next key."
             )
         elif is_rpd:
             cls._key_cooldowns[api_key] = time.time() + 86400
-            logger.error(f"Groq key RPD exhausted in {method_name} ({api_key[:8]}...). Cooldown 24h, trying next key.")
+            logger.error(
+                f"Groq key RPD exhausted in {method_name} ({mask_credential(api_key)}). Cooldown 24h, trying next key."
+            )
         else:
             cooldown_sec = 65.0
             import re
@@ -198,7 +209,7 @@ class GroqProvider(OpenAIProvider):
                     cooldown_sec = 65.0
             cls._key_cooldowns[api_key] = time.time() + cooldown_sec
             logger.warning(
-                f"Groq key RPM/TPM hit in {method_name} ({api_key[:8]}...). Cooldown {cooldown_sec:.1f}s, trying next key."
+                f"Groq key RPM/TPM hit in {method_name} ({mask_credential(api_key)}). Cooldown {cooldown_sec:.1f}s, trying next key."
             )
 
     async def generate(
@@ -218,7 +229,7 @@ class GroqProvider(OpenAIProvider):
                 logger.error("No Groq API key available.")
                 return None
             if not await _groq_limiter.try_acquire(self.model, api_key=api_key):
-                logger.warning(f"Groq rate limit for key {api_key[:8]}..., trying next key")
+                logger.warning(f"Groq rate limit for key {mask_credential(api_key)}, trying next key")
                 continue
 
             self.client = self._get_client_for_key(api_key)
@@ -253,7 +264,7 @@ class GroqProvider(OpenAIProvider):
                 logger.error("No Groq API key available.")
                 return None
             if not await _groq_limiter.try_acquire(self.model, api_key=api_key):
-                logger.warning(f"Groq rate limit for key {api_key[:8]}..., trying next key")
+                logger.warning(f"Groq rate limit for key {mask_credential(api_key)}, trying next key")
                 continue
             self.client = self._get_client_for_key(api_key)
             if not self.client:
@@ -278,7 +289,7 @@ class GroqProvider(OpenAIProvider):
             if not api_key:
                 raise RuntimeError("No Groq API key available.")
             if not await _groq_limiter.try_acquire(self.model, api_key=api_key):
-                logger.warning(f"Groq rate limit for key {api_key[:8]}..., trying next key")
+                logger.warning(f"Groq rate limit for key {mask_credential(api_key)}, trying next key")
                 continue
             self.client = self._get_client_for_key(api_key)
             if not self.client:

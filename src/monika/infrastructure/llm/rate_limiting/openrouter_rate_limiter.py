@@ -126,6 +126,10 @@ class OpenRouterRateLimiter:
         except Exception as e:
             logger.debug(f"Could not save rate limit state to disk: {e}")
 
+    @classmethod
+    async def _save_state_async(cls):
+        await asyncio.to_thread(cls._save_state)
+
     def _resolve_key_id(self, api_key: Optional[str] = None) -> str:
         if api_key:
             return api_key[-8:]
@@ -184,7 +188,7 @@ class OpenRouterRateLimiter:
 
             window.append(now)
             self._daily_counts[key_tuple]["count"] += 1
-            self._save_state()
+            await self._save_state_async()
             return True
 
     async def check_quota(self, model: str, api_key: Optional[str] = None) -> bool:
@@ -193,11 +197,12 @@ class OpenRouterRateLimiter:
         quota = DEFAULT_FREE_QUOTA_PER_KEY if is_free else DEFAULT_PAID_QUOTA_PER_KEY
         today = time.strftime("%Y-%m-%d")
         key_tuple = (model, self._resolve_key_id(api_key))
-        if key_tuple in self._cooldowns and time.time() < self._cooldowns[key_tuple]:
-            return False
-        if self._daily_counts.get(key_tuple, {}).get("date") != today:
-            return True
-        return self._daily_counts[key_tuple]["count"] < quota.get("rpd", 200 if is_free else 10000)
+        async with self._get_lock():
+            if key_tuple in self._cooldowns and time.time() < self._cooldowns[key_tuple]:
+                return False
+            if self._daily_counts.get(key_tuple, {}).get("date") != today:
+                return True
+            return self._daily_counts[key_tuple]["count"] < quota.get("rpd", 200 if is_free else 10000)
 
     async def get_usage(self, model: str, api_key: Optional[str] = None) -> dict:
         self._ensure_loaded()

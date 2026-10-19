@@ -248,6 +248,24 @@ class OpenAIProvider(BaseLLMClient):
             logger.warning("OpenAI package not installed. Run `pip install openai`.")
             self.client = None
 
+    def set_api_key(self, api_key: str) -> None:
+        """Update active API key and re-initialize underlying AsyncOpenAI client."""
+        super().set_api_key(api_key)
+        self.api_key = api_key
+        try:
+            from openai import AsyncOpenAI
+
+            provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get(self._get_provider_name(), {})
+            max_retries = provider_cfg.get("max_retries", 3)
+            timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
+            base_url = getattr(self.client, "base_url", None) if self.client is not None else None
+            client_kwargs: dict[str, Any] = {"api_key": api_key, "max_retries": max_retries, "timeout": timeout_sec}
+            if base_url:
+                client_kwargs["base_url"] = str(base_url)
+            self.client = AsyncOpenAI(**client_kwargs)
+        except Exception as e:
+            logger.debug(f"Failed to re-initialize OpenAI client on key update: {e}")
+
     def _get_provider_name(self) -> str:
         if getattr(self, "provider_name", None) and self.provider_name != "openai":
             return self.provider_name

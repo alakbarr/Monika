@@ -12,11 +12,25 @@ import logging
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timezone
-from typing import ClassVar
+from typing import Any, ClassVar, Optional
 
 logger = logging.getLogger("TradingAgent.GeminiRateLimiter")
 
-_QUOTA_LOCK = asyncio.Lock()
+_QUOTA_LOCK: Optional[asyncio.Lock] = None
+_QUOTA_LOCK_LOOP: Any = None
+
+
+def _get_quota_lock() -> asyncio.Lock:
+    global _QUOTA_LOCK, _QUOTA_LOCK_LOOP
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if _QUOTA_LOCK is None or _QUOTA_LOCK_LOOP != loop:
+        _QUOTA_LOCK = asyncio.Lock()
+        _QUOTA_LOCK_LOOP = loop
+    return _QUOTA_LOCK
+
 
 import os
 
@@ -57,8 +71,21 @@ class GeminiRateLimiter:
     # Class-level shared state — persists across instances within same process
     _daily_counts: ClassVar[dict] = {}  # {"gemini-3.5-flash": {"date": "2026-08-08", "count": 5}}
     _rpm_windows: ClassVar[dict] = defaultdict(deque)
-    _rpm_lock: ClassVar[asyncio.Lock] = asyncio.Lock()
+    _rpm_lock: ClassVar[Optional[asyncio.Lock]] = None
+    _rpm_lock_loop: ClassVar[Any] = None
+    _BACKGROUND_TASKS: ClassVar[set] = set()
     _initialized: ClassVar[bool] = False
+
+    @classmethod
+    def _get_rpm_lock(cls) -> asyncio.Lock:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if cls._rpm_lock is None or cls._rpm_lock_loop != loop:
+            cls._rpm_lock = asyncio.Lock()
+            cls._rpm_lock_loop = loop
+        return cls._rpm_lock
 
     def __init__(self, session=None):
         # session is kept for backward compatibility but used only for initial load
@@ -132,7 +159,7 @@ class GeminiRateLimiter:
         max_rpm = cfg.get("rpm", 999)
 
         # Atomic RPM check + record (single lock acquisition prevents race condition)
-        async with self._rpm_lock:
+        async with self._get_rpm_lock():
             window = self._rpm_windows[model]
             now = time.time()
             # Remove entries older than 60 seconds
@@ -149,7 +176,7 @@ class GeminiRateLimiter:
 
         # Check and increment RPD (separate lock)
         acquired = False
-        async with _QUOTA_LOCK:
+        async with _get_quota_lock():
             if self._daily_counts.get(model, {}).get("date") != today:
                 self._daily_counts[model] = {"date": today, "count": 0}
 
@@ -157,7 +184,7 @@ class GeminiRateLimiter:
             if max_rpd > 0 and current >= max_rpd:
                 logger.warning(f"Gemini {model} daily quota exhausted ({current}/{max_rpd})")
                 # Rollback RPM record
-                async with self._rpm_lock:
+                async with self._get_rpm_lock():
                     try:
                         self._rpm_windows[model].remove(now)
                     except ValueError:
@@ -167,9 +194,11 @@ class GeminiRateLimiter:
             self._daily_counts[model]["count"] = current + 1
             acquired = True
 
-        # Persist periodically
+        # Persist periodically with strong task reference
         if acquired and self._daily_counts[model]["count"] % 5 == 0:
-            asyncio.create_task(self._persist_async(model, today))
+            task = asyncio.create_task(self._persist_async(model, today))
+            self._BACKGROUND_TASKS.add(task)
+            task.add_done_callback(self._BACKGROUND_TASKS.discard)
 
         return acquired
 
@@ -195,10 +224,11 @@ class GeminiRateLimiter:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         cfg = get_quota_for_model(model)
         max_rpd = cfg.get("rpd", 0)
-        current = self._daily_counts.get(model, {}).get("count", 0)
-        if self._daily_counts.get(model, {}).get("date") != today:
-            current = 0
-        return current < max_rpd
+        async with _get_quota_lock():
+            current = self._daily_counts.get(model, {}).get("count", 0)
+            if self._daily_counts.get(model, {}).get("date") != today:
+                current = 0
+            return current < max_rpd
 
     async def consume_quota(self, model: str) -> bool:
         """Deprecated: gunakan try_acquire() saja."""

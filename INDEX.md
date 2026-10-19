@@ -763,6 +763,7 @@
     - `format(record: logging.LogRecord) -> str`
 - **Top-Level Functions**:
   - `redact_sensitive_text(text: str) -> str`: Sanitize string by masking known secret patterns and registered vault secrets.
+  - `mask_credential(key: str | None) -> str`: Mask a sensitive credential to its trailing 4 characters (...xxxx).
 
 #### `nt_guard.py` - *Windows NT-Namespace & Extended UNC Path Guard.*
 - **Path**: [`src/monika/core/security/nt_guard.py`](src/monika/core/security/nt_guard.py)
@@ -11860,12 +11861,8 @@
 - **Top-Level Functions**:
   - `async compress_agent_memory(session: AsyncSession, settings: Optional[dict]) -> None`: Compresses ActivityLog older than 7 days by categorizing and summarizing them.
 
-#### `model_capabilities.py` - *Declarative model capability table for multi-provider LLM integration (Phase 6).*
+#### `model_capabilities.py` - *Declarative model capability table for multi-provider LLM integration.*
 - **Path**: [`src/monika/infrastructure/llm/model_capabilities.py`](src/monika/infrastructure/llm/model_capabilities.py)
-- **Classes**:
-  - `class ModelCapabilities`: Declared operational capabilities for an LLM.
-- **Top-Level Functions**:
-  - `get_capabilities(model_name: str) -> ModelCapabilities`: Look up capabilities for a model, with fuzzy lowercase prefix matching.
 
 #### `model_discipline.py` - *Model-family gated execution discipline and verification prompts.*
 - **Path**: [`src/monika/infrastructure/llm/model_discipline.py`](src/monika/infrastructure/llm/model_discipline.py)
@@ -11980,7 +11977,7 @@
 - **Path**: [`src/monika/infrastructure/llm/rate_limiting/claude_rate_limiter.py`](src/monika/infrastructure/llm/rate_limiting/claude_rate_limiter.py)
 - **Classes**:
   - `class ClaudeRateLimiter`: Simple sliding window rate limiter for Claude API calls.
-    - `async acquire_session_slot(model_name: str, estimated_tokens: int) -> None` - *Wait until it's safe to start a new Claude session (checks RPM and TPM).*
+    - `async acquire_session_slot(model_name: str, estimated_tokens: int) -> None` - *Wait until it's safe to start a new Claude session without holding the lock during sleep.*
     - `get_current_rpm() -> int`
     - `get_current_tpm() -> int`
 
@@ -12051,6 +12048,8 @@
 #### `streaming.py` - *Universal async streaming consumer with idle-timeout liveness detection.*
 - **Path**: [`src/monika/infrastructure/llm/rate_limiting/streaming.py`](src/monika/infrastructure/llm/rate_limiting/streaming.py)
 - **Classes**:
+  - `class IncompleteStreamError(IOError)`: Raised when a stream is interrupted or dropped before normal completion.
+    - `__init__(message: str, partial_result: Optional[Any])`
   - `class StreamTimeoutError(Exception)`: Raised when streaming idle timeout exceeded (no chunks received).
     - `__init__(message: str, idle_seconds: float, chunks_received: int, ...)`
   - `class StreamSafetyTimeoutError(StreamTimeoutError)`: Raised when absolute safety timeout exceeded despite chunks still arriving.
@@ -12308,6 +12307,7 @@
 - **Classes**:
   - `class AnthropicProvider(BaseLLMClient)`: Klien async Anthropic (Claude) dengan dukungan tool loop multi-turn.
     - `__init__(model: str, max_tokens: int, max_tool_turns: int, ...)`
+    - `set_api_key(api_key: str) -> None` - *Update active API key and underlying AsyncAnthropic client.*
     - `set_thinking_budget(budget: int) -> None` - *Sets thinking budget and resolves corresponding Anthropic thinking parameters.*
     - `async generate(prompt: str, system: str, temperature: Optional[float], ...) -> Optional[str]` - *Single-turn text generation dengan retry otomatis untuk transient errors & dukungan reasoning penuh.*
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]` - *Menghasilkan output JSON valid.*
@@ -12343,6 +12343,7 @@
     - `provider_name() -> str` - *Name of the underlying LLM provider (e.g. gemini, anthropic, openai).*
     - `provider_name(value: str) -> None`
     - `set_thinking_budget(budget: int) -> None` - *Set dynamic reasoning/thinking token budget for this client instance.*
+    - `set_api_key(api_key: str) -> None` - *Update active API key on this client instance and underlying SDK client.*
     - `async generate(prompt: str, system: str, temperature: Optional[float], ...) -> Optional[str]` - *Single-turn text generation. Returns plain text or None.*
     - `async generate_content(system_prompt: str, user_message: str, response_schema: Optional[dict], ...) -> Optional[str]` - *Generate content with optional JSON schema enforcement.*
     - `async generate_content_stream(system_prompt: str, user_message: str, conversation_history: Optional[list])` - *Stream content generation token-by-token or chunk-by-chunk.*
@@ -12395,6 +12396,7 @@
 - **Classes**:
   - `class GeminiProvider(BaseLLMClient)`: Klien async untuk Gemini API.
     - `__init__(model: str, max_tokens: int, max_tool_turns: int, ...)`
+    - `set_api_key(api_key: str) -> None` - *Update active API key on this GeminiProvider instance.*
     - `set_thinking_budget(budget: int) -> None` - *Sets thinking budget and resolves corresponding Gemini thinking level.*
     - `async generate(prompt: str, system: Any, temperature: Optional[float], ...) -> Optional[str]`
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`
@@ -12406,6 +12408,7 @@
 - **Classes**:
   - `class GroqProvider(OpenAIProvider)`: Provider untuk model Groq.
     - `__init__(model: str, max_tokens: int, api_key: Optional[str], ...)`
+    - `set_api_key(api_key: str) -> None` - *Update active API key and underlying client for GroqProvider.*
     - `async generate(prompt: str, system: Optional[Any], temperature: Optional[float], ...) -> Optional[str]`
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`
     - `async run_tool_agent(messages: list, tools: list, system_prompt: str)`
@@ -12469,6 +12472,7 @@
 - **Classes**:
   - `class OpenAIProvider(BaseLLMClient)`: Provider untuk model OpenAI (GPT-4o, GPT-4o-mini).
     - `__init__(model: str, max_tokens: int, api_key: Optional[str], ...)`
+    - `set_api_key(api_key: str) -> None` - *Update active API key and re-initialize underlying AsyncOpenAI client.*
     - `set_thinking_budget(budget: int) -> None` - *Sets thinking budget and resolves corresponding reasoning effort.*
     - `async generate(prompt: str, system: Optional[Any], temperature: Optional[float], ...) -> Optional[str]`
     - `async generate_content(system_prompt: str, user_message: str, response_schema: Optional[dict], ...) -> Optional[str]`

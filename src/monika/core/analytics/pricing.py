@@ -46,6 +46,8 @@ class Price:
 # Harga resmi USD per 1.000.000 token
 PRICING: dict[str, Price] = {
     # --- Anthropic Claude Models ---
+    "claude-opus-5.5": Price(5.00, 0.50, 25.00),
+    "opus-5.5": Price(5.00, 0.50, 25.00),
     "claude-opus-5": Price(5.00, 0.50, 25.00),
     "opus-5": Price(5.00, 0.50, 25.00),
     "claude-opus-4.8": Price(5.00, 0.50, 25.00),
@@ -57,6 +59,7 @@ PRICING: dict[str, Price] = {
     "claude-opus-4.5": Price(5.00, 0.50, 25.00),
     "opus-4.5": Price(5.00, 0.50, 25.00),
     "claude-sonnet-5.5": Price(2.00, 0.20, 10.00),
+    "sonnet-5.5": Price(2.00, 0.20, 10.00),
     "claude-sonnet-5": Price(2.00, 0.20, 10.00),
     "sonnet-5": Price(2.00, 0.20, 10.00),
     "claude-sonnet-4.6": Price(3.00, 0.30, 15.00),
@@ -64,9 +67,13 @@ PRICING: dict[str, Price] = {
     "sonnet-4.6": Price(3.00, 0.30, 15.00),
     "claude-sonnet-4.5": Price(3.00, 0.30, 15.00),
     "sonnet-4.5": Price(3.00, 0.30, 15.00),
+    "claude-haiku-5.5": Price(1.00, 0.10, 5.00),
+    "haiku-5.5": Price(1.00, 0.10, 5.00),
     "claude-haiku-4.5": Price(1.00, 0.10, 5.00),
     "haiku-4.5": Price(1.00, 0.10, 5.00),
     "claude-haiku-4-5-20251001": Price(1.00, 0.10, 5.00),
+    "claude-fable-5.1": Price(10.00, 1.00, 50.00),
+    "fable-5.1": Price(10.00, 1.00, 50.00),
     "claude-fable-5": Price(10.00, 1.00, 50.00),
     "claude-3-7-sonnet": Price(3.00, 0.30, 15.00),
     "claude-3-7-sonnet-20250219": Price(3.00, 0.30, 15.00),
@@ -469,10 +476,10 @@ def get_price(model_name: str) -> Price:
             mapped = OPENROUTER_PRICING_MAP[suffix]
             return PRICING.get(mapped, _FREE)
 
-    # 5. Fuzzy match prefix/substring
-    for k, price_obj in PRICING.items():
+    # 5. Fuzzy match prefix/substring (sorted by descending length to prevent prefix hijacking)
+    for k in sorted(PRICING.keys(), key=len, reverse=True):
         if k in clean_name or (len(clean_name) >= 4 and clean_name in k):
-            return price_obj
+            return PRICING[k]
 
     # Warn if unpriced model is encountered
     if not (clean_name in ("local", "ollama") or clean_name.startswith(("ollama/", "local/"))):

@@ -458,6 +458,23 @@ class BaseLLMClient(LlmPort, ABC):
         """Set dynamic reasoning/thinking token budget for this client instance."""
         self.thinking_budget = budget
 
+    def set_api_key(self, api_key: str) -> None:
+        """Update active API key on this client instance and underlying SDK client."""
+        self.api_key = api_key
+        self._api_key = api_key
+        underlying = getattr(self, "client", None)
+        if underlying is not None:
+            if hasattr(underlying, "api_key"):
+                try:
+                    setattr(underlying, "api_key", api_key)
+                except Exception:
+                    pass
+            if hasattr(underlying, "_api_key"):
+                try:
+                    setattr(underlying, "_api_key", api_key)
+                except Exception:
+                    pass
+
     @staticmethod
     def _infer_subsystem(task_role: Optional[str], task_name: Optional[str]) -> str:
         """Infers high-level subsystem category from role or task name."""

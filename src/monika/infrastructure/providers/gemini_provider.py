@@ -23,6 +23,7 @@ from monika.infrastructure.api.streaming import (
     StreamTimeoutError,
     streaming_request,
 )
+from monika.core.security.log_redactor import mask_credential
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import TokenUsageLog
 from monika.infrastructure.providers.base_provider import BaseLLMClient, MockBlock, MockResponse, _flatten_system_prompt
@@ -219,6 +220,13 @@ class GeminiProvider(BaseLLMClient):
         }
         self.thinking_budget = self._thinking_budgets.get(str(self.thinking_level).lower(), 0)
 
+    def set_api_key(self, api_key: str) -> None:
+        """Update active API key on this GeminiProvider instance."""
+        super().set_api_key(api_key)
+        self.api_key = api_key
+        if api_key.startswith("ya29."):
+            self.paid_api_key = api_key
+
     def _is_paid_key(self, api_key: Optional[str]) -> bool:
         """Menentukan apakah API key yang digunakan adalah GEMINI_PAID_API_KEY (berbayar)."""
         if not api_key:
@@ -331,7 +339,7 @@ class GeminiProvider(BaseLLMClient):
                     mark_antigravity_account_cooldown(api_key, 86400.0)
                 except Exception:
                     pass
-            logger.error(f"Gemini key hit RPD quota in {method_name} ({api_key[:8]}...). Cooldown 24h.")
+            logger.error(f"Gemini key hit RPD quota in {method_name} ({mask_credential(api_key)}). Cooldown 24h.")
             return
 
         is_overload = status in (500, 502, 503, 504, 529) or any(
@@ -378,12 +386,12 @@ class GeminiProvider(BaseLLMClient):
         clean_detail = format_api_error_summary(status or (503 if is_overload else 429), body)
         if is_overload:
             logger.warning(
-                f"Gemini key ({api_key[:8]}...) hit transient overload/high demand in {method_name} "
+                f"Gemini key ({mask_credential(api_key)}) hit transient overload/high demand in {method_name} "
                 f"({clean_detail}). Cooldown {cooldown_sec:.1f}s, attempting next key/failover."
             )
         else:
             logger.warning(
-                f"Gemini key ({api_key[:8]}...) hit RPM/TPM limit in {method_name} "
+                f"Gemini key ({mask_credential(api_key)}) hit RPM/TPM limit in {method_name} "
                 f"({clean_detail}). Cooldown {cooldown_sec:.1f}s."
             )
 
@@ -729,7 +737,9 @@ class GeminiProvider(BaseLLMClient):
                     self._handle_rate_limit_error(api_key, e, "generate")
                     continue
                 clean_msg = format_api_error_summary(getattr(e, "status", 500), getattr(e, "body", "") or str(e))
-                logger.warning(f"Gemini generate attempt {attempt + 1} failed with key ({api_key[:8]}...): {clean_msg}")
+                logger.warning(
+                    f"Gemini generate attempt {attempt + 1} failed with key ({mask_credential(api_key)}): {clean_msg}"
+                )
 
         return None
 
@@ -1037,7 +1047,7 @@ class GeminiProvider(BaseLLMClient):
                     continue
                 clean_msg = format_api_error_summary(getattr(e, "status", 500), getattr(e, "body", "") or str(e))
                 logger.warning(
-                    f"Gemini run_tool_agent attempt {attempt + 1} failed with key ({api_key[:8]}...): {clean_msg}"
+                    f"Gemini run_tool_agent attempt {attempt + 1} failed with key ({mask_credential(api_key)}): {clean_msg}"
                 )
 
         if use_streaming:
