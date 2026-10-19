@@ -6700,6 +6700,12 @@
 #### `__init__.py`
 - **Path**: [`src/monika/application/analysis/strategies/__init__.py`](src/monika/application/analysis/strategies/__init__.py)
 
+#### `asian_range_fade.py` - *Asian Session Range Fade Strategy.*
+- **Path**: [`src/monika/application/analysis/strategies/asian_range_fade.py`](src/monika/application/analysis/strategies/asian_range_fade.py)
+- **Classes**:
+  - `class AsianRangeFadeStrategy(EdgeStrategy)`
+    - `async evaluate(session, symbol: str, settings: dict, ...) -> EdgeSignal`
+
 #### `base_strategy.py`
 - **Path**: [`src/monika/application/analysis/strategies/base_strategy.py`](src/monika/application/analysis/strategies/base_strategy.py)
 - **Classes**:
@@ -6718,6 +6724,12 @@
 - **Classes**:
   - `class BBVolumeProfileMeanReversion(EdgeStrategy)`: Bollinger Bands + Volume Profile Mean Reversion Strategy.
     - `async evaluate(session: AsyncSession, symbol: str, settings: dict) -> EdgeSignal`
+
+#### `bollinger_reversion.py` - *Bollinger Band Mean Reversion Strategy.*
+- **Path**: [`src/monika/application/analysis/strategies/bollinger_reversion.py`](src/monika/application/analysis/strategies/bollinger_reversion.py)
+- **Classes**:
+  - `class BollingerReversionStrategy(EdgeStrategy)`
+    - `async evaluate(session, symbol: str, settings: dict, ...) -> EdgeSignal`
 
 #### `btc_donchian_breakout.py`
 - **Path**: [`src/monika/application/analysis/strategies/btc_donchian_breakout.py`](src/monika/application/analysis/strategies/btc_donchian_breakout.py)
@@ -6821,6 +6833,12 @@
   - `class SMCFairValueGapStrategy(EdgeStrategy)`: SMC Fair Value Gap (FVG) Strategy.
     - `async evaluate(session: AsyncSession, symbol: str, settings: dict) -> EdgeSignal`
 
+#### `smt_divergence.py` - *Smart Money Tool (SMT) & Oscillator Divergence Strategy.*
+- **Path**: [`src/monika/application/analysis/strategies/smt_divergence.py`](src/monika/application/analysis/strategies/smt_divergence.py)
+- **Classes**:
+  - `class SMTDivergenceStrategy(EdgeStrategy)`
+    - `async evaluate(session, symbol: str, settings: dict, ...) -> EdgeSignal`
+
 #### `strategy_plugin.py` - *Strategy Plugin Specification for Monika Trading Harness (Phase 3c).*
 - **Path**: [`src/monika/application/analysis/strategies/strategy_plugin.py`](src/monika/application/analysis/strategies/strategy_plugin.py)
 - **Classes**:
@@ -6830,6 +6848,12 @@
     - `async on_register(container: Any, event_bus: Any) -> None` - *Auto-register the strategy class into StrategyRegistry upon plugin load.*
 - **Top-Level Functions**:
   - `wrap_strategy_as_plugin(strategy_cls: Type[EdgeStrategy]) -> StrategyPlugin`: Convenience factory to wrap an existing EdgeStrategy class into a StrategyPlugin.
+
+#### `tokyo_sweep.py` - *Tokyo Open Liquidity Sweep Strategy.*
+- **Path**: [`src/monika/application/analysis/strategies/tokyo_sweep.py`](src/monika/application/analysis/strategies/tokyo_sweep.py)
+- **Classes**:
+  - `class TokyoSweepStrategy(EdgeStrategy)`
+    - `async evaluate(session, symbol: str, settings: dict, ...) -> EdgeSignal`
 
 #### `tri_convergent_alpha.py` - *Tri-Convergent Alpha Strategy:*
 - **Path**: [`src/monika/application/analysis/strategies/tri_convergent_alpha.py`](src/monika/application/analysis/strategies/tri_convergent_alpha.py)
@@ -6844,6 +6868,12 @@
   - `class TimeSeriesMomentum(EdgeStrategy)`
     - `async evaluate(session, symbol, settings) -> EdgeSignal`
   - `class TrendTrailingMomentum(TimeSeriesMomentum)`
+
+#### `vwap_reversion.py` - *VWAP Mean Reversion Stretch Strategy.*
+- **Path**: [`src/monika/application/analysis/strategies/vwap_reversion.py`](src/monika/application/analysis/strategies/vwap_reversion.py)
+- **Classes**:
+  - `class VWAPMeanReversionStrategy(EdgeStrategy)`
+    - `async evaluate(session, symbol: str, settings: dict, ...) -> EdgeSignal`
 
 #### `xau_trend_engine.py`
 - **Path**: [`src/monika/application/analysis/strategies/xau_trend_engine.py`](src/monika/application/analysis/strategies/xau_trend_engine.py)

@@ -126,3 +126,38 @@ async def test_preflight_high_impact_news_freeze():
         )
         assert is_allowed is False
         assert "US Non-Farm Payrolls" in reason
+
+
+@pytest.mark.asyncio
+async def test_preflight_adr_exhaustion_blocks_turn():
+    # Active hour, spread normal, no news, but ADR is 98% exhausted
+    test_time = datetime(2026, 9, 4, 14, 30, tzinfo=timezone.utc)
+    mock_mt5 = MagicMock()
+    mock_tick = MagicMock()
+    mock_tick.time = test_time.timestamp()
+    mock_tick.spread = 8.0
+    mock_mt5.get_latest_tick = AsyncMock(return_value=mock_tick)
+    mock_session = create_mock_async_session()
+
+    mock_adr_ctx = {
+        "adr": 0.0080,
+        "today_range_so_far": 0.0079,
+        "today_range_pct_of_adr": 0.9875,
+        "room_remaining_pct": 0.0125,
+    }
+
+    with patch.object(PreFlightTurnGate, "check_high_impact_news", AsyncMock(return_value=(False, None))):
+        with patch(
+            "monika.application.analysis.calculators.daily_range_calculator.compute_daily_range_context",
+            AsyncMock(return_value=mock_adr_ctx),
+        ):
+            is_allowed, reason = await PreFlightTurnGate.evaluate_preconditions(
+                session=mock_session,
+                symbol="EURUSD",
+                settings={},
+                mt5_client=mock_mt5,
+                override_time=test_time,
+            )
+            assert is_allowed is False
+            assert "Daily range exhausted" in reason
+            assert "consumed 98.8%" in reason

@@ -645,8 +645,8 @@ search:
   cache_ttl_minutes: 15
   max_results_per_query: 5
 llm:
-  default_model: gpt-6.1-sol
-  default_provider: openrouter
+  default_model: gemini-3.5-flash-lite
+  default_provider: gemini
   embedding_model: gemini-embedding-2
   per_turn_timeout_seconds: 90.0
   credential_pool:
@@ -2496,43 +2496,27 @@ llm:
       temperature: 0.0
       fallback_1: glm-5.3-flash
     specialist_technical:
-      primary: deepseek-v4.1-flash
+      primary: gemini-3.5-flash-lite
       thinking: none
       max_tokens: 4096
       temperature: 0.0
-      fallback_1: glm-5.3-flash
+      fallback_1: gemini-3.1-flash-lite
     specialist_sentiment:
-      primary: deepseek-v4.1-flash
+      primary: gemini-3.5-flash-lite
       thinking: none
       max_tokens: 4096
       temperature: 0.0
-      fallback_1: glm-5.3-flash
+      fallback_1: gemini-3.1-flash-lite
     specialist_macro:
-      primary: deepseek-v4.1-flash
+      primary: gemini-3.5-flash-lite
       thinking: none
       max_tokens: 4096
       temperature: 0.0
-      fallback_1: glm-5.3-flash
+      fallback_1: gemini-3.1-flash-lite
     portfolio_synthesis:
-      primary: glm-5.3
+      primary: gemini-3.5-flash-lite
       thinking:
-        primary: max
-        fallback_1: xhigh
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: max
-        groq: high
-        openrouter: max
-        ollama: medium
-        openai_compatible: high
-      max_tokens: 4096
-      temperature: 0.0
-      fallback_1: muse-spark-1.3
-    stage2_adjudicator:
-      primary: muse-spark-1.3
-      thinking:
-        primary: xhigh
+        primary: high
         fallback_1: high
         anthropic: high
         gemini: high
@@ -2544,12 +2528,28 @@ llm:
         openai_compatible: high
       max_tokens: 4096
       temperature: 0.0
-      fallback_1: gemini-3.8-flash
-    trade_reflection:
-      primary: deepseek-v4.1-flash
+      fallback_1: gemini-3.1-flash-lite
+    stage2_adjudicator:
+      primary: gemini-3.5-flash-lite
       thinking:
-        primary: max
-        fallback_1: max
+        primary: high
+        fallback_1: high
+        anthropic: high
+        gemini: high
+        openai: high
+        deepseek: max
+        groq: high
+        openrouter: max
+        ollama: medium
+        openai_compatible: high
+      max_tokens: 4096
+      temperature: 0.0
+      fallback_1: gemini-3.1-flash-lite
+    trade_reflection:
+      primary: gemini-3.5-flash-lite
+      thinking:
+        primary: high
+        fallback_1: high
         anthropic: high
         gemini: high
         openai: high
@@ -2560,9 +2560,9 @@ llm:
         openai_compatible: high
       max_tokens: 4096
       temperature: 0.1
-      fallback_1: glm-5.3-flash
+      fallback_1: gemini-3.1-flash-lite
     macro_chronicle_curator:
-      primary: deepseek-v4.1-flash
+      primary: gemini-3.5-flash-lite
       per_model_timeout_seconds: 120.0
       thinking:
         primary: high

@@ -272,8 +272,10 @@ Monika/
 │       │   │   │   └── preflight_gate.py
 │       │   │   ├── strategies/
 │       │   │   │   ├── __init__.py
+│       │   │   │   ├── asian_range_fade.py
 │       │   │   │   ├── base_strategy.py
 │       │   │   │   ├── bb_volume_profile.py
+│       │   │   │   ├── bollinger_reversion.py
 │       │   │   │   ├── btc_donchian_breakout.py
 │       │   │   │   ├── decay_monitor.py
 │       │   │   │   ├── evidence_store.py
@@ -283,9 +285,12 @@ Monika/
 │       │   │   │   ├── pretrade_gate.py
 │       │   │   │   ├── registry.py
 │       │   │   │   ├── smc_fvg.py
+│       │   │   │   ├── smt_divergence.py
 │       │   │   │   ├── strategy_plugin.py
+│       │   │   │   ├── tokyo_sweep.py
 │       │   │   │   ├── tri_convergent_alpha.py
 │       │   │   │   ├── tsm_momentum.py
+│       │   │   │   ├── vwap_reversion.py
 │       │   │   │   ├── xau_trend_engine.py
 │       │   │   │   └── xti_pairs_readiness.py
 │       │   │   ├── subagent/
@@ -2139,6 +2144,7 @@ Monika/
 │   │   │   ├── test_structured_fallback.py
 │   │   │   └── test_typesafe_provider.py
 │   │   ├── strategies/
+│   │   │   ├── test_promoted_empirical_strategies.py
 │   │   │   ├── test_quant_discovery_pipeline.py
 │   │   │   ├── test_strategy_registry_summary.py
 │   │   │   ├── test_synthesized_strategy_resilience.py
@@ -2995,4 +3001,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 254 | **Total Tracked Files**: 2711
+**Total Tracked Directories**: 254 | **Total Tracked Files**: 2717

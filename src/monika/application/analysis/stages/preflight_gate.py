@@ -253,4 +253,22 @@ class PreFlightTurnGate:
                 logger.info(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")
                 return False, reason
 
+            # 6. ADR Exhaustion Check: Halt LLM analysis when ADR is >= 95% exhausted
+            try:
+                from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
+
+                adr_ctx = await compute_daily_range_context(session, sym_clean, settings=cfg, as_of=now_utc)
+                if isinstance(adr_ctx, dict) and "error" not in adr_ctx:
+                    pct_consumed = float(adr_ctx.get("today_range_pct_of_adr", 0.0) or 0.0)
+                    if pct_consumed >= 0.95:
+                        reason = (
+                            f"Daily range exhausted: today's range ({adr_ctx.get('today_range_so_far', 0):.5f}) "
+                            f"has consumed {pct_consumed:.1%} of ADR ({adr_ctx.get('adr', 0):.5f}). "
+                            f"Turn halted to prevent exhaustion traps."
+                        )
+                        logger.info(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")
+                        return False, reason
+            except Exception as adr_err:
+                logger.debug(f"[{sym_clean}] PreFlightGate ADR exhaustion check non-fatal: {adr_err}")
+
         return True, None

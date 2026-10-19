@@ -19,7 +19,7 @@ class StrategyRegistry:
     _dynamic_params: dict[str, dict] = {}
     _dynamic_symbol_params: dict[tuple[str, str], dict] = {}
     _blacklisted_ids: set[str] = set()
-    QUARANTINED_STRATEGY_IDS: set[str] = {"smc_fvg", "btc_donchian_breakout"}
+    QUARANTINED_STRATEGY_IDS: set[str] = {"smc_fvg", "btc_donchian_breakout", "bollinger_reversion"}
     _last_load_time: float = 0.0
     _load_interval: float = 60.0
     MAX_SYNTHESIZED_PER_SYMBOL: int = 5

@@ -34,6 +34,7 @@ _TRANSITIONS = {
 QUARANTINED_STRATEGY_IDS: set[str] = {
     "smc_fvg",
     "btc_donchian_breakout",
+    "bollinger_reversion",
 }
 
 CORE_STRATEGY_IDS: set[str] = {

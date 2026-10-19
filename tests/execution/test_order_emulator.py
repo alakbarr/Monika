@@ -365,3 +365,52 @@ async def test_order_emulator_stops_level_protection():
     # Distance from current_price (1.1015) to new_sl (1.1005) is 0.0010 (< stops_level 0.0020).
     res = await emulator._evaluate_tick_for_position(pos, bid=1.1015, ask=1.1017, last=1.1015)
     assert res is None  # Modification safely skipped!
+
+
+@pytest.mark.asyncio
+async def test_order_emulator_suicide_stop_rejection_invariant():
+    """Verify that rapid tick pullbacks never cause an inverted or strangulated stop loss."""
+    emulator = ClientOrderEmulator(
+        settings={
+            "trailing_stop": {
+                "breakeven_atr_multiple": 1.0,
+                "trailing_activation_atr_multiple": 1.5,
+                "trail_atr_multiple": 0.5,
+                "spread_buffer_atr": 0.1,
+            },
+        }
+    )
+
+    # 1. BUY Position: High watermark peaked at 1.1080 (profit 0.0080 >= 1.5*ATR 0.0030).
+    # Trailing SL would be high_watermark - 0.5*ATR = 1.1080 - 0.0010 = 1.1070.
+    # BUT current price violently pulled back to 1.1068 (below the computed trail_sl!).
+    pos_buy = TrackedPosition(
+        ticket=1001,
+        symbol="EURUSD",
+        direction="buy",
+        entry_price=1.1000,
+        current_sl=1.0950,
+        atr=0.0020,
+        high_watermark=1.1080,
+        low_watermark=1.1000,
+    )
+
+    res_buy = await emulator._evaluate_tick_for_position(pos_buy, bid=1.1068, ask=1.1070, last=1.1068)
+    assert res_buy is None  # Rejected! new_sl (1.1070) > current_price (1.1068)
+
+    # 2. SELL Position: Low watermark dropped to 1.0920 (profit 0.0080 >= 1.5*ATR).
+    # Trailing SL would be low_watermark + 0.5*ATR = 1.0920 + 0.0010 = 1.0930.
+    # BUT current price spiked up to 1.0932 (above the computed trail_sl!).
+    pos_sell = TrackedPosition(
+        ticket=1002,
+        symbol="EURUSD",
+        direction="sell",
+        entry_price=1.1000,
+        current_sl=1.1050,
+        atr=0.0020,
+        high_watermark=1.1000,
+        low_watermark=1.0920,
+    )
+
+    res_sell = await emulator._evaluate_tick_for_position(pos_sell, bid=1.0932, ask=1.0934, last=1.0932)
+    assert res_sell is None  # Rejected! new_sl (1.0930) < current_price (1.0934)

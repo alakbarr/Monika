@@ -55,10 +55,18 @@ def test_quarantined_strategies():
     q_ids = StrategyRegistry.QUARANTINED_STRATEGY_IDS
     assert "smc_fvg" in q_ids
     assert "btc_donchian_breakout" in q_ids
+    assert "bollinger_reversion" in q_ids
 
     decay_mon = get_strategy_decay_monitor()
+    assert not decay_mon.is_tradeable("bollinger_reversion")
     assert not decay_mon.get_health("alpha_eurusd_6d622a").is_incubation_passed
     assert not decay_mon.get_health("alpha_gbpusd_867953").is_incubation_passed
+
+    # Verify curated applicable_symbols based on empirical backtest
+    assert AsianRangeFadeStrategy.applicable_symbols == {"GBPUSD", "EURUSD"}
+    assert TokyoSweepStrategy.applicable_symbols == {"EURUSD", "GBPUSD"}
+    assert SMTDivergenceStrategy.applicable_symbols == {"EURUSD"}
+    assert "USDJPY" not in VWAPMeanReversionStrategy.applicable_symbols
 
 
 @pytest.mark.asyncio

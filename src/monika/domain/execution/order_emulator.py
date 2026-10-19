@@ -428,8 +428,26 @@ class ClientOrderEmulator:
                     new_sl = trail_sl
                     reason = f"trailing_stop (profit={profit_distance:.5f}, trail={trail_sl:.5f})"
         if new_sl is not None:
-            # Check broker stops level distance to prevent MT5 invalid stops rejection
+            # Financial Fortress: Physical Directional Sanity & Minimum Breathing Room Invariant
             min_stop_distance = float(self.settings.get("stops_level", 0.0) or 0.0)
+            min_buffer = max(min_stop_distance, 0.25 * atr)
+
+            if pos.direction == "buy" and new_sl >= (current_price - min_buffer):
+                logger.error(
+                    f"[ClientOrderEmulator] Rejected suicide stop adjustment: "
+                    f"BUY new_sl ({new_sl:.5f}) >= current_price ({current_price:.5f}) - buffer ({min_buffer:.5f}) "
+                    f"for #{pos.ticket} ({pos.symbol})"
+                )
+                return None
+            elif pos.direction == "sell" and new_sl <= (current_price + min_buffer):
+                logger.error(
+                    f"[ClientOrderEmulator] Rejected suicide stop adjustment: "
+                    f"SELL new_sl ({new_sl:.5f}) <= current_price ({current_price:.5f}) + buffer ({min_buffer:.5f}) "
+                    f"for #{pos.ticket} ({pos.symbol})"
+                )
+                return None
+
+            # Check broker stops level distance to prevent MT5 invalid stops rejection
             if min_stop_distance > 0 and abs(new_sl - current_price) < min_stop_distance:
                 logger.warning(
                     f"[ClientOrderEmulator] New SL {new_sl} is within broker stops level ({min_stop_distance}) "

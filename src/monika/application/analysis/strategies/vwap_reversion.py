@@ -47,7 +47,7 @@ def _calc_rsi(closes: list[float], period: int = 14) -> float:
 @StrategyRegistry.register
 class VWAPMeanReversionStrategy(EdgeStrategy):
     strategy_id = "vwap_mean_reversion"
-    applicable_symbols = {"EURUSD", "XTIUSD", "XBRUSD", "USDJPY", "AUDUSD"}
+    applicable_symbols = {"EURUSD", "AUDUSD", "XTIUSD", "XBRUSD"}
     compatible_regimes = {"RANGING", "MEAN_REVERTING", "WEAK_TREND", "VOLATILE_CHOP"}
     factor_family = "mean_reversion"
     min_sample_size = 30
