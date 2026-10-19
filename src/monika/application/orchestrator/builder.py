@@ -84,6 +84,7 @@ class AgentBuilderMixin:
     strategy_synthesis_scheduler: Optional[StrategySynthesisScheduler]
     background_review_engine: Optional[Any]
     playbook_curator: Optional[Any]
+    harness_service: Optional[Any]
     container: Optional[Any]
     plugin_engine: Optional[Any]
     universal_cron: Optional[Any]
@@ -445,6 +446,35 @@ class AgentBuilderMixin:
                 self.container.register_instance("mt5_client", self.mt5_client)
             if self.execution_service:
                 self.container.register_instance("execution_service", self.execution_service)
+
+            # Initialize RecursiveHarnessService
+            try:
+                from monika.application.analysis.harness.service import RecursiveHarnessService
+                from monika.application.analysis.prompt_sections import get_prompt_section_registry
+
+                self.harness_service = RecursiveHarnessService()
+                self.container.register_instance("harness_service", self.harness_service)
+
+                psr = get_prompt_section_registry()
+
+                def _inject_harness_lessons(ctx: Any = None) -> str:
+                    svc = getattr(self, "harness_service", None)
+                    if not svc:
+                        return ""
+                    ctx_map = ctx if isinstance(ctx, dict) else {}
+                    domain = ctx_map.get("domain") or ctx_map.get("symbol") or "GENERAL"
+                    return svc.library.format_domain_lessons_for_prompt(str(domain), max_lessons=2)
+
+                psr.register(
+                    section_id="harness_domain_lessons",
+                    content=_inject_harness_lessons,
+                    position="after_memory",
+                    max_chars=2048,
+                    plugin_id="harness_recursive_engine",
+                )
+                logger.info("[Builder] RecursiveHarnessService wired into container and PromptSectionRegistry.")
+            except Exception as h_err:
+                logger.debug(f"[Builder] Harness wiring notice: {h_err}")
 
             self.plugin_engine = PluginEngine(
                 container=self.container,

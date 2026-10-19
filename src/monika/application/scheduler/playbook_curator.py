@@ -217,6 +217,34 @@ class PlaybookCurator:
             os.replace(tmp_cr, crystallized_path)
             logger.info(f"[{clean_sym}] Successfully curated playbook -> {playbook_path.name} (hash={blob_hash[:8]})")
 
+            # Record adopted playbook in Harness Domain Experience Library
+            try:
+                from monika.application.analysis.harness.library import DomainExperienceLibrary
+                from monika.application.analysis.harness.tree import HarnessTree
+
+                h_lib = DomainExperienceLibrary()
+                h_tree = HarnessTree.build_baseline_tree()
+                t_data = dict(h_tree.to_dict())
+                t_data[f"skills/{playbook_filename}"] = full_content
+                curated_tree = HarnessTree.from_dict(t_data)
+
+                run_id = f"curated_{clean_sym.lower()}_{now.strftime('%Y%m%d_%H%M%S')}"
+                h_lib.record_experience(
+                    domain=f"{clean_sym}__TRENDING",
+                    run_id=run_id,
+                    tree=curated_tree,
+                    cue=f"Curated from {win_count}/{total_count} profitable paper trades",
+                    lesson=rules_body,
+                    evidence={
+                        "win_rate": win_rate,
+                        "win_count": win_count,
+                        "sample_size": total_count,
+                        "curated_at": now.isoformat(),
+                    },
+                )
+            except Exception as h_err:
+                logger.debug(f"[{clean_sym}] Harness library record notice: {h_err}")
+
         return {
             "symbol": clean_sym,
             "win_rate": win_rate,

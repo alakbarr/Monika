@@ -141,17 +141,25 @@ Monika/
 │       │   │   ├── harness/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── agent_harness.py
+│       │   │   │   ├── composer.py
 │       │   │   │   ├── context_compressor.py
 │       │   │   │   ├── error_classifier.py
 │       │   │   │   ├── harness_state.py
+│       │   │   │   ├── library.py
 │       │   │   │   ├── message_repair.py
+│       │   │   │   ├── prober.py
+│       │   │   │   ├── proposer.py
 │       │   │   │   ├── repetition_guard.py
+│       │   │   │   ├── selector.py
+│       │   │   │   ├── service.py
 │       │   │   │   ├── stall_guard.py
 │       │   │   │   ├── structured_output.py
+│       │   │   │   ├── surface.py
 │       │   │   │   ├── symbol_segment_planner.py
 │       │   │   │   ├── tool_batch_planner.py
 │       │   │   │   ├── tool_repair.py
 │       │   │   │   ├── trade_stop_gates.py
+│       │   │   │   ├── tree.py
 │       │   │   │   └── verification_evidence_ledger.py
 │       │   │   ├── journal/
 │       │   │   │   ├── __init__.py
@@ -936,6 +944,9 @@ Monika/
 │       │   │   ├── sizing_calculator.py
 │       │   │   ├── state_machine.py
 │       │   │   └── verification_engine.py
+│       │   ├── harness/
+│       │   │   ├── __init__.py
+│       │   │   └── models.py
 │       │   ├── indicators/
 │       │   │   ├── alpha_zoo/
 │       │   │   │   ├── catalog/
@@ -2092,11 +2103,16 @@ Monika/
 │   │   │   ├── test_context_compressor.py
 │   │   │   ├── test_critical_harness.py
 │   │   │   ├── test_error_classifier.py
+│   │   │   ├── test_harness_routes.py
+│   │   │   ├── test_library.py
 │   │   │   ├── test_prompt_cache_architecture.py
 │   │   │   ├── test_prompt_tiers_and_state.py
+│   │   │   ├── test_propose_probe_compose.py
 │   │   │   ├── test_structured_context_engine.py
+│   │   │   ├── test_surface.py
 │   │   │   ├── test_tool_batch_and_repair.py
-│   │   │   └── test_trade_stop_and_segment_planner.py
+│   │   │   ├── test_trade_stop_and_segment_planner.py
+│   │   │   └── test_tree.py
 │   │   ├── mcp/
 │   │   │   ├── test_mcp.py
 │   │   │   ├── test_mcp_and_integrations.py
@@ -2976,4 +2992,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 252 | **Total Tracked Files**: 2694
+**Total Tracked Directories**: 253 | **Total Tracked Files**: 2709

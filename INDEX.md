@@ -21,6 +21,7 @@
 - [`src/monika/domain`](#folder-srcmonikadomain)
 - [`src/monika/domain/entities`](#folder-srcmonikadomainentities)
 - [`src/monika/domain/execution`](#folder-srcmonikadomainexecution)
+- [`src/monika/domain/harness`](#folder-srcmonikadomainharness)
 - [`src/monika/domain/indicators`](#folder-srcmonikadomainindicators)
 - [`src/monika/domain/indicators/alpha_zoo`](#folder-srcmonikadomainindicatorsalphazoo)
 - [`src/monika/domain/indicators/alpha_zoo/factors`](#folder-srcmonikadomainindicatorsalphazoofactors)
@@ -1316,6 +1317,22 @@
     - `record_evidence(decision_payload: Dict[str, Any], session: Optional[Any], extra_metadata: Optional[Dict[str, Any]]) -> Dict[str, Any]` - *Records verifiable evidence for a trading decision including SHA256 payload hash.*
     - `async pre_trade_assertions(signal: Dict[str, Any], session: Optional[Any]) -> Tuple[bool, List[str]]` - *Phase 1: 10-point deterministic assertions BEFORE sending to MT5 / RiskGate.*
     - `async post_execution_reconciliation(order_result: Dict[str, Any], mt5_client: Optional[Any], session: Optional[Any]) -> Dict[str, Any]` - *Phase 2: Zero-trust post-execution reconciliation.*
+
+### Folder: `src/monika/domain/harness` <a id="folder-srcmonikadomainharness"></a>
+
+#### `__init__.py` - *Harness domain package.*
+- **Path**: [`src/monika/domain/harness/__init__.py`](src/monika/domain/harness/__init__.py)
+
+#### `models.py` - *Domain models for Monika Harness surface, components, and safety invariants.*
+- **Path**: [`src/monika/domain/harness/models.py`](src/monika/domain/harness/models.py)
+- **Classes**:
+  - `class ComponentType(str, Enum)`: The 8 modular harness components.
+  - `class HarnessViolationError(ValueError)`: Raised when a harness proposal violates domain invariants or safety rules.
+  - `class HarnessComponent`: An individual file-mounted component on the harness surface.
+  - `class SurfaceSpec`: Specification of the editable agent harness surface.
+  - `class HarnessDiff`: Represents changes proposed between two harness trees.
+    - `is_empty() -> bool`
+    - `summary() -> dict[str, int]`
 
 ### Folder: `src/monika/domain/indicators` <a id="folder-srcmonikadomainindicators"></a>
 
@@ -5748,6 +5765,14 @@
 #### `agent_harness.py` - *Backward-compatibility facade for AgentHarness.*
 - **Path**: [`src/monika/application/analysis/harness/agent_harness.py`](src/monika/application/analysis/harness/agent_harness.py)
 
+#### `composer.py` - *Harness Composer for Monika (Task-Level Recursion - Phase 4: Compose).*
+- **Path**: [`src/monika/application/analysis/harness/composer.py`](src/monika/application/analysis/harness/composer.py)
+- **Classes**:
+  - `class CompositionResult`: The result of composing a selected harness into production.
+  - `class HarnessComposer`: Composes selected candidate diffs onto the base harness tree safely.
+    - `__init__(spec: SurfaceSpec)`
+    - `compose(base_tree: HarnessTree, selection: ContrastiveSelection) -> CompositionResult` - *Atomically applies accepted candidate diffs.*
+
 #### `context_compressor.py` - *Backward-compatibility facade for ContextCompressor.*
 - **Path**: [`src/monika/application/analysis/harness/context_compressor.py`](src/monika/application/analysis/harness/context_compressor.py)
 
@@ -5757,17 +5782,74 @@
 #### `harness_state.py` - *Backward-compatibility facade for harness_state.*
 - **Path**: [`src/monika/application/analysis/harness/harness_state.py`](src/monika/application/analysis/harness/harness_state.py)
 
+#### `library.py` - *Domain Experience Library for Monika (Harnessing-Level Recursion).*
+- **Path**: [`src/monika/application/analysis/harness/library.py`](src/monika/application/analysis/harness/library.py)
+- **Classes**:
+  - `class DomainExperienceEntry`: A verified empirical lesson stored in the domain library.
+    - `to_markdown() -> str`
+  - `class DomainExperienceLibrary`: Manages the persistent store of domain-specific harnesses and contrastive experiences.
+    - `__init__(root_dir: Optional[Path | str], spec: SurfaceSpec)`
+    - `record_experience(domain: str, run_id: str, tree: HarnessTree, ...) -> DomainExperienceEntry` - *Stores an adopted harness snapshot and its structured experience markdown.*
+    - `list_domains() -> list[str]` - *Lists all registered domain directories.*
+    - `list_entries(domain: str) -> list[str]` - *Lists all run IDs in a domain.*
+    - `get_latest_harness(domain: str) -> Optional[HarnessTree]` - *Loads the most recently adopted harness tree for this domain.*
+    - `format_domain_lessons_for_prompt(domain: str, max_lessons: int) -> str` - *Extracts recent lessons from this domain into a concise markdown section for prompt injection.*
+- **Top-Level Functions**:
+  - `sanitize_domain_slug(domain: str) -> str`: Normalizes domain identifier (e.g. 'FX / Trending' -> 'FX__TRENDING').
+
 #### `message_repair.py` - *Backward-compatibility facade for message_repair.*
 - **Path**: [`src/monika/application/analysis/harness/message_repair.py`](src/monika/application/analysis/harness/message_repair.py)
 
+#### `prober.py` - *Harness Prober for Monika (Task-Level Recursion - Phase 2: Probe).*
+- **Path**: [`src/monika/application/analysis/harness/prober.py`](src/monika/application/analysis/harness/prober.py)
+- **Classes**:
+  - `class ProbeMetrics`: Quantitative performance and behavioral metrics observed during a probe run.
+    - `composite_score() -> float` - *Calculates composite quality index (higher is better).*
+  - `class ProbeResult`: The outcome of probing a single candidate harness.
+  - `class HarnessProber`: Evaluates candidate harnesses by executing simulated scenario runs.
+    - `__init__(custom_runner: Optional[ProbeRunner])`
+    - `probe_candidates(base_tree: HarnessTree, candidates: Sequence[CandidateProposal], scenario_data: Mapping[str, Any]) -> Sequence[ProbeResult]` - *Runs probe evaluations across base and all candidate proposals.*
+
+#### `proposer.py` - *Harness Proposer for Monika (Task-Level Recursion - Phase 1: Propose).*
+- **Path**: [`src/monika/application/analysis/harness/proposer.py`](src/monika/application/analysis/harness/proposer.py)
+- **Classes**:
+  - `class CandidateProposal`: A proposed candidate variation of the harness tree.
+  - `class HarnessProposer`: Proposes candidate adjustments to mutable harness components
+    - `__init__(spec: SurfaceSpec)`
+    - `propose_candidates(base_tree: HarnessTree, domain: str, regime_context: Mapping[str, Any], ...) -> Sequence[CandidateProposal]` - *Synthesizes k candidate harness trees from the base tree.*
+
 #### `repetition_guard.py` - *Backward-compatibility facade for repetition_guard.*
 - **Path**: [`src/monika/application/analysis/harness/repetition_guard.py`](src/monika/application/analysis/harness/repetition_guard.py)
+
+#### `selector.py` - *Contrastive Selector for Monika (Task-Level Recursion - Phase 3: Contrastive Selection).*
+- **Path**: [`src/monika/application/analysis/harness/selector.py`](src/monika/application/analysis/harness/selector.py)
+- **Classes**:
+  - `class ContrastiveSelection`: The result of contrastive evaluation across probed candidate harnesses.
+  - `class ContrastiveSelector`: Evaluates candidate probe results contrastively, selects the best performer,
+    - `__init__(min_improvement_margin: float)`
+    - `select(domain: str, probe_results: Sequence[ProbeResult], regime_context: Mapping[str, Any]) -> ContrastiveSelection` - *Anonymizes candidates, selects the winning harness, and formulates causal lessons.*
+
+#### `service.py` - *Recursive Harness Service for Monika.*
+- **Path**: [`src/monika/application/analysis/harness/service.py`](src/monika/application/analysis/harness/service.py)
+- **Classes**:
+  - `class RecursionCycleResult`: The complete result of an autonomous recursive harnessing cycle.
+  - `class RecursiveHarnessService`: Main entry point for recursive agent self-improvement in Monika.
+    - `__init__(library: Optional[DomainExperienceLibrary], proposer: Optional[HarnessProposer], prober: Optional[HarnessProber], ...)`
+    - `run_recursion_cycle(domain: str, base_tree: Optional[HarnessTree], scenario_data: Optional[Mapping[str, Any]], ...) -> RecursionCycleResult` - *Executes a full two-level recursive harnessing cycle for the given market domain.*
 
 #### `stall_guard.py` - *Backward-compatibility facade for StallGuard.*
 - **Path**: [`src/monika/application/analysis/harness/stall_guard.py`](src/monika/application/analysis/harness/stall_guard.py)
 
 #### `structured_output.py` - *Backward-compatibility facade for structured_output.*
 - **Path**: [`src/monika/application/analysis/harness/structured_output.py`](src/monika/application/analysis/harness/structured_output.py)
+
+#### `surface.py` - *Concrete surface specification and invariant validators for Monika.*
+- **Path**: [`src/monika/application/analysis/harness/surface.py`](src/monika/application/analysis/harness/surface.py)
+- **Top-Level Functions**:
+  - `normalize_rel_path(rel_path: str) -> str`: Normalizes relative paths, strictly rejecting directory traversal or absolute escapes.
+  - `is_path_reserved(rel_path: str, spec: SurfaceSpec) -> bool`: Checks if a path matches any reserved immutable system pattern.
+  - `classify_component(rel_path: str, spec: SurfaceSpec) -> ComponentType`: Classifies a file path into one of the 8 Harness components.
+  - `validate_tree_invariants(tree: Mapping[str, str], spec: SurfaceSpec) -> None`: Validates a complete harness tree against surface invariants:
 
 #### `symbol_segment_planner.py` - *Backward-compatibility facade for SymbolSegmentPlanner.*
 - **Path**: [`src/monika/application/analysis/harness/symbol_segment_planner.py`](src/monika/application/analysis/harness/symbol_segment_planner.py)
@@ -5780,6 +5862,19 @@
 
 #### `trade_stop_gates.py` - *Backward-compatibility facade for trade_stop_gates.*
 - **Path**: [`src/monika/application/analysis/harness/trade_stop_gates.py`](src/monika/application/analysis/harness/trade_stop_gates.py)
+
+#### `tree.py` - *HarnessTree representation, diffing, validation, and file persistence for Monika.*
+- **Path**: [`src/monika/application/analysis/harness/tree.py`](src/monika/application/analysis/harness/tree.py)
+- **Classes**:
+  - `class HarnessTree`: A validated, immutable-in-memory snapshot of Monika's 8-component harness.
+    - `to_dict() -> dict[str, str]` - *Returns rel_path -> text content.*
+    - `from_dict(data: Mapping[str, str], spec: SurfaceSpec) -> HarnessTree` - *Builds and validates a HarnessTree from a dict of relative paths and contents.*
+    - `diff(other: HarnessTree) -> HarnessDiff` - *Calculates the structured diff between this tree and another.*
+    - `apply_diff(diff: HarnessDiff) -> HarnessTree` - *Applies a validated diff, producing a new validated HarnessTree.*
+    - `text_diff(other: HarnessTree) -> str` - *Generates unified git-style text diff for observability.*
+    - `export_to_directory(target_dir: Path | str) -> None` - *Exports all components to disk under target_dir.*
+    - `load_from_directory(source_dir: Path | str, spec: SurfaceSpec) -> HarnessTree` - *Scans a directory for surface files, assembling a validated HarnessTree.*
+    - `build_baseline_tree(system_prompt: Optional[str], guardrails: Optional[str], memory: Optional[str], ...) -> HarnessTree` - *Constructs a standard baseline tree for Monika with production defaults.*
 
 #### `verification_evidence_ledger.py` - *Backward-compatibility facade for verification_evidence_ledger.*
 - **Path**: [`src/monika/application/analysis/harness/verification_evidence_ledger.py`](src/monika/application/analysis/harness/verification_evidence_ledger.py)

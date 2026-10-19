@@ -71,6 +71,7 @@ class TradingAgent(AgentBuilderMixin, AgentRecoveryMixin, AgentMonitorsMixin, Ag
     strategy_synthesis_scheduler: Optional[StrategySynthesisScheduler]
     background_review_engine: Optional[Any]
     playbook_curator: Optional[Any]
+    harness_service: Optional[Any]
     _active_scraper_runner: Optional[Any]
     fundamental_stage: Optional[FundamentalStage]
     per_asset_stage: Optional[PerAssetStage]
@@ -146,6 +147,7 @@ class TradingAgent(AgentBuilderMixin, AgentRecoveryMixin, AgentMonitorsMixin, Ag
         self.strategy_synthesis_scheduler = None
         self.background_review_engine = None
         self.playbook_curator = None
+        self.harness_service = None
         self._active_scraper_runner = None
         self.fundamental_stage = None
         self.per_asset_stage = None
