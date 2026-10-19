@@ -401,3 +401,136 @@ def test_prompt_caching_4breakpoint():
     )
     assert sub_blocks[-1]["cache_control"]["ttl"] == "5m"
     assert sub_tools[-1]["cache_control"]["ttl"] == "5m"
+
+
+# ==============================================================================
+# 9. Harness Modular Turn Protection Integration Tests
+# ==============================================================================
+
+
+@pytest.mark.asyncio
+async def test_harness_scratchpad_guard_integration():
+    """Verify AgentHarness automatically closes dangling <think> tag and extracts reasoning."""
+    from monika.application.agent.harness.agent_harness import AgentHarness
+
+    mock_client = AsyncMock()
+    mock_client.provider_name = "anthropic"
+    mock_client.model = "claude-sonnet-5"
+    harness = AgentHarness(llm_client=mock_client)
+
+    # Simulate response with unclosed reasoning tag
+    class MockBlock:
+        def __init__(self, t, text):
+            self.type = t
+            self.text = text
+
+    class MockResponse:
+        content = [MockBlock("text", "<think>Internal market hypothesis: trend is bullish without close tag")]
+        stop_reason = "end_turn"
+
+    blocks, stop_reason, reasoning, in_tok, out_tok, c_tok, th_tok = harness._normalize_response_content(MockResponse())
+    # Verify scratchpad tag was auto-closed and reasoning was cleanly extracted
+    assert reasoning is not None
+    assert "Internal market hypothesis: trend is bullish" in reasoning
+    assert stop_reason == "end_turn"
+
+
+@pytest.mark.asyncio
+async def test_harness_empty_response_guard_integration():
+    """Verify EmptyResponseGuard tracks consecutive empty responses in AgentHarness."""
+    from monika.application.agent.harness.agent_harness import AgentHarness
+
+    mock_client = AsyncMock()
+    mock_client.provider_name = "openai"
+    mock_client.model = "gpt-6-astra"
+    harness = AgentHarness(llm_client=mock_client)
+
+    class MockEmptyOpenAIResponse:
+        choices = []
+
+    with pytest.raises(ValueError, match="choices.*empty"):
+        harness._normalize_response_content(MockEmptyOpenAIResponse())
+
+    # Consecutive empty count must be 1
+    key = ("openai", "gpt-6-astra", "empty_choices")
+    assert harness.empty_response_guard._consecutive_empty_counts.get(key) == 1
+
+
+@pytest.mark.asyncio
+async def test_harness_readonly_replay_cache_integration():
+    """Verify ReadOnlyReplayCache stores and returns cached outputs for idempotent read tools."""
+    from monika.application.agent.readonly_replay_cache import ReadOnlyReplayCache
+
+    cache = ReadOnlyReplayCache.get_instance()
+    cache.clear()
+
+    tool_name = "get_historical_rates"
+    tool_args = {"symbol": "EURUSD", "timeframe": "H1", "count": 100}
+    mock_result = {"rates": [1.0850, 1.0855, 1.0860]}
+
+    # First call - cache miss
+    assert cache.get(tool_name, tool_args) is None
+
+    # Put in cache
+    cache.put(tool_name, tool_args, mock_result, ttl_seconds=60.0)
+
+    # Second call - cache hit
+    cached_val = cache.get(tool_name, tool_args)
+    assert cached_val == mock_result
+    assert cache.stats["hits"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_harness_socket_lifecycle_guard_cleanup():
+    """Verify socket_lifecycle_guard graveyard drains cleanly on harness completion."""
+    import socket
+    from monika.application.agent.socket_lifecycle_guard import (
+        clear_socket_graveyard,
+        retire_socket_ownership_safe,
+        get_socket_guard_diagnostics,
+    )
+
+    # Create dummy socket and retire it
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    retire_socket_ownership_safe(s)
+
+    diag = get_socket_guard_diagnostics()
+    assert diag["graveyard_size"] >= 1
+
+    cleared = clear_socket_graveyard()
+    assert cleared >= 1
+    assert get_socket_guard_diagnostics()["graveyard_size"] == 0
+
+
+@pytest.mark.asyncio
+async def test_harness_modular_stop_gates_rejection():
+    """Verify TradingRiskStopGate and CodeVerifyStopGate intercept unverified actions."""
+    from monika.application.agent.turn_stop_gates import apply_stop_gates, StopGateContext
+
+    # Test 1: Action declared in text without registered proposed_actions
+    ctx = StopGateContext(turn_id="turn_1")
+    unregistered_text = "My decision: BUY EURUSD immediately at market price."
+    can_proceed, msg = apply_stop_gates(unregistered_text, ctx)
+    assert can_proceed is False
+    assert "Financial Safety Invariant" in msg
+
+    # Test 2: Valid registered action passes
+    ctx.proposed_actions = [{"action": "buy", "symbol": "EURUSD", "entry_price": 1.0850, "sl": 1.0800, "tp": 1.0950}]
+    can_proceed_valid, msg_valid = apply_stop_gates(unregistered_text, ctx)
+    assert can_proceed_valid is True
+    assert msg_valid is None
+
+    # Test 3: Invalid SL distance on BUY (SL >= entry)
+    ctx.proposed_actions = [{"action": "buy", "symbol": "EURUSD", "entry_price": 1.0850, "sl": 1.0890, "tp": 1.0950}]
+    can_proceed_bad_sl, msg_bad_sl = apply_stop_gates(unregistered_text, ctx)
+    assert can_proceed_bad_sl is False
+    assert "has SL (1.089) above or at entry" in msg_bad_sl
+
+
+def test_chat_streaming_scratchpad_guard_integration():
+    """Verify chat streaming auto-closes incomplete reasoning tags before saving to history."""
+    from monika.application.agent.scratchpad_guard import close_dangling_scratchpad
+
+    stream_text = "Berikut analisis kami:<think>Menghitung pivot point EURUSD..."
+    sanitized = close_dangling_scratchpad(stream_text)
+    assert "</think>" in sanitized

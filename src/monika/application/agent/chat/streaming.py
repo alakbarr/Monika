@@ -314,6 +314,10 @@ class StreamingMixin(_ChatAgentMixinBase):
             final_text = "".join(buffer)
             if not final_text.strip():
                 final_text = "[PERINGATAN] Tidak ada respons yang dihasilkan."
+            else:
+                from monika.application.agent.scratchpad_guard import close_dangling_scratchpad
+
+                final_text = close_dangling_scratchpad(final_text)
 
             await self._save_message(session, "assistant", final_text, session_id=session_id)
             self._last_turn_streamed = True
@@ -331,4 +335,7 @@ class StreamingMixin(_ChatAgentMixinBase):
         async for delta in response_generator:
             text_chunk = delta if isinstance(delta, str) else getattr(delta, "text", str(delta))
             chunks.append(text_chunk)
-        return "".join(chunks)
+        raw_text = "".join(chunks)
+        from monika.application.agent.scratchpad_guard import close_dangling_scratchpad
+
+        return close_dangling_scratchpad(raw_text)

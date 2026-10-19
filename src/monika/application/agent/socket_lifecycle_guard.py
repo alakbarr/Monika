@@ -136,3 +136,22 @@ def get_socket_guard_diagnostics() -> dict:
         "active_retired_fds": open_fds,
         "fd_leak_risk": "none" if active_graveyard_count < _MAX_GRAVEYARD_SIZE * 0.8 else "elevated",
     }
+
+
+class SocketLifecycleGuard:
+    """Object-oriented interface for socket lifecycle and retirement management."""
+
+    def retire_socket(self, sock: Optional[socket.socket]) -> bool:
+        return retire_socket_ownership_safe(sock)
+
+    def drain_transport(self, transport: Any) -> None:
+        drain_transports_after_abandonment(transport)
+
+    def clear_graveyard(self) -> int:
+        return clear_socket_graveyard()
+
+    def get_diagnostics(self) -> dict:
+        return get_socket_guard_diagnostics()
+
+
+socket_guard = SocketLifecycleGuard()

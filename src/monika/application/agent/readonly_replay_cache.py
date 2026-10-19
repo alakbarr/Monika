@@ -121,6 +121,10 @@ class ReadOnlyReplayCache:
                     count += 1
         return count
 
+    def clear(self) -> int:
+        """Alias for invalidate() to clear entire cache."""
+        return self.invalidate()
+
     @property
     def stats(self) -> Dict[str, Any]:
         """Returns cache telemetry."""

@@ -26,6 +26,10 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.application.agent.auxiliary_model_router import AuxiliaryModelRouter, AuxiliaryTaskType
+from monika.application.agent.bounded_response import truncate_text_middle
+from monika.application.agent.deadline import run_bounded_async
+from monika.application.agent.empty_response_guard import EmptyResponseGuard
 from monika.application.agent.harness.tool_batch_planner import ToolBatchPlanner
 from monika.application.agent.harness.tool_repair import (
     coerce_tool_arguments,
@@ -33,11 +37,28 @@ from monika.application.agent.harness.tool_repair import (
     repair_tool_arguments,
     repair_tool_name,
 )
+from monika.application.agent.readonly_replay_cache import ReadOnlyReplayCache
+from monika.application.agent.scratchpad_guard import (
+    close_dangling_scratchpad,
+    extract_reasoning_and_content,
+    scratchpad_guard,
+)
+from monika.application.agent.socket_lifecycle_guard import clear_socket_graveyard, socket_guard
+from monika.application.agent.turn_liveness import TurnLivenessWatchdog
+from monika.application.agent.turn_phase_machine import TurnPhase, TurnPhaseMachine, TurnState, TurnVerdict
+from monika.application.agent.turn_preflight_gate import (
+    RUN_BUDGET_WRAPUP_NOTICE,
+    TurnPreflightGate,
+    WallClockBudgetManager,
+)
+from monika.application.agent.turn_stop_gates import StopGateContext, apply_stop_gates
+from monika.application.agent.turn_tool_round import ToolCallSpec, ToolRoundVerdict, TurnToolRoundCoordinator
 from monika.application.analysis.tools.tool_executor import ToolExecutor
 from monika.core.telemetry.tracing.spans import llm_span
 from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
 
 logger = logging.getLogger("TradingAgent.AgentHarness")
+
 
 MODEL_PRICING_PER_1M = {
     "claude": {"input": 3.0, "output": 15.0, "cache_read": 0.30},
@@ -131,6 +152,15 @@ class AgentHarness:
         self._cached_surface_prompt: Optional[Any] = None
         self._cached_surface_prompt_hash: Optional[str] = None
         self._last_injected_dynamic_overlay: Optional[str] = None
+
+        # 12 Modular Turn Protection Components
+        self.budget_manager = WallClockBudgetManager(budget_seconds=self.per_turn_timeout_seconds)
+        self.empty_response_guard = EmptyResponseGuard()
+        self.scratchpad_guard = scratchpad_guard
+        self.socket_guard = socket_guard
+        self.replay_cache = ReadOnlyReplayCache.get_instance()
+        self.auxiliary_router = AuxiliaryModelRouter(settings=self.settings)
+        self.tool_round_coordinator = TurnToolRoundCoordinator()
 
     def enqueue_steering(
         self,
@@ -440,6 +470,11 @@ class AgentHarness:
         # Case 1: OpenAI-compatible ChatCompletion (has choices)
         if (not is_anthropic_or_gemini and has_choices) or (not has_content and has_choices):
             if not response.choices:
+                self.empty_response_guard.record_empty_response(
+                    client_provider or "openai",
+                    getattr(self.llm_client, "model", "unknown"),
+                    "empty_choices",
+                )
                 raise ValueError("Invalid OpenAI response: 'choices' is empty or None")
             choice = response.choices[0]
             stop_reason = getattr(choice, "finish_reason", "") or "end_turn"
@@ -449,9 +484,16 @@ class AgentHarness:
 
             content_text = getattr(msg, "content", None)
             if content_text:
-                assistant_blocks.append({"type": "text", "text": str(content_text)})
+                closed_text = self.scratchpad_guard.close_dangling_scratchpad(str(content_text))
+                ext_th, clean_text, _ = self.scratchpad_guard.extract_reasoning_and_content(closed_text)
+                if ext_th and not reasoning_content:
+                    reasoning_content = ext_th
+                bounded_text = truncate_text_middle(clean_text, max_chars=100000)
+                if bounded_text:
+                    assistant_blocks.append({"type": "text", "text": str(bounded_text)})
 
-            reasoning_content = getattr(msg, "reasoning_content", getattr(msg, "reasoning", None))
+            if not reasoning_content:
+                reasoning_content = getattr(msg, "reasoning_content", getattr(msg, "reasoning", None))
 
             tool_calls = getattr(msg, "tool_calls", None) or []
             for tc in tool_calls:
@@ -480,7 +522,14 @@ class AgentHarness:
                     b_type = b.get("type") if isinstance(b, dict) else getattr(b, "type", None)
                     if b_type == "text":
                         t_text = b.get("text") if isinstance(b, dict) else getattr(b, "text", "")
-                        assistant_blocks.append({"type": "text", "text": str(t_text)})
+                        if t_text:
+                            closed_t = self.scratchpad_guard.close_dangling_scratchpad(str(t_text))
+                            ext_th, clean_t, _ = self.scratchpad_guard.extract_reasoning_and_content(closed_t)
+                            if ext_th and not reasoning_content:
+                                reasoning_content = ext_th
+                            bounded_t = truncate_text_middle(clean_t, max_chars=100000)
+                            if bounded_t:
+                                assistant_blocks.append({"type": "text", "text": str(bounded_t)})
                     elif b_type == "tool_use":
                         t_name = b.get("name") if isinstance(b, dict) else getattr(b, "name", "")
                         t_input = b.get("input") if isinstance(b, dict) else getattr(b, "input", {})
@@ -491,7 +540,26 @@ class AgentHarness:
                     elif isinstance(b, dict):
                         assistant_blocks.append(b)
             elif isinstance(raw_content, str) and raw_content:
-                assistant_blocks.append({"type": "text", "text": raw_content})
+                closed_r = self.scratchpad_guard.close_dangling_scratchpad(str(raw_content))
+                ext_th, clean_r, _ = self.scratchpad_guard.extract_reasoning_and_content(closed_r)
+                if ext_th and not reasoning_content:
+                    reasoning_content = ext_th
+                bounded_r = truncate_text_middle(clean_r, max_chars=100000)
+                if bounded_r:
+                    assistant_blocks.append({"type": "text", "text": str(bounded_r)})
+
+        model_name_val = getattr(self.llm_client, "model", "unknown")
+        if not assistant_blocks and not reasoning_content:
+            self.empty_response_guard.record_empty_response(
+                client_provider or "unknown",
+                model_name_val,
+                stop_reason,
+            )
+        else:
+            self.empty_response_guard.record_successful_response(
+                client_provider or "unknown",
+                model_name_val,
+            )
 
         return assistant_blocks, stop_reason, reasoning_content, in_tok, out_tok, cached_tok, thinking_tok
 
@@ -622,17 +690,17 @@ class AgentHarness:
             return "submit_fundamental_brief"
         return None
 
-    @staticmethod
-    def _maybe_inject_wrapup_notice(elapsed_seconds: float, stage_timeout_seconds: Optional[float]) -> Optional[str]:
+    def _maybe_inject_wrapup_notice(
+        self, elapsed_seconds: float, stage_timeout_seconds: Optional[float]
+    ) -> Optional[str]:
         """Inject wrap-up directive if elapsed execution time reaches or exceeds 80% of budget."""
         if not stage_timeout_seconds or stage_timeout_seconds <= 0:
             return None
+        if hasattr(self, "budget_manager") and self.budget_manager.should_inject_wrapup():
+            self.budget_manager.mark_wrapup_injected()
+            return self.budget_manager.get_wrapup_notice()
         if elapsed_seconds >= 0.8 * stage_timeout_seconds:
-            return (
-                f"[TIME BUDGET WRAP-UP] Over 80% of stage time budget consumed "
-                f"({elapsed_seconds:.1f}s / {stage_timeout_seconds:.1f}s). "
-                f"Conclude analysis and issue final proposal immediately."
-            )
+            return RUN_BUDGET_WRAPUP_NOTICE
         return None
 
     # --------------------------------------------------------------------------
@@ -837,8 +905,19 @@ class AgentHarness:
         _wrapup_injected = False
         _stage_start_time = asyncio.get_event_loop().time()
 
+        # WallClockBudgetManager & TurnState initialization
+        self.budget_manager.reset(budget_seconds=stage_timeout_seconds or turn_timeout)
+        turn_state = TurnState(
+            turn_id=f"{stage_name}_{int(_stage_start_time)}",
+            session_id=str(getattr(session, "hash", id(session))),
+            user_prompt=str(current_messages[-1].get("content") if current_messages else ""),
+            current_phase=TurnPhase.PREFLIGHT,
+        )
+
         while turns < effective_max_turns:
             turns += 1
+            turn_state.iteration = turns
+            turn_state.current_phase = TurnPhase.PREFLIGHT
             self.guardrail_controller.reset_turn()
 
             # Check wall-clock time budget and inject wrap-up directive at >= 80% (Phase 6.4)
@@ -890,6 +969,13 @@ class AgentHarness:
                 provider_name=getattr(self.llm_client, "provider_name", None),
                 settings=self.settings,
             )
+            # TurnPreflightGate context floor validation
+            is_floor_ok, floor_msg = TurnPreflightGate.validate_context_floor(
+                context_win, estimated_required_tokens=2048
+            )
+            if not is_floor_ok:
+                logger.warning(f"[{stage_name}][AgentHarness] Preflight context floor warning: {floor_msg}")
+
             # Offload heavy multimodal chart data from historical turns (>2 turns old)
             current_messages = offload_historical_charts(current_messages, retain_recent_turns=2)
 
@@ -1053,13 +1139,26 @@ class AgentHarness:
                                 else:
                                     send_messages.append({"role": "user", "content": snapshot_text})
 
+                        turn_state.current_phase = TurnPhase.API_CALL
+                        t_api_start = asyncio.get_event_loop().time()
                         try:
-                            response = await asyncio.wait_for(
-                                self.llm_client.run_tool_agent(send_messages, tools, effective_sys),
-                                timeout=turn_timeout,
-                            )
+                            async with TurnLivenessWatchdog(
+                                turn_id=f"{stage_name}_{turns}",
+                                timeout_seconds=turn_timeout,
+                                stall_timeout_seconds=min(30.0, max(5.0, turn_timeout / 2.0)),
+                            ) as watchdog:
+                                response = await run_bounded_async(
+                                    self.llm_client.run_tool_agent(send_messages, tools, effective_sys),
+                                    timeout_seconds=turn_timeout,
+                                    timeout_message=f"Turn {turns} LLM call timed out after {turn_timeout:.0f}s",
+                                )
+                                watchdog.record_activity("api_response_received")
                         except (asyncio.TimeoutError, TimeoutError) as to_err:
                             raise TimeoutError(f"Turn {turns} LLM call timed out after {turn_timeout:.0f}s") from to_err
+                        finally:
+                            turn_state.phase_latencies[f"api_call_turn_{turns}"] = (
+                                asyncio.get_event_loop().time() - t_api_start
+                            )
                         break
                     except Exception as exc:
                         last_exc = exc
@@ -1403,6 +1502,9 @@ class AgentHarness:
                             f"[{stage_name}][AgentHarness] Reached max turns ({effective_max_turns}) "
                             f"without calling mandatory tool '{mandatory_tool}'."
                         )
+                turn_state.current_phase = TurnPhase.FINALIZE
+                turn_state.stop_gate_context.pending_response = final_text
+
                 # ── Trade Proposal Verification Stop Gate ──
                 from monika.application.agent.harness.trade_stop_gates import TradeStopGate
 
@@ -1433,6 +1535,14 @@ class AgentHarness:
                                 "downgraded_by_stop_gate": True,
                             }
                         )
+
+                # ── Modular Financial & Verification Stop Gates (TradingRiskStopGate + CodeVerifyStopGate) ──
+                can_stop_modular, modular_nudge = apply_stop_gates(final_text, turn_state.stop_gate_context)
+                if not can_stop_modular and modular_nudge:
+                    if turns < effective_max_turns:
+                        logger.info(f"[{stage_name}][AgentHarness] Modular Stop Gate intercepted: {modular_nudge}")
+                        current_messages.append({"role": "user", "content": modular_nudge})
+                        continue
 
                 logger.info(
                     f"[{stage_name}][AgentHarness] Agent completed in {turns} turns with "
@@ -1828,26 +1938,42 @@ class AgentHarness:
 
                 tool_calls_made += 1
                 called_tools.add(c_name)
+
+                # Read-only tool check via ReadOnlyReplayCache
+                is_read_tool = c_name.startswith(("get_", "fetch_", "calc_", "calculate_"))
                 res_obj = None
-                try:
-                    from monika.application.plugins.manager.manager import PluginHook, get_plugin_manager
+                if is_read_tool:
+                    cached_val = self.replay_cache.get(c_name, c_input)
+                    if cached_val is not None:
+                        logger.info(f"[{stage_name}][AgentHarness] ReadOnlyReplayCache HIT for '{c_name}'")
+                        res_obj = cached_val
 
-                    plugin_mgr = get_plugin_manager()
-                    await plugin_mgr.emit(
-                        PluginHook.PRE_TOOL_CALL, tool_name=c_name, args=c_input, stage_name=stage_name
-                    )
+                if res_obj is None:
+                    try:
+                        from monika.application.plugins.manager.manager import PluginHook, get_plugin_manager
 
-                    from monika.core.telemetry.tracing.spans import tool_span
+                        plugin_mgr = get_plugin_manager()
+                        await plugin_mgr.emit(
+                            PluginHook.PRE_TOOL_CALL, tool_name=c_name, args=c_input, stage_name=stage_name
+                        )
 
-                    with tool_span(c_name, symbol=stage_symbol):
-                        res_obj = await executor.execute(c_name, c_input)
+                        from monika.core.telemetry.tracing.spans import tool_span
 
-                    await plugin_mgr.emit(
-                        PluginHook.POST_TOOL_CALL, tool_name=c_name, args=c_input, result=res_obj, stage_name=stage_name
-                    )
-                except Exception as ex:
-                    logger.error(f"[{stage_name}][AgentHarness] Tool execution exception in '{c_name}': {ex}")
-                    res_obj = {"error": f"Tool execution failed: {str(ex)}", "tool": c_name}
+                        with tool_span(c_name, symbol=stage_symbol):
+                            res_obj = await executor.execute(c_name, c_input)
+
+                        await plugin_mgr.emit(
+                            PluginHook.POST_TOOL_CALL,
+                            tool_name=c_name,
+                            args=c_input,
+                            result=res_obj,
+                            stage_name=stage_name,
+                        )
+                        if is_read_tool and isinstance(res_obj, dict) and "error" not in res_obj:
+                            self.replay_cache.put(c_name, c_input, res_obj)
+                    except Exception as ex:
+                        logger.error(f"[{stage_name}][AgentHarness] Tool execution exception in '{c_name}': {ex}")
+                        res_obj = {"error": f"Tool execution failed: {str(ex)}", "tool": c_name}
 
                 await self._log_tool_call(session, stage_name, c_name, c_input, res_obj)
                 self.guardrail_controller.record_tool_call(c_name, c_input, res_obj)
@@ -1885,6 +2011,7 @@ class AgentHarness:
                     tool_res_content = json.dumps(res_obj, default=str) if not isinstance(res_obj, str) else res_obj
 
                 tool_res_content = self.compactor.micro_prune(tool_res_content, tool_name=c_name)
+                tool_res_content = truncate_text_middle(tool_res_content, max_chars=16000)
 
                 # ── Generation-Tracked Data Fetch Deduplication ──
                 dedup_notice = self.data_dedup.check_and_record(c_name, c_input, tool_res_content)
@@ -2046,6 +2173,7 @@ class AgentHarness:
             except Exception as e:
                 logger.debug(f"[{stage_name}][AgentHarness] Token save failed: {e}")
 
+        clear_socket_graveyard()
         return {
             "success": True,
             "final_text": final_text,
@@ -2061,6 +2189,7 @@ class AgentHarness:
             "is_paid": is_paid,
             "is_billing_error": False,
             "length_truncated": length_truncated,
+            "phase_latencies": turn_state.phase_latencies,
         }
 
 

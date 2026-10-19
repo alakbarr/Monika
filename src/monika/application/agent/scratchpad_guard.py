@@ -93,3 +93,19 @@ def close_dangling_scratchpad(content: str) -> str:
             logger.info(f"[ScratchpadGuard] Synthetically closed dangling reasoning tag with {raw_close}")
 
     return content
+
+
+class ScratchpadGuard:
+    """Object-oriented interface for scratchpad and reasoning tag guardrails."""
+
+    def has_incomplete_scratchpad(self, content: Optional[str]) -> bool:
+        return has_incomplete_scratchpad(content)
+
+    def extract_reasoning_and_content(self, content: str) -> Tuple[Optional[str], str, bool]:
+        return extract_reasoning_and_content(content)
+
+    def close_dangling_scratchpad(self, content: str) -> str:
+        return close_dangling_scratchpad(content)
+
+
+scratchpad_guard = ScratchpadGuard()

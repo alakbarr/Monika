@@ -4738,6 +4738,7 @@
     - `get(tool_name: str, kwargs: Dict[str, Any]) -> Optional[Any]` - *Retrieves cached result if present and unexpired.*
     - `put(tool_name: str, kwargs: Dict[str, Any], result: Any, ...) -> None` - *Stores tool execution result with TTL.*
     - `invalidate(tool_name: Optional[str]) -> int` - *Invalidates all cached entries, or all entries for a specific tool.*
+    - `clear() -> int` - *Alias for invalidate() to clear entire cache.*
     - `stats() -> Dict[str, Any]` - *Returns cache telemetry.*
 
 #### `repetition_guard.py` - *Repetition Guard & Degenerative Loop Immunizer.*
@@ -4749,6 +4750,11 @@
 
 #### `scratchpad_guard.py` - *Scratchpad Guard & Incomplete Reasoning Tag Recovery.*
 - **Path**: [`src/monika/application/agent/scratchpad_guard.py`](src/monika/application/agent/scratchpad_guard.py)
+- **Classes**:
+  - `class ScratchpadGuard`: Object-oriented interface for scratchpad and reasoning tag guardrails.
+    - `has_incomplete_scratchpad(content: Optional[str]) -> bool`
+    - `extract_reasoning_and_content(content: str) -> Tuple[Optional[str], str, bool]`
+    - `close_dangling_scratchpad(content: str) -> str`
 - **Top-Level Functions**:
   - `has_incomplete_scratchpad(content: Optional[str]) -> bool`: Checks if a reasoning tag was opened but never closed.
   - `extract_reasoning_and_content(content: str) -> Tuple[Optional[str], str, bool]`: Extracts reasoning thinking content and visible assistant content.
@@ -4756,6 +4762,12 @@
 
 #### `socket_lifecycle_guard.py` - *Socket Lifecycle Guard & Ownership-Safe Transport Retirement.*
 - **Path**: [`src/monika/application/agent/socket_lifecycle_guard.py`](src/monika/application/agent/socket_lifecycle_guard.py)
+- **Classes**:
+  - `class SocketLifecycleGuard`: Object-oriented interface for socket lifecycle and retirement management.
+    - `retire_socket(sock: Optional[socket.socket]) -> bool`
+    - `drain_transport(transport: Any) -> None`
+    - `clear_graveyard() -> int`
+    - `get_diagnostics() -> dict`
 - **Top-Level Functions**:
   - `retire_socket_ownership_safe(sock: Optional[socket.socket]) -> bool`: Safely retires a socket by invoking shutdown(SHUT_RDWR) without immediately
   - `drain_transports_after_abandonment(transport: Any) -> None`: Drains and cleanly retires an asyncio / httpx / urllib3 transport after a task
