@@ -13,6 +13,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Dict, Optional, TypeVar
 
+import threading
+
 logger = logging.getLogger("TradingAgent.Container")
 T = TypeVar("T")
 
@@ -24,10 +26,12 @@ class ServiceContainer:
         self._parent: Optional["ServiceContainer"] = parent
         self._services: Dict[str, Any] = {}
         self._factories: Dict[str, Callable[["ServiceContainer"], Any]] = {}
+        self._lock = threading.RLock()
 
     def register(self, name: str, instance: Any) -> None:
         """Register an existing singleton instance."""
-        self._services[name] = instance
+        with self._lock:
+            self._services[name] = instance
         logger.debug(f"[Container] Registered instance for '{name}'")
 
     register_instance = register
@@ -35,17 +39,19 @@ class ServiceContainer:
 
     def register_factory(self, name: str, factory: Callable[["ServiceContainer"], Any]) -> None:
         """Register a lazy factory for a service."""
-        self._factories[name] = factory
+        with self._lock:
+            self._factories[name] = factory
         logger.debug(f"[Container] Registered factory for '{name}'")
 
     def get(self, name: str, default: Any = None) -> Any:
         """Resolve a service by name, walking parent chain if not present locally."""
-        if name in self._services:
-            return self._services[name]
-        if name in self._factories:
-            instance = self._factories[name](self)
-            self._services[name] = instance
-            return instance
+        with self._lock:
+            if name in self._services:
+                return self._services[name]
+            if name in self._factories:
+                instance = self._factories[name](self)
+                self._services[name] = instance
+                return instance
         if self._parent is not None:
             return self._parent.get(name, default)
         return default
@@ -77,8 +83,9 @@ class ServiceContainer:
 
     def clear(self) -> None:
         """Clear all registered services in this container."""
-        self._services.clear()
-        self._factories.clear()
+        with self._lock:
+            self._services.clear()
+            self._factories.clear()
 
     # Typed convenience properties
     @property

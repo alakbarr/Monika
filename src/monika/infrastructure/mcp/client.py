@@ -203,6 +203,12 @@ class McpServerProcess:
             pass
         except Exception as e:
             logger.warning(f"[MCP SSE] Stream reader error for '{self.name}': {e}")
+        finally:
+            resp.close()
+            for pending_fut in list(self._pending_futures.values()):
+                if not pending_fut.done():
+                    pending_fut.set_exception(RuntimeError(f"MCP SSE connection closed for '{self.name}'"))
+            self._pending_futures.clear()
 
     async def start(self) -> bool:
         """Starts the MCP server subprocess or HTTP/SSE session and performs handshake."""
@@ -219,6 +225,9 @@ class McpServerProcess:
                 resp = await self._http_session.get(self.url, headers=headers)
                 if resp.status != 200:
                     logger.warning(f"MCP SSE connection to '{self.name}' failed with status {resp.status}")
+                    resp.close()
+                    await self._http_session.close()
+                    self._http_session = None
                     return False
                 self._listen_task = asyncio.create_task(self._read_sse_stream(resp))
 
@@ -246,7 +255,11 @@ class McpServerProcess:
                 args: List[str] = []
                 for arg in self.args:
                     if arg.startswith("analysis.mcp.servers."):
-                        args.append(f"monika.application.{arg}")
+                        args.append(f"monika.infrastructure.mcp.servers.{arg.removeprefix('analysis.mcp.servers.')}")
+                    elif arg.startswith("monika.application.analysis.mcp.servers."):
+                        args.append(
+                            f"monika.infrastructure.mcp.servers.{arg.removeprefix('monika.application.analysis.mcp.servers.')}"
+                        )
                     else:
                         args.append(arg)
                 cmd = [resolved_cmd] + args
@@ -354,8 +367,9 @@ class McpServerProcess:
 
         line = json.dumps(payload) + "\n"
         try:
-            self.process.stdin.write(line.encode("utf-8"))
-            await self.process.stdin.drain()
+            async with self._lock:
+                self.process.stdin.write(line.encode("utf-8"))
+                await self.process.stdin.drain()
             result = await asyncio.wait_for(fut, timeout=self.timeout)
             return result
         except asyncio.TimeoutError:
@@ -389,8 +403,9 @@ class McpServerProcess:
             return
         line = json.dumps(payload) + "\n"
         try:
-            self.process.stdin.write(line.encode("utf-8"))
-            await self.process.stdin.drain()
+            async with self._lock:
+                self.process.stdin.write(line.encode("utf-8"))
+                await self.process.stdin.drain()
         except Exception as e:
             logger.debug(f"Failed to send notification to '{self.name}': {e}")
 

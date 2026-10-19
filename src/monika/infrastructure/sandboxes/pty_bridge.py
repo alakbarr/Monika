@@ -256,14 +256,28 @@ class PtyBridgeManager:
             env["PYTHONUTF8"] = "1"
             env["COLUMNS"] = str(cols)
             env["LINES"] = str(rows)
-            proc = await asyncio.create_subprocess_shell(
-                shell_cmd,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-                cwd=os.getcwd(),
-                env=env,
-            )
+            try:
+                proc = await asyncio.create_subprocess_shell(
+                    shell_cmd,
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
+                    cwd=os.getcwd(),
+                    env=env,
+                )
+            except NotImplementedError:
+                import shlex
+                from monika.infrastructure.mcp.client import _PopenStdioProcess
+
+                loop = asyncio.get_running_loop()
+                cmd_args = shlex.split(shell_cmd, posix=False) if sys.platform == "win32" else shlex.split(shell_cmd)
+                proc = await asyncio.to_thread(
+                    _PopenStdioProcess,
+                    cmd_args,
+                    env,
+                    loop,
+                    os.getcwd(),
+                )
         except Exception as e:
             logger.warning(f"[PtyBridge] Failed to spawn shell '{shell_cmd}': {e}")
 

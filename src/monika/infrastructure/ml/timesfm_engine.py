@@ -298,7 +298,9 @@ class TimesFMEngine:
         }
 
         quantiles: Dict[str, List[float]] = {k: [] for k in z_scores}
-        drift_rate: float = float(returns[-1] * 0.15 + macro_bias_drift * 0.2)
+        recent_returns = returns[-20:] if len(returns) >= 20 else returns
+        smoothed_return = float(np.mean(recent_returns)) if len(recent_returns) > 0 else 0.0
+        drift_rate: float = float(smoothed_return * 0.15 + macro_bias_drift * 0.2)
 
         for step in range(1, horizon_steps + 1):
             t_factor: float = math.sqrt(step)
@@ -369,12 +371,32 @@ class TimesFMEngine:
 
                 # Priority 1: Native TimesFM 3.0 Forecaster (Non-blocking worker thread)
                 if hasattr(model, "predict"):
-                    output = await asyncio.to_thread(
-                        model.predict,
-                        context=input_ts,
-                        horizon=horizon_steps,
-                        return_quantiles=True,
-                    )
+                    predict_kwargs: Dict[str, Any] = {
+                        "context": input_ts,
+                        "horizon": horizon_steps,
+                        "return_quantiles": True,
+                    }
+                    if hasattr(covariates, "empty") and not covariates.empty:
+                        covar_dict = {
+                            col: covariates[col].astype(float).to_numpy(dtype=float)
+                            for col in covariates.columns
+                            if col != "timestamp"
+                        }
+                        if covar_dict:
+                            predict_kwargs["past_only_covariates"] = covar_dict
+
+                    try:
+                        output = await asyncio.to_thread(
+                            model.predict,
+                            **predict_kwargs,
+                        )
+                    except TypeError:
+                        output = await asyncio.to_thread(
+                            model.predict,
+                            context=input_ts,
+                            horizon=horizon_steps,
+                            return_quantiles=True,
+                        )
                     if output is not None and getattr(output, "quantiles", None) is not None:
                         q_arr = np.asarray(output.quantiles)
                         if q_arr.shape[1] >= 9 and float(np.mean(q_arr[:, -1] - q_arr[:, 0])) > 1e-4:
