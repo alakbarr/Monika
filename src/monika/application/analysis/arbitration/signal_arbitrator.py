@@ -603,7 +603,7 @@ class SignalArbitrator:
                 for t in ["mean_reversion", "atr_exhaustion", "reversal", "bullish_reversal", "bearish_reversal"]
             )
 
-            # Defensive: Counter-trend mean reversion in a strong trending regime is STRICTLY PROHIBITED
+            # 2. Defensive: Counter-trend mean reversion in a strong trending regime is STRICTLY PROHIBITED
             if is_trending_regime and is_mean_rev_strat:
                 logger.warning(
                     f"[{symbol}] Suppressing counter-trend mean-reversion strategy {quant_strat_id} "
@@ -619,55 +619,7 @@ class SignalArbitrator:
                     meta={"quant_signal": q_dir, "llm_signal": l_dir, "market_regime": market_regime},
                 )
 
-            # A. Strong Trend / Breakout Regime -> Trend Quant strategy precedence
-            if is_trending_regime and q_conf >= min_q_trend_override and is_trend_strat and not is_mean_rev_strat:
-                return ArbitrationResult(
-                    symbol=symbol,
-                    decision=q_dir,
-                    confidence=q_conf,
-                    risk_multiplier=quant_priority_risk_mult,  # Caution scaling
-                    selected_source="quant",
-                    arbitration_reason=f"Quant strategy {quant_strat_id} prioritized over LLM during verified {market_regime} regime.",
-                    entry_price=_get_q("entry_price"),
-                    stop_loss=_get_q("stop_loss"),
-                    take_profit=_get_q("take_profit"),
-                    meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "market_regime": market_regime},
-                )
-
-            # B. Ranging / Mean-Reverting Regime -> Mean Reversion Quant strategy precedence
-            if is_ranging_regime and q_conf >= 0.70 and is_mean_rev_strat and l_dir in ("avoid", "wait"):
-                return ArbitrationResult(
-                    symbol=symbol,
-                    decision=q_dir,
-                    confidence=q_conf,
-                    risk_multiplier=round(quant_priority_risk_mult * 0.9, 2),
-                    selected_source="quant",
-                    arbitration_reason=f"Mean-reversion strategy {quant_strat_id} executed in ranging regime while LLM is neutral.",
-                    entry_price=_get_q("entry_price"),
-                    stop_loss=_get_q("stop_loss"),
-                    take_profit=_get_q("take_profit"),
-                    meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "market_regime": market_regime},
-                )
-
-            # 3. Volatile Chop Protection: If market is in volatile chop, block quant signal when LLM is waiting/avoiding
-            chop_block = (
-                bool(regime_info.get("volatility_chop", {}).get("chop_block", False))
-                if isinstance(regime_info, dict)
-                else False
-            )
-            is_volatile_chop = market_regime in ("volatile_chop", "chop", "turbulent_chop") or chop_block
-            if is_volatile_chop:
-                return ArbitrationResult(
-                    symbol=symbol,
-                    decision="avoid",
-                    confidence=0.0,
-                    risk_multiplier=0.0,
-                    selected_source="chop_block_suppression",
-                    arbitration_reason=f"Arbitrator suppressed signal: Volatile chop regime detected ({market_regime}). Quant execution blocked while LLM is in {l_dir} stance.",
-                    meta={"quant_signal": q_dir, "llm_signal": l_dir, "market_regime": market_regime},
-                )
-
-            # TimesFM 3.0 Statistical Arbiter Check
+            # 3. TimesFM 3.0 Statistical Arbiter Check & Skew Lookup
             tfm_skew = 0.0
             if session:
                 try:
@@ -692,6 +644,7 @@ class SignalArbitrator:
                     meta={"quant_signal": q_dir, "tfm_skew": tfm_skew, "llm_signal": l_dir},
                 )
 
+            # 3. Strategy Health & Incubation Gate (Decay Monitor)
             q_meta = (
                 quant_signal.get("meta", {}) if isinstance(quant_signal, dict) else getattr(quant_signal, "meta", {})
             )
@@ -711,12 +664,16 @@ class SignalArbitrator:
                         arbitration_reason=f"Quant strategy {quant_strat_id} is quarantined/decayed by StrategyDecayMonitor.",
                         meta={"quarantined_strategy": quant_strat_id},
                     )
-                strat_health = decay_mon.get_health(quant_strat_id)
-                if not strat_health.is_incubation_passed:
-                    is_incubating = True
+                if hasattr(decay_mon, "is_live_ready"):
+                    is_incubating = not decay_mon.is_live_ready(quant_strat_id)
+                else:
+                    strat_health = decay_mon.get_health(quant_strat_id)
+                    if not strat_health.is_incubation_passed:
+                        is_incubating = True
             except Exception as dec_err:
                 logger.debug(f"[{symbol}] Decay monitor check in arbitrator non-fatal: {dec_err}")
 
+            # If strategy is incubating, it cannot override LLM wait or avoid
             if is_incubating and l_dir in ("avoid", "wait"):
                 return ArbitrationResult(
                     symbol=symbol,
@@ -725,7 +682,7 @@ class SignalArbitrator:
                     risk_multiplier=0.0,
                     selected_source="llm",
                     arbitration_reason=f"Quant strategy {quant_strat_id} is incubating (not live-ready) — cannot override LLM {l_dir}.",
-                    meta={"is_incubating": True},
+                    meta={"is_incubating": True, "suppressed_quant_signal": q_dir},
                 )
 
             # 4a. If LLM actively rejected ("avoid"), protect active rejection from quant override
@@ -740,25 +697,107 @@ class SignalArbitrator:
                     meta={"llm_signal": "avoid", "blocked_quant_signal": q_dir},
                 )
 
-            # 4b. If LLM is waiting ("wait") and Quant has active valid signal:
-            if l_dir == "wait" and q_dir in ("buy", "sell"):
-                # If TimesFM confirms Quant, boost caution multiplier
-                effective_mult = quant_priority_risk_mult
-                if (q_dir == "buy" and tfm_skew >= 0.20) or (q_dir == "sell" and tfm_skew <= -0.20):
-                    effective_mult = min(0.90, quant_priority_risk_mult + 0.15)
+            # 4b. Volatile Chop Protection: If market is in volatile chop, block quant signal when LLM is waiting/avoiding
+            chop_block = (
+                bool(regime_info.get("volatility_chop", {}).get("chop_block", False))
+                if isinstance(regime_info, dict)
+                else False
+            )
+            is_volatile_chop = market_regime in ("volatile_chop", "chop", "turbulent_chop") or chop_block
+            if is_volatile_chop:
+                return ArbitrationResult(
+                    symbol=symbol,
+                    decision="avoid",
+                    confidence=0.0,
+                    risk_multiplier=0.0,
+                    selected_source="chop_block_suppression",
+                    arbitration_reason=f"Arbitrator suppressed signal: Volatile chop regime detected ({market_regime}). Quant execution blocked while LLM is in {l_dir} stance.",
+                    meta={"quant_signal": q_dir, "llm_signal": l_dir, "market_regime": market_regime},
+                )
 
+            # 4c. Strong Trend / Breakout Regime -> Graduated Trend Quant strategy precedence
+            if (
+                is_trending_regime
+                and not is_incubating
+                and q_conf >= min_q_trend_override
+                and is_trend_strat
+                and not is_mean_rev_strat
+            ):
                 return ArbitrationResult(
                     symbol=symbol,
                     decision=q_dir,
                     confidence=q_conf,
-                    risk_multiplier=effective_mult,
+                    risk_multiplier=quant_priority_risk_mult,  # Caution scaling
                     selected_source="quant",
-                    arbitration_reason=f"Quant signal {quant_strat_id} executed while LLM is in {l_dir} (TimesFM skew={tfm_skew:+.2f}).",
+                    arbitration_reason=f"Quant strategy {quant_strat_id} prioritized over LLM during verified {market_regime} regime.",
                     entry_price=_get_q("entry_price"),
                     stop_loss=_get_q("stop_loss"),
                     take_profit=_get_q("take_profit"),
-                    meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "timesfm_skew": tfm_skew},
+                    meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "market_regime": market_regime},
                 )
+
+            # 4e. Ranging / Mean-Reverting Regime -> Graduated Mean Reversion Quant strategy precedence
+            if (
+                is_ranging_regime
+                and not is_incubating
+                and q_conf >= 0.70
+                and is_mean_rev_strat
+                and l_dir in ("avoid", "wait")
+            ):
+                return ArbitrationResult(
+                    symbol=symbol,
+                    decision=q_dir,
+                    confidence=q_conf,
+                    risk_multiplier=round(quant_priority_risk_mult * 0.9, 2),
+                    selected_source="quant",
+                    arbitration_reason=f"Mean-reversion strategy {quant_strat_id} executed in ranging regime while LLM is neutral.",
+                    entry_price=_get_q("entry_price"),
+                    stop_loss=_get_q("stop_loss"),
+                    take_profit=_get_q("take_profit"),
+                    meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "market_regime": market_regime},
+                )
+
+            # 4f. If LLM is waiting ("wait") and Quant has active valid signal:
+            if l_dir == "wait" and q_dir in ("buy", "sell"):
+                tfm_confirms = (q_dir == "buy" and tfm_skew >= 0.20) or (q_dir == "sell" and tfm_skew <= -0.20)
+                has_decisive_conviction = (
+                    q_conf >= 0.80
+                    and (q_conf - l_conf) >= 0.25
+                    and not ((q_dir == "buy" and tfm_skew < -0.15) or (q_dir == "sell" and tfm_skew > 0.15))
+                )
+                if not is_incubating and (tfm_confirms or has_decisive_conviction):
+                    effective_mult = min(0.90, quant_priority_risk_mult + (0.15 if tfm_confirms else 0.05))
+                    return ArbitrationResult(
+                        symbol=symbol,
+                        decision=q_dir,
+                        confidence=q_conf,
+                        risk_multiplier=effective_mult,
+                        selected_source="quant",
+                        arbitration_reason=f"Quant signal {quant_strat_id} executed while LLM is in {l_dir} (TimesFM skew={tfm_skew:+.2f}).",
+                        entry_price=_get_q("entry_price"),
+                        stop_loss=_get_q("stop_loss"),
+                        take_profit=_get_q("take_profit"),
+                        meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "timesfm_skew": tfm_skew},
+                    )
+                else:
+                    reason = (
+                        f"Quant strategy {quant_strat_id} is incubating — cannot override LLM wait."
+                        if is_incubating
+                        else f"LLM wait stance preserved: Quant {quant_strat_id} lacks TimesFM directional confirmation (skew={tfm_skew:+.2f}, conf={q_conf:.2f})."
+                    )
+                    return ArbitrationResult(
+                        symbol=symbol,
+                        decision="wait",
+                        confidence=l_conf,
+                        risk_multiplier=0.0,
+                        selected_source="llm",
+                        arbitration_reason=reason,
+                        meta={
+                            "preserved_llm_decision": "wait",
+                            "suppressed_quant_signal": q_dir,
+                            "timesfm_skew": tfm_skew,
+                        },
+                    )
 
             # 5. Direct conflict in ranging / mixed market -> Resolve via Conviction Delta or TimesFM
             if abs(tfm_skew) >= 0.20:

@@ -2288,6 +2288,8 @@ Monika/
 │   │   ├── test_unified_threshold_calculator.py
 │   │   ├── test_universal_cache_telemetry.py
 │   │   └── test_working_scratchpad.py
+│   ├── application/
+│   │   └── test_profitability_structural_fixes.py
 │   ├── architecture/
 │   │   ├── test_docs_parity.py
 │   │   ├── test_domain_ports_compliance.py
@@ -2993,4 +2995,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 253 | **Total Tracked Files**: 2710
+**Total Tracked Directories**: 254 | **Total Tracked Files**: 2711

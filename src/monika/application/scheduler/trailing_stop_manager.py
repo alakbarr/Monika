@@ -312,14 +312,18 @@ class TrailingStopManager:
             # Auto-Breakeven saat TP1 (+1.0x ATR) tercapai atau profit >= 1x SL distance
             if profit_distance >= (1.0 * atr) or (sl_distance and profit_distance >= sl_distance):
                 breakeven_sl = entry + (0.1 * atr)  # sedikit di atas entry untuk cover spread
-                if breakeven_sl > current_sl:
+                if (
+                    breakeven_sl > (current_sl or 0.0)
+                    and current_price >= entry + (0.4 * atr)
+                    and breakeven_sl < current_price - (0.1 * atr)
+                ):
                     new_sl = breakeven_sl
                     reason = f"tp1_breakeven (profit={profit_distance:.5f} >= 1.0x ATR {atr:.5f})"
 
             # Trail: jika harga bergerak searah profit sebesar 2x ATR, mulai trailing SL
             if profit_distance >= 2 * effective_be_mult * atr:
                 trailing_sl = current_price - (effective_trail_mult * atr)
-                if trailing_sl > current_sl and (new_sl is None or trailing_sl > new_sl):
+                if trailing_sl > (current_sl or 0.0) and (new_sl is None or trailing_sl > new_sl):
                     new_sl = trailing_sl
                     reason = f"trailing_stop (profit={profit_distance:.4f}, trail={trailing_sl:.4f}, mult={effective_trail_mult}x)"
 
@@ -330,13 +334,17 @@ class TrailingStopManager:
             # Auto-Breakeven saat TP1 (+1.0x ATR) tercapai atau profit >= 1x SL distance
             if profit_distance >= (1.0 * atr) or (sl_distance and profit_distance >= sl_distance):
                 breakeven_sl = entry - (0.1 * atr)
-                if breakeven_sl < current_sl:
+                if (
+                    (current_sl is None or breakeven_sl < current_sl)
+                    and current_price <= entry - (0.4 * atr)
+                    and breakeven_sl > current_price + (0.1 * atr)
+                ):
                     new_sl = breakeven_sl
                     reason = f"tp1_breakeven (profit={profit_distance:.5f} >= 1.0x ATR {atr:.5f})"
 
             if profit_distance >= 2 * effective_be_mult * atr:
                 trailing_sl = current_price + (effective_trail_mult * atr)
-                if trailing_sl < current_sl and (new_sl is None or trailing_sl < new_sl):
+                if (current_sl is None or trailing_sl < current_sl) and (new_sl is None or trailing_sl < new_sl):
                     new_sl = trailing_sl
                     reason = f"trailing_stop (profit={profit_distance:.4f}, trail={trailing_sl:.4f}, mult={effective_trail_mult}x)"
 
@@ -388,6 +396,21 @@ class TrailingStopManager:
                             logger.error(f"[{pos.symbol}] Failed MT5 partial close on TP1: {close_err}")
             except Exception as tp_stat_err:
                 logger.debug(f"TradePlan status update non-fatal: {tp_stat_err}")
+
+        # Financial Fortress: Physical Invariant Geometric Sanity Assertion
+        if new_sl is not None:
+            if pos.direction == "buy" and new_sl >= current_price:
+                logger.error(
+                    f"[TrailingStopManager] Rejected suicide stop adjustment: "
+                    f"BUY new_sl ({new_sl}) >= current_price ({current_price}) for {pos.symbol} (ticket {pos.mt5_ticket})"
+                )
+                new_sl = None
+            elif pos.direction == "sell" and new_sl <= current_price:
+                logger.error(
+                    f"[TrailingStopManager] Rejected suicide stop adjustment: "
+                    f"SELL new_sl ({new_sl}) <= current_price ({current_price}) for {pos.symbol} (ticket {pos.mt5_ticket})"
+                )
+                new_sl = None
 
         if new_sl is not None and self.execution_service is not None:
             tracked = getattr(self.order_emulator, "tracked_positions", {}).get(pos.mt5_ticket)

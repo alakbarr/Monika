@@ -8,6 +8,17 @@ from monika.domain.risk.evaluators.execution_checks import RiskExecutionChecksMi
 from monika.application.analysis.tools.executor import FACTOR_POINT_MAP
 
 
+def create_mock_session():
+    session = AsyncMock()
+    mock_res = MagicMock()
+    mock_res.scalar_one_or_none.return_value = None
+    mock_res.scalars.return_value.all.return_value = []
+    session.execute.return_value = mock_res
+    session.begin_nested = MagicMock()
+    session.add = MagicMock()
+    return session
+
+
 def test_bonus_confluence_factors_registered_in_factor_point_map():
     """Verify bonus confluence factors are correctly in FACTOR_POINT_MAP with point 1."""
     assert FACTOR_POINT_MAP.get("quant_strategy_edge") == 1
@@ -36,7 +47,7 @@ async def test_signal_arbitrator_suppresses_counter_trend_mean_reversion():
     )
 
     # Market is in a strong bullish trend, LLM is waiting
-    session = AsyncMock()
+    session = create_mock_session()
     result = await arbitrator.arbitrate(
         session=session,
         symbol="GBPUSD",
@@ -52,7 +63,12 @@ async def test_signal_arbitrator_suppresses_counter_trend_mean_reversion():
 
 @pytest.mark.asyncio
 async def test_signal_arbitrator_allows_genuine_trend_alpha_in_trend():
-    """Verify that a genuine trend-following alpha is prioritized during trend."""
+    """Verify that a genuine graduated trend-following alpha is prioritized during trend."""
+    from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+
+    decay_mon = get_strategy_decay_monitor()
+    decay_mon.get_health("alpha_xtiusd_374fa7").is_incubation_passed = True
+
     arbitrator = SignalArbitrator(
         settings={"trading": {"signal_arbitration": {"min_quant_confidence_for_trend_override": 0.70}}}
     )
@@ -69,7 +85,7 @@ async def test_signal_arbitrator_allows_genuine_trend_alpha_in_trend():
         tags=["volume_expansion", "donchian_breakout", "bullish_momentum"],
     )
 
-    session = AsyncMock()
+    session = create_mock_session()
     result = await arbitrator.arbitrate(
         session=session,
         symbol="XTIUSD",
@@ -172,3 +188,167 @@ def test_smc_fvg_quarantined_from_core_bypass():
     monitor = get_strategy_decay_monitor()
     health = monitor.get_health("smc_fvg")
     assert health.is_incubation_passed is False
+
+
+@pytest.mark.asyncio
+async def test_signal_arbitrator_blocks_incubating_alpha_override_on_llm_wait():
+    """Verify that an incubating strategy (not graduated) CANNOT override LLM wait stance."""
+    from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+
+    decay_mon = get_strategy_decay_monitor()
+    decay_mon.get_health("alpha_unincubated").is_incubation_passed = False
+
+    arbitrator = SignalArbitrator(settings={})
+    incubating_sig = EdgeSignal(
+        strategy_id="alpha_unincubated",
+        symbol="GBPUSD",
+        direction="buy",
+        valid=True,
+        confidence=0.85,
+        entry_price=1.3000,
+        stop_loss=1.2950,
+        take_profit=1.3100,
+    )
+
+    session = create_mock_session()
+    result = await arbitrator.arbitrate(
+        session=session,
+        symbol="GBPUSD",
+        quant_signal=incubating_sig,
+        llm_decision={"decision": "wait", "confidence": 0.5},
+        regime_info={"regime": "trending_bullish"},
+    )
+
+    assert result.decision == "wait"
+    assert result.selected_source == "llm"
+    assert "incubating" in result.arbitration_reason
+
+
+@pytest.mark.asyncio
+async def test_risk_gate_rejects_inverted_buy_geometry():
+    """Verify that TradeProposal and RiskGate strictly reject any BUY order where Stop Loss >= Entry Price."""
+    from monika.domain.risk.risk_gate import RiskGate
+    from monika.domain.risk.position_sizing import SizingResult
+    from monika.domain.risk.trade_proposal import TradeProposal
+
+    # 1. Proposal schema level: Must raise ValueError at boundary
+    with pytest.raises(ValueError, match="BUY geometry violation"):
+        TradeProposal(
+            symbol="BTCUSD",
+            direction="BUY",
+            entry_price=82108.7,
+            stop_loss=82203.4,
+            take_profit=84000.0,
+            lot_size=0.1,
+        )
+
+    # 2. RiskGate evaluation level: Sizing with inverted levels must be rejected
+    risk_gate = RiskGate(settings={"trading": {"risk": {}}})
+    session = create_mock_session()
+
+    inverted_sizing = SizingResult(
+        symbol="BTCUSD",
+        direction="buy",
+        entry_price=82108.7,
+        stop_loss=82203.4,
+        take_profit=84000.0,
+        account_equity=10000.0,
+        risk_percent=1.0,
+        risk_amount_usd=100.0,
+        sl_distance_price=94.7,
+        sl_distance_pips=947.0,
+        pip_value_per_lot=10.0,
+        raw_lots=0.1,
+        recommended_lots=0.1,
+        rr_ratio=2.0,
+        is_valid=True,
+    )
+
+    verdict = await risk_gate.evaluate(session, "BTCUSD", "buy", sizing=inverted_sizing, account_equity=10000.0)
+    assert verdict.approved is False
+    assert any("BUY geometry violation" in r for r in verdict.rejection_reasons)
+
+
+@pytest.mark.asyncio
+async def test_risk_gate_rejects_inverted_sell_geometry():
+    """Verify that TradeProposal and RiskGate strictly reject any SELL order where Stop Loss <= Entry Price."""
+    from monika.domain.risk.risk_gate import RiskGate
+    from monika.domain.risk.position_sizing import SizingResult
+    from monika.domain.risk.trade_proposal import TradeProposal
+
+    # 1. Proposal schema level: Must raise ValueError at boundary
+    with pytest.raises(ValueError, match="SELL geometry violation"):
+        TradeProposal(
+            symbol="GBPUSD",
+            direction="SELL",
+            entry_price=1.33456,
+            stop_loss=1.33420,
+            take_profit=1.32000,
+            lot_size=0.5,
+        )
+
+    # 2. RiskGate evaluation level: Sizing with inverted levels must be rejected
+    risk_gate = RiskGate(settings={"trading": {"risk": {}}})
+    session = create_mock_session()
+
+    inverted_sizing = SizingResult(
+        symbol="GBPUSD",
+        direction="sell",
+        entry_price=1.33456,
+        stop_loss=1.33420,
+        take_profit=1.32000,
+        account_equity=10000.0,
+        risk_percent=1.0,
+        risk_amount_usd=100.0,
+        sl_distance_price=0.00036,
+        sl_distance_pips=3.6,
+        pip_value_per_lot=10.0,
+        raw_lots=0.5,
+        recommended_lots=0.5,
+        rr_ratio=2.0,
+        is_valid=True,
+    )
+
+    verdict = await risk_gate.evaluate(session, "GBPUSD", "sell", sizing=inverted_sizing, account_equity=10000.0)
+    assert verdict.approved is False
+    assert any("SELL geometry violation" in r for r in verdict.rejection_reasons)
+
+
+@pytest.mark.asyncio
+async def test_trailing_stop_manager_rejects_suicide_stop_adjustment():
+    """Verify that TrailingStopManager strictly blocks any stop adjustment where BUY SL >= current mark price."""
+    from monika.application.scheduler.trailing_stop_manager import TrailingStopManager
+
+    exec_mock = AsyncMock()
+    exec_mock.modify_position_sl_tp = AsyncMock(return_value={"success": True})
+
+    manager = TrailingStopManager(
+        settings={"trading": {"trailing_stop": {"enabled": True}}},
+        execution_service=exec_mock,
+    )
+
+    pos = MagicMock()
+    pos.symbol = "BTCUSD"
+    pos.direction = "buy"
+    pos.entry_price = 82108.7
+    pos.sl = 81500.0
+    pos.mt5_ticket = 99999
+    pos.analysis_id = None
+    pos.trailing_override_json = None
+
+    session = AsyncMock()
+
+    # Mock ATR
+    mock_atr_row = MagicMock()
+    mock_atr_row.value_json = "950.0"
+
+    # Mock DB query
+    mock_res = MagicMock()
+    mock_res.scalar_one_or_none.return_value = mock_atr_row
+    session.execute = AsyncMock(return_value=mock_res)
+
+    # Current price has retraced to 82100.0 (near entry)
+    # If breakeven is attempted at 82203.7, new_sl (82203.7) >= current_price (82100.0) -> MUST BE REJECTED
+    result = await manager._check_position(session, pos, current_price_override=82100.0)
+    assert result == {}  # Rejected, no adjustment made
+    exec_mock.modify_position_sl_tp.assert_not_called()

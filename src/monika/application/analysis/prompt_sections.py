@@ -103,7 +103,9 @@ class PromptSectionRegistry:
 
                 if len(text) > s.max_chars:
                     text = text[: s.max_chars] + "… [section truncated]"
-                rendered.append(text.strip())
+                cleaned = text.strip()
+                if cleaned:
+                    rendered.append(cleaned)
             except Exception as e:
                 logger.error(f"[PromptSections] Failed rendering section '{s.id}': {e}")
         return rendered

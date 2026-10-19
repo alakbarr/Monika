@@ -595,8 +595,60 @@ class RiskGate(
             or proposal.account_equity
             or float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
         )
-        sl_dist = abs(proposal.entry_price - proposal.stop_loss)
-        tp_dist = abs(proposal.take_profit - proposal.entry_price) if proposal.take_profit else 0.0
+        if proposal.direction == "BUY":
+            if proposal.stop_loss >= proposal.entry_price:
+                return RiskVerdict(
+                    approved=False,
+                    symbol=proposal.symbol,
+                    proposed_lots=proposal.lot_size,
+                    checks_passed=[],
+                    checks_failed=["geometric_invariants"],
+                    rejection_reasons=[
+                        f"BUY geometry violation: Stop loss ({proposal.stop_loss}) >= Entry ({proposal.entry_price})"
+                    ],
+                )
+            if proposal.take_profit and proposal.take_profit <= proposal.entry_price:
+                return RiskVerdict(
+                    approved=False,
+                    symbol=proposal.symbol,
+                    proposed_lots=proposal.lot_size,
+                    checks_passed=[],
+                    checks_failed=["geometric_invariants"],
+                    rejection_reasons=[
+                        f"BUY geometry violation: Take profit ({proposal.take_profit}) <= Entry ({proposal.entry_price})"
+                    ],
+                )
+            sl_dist = max(1e-7, proposal.entry_price - proposal.stop_loss)
+            tp_dist = max(0.0, proposal.take_profit - proposal.entry_price) if proposal.take_profit else 0.0
+        elif proposal.direction == "SELL":
+            if proposal.stop_loss <= proposal.entry_price:
+                return RiskVerdict(
+                    approved=False,
+                    symbol=proposal.symbol,
+                    proposed_lots=proposal.lot_size,
+                    checks_passed=[],
+                    checks_failed=["geometric_invariants"],
+                    rejection_reasons=[
+                        f"SELL geometry violation: Stop loss ({proposal.stop_loss}) <= Entry ({proposal.entry_price})"
+                    ],
+                )
+            if proposal.take_profit and proposal.take_profit >= proposal.entry_price:
+                return RiskVerdict(
+                    approved=False,
+                    symbol=proposal.symbol,
+                    proposed_lots=proposal.lot_size,
+                    checks_passed=[],
+                    checks_failed=["geometric_invariants"],
+                    rejection_reasons=[
+                        f"SELL geometry violation: Take profit ({proposal.take_profit}) >= Entry ({proposal.entry_price})"
+                    ],
+                )
+            sl_dist = max(1e-7, proposal.stop_loss - proposal.entry_price)
+            tp_dist = max(0.0, proposal.entry_price - proposal.take_profit) if proposal.take_profit else 0.0
+        else:
+            sl_dist = abs(proposal.entry_price - proposal.stop_loss)
+            tp_dist = abs(proposal.take_profit - proposal.entry_price) if proposal.take_profit else 0.0
+
         rr = (tp_dist / sl_dist) if sl_dist > 1e-7 else 1.0
         risk_pct = float(proposal.metadata.get("risk_pct", 1.0)) if isinstance(proposal.metadata, dict) else 1.0
         risk_amount = eq * (risk_pct / 100.0)

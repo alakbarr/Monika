@@ -273,6 +273,26 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
             return False, "Recommended lots is zero, negative, or non-finite"
         if not math.isfinite(sizing.entry_price) or not math.isfinite(sizing.stop_loss):
             return False, "Entry price or stop loss is non-finite"
+
+        # Financial Fortress: Strict Geometric Level Invariants
+        dir_clean = str(sizing.direction).lower().strip()
+        if dir_clean == "buy":
+            if sizing.stop_loss >= sizing.entry_price:
+                return False, f"BUY geometry violation: Stop loss ({sizing.stop_loss}) >= Entry ({sizing.entry_price})"
+            if sizing.take_profit and sizing.take_profit <= sizing.entry_price:
+                return (
+                    False,
+                    f"BUY geometry violation: Take profit ({sizing.take_profit}) <= Entry ({sizing.entry_price})",
+                )
+        elif dir_clean == "sell":
+            if sizing.stop_loss <= sizing.entry_price:
+                return False, f"SELL geometry violation: Stop loss ({sizing.stop_loss}) <= Entry ({sizing.entry_price})"
+            if sizing.take_profit and sizing.take_profit >= sizing.entry_price:
+                return (
+                    False,
+                    f"SELL geometry violation: Take profit ({sizing.take_profit}) >= Entry ({sizing.entry_price})",
+                )
+
         return True, "ok"
 
     async def _check_lot_size(self, sizing: SizingResult) -> tuple[bool, str]:
