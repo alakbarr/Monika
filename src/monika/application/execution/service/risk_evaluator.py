@@ -12,7 +12,6 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
-from unittest.mock import MagicMock
 
 from sqlalchemy import desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,22 +38,28 @@ from monika.infrastructure.database.safe_ops import safe_commit
 from monika.infrastructure.infra.notifier import AgentNotifier
 
 
-def get_session(*args, **kwargs):
-    es = sys.modules.get("monika.application.execution.execution_service") or sys.modules.get(
-        "execution.execution_service"
-    )
-    if es and hasattr(es, "get_session"):
-        return es.get_session(*args, **kwargs)
-    return _db_mod.get_session(*args, **kwargs)
+def get_session():
+    import sys
+
+    es = sys.modules.get("monika.application.execution.execution_service")
+    fn = getattr(es, "get_session", None) if es else None
+    if fn is not None:
+        return fn()
+    from monika.infrastructure.database.db import get_session as _real_get_session
+
+    return _real_get_session()
 
 
 def transactional_advisory_lock(*args, **kwargs):
-    es = sys.modules.get("monika.application.execution.execution_service") or sys.modules.get(
-        "execution.execution_service"
-    )
-    if es and hasattr(es, "transactional_advisory_lock"):
-        return es.transactional_advisory_lock(*args, **kwargs)
-    return _db_mod.transactional_advisory_lock(*args, **kwargs)
+    import sys
+
+    es = sys.modules.get("monika.application.execution.execution_service")
+    fn = getattr(es, "transactional_advisory_lock", None) if es else None
+    if fn is not None:
+        return fn(*args, **kwargs)
+    from monika.infrastructure.database.db import transactional_advisory_lock as _real_lock
+
+    return _real_lock(*args, **kwargs)
 
 
 from monika.application.execution.service.base import _ExecutionServiceMixinBase
@@ -85,8 +90,8 @@ class RiskEvaluatorMixin(_ExecutionServiceMixinBase):
                 count = await count
             return int(count or 0)
         except Exception as e:
-            logger.debug(f"Count open positions error (non-fatal): {e}")
-            return 0
+            logger.error(f"Count open positions error (fail-closed): {e}")
+            raise
 
     async def _get_dynamic_risk_percent(self, session: AsyncSession, symbol: str, base_risk_pct: float) -> float:
         """
@@ -171,8 +176,8 @@ class RiskEvaluatorMixin(_ExecutionServiceMixinBase):
                 if tick_time:
                     if tick_time.tzinfo is None:
                         tick_time = tick_time.replace(tzinfo=timezone.utc)
-                    age_seconds = (now - tick_time).total_seconds()
-                    if 0 < age_seconds > 120:
+                    age_seconds = abs((now - tick_time).total_seconds())
+                    if age_seconds > 120:
                         return price, True, age_seconds
 
                 return price, False, 0.0

@@ -92,7 +92,7 @@ class HeartbeatManager:
                         tmp_file.write_text(str(ts), encoding="utf-8")
                         os.replace(tmp_file, hb_file)
                         break
-                    except PermissionError:
+                    except PermissionError, OSError:
                         if attempt < 4:
                             time.sleep(0.5)
                         else:
@@ -113,14 +113,22 @@ class HeartbeatManager:
             if not self.ea_heartbeat_file.exists():
                 return False, -1
 
-            # Baca file heartbeat EA (support UTF-8 dan UTF-16LE fallback)
-            try:
-                content = self.ea_heartbeat_file.read_text(encoding="utf-8").strip()
-            except Exception:
-                content = self.ea_heartbeat_file.read_text(encoding="utf-16le").strip()
+            # Baca file heartbeat EA (support UTF-8 dan UTF-16LE fallback dengan retry jika kosong akibat race truncating)
+            content = ""
+            for read_attempt in range(3):
+                try:
+                    content = self.ea_heartbeat_file.read_text(encoding="utf-8").strip()
+                except Exception:
+                    try:
+                        content = self.ea_heartbeat_file.read_text(encoding="utf-16le").strip()
+                    except Exception:
+                        content = ""
 
-            # Hapus Null characters yang mungkin terbaca
-            content = content.replace("\x00", "").strip()
+                content = content.replace("\x00", "").strip()
+                if content:
+                    break
+                time.sleep(0.05)
+
             if not content:
                 return False, -1
 

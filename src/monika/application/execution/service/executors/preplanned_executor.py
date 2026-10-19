@@ -338,6 +338,29 @@ class PreplannedOrderMixin(_ExecutionServiceMixinBase):
         if account_equity is None:
             account_equity = await self._get_equity()
         if account_equity is None or account_equity <= 0:
+            if not self.dry_run:
+                elapsed = (clock.now() - start).total_seconds() * 1000
+                logger.error(
+                    f"[PreplannedExecution] Live trading aborted for {symbol}: account equity unavailable ({account_equity})"
+                )
+                return ExecutionResult(
+                    symbol=symbol,
+                    analysis_id=eff_analysis_id,
+                    decision=decision,
+                    sizing=None,
+                    risk_approved=False,
+                    risk_checks_passed=[],
+                    risk_checks_failed=["live_equity_unavailable"],
+                    risk_rejection_reasons=["Live trading requires verified broker account equity (> 0)"],
+                    executed=False,
+                    mt5_ticket=None,
+                    executed_price=None,
+                    executed_lots=None,
+                    mt5_error="LIVE_EQUITY_UNAVAILABLE",
+                    position_id=None,
+                    timestamp=start,
+                    elapsed_ms=elapsed,
+                )
             account_equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
 
         sizing = await self.sizer.calculate_with_session(
@@ -478,7 +501,29 @@ class PreplannedOrderMixin(_ExecutionServiceMixinBase):
                     elapsed_ms=elapsed,
                 )
 
-            re_check_open_count = await self._count_open_positions(session)
+            try:
+                re_check_open_count = await self._count_open_positions(session)
+            except Exception as pos_err:
+                elapsed = (clock.now() - start).total_seconds() * 1000
+                logger.error(f"[PreplannedExecution] Failed to count open positions (Fail-Closed): {pos_err}")
+                return ExecutionResult(
+                    symbol=symbol,
+                    analysis_id=eff_analysis_id,
+                    decision=decision,
+                    sizing=sizing,
+                    risk_approved=False,
+                    risk_checks_passed=verdict.checks_passed,
+                    risk_checks_failed=["position_count_failed"],
+                    risk_rejection_reasons=[f"Fail-closed: Unable to verify open position count ({pos_err})"],
+                    executed=False,
+                    mt5_ticket=None,
+                    executed_price=None,
+                    executed_lots=None,
+                    mt5_error=None,
+                    position_id=None,
+                    timestamp=start,
+                    elapsed_ms=elapsed,
+                )
             max_concurrent = self.settings.get("trading", {}).get("risk", {}).get("max_concurrent_positions", 5)
             if re_check_open_count >= max_concurrent:
                 elapsed = (clock.now() - start).total_seconds() * 1000

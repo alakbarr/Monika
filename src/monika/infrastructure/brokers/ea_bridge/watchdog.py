@@ -28,12 +28,14 @@ class EAWatchdog:
         check_interval_seconds: float = 15.0,
         on_trip_callback: Optional[Callable[[str], Any]] = None,
         on_recover_callback: Optional[Callable[[], Any]] = None,
+        consecutive_failures_threshold: int = 1,
     ):
         self.hb_manager = heartbeat_manager or HeartbeatManager()
         self.stale_threshold = stale_threshold_seconds
         self.check_interval = check_interval_seconds
         self.on_trip_callback = on_trip_callback
         self.on_recover_callback = on_recover_callback
+        self.consecutive_failures_threshold = max(1, consecutive_failures_threshold)
 
         self._running = False
         self._stop_event = asyncio.Event()
@@ -68,7 +70,7 @@ class EAWatchdog:
                 if stale >= 0
                 else "EA heartbeat file missing"
             )
-            if not self._tripped:
+            if self._consecutive_failures >= self.consecutive_failures_threshold and not self._tripped:
                 self._tripped = True
                 logger.error(f"[EAWatchdog] TRIP: {reason}")
                 self._emit_trip_event(reason)

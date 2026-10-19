@@ -44,8 +44,8 @@ class OrderStatus(str, Enum):
             OrderStatus.REJECTED,
             OrderStatus.EXPIRED,
             OrderStatus.CANCELLED,
-            OrderStatus.INTERRUPTED,
             OrderStatus.ABORT_REQUESTED,
+            OrderStatus.INTERRUPTED,
         )
 
     def can_transition_to(self, target: Union[OrderStatus, str]) -> bool:

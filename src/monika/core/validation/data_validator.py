@@ -347,6 +347,9 @@ async def validate_data_freshness(
 
 def is_spread_acceptable(symbol: str, bid: float, ask: float) -> bool:
     """Memeriksa apakah spread dalam batas aman (maks 5x spread normal)."""
+    if bid <= 0.0 or ask <= 0.0:
+        logger.warning(f"SPREAD CIRCUIT BREAKER: Invalid prices for {symbol} (bid={bid}, ask={ask}). Trading blocked.")
+        return False
     spread = abs(ask - bid)
     sym = (symbol or "").strip().upper()
 

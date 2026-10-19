@@ -12,18 +12,42 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
-from unittest.mock import MagicMock
 
 from sqlalchemy import desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
-import monika.infrastructure.database.db as _db_mod
 from monika.application.execution.service.order_lifecycle_service import OrderLifecycleService
 from monika.domain.risk.position_sizing import PositionSizer, SizingResult
 from monika.domain.risk.risk_gate import RiskGate
 from monika.infrastructure.brokers.broker_adapter import BrokerAdapter, MT5LiveAdapter
 from monika.infrastructure.brokers.mt5_client import MT5Client
+
+
+def get_session():
+    import sys
+
+    es = sys.modules.get("monika.application.execution.execution_service")
+    fn = getattr(es, "get_session", None) if es else None
+    if fn is not None:
+        return fn()
+    from monika.infrastructure.database.db import get_session as _real_get_session
+
+    return _real_get_session()
+
+
+def transactional_advisory_lock(*args, **kwargs):
+    import sys
+
+    es = sys.modules.get("monika.application.execution.execution_service")
+    fn = getattr(es, "transactional_advisory_lock", None) if es else None
+    if fn is not None:
+        return fn(*args, **kwargs)
+    from monika.infrastructure.database.db import transactional_advisory_lock as _real_lock
+
+    return _real_lock(*args, **kwargs)
+
+
 from monika.infrastructure.database.models import (
     ActivityLog,
     AssetAnalysis,
@@ -38,24 +62,6 @@ from monika.infrastructure.database.models import (
 )
 from monika.infrastructure.database.safe_ops import safe_commit
 from monika.infrastructure.infra.notifier import AgentNotifier
-
-
-def get_session(*args, **kwargs):
-    es = sys.modules.get("monika.application.execution.execution_service") or sys.modules.get(
-        "execution.execution_service"
-    )
-    if es and hasattr(es, "get_session"):
-        return es.get_session(*args, **kwargs)
-    return _db_mod.get_session(*args, **kwargs)
-
-
-def transactional_advisory_lock(*args, **kwargs):
-    es = sys.modules.get("monika.application.execution.execution_service") or sys.modules.get(
-        "execution.execution_service"
-    )
-    if es and hasattr(es, "transactional_advisory_lock"):
-        return es.transactional_advisory_lock(*args, **kwargs)
-    return _db_mod.transactional_advisory_lock(*args, **kwargs)
 
 
 from monika.application.execution.service.base import _ExecutionServiceMixinBase
@@ -250,7 +256,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                     mt5_common = self.settings.get("execution", {}).get("mt5_common_dir")
                     hb_mgr = HeartbeatManager(mt5_common_path=mt5_common)
                     ea_alive, stale_seconds = hb_mgr.check_ea_alive()
-                    if not ea_alive and stale_seconds > 0:
+                    if not ea_alive and stale_seconds > 0 and closed_in_db > 0:
                         logger.critical(
                             f"EA heartbeat is stale ({stale_seconds}s)! "
                             f"{closed_in_db} positions closed outside system — EA dead-man switch may have triggered!"

@@ -206,8 +206,31 @@ class PositionSizer:
                             )
                         account_equity = live_equity
                 except Exception as e:
-                    logger.debug(f"Could not retrieve live MT5 equity for sizing: {e}")
+                    logger.debug(f"Failed to fetch live equity for sizing: {e}")
             if account_equity is None or account_equity <= 0:
+                is_paper = True
+                if isinstance(self.settings, dict):
+                    pt_cfg = (
+                        self.settings.get("trading", {}).get("paper_trading")
+                        if isinstance(self.settings.get("trading"), dict)
+                        else None
+                    )
+                    if pt_cfg is not None:
+                        is_paper = bool(pt_cfg.get("enabled", True) if isinstance(pt_cfg, dict) else pt_cfg)
+                    elif "paper_trading" in self.settings:
+                        root_pt = self.settings.get("paper_trading")
+                        is_paper = bool(root_pt.get("enabled", True) if isinstance(root_pt, dict) else root_pt)
+                if not is_paper and self._mt5 is not None:
+                    return self._invalid(
+                        symbol,
+                        direction,
+                        entry_price,
+                        stop_loss,
+                        take_profit,
+                        0.0,
+                        risk_percent_override if risk_percent_override is not None else self.risk_percent,
+                        ["Live account equity unavailable from broker (fail-closed)"],
+                    )
                 raw_bal = (
                     self.settings.get("paper_trading", {}).get("initial_balance")
                     if isinstance(self.settings, dict)

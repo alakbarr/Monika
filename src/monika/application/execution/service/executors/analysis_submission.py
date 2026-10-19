@@ -208,7 +208,7 @@ class AnalysisSubmissionMixin(_ExecutionServiceMixinBase):
                 ).scalar_one_or_none() or 0
                 total_recheck_count = re_check_open_count + re_check_pending_orders
 
-                max_concurrent = self.settings.get("trading", {}).get("risk", {}).get("max_concurrent_positions", 4)
+                max_concurrent = self.settings.get("trading", {}).get("risk", {}).get("max_concurrent_positions", 5)
                 if total_recheck_count >= max_concurrent:
                     elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
                     logger.warning(
@@ -683,6 +683,8 @@ class AnalysisSubmissionMixin(_ExecutionServiceMixinBase):
             finally:
                 _EXECUTION_LOCK.release()
 
+            # Post-execution recording only if broker execution was successful
+            if mt5_result.get("success", False):
                 # Stateful Multi-Phase Trade Plan (Probe 30%, Runner 70%)
                 try:
                     from monika.infrastructure.database.models import TechnicalIndicator, TradePlan, TradePlanLeg

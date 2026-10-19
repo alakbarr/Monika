@@ -272,12 +272,15 @@ class IBKRBrokerAdapter(BrokerAdapter):
             pos_list = self.ib.positions()
             positions = []
             for p in pos_list:
+                sym = p.contract.symbol
+                c_size = _get_contract_size(sym)
+                vol_lots = round(abs(p.position) / c_size, 4) if c_size > 0 else abs(p.position)
                 positions.append(
                     {
                         "ticket": hash(f"{p.account}_{p.contract.conId}"),
-                        "symbol": p.contract.symbol,
+                        "symbol": sym,
                         "type": "BUY" if p.position > 0 else "SELL",
-                        "volume": abs(p.position),
+                        "volume": vol_lots,
                         "price_open": p.avgCost,
                         "account": p.account,
                     }

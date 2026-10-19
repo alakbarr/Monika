@@ -20,7 +20,7 @@ import logging
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Execution.RateThrottler")
 
@@ -60,95 +60,118 @@ class RateThrottler:
             self.max_per_second = max(1, int(max_per_second))
             self.max_per_minute = max(1, int(max_per_minute))
 
+        self._windows: Dict[str, Tuple[deque[float], deque[float]]] = {}
         self._second_window: deque[float] = deque()
         self._minute_window: deque[float] = deque()
+        self._windows["orders"] = (self._second_window, self._minute_window)
         self._lock = asyncio.Lock()
 
-    def _cleanup_windows(self, now: float) -> None:
+    def _get_category_limits(self, category: str) -> Tuple[int, int]:
+        if category == "modifications":
+            return max(self.max_per_second * 2, 5), max(self.max_per_minute * 2, 30)
+        return self.max_per_second, self.max_per_minute
+
+    def _cleanup_windows(self, now: float, category: str = "orders") -> Tuple[deque[float], deque[float]]:
         """Prune timestamps older than the respective windows."""
+        if category not in self._windows:
+            self._windows[category] = (deque(), deque())
+        sec_win, min_win = self._windows[category]
+
         one_sec_ago = now - 1.0
-        while self._second_window and self._second_window[0] <= one_sec_ago:
-            self._second_window.popleft()
+        while sec_win and sec_win[0] <= one_sec_ago:
+            sec_win.popleft()
 
         one_min_ago = now - 60.0
-        while self._minute_window and self._minute_window[0] <= one_min_ago:
-            self._minute_window.popleft()
+        while min_win and min_win[0] <= one_min_ago:
+            min_win.popleft()
 
-    async def check(self, now: Optional[float] = None) -> ThrottleVerdict:
+        return sec_win, min_win
+
+    async def check(self, now: Optional[float] = None, category: str = "orders") -> ThrottleVerdict:
         """
         Periksa apakah slot order tersedia tanpa mengonsumsi kuota.
+        Emergency actions selalu diizinkan tanpa rate limiting.
         """
+        if category == "emergency":
+            return ThrottleVerdict(allowed=True, retry_after=0.0, reason="Emergency bypass")
+
         async with self._lock:
             ts = now if now is not None else time.monotonic()
-            self._cleanup_windows(ts)
+            sec_win, min_win = self._cleanup_windows(ts, category=category)
+            max_sec, max_min = self._get_category_limits(category)
 
             # Check 1-second limit
-            if self._second_window and len(self._second_window) >= self.max_per_second:
-                oldest_in_sec = self._second_window[0]
+            if sec_win and len(sec_win) >= max_sec:
+                oldest_in_sec = sec_win[0]
                 retry_after = max(0.01, round(1.0 - (ts - oldest_in_sec), 3))
                 return ThrottleVerdict(
                     allowed=False,
                     retry_after=retry_after,
-                    reason=f"Second rate limit exceeded ({len(self._second_window)}/{self.max_per_second} in 1s)",
+                    reason=f"Second rate limit exceeded for {category} ({len(sec_win)}/{max_sec} in 1s)",
                 )
 
             # Check 1-minute limit
-            if self._minute_window and len(self._minute_window) >= self.max_per_minute:
-                oldest_in_min = self._minute_window[0]
+            if min_win and len(min_win) >= max_min:
+                oldest_in_min = min_win[0]
                 retry_after = max(0.1, round(60.0 - (ts - oldest_in_min), 3))
                 return ThrottleVerdict(
                     allowed=False,
                     retry_after=retry_after,
-                    reason=f"Minute rate limit exceeded ({len(self._minute_window)}/{self.max_per_minute} in 60s)",
+                    reason=f"Minute rate limit exceeded for {category} ({len(min_win)}/{max_min} in 60s)",
                 )
 
             return ThrottleVerdict(allowed=True, retry_after=0.0, reason="OK")
 
-    async def acquire(self, now: Optional[float] = None) -> ThrottleVerdict:
+    async def acquire(self, now: Optional[float] = None, category: str = "orders") -> ThrottleVerdict:
         """
         Cek dan konsumsi 1 slot order jika diizinkan (non-blocking).
+        Emergency actions selalu diizinkan.
         """
+        if category == "emergency":
+            return ThrottleVerdict(allowed=True, retry_after=0.0, reason="Emergency bypass")
+
         async with self._lock:
             ts = now if now is not None else time.monotonic()
-            self._cleanup_windows(ts)
+            sec_win, min_win = self._cleanup_windows(ts, category=category)
+            max_sec, max_min = self._get_category_limits(category)
 
-            if self._second_window and len(self._second_window) >= self.max_per_second:
-                oldest_in_sec = self._second_window[0]
+            if sec_win and len(sec_win) >= max_sec:
+                oldest_in_sec = sec_win[0]
                 retry_after = max(0.01, round(1.0 - (ts - oldest_in_sec), 3))
                 verdict = ThrottleVerdict(
                     allowed=False,
                     retry_after=retry_after,
-                    reason=f"Second rate limit exceeded ({len(self._second_window)}/{self.max_per_second} in 1s)",
+                    reason=f"Second rate limit exceeded for {category} ({len(sec_win)}/{max_sec} in 1s)",
                 )
                 logger.warning(f"[RateThrottler] BLOCKED: {verdict.reason}, retry_after={retry_after}s")
                 return verdict
 
-            if self._minute_window and len(self._minute_window) >= self.max_per_minute:
-                oldest_in_min = self._minute_window[0]
+            if min_win and len(min_win) >= max_min:
+                oldest_in_min = min_win[0]
                 retry_after = max(0.1, round(60.0 - (ts - oldest_in_min), 3))
                 verdict = ThrottleVerdict(
                     allowed=False,
                     retry_after=retry_after,
-                    reason=f"Minute rate limit exceeded ({len(self._minute_window)}/{self.max_per_minute} in 60s)",
+                    reason=f"Minute rate limit exceeded for {category} ({len(min_win)}/{max_min} in 60s)",
                 )
                 logger.warning(f"[RateThrottler] BLOCKED: {verdict.reason}, retry_after={retry_after}s")
                 return verdict
 
             # Konsumsi slot
-            self._second_window.append(ts)
-            self._minute_window.append(ts)
+            sec_win.append(ts)
+            min_win.append(ts)
             logger.debug(
-                f"[RateThrottler] Order slot acquired. (1s: {len(self._second_window)}/{self.max_per_second}, "
-                f"60s: {len(self._minute_window)}/{self.max_per_minute})"
+                f"[RateThrottler] {category} slot acquired. (1s: {len(sec_win)}/{max_sec}, "
+                f"60s: {len(min_win)}/{max_min})"
             )
             return ThrottleVerdict(allowed=True, retry_after=0.0, reason="Acquired")
 
-    async def wait_and_acquire(self, timeout: float = 10.0) -> ThrottleVerdict:
+    async def wait_and_acquire(self, timeout: float = 10.0, category: str = "orders") -> ThrottleVerdict:
         """
         Tunggu hingga slot tersedia atau timeout tercapai.
         Jika timeout <= 0, lakukan 1 kali percobaan (non-blocking).
         """
-        verdict = await self.acquire()
+        verdict = await self.acquire(category=category)
         if verdict.allowed or timeout <= 0:
             return verdict
 
@@ -158,18 +181,19 @@ class RateThrottler:
             if sleep_time <= 0:
                 break
             await asyncio.sleep(sleep_time)
-            verdict = await self.acquire()
+            verdict = await self.acquire(category=category)
             if verdict.allowed:
                 return verdict
 
         return ThrottleVerdict(
             allowed=False,
             retry_after=verdict.retry_after,
-            reason=f"Timed out waiting for order slot after {timeout}s",
+            reason=f"Timed out waiting for {category} order slot after {timeout}s",
         )
 
     async def reset(self) -> None:
         """Reset internal rate tracking windows."""
         async with self._lock:
-            self._second_window.clear()
-            self._minute_window.clear()
+            for sec_win, min_win in self._windows.values():
+                sec_win.clear()
+                min_win.clear()

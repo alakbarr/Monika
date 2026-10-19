@@ -63,8 +63,13 @@ class PairedOrderMixin(_ExecutionServiceMixinBase):
 
         # Phase 1: Size with notional-weighted lots for proper spread hedge
         # Step 1: Size primary leg at full risk (the "anchor" leg)
-        fallback_equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
-        equity = account_equity if account_equity is not None else (await self._get_equity() or fallback_equity)
+        equity = account_equity if account_equity is not None else await self._get_equity()
+        if equity is None or equity <= 0:
+            if not self.dry_run:
+                logger.error("Paired execution aborted: broker account equity unavailable in live mode")
+                return {"success": False, "reason": "Live trading requires verified broker account equity (> 0)"}
+            fallback_equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+            equity = fallback_equity
         spread_risk = self.settings.get("trading", {}).get("risk", {}).get("risk_percent_per_trade", 1.0)
         pair_lock_key = f"pair_{primary.symbol}_{hedge.symbol}"
         async with transactional_advisory_lock(session, lock_key=pair_lock_key) as is_locked:

@@ -103,10 +103,37 @@ class IdempotencyGuard:
             self._cleanup_expired(now)
 
             record = self._records.get(key)
+            if not record:
+                # Check DB for persisted record across restarts
+                try:
+                    import json
+                    from monika.infrastructure.database.db import get_session
+                    from monika.infrastructure.database.domain_models.system import SystemConfig
+
+                    async with get_session() as session:
+                        cfg = await session.get(SystemConfig, f"idem:{key}")
+                        if cfg and cfg.value:
+                            data = json.loads(cfg.value)
+                            persisted_rec = IdempotencyRecord(
+                                key=key,
+                                symbol=data.get("symbol", symbol),
+                                direction=data.get("direction", direction),
+                                state=IdempotencyState(data.get("state", "COMPLETED")),
+                                ticket=data.get("ticket"),
+                                created_at=data.get("created_at", now),
+                                expires_at=data.get("expires_at", 0.0),
+                                metadata=data.get("metadata", {}),
+                            )
+                            if not persisted_rec.is_expired(now):
+                                self._records[key] = persisted_rec
+                                record = persisted_rec
+                except Exception as db_err:
+                    logger.debug(f"DB lookup for idempotency key {key} non-fatal: {db_err}")
+
             if record:
                 if record.state == IdempotencyState.IN_FLIGHT and not record.is_expired(now):
                     return False, f"Order {key} is already IN_FLIGHT (created {now - record.created_at:.1f}s ago)"
-                if record.state == IdempotencyState.COMPLETED:
+                if record.state == IdempotencyState.COMPLETED and not record.is_expired(now):
                     return False, f"Order {key} already COMPLETED with MT5 ticket #{record.ticket}"
 
             # Acquire exclusivity
@@ -134,7 +161,7 @@ class IdempotencyGuard:
                 if metadata:
                     rec.metadata.update(metadata)
             else:
-                self._records[key] = IdempotencyRecord(
+                rec = IdempotencyRecord(
                     key=key,
                     symbol="UNKNOWN",
                     direction="UNKNOWN",
@@ -144,7 +171,32 @@ class IdempotencyGuard:
                     expires_at=now + self.COMPLETION_COOLDOWN_SECONDS,
                     metadata=metadata or {},
                 )
+                self._records[key] = rec
             logger.info(f"Idempotency key={key} marked COMPLETED (ticket=#{ticket})")
+
+            # Persist completion to DB across restarts
+            try:
+                import json
+                from monika.infrastructure.database.db import get_session
+                from monika.infrastructure.database.domain_models.system import SystemConfig
+
+                async with get_session() as session:
+                    val = json.dumps(
+                        {
+                            "key": key,
+                            "symbol": rec.symbol,
+                            "direction": rec.direction,
+                            "state": IdempotencyState.COMPLETED.value,
+                            "ticket": ticket,
+                            "created_at": now,
+                            "expires_at": now + self.COMPLETION_COOLDOWN_SECONDS,
+                            "metadata": metadata or {},
+                        }
+                    )
+                    await SystemConfig.upsert(session, key=f"idem:{key}", value=val, description="Idempotency record")
+                    await session.commit()
+            except Exception as db_err:
+                logger.debug(f"DB persist for idempotency key {key} non-fatal: {db_err}")
 
     async def mark_failed(self, key: str, error: str) -> None:
         """Marks in-flight order as failed."""
@@ -164,6 +216,18 @@ class IdempotencyGuard:
             if key in self._records:
                 del self._records[key]
                 logger.debug(f"Idempotency lock released for key={key}")
+
+            try:
+                from monika.infrastructure.database.db import get_session
+                from monika.infrastructure.database.domain_models.system import SystemConfig
+
+                async with get_session() as session:
+                    cfg = await session.get(SystemConfig, f"idem:{key}")
+                    if cfg:
+                        await session.delete(cfg)
+                        await session.commit()
+            except Exception as db_err:
+                logger.debug(f"DB delete for idempotency key {key} non-fatal: {db_err}")
 
     async def reconcile_with_broker(
         self,

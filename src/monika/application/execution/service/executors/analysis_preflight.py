@@ -598,7 +598,7 @@ class AnalysisPreflightMixin(_ExecutionServiceMixinBase):
                 elapsed_ms=elapsed,
             ), None
 
-        if not is_stale and not self.dry_run:
+        if not self.dry_run:
             try:
                 from monika.core.validation.data_validator import is_spread_acceptable
 
@@ -606,7 +606,7 @@ class AnalysisPreflightMixin(_ExecutionServiceMixinBase):
                     tick = await self.broker_adapter.get_tick(symbol)
                 else:
                     tick = await self.mt5.get_current_price(symbol)
-                if tick is None:
+                if tick is None or float(tick.get("bid", 0.0) or 0.0) <= 0 or float(tick.get("ask", 0.0) or 0.0) <= 0:
                     elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
                     return ExecutionResult(
                         symbol=symbol,
@@ -616,7 +616,7 @@ class AnalysisPreflightMixin(_ExecutionServiceMixinBase):
                         risk_approved=False,
                         risk_checks_passed=[],
                         risk_checks_failed=["spread_check_unavailable"],
-                        risk_rejection_reasons=["Cannot verify spread: price data unavailable."],
+                        risk_rejection_reasons=["Cannot verify spread: price data unavailable or non-positive."],
                         executed=False,
                         mt5_ticket=None,
                         executed_price=None,
@@ -745,6 +745,29 @@ class AnalysisPreflightMixin(_ExecutionServiceMixinBase):
         if account_equity is None:
             account_equity = await self._get_equity()
         if account_equity is None or account_equity <= 0:
+            if not self.dry_run:
+                elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+                logger.error(
+                    f"Live execution ABORTED for {symbol}: broker account equity unavailable ({account_equity})"
+                )
+                return ExecutionResult(
+                    symbol=symbol,
+                    analysis_id=analysis.id,
+                    decision=decision,
+                    sizing=None,
+                    risk_approved=False,
+                    risk_checks_passed=[],
+                    risk_checks_failed=["live_equity_unavailable"],
+                    risk_rejection_reasons=["Live trading requires verified broker account equity (> 0)"],
+                    executed=False,
+                    mt5_ticket=None,
+                    executed_price=None,
+                    executed_lots=None,
+                    mt5_error="LIVE_EQUITY_UNAVAILABLE",
+                    position_id=None,
+                    timestamp=start,
+                    elapsed_ms=elapsed,
+                ), None
             account_equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
 
         # Ambil level VIX terbaru untuk risiko dinamis

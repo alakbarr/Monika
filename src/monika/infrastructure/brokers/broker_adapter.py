@@ -30,6 +30,20 @@ logger = logging.getLogger("TradingAgent.BrokerAdapter")
 def _get_pip_size(symbol: str) -> float:
     """Determine pip size based on instrument type."""
     sym = (symbol or "").upper()
+    try:
+        from monika.domain.risk.instruments.instruments import DEFAULT_INSTRUMENTS
+
+        clean = sym.replace("/", "").replace(".", "").replace("-", "")
+        if clean in DEFAULT_INSTRUMENTS:
+            return float(DEFAULT_INSTRUMENTS[clean].pip_size)
+        for k, spec in DEFAULT_INSTRUMENTS.items():
+            if clean.startswith(k) or k.startswith(clean):
+                return float(spec.pip_size)
+    except Exception:
+        pass
+
+    if any(k in sym for k in ("US30", "DJ30", "WS30", "NAS100", "US100", "SPX500", "US500", "GER40", "JP225")):
+        return 1.0
     if "JPY" in sym:
         return 0.01
     if "XAU" in sym or "GOLD" in sym:
@@ -48,8 +62,10 @@ def _get_contract_size(symbol: str) -> float:
         from monika.domain.risk.instruments.instruments import DEFAULT_INSTRUMENTS
 
         clean = sym.replace("/", "").replace(".", "").replace("-", "")
+        if clean in DEFAULT_INSTRUMENTS:
+            return float(DEFAULT_INSTRUMENTS[clean].contract_size)
         for k, spec in DEFAULT_INSTRUMENTS.items():
-            if k in clean or clean in k:
+            if clean.startswith(k) or k.startswith(clean):
                 return float(spec.contract_size)
     except Exception:
         pass
@@ -60,6 +76,8 @@ def _get_contract_size(symbol: str) -> float:
         return 10.0  # 10 ETH per lot (DEFAULT_INSTRUMENTS)
     if "BTC" in sym:
         return 1.0  # 1 coin per lot
+    if any(k in sym for k in ("US30", "DJ30", "WS30", "NAS100", "US100", "SPX500", "US500", "GER40", "JP225")):
+        return 1.0  # 1 contract per lot for index CFDs
     if any(k in sym for k in ("XTI", "WTI", "USO", "OIL", "BRENT", "XBR", "UKOIL")):
         return 1000.0  # 1,000 barrels per lot (DEFAULT_INSTRUMENTS: XTI=1000, XBR=1000)
     return 100000.0  # 100,000 units standard FX lot
@@ -292,6 +310,7 @@ class MT5LiveAdapter(BrokerAdapter):
                 "last": 0.0,
                 "spread": 0.0,
                 "time": clock.now(),
+                "error": str(e),
             }
 
     async def get_bars(
@@ -406,17 +425,22 @@ class MT5LiveAdapter(BrokerAdapter):
         if hasattr(self.mt5, "cancel_order"):
             try:
                 ticket = None
-                try:
-                    ticket = int(client_order_id)
-                except ValueError, TypeError:
-                    active_orders = await self.get_orders()
-                    target_str = str(client_order_id)
-                    for o in active_orders:
-                        c_str = str(o.get("comment", ""))
-                        cid_str = str(o.get("client_order_id", ""))
-                        if target_str in c_str or target_str == cid_str:
-                            ticket = o.get("ticket")
-                            break
+                target_str = str(client_order_id).strip()
+                active_orders = await self.get_orders()
+                for o in active_orders:
+                    c_str = str(o.get("comment", "")).strip()
+                    cid_str = str(o.get("client_order_id", "")).strip()
+                    t_str = str(o.get("ticket", "")).strip()
+                    if target_str == cid_str or target_str == t_str or target_str == c_str:
+                        ticket = o.get("ticket")
+                        break
+
+                if ticket is None:
+                    try:
+                        ticket = int(target_str)
+                    except ValueError, TypeError:
+                        ticket = None
+
                 if ticket is None:
                     logger.warning(f"[MT5LiveAdapter] Cannot resolve ticket for client_order_id {client_order_id}")
                     return False
@@ -1081,7 +1105,9 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
                     timeout=aiohttp.ClientTimeout(total=self.timeout),
                 ) as resp:
                     if resp.status == 200:
-                        return await resp.json()
+                        data = await resp.json()
+                        if isinstance(data, dict):
+                            return data
         except Exception as e:
             logger.warning(f"[MT5RemoteGatewayAdapter] get_tick failed for {symbol}: {e}")
         return {
@@ -1091,6 +1117,7 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
             "last": 0.0,
             "spread": 0.0,
             "time": clock.now().isoformat(),
+            "error": "Failed to get tick from remote gateway",
         }
 
     async def get_current_price(self, symbol: str) -> dict:

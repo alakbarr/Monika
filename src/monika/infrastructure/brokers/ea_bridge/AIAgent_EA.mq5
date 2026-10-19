@@ -154,7 +154,7 @@ void CheckPythonHeartbeat(datetime now)
         {
             Print("[AIAgent EA] HEARTBEAT TIMEOUT! Last beat: ", TimeToString(heartbeatTs),
                   " | Stale for: ", staleSeconds, "s | CLOSING ALL AI POSITIONS");
-    
+
             int remainingFailed = EmergencyCloseAllAIPositions();
             if(remainingFailed == 0)
             {
@@ -223,7 +223,8 @@ int EmergencyCloseAllAIPositions()
             req.volume   = vol;
             req.type     = (posType == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
             req.position = ticket;
-            
+
+            SymbolSelect(sym, true);
             double bid = SymbolInfoDouble(sym, SYMBOL_BID);
             double ask = SymbolInfoDouble(sym, SYMBOL_ASK);
             if(bid == 0.0 || ask == 0.0)
@@ -235,14 +236,31 @@ int EmergencyCloseAllAIPositions()
                     ask = tick.ask;
                 }
             }
-            
-            req.price        = (posType == POSITION_TYPE_BUY) ? bid : ask;
+            if(bid == 0.0 || ask == 0.0)
+            {
+                double lastM1 = iClose(sym, PERIOD_M1, 0);
+                if(lastM1 > 0.0)
+                {
+                    bid = lastM1;
+                    ask = lastM1;
+                }
+            }
+
+            double targetPrice = (posType == POSITION_TYPE_BUY) ? bid : ask;
+            if(targetPrice <= 0.0)
+            {
+                Print("[AIAgent EA] Market quote unavailable for ", sym, " (market closed?). Skipping close.");
+                failedCount++;
+                continue;
+            }
+
+            req.price        = targetPrice;
             req.deviation    = 50;
             req.type_filling = GetSymbolFilling(sym);
             req.comment      = "DeadManSwitch";
             req.magic        = AI_MAGIC_NUMBER;
 
-            if(OrderSend(req, res) && res.retcode == TRADE_RETCODE_DONE)
+            if(OrderSend(req, res) && (res.retcode == TRADE_RETCODE_DONE || res.retcode == 10009))
             {
                 Print("[AIAgent EA] Emergency closed ticket=", ticket, " sym=", sym);
                 closedCount++;
@@ -252,11 +270,16 @@ int EmergencyCloseAllAIPositions()
                 Print("[AIAgent EA] FAILED to close ticket=", ticket,
                       " retcode=", res.retcode, " comment=", res.comment);
                 failedCount++;
+                if(res.retcode == 10018)
+                {
+                    Print("[AIAgent EA] Market is closed for ", sym, ". Halting retries.");
+                    break;
+                }
             }
         }
-        
+
         if(failedCount == 0) break;
-        
+
         if(attempt < maxRetries)
         {
             Print("[AIAgent EA] Retrying emergency close in 1s. Remaining failed: ", failedCount);
@@ -314,7 +337,7 @@ void EnforceSLOnAIPositions()
             string sym = PositionGetString(POSITION_SYMBOL);
             Print("[AIAgent EA] CRITICAL: Position ", ticket, " (", sym,
                   ") has NO stop loss! CLOSING POSITION IMMEDIATELY.");
-            
+
             double vol = PositionGetDouble(POSITION_VOLUME);
             ENUM_POSITION_TYPE posType = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
 
@@ -325,7 +348,7 @@ void EnforceSLOnAIPositions()
             req.volume   = vol;
             req.type     = (posType == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
             req.position = ticket;
-            
+
             double bid = SymbolInfoDouble(sym, SYMBOL_BID);
             double ask = SymbolInfoDouble(sym, SYMBOL_ASK);
             if(bid == 0.0 || ask == 0.0)
@@ -337,7 +360,7 @@ void EnforceSLOnAIPositions()
                     ask = tick.ask;
                 }
             }
-            
+
             req.price        = (posType == POSITION_TYPE_BUY) ? bid : ask;
             req.deviation    = 30;
             req.type_filling = GetSymbolFilling(sym);

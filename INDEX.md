@@ -10499,9 +10499,9 @@
   - `class ThrottleVerdict`: Verdict hasil evaluasi rate limiter order.
   - `class RateThrottler`: Sliding-window order rate limiter.
     - `__init__(max_per_second: int, max_per_minute: int, settings: Optional[Dict[str, Any]])`
-    - `async check(now: Optional[float]) -> ThrottleVerdict` - *Periksa apakah slot order tersedia tanpa mengonsumsi kuota.*
-    - `async acquire(now: Optional[float]) -> ThrottleVerdict` - *Cek dan konsumsi 1 slot order jika diizinkan (non-blocking).*
-    - `async wait_and_acquire(timeout: float) -> ThrottleVerdict` - *Tunggu hingga slot tersedia atau timeout tercapai.*
+    - `async check(now: Optional[float], category: str) -> ThrottleVerdict` - *Periksa apakah slot order tersedia tanpa mengonsumsi kuota.*
+    - `async acquire(now: Optional[float], category: str) -> ThrottleVerdict` - *Cek dan konsumsi 1 slot order jika diizinkan (non-blocking).*
+    - `async wait_and_acquire(timeout: float, category: str) -> ThrottleVerdict` - *Tunggu hingga slot tersedia atau timeout tercapai.*
     - `async reset() -> None` - *Reset internal rate tracking windows.*
 
 ### Folder: `src/monika/infrastructure/brokers/ea_bridge` <a id="folder-srcmonikainfrastructurebrokerseabridge"></a>

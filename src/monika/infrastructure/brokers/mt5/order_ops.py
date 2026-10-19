@@ -49,15 +49,16 @@ def _place_order(
     raw_max = getattr(info, "volume_max", 100.0)
     max_vol = float(raw_max) if isinstance(raw_max, (int, float)) and raw_max > 0 else 100.0
     steps = math.floor((float(volume) / step) + 1e-9)
-    if steps <= 0:
+    floored_vol = steps * step
+    if steps <= 0 or floored_vol < min_vol:
         return {
             "success": False,
             "ticket": None,
             "price": None,
-            "error": f"Volume {volume} below minimum step {step} for {resolved_symbol}",
+            "error": f"Volume {volume} (quantized {floored_vol:.4f}) below minimum volume {min_vol} (step {step}) for {resolved_symbol}",
             "retcode": -1,
         }
-    quantized_vol = max(min_vol, min(max_vol, steps * step))
+    quantized_vol = min(max_vol, floored_vol)
     vol_decimals = 2 if step >= 0.01 else (3 if step >= 0.001 else 0)
     final_volume = round(quantized_vol, vol_decimals)
 
@@ -187,50 +188,42 @@ def _place_order(
     except Exception as chk_ex:
         logger.debug(f"[{resolved_symbol}] order_check non-fatal: {chk_ex}")
 
-    max_retries = 2
-    result = None
-    for attempt in range(max_retries + 1):
-        result = mt5.order_send(request)
-        if result is None:
-            return {
-                "success": False,
-                "ticket": None,
-                "price": None,
-                "error": f"order_send returned None: {mt5.last_error()}",
-                "retcode": -1,
-            }
-
-        done_code = getattr(mt5, "TRADE_RETCODE_DONE", 10009)
-        placed_code = getattr(mt5, "TRADE_RETCODE_PLACED", 10008)
-        ret_val = getattr(result, "retcode", None)
-        if ret_val in (done_code, placed_code, 10009, 10008):
-            break
-
-        # Transient requote / price drift handling
-        req_code = getattr(mt5, "TRADE_RETCODE_REQUOTE", 10004)
-        inv_code = getattr(mt5, "TRADE_RETCODE_INVALID_PRICE", 10015)
-        off_code = getattr(mt5, "TRADE_RETCODE_PRICE_OFF", 10021)
-        transient_codes = (req_code, inv_code, off_code, 10004, 10015, 10021)
-        if getattr(result, "retcode", None) in transient_codes and attempt < max_retries:
-            time.sleep(0.1)  # 100ms rapid pause
-            deal_action = getattr(mt5, "TRADE_ACTION_DEAL", 1)
-            if request.get("action") == deal_action or request.get("action") == 1:
-                latest_tick = mt5.symbol_info_tick(resolved_symbol)
-                if latest_tick:
-                    new_price = (
-                        getattr(latest_tick, "ask", None) if direction == "buy" else getattr(latest_tick, "bid", None)
-                    )
-                    if new_price and new_price > 0:
-                        request["price"] = float(new_price)
-            continue
-        break
-
+    # AGENTS.md §5.5: Single order submission, never add automatic retries.
+    result = mt5.order_send(request)
     if result is None:
+        last_err = mt5.last_error()
+        logger.error(
+            f"[{resolved_symbol}] order_send returned None: {last_err}. "
+            "Performing reconciliation check for unconfirmed broker state..."
+        )
+        try:
+            positions = mt5.positions_get(symbol=resolved_symbol)
+            if positions:
+                magic_num = request.get("magic", 20250101)
+                matching = [p for p in positions if getattr(p, "magic", None) == magic_num]
+                if matching:
+                    latest_pos = max(matching, key=lambda p: getattr(p, "time_msc", getattr(p, "time", 0)))
+                    now_ts = time.time()
+                    pos_ts = getattr(latest_pos, "time", 0)
+                    if abs(now_ts - pos_ts) <= 5:
+                        logger.warning(
+                            f"[{resolved_symbol}] Reconciled open position ticket {latest_pos.ticket} after order_send returned None"
+                        )
+                        return {
+                            "success": True,
+                            "ticket": latest_pos.ticket,
+                            "price": getattr(latest_pos, "price_open", None),
+                            "error": None,
+                            "retcode": 10009,
+                        }
+        except Exception as recon_ex:
+            logger.error(f"[{resolved_symbol}] Reconciliation after None order_send failed: {recon_ex}")
+
         return {
             "success": False,
             "ticket": None,
             "price": None,
-            "error": "order_send returned None",
+            "error": f"order_send returned None: {last_err}",
             "retcode": -1,
         }
 
@@ -413,10 +406,22 @@ def _close_position(
             break
 
     success = res_retcode == getattr(mt5, "TRADE_RETCODE_DONE", 10009)
+
+    reported_profit = None
+    if success:
+        total_p = getattr(current, "profit", None)
+        orig_vol = getattr(current, "volume", 0.0)
+        if total_p is not None:
+            if orig_vol and float(orig_vol) > 0:
+                ratio = min(1.0, max(0.0, float(close_volume) / float(orig_vol)))
+                reported_profit = round(float(total_p) * ratio, 2)
+            else:
+                reported_profit = float(total_p)
+
     return {
         "success": success,
         "price": getattr(result, "price", None) if (result and success) else None,
-        "profit": getattr(current, "profit", None) if success else None,
+        "profit": reported_profit,
         "error": None
         if success
         else format_mt5_error(res_retcode, getattr(result, "comment", "") if result else "order_send failed"),

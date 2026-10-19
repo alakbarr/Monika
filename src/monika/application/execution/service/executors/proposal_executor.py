@@ -163,6 +163,7 @@ class ProposalOrderMixin(_ExecutionServiceMixinBase):
                     symbol=proposal.symbol,
                 )
                 if not allowed:
+                    await guard.release_lock(idem_key)
                     elapsed = (clock.now() - start).total_seconds() * 1000
                     logger.warning(f"[{proposal.symbol}] Pre-order vetoed by plugin hook: {plan_or_reason}")
                     return ExecutionResult(

@@ -62,20 +62,22 @@ def _resolve_broker_symbol(symbol: str) -> str:
                 _BROKER_SYMBOL_CACHE[clean_sym] = candidate
                 return candidate
 
-        # 3. Query symbols_get with group wildcard
+        # 3. Query symbols_get with group wildcard - require clean_sym to be root
         matches = mt5.symbols_get(group=f"*{clean_sym}*")
         if matches:
             for s in matches:
                 name = getattr(s, "name", "")
-                if clean_sym in name:
-                    logger.info(f"Resolved broker symbol via wildcard match: {clean_sym} -> {name}")
+                # Must start with clean_sym (e.g. US30.cash, US30m) or match prefix like #US30, not AUS30
+                if name.startswith(clean_sym) or name.startswith(f"#{clean_sym}") or name.startswith(f"_{clean_sym}"):
+                    logger.info(f"Resolved broker symbol via prefix match: {clean_sym} -> {name}")
                     _BROKER_SYMBOL_CACHE[clean_sym] = name
                     return name
     except Exception as e:
         logger.debug(f"Broker symbol resolution fallback for {clean_sym}: {e}")
+        # Do not poison cache during temporary MT5 disconnect or exception
+        return clean_sym
 
-    # Fallback to provided symbol
-    _BROKER_SYMBOL_CACHE[clean_sym] = clean_sym
+    # Fallback to provided symbol (not cached to allow resolution once broker connects)
     return clean_sym
 
 
@@ -99,7 +101,7 @@ def _build_timeframe_map() -> dict[str, int]:
             "W1": mt5.TIMEFRAME_W1,
             "MN1": mt5.TIMEFRAME_MN1,
         }
-    except ImportError, Exception:
+    except Exception:
         # Standard MT5 timeframe ENUM constants fallback for mock / Linux CI environments
         return {
             "M1": 1,
