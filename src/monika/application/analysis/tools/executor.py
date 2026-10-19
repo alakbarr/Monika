@@ -592,57 +592,57 @@ class ToolExecutor(
 
         # 1. Primary dispatch via UnifiedToolRegistry (Single Source of Truth)
         handler = None
-        try:
-            from monika.application.analysis.tools.unified_registry import unified_tool_registry
+        # 1. Dispatch to modular domain handlers (positions, technicals, macro, sentiment, execution)
+        domain_candidates = [
+            self.execution_handlers,
+            self.position_handlers,
+            self.macro_handlers,
+            self.sentiment_handlers,
+            self.technical_handlers,
+        ]
+        for dh in domain_candidates:
+            if hasattr(dh, normalized_name):
+                target_func = getattr(dh, normalized_name)
 
-            u_entry = unified_tool_registry.get_tool(normalized_name)
-            if u_entry is not None:
-
-                async def _unified_wrapper(inp_dict: dict, _ue=u_entry):
+                async def _delegated_wrapper(inp_dict: dict, _fn=target_func):
                     params = dict(inp_dict) if isinstance(inp_dict, dict) else {}
-                    res = await unified_tool_registry.execute_tool(
-                        _ue.name, params, session=self.session, executor=self
-                    )
-                    if isinstance(res, str):
-                        try:
-                            res = json.loads(res)
-                        except Exception:
-                            pass
-                    return res
+                    if "session" not in params:
+                        params["session"] = self.session
+                    return await _fn(**params)
 
-                handler = _unified_wrapper
-        except Exception as _unif_err:
-            logger.debug(f"UnifiedToolRegistry dispatch error for '{normalized_name}': {_unif_err}")
+                handler = _delegated_wrapper
+                break
 
-        # 2. Dispatch to modular domain handlers
-        if handler is None:
-            domain_candidates = [
-                self.execution_handlers,
-                self.position_handlers,
-                self.macro_handlers,
-                self.sentiment_handlers,
-                self.technical_handlers,
-            ]
-            for dh in domain_candidates:
-                if hasattr(dh, normalized_name):
-                    target_func = getattr(dh, normalized_name)
-
-                    async def _delegated_wrapper(inp_dict: dict, _fn=target_func):
-                        params = dict(inp_dict) if isinstance(inp_dict, dict) else {}
-                        if "session" not in params:
-                            params["session"] = self.session
-                        return await _fn(**params)
-
-                    handler = _delegated_wrapper
-                    break
-
-        # 3. Fallback to internal ToolExecutor methods (lifecycle, scratchpad, submission)
-        # Avoid triggering __getattr__ infinite recursion for nonexistent tools
+        # 2. Internal ToolExecutor methods (lifecycle, scratchpad, submission, system mixins)
         if handler is None:
             if f"_tool_{normalized_name}" in self.__dict__:
                 handler = self.__dict__[f"_tool_{normalized_name}"]
             elif hasattr(self.__class__, f"_tool_{normalized_name}"):
                 handler = getattr(self, f"_tool_{normalized_name}")
+
+        # 3. Dispatch to UnifiedToolRegistry (canonical registry)
+        if handler is None:
+            try:
+                from monika.application.analysis.tools.unified_registry import unified_tool_registry
+
+                u_entry = unified_tool_registry.get_tool(normalized_name)
+                if u_entry is not None:
+
+                    async def _unified_wrapper(inp_dict: dict, _ue=u_entry):
+                        params = dict(inp_dict) if isinstance(inp_dict, dict) else {}
+                        res = await unified_tool_registry.execute_tool(
+                            _ue.name, params, session=self.session, executor=self
+                        )
+                        if isinstance(res, str):
+                            try:
+                                res = json.loads(res)
+                            except Exception:
+                                pass
+                        return res
+
+                    handler = _unified_wrapper
+            except Exception as _unif_err:
+                logger.debug(f"UnifiedToolRegistry dispatch error for '{normalized_name}': {_unif_err}")
 
         # 4. Fallback to modular ToolRegistry auto-discovery
         if handler is None:

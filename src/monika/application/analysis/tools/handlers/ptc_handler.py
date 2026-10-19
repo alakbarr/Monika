@@ -288,8 +288,11 @@ tools = _ToolBridge({rpc_port}, "{auth_token}")
 {user_code}
 '''
 
-    async def _start_tool_rpc_server(self, allowed_tools: Optional[list], auth_token: str):
+    async def _start_tool_rpc_server(self, allowed_tools: Optional[list] = None, auth_token: Optional[str] = None):
         """Start localhost TCP server that bridges tool calls to executor with constant-time token auth."""
+        import secrets
+
+        token = auth_token or secrets.token_urlsafe(32)
         FORBIDDEN_PTC_TOOLS = {
             "place_order",
             "close_position",
@@ -356,7 +359,7 @@ tools = _ToolBridge({rpc_port}, "{auth_token}")
                 if self._server:
                     await self._server.wait_closed()
 
-        rpc = _RPCServer(self.tool_executor, allowed_tools, auth_token)
+        rpc = _RPCServer(self.tool_executor, allowed_tools, token)
         server = await asyncio.start_server(rpc.handle_client, "127.0.0.1", 0)
         rpc._server = server
         port = server.sockets[0].getsockname()[1]

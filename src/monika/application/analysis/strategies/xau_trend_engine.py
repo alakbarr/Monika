@@ -80,8 +80,7 @@ class XAUTrendEngine(EdgeStrategy):
             else:
                 return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="EMA data unavailable")
 
-        # Evaluate on last closed candle (bars[1]) against prior n bars channel (bars[2:n+2])
-        latest, channel = bars[1], bars[2 : n + 2]
+        latest, channel = bars[0], bars[1 : n + 1]
         ch_high, ch_low = max(b.high for b in channel), min(b.low for b in channel)
         ema_bull, ema_bear = fast > slow, fast < slow
         breakout_up, breakout_down = latest.close > ch_high, latest.close < ch_low

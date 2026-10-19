@@ -25,6 +25,10 @@ def compress_tool_payload(
         "market_session",
         "funding_rate",
         "fear_greed",
+        "overlap",
+        "atr_14",
+        "run_up_vs_atr",
+        "staleness_note",
     ),
 ):
     """
@@ -36,7 +40,7 @@ def compress_tool_payload(
     if isinstance(data, dict):
         compressed_dict = {}
         for k, v in data.items():
-            if v is None or v == "":
+            if (v is None or v == "") and k not in preserve_keys:
                 continue
             if strip_empty_collections and v in ([], {}) and k not in preserve_keys:
                 continue
@@ -47,6 +51,8 @@ def compress_tool_payload(
             if compressed_val is not None and compressed_val != "":
                 if not strip_empty_collections or compressed_val not in ([], {}) or k in preserve_keys:
                     compressed_dict[k] = compressed_val
+            elif k in preserve_keys:
+                compressed_dict[k] = v
 
         return compressed_dict
 

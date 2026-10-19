@@ -1006,6 +1006,8 @@ class TestToolExecutor:
                     "JPY": "neutral",
                     "AUD": "neutral",
                     "XAU": "bullish",
+                    "OIL": "neutral",
+                    "BTC": "neutral",
                 },
                 "invalidation_conditions": {
                     "USD": "Bias USD bearish batal jika DXY D1 close di atas 104.50",
@@ -1185,6 +1187,8 @@ class TestToolExecutor:
                 "JPY": "neutral",
                 "AUD": "neutral",
                 "XAU": "bearish",
+                "OIL": "neutral",
+                "BTC": "neutral",
             },
             "per_asset_macro_matrix": {
                 "EURUSD": {

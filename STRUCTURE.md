@@ -1774,6 +1774,7 @@ Monika/
 │       │   │   ├── provider_profile.py
 │       │   │   ├── provider_registry.py
 │       │   │   ├── runtime_model_registry.py
+│       │   │   ├── schema_normalizer.py
 │       │   │   ├── streaming_think_scrubber.py
 │       │   │   ├── structured_fallback.py
 │       │   │   ├── trajectory_compressor.py
@@ -2963,4 +2964,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 251 | **Total Tracked Files**: 2682
+**Total Tracked Directories**: 251 | **Total Tracked Files**: 2683

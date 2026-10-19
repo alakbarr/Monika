@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,3 +47,13 @@ class ToolHandler(ABC):
         May return str, dict, or DisaggregatedToolResult(content=..., details=...).
         """
         pass
+
+    async def __call__(
+        self,
+        args: Dict[str, Any],
+        session: Optional[AsyncSession] = None,
+        executor: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Allow ToolHandler instances to be invoked as callables."""
+        return await self.execute(args, session=cast(AsyncSession, session), executor=executor, **kwargs)

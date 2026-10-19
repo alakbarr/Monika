@@ -366,7 +366,12 @@ class UnifiedToolRegistry:
             if def_tool is not None:
                 desc = getattr(def_tool, "description", "") or (getattr(def_tool, "__doc__", "") or "").strip()
                 raw_handler = getattr(def_tool, "handler", def_tool)
-                handler: Callable[..., Any] = raw_handler if callable(raw_handler) else (lambda **kw: None)
+                if hasattr(raw_handler, "execute"):
+                    handler: Callable[..., Any] = raw_handler.execute
+                elif callable(raw_handler):
+                    handler = raw_handler
+                else:
+                    handler = lambda **kw: None
                 params_schema = getattr(def_tool, "parameters", {})
                 return ToolEntry(
                     name=name,
@@ -465,15 +470,16 @@ class UnifiedToolRegistry:
 
         # Build invocation kwargs based on handler signature
         sig = inspect.signature(entry.handler)
+        has_var_keyword = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
         call_kwargs: Dict[str, Any] = {}
-        if "context" in sig.parameters and context is not None:
+        if ("context" in sig.parameters or has_var_keyword) and context is not None:
             call_kwargs["context"] = context
-        if "session" in sig.parameters and session is not None:
+        if ("session" in sig.parameters or has_var_keyword) and session is not None:
             call_kwargs["session"] = session
-        if "executor" in sig.parameters and executor is not None:
+        if ("executor" in sig.parameters or has_var_keyword) and executor is not None:
             call_kwargs["executor"] = executor
         for k, v in extra_kwargs.items():
-            if k in sig.parameters:
+            if k in sig.parameters or has_var_keyword:
                 call_kwargs[k] = v
 
         coro_or_val: Any

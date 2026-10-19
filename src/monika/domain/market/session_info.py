@@ -77,11 +77,14 @@ def get_current_market_session(dt: Optional[datetime] = None) -> Dict[str, Any]:
     confluence_mod = 1 if is_london_ny_overlap else (-2 if is_off_peak else 0)
 
     return {
+        "utc_time": dt.strftime("%H:%M UTC"),
         "current_time_utc": dt.strftime("%H:%M:%S"),
         "active_sessions": active_sessions,
+        "overlap": "London-NY" if is_london_ny_overlap else None,
         "is_london_ny_overlap": is_london_ny_overlap,
         "is_off_peak": is_off_peak,
         "is_weekend": False,
+        "highest_liquidity": is_london_ny_overlap,
         "session_modifier": confluence_mod,
         "status": "active",
     }

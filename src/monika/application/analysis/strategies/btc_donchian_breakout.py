@@ -33,8 +33,7 @@ class BTCDonchianBreakout(EdgeStrategy):
         if len(bars) < n + 12:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="insufficient H4 history")
 
-        # Evaluate on last closed candle (bars[1]) against prior n bars channel (bars[2:n+2])
-        latest, channel, vol_hist = bars[1], bars[2 : n + 2], [b.volume for b in bars[2:22] if b.volume]
+        latest, channel, vol_hist = bars[0], bars[1 : n + 1], [b.volume for b in bars[1:21] if b.volume]
         ch_high, ch_low = max(b.high for b in channel), min(b.low for b in channel)
         if len(vol_hist) < 10:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="insufficient volume history")

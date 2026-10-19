@@ -12530,6 +12530,17 @@
     - `clear_overrides(task_role: Optional[str]) -> None` - *Reset runtime overrides to defaults defined in settings.yaml.*
     - `get_all_overrides() -> Dict[str, Dict[str, str]]`
 
+#### `schema_normalizer.py` - *Universal Tool Schema Normalizer for LLM Providers.*
+- **Path**: [`src/monika/infrastructure/providers/schema_normalizer.py`](src/monika/infrastructure/providers/schema_normalizer.py)
+- **Classes**:
+  - `class CanonicalToolSchema`
+  - `class ToolSchemaNormalizer`: Normalizes heterogeneous tool representations to provider-specific payloads.
+    - `normalize_tool(tool: Any) -> Optional[CanonicalToolSchema]` - *Extract canonical name, description, and JSON schema parameters from any tool format.*
+    - `normalize_tools(tools: Optional[List[Any]]) -> List[CanonicalToolSchema]` - *Convert a list of raw tool schemas to canonical representations, skipping unparseable entries.*
+    - `to_openai(tools: Optional[List[Any]], supports_cache_control: bool) -> List[Dict[str, Any]]` - *Serialize tools to OpenAI standard tool calling payload.*
+    - `to_anthropic(tools: Optional[List[Any]]) -> List[Dict[str, Any]]` - *Serialize tools to Anthropic format: [{"name": ..., "description": ..., "input_schema": ...}].*
+    - `to_gemini(tools: Optional[List[Any]]) -> List[Dict[str, Any]]` - *Serialize tools to Gemini functionDeclarations format.*
+
 #### `streaming_think_scrubber.py` - *Real-Time Streaming Think Tag Scrubber.*
 - **Path**: [`src/monika/infrastructure/providers/streaming_think_scrubber.py`](src/monika/infrastructure/providers/streaming_think_scrubber.py)
 - **Classes**:
