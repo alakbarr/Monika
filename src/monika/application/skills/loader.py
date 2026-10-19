@@ -364,9 +364,10 @@ def compose_system_prompt(
 
 
 def invalidate_cache() -> None:
-    """Kosongkan cache memori LRU untuk skill."""
+    """Kosongkan cache memori LRU untuk skill dan metadata."""
     load_skill.cache_clear()
-    logger.info("Skill cache cleared")
+    get_skill_metadata.cache_clear()
+    logger.info("Skill and metadata caches cleared")
 
 
 def get_dynamic_micro_skills(symbol: str, context: Optional[dict] = None) -> list[str]:

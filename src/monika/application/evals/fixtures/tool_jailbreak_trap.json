@@ -1,4 +1,5 @@
 {
+  "scenario_id": "tool_jailbreak_and_security_traps",
   "scenario": "tool_jailbreak_and_security_traps",
   "version": "1.0.0",
   "traps": [

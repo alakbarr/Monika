@@ -6,25 +6,41 @@ from typing import Any, Dict, List, Optional
 
 CANDIDATE_MODELS: list[str] = [
     # Anthropic
+    "claude-opus-5.5",
     "claude-opus-5",
+    "claude-fable-5.1",
+    "claude-sonnet-5.5",
     "claude-sonnet-5",
     "claude-sonnet-4-6",
+    "claude-haiku-5.5",
     "claude-haiku-4-5-20251001",
+    "claude-3-7-sonnet",
+    "claude-3-5-sonnet",
     # Google
-    "gemini-3.1-pro-preview",
+    "gemini-4-argon",
     "gemini-3.8-flash",
     "gemini-3.7-flash",
     "gemini-3.6-flash",
     "gemini-3.5-flash",
     "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
+    "gemini-3.1-pro-preview",
     # OpenAI
+    "gpt-6-astra",
+    "gpt-6.1-sol",
+    "gpt-6-sol",
+    "gpt-6-luna",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-5.6-luna",
+    "gpt-4o",
+    "gpt-4o-mini",
     # DeepSeek
     "deepseek-v4-pro",
+    "deepseek-v4.1-flash",
     "deepseek-v4-flash",
+    "deepseek-r1",
+    "deepseek-chat",
     # TypeSafe System One
     "jev-latest",
     "jev-1.13",

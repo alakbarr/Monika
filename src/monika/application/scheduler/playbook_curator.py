@@ -32,11 +32,15 @@ class PlaybookCurator:
 
     def __init__(self, settings: Optional[Dict[str, Any]] = None):
         self.settings = settings or {}
-        self.playbooks_dir = Path(__file__).resolve().parent.parent / "skills" / "trading" / "playbooks"
+        from monika.infrastructure.infra.paths import get_skills_dir
+
+        skills_dir = get_skills_dir()
+        self.playbooks_dir = skills_dir / "trading" / "playbooks"
         self.playbooks_dir.mkdir(parents=True, exist_ok=True)
-        self.crystallized_dir = Path(__file__).resolve().parent.parent / "skills" / "trading"
+        self.crystallized_dir = skills_dir / "trading"
         self.ledger = PlaybookLedger(str(self.playbooks_dir))
         self.linter = PlaybookLinter(min_rr_threshold=1.0)
+
         self._running = False
         self._task: Optional[asyncio.Task] = None
         self._stop_event = asyncio.Event()

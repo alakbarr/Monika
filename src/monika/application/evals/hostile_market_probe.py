@@ -52,7 +52,17 @@ class HostileMarketProbe:
         Builds an exhaustive suite of adversarial tick anomalies.
         """
         now = time.time()
-        pip = 0.0001 if "JPY" not in self.symbol else 0.01
+        from monika.domain.risk.position_sizing import DEFAULT_INSTRUMENTS
+
+        clean_sym = self.symbol.upper().replace("/", "")
+        if clean_sym in DEFAULT_INSTRUMENTS:
+            pip = float(DEFAULT_INSTRUMENTS[clean_sym].pip_size)
+        elif "JPY" in clean_sym or "XAU" in clean_sym or "XTI" in clean_sym or "XBR" in clean_sym:
+            pip = 0.01
+        elif "BTC" in clean_sym:
+            pip = 1.0
+        else:
+            pip = 0.0001
 
         return [
             # 1. Flash Crash Plunge (-15%)

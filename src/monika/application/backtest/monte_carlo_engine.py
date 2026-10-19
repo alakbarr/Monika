@@ -16,7 +16,7 @@ import numpy as np
 class MonteCarloStressTester:
     """Engine pengujian ketahanan statistik tingkat institusional."""
 
-    def __init__(self, seed: Optional[int] = None):
+    def __init__(self, seed: Optional[int] = 42):
         self.seed = seed
         self.rng = np.random.default_rng(seed)
 

@@ -99,20 +99,47 @@ class SkillASTVisitor(ast.NodeVisitor):
                     )
                 )
 
-        # Check attribute calls like os.system(...)
+        # Check attribute calls like os.system(...), subprocess.run(...), shutil.rmtree(...)
         elif isinstance(node.func, ast.Attribute):
             attr_name = node.func.attr
-            if attr_name in ("system", "popen", "spawn"):
+            if attr_name in ("system", "popen", "spawn", "rmtree", "run", "call", "check_output", "check_call"):
                 self.findings.append(
                     AuditFinding(
                         severity="HIGH",
                         file_path=self.file_path,
                         line_number=node.lineno,
                         rule="UNRESTRICTED_OS_EXEC",
-                        message=f"Disallowed direct shell execution via '{attr_name}()'.",
+                        message=f"Disallowed direct shell or process execution via '{attr_name}()'.",
                     )
                 )
+            elif attr_name in ("getenv", "get"):
+                if node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
+                    if SENSITIVE_ENV_PATTERNS.search(node.args[0].value):
+                        self.findings.append(
+                            AuditFinding(
+                                severity="HIGH",
+                                file_path=self.file_path,
+                                line_number=node.lineno,
+                                rule="SENSITIVE_ENV_ACCESS",
+                                message=f"Disallowed access to sensitive env var '{node.args[0].value}'.",
+                            )
+                        )
 
+        self.generic_visit(node)
+
+    def visit_Subscript(self, node: ast.Subscript):
+        # Check os.environ['SECRET_KEY']
+        if isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, str):
+            if SENSITIVE_ENV_PATTERNS.search(node.slice.value):
+                self.findings.append(
+                    AuditFinding(
+                        severity="HIGH",
+                        file_path=self.file_path,
+                        line_number=node.lineno,
+                        rule="SENSITIVE_ENV_ACCESS",
+                        message=f"Disallowed access to sensitive env var '{node.slice.value}'.",
+                    )
+                )
         self.generic_visit(node)
 
     def visit_Attribute(self, node: ast.Attribute):

@@ -204,6 +204,18 @@ class AgentBuilderMixin:
                 mt5_client=self.mt5_client,
                 settings=self.settings,
             )
+            if self.position_guardian is not None and hasattr(self.position_guardian, "check_and_protect"):
+                guardian = self.position_guardian
+                self.position_supervisor.register_evaluator(
+                    "position_guardian",
+                    lambda pos, acct: guardian.check_and_protect(),
+                )
+            if self.trailing_stop_manager is not None and hasattr(self.trailing_stop_manager, "run_once"):
+                trailing_mgr = self.trailing_stop_manager
+                self.position_supervisor.register_evaluator(
+                    "trailing_stop_manager",
+                    lambda pos, acct: trailing_mgr.run_once(),
+                )
         except Exception as e:
             logger.warning(f"PositionSupervisor initialization failed: {e}")
             self.position_supervisor = None

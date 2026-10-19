@@ -39,8 +39,15 @@ class EquityEngine:
         return max(int(requested_shares // 100) * 100, 0)
 
     @classmethod
-    def can_liquidate_under_t1(cls, purchase_date: date, current_date: date) -> bool:
-        """Enforces T+1 settlement hold."""
+    def can_liquidate_under_t1(
+        cls,
+        purchase_date: date,
+        current_date: date,
+        allow_day_trading: bool = False,
+    ) -> bool:
+        """Enforces T+1 settlement hold unless day trading/CFD mode is permitted."""
+        if allow_day_trading:
+            return current_date >= purchase_date
         return current_date > purchase_date
 
     @classmethod

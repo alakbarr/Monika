@@ -74,8 +74,11 @@ class ForexEngine:
         is_wednesday_rollover: bool = False,
     ) -> float:
         """Calculates overnight rollover financing charges (with triple swap on Wednesday)."""
+        if days_held <= 0:
+            return 0.0
         contract_val = price * lots * 100000.0
         rate = -0.018 if action.lower() == "buy" else 0.002
-        mult = 3.0 if is_wednesday_rollover else 1.0
+        # Wednesday rollover charges 3 days instead of 1 (+2 additional financing days)
+        effective_days = days_held + (2.0 if is_wednesday_rollover else 0.0)
         daily_rate = rate / 365.0
-        return float(contract_val * daily_rate * days_held * mult)
+        return float(contract_val * daily_rate * effective_days)

@@ -2419,6 +2419,7 @@ Monika/
 │   │   ├── test_omnichannel_and_hitl.py
 │   │   ├── test_omnichannel_stream.py
 │   │   ├── test_omnichannel_streamer.py
+│   │   ├── test_telegram_adapter_and_webhook_safety.py
 │   │   └── test_universal_ecosystem.py
 │   ├── graph/
 │   │   ├── test_context_hygiene.py
@@ -2969,4 +2970,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 252 | **Total Tracked Files**: 2687
+**Total Tracked Directories**: 252 | **Total Tracked Files**: 2688

@@ -1197,6 +1197,9 @@
 - **Path**: [`src/monika/domain/entities/position.py`](src/monika/domain/entities/position.py)
 - **Classes**:
   - `class PositionEntity(BaseModel)`: Pure domain entity representing a trading position.
+    - `ticket() -> Optional[int]` - *Convenience alias for mt5_ticket.*
+    - `stop_loss() -> Optional[float]` - *Convenience alias for sl.*
+    - `take_profit() -> Optional[float]` - *Convenience alias for tp.*
     - `from_orm(obj: Any) -> PositionEntity` - *Create domain PositionEntity from ORM model or compatible object.*
     - `to_dict() -> Dict[str, Any]` - *Convert entity to a plain dictionary.*
 
@@ -8480,7 +8483,7 @@
   - `class EquityMarketRules`
   - `class EquityEngine`: Calculates exchange execution constraints and settlement rules for stocks.
     - `quantize_shares(requested_shares: float, allow_odd_lots: bool) -> int`
-    - `can_liquidate_under_t1(purchase_date: date, current_date: date) -> bool` - *Enforces T+1 settlement hold.*
+    - `can_liquidate_under_t1(purchase_date: date, current_date: date, allow_day_trading: bool) -> bool` - *Enforces T+1 settlement hold unless day trading/CFD mode is permitted.*
     - `calculate_regulatory_fees(notional_usd: float, shares: int, is_sell: bool) -> float` - *Calculates SEC Section 31 and FINRA TAF transaction fees upon sale.*
     - `calculate_short_borrow_cost(notional_usd: float, days_held: float, annual_borrow_rate: float) -> float` - *Calculates short borrow fee charged against overnight short positions.*
 
@@ -9062,7 +9065,7 @@
   - `class RunManifest`
     - `to_json() -> str`
   - `class RunManifestGenerator`: Produces immutable, content-addressed fingerprints of agent execution states.
-    - `generate(system_prompt: str, extra_metadata: Optional[Dict[str, Any]]) -> RunManifest` - *Generates a complete content-addressed RunManifest.*
+    - `generate(system_prompt: str, extra_metadata: Optional[Dict[str, Any]], settings: Optional[Dict[str, Any]]) -> RunManifest` - *Generates a complete content-addressed RunManifest.*
     - `save_manifest(manifest: RunManifest, directory: Optional[Path]) -> Path`
 
 ### Folder: `src/monika/application/graph` <a id="folder-srcmonikaapplicationgraph"></a>
@@ -10009,6 +10012,9 @@
 - **Path**: [`src/monika/application/scheduler/unified_cron_engine.py`](src/monika/application/scheduler/unified_cron_engine.py)
 - **Classes**:
   - `class DeliveryStatus`
+  - `class ScheduleParseResult(Tuple[float, str])`: Dual-compatibility return type: behaves both as a 2-tuple (timestamp, description)
+    - `timestamp() -> float`
+    - `description() -> str`
   - `class UnifiedCronJob`: Unified schema for scheduled background recurring tasks and one-shots.
   - `class UnifiedCronEngine`: Centralized Cron Engine unifying natural language scheduling,
     - `__init__(db_path: str, tick_interval_seconds: float)`
@@ -10033,19 +10039,8 @@
   - `compute_next_cron_timestamp(cron_expr: str, from_ts: Optional[float]) -> float`: Computes next execution epoch timestamp for a standard 5-part cron expression.
   - `get_unified_cron_engine(db_path: str) -> UnifiedCronEngine`: Returns global singleton UnifiedCronEngine instance.
 
-#### `universal_cron_scheduler.py` - *Universal Cron Scheduler & Background Automation Engine.*
+#### `universal_cron_scheduler.py` - *Canonical forwarder and compatibility facade for UniversalCronScheduler.*
 - **Path**: [`src/monika/application/scheduler/universal_cron_scheduler.py`](src/monika/application/scheduler/universal_cron_scheduler.py)
-- **Classes**:
-  - `class CronJob`
-  - `class UniversalCronScheduler`: Manages persistent scheduled jobs with natural language parsing, at-most-once semantics,
-    - `__init__(db_path: str)`
-    - `parse_schedule_expression(expr: str, from_timestamp: Optional[float]) -> float` - *Parses relative durations, simple natural language, or standard intervals*
-    - `register_job(job_id: str, schedule_expression: str, prompt: str, ...) -> CronJob` - *Registers and schedules a new cron job.*
-    - `register_execution_callback(cb: Callable[[CronJob], None]) -> None` - *Registers callback handler for executing jobs when due.*
-    - `start() -> None` - *Starts background tick scheduler thread.*
-    - `stop() -> None` - *Stops background scheduler thread.*
-    - `close() -> None` - *Stops workers and checkpoints database.*
-    - `check_hung_jobs(max_runtime_sec: float) -> List[str]` - *Inactivity watchdog: scans active jobs exceeding max_runtime_sec.*
 
 #### `wall_clock.py` - *utils/scheduling/wall_clock.py*
 - **Path**: [`src/monika/application/scheduler/wall_clock.py`](src/monika/application/scheduler/wall_clock.py)
@@ -10117,7 +10112,7 @@
     - `async close_position(session: Union[AsyncSession, UnitOfWorkPort], ticket: int, reason: str, ...) -> bool` - *Close open position and record realization in repository.*
     - `async modify_position(session: Union[AsyncSession, UnitOfWorkPort], ticket: int, sl: Optional[float], ...) -> bool` - *Modify stop loss and/or take profit of an open position.*
     - `async close_positions_batch(session: Union[AsyncSession, UnitOfWorkPort], tickets: Sequence[int], reason: str, ...) -> Dict[str, Any]` - *Close multiple positions selectively in a single batch request.*
-    - `async bulk_breakeven(session: Union[AsyncSession, UnitOfWorkPort], symbol: Optional[str], actor: str) -> Dict[str, Any]` - *Move Stop Loss to Entry Price across open positions.*
+    - `async bulk_breakeven(session: Union[AsyncSession, UnitOfWorkPort], symbol: Optional[str], actor: str, ...) -> Dict[str, Any]` - *Move Stop Loss to Entry Price across open positions and synchronize with broker.*
     - `async set_trailing_override(session: Union[AsyncSession, UnitOfWorkPort], ticket: int, override_data: Optional[Dict[str, Any]], ...) -> Optional[PositionEntity]` - *Set or reset dynamic/static trailing stop override per position ticket.*
     - `async emergency_kill(session: Union[AsyncSession, UnitOfWorkPort], reason: str, actor: str) -> Dict[str, Any]` - *Activate global emergency kill switch and persist state to database.*
     - `async pause_trading(session: Union[AsyncSession, UnitOfWorkPort], reason: str, actor: str) -> Dict[str, Any]` - *Pause system trading proposals and persist state.*
@@ -10157,7 +10152,7 @@
   - `is_playbook_eligible(skill_name: str, context: Optional[dict]) -> bool`: Verify if a playbook is currently eligible for production use (not demoted/archived in ledger).
   - `get_progressive_playbook_index(symbol: Optional[str]) -> str`: Level 0: Compact index of available playbooks and setups (< 150 tokens).
   - `compose_system_prompt() -> str`: Rangkai beberapa skill menjadi satu system prompt dan isi template variables.
-  - `invalidate_cache() -> None`: Kosongkan cache memori LRU untuk skill.
+  - `invalidate_cache() -> None`: Kosongkan cache memori LRU untuk skill dan metadata.
   - `get_dynamic_micro_skills(symbol: str, context: Optional[dict]) -> list[str]`: Menghasilkan list skill yang terarah dinamis berdasarkan aset dan regim pasar.
 
 #### `skill_manager.py` - *Dynamic Skill Lifecycle Manager & Hot-Reload Engine.*
@@ -10179,6 +10174,7 @@
   - `class SkillASTVisitor(ast.NodeVisitor)`: Traverses Python AST to flag high-risk security constructs.
     - `__init__(file_path: str)`
     - `visit_Call(node: ast.Call)`
+    - `visit_Subscript(node: ast.Subscript)`
     - `visit_Attribute(node: ast.Attribute)`
   - `class SkillsGuard`: Performs comprehensive static security audits on skill packages before installation or execution.
     - `audit_skill_directory(skill_dir: str, skill_name: str) -> AuditReport`

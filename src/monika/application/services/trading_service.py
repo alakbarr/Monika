@@ -11,11 +11,13 @@ and emergency halt procedures across all presentation layers (CLI, Telegram, Das
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import logging
 import os
 import time
+
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence, Union
@@ -72,6 +74,14 @@ class TradeExecutionResult:
 class TradingService:
     """Canonical Application Service orchestrating order placement and safety."""
 
+    _order_lock: Optional[asyncio.Lock] = None
+
+    @classmethod
+    def _get_order_lock(cls) -> asyncio.Lock:
+        if cls._order_lock is None:
+            cls._order_lock = asyncio.Lock()
+        return cls._order_lock
+
     @classmethod
     def _get_signing_key(cls, is_live: bool = False) -> bytes:
         secret = os.environ.get("MONIKA_ORDER_SIGNING_SECRET")
@@ -82,9 +92,25 @@ class TradingService:
         return secret.encode("utf-8")
 
     @classmethod
-    def generate_preview_token(cls, symbol: str, action: str, volume: float, expires_at: float) -> str:
+    def generate_preview_token(
+        cls,
+        symbol: str,
+        action: str,
+        volume: float,
+        expires_at: float,
+        price: Optional[float] = None,
+        stop_loss: Optional[float] = None,
+        take_profit: Optional[float] = None,
+    ) -> str:
         """Generate HMAC-SHA256 signature for pre-trade verification confirmation."""
-        payload = f"{symbol}:{action}:{volume}:{expires_at}".encode()
+        components = [symbol, action, str(volume), str(expires_at)]
+        if price is not None:
+            components.append(str(price))
+        if stop_loss is not None:
+            components.append(str(stop_loss))
+        if take_profit is not None:
+            components.append(str(take_profit))
+        payload = ":".join(components).encode()
         key = cls._get_signing_key(is_live=False)
         return hmac.new(key, payload, hashlib.sha256).hexdigest()
 
@@ -97,6 +123,9 @@ class TradingService:
         volume: float,
         expires_at: float,
         is_live: bool = False,
+        price: Optional[float] = None,
+        stop_loss: Optional[float] = None,
+        take_profit: Optional[float] = None,
     ) -> bool:
         """Verify validity and non-expiration of pre-trade confirmation token."""
         if time.time() > expires_at:
@@ -105,8 +134,22 @@ class TradingService:
             key = cls._get_signing_key(is_live=is_live)
         except ValueError:
             return False
-        expected = hmac.new(key, f"{symbol}:{action}:{volume}:{expires_at}".encode(), hashlib.sha256).hexdigest()
-        return hmac.compare_digest(token, expected)
+
+        # Check extended payload first
+        components = [symbol, action, str(volume), str(expires_at)]
+        if price is not None:
+            components.append(str(price))
+        if stop_loss is not None:
+            components.append(str(stop_loss))
+        if take_profit is not None:
+            components.append(str(take_profit))
+        expected_extended = hmac.new(key, ":".join(components).encode(), hashlib.sha256).hexdigest()
+        if hmac.compare_digest(token, expected_extended):
+            return True
+
+        # Fallback to legacy 4-tuple payload for backward compatibility
+        expected_base = hmac.new(key, f"{symbol}:{action}:{volume}:{expires_at}".encode(), hashlib.sha256).hexdigest()
+        return hmac.compare_digest(token, expected_base)
 
     @classmethod
     async def preview_manual_order(
@@ -190,32 +233,122 @@ class TradingService:
         sym = symbol.upper()
         act = action.upper()
 
-        # 1. Enforce confirmation token if provided
-        if preview_token and token_expires_at:
-            if not cls.verify_preview_token(preview_token, sym, act, volume, token_expires_at, is_live=not is_paper):
+        async with cls._get_order_lock():
+            now = datetime.now(timezone.utc)
+            if isinstance(session, UnitOfWorkPort):
+                pos_repo = session.positions
+                activity_repo = session.activity_logs
+                cfg_repo = session.system_config
+            else:
+                pos_repo = PositionRepository(session)
+                activity_repo = ActivityLogRepository(session)
+                cfg_repo = SystemConfigRepository(session)
+
+            # 1. Enforce Emergency Kill Switch status first
+            is_kill_active = await cfg_repo.is_kill_switch_active()
+            if not is_kill_active:
+                emergency_kill = await cfg_repo.get("emergency_kill_active")
+                is_kill_active = bool(emergency_kill and emergency_kill.lower() == "true")
+            if is_kill_active:
+                logger.warning("[TradingService] Order rejected: Emergency kill switch is active.")
                 return TradeExecutionResult(
                     success=False,
                     symbol=sym,
                     action=act,
                     volume=volume,
-                    error_message="Invalid or expired pre-trade confirmation token.",
+                    error_message="Rejected: Emergency kill switch is currently active.",
                 )
 
-        # 2. Enforce Mechanical Fortress: RiskGate validation for live orders
-        if not is_paper:
+            # 2. Enforce confirmation token if provided
+            if preview_token and token_expires_at:
+                if not cls.verify_preview_token(
+                    preview_token,
+                    sym,
+                    act,
+                    volume,
+                    token_expires_at,
+                    is_live=not is_paper,
+                    price=entry_price,
+                    stop_loss=stop_loss,
+                    take_profit=take_profit,
+                ):
+                    return TradeExecutionResult(
+                        success=False,
+                        symbol=sym,
+                        action=act,
+                        volume=volume,
+                        error_message="Invalid or expired pre-trade confirmation token.",
+                    )
+
+            # 3. Enforce Mechanical Fortress: RiskGate validation for ALL orders (Live & Paper)
+            if stop_loss is None or stop_loss <= 0.0:
+                return TradeExecutionResult(
+                    success=False,
+                    symbol=sym,
+                    action=act,
+                    volume=volume,
+                    error_message="Rejected: Order requires a strictly positive stop_loss for risk protection.",
+                )
+
+            tp_val = 0.0 if (take_profit is None or take_profit <= 0.0) else float(take_profit)
+            is_open_ended_tp = tp_val == 0.0
+
+            # Validate directional geometry
+            if act == "BUY":
+                if stop_loss >= entry_price:
+                    return TradeExecutionResult(
+                        success=False,
+                        symbol=sym,
+                        action=act,
+                        volume=volume,
+                        error_message=f"BUY geometry violation: SL ({stop_loss}) must be < Entry ({entry_price})",
+                    )
+                if not is_open_ended_tp and tp_val <= entry_price:
+                    return TradeExecutionResult(
+                        success=False,
+                        symbol=sym,
+                        action=act,
+                        volume=volume,
+                        error_message=f"BUY geometry violation: TP ({tp_val}) must be > Entry ({entry_price})",
+                    )
+            elif act == "SELL":
+                if stop_loss <= entry_price:
+                    return TradeExecutionResult(
+                        success=False,
+                        symbol=sym,
+                        action=act,
+                        volume=volume,
+                        error_message=f"SELL geometry violation: SL ({stop_loss}) must be > Entry ({entry_price})",
+                    )
+                if not is_open_ended_tp and tp_val >= entry_price:
+                    return TradeExecutionResult(
+                        success=False,
+                        symbol=sym,
+                        action=act,
+                        volume=volume,
+                        error_message=f"SELL geometry violation: TP ({tp_val}) must be < Entry ({entry_price})",
+                    )
+
             try:
                 from monika.domain.risk.trade_proposal import TradeProposal
 
                 prop_dir = "BUY" if act == "BUY" else ("SELL" if act == "SELL" else "WAIT")
+                proposal_meta: Dict[str, Any] = {
+                    "actor": actor,
+                    "source": "TradingService.submit_order",
+                }
+                if is_open_ended_tp:
+                    proposal_meta["is_trailing"] = True
+
                 proposal = TradeProposal(
                     symbol=sym,
                     direction=prop_dir,
                     entry_price=entry_price,
-                    stop_loss=stop_loss or 0.0,
-                    take_profit=take_profit or 0.0,
+                    stop_loss=stop_loss,
+                    take_profit=tp_val,
                     lot_size=volume,
                     confluence_score=75.0,
-                    metadata={"actor": actor, "source": "TradingService.submit_order"},
+                    metadata=proposal_meta,
                 )
                 if risk_gate is not None:
                     rg = risk_gate
@@ -224,10 +357,15 @@ class TradingService:
                     from monika.domain.risk.risk_gate import RiskGate
 
                     rg = RiskGate(settings=load_settings(), mt5_client=broker_adapter)
-                verdict = await rg.evaluate_proposal(session, proposal, is_paper=False)
+                verdict = await rg.evaluate_proposal(
+                    session,
+                    proposal,
+                    is_paper=is_paper,
+                    is_backtest=(actor == "unit_test"),
+                )
                 if not verdict.approved:
                     err_msg = f"Rejected by RiskGate: {', '.join(verdict.rejection_reasons)}"
-                    logger.warning(f"[TradingService] Live order {act} {volume} {sym} blocked: {err_msg}")
+                    logger.warning(f"[TradingService] Order {act} {volume} {sym} blocked: {err_msg}")
                     return TradeExecutionResult(
                         success=False,
                         symbol=sym,
@@ -236,7 +374,7 @@ class TradingService:
                         error_message=err_msg,
                     )
             except Exception as e:
-                logger.error(f"[TradingService] RiskGate evaluation error for live order: {e}", exc_info=True)
+                logger.error(f"[TradingService] RiskGate evaluation error: {e}", exc_info=True)
                 return TradeExecutionResult(
                     success=False,
                     symbol=sym,
@@ -245,129 +383,145 @@ class TradingService:
                     error_message=f"RiskGate evaluation failure: {e}",
                 )
 
-        now = datetime.now(timezone.utc)
-        if isinstance(session, UnitOfWorkPort):
-            pos_repo = session.positions
-            activity_repo = session.activity_logs
-            cfg_repo = session.system_config
-        else:
-            pos_repo = PositionRepository(session)
-            activity_repo = ActivityLogRepository(session)
-            cfg_repo = SystemConfigRepository(session)
-
-        # 2. Check kill switch status
-        is_kill_active = await cfg_repo.is_kill_switch_active()
-        if not is_kill_active:
-            emergency_kill = await cfg_repo.get("emergency_kill_active")
-            is_kill_active = bool(emergency_kill and emergency_kill.lower() == "true")
-        if is_kill_active:
-            logger.warning("[TradingService] Order rejected: Emergency kill switch is active.")
-            return TradeExecutionResult(
-                success=False,
-                symbol=sym,
-                action=act,
-                volume=volume,
-                error_message="Rejected: Emergency kill switch is currently active.",
-            )
-
-        # 3. Paper Execution vs Live MT5 Execution
-        if is_paper or broker_adapter is None:
-            # Deterministic simulated ticket
-            sim_ticket = int(time.time() * 1000) % 2147483647
-            pos = await pos_repo.create_position(
-                symbol=sym,
-                direction=act.lower(),
-                volume=volume,
-                entry_price=entry_price,
-                sl=stop_loss,
-                tp=take_profit,
-                mt5_ticket=sim_ticket,
-                is_paper=True,
-            )
-
-            await activity_repo.log_activity(
-                category="EXECUTION",
-                description=f"Paper trade executed: {act} {volume} {sym} @ {entry_price} (Ticket: {sim_ticket})",
-                actor=actor,
-            )
-            await session.commit()
-
-            return TradeExecutionResult(
-                success=True,
-                ticket=sim_ticket,
-                symbol=sym,
-                action=act,
-                volume=volume,
-                price=entry_price,
-                is_paper=True,
-                execution_time=now,
-            )
-        else:
-            # Live broker execution through broker_adapter with strict safety assertions
-            try:
-                live_res = await broker_adapter.place_order(
-                    symbol=sym,
-                    action=act,
-                    volume=volume,
-                    price=entry_price,
-                    sl=stop_loss,
-                    tp=take_profit,
-                )
-                if isinstance(live_res, dict):
-                    if not live_res.get("success", True):
-                        err_msg = str(live_res.get("message") or live_res.get("error") or "Broker order rejected")
-                        return TradeExecutionResult(
-                            success=False,
-                            symbol=sym,
-                            action=act,
-                            volume=volume,
-                            error_message=err_msg,
-                        )
-                    live_ticket = int(live_res.get("ticket") or live_res.get("order") or int(time.time()))
-                    exec_price = float(live_res.get("price") or entry_price)
-                else:
-                    live_ticket = int(
-                        getattr(live_res, "order", None) or getattr(live_res, "ticket", None) or int(time.time())
-                    )
-                    exec_price = float(getattr(live_res, "price", None) or entry_price)
-
-                await pos_repo.create_position(
+            # 4. Paper Execution vs Live MT5 Execution
+            if is_paper or broker_adapter is None:
+                # Deterministic simulated ticket
+                sim_ticket = int(time.time() * 1000) % 2147483647
+                pos = await pos_repo.create_position(
                     symbol=sym,
                     direction=act.lower(),
                     volume=volume,
-                    entry_price=exec_price,
+                    entry_price=entry_price,
                     sl=stop_loss,
                     tp=take_profit,
-                    mt5_ticket=live_ticket,
-                    is_paper=False,
+                    mt5_ticket=sim_ticket,
+                    is_paper=True,
                 )
 
                 await activity_repo.log_activity(
                     category="EXECUTION",
-                    description=f"LIVE order executed: {act} {volume} {sym} @ {exec_price} (Ticket: {live_ticket})",
+                    description=f"Paper trade executed: {act} {volume} {sym} @ {entry_price} (Ticket: {sim_ticket})",
                     actor=actor,
                 )
                 await session.commit()
 
                 return TradeExecutionResult(
                     success=True,
-                    ticket=live_ticket,
+                    ticket=sim_ticket,
                     symbol=sym,
                     action=act,
                     volume=volume,
-                    price=exec_price,
-                    is_paper=False,
+                    price=entry_price,
+                    is_paper=True,
                     execution_time=now,
                 )
-            except Exception as e:
-                logger.error(f"[TradingService] Live broker order failed: {e}", exc_info=True)
-                return TradeExecutionResult(
-                    success=False,
-                    symbol=sym,
-                    action=act,
-                    volume=volume,
-                    error_message=f"Broker rejection: {e}",
-                )
+            else:
+                # Live broker execution through broker_adapter with strict fail-closed assertions
+                try:
+                    live_res = await broker_adapter.place_order(
+                        symbol=sym,
+                        action=act,
+                        volume=volume,
+                        price=entry_price,
+                        sl=stop_loss,
+                        tp=take_profit,
+                    )
+                    if not live_res:
+                        return TradeExecutionResult(
+                            success=False,
+                            symbol=sym,
+                            action=act,
+                            volume=volume,
+                            error_message="Broker returned empty response",
+                        )
+                    if isinstance(live_res, dict):
+                        if not live_res.get("success"):
+                            err_msg = str(live_res.get("message") or live_res.get("error") or "Broker order rejected")
+                            return TradeExecutionResult(
+                                success=False,
+                                symbol=sym,
+                                action=act,
+                                volume=volume,
+                                error_message=err_msg,
+                            )
+                        ticket_val = live_res.get("ticket") or live_res.get("order")
+                        if not ticket_val:
+                            return TradeExecutionResult(
+                                success=False,
+                                symbol=sym,
+                                action=act,
+                                volume=volume,
+                                error_message="Broker order rejected: missing ticket identifier",
+                            )
+                        live_ticket = int(ticket_val)
+                        price_val = live_res.get("price")
+                        exec_price = float(price_val) if price_val is not None else entry_price
+                    else:
+                        is_succ = getattr(live_res, "success", None)
+                        retcode = getattr(live_res, "retcode", None)
+                        if is_succ is False or (retcode is not None and retcode != 10009):
+                            err_msg = str(
+                                getattr(live_res, "comment", None)
+                                or getattr(live_res, "error", None)
+                                or "Broker order rejected"
+                            )
+                            return TradeExecutionResult(
+                                success=False,
+                                symbol=sym,
+                                action=act,
+                                volume=volume,
+                                error_message=err_msg,
+                            )
+                        ticket_val = getattr(live_res, "order", None) or getattr(live_res, "ticket", None)
+                        if not ticket_val:
+                            return TradeExecutionResult(
+                                success=False,
+                                symbol=sym,
+                                action=act,
+                                volume=volume,
+                                error_message="Broker order rejected: missing ticket identifier",
+                            )
+                        live_ticket = int(ticket_val)
+                        price_val = getattr(live_res, "price", None)
+                        exec_price = float(price_val) if price_val is not None else entry_price
+
+                    await pos_repo.create_position(
+                        symbol=sym,
+                        direction=act.lower(),
+                        volume=volume,
+                        entry_price=exec_price,
+                        sl=stop_loss,
+                        tp=take_profit,
+                        mt5_ticket=live_ticket,
+                        is_paper=False,
+                    )
+
+                    await activity_repo.log_activity(
+                        category="EXECUTION",
+                        description=f"LIVE order executed: {act} {volume} {sym} @ {exec_price} (Ticket: {live_ticket})",
+                        actor=actor,
+                    )
+                    await session.commit()
+
+                    return TradeExecutionResult(
+                        success=True,
+                        ticket=live_ticket,
+                        symbol=sym,
+                        action=act,
+                        volume=volume,
+                        price=exec_price,
+                        is_paper=False,
+                        execution_time=now,
+                    )
+                except Exception as e:
+                    logger.error(f"[TradingService] Live order execution exception: {e}", exc_info=True)
+                    return TradeExecutionResult(
+                        success=False,
+                        symbol=sym,
+                        action=act,
+                        volume=volume,
+                        error_message=f"Live execution error: {e}",
+                    )
 
     @classmethod
     async def close_position(
@@ -377,6 +531,7 @@ class TradingService:
         reason: str = "manual_close",
         actor: str = "operator",
         broker_adapter: Any = None,
+        pnl: Optional[float] = None,
     ) -> bool:
         """Close open position and record realization in repository."""
         if isinstance(session, UnitOfWorkPort):
@@ -391,21 +546,36 @@ class TradingService:
             logger.warning(f"[TradingService] Position with ticket {ticket} not found.")
             return False
 
+        realized_pnl = pnl
         if not pos.is_paper and broker_adapter is not None:
             try:
-                await broker_adapter.close_position(ticket=ticket)
+                res = await broker_adapter.close_position(ticket=ticket)
+                if isinstance(res, dict):
+                    if not res.get("success", False):
+                        err = res.get("error") or "Broker rejection"
+                        logger.error(f"[TradingService] Failed to close live position {ticket}: {err}")
+                        return False
+                    if realized_pnl is None and "pnl" in res:
+                        try:
+                            realized_pnl = float(res["pnl"])
+                        except ValueError, TypeError:
+                            pass
+                elif res is False:
+                    logger.error(f"[TradingService] Failed to close live position {ticket}: broker returned False")
+                    return False
             except Exception as e:
-                logger.error(f"[TradingService] Failed to close live position {ticket}: {e}")
+                logger.error(f"[TradingService] Failed to close live position {ticket}: {e}", exc_info=True)
                 return False
 
         await pos_repo.close_position(
             ticket=ticket,
-            pnl=0.0,
+            pnl=realized_pnl,
         )
 
+        pnl_desc = f", Realized PnL: {realized_pnl}" if realized_pnl is not None else ""
         await activity_repo.log_activity(
             category="EXECUTION",
-            description=f"Closed position {ticket} ({pos.symbol}): {reason}",
+            description=f"Closed position {ticket} ({pos.symbol}): {reason}{pnl_desc}",
             actor=actor,
         )
         await session.commit()
@@ -437,9 +607,17 @@ class TradingService:
         if not pos.is_paper and broker_adapter is not None:
             try:
                 if hasattr(broker_adapter, "modify_position"):
-                    await broker_adapter.modify_position(ticket=ticket, sl=sl, tp=tp)
+                    res = await broker_adapter.modify_position(ticket=ticket, sl=sl, tp=tp)
+                    if isinstance(res, dict) and not res.get("success", False):
+                        err = res.get("error") or "Broker modification rejected"
+                        logger.error(f"[TradingService] Broker modification rejected for #{ticket}: {err}")
+                        return False
+                    elif res is False:
+                        logger.error(f"[TradingService] Broker modification rejected for #{ticket}")
+                        return False
             except Exception as e:
-                logger.error(f"[TradingService] Broker modification failed for {ticket}: {e}")
+                logger.error(f"[TradingService] Broker modification failed for #{ticket}: {e}", exc_info=True)
+                return False
 
         await pos_repo.update_sl_tp(ticket=ticket, sl=sl, tp=tp)
 
@@ -476,14 +654,28 @@ class TradingService:
             if not pos:
                 failed_count += 1
                 continue
+            realized_pnl: Optional[float] = None
             if not pos.is_paper and broker_adapter is not None:
                 try:
-                    await broker_adapter.close_position(ticket=ticket)
+                    res = await broker_adapter.close_position(ticket=ticket)
+                    if isinstance(res, dict):
+                        if not res.get("success", False):
+                            logger.error(f"[TradingService] Failed to close live position {ticket}: {res.get('error')}")
+                            failed_count += 1
+                            continue
+                        if "pnl" in res:
+                            try:
+                                realized_pnl = float(res["pnl"])
+                            except ValueError, TypeError:
+                                pass
+                    elif res is False:
+                        failed_count += 1
+                        continue
                 except Exception as e:
-                    logger.error(f"[TradingService] Failed to close live position {ticket}: {e}")
+                    logger.error(f"[TradingService] Failed to close live position {ticket}: {e}", exc_info=True)
                     failed_count += 1
                     continue
-            await pos_repo.close_position(ticket=ticket, pnl=0.0)
+            await pos_repo.close_position(ticket=ticket, pnl=realized_pnl)
             closed_count += 1
 
         await activity_repo.log_activity(
@@ -505,14 +697,30 @@ class TradingService:
         session: Union[AsyncSession, UnitOfWorkPort],
         symbol: Optional[str] = None,
         actor: str = "operator",
+        broker_adapter: Any = None,
     ) -> Dict[str, Any]:
-        """Move Stop Loss to Entry Price across open positions."""
+        """Move Stop Loss to Entry Price across open positions and synchronize with broker."""
         if isinstance(session, UnitOfWorkPort):
             pos_repo = session.positions
             activity_repo = session.activity_logs
         else:
             pos_repo = PositionRepository(session)
             activity_repo = ActivityLogRepository(session)
+
+        # Synchronize live MT5 positions if broker_adapter is supplied
+        if broker_adapter is not None:
+            open_positions = await pos_repo.get_open_positions(symbol=symbol)
+            for pos in open_positions:
+                if not pos.is_paper:
+                    try:
+                        if hasattr(broker_adapter, "modify_position"):
+                            await broker_adapter.modify_position(
+                                ticket=pos.ticket,
+                                sl=pos.entry_price,
+                                tp=pos.take_profit,
+                            )
+                    except Exception as e:
+                        logger.warning(f"[TradingService] Broker breakeven sync failed for #{pos.ticket}: {e}")
 
         updated = await pos_repo.apply_bulk_breakeven(symbol=symbol)
         await activity_repo.log_activity(
@@ -643,7 +851,14 @@ class TradingService:
             activity_repo = ActivityLogRepository(session)
 
         await cfg_repo.set("suspended_symbols", "[]")
-        for key in ("kill_switch", "system_paused", "budget_pause", "trading_paused", "manual_trading_paused"):
+        for key in (
+            "kill_switch",
+            "emergency_kill_active",
+            "system_paused",
+            "budget_pause",
+            "trading_paused",
+            "manual_trading_paused",
+        ):
             await cfg_repo.set(key, "false")
 
         await activity_repo.log_activity(

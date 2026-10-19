@@ -321,12 +321,15 @@ class PointInTimeBacktestEngine:
                             continue
 
                         # Point-in-time price query (Zero Lookahead: completed bars before current_time)
+                        # For an H1 bar, timestamp is the open time; it closes 1 hour later.
+                        # Bar must be fully completed at current_time to avoid lookahead bias.
+                        bar_cutoff = current_time - timedelta(hours=1)
                         latest_bar = (
                             await session.execute(
                                 select(PriceOHLCV)
                                 .where(PriceOHLCV.symbol == symbol)
                                 .where(PriceOHLCV.timeframe == "H1")
-                                .where(PriceOHLCV.timestamp < current_time)
+                                .where(PriceOHLCV.timestamp <= bar_cutoff)
                                 .order_by(PriceOHLCV.timestamp.desc())
                                 .limit(1)
                             )

@@ -67,15 +67,25 @@ class OutcomeEvaluator:
     @staticmethod
     def get_contract_size(symbol: str) -> float:
         """Return standardized contract size for an asset."""
-        sym = (symbol or "").upper()
+        sym = (symbol or "").upper().replace("/", "")
         if "XTI" in sym or "WTI" in sym:
             return 100.0
         if "XBR" in sym or "BRENT" in sym:
             return 1000.0
         if "XAU" in sym:
             return 100.0
-        if "BTC" in sym:
+        if "XAG" in sym:
+            return 5000.0
+        if "BTC" in sym or "SOL" in sym:
             return 1.0
+        if "ETH" in sym:
+            return 10.0
+        if "US30" in sym or "USTEC" in sym or "NAS100" in sym:
+            return 1.0
+        if "US500" in sym or "SPX500" in sym:
+            return 10.0
+        if sym in DEFAULT_INSTRUMENTS:
+            return float(DEFAULT_INSTRUMENTS[sym].contract_size)
         return 100_000.0
 
     _get_contract_size = get_contract_size

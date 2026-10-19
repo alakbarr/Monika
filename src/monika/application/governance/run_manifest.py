@@ -89,18 +89,27 @@ class RunManifestGenerator:
     @classmethod
     def _get_active_skills(cls) -> List[str]:
         skills = []
-        skills_dir = Path(__file__).resolve().parent.parent / "skills"
-        if skills_dir.exists():
-            for p in skills_dir.rglob("*.py"):
-                if not p.name.startswith("__"):
-                    skills.append(p.stem)
-        return sorted(skills)
+        try:
+            from monika.infrastructure.infra.paths import get_skills_dir
+
+            skills_dir = get_skills_dir()
+            if skills_dir.exists():
+                for p in skills_dir.rglob("*.md"):
+                    if not p.name.startswith("."):
+                        skills.append(p.stem)
+                for p in skills_dir.rglob("*.py"):
+                    if not p.name.startswith("__") and not p.name.startswith("."):
+                        skills.append(p.stem)
+        except Exception:
+            pass
+        return sorted(list(set(skills)))
 
     @classmethod
     def generate(
         cls,
         system_prompt: str = "",
         extra_metadata: Optional[Dict[str, Any]] = None,
+        settings: Optional[Dict[str, Any]] = None,
     ) -> RunManifest:
         """Generates a complete content-addressed RunManifest."""
         prompt_hash = hashlib.sha256(system_prompt.encode("utf-8")).hexdigest()
@@ -109,6 +118,11 @@ class RunManifestGenerator:
         deps = cls._get_dependency_versions()
         strategies = cls._get_registered_strategies()
         skills = cls._get_active_skills()
+
+        meta = dict(extra_metadata or {})
+        if settings:
+            meta["paper_trading"] = settings.get("paper_trading", {}).get("enabled", True)
+            meta["market_pairs"] = list(settings.get("trading", {}).get("symbols", []))
 
         payload = {
             "timestamp_utc": now_utc,

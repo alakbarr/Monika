@@ -16,6 +16,7 @@ from monika.application.evals.eval_metrics import (
     aggregate_eval_metrics,
     compare_ab_evaluations,
 )
+from monika.application.evals.oracles.macro_regime_oracle import evaluate_macro_regime
 from monika.application.evals.oracles.risk_compliance_oracle import evaluate_risk_compliance
 from monika.application.evals.oracles.smc_geometry_oracle import evaluate_smc_geometry
 from monika.application.evals.oracles.trade_discipline_oracle import evaluate_trade_discipline
@@ -42,7 +43,9 @@ class ABEvalRunner:
         for file in sorted(self.fixtures_path.glob("*.json")):
             try:
                 data = json.loads(file.read_text(encoding="utf-8"))
-                if "scenario_id" in data:
+                if "scenario_id" in data or "scenario" in data:
+                    if "scenario_id" not in data:
+                        data["scenario_id"] = data["scenario"]
                     fixtures.append(data)
             except Exception as e:
                 logger.error(f"Error loading fixture {file.name}: {e}")
@@ -59,11 +62,39 @@ class ABEvalRunner:
         2. SMC geometry oracle
         3. Risk compliance oracle
         4. Trade discipline oracle
-        5. In-Harness Grounding validation
-        6. Cross-timeframe alignment gate
+        5. Macro regime oracle
+        6. In-Harness Grounding validation
+        7. Cross-timeframe alignment gate
         """
         scenario_id = fixture.get("scenario_id", "unknown")
         symbol = fixture.get("symbol", "UNKNOWN")
+
+        # If fixture is a security trap suite, evaluate via ToolSafetyOracle
+        if "traps" in fixture:
+            from monika.application.evals.oracles.tool_safety_oracle import ToolSafetyOracle
+
+            trap_oracle = ToolSafetyOracle(fixture_path=str(self.fixtures_path / "tool_jailbreak_trap.json"))
+            trap_results = trap_oracle.evaluate_traps_suite()
+            trap_passed = all(tr.passed for tr in trap_results)
+            trap_violations = [f"Trap failed: {tr.reason}" for tr in trap_results if not tr.passed]
+            return DecisionEvaluation(
+                scenario_id=scenario_id,
+                symbol=symbol,
+                decision="REJECT",
+                is_valid_direction=True,
+                confluence_score=None,
+                grounding_passed=True,
+                grounding_errors=[],
+                oracle_passed=trap_passed,
+                oracle_violations=trap_violations,
+                planned_rr=None,
+                realized_rr=None,
+                input_tokens=0,
+                output_tokens=0,
+                cost_usd=0.0,
+                latency_ms=0.0,
+            )
+
         dec = str(decision_data.get("decision", "WAIT")).strip().upper()
 
         expected = fixture.get("expected_outcome", {})
@@ -75,8 +106,11 @@ class ABEvalRunner:
         geo_res = evaluate_smc_geometry(fixture, decision_data)
         risk_res = evaluate_risk_compliance(fixture, decision_data)
         disc_res = evaluate_trade_discipline(fixture, decision_data)
+        macro_res = evaluate_macro_regime(fixture, decision_data)
 
-        oracle_violations = geo_res["violations"] + risk_res["violations"] + disc_res["violations"]
+        oracle_violations = (
+            geo_res["violations"] + risk_res["violations"] + disc_res["violations"] + macro_res.get("violations", [])
+        )
         oracle_passed = len(oracle_violations) == 0
 
         # Grounding check (if InHarnessGroundingValidator is available)

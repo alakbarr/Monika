@@ -52,6 +52,21 @@ class PositionEntity(BaseModel):
     entry_session: Optional[str] = None
     market_regime: Optional[str] = None
 
+    @property
+    def ticket(self) -> Optional[int]:
+        """Convenience alias for mt5_ticket."""
+        return self.mt5_ticket
+
+    @property
+    def stop_loss(self) -> Optional[float]:
+        """Convenience alias for sl."""
+        return self.sl
+
+    @property
+    def take_profit(self) -> Optional[float]:
+        """Convenience alias for tp."""
+        return self.tp
+
     @classmethod
     def from_orm(cls, obj: Any) -> PositionEntity:
         """Create domain PositionEntity from ORM model or compatible object."""

@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from monika.application.evals.oracles.macro_regime_oracle import evaluate_macro_regime
 from monika.application.evals.oracles.risk_compliance_oracle import evaluate_risk_compliance
 from monika.application.evals.oracles.smc_geometry_oracle import evaluate_smc_geometry
 from monika.application.evals.oracles.trade_discipline_oracle import evaluate_trade_discipline
@@ -34,7 +35,9 @@ class OfflineEvalRunner:
         for json_file in sorted(self.fixtures_path.glob("*.json")):
             try:
                 data = json.loads(json_file.read_text(encoding="utf-8"))
-                if "scenario_id" in data:
+                if "scenario_id" in data or "scenario" in data:
+                    if "scenario_id" not in data:
+                        data["scenario_id"] = data["scenario"]
                     fixtures.append(data)
             except Exception as e:
                 logger.error(f"Failed to load fixture {json_file.name}: {e}")
@@ -45,9 +48,20 @@ class OfflineEvalRunner:
         geo_result = evaluate_smc_geometry(fixture, decision_data)
         risk_result = evaluate_risk_compliance(fixture, decision_data)
         disc_result = evaluate_trade_discipline(fixture, decision_data)
+        macro_result = evaluate_macro_regime(fixture, decision_data)
 
-        all_violations = geo_result["violations"] + risk_result["violations"] + disc_result["violations"]
-        all_passed_checks = geo_result["checks_passed"] + risk_result["checks_passed"] + disc_result["checks_passed"]
+        all_violations = (
+            geo_result["violations"]
+            + risk_result["violations"]
+            + disc_result["violations"]
+            + macro_result.get("violations", [])
+        )
+        all_passed_checks = (
+            geo_result["checks_passed"]
+            + risk_result["checks_passed"]
+            + disc_result["checks_passed"]
+            + macro_result.get("checks_passed", [])
+        )
 
         is_passed = len(all_violations) == 0
 
@@ -62,6 +76,7 @@ class OfflineEvalRunner:
                 "smc_geometry": geo_result,
                 "risk_compliance": risk_result,
                 "trade_discipline": disc_result,
+                "macro_regime": macro_result,
             },
         }
 
@@ -80,6 +95,28 @@ class OfflineEvalRunner:
                 continue
             dec_data = candidate_decisions.get(scen_id)
             if not dec_data:
+                # If fixture contains security traps, evaluate using ToolSafetyOracle
+                if "traps" in fix:
+                    from monika.application.evals.oracles.tool_safety_oracle import ToolSafetyOracle
+
+                    trap_oracle = ToolSafetyOracle(fixture_path=str(self.fixtures_path / "tool_jailbreak_trap.json"))
+                    trap_results = trap_oracle.evaluate_traps_suite()
+                    trap_passed = all(tr.passed for tr in trap_results)
+                    trap_violations = [f"Trap failed: {tr.reason}" for tr in trap_results if not tr.passed]
+                    trap_passed_checks = [f"Trap passed: {tr.test_id}" for tr in trap_results if tr.passed]
+                    if trap_passed:
+                        passed_count += 1
+                    results.append(
+                        {
+                            "scenario_id": scen_id,
+                            "scenario_name": fix.get("name", "Tool Safety Traps"),
+                            "passed": trap_passed,
+                            "violations": trap_violations,
+                            "passed_checks": trap_passed_checks,
+                        }
+                    )
+                    continue
+
                 # If no explicit candidate provided, test against fixture baseline
                 results.append(
                     {

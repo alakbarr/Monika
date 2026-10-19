@@ -288,6 +288,20 @@ class AgentLifecycleMixin:
             tasks_list.append(t)
             return t
 
+        # Generate Content-Addressed Run Manifest for institutional auditability & reproducibility
+        try:
+            from monika.application.governance.run_manifest import RunManifestGenerator
+
+            self.run_manifest = RunManifestGenerator.generate(settings=self.settings)
+            logger.info(
+                f"[Governance] Generated RunManifest fingerprint: {self.run_manifest.manifest_id[:16]} "
+                f"(git: {self.run_manifest.git_commit_hash or 'unknown'}, "
+                f"strategies: {len(self.run_manifest.registered_strategies)}, "
+                f"skills: {len(self.run_manifest.active_skills)})"
+            )
+        except Exception as e:
+            logger.warning(f"[Governance] Failed to generate RunManifest at startup: {e}")
+
         if hasattr(self, "guardian_supervisor") and self.guardian_supervisor:
             try:
                 self.guardian_supervisor.start()

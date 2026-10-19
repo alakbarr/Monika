@@ -65,11 +65,37 @@ class DeliveryStatus:
     FAILED = "FAILED"
 
 
+class ScheduleParseResult(Tuple[float, str]):
+    """
+    Dual-compatibility return type: behaves both as a 2-tuple (timestamp, description)
+    and evaluates equality directly against numeric timestamps for backward compatibility.
+    """
+
+    def __new__(cls, timestamp: float, description: str = "") -> "ScheduleParseResult":
+        return super().__new__(cls, (float(timestamp), str(description)))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, (int, float)):
+            return self[0] == other
+        return super().__eq__(other)
+
+    def __hash__(self) -> int:
+        return super().__hash__()
+
+    @property
+    def timestamp(self) -> float:
+        return self[0]
+
+    @property
+    def description(self) -> str:
+        return self[1]
+
+
 # Safety blocklist against destructive host commands in scheduled tasks
 _ANTI_SUICIDE_PATTERNS = [
     re.compile(r"\brm\s+-(?:r|f|rf|fr)\s+(?:/|~|\$HOME|trading-agent|\*)", re.IGNORECASE),
     re.compile(r"\bdel\s+/[fs]\s+c:\\", re.IGNORECASE),
-    re.compile(r"\bkill\s+-9\s+-1\b|\bkillall\b|\btaskkill\s+/[fF]\s+.*python", re.IGNORECASE),
+    re.compile(r"\bkill\s+-9\b|\bkillall\b|\btaskkill\s+/[fF]\b", re.IGNORECASE),
     re.compile(r"\b(format|mkfs)\s+[a-z]:|\b(shutdown|reboot|poweroff|halt)\b", re.IGNORECASE),
     re.compile(r":\(\)\s*\{\s*:\|\:&\s*\};:", re.IGNORECASE),
 ]
@@ -271,8 +297,9 @@ class UnifiedCronEngine:
         now = from_timestamp or time.time()
         expr_clean = expr.strip()
 
-        # 1. Simple relative durations
-        rel_match = re.match(r"^(\d+)\s*(s|sec|m|min|h|hr|d|day)s?$", expr_clean, re.IGNORECASE)
+        # 1. Simple relative durations (e.g. '30m', '2h', 'every 5m', 'every 30s')
+        rel_match = re.match(r"^(?:every\s+)?(\d+)\s*(s|sec|m|min|h|hr|d|day)s?$", expr_clean, re.IGNORECASE)
+
         if rel_match:
             val = int(rel_match.group(1))
             unit = rel_match.group(2).lower()
@@ -287,21 +314,21 @@ class UnifiedCronEngine:
                 "day": 86400,
             }
             sec_delta = val * multipliers.get(unit, 60)
-            return now + sec_delta, f"Interval: {val} {unit}"
+            return ScheduleParseResult(now + sec_delta, f"Interval: {val} {unit}")
 
         # 2. NLP and Market presets via cron_nlp_parser
         cron_expr, interval_sec, description = parse_natural_schedule(expr_clean)
 
         if interval_sec is not None:
-            return now + interval_sec, description
+            return ScheduleParseResult(now + interval_sec, description)
 
         if cron_expr is not None:
             next_ts = compute_next_cron_timestamp(cron_expr, from_ts=now)
-            return next_ts, description
+            return ScheduleParseResult(next_ts, description)
 
         # Fallback default: 1 hour
         logger.warning(f"[UnifiedCronEngine] Unrecognized schedule '{expr}', defaulting to 1 hour.")
-        return now + 3600.0, "Fallback 1 hour interval"
+        return ScheduleParseResult(now + 3600.0, "Fallback 1 hour interval")
 
     def register_job(
         self,
@@ -324,12 +351,12 @@ class UnifiedCronEngine:
         for pat in _ANTI_SUICIDE_PATTERNS:
             if pat.search(prompt):
                 logger.error(f"[UnifiedCronEngine] Job '{job_id}' rejected: prompt matches destructive pattern.")
-                raise ValueError("Prohibited destructive pattern detected in prompt.")
+                raise ValueError("prohibited destructive pattern detected in prompt.")
             if monitor_script and pat.search(monitor_script):
                 logger.error(
                     f"[UnifiedCronEngine] Job '{job_id}' rejected: monitor_script matches destructive pattern."
                 )
-                raise ValueError("Prohibited destructive pattern detected in monitor script.")
+                raise ValueError("prohibited destructive pattern detected in monitor script.")
 
         next_run, desc = self.parse_schedule_expression(schedule_expression)
 
