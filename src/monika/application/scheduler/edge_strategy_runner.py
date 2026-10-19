@@ -233,6 +233,15 @@ class EdgeStrategyRunner:
                             )
                             continue
 
+                        # Incubation Gate: Synthesized alphas starting with 'alpha_' must have passed incubation
+                        if sig.strategy_id.startswith("alpha_"):
+                            strat_health = decay_mon.get_health(sig.strategy_id)
+                            if not strat_health.is_incubation_passed:
+                                logger.debug(
+                                    f"[{sig.strategy_id}] Suppressed: Synthesized alpha has not passed incubation gate."
+                                )
+                                continue
+
                         # Cooldown check: Cegah materialisasi sinyal berulang dalam interval cooldown
                         if await self._is_in_cooldown(session, sig.strategy_id, symbol, now_ts):
                             logger.debug(f"[{sig.strategy_id}] Signal for {symbol} in cooldown, skipping.")
@@ -592,12 +601,19 @@ class EdgeStrategyRunner:
             pair_group_id = str(uuid.uuid4())
 
         async def _materialize_leg(leg: EdgeSignal, is_hedge: bool = False):
+            entry_type = "market"
+            entry_price_val = leg.entry_price
+            if hasattr(leg, "meta") and isinstance(leg.meta, dict):
+                if leg.meta.get("entry_type") == "limit" and leg.meta.get("limit_price"):
+                    entry_type = "limit"
+                    entry_price_val = float(leg.meta["limit_price"])
+
             analysis = AssetAnalysis(
                 symbol=leg.symbol,
                 generated_at=clock.now(),
                 decision=leg.direction,
                 confidence=leg.confidence,
-                entry_zone=json.dumps({"type": "market", "price": leg.entry_price}),
+                entry_zone=json.dumps({"type": entry_type, "price": entry_price_val}),
                 price_at_analysis=leg.entry_price,
                 stop_loss=leg.stop_loss,
                 take_profit=leg.take_profit,

@@ -48,6 +48,31 @@ except Exception as e:
     logger.debug(f"bb_volume_profile not loaded: {e}")
 
 try:
+    import monika.application.analysis.strategies.asian_range_fade
+except Exception as e:
+    logger.debug(f"asian_range_fade not loaded: {e}")
+
+try:
+    import monika.application.analysis.strategies.smt_divergence
+except Exception as e:
+    logger.debug(f"smt_divergence not loaded: {e}")
+
+try:
+    import monika.application.analysis.strategies.tokyo_sweep
+except Exception as e:
+    logger.debug(f"tokyo_sweep not loaded: {e}")
+
+try:
+    import monika.application.analysis.strategies.vwap_reversion
+except Exception as e:
+    logger.debug(f"vwap_reversion not loaded: {e}")
+
+try:
+    import monika.application.analysis.strategies.bollinger_reversion
+except Exception as e:
+    logger.debug(f"bollinger_reversion not loaded: {e}")
+
+try:
     from monika.application.analysis.strategies.registry import StrategyRegistry
 
     StrategyRegistry.log_summary()

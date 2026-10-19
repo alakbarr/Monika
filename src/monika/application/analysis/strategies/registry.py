@@ -426,10 +426,11 @@ class StrategyRegistry:
 
                 from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
 
-                if not get_strategy_decay_monitor().is_tradeable(strat_id):
+                decay_mon = get_strategy_decay_monitor()
+                if not decay_mon.is_tradeable(strat_id):
                     logger.debug(
                         f"[{strat_name}] Suppressed by StrategyDecayMonitor "
-                        f"(state={get_strategy_decay_monitor().get_health(strat_id).state.value})"
+                        f"(state={decay_mon.get_health(strat_id).state.value})"
                     )
                     continue
 

@@ -44,6 +44,11 @@ CORE_STRATEGY_IDS: set[str] = {
     "xau_trend",
     "xau_trend_engine",
     "xti_pairs_readiness",
+    "asian_range_fade",
+    "smt_divergence",
+    "tokyo_open_sweep",
+    "vwap_mean_reversion",
+    "bollinger_reversion",
     "general",
     "default",
 }

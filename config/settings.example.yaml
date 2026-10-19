@@ -260,9 +260,9 @@ trading:
     auto_close_on_invalidation: false
   trailing_stop:
     enabled: true
-    breakeven_atr_multiple: 0.8
-    trail_atr_multiple: 1.2
-    timeframe: H4
+    breakeven_atr_multiple: 1.8
+    trail_atr_multiple: 1.8
+    timeframe: H1
     check_interval_minutes: 5
   timesfm:
     enabled: true

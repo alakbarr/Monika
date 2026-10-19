@@ -70,8 +70,8 @@ class TriConvergentAlphaStrategy(EdgeStrategy):
         scores["alpha_mr5"] = float(-(ret_rank - 0.5) * 2.0) if not np.isnan(ret_rank) else 0.0
 
         # Factor 2: Volume-weighted Price Momentum (Alpha101 #006 inspiration)
-        vol_std = volume.rolling(20).std().iloc[-1]
-        vol_mean = volume.rolling(20).mean().iloc[-1]
+        vol_std = float(np.asarray(volume.rolling(20).std())[-1])
+        vol_mean = float(np.asarray(volume.rolling(20).mean())[-1])
         vol_z = float((volume.iloc[-1] - vol_mean) / (vol_std + 1e-9)) if (pd.notna(vol_std) and vol_std > 0) else 0.0
         if np.isnan(vol_z) or np.isinf(vol_z):
             vol_z = 0.0
@@ -83,8 +83,8 @@ class TriConvergentAlphaStrategy(EdgeStrategy):
         # Factor 3: Amihud illiquidity shock
         dollar_vol = close * (volume + 1.0)
         illiq = (ret.abs() / (dollar_vol + 1e-9)).rolling(10).mean()
-        illiq_std = illiq.rolling(20).std().iloc[-1]
-        illiq_mean = illiq.rolling(20).mean().iloc[-1]
+        illiq_std = float(np.asarray(illiq.rolling(20).std())[-1])
+        illiq_mean = float(np.asarray(illiq.rolling(20).mean())[-1])
         illiq_z = (
             float((illiq.iloc[-1] - illiq_mean) / (illiq_std + 1e-9))
             if (pd.notna(illiq_std) and illiq_std > 0)
@@ -93,7 +93,7 @@ class TriConvergentAlphaStrategy(EdgeStrategy):
         scores["alpha_illiq_shock"] = float(np.clip(illiq_z / 3.0, -1.0, 1.0)) if not np.isnan(illiq_z) else 0.0
 
         # Factor 4: Breakout Volatility Expansion
-        atr = (high - low).rolling(14).mean().iloc[-1]
+        atr = float(np.asarray((high - low).rolling(14).mean())[-1])
         atr_val = float(atr) if pd.notna(atr) and atr > 0 else (close.iloc[-1] * 0.005)
         range_expansion = (high.iloc[-1] - low.iloc[-1]) / (atr_val + 1e-9)
         dir_sign = 1.0 if close.iloc[-1] > df["open"].iloc[-1] else -1.0

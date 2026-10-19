@@ -36,10 +36,10 @@ class TrailingStopManager:
         self.execution_service = execution_service
         self._recovery_event = recovery_event
         trail_cfg = settings.get("trading", {}).get("trailing_stop") or settings.get("trailing_stop", {})
-        self.enabled = trail_cfg.get("enabled", True)  # Default True agar konsisten dengan settings.yaml
-        self.breakeven_atr_multiple = float(trail_cfg.get("breakeven_atr_multiple", 1.0))
-        self.trail_atr_multiple = float(trail_cfg.get("trail_atr_multiple", 1.5))
-        self.check_timeframe = trail_cfg.get("timeframe", "H4")
+        self.enabled = trail_cfg.get("enabled", True)
+        self.breakeven_atr_multiple = float(trail_cfg.get("breakeven_atr_multiple", 1.8))
+        self.trail_atr_multiple = float(trail_cfg.get("trail_atr_multiple", 1.8))
+        self.check_timeframe = trail_cfg.get("timeframe", "H1")
         self.interval_minutes = float(trail_cfg.get("check_interval_minutes", 10))
         self._running = False
         self._is_forex_blocked = False
@@ -309,18 +309,18 @@ class TrailingStopManager:
             profit_distance = current_price - entry
             sl_distance = entry - current_sl if current_sl else None
 
-            # Auto-Breakeven saat TP1 (+1.0x ATR) tercapai atau profit >= 1x SL distance
-            if profit_distance >= (1.0 * atr) or (sl_distance and profit_distance >= sl_distance):
-                breakeven_sl = entry + (0.1 * atr)  # sedikit di atas entry untuk cover spread
+            # Auto-Breakeven saat threshold breakeven (effective_be_mult * atr) tercapai
+            if profit_distance >= (effective_be_mult * atr):
+                breakeven_sl = entry + (0.1 * atr)  # sedikit di atas entry untuk cover spread & komisi
                 if (
                     breakeven_sl > (current_sl or 0.0)
                     and current_price >= entry + (0.4 * atr)
                     and breakeven_sl < current_price - (0.1 * atr)
                 ):
                     new_sl = breakeven_sl
-                    reason = f"tp1_breakeven (profit={profit_distance:.5f} >= 1.0x ATR {atr:.5f})"
+                    reason = f"tp1_breakeven (profit={profit_distance:.5f} >= {effective_be_mult:.1f}x ATR {atr:.5f})"
 
-            # Trail: jika harga bergerak searah profit sebesar 2x ATR, mulai trailing SL
+            # Trail: jika harga bergerak searah profit sebesar >= 2 * effective_be_mult * atr, mulai trailing SL
             if profit_distance >= 2 * effective_be_mult * atr:
                 trailing_sl = current_price - (effective_trail_mult * atr)
                 if trailing_sl > (current_sl or 0.0) and (new_sl is None or trailing_sl > new_sl):
@@ -331,8 +331,8 @@ class TrailingStopManager:
             profit_distance = entry - current_price
             sl_distance = current_sl - entry if current_sl else None
 
-            # Auto-Breakeven saat TP1 (+1.0x ATR) tercapai atau profit >= 1x SL distance
-            if profit_distance >= (1.0 * atr) or (sl_distance and profit_distance >= sl_distance):
+            # Auto-Breakeven saat threshold breakeven (effective_be_mult * atr) tercapai
+            if profit_distance >= (effective_be_mult * atr):
                 breakeven_sl = entry - (0.1 * atr)
                 if (
                     (current_sl is None or breakeven_sl < current_sl)
@@ -340,7 +340,7 @@ class TrailingStopManager:
                     and breakeven_sl > current_price + (0.1 * atr)
                 ):
                     new_sl = breakeven_sl
-                    reason = f"tp1_breakeven (profit={profit_distance:.5f} >= 1.0x ATR {atr:.5f})"
+                    reason = f"tp1_breakeven (profit={profit_distance:.5f} >= {effective_be_mult:.1f}x ATR {atr:.5f})"
 
             if profit_distance >= 2 * effective_be_mult * atr:
                 trailing_sl = current_price + (effective_trail_mult * atr)
