@@ -362,7 +362,12 @@ class UnifiedToolRegistry:
         try:
             from monika.application.analysis.tools.registry import default_tool_registry
 
-            def_tool = default_tool_registry._tools.get(name) or default_tool_registry._handlers.get(name)
+            canonical = default_tool_registry.resolve_name(name)
+            def_tool = (
+                default_tool_registry._tools.get(canonical)
+                or default_tool_registry._handlers.get(canonical)
+                or default_tool_registry._handler_classes.get(canonical)
+            )
             if def_tool is not None:
                 desc = getattr(def_tool, "description", "") or (getattr(def_tool, "__doc__", "") or "").strip()
                 raw_handler = getattr(def_tool, "handler", def_tool)
@@ -373,28 +378,60 @@ class UnifiedToolRegistry:
                 else:
                     handler = lambda **kw: None
                 params_schema = getattr(def_tool, "parameters", {})
-                return ToolEntry(
-                    name=name,
+                entry = ToolEntry(
+                    name=canonical,
                     category=getattr(def_tool, "toolset", "TRADING").upper(),
                     description=desc,
                     handler=handler,
                     parameters_schema=params_schema,
                     is_async=inspect.iscoroutinefunction(handler),
                 )
+                self._tools[canonical] = entry
+                return entry
         except Exception:
             pass
         return None
 
     def list_tools(self, category: Optional[str] = None, only_available: bool = True) -> List[ToolEntry]:
         """List all registered tools, optionally filtered by category and availability."""
+        seen_names: Set[str] = set()
         res: List[ToolEntry] = []
         for t in self._tools.values():
+            if t.name in seen_names:
+                continue
+            seen_names.add(t.name)
             if category and t.category.upper() != category.upper():
                 continue
             if only_available and not t.is_available():
                 continue
             res.append(t)
+
+        # Bridge all discovered tools from default_tool_registry
+        try:
+            from monika.application.analysis.tools.registry import default_tool_registry
+
+            if not default_tool_registry._tools and not default_tool_registry._handlers:
+                default_tool_registry.auto_discover()
+
+            for def_name in default_tool_registry.list_tools():
+                if def_name in seen_names or def_name in self._aliases:
+                    continue
+                entry = self.get_tool(def_name)
+                if entry:
+                    seen_names.add(def_name)
+                    if category and entry.category.upper() != category.upper():
+                        continue
+                    if only_available and not entry.is_available():
+                        continue
+                    res.append(entry)
+        except Exception as e:
+            logger.debug(f"[UnifiedToolRegistry] Error bridging default tools: {e}")
+
         return sorted(res, key=lambda t: t.name)
+
+    def get_tools(self, category: Optional[str] = None, only_available: bool = True) -> List[ToolEntry]:
+        """Alias for list_tools() ensuring complete API compatibility across callers."""
+        return self.list_tools(category=category, only_available=only_available)
 
     def get_anthropic_tools(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
         """Return list of Anthropic-compatible tool schemas, canonically sorted."""

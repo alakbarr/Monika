@@ -6993,6 +6993,7 @@
     - `estimate_schema_tokens() -> int` - *Estimates total token burden of currently active tool schemas.*
     - `materialize_tools_for_query(query: str, top_k: int) -> List[str]` - *Dynamically finds and mounts the top-K relevant tools for a user query or turn context*
     - `execute_progressive_tool(tool_name: str, arguments: Dict[str, Any], executor: Optional[Any]) -> Any` - *Executes a tool discovered progressively. If the tool is not active,*
+    - `from_unified_registry(registry: Optional[Any]) -> 'ToolSearchEngine'` - *Instantiate and populate ToolSearchEngine from UnifiedToolRegistry.*
 
 #### `tool_selector.py` - *Retrieval-Augmented Tool Selection (RATS) for AI Trading Agent.*
 - **Path**: [`src/monika/application/analysis/tools/tool_selector.py`](src/monika/application/analysis/tools/tool_selector.py)
@@ -7031,6 +7032,7 @@
     - `register_tool(name: str, category: str, handler: Callable, ...) -> ToolEntry` - *Imperative method to register a tool handler function or MCP bridge.*
     - `get_tool(name: str) -> Optional[ToolEntry]` - *Retrieve registered tool entry by name or alias.*
     - `list_tools(category: Optional[str], only_available: bool) -> List[ToolEntry]` - *List all registered tools, optionally filtered by category and availability.*
+    - `get_tools(category: Optional[str], only_available: bool) -> List[ToolEntry]` - *Alias for list_tools() ensuring complete API compatibility across callers.*
     - `get_anthropic_tools(category: Optional[str]) -> List[Dict[str, Any]]` - *Return list of Anthropic-compatible tool schemas, canonically sorted.*
     - `get_openai_tools(category: Optional[str]) -> List[Dict[str, Any]]` - *Return list of OpenAI-compatible tool schemas, canonically sorted.*
     - `get_gemini_tools(category: Optional[str]) -> List[Dict[str, Any]]` - *Return list of Gemini-compatible function declarations, canonically sorted.*

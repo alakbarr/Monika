@@ -2066,6 +2066,7 @@ Monika/
 │   │   ├── test_memory_skills_and_traps.py
 │   │   ├── test_moa_loop.py
 │   │   ├── test_multiagent_and_delegation.py
+│   │   ├── test_p0_safety_and_invariants.py
 │   │   ├── test_pgvector_startup_check.py
 │   │   ├── test_runtime_enhancements.py
 │   │   ├── test_runtime_lifecycle.py
@@ -2499,6 +2500,8 @@ Monika/
 │   │   ├── test_role_fallback_chain.py
 │   │   ├── test_universal_provider.py
 │   │   └── test_zai_provider.py
+│   ├── providers/
+│   │   └── test_tool_schema_normalizer.py
 │   ├── risk/
 │   │   ├── __init__.py
 │   │   ├── test_approval_hub.py
@@ -2964,4 +2967,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 251 | **Total Tracked Files**: 2683
+**Total Tracked Directories**: 252 | **Total Tracked Files**: 2685

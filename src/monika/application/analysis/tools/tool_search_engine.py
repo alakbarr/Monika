@@ -231,3 +231,20 @@ class ToolSearchEngine:
             "status": "activated",
             "message": f"Tool '{tool_name}' mounted into active context.",
         }
+
+    @classmethod
+    def from_unified_registry(cls, registry: Optional[Any] = None) -> "ToolSearchEngine":
+        """Instantiate and populate ToolSearchEngine from UnifiedToolRegistry."""
+        from monika.application.analysis.tools.unified_registry import unified_tool_registry
+
+        reg = registry or unified_tool_registry
+        engine = cls()
+        for t in reg.list_tools(only_available=False):
+            engine.register_tool(
+                name=t.name,
+                description=t.description,
+                parameters=t.get_parameters_schema(),
+                category=t.category,
+                tags=getattr(t, "aliases", []),
+            )
+        return engine
