@@ -1,12 +1,12 @@
 # Project Requirements Document (PRD): Monika
 
-**Document Version:** 1.0.0  
-**Project Status:** Active Quantitative Research & Production Development  
-**Primary System Role:** Domain-Specific Trading Agent Harness & Multi-Agent Execution Framework for MetaTrader 5 (MT5)  
-**Execution Runtime:** MetaTrader 5 (Windows Native IPC & Linux Wine/Docker RPC Bridge)  
-**Database Backend:** PostgreSQL 16+ (Asyncpg + SQLAlchemy 2.0 + Alembic Migrations)  
-**Cognitive Architecture:** Dual-System Cognitive Engine (System 1 JEV Fast-Reflex + System 2 LangGraph StateGraph Synthesis)  
-**Author & Maintainer:** Saiful Akbar & Contributors  
+**Document Version:** 1.0.0
+**Project Status:** Active Quantitative Research & Production Development
+**Primary System Role:** Domain-Specific Trading Agent Harness & Multi-Agent Execution Framework for MetaTrader 5 (MT5)
+**Execution Runtime:** MetaTrader 5 (Windows Native IPC & Linux Wine/Docker RPC Bridge)
+**Database Backend:** PostgreSQL 16+ (Asyncpg + SQLAlchemy 2.0 + Alembic Migrations)
+**Cognitive Architecture:** Dual-System Cognitive Engine (System 1 JEV Fast-Reflex + System 2 LangGraph StateGraph Synthesis)
+**Author & Maintainer:** Saiful Akbar & Contributors
 
 ---
 
@@ -26,7 +26,7 @@ Rather than relying on naive single-prompt LLM execution or rigid, static indica
 6. **Continuous Learning & Model Benchmarking:** Closed-loop crystallization of winning strategies into executable playbooks, accompanied by the **Alpha Arena** tournament engine and multi-layer benchmark harness.
 
 ### 1.2 The Core Concept: Why an "Agent Harness"?
-In advanced artificial intelligence engineering, an **Agent Harness** is the specialized runtime substrate that equips, constrains, isolates, and monitors an autonomous agent. 
+In advanced artificial intelligence engineering, an **Agent Harness** is the specialized runtime substrate that equips, constrains, isolates, and monitors an autonomous agent.
 
 Large Language Models (LLMs) are probabilistic, non-deterministic, and prone to hallucinations. In financial markets, granting an unconstrained LLM direct access to broker order sockets is unacceptable. Monika provides the harness:
 - **Perception Harness:** Pre-fetches, cleans, deduplicates, and structures live market quotes, economic calendars, and news feeds before the LLM ever inspects them.
@@ -98,7 +98,7 @@ flowchart TD
         ExecService --> EA_Bridge[MQL5 Expert Advisor<br/>Heartbeat Dead-Man Switch]
         MT5_IPC --> Broker[(Broker Execution Book)]
         EA_Bridge --> Broker
-        
+
         Broker --> Postgres[(PostgreSQL 16+ Database)]
         Postgres --> Dashboard[React 19 Web Dashboard]
         Postgres --> TUI[Textual Terminal UI]
@@ -222,7 +222,7 @@ flowchart TD
 
 ## 6. Data Schema & Persistence Model
 
-Managed via **PostgreSQL 16+** using async SQLAlchemy 2.0 and tracked through Alembic migrations (`0001_initial_schema`, `0002_user_prefs_and_journal`, `0003_add_benchmark_tables_and_cache_cost_columns`).
+Managed via **PostgreSQL 16+** using async SQLAlchemy 2.0 and tracked through 9 Alembic migrations (`0001` through `0008` and schema sync `c83c5e451412` across 74 mapped tables).
 
 ### Database Entity Architecture
 ```

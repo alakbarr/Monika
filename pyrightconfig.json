@@ -14,14 +14,14 @@
     "frontend",
     "**/site-packages",
     "**/dist",
-    ".git"
+    ".git",
+    "src/monika/application/analysis/strategies/synthesized"
   ],
   "stubPath": "typings",
   "venvPath": ".",
   "venv": "venv",
   "extraPaths": ["src"],
   "typeCheckingMode": "standard",
-  "pythonPlatform": "Windows",
   "pythonVersion": "3.14",
   "reportMissingTypeStubs": false,
   "reportMissingImports": true,

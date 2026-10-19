@@ -1,6 +1,6 @@
 ---
 name: intent-resolution
-description: "Resolves terse, ambiguous, compound, and multi-lingual trading queries into precise multi-tool execution chains with zero guesswork."
+description: "Resolves ambiguous trading queries into precise multi-tool execution chains."
 category: GENERAL
 version: 1.0.0
 platforms: [windows, linux, macos]

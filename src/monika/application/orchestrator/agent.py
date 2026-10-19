@@ -109,9 +109,9 @@ class TradingAgent(AgentBuilderMixin, AgentRecoveryMixin, AgentMonitorsMixin, Ag
         if "enabled" in paper_cfg:
             paper_enabled = bool(paper_cfg["enabled"])
         elif "paper_trading" in self.settings:
-            paper_enabled = bool(self.settings.get("paper_trading", {}).get("enabled", False))
+            paper_enabled = bool(self.settings.get("paper_trading", {}).get("enabled", True))
         else:
-            paper_enabled = False
+            paper_enabled = True
         self.dry_run = dry_run or paper_enabled
         self.shutdown_event = asyncio.Event()
         # Event to unblock position guards once startup position sync completes.

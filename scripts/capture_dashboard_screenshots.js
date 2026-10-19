@@ -3,7 +3,7 @@
 // Description: Automated screenshot capture for all Monika Web Dashboard tabs
 // ==============================================================================
 
-import { chromium } from '../trading-agent/logging_observability/dashboard/frontend/node_modules/playwright/index.mjs';
+import { chromium } from '../frontend/node_modules/playwright/index.mjs';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';

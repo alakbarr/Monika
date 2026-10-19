@@ -1,6 +1,6 @@
 ---
 name: database-analytics-and-reporting
-description: "Direct SQL & Analytical Query Playbook: Schema inspection, safe read-only SQL queries, performance joins, debate transcript exports, and custom metric synthesis."
+description: "Schema inspection, read-only SQL queries, and custom metric synthesis."
 category: GENERAL
 version: 1.0.0
 platforms: [windows, linux, macos]
@@ -33,7 +33,7 @@ Key Tables:
 
 ### Win Rate by AI Confidence Decile
 ```sql
-SELECT 
+SELECT
     ROUND(s.confidence, 1) AS conf_bucket,
     COUNT(*) AS total_trades,
     SUM(CASE WHEN p.pnl > 0 THEN 1 ELSE 0 END) AS wins,
@@ -48,7 +48,7 @@ ORDER BY conf_bucket DESC;
 
 ### Cumulative Slippage by Symbol
 ```sql
-SELECT 
+SELECT
     symbol,
     COUNT(*) AS total_fills,
     ROUND(AVG(slippage_pips), 2) AS avg_slippage_pips,

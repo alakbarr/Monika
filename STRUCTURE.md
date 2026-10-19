@@ -1460,6 +1460,7 @@ Monika/
 │       │   │   └── usd_strength_proxy.py
 │       │   ├── ports/
 │       │   │   ├── __init__.py
+│       │   │   ├── event_publisher.py
 │       │   │   ├── execution.py
 │       │   │   ├── llm.py
 │       │   │   ├── market_data.py
@@ -2848,11 +2849,14 @@ Monika/
 │   ├── benchmark_news_classification_openrouter.py
 │   ├── benchmark_stage1_openrouter.py
 │   ├── benchmark_stage2_openrouter.py
+│   ├── build_curated_benchmark_fixtures.py
 │   ├── build_empirical_playbooks.py
 │   ├── capture_dashboard_screenshots.js
 │   ├── capture_tui_screenshots.py
 │   ├── check_env_keys.py
+│   ├── cleanup_fvg_duplicates.py
 │   ├── compile_alphas_to_catalog.py
+│   ├── consolidate_sqlite_dbs.py
 │   ├── convert_tui_svg_to_png.js
 │   ├── download_timesfm_weights.py
 │   ├── generate_ast_docs.py
@@ -2865,6 +2869,8 @@ Monika/
 │   ├── reset_paper_trades.py
 │   ├── run_tests.bat
 │   ├── run_tests.sh
+│   ├── test_m15_playbooks.py
+│   ├── test_strict_edge.py
 │   ├── update_economic_calendar.py
 │   ├── update_index_toc.py
 │   └── ux_audit_baseline_scan.py
@@ -2970,4 +2976,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 252 | **Total Tracked Files**: 2688
+**Total Tracked Directories**: 252 | **Total Tracked Files**: 2694

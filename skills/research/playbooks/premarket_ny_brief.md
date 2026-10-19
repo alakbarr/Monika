@@ -1,5 +1,6 @@
 ---
 title: Pre-Market New York Overlap & Catalyst Briefing
+description: Pre-market New York overlap and catalyst briefing playbook.
 suggested_schedule: "12:45 UTC Mon-Fri"
 timezone: "UTC"
 target_symbols: ["XAUUSD", "EURUSD", "GBPUSD", "XTIUSD", "BTCUSD"]

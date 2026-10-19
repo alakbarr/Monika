@@ -1,6 +1,6 @@
 ---
 name: prompt-intent-disambiguation
-description: "Autonomous full-stack expansion of brief user queries into multi-layered institutional analyses."
+description: "Autonomous expansion of brief user queries into institutional analyses."
 category: GENERAL
 version: 1.0.0
 platforms: [windows, linux, macos]

@@ -1,6 +1,6 @@
 ---
 name: research-analysis
-description: "Multi-source empirical investigation, fact triangulation, and structured synthesis reports."
+description: "Multi-source empirical investigation and structured synthesis reports."
 category: general
 version: 1.1.0
 consumers: [chat_agent, human_reference]
@@ -19,7 +19,7 @@ tags: [research, analysis, investigation, synthesis, evidence, anti_slop]
 Every research deliverable MUST pass these 4 criteria:
 1. **Concrete Numeric Grounding**: Never use vague qualifiers (*"significant increase"*, *"relatively high"*). Use exact values (*"spread widened by 35 points"*, *"win rate dropped from 62% to 48%"*).
 2. **Code / File Citations**: Every architectural assertion must cite exact file paths and line numbers (e.g. `[risk/risk_gate.py:575]`).
-3. **Zero AI Fluff Phrases**: Reject generic conversational intros (*"Let's dive in"*, *"It is important to remember"*).
+3. **Zero AI Fluff Phrases**: Reject generic conversational intros (e.g. superficial openers, hollow disclaimers).
 4. **Falsifiable Hypotheses**: State the exact condition that would prove the research conclusion wrong.
 
 ## 3. Mandatory Structured Output Format

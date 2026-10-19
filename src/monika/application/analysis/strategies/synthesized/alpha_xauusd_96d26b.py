@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any, List
 import math, numpy as np, pandas as pd, datetime, logging, decimal
 
+
 class SynthesizedStrategy_alpha_xauusd_96d26b(EdgeStrategy):
     strategy_id: str = "alpha_xauusd_96d26b"
     applicable_symbols: set = {"XAUUSD"}
@@ -25,15 +26,10 @@ class SynthesizedStrategy_alpha_xauusd_96d26b(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale=f"Symbol {symbol} not supported by this strategy.",
-                tags=["unsupported_symbol"]
+                tags=["unsupported_symbol"],
             )
 
-        candles = await self.get_historical_candles(
-            session=session,
-            symbol=symbol,
-            timeframe=self.timeframe,
-            limit=100
-        )
+        candles = await self.get_historical_candles(session=session, symbol=symbol, timeframe=self.timeframe, limit=100)
 
         if not candles or len(candles) < self.min_history_required:
             return EdgeSignal(
@@ -43,7 +39,7 @@ class SynthesizedStrategy_alpha_xauusd_96d26b(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale="Insufficient historical candle data for ATR exhaustion analysis.",
-                tags=["insufficient_data"]
+                tags=["insufficient_data"],
             )
 
         highs = np.array([float(c.high) for c in candles], dtype=np.float64)
@@ -71,7 +67,7 @@ class SynthesizedStrategy_alpha_xauusd_96d26b(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale="Invalid ATR calculation.",
-                tags=["calculation_error"]
+                tags=["calculation_error"],
             )
 
         # Calculate Moving Average of Close
@@ -86,7 +82,7 @@ class SynthesizedStrategy_alpha_xauusd_96d26b(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale="Invalid MA calculation.",
-                tags=["calculation_error"]
+                tags=["calculation_error"],
             )
 
         # Calculate RSI
@@ -95,10 +91,10 @@ class SynthesizedStrategy_alpha_xauusd_96d26b(EdgeStrategy):
         losses = np.where(deltas < 0, -deltas, 0.0)
         avg_gain = pd.Series(gains).rolling(window=self.rsi_period).mean().to_numpy()
         avg_loss = pd.Series(losses).rolling(window=self.rsi_period).mean().to_numpy()
-        
+
         current_avg_gain = float(avg_gain[-1])
         current_avg_loss = float(avg_loss[-1])
-        
+
         if current_avg_loss == 0:
             rsi = 100.0
         else:
@@ -162,7 +158,7 @@ class SynthesizedStrategy_alpha_xauusd_96d26b(EdgeStrategy):
                 valid=True,
                 confidence=confidence,
                 rationale="; ".join(reasons),
-                tags=["mean_reversion", "atr_exhaustion", "xauusd", f"rsi_{round(rsi, 1)}"]
+                tags=["mean_reversion", "atr_exhaustion", "xauusd", f"rsi_{round(rsi, 1)}"],
             )
 
         return EdgeSignal(
@@ -172,5 +168,5 @@ class SynthesizedStrategy_alpha_xauusd_96d26b(EdgeStrategy):
             valid=False,
             confidence=0.0,
             rationale=f"Price within normal range (Displacement: {displacement_atr_units:.2f} ATR, RSI: {rsi:.1f}). No exhaustion trigger.",
-            tags=["neutral", "no_signal"]
+            tags=["neutral", "no_signal"],
         )

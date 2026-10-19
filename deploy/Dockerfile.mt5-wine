@@ -8,6 +8,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV WINEARCH=win64
 ENV WINEPREFIX=/wine/prefix
 ENV DISPLAY=:99
+ENV WINEDEBUG=-all
 
 RUN dpkg --add-architecture i386 && \
     apt-get update && \
@@ -20,6 +21,7 @@ RUN dpkg --add-architecture i386 && \
         wine64 \
         wine32 \
         procps \
+        cabextract \
         winbind && \
     rm -rf /var/lib/apt/lists/*
 
@@ -28,13 +30,22 @@ WORKDIR /wine
 # Create shared bridge folder, mt5 directory, and wine prefix
 RUN mkdir -p /wine/prefix /shared/mt5_bridge /opt/mt5
 
+# Download and install Windows Python 3.11 inside Wine for MetaTrader5 / RPyC bridge
+RUN curl -fsSL -o /wine/python-installer.exe https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe && \
+    xvfb-run -a wineboot --init && \
+    xvfb-run -a wine /wine/python-installer.exe /quiet InstallAllUsers=1 PrependPath=1 TargetDir=C:\\Python311 && \
+    rm -f /wine/python-installer.exe && \
+    xvfb-run -a wine C:\\Python311\\python.exe -m pip install --no-cache-dir --upgrade pip && \
+    xvfb-run -a wine C:\\Python311\\python.exe -m pip install --no-cache-dir MetaTrader5 rpyc
+
 COPY entrypoint_mt5.sh /wine/entrypoint.sh
 RUN chmod +x /wine/entrypoint.sh
 
 # Expose MT5 Linux RPyC RPC bridge port
 EXPOSE 18812
 
+# Healthcheck: verifies virtual X11 display and process readiness
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD pgrep -f "terminal64.exe" > /dev/null || exit 1
+    CMD pgrep -f "Xvfb" > /dev/null || exit 1
 
 ENTRYPOINT ["/wine/entrypoint.sh"]

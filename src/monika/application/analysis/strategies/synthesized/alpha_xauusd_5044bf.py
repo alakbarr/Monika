@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any, List
 import math, numpy as np, pandas as pd, datetime, logging, decimal
 
+
 class SynthesizedStrategy_alpha_xauusd_5044bf(EdgeStrategy):
     strategy_id: str = "alpha_xauusd_5044bf"
     applicable_symbols: set = {"XAUUSD"}
@@ -24,15 +25,12 @@ class SynthesizedStrategy_alpha_xauusd_5044bf(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale="Symbol not applicable for Volume-weighted dynamic Donchian strategy.",
-                tags=["ineligible_symbol"]
+                tags=["ineligible_symbol"],
             )
 
         limit_needed = max(self.base_period, self.vol_ma_period, self.atr_period) + 30
         candles = await self.get_historical_candles(
-            session=session,
-            symbol=symbol,
-            timeframe=self.timeframe,
-            limit=limit_needed
+            session=session, symbol=symbol, timeframe=self.timeframe, limit=limit_needed
         )
 
         if not candles or len(candles) < max(self.base_period, self.vol_ma_period, self.atr_period) + 5:
@@ -43,7 +41,7 @@ class SynthesizedStrategy_alpha_xauusd_5044bf(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale="Insufficient historical candle data for evaluation.",
-                tags=["insufficient_data"]
+                tags=["insufficient_data"],
             )
 
         highs = np.array([float(c.high) for c in candles], dtype=np.float64)
@@ -58,7 +56,7 @@ class SynthesizedStrategy_alpha_xauusd_5044bf(EdgeStrategy):
             hc = abs(highs[i] - closes[i - 1])
             lc = abs(lows[i] - closes[i - 1])
             tr_list.append(max(hl, hc, lc))
-        
+
         atr_series = pd.Series(tr_list).rolling(window=self.atr_period).mean().to_numpy()
         current_atr = atr_series[-1] if len(atr_series) > 0 and not np.isnan(atr_series[-1]) else (highs[-1] - lows[-1])
 
@@ -66,7 +64,7 @@ class SynthesizedStrategy_alpha_xauusd_5044bf(EdgeStrategy):
         vol_series = pd.Series(volumes)
         vol_ma = vol_series.rolling(window=self.vol_ma_period).mean().to_numpy()
         current_vol_ma = vol_ma[-1] if not np.isnan(vol_ma[-1]) and vol_ma[-1] > 0 else 1.0
-        
+
         current_vol = volumes[-1]
         rvol = current_vol / current_vol_ma if current_vol_ma > 0 else 1.0
 
@@ -76,9 +74,9 @@ class SynthesizedStrategy_alpha_xauusd_5044bf(EdgeStrategy):
         dynamic_period = int(np.clip(round(self.base_period / vol_factor), 10, self.base_period * 2))
 
         # 3. Dynamic Donchian Channels (computed on preceding bars excluding current bar)
-        prior_highs = highs[-(dynamic_period + 1):-1]
-        prior_lows = lows[-(dynamic_period + 1):-1]
-        prior_volumes = volumes[-(dynamic_period + 1):-1]
+        prior_highs = highs[-(dynamic_period + 1) : -1]
+        prior_lows = lows[-(dynamic_period + 1) : -1]
+        prior_volumes = volumes[-(dynamic_period + 1) : -1]
 
         if len(prior_highs) < dynamic_period:
             return EdgeSignal(
@@ -88,7 +86,7 @@ class SynthesizedStrategy_alpha_xauusd_5044bf(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale="Dynamic lookback window calculation failed due to size constraints.",
-                tags=["calc_error"]
+                tags=["calc_error"],
             )
 
         donchian_high = np.max(prior_highs)
@@ -154,5 +152,5 @@ class SynthesizedStrategy_alpha_xauusd_5044bf(EdgeStrategy):
             valid=valid,
             confidence=confidence,
             rationale=rationale,
-            tags=tags
+            tags=tags,
         )

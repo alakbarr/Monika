@@ -544,7 +544,7 @@ class LLMFactory:
         return FallbackClientWrapper(self, primary, fallbacks, role_config, task_role=task_role)
 
 
-def _safe_clone(val):
+def _safe_clone(val: Any) -> Any:
     """Deepcopy serializable data (like messages/tools) while skipping unpicklable objects (like AsyncSession)."""
     if val is None or isinstance(val, (int, float, str, bool, bytes)):
         return val
@@ -559,7 +559,7 @@ def _safe_clone(val):
     if isinstance(val, dict):
         return {k: _safe_clone(v) for k, v in val.items()}
     if isinstance(val, set):
-        return {_safe_clone(x) for x in val}
+        return set(val)
     if isinstance(val, tuple):
         return tuple(_safe_clone(x) for x in val)
     try:

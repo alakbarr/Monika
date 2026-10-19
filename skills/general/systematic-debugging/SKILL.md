@@ -1,6 +1,6 @@
 ---
 name: systematic-debugging
-description: "Scientific root-cause analysis, log inspection, and defect remediation for Monika."
+description: "Root-cause analysis, log inspection, and defect remediation for Monika."
 category: general
 version: 1.1.0
 consumers: [chat_agent, human_reference]

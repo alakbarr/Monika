@@ -117,10 +117,10 @@ class RssBaseScraper:
 
                 news_list.append(
                     ScrapedNews(
-                        title=title.strip(),
-                        url=url,
+                        title=str(title).strip(),
+                        url=str(url),
                         source=f"RSS ({self.source_name})",
-                        timestamp=normalized_ts,
+                        timestamp=str(normalized_ts),
                         summary=summary,
                     )
                 )

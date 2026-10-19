@@ -1422,8 +1422,25 @@ class StrategySynthesisScheduler:
         # Persist to disk and verify integrity
         file_path = self.SYNTHESIZED_DIR / f"{strategy_id}.py"
         try:
-            file_path.write_text(code_str, encoding="utf-8")
-            lint_ok, lint_err = self._lint_check_code(code_str)
+            formatted_code = code_str
+            try:
+                import subprocess
+                import sys
+
+                res = subprocess.run(
+                    [sys.executable, "-m", "ruff", "format", "-"],
+                    input=code_str,
+                    text=True,
+                    capture_output=True,
+                    timeout=5,
+                )
+                if res.returncode == 0 and res.stdout:
+                    formatted_code = res.stdout
+            except Exception as fe:
+                logger.debug(f"[StrategySynthesis] Ruff formatting skipped for {strategy_id}: {fe}")
+
+            file_path.write_text(formatted_code, encoding="utf-8")
+            lint_ok, lint_err = self._lint_check_code(formatted_code)
             if not lint_ok:
                 logger.error(f"[StrategySynthesis] Post-write lint verification failed for {strategy_id}: {lint_err}")
                 if file_path.exists():

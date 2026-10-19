@@ -395,6 +395,17 @@ class PluginEngine:
     def register_plugin_instance(self, plugin: TradingPlugin) -> None:
         """Register a pre-instantiated plugin (e.g. builtins) and bind PluginContext."""
         pid = plugin.metadata.id
+        from monika.application.plugins.engine.installer import is_package_revoked
+
+        pkg_name = getattr(plugin.metadata, "package", "") or pid
+        for identifier in (pid, pkg_name):
+            revoked, reason = is_package_revoked(str(identifier))
+            if revoked:
+                logger.critical(
+                    f"[PluginEngine] CRITICAL SECURITY: Blocked revoked/blacklisted plugin '{pid}' ({reason})"
+                )
+                return
+
         self.plugins[pid] = plugin
 
         # Bind or create PluginContext
@@ -549,8 +560,16 @@ class PluginEngine:
 
                 eps = [ep for ep in pkg_resources.iter_entry_points("monika.plugins")]
 
+            from monika.application.plugins.engine.installer import is_package_revoked
+
             for ep in eps:
                 try:
+                    revoked, reason = is_package_revoked(ep.name)
+                    if revoked:
+                        logger.critical(
+                            f"[PluginEngine] CRITICAL SECURITY: Blocked revoked entry_point '{ep.name}': {reason}"
+                        )
+                        continue
                     plugin_cls = ep.load()
                     if isinstance(plugin_cls, type) and issubclass(plugin_cls, TradingPlugin):
                         inst = plugin_cls()
@@ -591,6 +610,18 @@ class PluginEngine:
                         raw = yaml.safe_load(f) or {}
 
                     pid = raw.get("id") or raw.get("name") or os.path.basename(root)
+                    pkg = raw.get("package", "")
+                    from monika.application.plugins.engine.installer import is_package_revoked
+
+                    revoked, reason = is_package_revoked(str(pid))
+                    if not revoked and pkg:
+                        revoked, reason = is_package_revoked(str(pkg))
+                    if revoked:
+                        logger.critical(
+                            f"[PluginEngine] CRITICAL SECURITY: Blocked revoked directory plugin '{pid}': {reason}"
+                        )
+                        continue
+
                     name = raw.get("name", pid)
                     version = str(raw.get("version", "1.0.0"))
                     cat_str = raw.get("category", "middleware").lower()

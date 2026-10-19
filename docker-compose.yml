@@ -10,7 +10,7 @@ volumes:
 
 services:
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg16
     container_name: monika-db
     restart: unless-stopped
     networks:
@@ -18,7 +18,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-monika_trading}
       POSTGRES_USER: ${POSTGRES_USER:-monika}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_docker_secure_password}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Error: POSTGRES_PASSWORD must be set in .env}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -44,13 +44,13 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-      - ./config/settings.yaml:/app/config/settings.yaml
+      - ./config:/app/config
     env_file:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/src
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-monika}:${POSTGRES_PASSWORD:-changeme_docker_secure_password}@db:5432/${POSTGRES_DB:-monika_trading}
+      - "DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-monika}:${POSTGRES_PASSWORD:?Error: POSTGRES_PASSWORD must be set in .env}@db:5432/${POSTGRES_DB:-monika_trading}"
       - DASHBOARD_HOST=0.0.0.0
       - DASHBOARD_PORT=8000
     deploy:

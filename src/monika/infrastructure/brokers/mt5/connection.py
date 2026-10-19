@@ -85,7 +85,7 @@ class MT5ConnectionMixin(MT5MixinBase):
 
         self._connected = False
         self._timeframe_map: dict[str, int] = {}
-        self.paper_trading = self.settings.get("paper_trading", {}).get("enabled", False)
+        self.paper_trading = self.settings.get("paper_trading", {}).get("enabled", True)
         # Dedicated single-thread executor for thread-affine MetaTrader5 COM API calls
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="MT5Worker")
         self._priority_queue: Optional[asyncio.PriorityQueue[Any]] = None

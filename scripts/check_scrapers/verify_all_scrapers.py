@@ -48,7 +48,11 @@ def verify_fxssi() -> Dict[str, Any]:
 
     t0 = time.monotonic()
     fetcher = FXSSISentimentFetcher(session=None, headless=True)
-    res = fetcher.fetch_sync()
+    try:
+        res = fetcher.fetch_sync()
+    finally:
+        if hasattr(fetcher, "close") and callable(fetcher.close):
+            fetcher.close()
     duration = time.monotonic() - t0
 
     ratios = res.get("ratios", {})

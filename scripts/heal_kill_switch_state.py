@@ -33,10 +33,17 @@ async def heal():
         open_positions = (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
 
         closed_pos_count = 0
+        if open_positions:
+            logger.warning(
+                f"[SAFETY NOTICE] Found {len(open_positions)} open positions in DB. "
+                "Marking DB positions closed does NOT close floating tickets on MT5 terminal. "
+                "Verify MT5 broker orders manually if live trading."
+            )
         for pos in open_positions:
             logger.info(f"Closing lingering open position #{pos.id} ({pos.symbol} {pos.direction})")
             pos.status = "closed"
             pos.closed_at = now
+            pos.exit_reason = "data_healing"
             closed_pos_count += 1
 
         # 2. Close any open paper trade records
@@ -50,7 +57,15 @@ async def heal():
             paper.exit_reason = "data_healing"
 
         # 3. Clear SystemConfig kill_switch and pause flags
-        for key in ("kill_switch", "manual_trading_paused", "trading_paused", "system_paused"):
+        latch_keys = (
+            "kill_switch",
+            "system_kill_switch",
+            "manual_trading_paused",
+            "trading_paused",
+            "system_paused",
+            "budget_pause",
+        )
+        for key in latch_keys:
             cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == key))).scalar_one_or_none()
             if cfg:
                 logger.info(f"Resetting SystemConfig {key} from '{cfg.value}' to 'false'")
@@ -58,15 +73,14 @@ async def heal():
             else:
                 session.add(SystemConfig(key=key, value="false"))
 
-        # 4. Clear RiskState trading_paused
+        # 4. Clear RiskState trading_paused across all paused states
         recent_states = (
-            (await session.execute(select(RiskState).order_by(RiskState.date.desc()).limit(5))).scalars().all()
+            (await session.execute(select(RiskState).where(RiskState.trading_paused.is_(True)))).scalars().all()
         )
         for st in recent_states:
-            if st.trading_paused:
-                logger.info(f"Resetting RiskState ({st.date}) trading_paused to False")
-                st.trading_paused = False
-                st.reason = None
+            logger.info(f"Resetting RiskState ({st.date}) trading_paused to False")
+            st.trading_paused = False
+            st.reason = None
 
         # 5. Log audit trail
         session.add(

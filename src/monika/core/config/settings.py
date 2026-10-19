@@ -173,16 +173,18 @@ def load_settings(
             cfg_yaml = cfg_dir / "settings.yaml"
             cfg_example = cfg_dir / "settings.example.yaml"
 
-            if active_profile_path:
+            if active_profile_path and os.path.isfile(active_profile_path):
                 path = active_profile_path
-            elif cfg_yaml.exists():
+            elif cfg_yaml.is_file():
                 path = str(cfg_yaml)
-            elif cfg_example.exists():
+            elif cfg_example.is_file():
                 path = str(cfg_example)
-            elif os.path.exists("config/settings.yaml"):
+            elif os.path.isfile("config/settings.yaml"):
                 path = "config/settings.yaml"
-            else:
+            elif os.path.isfile("config/settings.example.yaml"):
                 path = "config/settings.example.yaml"
+            else:
+                path = str(cfg_example)
 
         good_backup_path = f"{path}.good"
         try:
@@ -275,6 +277,12 @@ def load_settings(
         has_root_pt = "paper_trading" in settings
         if has_trading_pt or has_root_pt:
             normalized_pt = get_paper_trading_config(settings)
+            settings["paper_trading"] = normalized_pt
+            if isinstance(trading_cfg, dict):
+                trading_cfg["paper_trading"] = normalized_pt
+        else:
+            # Enforce fail-closed paper trading invariant (AGENTS.md §1 & ADR-002)
+            normalized_pt = {"enabled": True}
             settings["paper_trading"] = normalized_pt
             if isinstance(trading_cfg, dict):
                 trading_cfg["paper_trading"] = normalized_pt

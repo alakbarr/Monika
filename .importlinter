@@ -26,3 +26,11 @@ source_modules =
     monika.application
 forbidden_modules =
     monika.interfaces
+
+[importlinter:contract:4]
+name = Infrastructure Layer Boundary
+type = forbidden
+source_modules =
+    monika.infrastructure
+forbidden_modules =
+    monika.interfaces

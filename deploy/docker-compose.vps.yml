@@ -32,7 +32,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-monika_trading}
       POSTGRES_USER: ${POSTGRES_USER:-monika}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-monika_vps_secure_password_2026}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Error: POSTGRES_PASSWORD must be set in .env}"
     volumes:
       - vps_postgres_data:/var/lib/postgresql/data
     ports:
@@ -68,7 +68,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/src
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-monika}:${POSTGRES_PASSWORD:-monika_vps_secure_password_2026}@db:5432/${POSTGRES_DB:-monika_trading}
+      - "DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-monika}:${POSTGRES_PASSWORD:?Error: POSTGRES_PASSWORD must be set in .env}@db:5432/${POSTGRES_DB:-monika_trading}"
       - DASHBOARD_HOST=0.0.0.0
       - DASHBOARD_PORT=8000
       - MT5_COMMON_FILES_PATH=/shared/mt5_bridge
@@ -82,7 +82,7 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -108,7 +108,6 @@ services:
       - DISPLAY=:99
       - WINEPREFIX=/wine/prefix
       - MT5_LOGIN=${MT5_ACCOUNT:-0}
-      - MT5_PASSWORD=${MT5_PASSWORD:-""}
       - MT5_SERVER=${MT5_SERVER:-"FBS-Real"}
     ports:
       - "127.0.0.1:18812:18812"

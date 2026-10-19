@@ -383,8 +383,7 @@ class Evaluator:
 
         mean_ret = float(np.mean(returns))
         std_ret = float(np.std(returns, ddof=1)) if len(returns) > 1 else 1e-6
-        avg_bars = np.mean([t["bars_held"] for t in trades]) if trades else 1.0
-        ann_factor = math.sqrt(252.0 * 24.0 / max(1.0, avg_bars))
+        ann_factor = math.sqrt(min(252.0, max(1.0, float(total_trades))))
         sharpe_ratio = round(float((mean_ret / (std_ret + 1e-9)) * ann_factor), 2)
 
         equity = 1.0

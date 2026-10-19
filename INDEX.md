@@ -4128,6 +4128,12 @@
 #### `__init__.py` - *Monika Domain Ports & Interfaces.*
 - **Path**: [`src/monika/domain/ports/__init__.py`](src/monika/domain/ports/__init__.py)
 
+#### `event_publisher.py` - *Domain Event Publisher Port.*
+- **Path**: [`src/monika/domain/ports/event_publisher.py`](src/monika/domain/ports/event_publisher.py)
+- **Classes**:
+  - `class EventPublisherPort(Protocol)`: Protocol for emitting audit, telemetry, and business events.
+    - `async emit(session: Any, event_type: str, payload: dict[str, Any], ...) -> Any` - *Emit a domain or system event.*
+
 #### `execution.py` - *Domain Broker & Execution Port.*
 - **Path**: [`src/monika/domain/ports/execution.py`](src/monika/domain/ports/execution.py)
 - **Classes**:
@@ -4421,7 +4427,13 @@
   - `register_strategy_factor_family_resolver(resolver: Any) -> None`: Register strategy factor family resolver from application layer.
   - `get_strategy_factor_family(strategy_id: str | None) -> str`: Resolves factor family for given strategy id via registered resolver.
   - `register_broker_client_factory(factory: Any) -> None`: Register factory providing broker client implementation to domain risk.
-  - `get_default_broker_client(settings: Any | None) -> Any`: Returns registered default broker client or None.
+  - `get_default_broker_client(settings: Any | None) -> Any`: Returns registered default broker client or fallback.
+  - `register_event_publisher(publisher: Any) -> None`: Register domain event publisher implementation.
+  - `get_default_event_publisher() -> Any`: Returns registered event publisher or fallback.
+  - `register_notifier(notifier: Any) -> None`: Register domain emergency notifier implementation.
+  - `get_default_notifier() -> Any`: Returns registered notifier or fallback.
+  - `register_session_factory(factory: Any) -> None`: Register database session factory for domain risk state queries.
+  - `get_default_session_factory() -> Any`: Returns registered database session factory or fallback.
 
 #### `position_sizing.py` - *Position Sizing Engine — Perhitungan lot berbasis risiko persentase (fixed-fractional).*
 - **Path**: [`src/monika/domain/risk/position_sizing.py`](src/monika/domain/risk/position_sizing.py)

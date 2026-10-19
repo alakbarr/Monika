@@ -167,9 +167,10 @@ class ReportGenerator:
             self.run.final_equity = round(float(initial_eq + tot_pnl), 2)
 
         # 6. Wilson Score 95% Confidence Interval for Win Rate
-        if self.run.total_trades > 0:
+        tot_trades = self.run.total_trades or 0
+        if tot_trades > 0:
             z = 1.96  # 95% CI
-            n = float(self.run.total_trades)
+            n = float(tot_trades)
             p = float(len(wins)) / n
             denominator = 1.0 + (z**2) / n
             centre_adjusted = p + (z**2) / (2.0 * n)
@@ -210,9 +211,10 @@ class ReportGenerator:
         else:
             self.ulcer_index = 0.0
 
-        if self.run.max_drawdown_pct > 0 and len(daily_returns) > 1:
+        max_dd = float(self.run.max_drawdown_pct or 0.0)
+        if max_dd > 0 and len(daily_returns) > 1:
             ann_return = float(np.mean(daily_returns) * ann_factor) * 100.0
-            self.calmar_ratio = round(ann_return / self.run.max_drawdown_pct, 2)
+            self.calmar_ratio = round(ann_return / max_dd, 2)
         else:
             self.calmar_ratio = 0.0
 

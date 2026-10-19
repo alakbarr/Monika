@@ -1,5 +1,6 @@
 ---
 title: Weekly CFTC Commitments of Traders (COT) Outlook
+description: Weekly CFTC Commitments of Traders institutional positioning outlook.
 suggested_schedule: "00:00 UTC Sat"
 timezone: "UTC"
 target_symbols: ["XAUUSD", "EURUSD", "GBPUSD", "XTIUSD"]

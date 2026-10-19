@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Dict, Any, List
 import math, numpy as np, pandas as pd, datetime, logging, decimal
 
+
 class SynthesizedStrategy_alpha_xtiusd_f30ff5(EdgeStrategy):
     strategy_id: str = "alpha_xtiusd_f30ff5"
     applicable_symbols: set = {"XTIUSD"}
@@ -29,7 +30,7 @@ class SynthesizedStrategy_alpha_xtiusd_f30ff5(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale=f"Symbol {symbol} is not applicable for this strategy.",
-                tags=["inapplicable"]
+                tags=["inapplicable"],
             )
 
         try:
@@ -44,7 +45,9 @@ class SynthesizedStrategy_alpha_xtiusd_f30ff5(EdgeStrategy):
             limit = int(settings.get("limit", self.settings.get("limit", 100)))
 
             # Fetch historical candles
-            candles = await self.get_historical_candles(session=session, symbol=symbol, timeframe=timeframe, limit=limit)
+            candles = await self.get_historical_candles(
+                session=session, symbol=symbol, timeframe=timeframe, limit=limit
+            )
             if not candles or len(candles) < max(atr_period, ema_period, rsi_period) + 5:
                 return EdgeSignal(
                     strategy_id=self.strategy_id,
@@ -53,29 +56,26 @@ class SynthesizedStrategy_alpha_xtiusd_f30ff5(EdgeStrategy):
                     valid=False,
                     confidence=0.0,
                     rationale="Insufficient candle history to calculate indicators.",
-                    tags=["insufficient_data"]
+                    tags=["insufficient_data"],
                 )
 
             # Build DataFrame safely
             data = []
             for c in candles:
                 try:
-                    close_val = c.close if hasattr(c, 'close') else c['close']
-                    high_val = c.high if hasattr(c, 'high') else c['high']
-                    low_val = c.low if hasattr(c, 'low') else c['low']
-                    open_val = c.open if hasattr(c, 'open') else c['open']
+                    close_val = c.close if hasattr(c, "close") else c["close"]
+                    high_val = c.high if hasattr(c, "high") else c["high"]
+                    low_val = c.low if hasattr(c, "low") else c["low"]
+                    open_val = c.open if hasattr(c, "open") else c["open"]
                 except Exception:
-                    close_val = c['close']
-                    high_val = c['high']
-                    low_val = c['low']
-                    open_val = c['open']
-                
-                data.append({
-                    'open': float(open_val),
-                    'high': float(high_val),
-                    'low': float(low_val),
-                    'close': float(close_val)
-                })
+                    close_val = c["close"]
+                    high_val = c["high"]
+                    low_val = c["low"]
+                    open_val = c["open"]
+
+                data.append(
+                    {"open": float(open_val), "high": float(high_val), "low": float(low_val), "close": float(close_val)}
+                )
 
             df = pd.DataFrame(data)
             df.replace([np.inf, -np.inf], np.nan, inplace=True)
@@ -83,25 +83,25 @@ class SynthesizedStrategy_alpha_xtiusd_f30ff5(EdgeStrategy):
             df.bfill(inplace=True)
 
             # Calculate Indicators
-            df['prev_close'] = df['close'].shift(1)
-            df['tr1'] = df['high'] - df['low']
-            df['tr2'] = (df['high'] - df['prev_close']).abs()
-            df['tr3'] = (df['low'] - df['prev_close']).abs()
-            df['tr'] = df[['tr1', 'tr2', 'tr3']].max(axis=1)
-            
-            df['atr'] = df['tr'].rolling(window=atr_period, min_periods=1).mean()
-            df['ema'] = df['close'].ewm(span=ema_period, adjust=False, min_periods=1).mean()
+            df["prev_close"] = df["close"].shift(1)
+            df["tr1"] = df["high"] - df["low"]
+            df["tr2"] = (df["high"] - df["prev_close"]).abs()
+            df["tr3"] = (df["low"] - df["prev_close"]).abs()
+            df["tr"] = df[["tr1", "tr2", "tr3"]].max(axis=1)
+
+            df["atr"] = df["tr"].rolling(window=atr_period, min_periods=1).mean()
+            df["ema"] = df["close"].ewm(span=ema_period, adjust=False, min_periods=1).mean()
 
             # RSI Calculation
-            delta = df['close'].diff()
+            delta = df["close"].diff()
             gain = (delta.where(delta > 0, 0.0)).rolling(window=rsi_period, min_periods=1).mean()
             loss = (-delta.where(delta < 0, 0.0)).rolling(window=rsi_period, min_periods=1).mean()
             rs = gain / (loss + 1e-9)
-            df['rsi'] = 100.0 - (100.0 / (1.0 + rs))
+            df["rsi"] = 100.0 - (100.0 / (1.0 + rs))
 
             # Exhaustion Bands
-            df['upper_band'] = df['ema'] + (atr_multiplier * df['atr'])
-            df['lower_band'] = df['ema'] - (atr_multiplier * df['atr'])
+            df["upper_band"] = df["ema"] + (atr_multiplier * df["atr"])
+            df["lower_band"] = df["ema"] - (atr_multiplier * df["atr"])
 
             # Final sanitization
             df.bfill(inplace=True)
@@ -115,17 +115,17 @@ class SynthesizedStrategy_alpha_xtiusd_f30ff5(EdgeStrategy):
                     valid=False,
                     confidence=0.0,
                     rationale="Processed DataFrame is empty.",
-                    tags=["empty_df"]
+                    tags=["empty_df"],
                 )
 
             # Extract latest values
             last_row = df.iloc[-1]
-            close = float(last_row['close'])
-            ema = float(last_row['ema'])
-            atr = float(last_row['atr'])
-            rsi = float(last_row['rsi'])
-            upper_band = float(last_row['upper_band'])
-            lower_band = float(last_row['lower_band'])
+            close = float(last_row["close"])
+            ema = float(last_row["ema"])
+            atr = float(last_row["atr"])
+            rsi = float(last_row["rsi"])
+            upper_band = float(last_row["upper_band"])
+            lower_band = float(last_row["lower_band"])
 
             direction = None
             confidence = 0.0
@@ -143,7 +143,7 @@ class SynthesizedStrategy_alpha_xtiusd_f30ff5(EdgeStrategy):
                         f"with RSI ({rsi:.1f}) oversold. Expecting mean reversion to EMA ({ema:.3f})."
                     )
                     tags = ["mean_reversion", "oversold_exhaustion"]
-                
+
                 # Sell Setup: Price pierces upper band and RSI is overbought
                 elif close > upper_band and rsi > rsi_overbought:
                     direction = "sell"
@@ -164,7 +164,7 @@ class SynthesizedStrategy_alpha_xtiusd_f30ff5(EdgeStrategy):
                 valid=valid,
                 confidence=float(confidence),
                 rationale=rationale,
-                tags=tags
+                tags=tags,
             )
 
         except Exception as e:
@@ -176,5 +176,5 @@ class SynthesizedStrategy_alpha_xtiusd_f30ff5(EdgeStrategy):
                 valid=False,
                 confidence=0.0,
                 rationale=f"Calculation error: {str(e)}",
-                tags=["error"]
+                tags=["error"],
             )

@@ -1,6 +1,6 @@
 ---
 name: academic-literature
-description: "Synthesize mathematical formulations and alpha mechanics from quantitative papers."
+description: "Synthesize mathematical formulations and alpha mechanics from papers."
 category: general
 version: 1.1.0
 consumers: [chat_agent, human_reference]

@@ -199,6 +199,7 @@ class DatabaseConfig(SubscriptableConfig):
     echo: bool | None = False
     pool_size: int | None = Field(default=5, ge=1, le=100)
     max_overflow: int | None = Field(default=10, ge=0, le=100)
+    backup: dict[str, Any] | None = Field(default_factory=dict)
 
 
 class TelegramConfig(SubscriptableConfig):
@@ -226,6 +227,33 @@ class TradingAgentConfig(SubscriptableConfig):
     database: DatabaseConfig | None = None
     telegram: TelegramConfig | None = None
     plugins: dict[str, Any] | None = Field(default_factory=dict)
+    learning: dict[str, Any] | None = Field(default_factory=dict)
+    adversarial_check: dict[str, Any] | None = Field(default_factory=dict)
+    confidence_calibration: dict[str, Any] | None = Field(default_factory=dict)
+    data_quality: dict[str, Any] | None = Field(default_factory=dict)
+    ssvp: dict[str, Any] | None = Field(default_factory=dict)
+    news_classification_control: dict[str, Any] | None = Field(default_factory=dict)
+    scraping: dict[str, Any] | None = Field(default_factory=dict)
+    data_sources: dict[str, Any] | None = Field(default_factory=dict)
+    notifications: dict[str, Any] | None = Field(default_factory=dict)
+    claude: dict[str, Any] | None = Field(default_factory=dict)
+    cost_tracking: dict[str, Any] | None = Field(default_factory=dict)
+    data_retention_days: int | dict[str, Any] | None = None
+    backtest: dict[str, Any] | None = Field(default_factory=dict)
+    analysis: dict[str, Any] | None = Field(default_factory=dict)
+    agent_architecture: dict[str, Any] | None = Field(default_factory=dict)
+    search: dict[str, Any] | None = Field(default_factory=dict)
+    pattern_similarity: dict[str, Any] | None = Field(default_factory=dict)
+    scenario_tree: dict[str, Any] | None = Field(default_factory=dict)
+    context_compaction: dict[str, Any] | None = Field(default_factory=dict)
+    progressive_tools: dict[str, Any] | None = Field(default_factory=dict)
+    gepa_evolution: dict[str, Any] | None = Field(default_factory=dict)
+    verification_engine: dict[str, Any] | None = Field(default_factory=dict)
+    alpha_discovery: dict[str, Any] | None = Field(default_factory=dict)
+    strategy_synthesis: dict[str, Any] | None = Field(default_factory=dict)
+    news_classification: dict[str, Any] | None = Field(default_factory=dict)
+    workspace: dict[str, Any] | None = Field(default_factory=dict)
+    mcp: dict[str, Any] | None = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_all_sections(self) -> TradingAgentConfig:

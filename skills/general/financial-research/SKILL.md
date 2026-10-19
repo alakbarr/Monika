@@ -1,6 +1,6 @@
 ---
 name: financial-research
-description: "Cross-asset research, prediction market analysis, derivatives positioning, and sentiment distillation."
+description: "Cross-asset research, derivatives positioning, and sentiment distillation."
 category: general
 version: 1.1.0
 consumers: [chat_agent, human_reference]

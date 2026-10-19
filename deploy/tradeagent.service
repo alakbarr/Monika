@@ -8,13 +8,13 @@ Wants=network-online.target
 Type=simple
 User=tradeagent
 Group=tradeagent
-WorkingDirectory=/opt/Monika
-Environment="PYTHONPATH=/opt/Monika/src"
+WorkingDirectory=/opt/monika
+Environment="PYTHONPATH=/opt/monika/src"
 Environment="PYTHONUNBUFFERED=1"
 Environment="DASHBOARD_HOST=127.0.0.1"
 Environment="DASHBOARD_PORT=8000"
-EnvironmentFile=-/opt/Monika/.env
-ExecStart=/opt/Monika/.venv/bin/python -m monika.interfaces.cli.main run --dry-run
+EnvironmentFile=-/opt/monika/.env
+ExecStart=/opt/monika/venv/bin/python -m monika.interfaces.cli.main run --mode paper
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=15s
@@ -27,6 +27,7 @@ LimitNPROC=4096
 # Security hardening directives
 ProtectSystem=full
 ProtectHome=read-only
+ReadWritePaths=/opt/monika/logs /opt/monika/data
 PrivateTmp=true
 NoNewPrivileges=true
 

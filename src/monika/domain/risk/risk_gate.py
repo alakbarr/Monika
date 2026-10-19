@@ -466,10 +466,9 @@ class RiskGate(
         if not is_backtest:
             await self._log_verdict(session, symbol, direction, sizing, verdict)
             try:
-                import importlib
+                from monika.domain.risk.ports import get_default_event_publisher
 
-                store_mod = importlib.import_module("monika.infrastructure.database.event_store")
-                event_store_cls = getattr(store_mod, "TradingEventStore", None)
+                event_store_cls = get_default_event_publisher()
                 if event_store_cls and hasattr(event_store_cls, "emit"):
                     await event_store_cls.emit(
                         session=session,
@@ -744,12 +743,10 @@ class RiskGate(
             logger.warning(f"TRADING AUTO-PAUSED: {state.reason}")
 
             try:
-                import importlib
+                from monika.domain.risk.ports import get_default_notifier
 
-                notifier_mod = importlib.import_module("monika.infrastructure.infra.notifier")
-                notifier_cls = getattr(notifier_mod, "AgentNotifier", None)
-                if notifier_cls:
-                    notifier = notifier_cls()
+                notifier = get_default_notifier()
+                if notifier and hasattr(notifier, "send_critical"):
                     await notifier.send_critical(f"[STOP] <b>TRADING AUTO-PAUSED</b>\n{state.reason}")
             except Exception as e:
                 logger.error(f"Failed to notify auto-pause: {e}")
@@ -939,14 +936,15 @@ async def get_current_risk_state(session: Any | None = None, settings: dict | No
     """Mengambil snapshot status risiko portofolio & drawdown saat ini."""
     if not session:
         try:
-            import importlib
+            from monika.domain.risk.ports import get_default_session_factory
 
-            db_mod = importlib.import_module("monika.infrastructure.database.db")
-            get_session_fn = getattr(db_mod, "get_session")
-            async with get_session_fn() as sess:
-                return await get_current_risk_state(session=sess, settings=settings)
+            session_fn = get_default_session_factory()
+            if session_fn:
+                async with session_fn() as sess:
+                    return await get_current_risk_state(session=sess, settings=settings)
         except Exception:
-            return {"status": "unavailable", "message": "No active DB session"}
+            pass
+        return {"status": "unavailable", "message": "No active DB session"}
 
     from sqlalchemy import func, select
 
@@ -977,20 +975,17 @@ async def get_current_risk_state(session: Any | None = None, settings: dict | No
     # Fetch live equity from MT5 or fallback to paper trading initial balance
     live_equity = 0.0
     try:
-        import importlib
+        from monika.domain.risk.ports import get_default_broker_client
 
-        broker_mod = importlib.import_module("monika.infrastructure.brokers.mt5_client")
-        get_client_fn = getattr(broker_mod, "get_mt5_client", None)
-        if callable(get_client_fn):
-            client: Any = get_client_fn(settings)
-            if client:
-                try:
-                    async with asyncio.timeout(2.0):
-                        acc = await client.get_account_info()
-                        if acc and acc.get("equity"):
-                            live_equity = float(acc["equity"])
-                except Exception:
-                    pass
+        client: Any = get_default_broker_client(settings)
+        if client and hasattr(client, "get_account_info"):
+            try:
+                async with asyncio.timeout(2.0):
+                    acc = await client.get_account_info()
+                    if acc and acc.get("equity"):
+                        live_equity = float(acc["equity"])
+            except Exception:
+                pass
     except Exception:
         pass
     if live_equity <= 0:

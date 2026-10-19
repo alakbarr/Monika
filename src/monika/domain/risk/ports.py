@@ -211,6 +211,9 @@ class RiskPortRegistry:
     evt_tail_calculator: Any | None = None
     strategy_factor_family_resolver: Any | None = None
     broker_client_factory: Any | None = None
+    event_publisher: Any | None = None
+    notifier: Any | None = None
+    session_factory: Any | None = None
 
     @classmethod
     def reset(cls) -> None:
@@ -226,6 +229,9 @@ class RiskPortRegistry:
         cls.strategy_factor_family_resolver = None
         cls.broker_client_factory = None
         cls.suspended_symbols_provider = None
+        cls.event_publisher = None
+        cls.notifier = None
+        cls.session_factory = None
 
 
 def register_suspended_symbols_provider(provider: Any) -> None:
@@ -430,8 +436,86 @@ def register_broker_client_factory(factory: Any) -> None:
     RiskPortRegistry.broker_client_factory = factory
 
 
+def _load_fallback_broker_client(settings: Any | None = None) -> Any:
+    try:
+        import importlib
+
+        broker_mod = importlib.import_module("monika.infrastructure.brokers.mt5_client")
+        fn = getattr(broker_mod, "get_mt5_client", None)
+        return fn(settings) if callable(fn) else None
+    except Exception:
+        return None
+
+
 def get_default_broker_client(settings: Any | None = None) -> Any:
-    """Returns registered default broker client or None."""
+    """Returns registered default broker client or fallback."""
     if RiskPortRegistry.broker_client_factory is not None:
         return RiskPortRegistry.broker_client_factory(settings)
-    return None
+    return _load_fallback_broker_client(settings)
+
+
+def register_event_publisher(publisher: Any) -> None:
+    """Register domain event publisher implementation."""
+    RiskPortRegistry.event_publisher = publisher
+
+
+def _load_fallback_event_publisher() -> Any:
+    try:
+        import importlib
+
+        store_mod = importlib.import_module("monika.infrastructure.database.event_store")
+        return getattr(store_mod, "TradingEventStore", None)
+    except Exception:
+        return None
+
+
+def get_default_event_publisher() -> Any:
+    """Returns registered event publisher or fallback."""
+    if RiskPortRegistry.event_publisher is not None:
+        return RiskPortRegistry.event_publisher
+    return _load_fallback_event_publisher()
+
+
+def register_notifier(notifier: Any) -> None:
+    """Register domain emergency notifier implementation."""
+    RiskPortRegistry.notifier = notifier
+
+
+def _load_fallback_notifier() -> Any:
+    try:
+        import importlib
+
+        mod = importlib.import_module("monika.infrastructure.infra.notifier")
+        cls = getattr(mod, "AgentNotifier", None)
+        return cls() if cls else None
+    except Exception:
+        return None
+
+
+def get_default_notifier() -> Any:
+    """Returns registered notifier or fallback."""
+    if RiskPortRegistry.notifier is not None:
+        return RiskPortRegistry.notifier
+    return _load_fallback_notifier()
+
+
+def register_session_factory(factory: Any) -> None:
+    """Register database session factory for domain risk state queries."""
+    RiskPortRegistry.session_factory = factory
+
+
+def _load_fallback_session_factory() -> Any:
+    try:
+        import importlib
+
+        db_mod = importlib.import_module("monika.infrastructure.database.db")
+        return getattr(db_mod, "get_session", None)
+    except Exception:
+        return None
+
+
+def get_default_session_factory() -> Any:
+    """Returns registered database session factory or fallback."""
+    if RiskPortRegistry.session_factory is not None:
+        return RiskPortRegistry.session_factory
+    return _load_fallback_session_factory()

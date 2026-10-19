@@ -1,6 +1,6 @@
 ---
 name: data-science-modeling
-description: "Vectorized data processing, TimesFM time-series forecasting, and statistical modeling."
+description: "Vectorized data processing, TimesFM forecasting, and statistical modeling."
 category: general
 version: 1.1.0
 consumers: [chat_agent, human_reference]

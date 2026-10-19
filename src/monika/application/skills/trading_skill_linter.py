@@ -209,5 +209,39 @@ class TradingSkillLinter:
             if ":" in line:
                 k, v = line.split(":", 1)
                 data[k.strip().lower()] = v.strip().strip("'\"")
-
         return data, body
+
+
+if __name__ == "__main__":
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser(description="Monika Trading Skill Linter")
+    parser.add_argument("--dir", default="skills", help="Directory containing skill markdown files")
+    parser.add_argument("--file", default=None, help="Specific markdown file to lint")
+    args = parser.parse_args()
+
+    linter = TradingSkillLinter()
+    has_errors = False
+
+    if args.file:
+        file_path = Path(args.file)
+        issues = linter.lint_file(file_path)
+        for issue in issues:
+            print(issue)
+            if issue.severity == "ERROR":
+                has_errors = True
+    else:
+        results = linter.lint_directory(args.dir)
+        for key, issues in results.items():
+            if "/" in key or not key.endswith(".md"):
+                for issue in issues:
+                    print(issue)
+                    if issue.severity == "ERROR":
+                        has_errors = True
+
+    if has_errors:
+        sys.exit(1)
+    else:
+        print("[SUCCESS] All skills pass quality linting.")
+        sys.exit(0)

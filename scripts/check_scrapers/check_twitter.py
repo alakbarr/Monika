@@ -27,13 +27,11 @@ if _src_dir not in sys.path:
 # Muat environment variables dari file .env
 try:
     from dotenv import load_dotenv
+    from monika.core.paths import REPO_ROOT
 
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    root_dir = os.path.abspath(os.path.join(base_dir, ".."))
-    for p in [os.path.join(root_dir, ".env"), os.path.join(base_dir, ".env")]:
-        if os.path.exists(p):
-            load_dotenv(dotenv_path=p)
-            break
+    env_path = REPO_ROOT / ".env"
+    if env_path.is_file():
+        load_dotenv(dotenv_path=env_path)
 except Exception:
     pass
 

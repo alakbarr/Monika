@@ -1,6 +1,6 @@
 ---
 name: institutional-document-reporting
-description: "Institutional document and pitch deck generation (Word .docx, PowerPoint .pptx, Excel .xlsx, PDF tearsheets)."
+description: "Document generation (Word .docx, PowerPoint .pptx, Excel .xlsx, PDF)."
 category: general
 version: 1.1.0
 consumers: [chat_agent, human_reference]

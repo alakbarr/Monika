@@ -1,6 +1,6 @@
 ---
 name: desktop-gui-computer-use
-description: "Desktop GUI Interaction & Computer Use Playbook: Screen inspection, MetaTrader 5 window snapping, mouse click automation, and keystroke dispatching."
+description: "Desktop GUI automation, window management, and screen inspection."
 category: GENERAL
 version: 1.0.0
 platforms: [windows]

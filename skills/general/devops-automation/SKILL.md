@@ -1,6 +1,6 @@
 ---
 name: devops-automation
-description: "Monika daemon supervision, Docker VPS deployment, and graceful process management."
+description: "Monika daemon supervision, VPS deployment, and process management."
 category: general
 version: 1.1.0
 consumers: [chat_agent, human_reference]

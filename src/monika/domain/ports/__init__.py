@@ -9,6 +9,7 @@ Provides pure abstract domain protocols for persistence, Unit of Work, and
 external boundaries, upholding the Dependency Inversion Principle.
 """
 
+from monika.domain.ports.event_publisher import EventPublisherPort
 from monika.domain.ports.execution import BrokerPort, ExecutionPort
 from monika.domain.ports.llm import LlmPort, ModelProviderPort
 from monika.domain.ports.market_data import MarketDataPort
@@ -24,6 +25,7 @@ from monika.domain.ports.repository import (
 from monika.domain.ports.unit_of_work import UnitOfWorkPort
 
 __all__ = [
+    "EventPublisherPort",
     "PositionRepositoryPort",
     "TradeProposalRepositoryPort",
     "ActivityLogRepositoryPort",

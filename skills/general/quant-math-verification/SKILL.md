@@ -1,6 +1,6 @@
 ---
 name: quant-math-verification
-description: "Institutional quantitative mathematics, formula verification, and statistical edge calculation standards."
+description: "Quantitative mathematics, formula verification, and statistical edge math."
 category: GENERAL
 version: 1.0.0
 platforms: [windows, linux, macos]

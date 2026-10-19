@@ -146,6 +146,219 @@ ORDER_STATE_REQUEST_ADD: int
 ORDER_STATE_REQUEST_MODIFY: int
 ORDER_STATE_REQUEST_CANCEL: int
 
+# Data structures
+class SymbolInfo:
+    custom: bool
+    chart_mode: int
+    select: bool
+    visible: bool
+    session_deals: int
+    session_buy_orders: int
+    session_sell_orders: int
+    volume: float
+    volumehigh: float
+    volumelow: float
+    time: int
+    digits: int
+    spread: int
+    spread_float: bool
+    ticks_bookdepth: int
+    trade_calc_mode: int
+    trade_mode: int
+    start_time: int
+    expiration_time: int
+    trade_stops_level: int
+    trade_freeze_level: int
+    trade_exemode: int
+    swap_mode: int
+    swap_rollover3days: int
+    margin_hedged_use_checking: bool
+    expiration_mode: int
+    filling_mode: int
+    order_mode: int
+    order_gtc_mode: int
+    option_mode: int
+    option_right: int
+    bid: float
+    bidhigh: float
+    bidlow: float
+    ask: float
+    askhigh: float
+    asklow: float
+    last: float
+    lasthigh: float
+    lastlow: float
+    volume_real: float
+    volumehigh_real: float
+    volumelow_real: float
+    option_strike: float
+    point: float
+    trade_tick_value: float
+    trade_tick_value_profit: float
+    trade_tick_value_loss: float
+    trade_tick_size: float
+    trade_contract_size: float
+    trade_accrued_interest: float
+    trade_face_value: float
+    trade_liquidity_rate: float
+    volume_min: float
+    volume_max: float
+    volume_step: float
+    volume_limit: float
+    swap_long: float
+    swap_short: float
+    margin_initial: float
+    margin_maintenance: float
+    session_volume: float
+    session_turnover: float
+    session_interest: float
+    session_buy_orders_volume: float
+    session_sell_orders_volume: float
+    session_open: float
+    session_close: float
+    session_aw: float
+    session_tx: float
+    session_pv: float
+    session_re: float
+    currency_base: str
+    currency_profit: str
+    currency_margin: str
+    bank: str
+    description: str
+    exchange: str
+    formula: str
+    isin: str
+    name: str
+    page: str
+    path: str
+    def _asdict(self) -> dict[str, Any]: ...
+
+class AccountInfo:
+    login: int
+    trade_mode: int
+    leverage: int
+    limit_orders: int
+    margin_so_mode: int
+    trade_allowed: bool
+    trade_expert: bool
+    margin_mode: int
+    currency_digits: int
+    fifo: bool
+    balance: float
+    credit: float
+    profit: float
+    equity: float
+    margin: float
+    margin_free: float
+    margin_level: float
+    margin_so_call: float
+    margin_so_so: float
+    margin_initial: float
+    margin_maintenance: float
+    assets: float
+    liabilities: float
+    commission_blocked: float
+    name: str
+    server: str
+    currency: str
+    company: str
+    def _asdict(self) -> dict[str, Any]: ...
+
+class Tick:
+    time: int
+    bid: float
+    ask: float
+    last: float
+    volume: float
+    time_msc: int
+    flags: int
+    volume_real: float
+    def _asdict(self) -> dict[str, Any]: ...
+
+class OrderSendResult:
+    retcode: int
+    deal: int
+    order: int
+    volume: float
+    price: float
+    bid: float
+    ask: float
+    comment: str
+    request_id: int
+    retcode_external: int
+    request: Any
+    def _asdict(self) -> dict[str, Any]: ...
+
+class TradePosition:
+    ticket: int
+    time: int
+    time_msc: int
+    time_update: int
+    time_update_msc: int
+    type: int
+    magic: int
+    identifier: int
+    reason: int
+    volume: float
+    price_open: float
+    sl: float
+    tp: float
+    price_current: float
+    swap: float
+    profit: float
+    symbol: str
+    comment: str
+    external_id: str
+    def _asdict(self) -> dict[str, Any]: ...
+
+class TradeOrder:
+    ticket: int
+    time_setup: int
+    time_setup_msc: int
+    time_done: int
+    time_done_msc: int
+    time_expiration: int
+    type: int
+    type_time: int
+    type_filling: int
+    state: int
+    magic: int
+    position_id: int
+    position_by_id: int
+    reason: int
+    volume_initial: float
+    volume_current: float
+    price_open: float
+    sl: float
+    tp: float
+    price_current: float
+    price_stoplimit: float
+    symbol: str
+    comment: str
+    external_id: str
+    def _asdict(self) -> dict[str, Any]: ...
+
+class TradeDeal:
+    ticket: int
+    order: int
+    time: int
+    time_msc: int
+    type: int
+    entry: int
+    magic: int
+    position_id: int
+    reason: int
+    volume: float
+    price: float
+    commission: float
+    swap: float
+    profit: float
+    fee: float
+    symbol: str
+    comment: str
+    external_id: str
+    def _asdict(self) -> dict[str, Any]: ...
+
 # Functions
 def initialize(
     path: Optional[str] = ...,
@@ -159,11 +372,11 @@ def shutdown() -> None: ...
 def version() -> Tuple[int, int, str]: ...
 def last_error() -> Tuple[int, str]: ...
 def terminal_info() -> Any: ...
-def account_info() -> Any: ...
+def account_info() -> Optional[AccountInfo]: ...
 def symbols_total() -> int: ...
-def symbols_get(group: str = ...) -> Tuple[Any, ...]: ...
-def symbol_info(symbol: str) -> Any: ...
-def symbol_info_tick(symbol: str) -> Any: ...
+def symbols_get(group: str = ...) -> Tuple[SymbolInfo, ...]: ...
+def symbol_info(symbol: str) -> Optional[SymbolInfo]: ...
+def symbol_info_tick(symbol: str) -> Optional[Tick]: ...
 def symbol_select(symbol: str, enable: bool = ...) -> bool: ...
 def market_book_add(symbol: str) -> bool: ...
 def market_book_get(symbol: str) -> Optional[Tuple[Any, ...]]: ...
@@ -174,20 +387,20 @@ def copy_rates_range(symbol: str, timeframe: int, date_from: Any, date_to: Any) 
 def copy_ticks_from(symbol: str, date_from: Any, count: int, flags: int) -> Optional[np.ndarray]: ...
 def copy_ticks_range(symbol: str, date_from: Any, date_to: Any, flags: int) -> Optional[np.ndarray]: ...
 def orders_total() -> int: ...
-def orders_get(symbol: str = ..., group: str = ..., ticket: int = ...) -> Optional[Tuple[Any, ...]]: ...
+def orders_get(symbol: str = ..., group: str = ..., ticket: int = ...) -> Optional[Tuple[TradeOrder, ...]]: ...
 def order_calc_margin(action: int, symbol: str, volume: float, price: float) -> Optional[float]: ...
 def order_calc_profit(
     action: int, symbol: str, volume: float, price_open: float, price_close: float
 ) -> Optional[float]: ...
-def order_check(request: dict) -> Any: ...
-def order_send(request: dict) -> Any: ...
+def order_check(request: dict) -> OrderSendResult: ...
+def order_send(request: dict) -> OrderSendResult: ...
 def positions_total() -> int: ...
-def positions_get(symbol: str = ..., group: str = ..., ticket: int = ...) -> Optional[Tuple[Any, ...]]: ...
+def positions_get(symbol: str = ..., group: str = ..., ticket: int = ...) -> Optional[Tuple[TradePosition, ...]]: ...
 def history_orders_total(date_from: Any, date_to: Any) -> int: ...
 def history_orders_get(
     date_from: Any = ..., date_to: Any = ..., group: str = ..., ticket: int = ..., position: int = ...
-) -> Optional[Tuple[Any, ...]]: ...
+) -> Optional[Tuple[TradeOrder, ...]]: ...
 def history_deals_total(date_from: Any, date_to: Any) -> int: ...
 def history_deals_get(
     date_from: Any = ..., date_to: Any = ..., group: str = ..., ticket: int = ..., position: int = ...
-) -> Optional[Tuple[Any, ...]]: ...
+) -> Optional[Tuple[TradeDeal, ...]]: ...

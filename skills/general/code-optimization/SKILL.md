@@ -1,6 +1,6 @@
 ---
 name: code-optimization
-description: "Minimal, dependency-light, async-first software architecture and code optimization."
+description: "Async-first software architecture and code optimization."
 category: general
 version: 1.1.0
 consumers: [chat_agent, human_reference]

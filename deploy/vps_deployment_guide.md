@@ -72,6 +72,9 @@ cd /opt/monika
 # Initialize .env from template
 cp .env.example .env
 nano .env  # Configure AI API keys & broker credentials
+
+# Initialize settings.yaml from template
+cp config/settings.example.yaml config/settings.yaml
 ```
 
 For Wine RPC bridge deployments, verify:
@@ -116,7 +119,7 @@ To run Monika natively on a Linux host without Docker:
    ```bash
    pip install -r requirements.txt
    ```
-   *(Automatically installs `mt5linux` and `rpyc` on Linux).*
+   *(Installs core agent and `rpyc` on Linux).*
 
 3. **Start Xvfb and MT5 RPC Bridge**:
    ```bash
@@ -145,7 +148,7 @@ To run Monika natively on a Linux host without Docker:
 | Service | Image / Build | Role | Host Port |
 |---|---|---|---|
 | `db` | `pgvector/pgvector:pg16` | PostgreSQL database with pgvector extension | `127.0.0.1:5432` |
-| `agent` | `Dockerfile` | Monika Core (Python 3.11, Schedulers, FastAPI) | `127.0.0.1:8000` |
+| `agent` | `Dockerfile` | Monika Core (Python >= 3.14, Schedulers, FastAPI) | `127.0.0.1:8000` |
 | `mt5-wine` | `deploy/Dockerfile.mt5-wine` | Headless MetaTrader 5 via Wine + RPyC RPC Bridge | `127.0.0.1:18812` |
 
 ---

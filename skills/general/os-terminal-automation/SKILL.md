@@ -1,6 +1,6 @@
 ---
 name: os-terminal-automation
-description: "Universal Terminal & Process Execution Playbook: Controlled shell execution, process monitoring, background task supervision, and operator safety gating."
+description: "Controlled shell execution, process monitoring, and task supervision."
 category: GENERAL
 version: 1.0.0
 platforms: [windows, linux, macos]

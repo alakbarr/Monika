@@ -1,5 +1,6 @@
 ---
 title: Pre-Market London Liquidity & Macro Briefing
+description: Pre-market London liquidity and macro briefing playbook.
 suggested_schedule: "07:30 UTC Mon-Fri"
 timezone: "UTC"
 target_symbols: ["EURUSD", "GBPUSD", "XAUUSD", "USDJPY"]

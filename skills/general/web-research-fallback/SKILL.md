@@ -1,6 +1,6 @@
 ---
 name: web-research-fallback
-description: "Web research cascade: API, RSS, WebSearch, DrissionPage browser, and PDF parsing."
+description: "Web research cascade: API, RSS, WebSearch, browser, and PDF parsing."
 category: GENERAL
 version: 1.0.0
 platforms: [windows, linux, macos]
@@ -10,7 +10,7 @@ tags: [fallback, browser, pdf, paywall, cloudflare, scrape, read_url, web_search
 # Web Research Cascade & Anti-Block Fallback Playbook
 
 ## 1. Operating Principle
-When performing online research, reading articles, or gathering external intelligence, network and scraper failures are inevitable due to JavaScript rendering, Cloudflare protections, paywalls, or PDF formats. 
+When performing online research, reading articles, or gathering external intelligence, network and scraper failures are inevitable due to JavaScript rendering, Cloudflare protections, paywalls, or PDF formats.
 Monika implements a deterministic 4-tier fallback cascade to ensure zero information drop.
 
 ## 2. The 4-Tier Fallback Cascade

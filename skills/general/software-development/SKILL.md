@@ -1,6 +1,6 @@
 ---
 name: software-development
-description: "Surgical software engineering, safe refactoring, and quality invariants for Monika."
+description: "Surgical software engineering and quality invariants for Monika."
 category: general
 version: 1.1.0
 consumers: [chat_agent, human_reference]
