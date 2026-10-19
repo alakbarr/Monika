@@ -139,7 +139,7 @@ class TestActivityLogger:
         setup_logging(log_dir=log_dir, level=logging.INFO)
 
         httpx_logger = logging.getLogger("httpx")
-        secret_token = "7871591922:AAENRd20agWx3AZqMVnvokzGgCDoZ192sVY"
+        secret_token = "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ123456789"
         httpx_logger.info(f'HTTP Request: POST https://api.telegram.org/bot{secret_token}/getUpdates "HTTP/1.1 200 OK"')
 
         agent_log_path = os.path.join(log_dir, "agent.log")

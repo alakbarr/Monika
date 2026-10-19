@@ -2377,6 +2377,7 @@ Monika/
 │   │   └── test_simulation_and_oracles.py
 │   ├── execution/
 │   │   ├── __init__.py
+│   │   ├── test_audit_execution_path_remediation.py
 │   │   ├── test_broker_plugins.py
 │   │   ├── test_broker_registry.py
 │   │   ├── test_ea_bridge.py
@@ -2968,4 +2969,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 252 | **Total Tracked Files**: 2686
+**Total Tracked Directories**: 252 | **Total Tracked Files**: 2687
