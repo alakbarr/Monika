@@ -17,6 +17,7 @@ Includes:
 """
 
 import asyncio
+import inspect
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
@@ -61,10 +62,9 @@ async def handle_simulate_portfolio_drawdown(args: dict, **ctx) -> dict:
 
     # Base equity (fail-closed if unknown)
     equity = 0.0
+    margin_free = 0.0
     if client:
         try:
-            import inspect
-
             conn_call = client.ensure_connected()
             is_conn = (await conn_call) if inspect.isawaitable(conn_call) else bool(conn_call)
         except Exception:
