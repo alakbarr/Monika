@@ -180,7 +180,7 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         supports_caching=True,
         supports_structured_output=True,
         max_output_tokens=16384,
-        context_window=2097152,
+        context_window=1048576,
         prompt_cache_strategy="gemini_context",
         supports_native_thinking=True,
     ),

@@ -90,7 +90,10 @@ def downgrade() -> None:
     insp = sa.inspect(bind)
     existing_tables = set(insp.get_table_names())
 
-    if "llm_benchmark_result" in existing_tables:
+    if "llm_benchmark_result" in existing_tables and "llm_benchmark_run" in existing_tables:
+        op.drop_table("llm_benchmark_result")
+        op.drop_table("llm_benchmark_run")
+    elif "llm_benchmark_result" in existing_tables:
         existing_cols = {c["name"] for c in insp.get_columns("llm_benchmark_result")}
         with op.batch_alter_table("llm_benchmark_result") as batch_op:
             for col_name in (
