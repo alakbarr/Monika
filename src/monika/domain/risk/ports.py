@@ -263,14 +263,80 @@ def get_default_regime_classifier() -> Any:
     return RiskPortRegistry.regime_classifier_fn
 
 
+class DefaultTimesFMAlphaCalculator:
+    """Default domain fallback for TimesFM Quantile Asymmetry Skew Alpha Calculator."""
+
+    BULLISH_THRESHOLD: float = 1.35
+    BEARISH_THRESHOLD: float = 0.75
+
+    @classmethod
+    def calculate_skew_from_quantiles(
+        cls, quantiles: dict[str, Any], current_price: float | None = None
+    ) -> dict[str, Any]:
+        if not quantiles:
+            return {"valid": False, "reason": "No quantiles provided"}
+        try:
+            q10_raw = quantiles.get("q10")
+            q50_raw = quantiles.get("q50")
+            q90_raw = quantiles.get("q90")
+            if q10_raw is None or q50_raw is None or q90_raw is None:
+                return {"valid": False, "reason": "Missing required quantiles (q10, q50, q90)"}
+            q10 = float(q10_raw[-1] if isinstance(q10_raw, (list, tuple)) else q10_raw)
+            q50 = float(q50_raw[-1] if isinstance(q50_raw, (list, tuple)) else q50_raw)
+            q90 = float(q90_raw[-1] if isinstance(q90_raw, (list, tuple)) else q90_raw)
+            if not (q10 <= q50 <= q90):
+                return {"valid": False, "reason": f"Non-monotonic quantiles: q10={q10}, q50={q50}, q90={q90}"}
+            upper = max(0.0, q90 - q50)
+            lower = max(0.0, q50 - q10)
+            skew = float(upper / lower) if lower >= 1e-8 else (2.5 if upper > 1e-8 else 1.0)
+            if skew >= cls.BULLISH_THRESHOLD:
+                bias = "BULLISH_EXPANSION"
+                confidence = min(0.95, 0.50 + (skew - cls.BULLISH_THRESHOLD) * 0.3)
+            elif skew <= cls.BEARISH_THRESHOLD:
+                bias = "BEARISH_EXPANSION"
+                confidence = min(0.95, 0.50 + (cls.BEARISH_THRESHOLD - skew) * 0.5)
+            else:
+                bias = "SYMMETRIC_NEUTRAL"
+                confidence = 0.50
+            return {
+                "valid": True,
+                "skew_ratio": round(skew, 3),
+                "bias": bias,
+                "confidence": round(confidence, 2),
+                "q10": round(q10, 5),
+                "q50": round(q50, 5),
+                "q90": round(q90, 5),
+            }
+        except Exception as e:
+            return {"valid": False, "reason": str(e)}
+
+    @classmethod
+    def get_sizing_multiplier(cls, alpha_result: dict[str, Any], direction: str) -> float:
+        if not alpha_result or not alpha_result.get("valid"):
+            return 1.0
+        bias = alpha_result.get("bias", "SYMMETRIC_NEUTRAL")
+        dir_clean = (direction or "").strip().upper()
+        if dir_clean == "BUY":
+            if bias == "BULLISH_EXPANSION":
+                return 1.15
+            elif bias == "BEARISH_EXPANSION":
+                return 0.80
+        elif dir_clean == "SELL":
+            if bias == "BEARISH_EXPANSION":
+                return 1.15
+            elif bias == "BULLISH_EXPANSION":
+                return 0.80
+        return 1.0
+
+
 def register_timesfm_alpha_calculator(calc: Any) -> None:
     """Register TimesFM alpha calculator from application layer."""
     RiskPortRegistry.timesfm_alpha_calculator = calc
 
 
 def get_default_timesfm_alpha_calculator() -> Any:
-    """Returns registered default TimesFM alpha calculator or None."""
-    return RiskPortRegistry.timesfm_alpha_calculator
+    """Returns registered default TimesFM alpha calculator or domain fallback."""
+    return RiskPortRegistry.timesfm_alpha_calculator or DefaultTimesFMAlphaCalculator
 
 
 def register_evt_tail_calculator(calc: Any) -> None:

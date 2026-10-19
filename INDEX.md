@@ -4393,6 +4393,9 @@
     - `verify_decision(request_payload: dict[str, Any], token: str) -> bool` - *Verify authenticity and integrity of approved decision token.*
   - `class RiskPortRegistry`: Centralized, resettable registry for domain risk pluggable providers and callbacks.
     - `reset() -> None` - *Reset all registered factories and hooks to default None state (for tests).*
+  - `class DefaultTimesFMAlphaCalculator`: Default domain fallback for TimesFM Quantile Asymmetry Skew Alpha Calculator.
+    - `calculate_skew_from_quantiles(quantiles: dict[str, Any], current_price: float | None) -> dict[str, Any]`
+    - `get_sizing_multiplier(alpha_result: dict[str, Any], direction: str) -> float`
 - **Top-Level Functions**:
   - `register_suspended_symbols_provider(provider: Any) -> None`: Register provider for querying/clearing suspended trading symbols.
   - `get_default_suspended_symbols_provider() -> Any`: Returns registered suspended symbols provider or None.
@@ -4401,7 +4404,7 @@
   - `register_regime_classifier(fn: Any) -> None`: Register market regime classification provider from application layer.
   - `get_default_regime_classifier() -> Any`: Returns registered default regime classifier function or None.
   - `register_timesfm_alpha_calculator(calc: Any) -> None`: Register TimesFM alpha calculator from application layer.
-  - `get_default_timesfm_alpha_calculator() -> Any`: Returns registered default TimesFM alpha calculator or None.
+  - `get_default_timesfm_alpha_calculator() -> Any`: Returns registered default TimesFM alpha calculator or domain fallback.
   - `register_evt_tail_calculator(calc: Any) -> None`: Register EVT tail risk calculator from application layer.
   - `get_default_evt_tail_calculator() -> Any`: Returns registered default EVT tail calculator or None.
   - `register_risk_hook_emitter(emitter: Any) -> None`: Register risk lifecycle hook emitter from application layer.

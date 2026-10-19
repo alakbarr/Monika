@@ -299,13 +299,6 @@ class PositionSizer:
                 # Quantile Asymmetry directional skew sizing multiplier
                 quantiles = tfm_fc.get("quantiles", {})
                 tfm_calc = get_default_timesfm_alpha_calculator()
-                if tfm_calc is None:
-                    try:
-                        from monika.application.analysis.calculators.timesfm_alpha import TimesFMAlphaCalculator
-
-                        tfm_calc = TimesFMAlphaCalculator
-                    except Exception:
-                        tfm_calc = None
                 if quantiles and tfm_calc is not None:
                     skew_alpha = tfm_calc.calculate_skew_from_quantiles(quantiles, current_price=entry_price)
                     skew_mult = tfm_calc.get_sizing_multiplier(skew_alpha, direction=direction)
