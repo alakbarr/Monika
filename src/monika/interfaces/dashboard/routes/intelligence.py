@@ -32,6 +32,7 @@ from monika.interfaces.dashboard.rbac import Role, require_role
 from monika.interfaces.dashboard.routes.common import (
     CrystallizeSkillRequest,
     DeprecateSkillRequest,
+    HarnessCycleRequest,
     broadcast_live_event,
 )
 
@@ -703,3 +704,93 @@ async def crystallize_skills_now(request: Request, payload: Optional[Crystallize
             },
         )
         return {"status": "crystallized", "new_skills": new_skills, "count": len(new_skills)}
+
+
+@intelligence_router.get("/harness/tree", tags=["Harness"])
+@require_role(Role.VIEWER)
+async def get_harness_tree():
+    """Retrieve the current 8-component Monika agent harness tree and invariant telemetry."""
+    from monika.application.analysis.harness.surface import MONIKA_SURFACE
+    from monika.application.analysis.harness.tree import HarnessTree
+
+    tree = HarnessTree.build_baseline_tree()
+    tree_dict = tree.to_dict()
+    always_on_chars = sum(len(tree_dict.get(k, "")) for k in MONIKA_SURFACE.always_on)
+
+    return {
+        "status": "healthy",
+        "surface_name": MONIKA_SURFACE.name,
+        "total_components": len(tree.components),
+        "always_on_chars": always_on_chars,
+        "always_on_max_chars": MONIKA_SURFACE.always_on_max_chars,
+        "components": [
+            {
+                "rel_path": c.rel_path,
+                "type": c.component_type.value,
+                "checksum": c.checksum,
+                "length": len(c.content),
+            }
+            for c in tree.components.values()
+        ],
+    }
+
+
+@intelligence_router.get("/harness/library", tags=["Harness"])
+@require_role(Role.VIEWER)
+async def get_harness_library():
+    """Retrieve all registered domain experience catalogs from the Domain Experience Library."""
+    from monika.application.analysis.harness.library import DomainExperienceLibrary
+
+    lib = DomainExperienceLibrary()
+    domains = lib.list_domains()
+    summary = []
+    for d in domains:
+        entries = lib.list_entries(d)
+        summary.append(
+            {
+                "domain": d,
+                "total_runs": len(entries),
+                "recent_runs": entries[-5:],
+            }
+        )
+
+    return {
+        "total_domains": len(domains),
+        "domains": summary,
+    }
+
+
+@intelligence_router.post("/harness/cycle", tags=["Harness"])
+@require_role(Role.OPERATOR)
+async def trigger_harness_cycle(request: Request, payload: Optional[HarnessCycleRequest] = None):
+    """Trigger an autonomous recursive harnessing cycle (Propose -> Probe -> Contrastive Select -> Compose)."""
+    from monika.application.analysis.harness.service import RecursiveHarnessService
+
+    svc = RecursiveHarnessService()
+    dom = payload.domain if payload and payload.domain else "METALS__VOLATILITY_EXPANSION"
+    k = payload.k_candidates if payload else 2
+
+    res = svc.run_recursion_cycle(domain=dom, k_candidates=k)
+    await broadcast_live_event(
+        "harness_cycle_completed",
+        {
+            "run_id": res.run_id,
+            "domain": res.domain,
+            "chosen_candidate": res.selection.chosen_candidate_id,
+            "was_modified": res.composition.was_modified,
+            "composite_score": res.selection.composite_score,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+
+    return {
+        "run_id": res.run_id,
+        "domain": res.domain,
+        "chosen_candidate": res.selection.chosen_candidate_id,
+        "chosen_is_base": res.selection.chosen_is_base,
+        "composite_score": res.selection.composite_score,
+        "why": res.selection.why,
+        "was_modified": res.composition.was_modified,
+        "experience_recorded": res.experience_recorded,
+        "summary": res.summary,
+    }

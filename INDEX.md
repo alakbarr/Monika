@@ -5742,7 +5742,7 @@
 
 ### Folder: `src/monika/application/analysis/harness` <a id="folder-srcmonikaapplicationanalysisharness"></a>
 
-#### `__init__.py` - *Backward-compatibility facade for Agent Harness.*
+#### `__init__.py` - *Monika Harness Package (Recursive Agent Harnessing).*
 - **Path**: [`src/monika/application/analysis/harness/__init__.py`](src/monika/application/analysis/harness/__init__.py)
 
 #### `agent_harness.py` - *Backward-compatibility facade for AgentHarness.*
@@ -13299,6 +13299,7 @@
   - `class ManualOrderSubmitRequest(BaseModel)`
   - `class DeprecateSkillRequest(BaseModel)`
   - `class CrystallizeSkillRequest(BaseModel)`
+  - `class HarnessCycleRequest(BaseModel)`
 - **Top-Level Functions**:
   - `get_current_stream_seq() -> int`: Return latest monotonic WebSocket event sequence number.
   - `get_buffered_events_since(since_seq: int) -> List[dict]`: Retrieve buffered events strictly newer than since_seq for reconnect replay.
@@ -13338,6 +13339,9 @@
   - `async curate_crystallized_skills(request: Request)`: Evaluate and prune degraded crystallized skills whose win rate dropped below threshold.
   - `async deprecate_crystallized_skill(name: str, payload: DeprecateSkillRequest, request: Request)`: Manually deprecate an underperforming or stale crystallized skill.
   - `async crystallize_skills_now(request: Request, payload: Optional[CrystallizeSkillRequest])`: Trigger on-demand skill crystallization for a symbol or all resolved profitable setups.
+  - `async get_harness_tree()`: Retrieve the current 8-component Monika agent harness tree and invariant telemetry.
+  - `async get_harness_library()`: Retrieve all registered domain experience catalogs from the Domain Experience Library.
+  - `async trigger_harness_cycle(request: Request, payload: Optional[HarnessCycleRequest])`: Trigger an autonomous recursive harnessing cycle (Propose -> Probe -> Contrastive Select -> Compose).
 
 #### `mcp_server.py`
 - **Path**: [`src/monika/interfaces/dashboard/routes/mcp_server.py`](src/monika/interfaces/dashboard/routes/mcp_server.py)

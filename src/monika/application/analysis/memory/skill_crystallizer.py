@@ -212,6 +212,34 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
         except Exception as write_err:
             logger.warning(f"[SkillCrystallizer] Disk write failed: {write_err}")
 
+        # Register in Harness Domain Experience Library (Harnessing-Level Recursion)
+        try:
+            from monika.application.analysis.harness.library import DomainExperienceLibrary
+            from monika.application.analysis.harness.tree import HarnessTree
+
+            h_lib = DomainExperienceLibrary()
+            h_tree = HarnessTree.build_baseline_tree()
+            tree_data = dict(h_tree.to_dict())
+            tree_data[f"skills/{skill_filename}"] = skill_content
+            updated_tree = HarnessTree.from_dict(tree_data)
+
+            run_id = f"cryst_{cluster_key.lower()}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+            h_lib.record_experience(
+                domain=cluster_key,
+                run_id=run_id,
+                tree=updated_tree,
+                cue=f"Crystallized from {sample_size} winning cycles in regime {cluster_key}",
+                lesson=rules_body,
+                evidence={
+                    "sample_size": sample_size,
+                    "avg_confidence": avg_conf,
+                    "total_pnl_usd": total_pnl,
+                    "reliability_status": reliability_status,
+                },
+            )
+        except Exception as h_err:
+            logger.debug(f"[SkillCrystallizer] Harness library registration non-fatal error: {h_err}")
+
         # Register in PostgreSQL SystemConfig for cluster sync
         try:
             reg_key = f"skill_crystallized_{cluster_key.lower()}"

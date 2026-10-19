@@ -331,6 +331,11 @@ class CrystallizeSkillRequest(BaseModel):
     symbol: Optional[str] = Field(default=None, description="Optional symbol filter, e.g. EURUSD")
 
 
+class HarnessCycleRequest(BaseModel):
+    domain: Optional[str] = Field(default="METALS__VOLATILITY_EXPANSION", description="Market domain or regime")
+    k_candidates: int = Field(default=2, ge=1, le=5, description="Number of candidate proposals")
+
+
 TriggerCycleRequest.model_rebuild()
 OverrideRiskRequest.model_rebuild()
 ClosePositionRequest.model_rebuild()
@@ -343,6 +348,7 @@ ManualOrderPreviewRequest.model_rebuild()
 ManualOrderSubmitRequest.model_rebuild()
 DeprecateSkillRequest.model_rebuild()
 CrystallizeSkillRequest.model_rebuild()
+HarnessCycleRequest.model_rebuild()
 
 
 def _get_settings_path() -> str:
