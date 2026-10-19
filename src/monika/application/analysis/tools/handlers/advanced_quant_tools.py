@@ -59,17 +59,34 @@ async def handle_simulate_portfolio_drawdown(args: dict, **ctx) -> dict:
             "error": "Missing or invalid 'positions' list. Each item should have symbol, direction, lots, entry, sl."
         }
 
-    # Base equity
-    equity = 10000.0
-    margin_free = 10000.0
+    # Base equity (fail-closed if unknown)
+    equity = 0.0
+    margin_free = 0.0
     if client and await client.ensure_connected():
         try:
             acc = await client.get_account_info()
             if acc:
-                equity = float(acc.get("equity", 10000.0))
+                equity = float(acc.get("equity", 0.0))
                 margin_free = float(acc.get("margin_free", equity))
         except Exception:
             pass
+
+    if equity <= 0 and settings:
+        try:
+            from monika.domain.risk.risk_gate import RiskGate
+
+            rg = RiskGate(settings=settings, mt5_client=client)
+            rg_eq = getattr(rg, "current_equity", None)
+            if rg_eq is not None and float(rg_eq) > 0:
+                equity = float(rg_eq)
+                margin_free = equity
+        except Exception:
+            pass
+
+    if equity <= 0:
+        return {
+            "error": "Failed to determine account equity from broker or risk state. Simulation rejected (fail-closed)."
+        }
 
     total_sl_loss_usd = 0.0
     total_margin_req = 0.0
@@ -82,6 +99,12 @@ async def handle_simulate_portfolio_drawdown(args: dict, **ctx) -> dict:
         entry = float(pos.get("entry", 0.0))
         sl = float(pos.get("sl", 0.0))
 
+        # Resolve instrument specification dynamically (contract size, pip value)
+        from monika.domain.risk.position_sizing import get_instrument_spec
+
+        spec = get_instrument_spec(symbol, client)
+        contract_size = float(spec.contract_size) if spec and spec.contract_size > 0 else 100000.0
+
         # Risk amount in USD
         if entry > 0 and sl > 0:
             if direction == "buy":
@@ -89,14 +112,20 @@ async def handle_simulate_portfolio_drawdown(args: dict, **ctx) -> dict:
             else:
                 pts = max(0.0, sl - entry)
 
-            # Contract sizing approximations
-            contract_size = 100.0 if "XAU" in symbol else (1000.0 if "XTI" in symbol or "XBR" in symbol else 100000.0)
             loss_usd = pts * lots * contract_size
         else:
             loss_usd = float(pos.get("risk_usd", 100.0))
 
-        # Approx margin (1:100 leverage assumed)
-        margin_req = (entry * lots * (100.0 if "XAU" in symbol else 100000.0)) / 100.0 if entry > 0 else (lots * 1000.0)
+        # Margin calculation based on dynamic contract size and account leverage
+        leverage = 100.0
+        if client and hasattr(client, "get_account_info"):
+            try:
+                acc = await client.get_account_info()
+                if acc and acc.get("leverage"):
+                    leverage = float(acc["leverage"])
+            except Exception:
+                pass
+        margin_req = (entry * lots * contract_size) / leverage if entry > 0 else (lots * 1000.0)
 
         total_sl_loss_usd += loss_usd
         total_margin_req += margin_req

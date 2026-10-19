@@ -28,125 +28,130 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
 
     while not agent.shutdown_event.is_set():
         try:
-            if agent.execution_service:
-                account_info = None
-                if getattr(agent.execution_service, "broker_adapter", None):
-                    try:
-                        account_info = await agent.execution_service.broker_adapter.get_account_info()
-                    except Exception:
-                        pass
-                if not account_info and getattr(agent.execution_service, "mt5", None):
-                    if await agent.execution_service.mt5.is_connected():
-                        account_info = await agent.execution_service.mt5.get_account_info()
-                if account_info:
-                    raw_balance = account_info.get("balance")
-                    raw_equity = account_info.get("equity")
-                    if raw_balance is None or raw_equity is None:
-                        logger.error(
-                            f"[DrawdownMonitor] Account balance or equity missing (balance={raw_balance}, equity={raw_equity}). Skipping cycle (fail-closed)."
-                        )
-                        continue
-                    try:
-                        balance = float(raw_balance)
-                        equity = float(raw_equity)
-                    except (ValueError, TypeError) as conv_err:
-                        logger.error(f"[DrawdownMonitor] Unparseable account numbers: {conv_err}. Skipping cycle.")
-                        continue
-                    if balance <= 0:
-                        logger.error(f"[DrawdownMonitor] Non-positive account balance ({balance}). Skipping cycle.")
-                        continue
-                    try:
-                        from sqlalchemy import select as _sel
-
-                        from monika.infrastructure.database.db import get_session
-                        from monika.infrastructure.database.models import SystemConfig
-                        from monika.infrastructure.database.safe_ops import safe_commit
-
-                        now_utc = datetime.now(timezone.utc)
-                        today_str = now_utc.strftime("%Y-%m-%d")
-                        real_state = {
-                            "balance": balance,
-                            "equity": equity,
-                            "floating_pnl": equity - balance,
-                            "floating_pnl_pct": round((equity - balance) / balance * 100, 4) if balance > 0 else 0,
-                            "date": today_str,
-                            "updated_at": now_utc.isoformat(),
-                        }
-                        async with get_session() as cfg_session:
-                            balance_key = f"mt5_balance_start_{today_str}"
-                            balance_cfg = (
-                                await cfg_session.execute(_sel(SystemConfig).where(SystemConfig.key == balance_key))
-                            ).scalar_one_or_none()
-                            if not balance_cfg or balance_cfg.value is None:
-                                cfg_session.add(SystemConfig(key=balance_key, value=str(balance)))
-                                await safe_commit(cfg_session, label="drawdown_monitor_start_balance")
-                                starting_balance = balance
-                            else:
-                                starting_balance = float(balance_cfg.value)
-
-                            daily_pnl = equity - starting_balance
-                            daily_pnl_pct = round(daily_pnl / starting_balance * 100, 4) if starting_balance > 0 else 0
-                            real_state["starting_balance"] = starting_balance
-                            real_state["daily_pnl"] = daily_pnl
-                            real_state["daily_pnl_pct"] = daily_pnl_pct
-
-                            state_key = "mt5_real_risk_state"
-                            state_cfg = (
-                                await cfg_session.execute(_sel(SystemConfig).where(SystemConfig.key == state_key))
-                            ).scalar_one_or_none()
-                            state_json = _json.dumps(real_state)
-                            if state_cfg:
-                                state_cfg.value = state_json
-                            else:
-                                cfg_session.add(SystemConfig(key=state_key, value=state_json))
-                            await safe_commit(cfg_session, label="drawdown_monitor_risk_state")
-                    except Exception as e:
-                        logger.debug(f"Real risk state write failed (non-fatal): {e}")
-
-                    # Drawdown check with hysteresis
-                    if balance <= 0 or equity <= 0:
-                        consecutive_breach_count += 1
-                        logger.critical(
-                            f"Account liquidation detected (balance: {balance}, equity: {equity})! "
-                            f"Breach count: {consecutive_breach_count}/{BREACH_THRESHOLD}"
-                        )
-                        if consecutive_breach_count >= BREACH_THRESHOLD:
-                            await agent.execution_service.kill_switch(
-                                reason=f"Account balance/equity liquidated: balance={balance}, equity={equity}"
+            try:
+                if agent.execution_service:
+                    account_info = None
+                    if getattr(agent.execution_service, "broker_adapter", None):
+                        try:
+                            account_info = await agent.execution_service.broker_adapter.get_account_info()
+                        except Exception:
+                            pass
+                    if not account_info and getattr(agent.execution_service, "mt5", None):
+                        if await agent.execution_service.mt5.is_connected():
+                            account_info = await agent.execution_service.mt5.get_account_info()
+                    if account_info:
+                        raw_balance = account_info.get("balance")
+                        raw_equity = account_info.get("equity")
+                        if raw_balance is None or raw_equity is None:
+                            logger.error(
+                                f"[DrawdownMonitor] Account balance or equity missing (balance={raw_balance}, equity={raw_equity}). Skipping cycle (fail-closed)."
                             )
-                            consecutive_breach_count = 0
-                    elif equity < balance and balance > 0:
-                        drawdown_pct = (balance - equity) / balance * 100
-                        risk_cfg = agent.settings.get("trading", {}).get("risk", {})
-                        max_dd = risk_cfg.get("max_daily_drawdown_percent", 3.0)
-                        if drawdown_pct >= max_dd:
+                            continue
+                        try:
+                            balance = float(raw_balance)
+                            equity = float(raw_equity)
+                        except (ValueError, TypeError) as conv_err:
+                            logger.error(f"[DrawdownMonitor] Unparseable account numbers: {conv_err}. Skipping cycle.")
+                            continue
+                        if balance <= 0:
+                            logger.error(f"[DrawdownMonitor] Non-positive account balance ({balance}). Skipping cycle.")
+                            continue
+                        try:
+                            from sqlalchemy import select as _sel
+
+                            from monika.infrastructure.database.db import get_session
+                            from monika.infrastructure.database.models import SystemConfig
+                            from monika.infrastructure.database.safe_ops import safe_commit
+
+                            now_utc = datetime.now(timezone.utc)
+                            today_str = now_utc.strftime("%Y-%m-%d")
+                            real_state = {
+                                "balance": balance,
+                                "equity": equity,
+                                "floating_pnl": equity - balance,
+                                "floating_pnl_pct": round((equity - balance) / balance * 100, 4) if balance > 0 else 0,
+                                "date": today_str,
+                                "updated_at": now_utc.isoformat(),
+                            }
+                            async with get_session() as cfg_session:
+                                balance_key = f"mt5_balance_start_{today_str}"
+                                balance_cfg = (
+                                    await cfg_session.execute(_sel(SystemConfig).where(SystemConfig.key == balance_key))
+                                ).scalar_one_or_none()
+                                if not balance_cfg or balance_cfg.value is None:
+                                    cfg_session.add(SystemConfig(key=balance_key, value=str(balance)))
+                                    await safe_commit(cfg_session, label="drawdown_monitor_start_balance")
+                                    starting_balance = balance
+                                else:
+                                    starting_balance = float(balance_cfg.value)
+
+                                daily_pnl = equity - starting_balance
+                                daily_pnl_pct = (
+                                    round(daily_pnl / starting_balance * 100, 4) if starting_balance > 0 else 0
+                                )
+                                real_state["starting_balance"] = starting_balance
+                                real_state["daily_pnl"] = daily_pnl
+                                real_state["daily_pnl_pct"] = daily_pnl_pct
+
+                                state_key = "mt5_real_risk_state"
+                                state_cfg = (
+                                    await cfg_session.execute(_sel(SystemConfig).where(SystemConfig.key == state_key))
+                                ).scalar_one_or_none()
+                                state_json = _json.dumps(real_state)
+                                if state_cfg:
+                                    state_cfg.value = state_json
+                                else:
+                                    cfg_session.add(SystemConfig(key=state_key, value=state_json))
+                                await safe_commit(cfg_session, label="drawdown_monitor_risk_state")
+                        except Exception as e:
+                            logger.debug(f"Real risk state write failed (non-fatal): {e}")
+
+                        # Drawdown check with hysteresis
+                        if balance <= 0 or equity <= 0:
                             consecutive_breach_count += 1
-                            logger.warning(
-                                f"Floating drawdown {drawdown_pct:.2f}% >= limit {max_dd}%. "
+                            logger.critical(
+                                f"Account liquidation detected (balance: {balance}, equity: {equity})! "
                                 f"Breach count: {consecutive_breach_count}/{BREACH_THRESHOLD}"
                             )
                             if consecutive_breach_count >= BREACH_THRESHOLD:
-                                logger.critical(
-                                    f"Floating drawdown {drawdown_pct:.2f}% confirmed over "
-                                    f"{BREACH_THRESHOLD} consecutive checks. Triggering KILL SWITCH!"
-                                )
                                 await agent.execution_service.kill_switch(
-                                    reason=f"Sustained floating drawdown exceeded limit: {drawdown_pct:.2f}% for {BREACH_THRESHOLD} consecutive minutes"
+                                    reason=f"Account balance/equity liquidated: balance={balance}, equity={equity}"
                                 )
                                 consecutive_breach_count = 0
-                        else:
-                            if consecutive_breach_count > 0:
-                                logger.info(
-                                    f"Floating drawdown recovered to {drawdown_pct:.2f}%. Resetting breach counter."
+                        elif equity < balance and balance > 0:
+                            drawdown_pct = (balance - equity) / balance * 100
+                            risk_cfg = agent.settings.get("trading", {}).get("risk", {})
+                            max_dd = risk_cfg.get("max_daily_drawdown_percent", 3.0)
+                            if drawdown_pct >= max_dd:
+                                consecutive_breach_count += 1
+                                logger.warning(
+                                    f"Floating drawdown {drawdown_pct:.2f}% >= limit {max_dd}%. "
+                                    f"Breach count: {consecutive_breach_count}/{BREACH_THRESHOLD}"
                                 )
+                                if consecutive_breach_count >= BREACH_THRESHOLD:
+                                    logger.critical(
+                                        f"Floating drawdown {drawdown_pct:.2f}% confirmed over "
+                                        f"{BREACH_THRESHOLD} consecutive checks. Triggering KILL SWITCH!"
+                                    )
+                                    await agent.execution_service.kill_switch(
+                                        reason=f"Sustained floating drawdown exceeded limit: {drawdown_pct:.2f}% for {BREACH_THRESHOLD} consecutive minutes"
+                                    )
+                                    consecutive_breach_count = 0
+                            else:
+                                if consecutive_breach_count > 0:
+                                    logger.info(
+                                        f"Floating drawdown recovered to {drawdown_pct:.2f}%. Resetting breach counter."
+                                    )
+                                consecutive_breach_count = 0
+                        else:
                             consecutive_breach_count = 0
                     else:
                         consecutive_breach_count = 0
-        except Exception as e:
-            logger.error(f"Floating drawdown monitor error: {e}")
-            consecutive_breach_count = 0
-
-        try:
-            await asyncio.wait_for(agent.shutdown_event.wait(), timeout=30)
-        except asyncio.TimeoutError:
-            pass
+            except Exception as e:
+                logger.error(f"Floating drawdown monitor error: {e}")
+                consecutive_breach_count = 0
+        finally:
+            try:
+                await asyncio.wait_for(agent.shutdown_event.wait(), timeout=30)
+            except asyncio.TimeoutError:
+                pass

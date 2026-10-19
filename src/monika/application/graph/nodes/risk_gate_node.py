@@ -217,7 +217,40 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                             analysis_record=ana,
                         )
 
-            actionable = gate_approved
+            # Invariant: If trades share a pair_group_id, ALL legs of the pair must be approved (atomic all-or-nothing).
+            pair_groups_approved: dict[str, list[tuple[str, dict]]] = {}
+            for sym, r in gate_approved:
+                pgid = r.get("pair_group_id")
+                if pgid:
+                    pair_groups_approved.setdefault(pgid, []).append((sym, r))
+
+            pair_groups_rejected: set[str] = set()
+            for cand in rejected_candidates:
+                pgid = cand.get("trade", {}).get("pair_group_id")
+                if pgid:
+                    pair_groups_rejected.add(pgid)
+
+            filtered_gate_approved = []
+            for sym, r in gate_approved:
+                pgid = r.get("pair_group_id")
+                if pgid and pgid in pair_groups_rejected:
+                    logger.warning(
+                        f"[RiskGate] Atomic pair violation: dropping {sym} because sibling leg in {pgid} was rejected."
+                    )
+                    rejected_candidates.append(
+                        {"symbol": sym, "trade": r, "reasons": [f"paired_leg_rejected in pair_group {pgid}"]}
+                    )
+                elif pgid and len(pair_groups_approved.get(pgid, [])) < 2:
+                    logger.warning(
+                        f"[RiskGate] Incomplete pair: dropping {sym} because pair_group {pgid} has only 1 approved leg."
+                    )
+                    rejected_candidates.append(
+                        {"symbol": sym, "trade": r, "reasons": [f"incomplete_pair_legs in pair_group {pgid}"]}
+                    )
+                else:
+                    filtered_gate_approved.append((sym, r))
+
+            actionable = filtered_gate_approved
         except Exception as e:
             logger.critical(f"[RiskGate] Evaluation failure - enforcing FAIL-CLOSED: {e}", exc_info=True)
             for sym, r in actionable:
@@ -255,7 +288,31 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                             stage="precommit_gate",
                         )
 
-            actionable = precommit_approved
+            # Invariant: Precommit atomic pair check
+            pc_pair_approved: dict[str, list[tuple[str, dict]]] = {}
+            for sym, r in precommit_approved:
+                pgid = r.get("pair_group_id")
+                if pgid:
+                    pc_pair_approved.setdefault(pgid, []).append((sym, r))
+
+            pc_pair_rejected: set[str] = set()
+            for cand in rejected_candidates:
+                pgid = cand.get("trade", {}).get("pair_group_id")
+                if pgid:
+                    pc_pair_rejected.add(pgid)
+
+            filtered_precommit = []
+            for sym, r in precommit_approved:
+                pgid = r.get("pair_group_id")
+                if pgid and (pgid in pc_pair_rejected or len(pc_pair_approved.get(pgid, [])) < 2):
+                    logger.warning(f"[PreCommitGate] Atomic pair violation: dropping {sym} in pair {pgid}.")
+                    rejected_candidates.append(
+                        {"symbol": sym, "trade": r, "reasons": [f"precommit_pair_broken in {pgid}"]}
+                    )
+                else:
+                    filtered_precommit.append((sym, r))
+
+            actionable = filtered_precommit
         except Exception as e:
             logger.critical(
                 f"[RiskGateNode] TradePreCommitGate check failed with error: {e}. Failing closed -> clearing actionable trades.",

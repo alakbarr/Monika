@@ -69,7 +69,6 @@ jev_documentation/
 temp_test_dir/
 **/.curator_ledger.jsonl
 **/.playbook_lifecycle.json
-src/monika/application/analysis/strategies/synthesized/
 src/monika/application/skills/crystallized/mt5_slippage_defense/
 
 # Database files & Backups

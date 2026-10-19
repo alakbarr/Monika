@@ -30,10 +30,11 @@ class BTCDonchianBreakout(EdgeStrategy):
             .scalars()
             .all()
         )
-        if len(bars) < n + 10:
+        if len(bars) < n + 12:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="insufficient H4 history")
 
-        latest, channel, vol_hist = bars[0], bars[1 : n + 1], [b.volume for b in bars[1:21] if b.volume]
+        # Evaluate on last closed candle (bars[1]) against prior n bars channel (bars[2:n+2])
+        latest, channel, vol_hist = bars[1], bars[2 : n + 2], [b.volume for b in bars[2:22] if b.volume]
         ch_high, ch_low = max(b.high for b in channel), min(b.low for b in channel)
         if len(vol_hist) < 10:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="insufficient volume history")
@@ -45,13 +46,23 @@ class BTCDonchianBreakout(EdgeStrategy):
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale=f"volume z={z:.2f} < {min_z}")
 
         size_mult = float(self.cfg.get("size_multiplier", 0.6))
+        denom = max(min_z * 2.0, 0.5)
+        conf = min(1.0, max(0.5, float(z / denom)))
+        entry_p = float(latest.close)
+        ch_mid = (ch_high + ch_low) / 2.0
+
         if latest.close > ch_high:
+            sl_p = round(float(ch_mid), 2)
+            tp_p = round(entry_p + (entry_p - sl_p) * 1.5, 2)
             return EdgeSignal(
                 self.strategy_id,
                 symbol,
                 "buy",
                 True,
-                confidence=min(1.0, z / (min_z * 2)),
+                confidence=conf,
+                entry_price=entry_p,
+                stop_loss=sl_p,
+                take_profit=tp_p,
                 rationale=f"Donchian({n}) breakout, vol z={z:.2f}",
                 tags=["btc_donchian", "trend", "breakout"],
                 exit_style="trend_trailing",
@@ -60,12 +71,17 @@ class BTCDonchianBreakout(EdgeStrategy):
                 meta={"size_multiplier": size_mult},
             )
         if latest.close < ch_low:
+            sl_p = round(float(ch_mid), 2)
+            tp_p = round(entry_p - (sl_p - entry_p) * 1.5, 2)
             return EdgeSignal(
                 self.strategy_id,
                 symbol,
                 "sell",
                 True,
-                confidence=min(1.0, z / (min_z * 2)),
+                confidence=conf,
+                entry_price=entry_p,
+                stop_loss=sl_p,
+                take_profit=tp_p,
                 rationale=f"Donchian({n}) breakdown, vol z={z:.2f}",
                 tags=["btc_donchian", "trend", "breakout"],
                 exit_style="trend_trailing",

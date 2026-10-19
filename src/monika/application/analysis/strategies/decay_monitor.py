@@ -112,7 +112,14 @@ class StrategyDecayMonitor:
 
     def get_health(self, strategy_id: str) -> StrategyHealth:
         if strategy_id not in self._health_map:
-            self._health_map[strategy_id] = StrategyHealth(strategy_id=strategy_id)
+            is_synth = strategy_id.startswith(("alpha_", "synth_"))
+            self._health_map[strategy_id] = StrategyHealth(
+                strategy_id=strategy_id,
+                is_incubation_passed=not is_synth,
+                reason=f"Incubating in paper trading (min {self.min_incubation_trades} trades required)"
+                if is_synth
+                else "",
+            )
         return self._health_map[strategy_id]
 
     def register_incubating_strategy(self, strategy_id: str) -> StrategyHealth:

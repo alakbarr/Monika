@@ -236,7 +236,6 @@ class StreamingMixin(_ChatAgentMixinBase):
         """Stream real LLM tokens to WebSocket/caller callback with thought tag handling."""
         async with get_session() as session:
             history = await self._load_history(session, session_id=session_id)
-            await self._save_message(session, "user", user_message, session_id=session_id)
             system_prompt = await self._build_system_prompt(session)
 
             preference = self._detect_model_preference(user_message)
@@ -286,6 +285,8 @@ class StreamingMixin(_ChatAgentMixinBase):
                 self.was_last_turn_streamed = True
                 return reply, pending
 
+            # Save user message once for the direct streaming path (_handle_internal handles its own save)
+            await self._save_message(session, "user", clean_message, session_id=session_id)
             system_prompt = self._inject_macro_playbooks(system_prompt, user_query=clean_message)
 
             if preference in ("tier_deep", "claude_sonnet"):

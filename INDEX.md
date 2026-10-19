@@ -4680,8 +4680,6 @@
 
 #### `error_classifier.py` - *Comprehensive Error Classifier & Recovery Directive Taxonomy.*
 - **Path**: [`src/monika/application/agent/error_classifier.py`](src/monika/application/agent/error_classifier.py)
-- **Classes**:
-  - `class ClassifiedError`: Represents a categorized failure with concrete action directives.
 - **Top-Level Functions**:
   - `classify_api_error(exc: Exception, provider: Optional[str], model: Optional[str]) -> ClassifiedError`: Parses any exception and maps it to a canonical ClassifiedError.
 
@@ -6586,6 +6584,7 @@
     - `is_enabled(symbol: str) -> bool`
     - `is_regime_compatible(regime: str) -> bool` - *Evaluates whether this strategy is designed to operate under the given market regime.*
     - `async get_historical_candles(session: AsyncSession, symbol: str, timeframe: str, ...) -> list[CandleDict]` - *Built-in helper for quantitative strategies to retrieve historical OHLCV candles.*
+    - `derive_atr_brackets(entry_price: float, candles: list[CandleDict], direction: str, ...) -> tuple[float, float]` - *Compute robust ATR-based Stop Loss and Take Profit levels.*
     - `async evaluate(session: AsyncSession, symbol: str, settings: dict) -> EdgeSignal`
 
 #### `bb_volume_profile.py`
@@ -10689,6 +10688,7 @@
   - `class ErrorCategory(str, Enum)`: Broad error category for harness routing, maintaining 100% backward compatibility.
   - `class RecoveryAction(str, Enum)`: Actionable mitigation policy assigned by the classifier.
   - `class ClassifiedError`: Classified error token providing prescriptive recovery instructions.
+    - `__init__(category: Optional[ErrorCategory], recovery: Optional[RecoveryAction], message: str, ...)`
     - `retryable() -> bool` - *Whether this error allows any retry attempt.*
     - `should_compress() -> bool`
     - `should_rotate_cred() -> bool`

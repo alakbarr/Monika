@@ -66,8 +66,9 @@ class SMCFairValueGapStrategy(EdgeStrategy):
                 gap_low = c1.high
                 gap_high = c3.low
                 gap_mid = (gap_low + gap_high) / 2.0
-                # Check mitigation in subsequent candles (up to current)
-                mitigated = any(c.low <= gap_mid for c in candles[i + 3 :])
+                # Check mitigation in subsequent closed candles (excluding current active candle)
+                subsequent_candles = candles[i + 3 : -1]
+                mitigated = any(c.low <= gap_mid for c in subsequent_candles) if subsequent_candles else False
                 if not mitigated:
                     bullish_fvgs.append(
                         {
@@ -84,7 +85,8 @@ class SMCFairValueGapStrategy(EdgeStrategy):
                 gap_high = c1.low
                 gap_low = c3.high
                 gap_mid = (gap_low + gap_high) / 2.0
-                mitigated = any(c.high >= gap_mid for c in candles[i + 3 :])
+                subsequent_candles = candles[i + 3 : -1]
+                mitigated = any(c.high >= gap_mid for c in subsequent_candles) if subsequent_candles else False
                 if not mitigated:
                     bearish_fvgs.append(
                         {

@@ -21,6 +21,10 @@ FACTOR_POINT_MAP = {
     "cot_aligned": 1,
     "vix_ok": 1,
     "liquidity_sweep_confirmed": 2,
+    "microstructure_ok": 1,
+    "microstructure_confirmed": 1,
+    "historical_pattern_consensus": 1,
+    "pattern_consensus": 1,
     "session_prime": 1,  # modifier tambahan, bukan bagian base-14
     "post_event_entry": 0,  # informational tag, tidak menambah skor
 }

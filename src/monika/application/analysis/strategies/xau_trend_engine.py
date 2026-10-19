@@ -18,6 +18,7 @@ class XAUTrendEngine(EdgeStrategy):
 
     async def evaluate(self, session, symbol, settings) -> EdgeSignal:
         now = clock.now()
+        n = int(self.cfg.get("donchian_period", 20))
         fast_row = (
             await session.execute(
                 select(TechnicalIndicator)
@@ -44,46 +45,63 @@ class XAUTrendEngine(EdgeStrategy):
                 .limit(1)
             )
         ).scalar_one_or_none()
-        if not fast_row or not slow_row:
-            return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="EMA data unavailable")
-
-        fast_raw = json.loads(fast_row.value_json) if fast_row.value_json else None
-        slow_raw = json.loads(slow_row.value_json) if slow_row.value_json else None
-        fast_val = fast_raw.get("value", fast_raw) if isinstance(fast_raw, dict) else fast_raw
-        slow_val = slow_raw.get("value", slow_raw) if isinstance(slow_raw, dict) else slow_raw
-        fast, slow = safe_float(fast_val), safe_float(slow_val)
-        if fast is None or slow is None:
-            return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="dirty EMA values")
-
-        n = int(self.cfg.get("donchian_period", 20))
         bars = (
             (
                 await session.execute(
                     select(PriceOHLCV)
                     .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == "H4", PriceOHLCV.timestamp <= now)
                     .order_by(PriceOHLCV.timestamp.desc())
-                    .limit(n + 1)
+                    .limit(max(n + 15, 60))
                 )
             )
             .scalars()
             .all()
         )
-        if len(bars) < n + 1:
+        if len(bars) < n + 5:
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="insufficient H4 history")
 
-        latest, channel = bars[0], bars[1:]
+        fast = None
+        slow = None
+        if fast_row and slow_row:
+            fast_raw = json.loads(fast_row.value_json) if fast_row.value_json else None
+            slow_raw = json.loads(slow_row.value_json) if slow_row.value_json else None
+            fast_val = fast_raw.get("value", fast_raw) if isinstance(fast_raw, dict) else fast_raw
+            slow_val = slow_raw.get("value", slow_raw) if isinstance(slow_raw, dict) else slow_raw
+            fast, slow = safe_float(fast_val), safe_float(slow_val)
+
+        if fast is None or slow is None:
+            # Fallback: compute EMA directly from candle close prices
+            if len(bars) >= 50:
+                import pandas as pd
+
+                closes = pd.Series([float(b.close) for b in reversed(bars)])
+                fast = float(closes.ewm(span=int(self.cfg.get("ema_fast", 20)), adjust=False).mean().iloc[-1])
+                slow = float(closes.ewm(span=int(self.cfg.get("ema_slow", 50)), adjust=False).mean().iloc[-1])
+            else:
+                return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="EMA data unavailable")
+
+        # Evaluate on last closed candle (bars[1]) against prior n bars channel (bars[2:n+2])
+        latest, channel = bars[1], bars[2 : n + 2]
         ch_high, ch_low = max(b.high for b in channel), min(b.low for b in channel)
         ema_bull, ema_bear = fast > slow, fast < slow
         breakout_up, breakout_down = latest.close > ch_high, latest.close < ch_low
 
         size_mult = float(self.cfg.get("size_multiplier", 0.8))
+        entry_p = float(latest.close)
+        ch_mid = (ch_high + ch_low) / 2.0
+
         if ema_bull and breakout_up:
+            sl_p = round(float(ch_mid), 2)
+            tp_p = round(entry_p + (entry_p - sl_p) * 1.5, 2)
             return EdgeSignal(
                 self.strategy_id,
                 symbol,
                 "buy",
                 True,
                 confidence=0.7,
+                entry_price=entry_p,
+                stop_loss=sl_p,
+                take_profit=tp_p,
                 rationale=f"EMA{self.cfg.get('ema_fast', 20)}>{self.cfg.get('ema_slow', 50)} + Donchian({n}) breakout",
                 tags=["xau_trend", "trend"],
                 exit_style="trend_trailing",
@@ -91,12 +109,17 @@ class XAUTrendEngine(EdgeStrategy):
                 meta={"size_multiplier": size_mult},
             )
         if ema_bear and breakout_down:
+            sl_p = round(float(ch_mid), 2)
+            tp_p = round(entry_p - (sl_p - entry_p) * 1.5, 2)
             return EdgeSignal(
                 self.strategy_id,
                 symbol,
                 "sell",
                 True,
                 confidence=0.7,
+                entry_price=entry_p,
+                stop_loss=sl_p,
+                take_profit=tp_p,
                 rationale=f"EMA{self.cfg.get('ema_fast', 20)}<{self.cfg.get('ema_slow', 50)} + Donchian({n}) breakdown",
                 tags=["xau_trend", "trend"],
                 exit_style="trend_trailing",

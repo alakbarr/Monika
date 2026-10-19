@@ -66,7 +66,7 @@ class ActionStateMixin(_ChatAgentMixinBase):
         except Exception as e:
             logger.debug(f"[ChatAgent] Could not persist pending action {action.action_id}: {e}")
 
-    async def _delete_persisted_pending_action(self, action_id: str):
+    async def _delete_persisted_pending_action(self, action_id: str) -> None:
         """Remove persisted pending action from SystemConfig table."""
         try:
             from sqlalchemy import delete
@@ -78,6 +78,27 @@ class ActionStateMixin(_ChatAgentMixinBase):
                 await session.commit()
         except Exception as e:
             logger.debug(f"[ChatAgent] Could not delete persisted pending action {action_id}: {e}")
+
+    async def _claim_persisted_pending_action(self, action_id: str) -> bool:
+        """
+        Atomically delete persisted pending action from SystemConfig table.
+        Returns True only if this caller was the one that deleted the row (atomic claim).
+        """
+        try:
+            from sqlalchemy import delete
+
+            from monika.infrastructure.database.models import SystemConfig
+
+            async with get_session() as session:
+                res = await session.execute(
+                    delete(SystemConfig).where(SystemConfig.key == f"pending_action:{action_id}")
+                )
+                await session.commit()
+                rowcount = getattr(res, "rowcount", 0)
+                return bool(rowcount and rowcount > 0)
+        except Exception as e:
+            logger.debug(f"[ChatAgent] Could not atomically claim pending action {action_id}: {e}")
+            return False
 
     async def get_pending_action(self, action_id: str) -> Optional[PendingAction]:
         """Fetch pending action from memory or restore from DB."""
@@ -162,8 +183,10 @@ class ActionStateMixin(_ChatAgentMixinBase):
                 return False, "Action expired (90-second timeout). Please request again."
 
             # Pop immediately within the lock to claim exclusive ownership
-            self._pending_actions.pop(action_id, None)
-            await self._delete_persisted_pending_action(action_id)
+            had_mem = self._pending_actions.pop(action_id, None) is not None
+            claimed_db = await self._claim_persisted_pending_action(action_id)
+            if not had_mem and not claimed_db:
+                return False, "Action not found or already processed by another request."
             self._consecutive_denials = 0  # Reset on approval
 
         # Execute claimed action outside the lock to avoid blocking other actions

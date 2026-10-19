@@ -261,6 +261,7 @@ class GuardianSupervisor:
         self._process: Optional[multiprocessing.Process] = None
         self._stop_event: Optional[Any] = None
         self._hb_thread: Optional[threading.Thread] = None
+        self._async_task: Optional[asyncio.Task[Any]] = None
         self._running = False
 
     def start(self) -> None:
@@ -288,9 +289,20 @@ class GuardianSupervisor:
         self._running = True
         logger.info(f"[GuardianSupervisor] Guardian child process spawned (PID: {self._process.pid})")
 
-        # Start periodic heartbeat writer in background thread
-        self._hb_thread = threading.Thread(target=self._heartbeat_writer_loop, daemon=True, name="main-heartbeat")
-        self._hb_thread.start()
+        # Start periodic heartbeat writer directly inside the main asyncio loop
+        try:
+            loop = asyncio.get_running_loop()
+            self._async_task = loop.create_task(
+                self.start_async_heartbeat(),
+                name="guardian-async-heartbeat",
+            )
+        except RuntimeError:
+            self._hb_thread = threading.Thread(
+                target=self._heartbeat_writer_loop,
+                daemon=True,
+                name="main-heartbeat",
+            )
+            self._hb_thread.start()
 
     def _write_heartbeat(self) -> None:
         hb_path = _get_heartbeat_path()
@@ -320,6 +332,8 @@ class GuardianSupervisor:
     def stop(self) -> None:
         """Signal and join the Guardian child process."""
         self._running = False
+        if hasattr(self, "_async_task") and self._async_task:
+            self._async_task.cancel()
         if self._stop_event:
             self._stop_event.set()
 

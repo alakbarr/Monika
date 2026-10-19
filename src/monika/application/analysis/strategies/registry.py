@@ -241,6 +241,14 @@ class StrategyRegistry:
                     if not s_id or s_id in cls._registry or s_id in cls._blacklisted_ids:
                         continue
 
+                    # Guard: do not resurrect quarantined strategies
+                    from monika.core.paths import get_repo_root
+
+                    quarantine_file = get_repo_root() / "archive" / "strategies" / "quarantine" / f"{s_id}.py"
+                    if quarantine_file.exists() or s_data.get("is_quarantined", False):
+                        logger.debug(f"[StrategyRegistry] Skipping {s_id}: strategy is quarantined.")
+                        continue
+
                     # Skip strategies permanently disabled by decay monitor
                     if h_stat in ("DISABLED", "HALTED", "REJECTED"):
                         logger.debug(f"[StrategyRegistry] Skipping {s_id}: decay status is {h_stat}")
@@ -255,11 +263,19 @@ class StrategyRegistry:
                     py_code = s_data.get("python_code")
                     cls_name = s_data.get("class_name")
                     if s_id and py_code and cls_name:
-                        # Reject stub templates with hardcoded static signals
-                        if 'direction="buy"' in py_code and "confidence=0.82" in py_code:
+                        # Reject stub templates and mock strategies with hardcoded static signals
+                        is_stub = (
+                            s_id.lower().startswith("mock")
+                            or cls_name.lower().startswith("mock")
+                            or (
+                                ('direction="buy"' in py_code or "direction='buy'" in py_code)
+                                and ("confidence=0.8" in py_code)
+                            )
+                        )
+                        if is_stub:
                             cls._blacklisted_ids.add(s_id)
                             logger.info(
-                                f"[StrategyRegistry] Skipping and purging blacklisted stub synthesized strategy: {s_id}"
+                                f"[StrategyRegistry] Skipping and purging blacklisted stub/mock strategy: {s_id}"
                             )
                             if hasattr(session, "execute"):
                                 try:
@@ -419,12 +435,41 @@ class StrategyRegistry:
                     )
                     continue
                 if sig and sig.valid:
-                    # Guard against static uncalculated synthesized stub signals
-                    if "synthesized_alpha" in getattr(sig, "tags", []) and sig.confidence == 0.82:
+                    # Guard against static uncalculated synthesized stub signals and mocks
+                    if strat_id.lower().startswith("mock") or getattr(sig, "strategy_id", "").lower().startswith(
+                        "mock"
+                    ):
+                        logger.warning(f"[{strat_name}] Discarding mock strategy signal for {symbol}")
+                        continue
+                    if "synthesized_alpha" in getattr(sig, "tags", []) and sig.confidence in (0.8, 0.82):
                         logger.warning(f"[{strat_name}] Discarding unvalidated stub synthesized signal for {symbol}")
                         continue
                     if getattr(sig, "factor_family", None) is None or sig.factor_family == "trend":
                         sig.factor_family = getattr(strat, "factor_family", "trend")
+
+                    # Robust ATR bracket injection for valid signals lacking numeric SL/TP
+                    if sig.valid and (sig.stop_loss is None or sig.entry_price is None):
+                        try:
+                            if hasattr(strat, "get_historical_candles"):
+                                candles = await strat.get_historical_candles(session, symbol, "H1", 20)
+                                if candles:
+                                    current_price = float(candles[-1].close)
+                                    if sig.entry_price is None or sig.entry_price <= 0:
+                                        sig.entry_price = current_price
+                                    if sig.stop_loss is None and sig.direction:
+                                        from monika.application.analysis.strategies.base_strategy import EdgeStrategy
+
+                                        sl, tp = EdgeStrategy.derive_atr_brackets(
+                                            entry_price=sig.entry_price,
+                                            candles=candles,
+                                            direction=sig.direction,
+                                        )
+                                        sig.stop_loss = sl
+                                        if sig.take_profit is None:
+                                            sig.take_profit = tp
+                        except Exception as sl_err:
+                            logger.debug(f"[{strat_name}] Dynamic ATR SL/TP injection non-fatal: {sl_err}")
+
                     out.append(sig)
             except Exception as e:
                 logger.warning(f"[{strat_name}] evaluate_all failed for {symbol}: {e}")
@@ -498,6 +543,27 @@ class StrategyRegistry:
             res = strat.evaluate(session, symbol, settings)
         if inspect.isawaitable(res):
             res = await res
+        if res and isinstance(res, EdgeSignal) and res.valid and (res.stop_loss is None or res.entry_price is None):
+            try:
+                if hasattr(strat, "get_historical_candles"):
+                    candles = await strat.get_historical_candles(session, symbol, "H1", 20)
+                    if candles:
+                        current_price = float(candles[-1].close)
+                        if res.entry_price is None or res.entry_price <= 0:
+                            res.entry_price = current_price
+                        if res.stop_loss is None and res.direction:
+                            from monika.application.analysis.strategies.base_strategy import EdgeStrategy
+
+                            sl, tp = EdgeStrategy.derive_atr_brackets(
+                                entry_price=res.entry_price,
+                                candles=candles,
+                                direction=res.direction,
+                            )
+                            res.stop_loss = sl
+                            if res.take_profit is None:
+                                res.take_profit = tp
+            except Exception as sl_err:
+                logger.debug(f"[StrategyRegistry] Dynamic ATR SL/TP injection non-fatal: {sl_err}")
         return res
 
 

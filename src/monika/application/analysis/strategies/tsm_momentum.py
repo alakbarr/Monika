@@ -47,21 +47,24 @@ class TimeSeriesMomentum(EdgeStrategy):
             .all()
         )
         if len(rows) < min_lb + 1:
-            # Fallback: Try resampling from H1 candles if available
-            h1_rows = (
-                (
-                    await session.execute(
-                        select(PriceOHLCV.close)
-                        .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == "H1", PriceOHLCV.timestamp <= now)
-                        .order_by(PriceOHLCV.timestamp.desc())
-                        .limit((max_lb + 5) * 24)
-                    )
+            # Fallback: Resample from H1 candles grouped by actual calendar date
+            h1_records = (
+                await session.execute(
+                    select(PriceOHLCV.timestamp, PriceOHLCV.close)
+                    .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == "H1", PriceOHLCV.timestamp <= now)
+                    .order_by(PriceOHLCV.timestamp.desc())
+                    .limit((max_lb + 10) * 24)
                 )
-                .scalars()
-                .all()
-            )
-            if len(h1_rows) >= (min_lb + 1) * 24:
-                rows = [h1_rows[i] for i in range(0, len(h1_rows), 24)][: max_lb + 5]
+            ).all()
+            seen_dates = set()
+            daily_closes = []
+            for ts, cl in h1_records:
+                d = ts.date() if hasattr(ts, "date") else str(ts)[:10]
+                if d not in seen_dates:
+                    seen_dates.add(d)
+                    daily_closes.append(cl)
+            if len(daily_closes) >= min_lb + 1:
+                rows = daily_closes[: max_lb + 5]
             else:
                 return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="insufficient D1 history")
 

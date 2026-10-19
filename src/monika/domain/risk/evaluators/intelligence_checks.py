@@ -282,8 +282,14 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
         try:
             from monika.domain.risk.ports import get_default_evidence_store
 
-            strat_id = getattr(analysis, "strategy_id", None) or "general"
-            regime = getattr(analysis, "market_regime", "UNKNOWN") or "UNKNOWN"
+            strat_id = (
+                getattr(analysis, "source_strategy_id", None) or getattr(analysis, "strategy_id", None) or "general"
+            )
+            regime = (
+                getattr(analysis, "market_regime_at_analysis", None)
+                or getattr(analysis, "market_regime", "UNKNOWN")
+                or "UNKNOWN"
+            )
 
             ev_store = get_default_evidence_store()
             if ev_store is not None:

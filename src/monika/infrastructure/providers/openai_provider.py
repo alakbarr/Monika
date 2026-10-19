@@ -1155,8 +1155,6 @@ class OpenAIProvider(BaseLLMClient):
         return None
 
     def _convert_tools(self, tools: list) -> list:
-        # Lexicographical sort by tool name and recursive schema key sorting guarantees 100% deterministic prefix order for DeepSeek & OpenAI KV cache
-        sorted_tools = sorted(tools, key=lambda t: t.get("name", "") if isinstance(t, dict) else "")
         provider_name = self._get_provider_name()
         is_openrouter = (
             provider_name in ("openrouter", "9router")
@@ -1165,22 +1163,9 @@ class OpenAIProvider(BaseLLMClient):
         is_claude_or_qwen = any(k in self.model.lower() for k in ("claude", "anthropic", "qwen"))
         supports_cache_control = is_openrouter and is_claude_or_qwen
 
-        converted = []
-        for i, t in enumerate(sorted_tools):
-            raw_params = t.get("input_schema") or t.get("parameters") or {"type": "object", "properties": {}}
-            clean_params = sanitize_tool_parameters_schema(raw_params)
-            tool_obj = {
-                "type": "function",
-                "function": {
-                    "name": t["name"],
-                    "description": t.get("description", ""),
-                    "parameters": _canonicalize_schema(clean_params),
-                },
-            }
-            if supports_cache_control and i == len(sorted_tools) - 1:
-                tool_obj["cache_control"] = {"type": "ephemeral"}
-            converted.append(tool_obj)
-        return converted
+        from monika.infrastructure.providers.schema_normalizer import ToolSchemaNormalizer
+
+        return ToolSchemaNormalizer.to_openai(tools, supports_cache_control=supports_cache_control)
 
     def _normalize_messages(self, messages: list) -> list:
         """Normalizes messages across heterogeneous provider formats (Anthropic/Gemini to OpenAI)."""

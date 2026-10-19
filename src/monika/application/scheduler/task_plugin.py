@@ -121,6 +121,7 @@ class TaskPlugin(TradingPlugin, ABC):
         async def runner():
             await self._loop_runner(container)
 
+        setattr(runner, "owner", self)
         task_registry.register(
             name=self.metadata.name,
             runner=runner,

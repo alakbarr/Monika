@@ -42,6 +42,13 @@ def get_estop_file_path() -> Path:
     if monika_home:
         return Path(monika_home) / "ESTOP"
 
+    try:
+        from monika.core.paths import get_repo_root
+
+        return get_repo_root() / "ESTOP"
+    except Exception:
+        pass
+
     agent_dir = Path(__file__).resolve().parent.parent
     if (agent_dir / "ESTOP").exists():
         return agent_dir / "ESTOP"
@@ -52,9 +59,20 @@ def get_estop_file_path() -> Path:
 def get_estop_candidate_paths() -> list[Path]:
     """Returns all potential sentinel paths checked for ESTOP state."""
     candidate_paths = [get_estop_file_path()]
+    try:
+        from monika.core.paths import get_repo_root
+
+        repo_estop = get_repo_root() / "ESTOP"
+        if repo_estop not in candidate_paths:
+            candidate_paths.append(repo_estop)
+    except Exception:
+        pass
+
     agent_dir = Path(__file__).resolve().parent.parent
     if (agent_dir / "ESTOP") not in candidate_paths:
         candidate_paths.append(agent_dir / "ESTOP")
+    if (agent_dir.parent / "ESTOP") not in candidate_paths:
+        candidate_paths.append(agent_dir.parent / "ESTOP")
     return candidate_paths
 
 

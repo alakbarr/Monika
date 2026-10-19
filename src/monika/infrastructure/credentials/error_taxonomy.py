@@ -371,17 +371,64 @@ class RecoveryAction(str, Enum):
 class ClassifiedError:
     """Classified error token providing prescriptive recovery instructions."""
 
-    category: ErrorCategory
-    recovery: RecoveryAction
-    message: str
+    category: ErrorCategory = ErrorCategory.UNKNOWN
+    recovery: RecoveryAction = RecoveryAction.RETRY_SAME
+    message: str = ""
     retry_delay: float = 0.0
     nudge_text: Optional[str] = None
     max_retries: int = 3
     reason: Optional[FailoverReason] = None
+    status_code: Optional[int] = None
+    error_code: Optional[str] = None
+    raw_exception: Optional[Exception] = None
+    should_quarantine_symbol: bool = False
+    cooldown_seconds_override: Optional[float] = None
+    retryable_override: Optional[bool] = None
+    should_compress_override: Optional[bool] = None
+    should_rotate_cred_override: Optional[bool] = None
+    should_fallback_override: Optional[bool] = None
+
+    def __init__(
+        self,
+        category: Optional[ErrorCategory] = None,
+        recovery: Optional[RecoveryAction] = None,
+        message: str = "",
+        retry_delay: float = 0.0,
+        nudge_text: Optional[str] = None,
+        max_retries: int = 3,
+        reason: Optional[FailoverReason] = None,
+        status_code: Optional[int] = None,
+        error_code: Optional[str] = None,
+        retryable: Optional[bool] = None,
+        should_compress: Optional[bool] = None,
+        should_rotate_credential: Optional[bool] = None,
+        should_fallback: Optional[bool] = None,
+        should_quarantine_symbol: bool = False,
+        cooldown_seconds: Optional[Union[int, float]] = None,
+        raw_exception: Optional[Exception] = None,
+    ):
+        self.category = category or ErrorCategory.UNKNOWN
+        self.recovery = recovery or RecoveryAction.RETRY_SAME
+        self.message = message
+        self.retry_delay = retry_delay
+        self.nudge_text = nudge_text
+        self.max_retries = max_retries
+        self.reason = reason
+        self.status_code = status_code
+        self.error_code = error_code
+        self.raw_exception = raw_exception
+        self.should_quarantine_symbol = should_quarantine_symbol
+        self.cooldown_seconds_override = float(cooldown_seconds) if cooldown_seconds is not None else None
+        self.retryable_override = retryable
+        self.should_compress_override = should_compress
+        self.should_rotate_cred_override = should_rotate_credential
+        self.should_fallback_override = should_fallback
 
     @property
     def retryable(self) -> bool:
         """Whether this error allows any retry attempt."""
+        if self.retryable_override is not None:
+            return self.retryable_override
         return self.recovery not in (
             RecoveryAction.FAIL_PERMANENT,
             RecoveryAction.DEGRADE_DEFENSIVE,
@@ -389,12 +436,16 @@ class ClassifiedError:
 
     @property
     def should_compress(self) -> bool:
+        if self.should_compress_override is not None:
+            return self.should_compress_override
         return self.recovery == RecoveryAction.RETRY_WITH_COMPACTION or (
-            self.reason is not None and self.reason.should_compress
+            self.reason is not None and getattr(self.reason, "should_compress", False)
         )
 
     @property
     def should_rotate_cred(self) -> bool:
+        if self.should_rotate_cred_override is not None:
+            return self.should_rotate_cred_override
         return self.recovery == RecoveryAction.ROTATE_CREDENTIAL
 
     @property
@@ -403,6 +454,8 @@ class ClassifiedError:
 
     @property
     def should_fallback_model(self) -> bool:
+        if self.should_fallback_override is not None:
+            return self.should_fallback_override
         return self.recovery == RecoveryAction.FALLBACK_MODEL
 
     @property
@@ -427,9 +480,11 @@ class ClassifiedError:
 
     @property
     def cooldown_seconds(self) -> float:
+        if self.cooldown_seconds_override is not None:
+            return self.cooldown_seconds_override
         if self.retry_delay > 0.0:
             return self.retry_delay
-        if self.reason:
+        if self.reason and hasattr(self.reason, "backoff_seconds"):
             return self.reason.backoff_seconds
         return 0.0
 

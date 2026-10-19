@@ -142,6 +142,39 @@ LONG_RETRY_ERRORS = [
 ]
 
 
+def _extract_task_owner(func: Any) -> Optional[Any]:
+    """Extract owner object from bound method, partial, wrapper, attribute, or closure."""
+    if func is None:
+        return None
+    # 1. Bound method
+    owner = getattr(func, "__self__", None)
+    if owner is not None:
+        return owner
+    # 2. Explicit owner attribute
+    if hasattr(func, "owner"):
+        return getattr(func, "owner")
+    # 3. functools.partial
+    if hasattr(func, "func"):
+        owner = _extract_task_owner(getattr(func, "func"))
+        if owner is not None:
+            return owner
+    # 4. Decorator wrapper
+    if hasattr(func, "__wrapped__"):
+        owner = _extract_task_owner(getattr(func, "__wrapped__"))
+        if owner is not None:
+            return owner
+    # 5. Closure cells (e.g. async def runner() enclosing self)
+    if hasattr(func, "__closure__") and func.__closure__:
+        for cell in func.__closure__:
+            try:
+                val = cell.cell_contents
+                if hasattr(val, "_running") or hasattr(val, "is_running") or hasattr(val, "status"):
+                    return val
+            except ValueError, Exception:
+                continue
+    return None
+
+
 async def _run_with_restart(
     name: str,
     coro_factory,
@@ -163,10 +196,17 @@ async def _run_with_restart(
             if shutdown_event.is_set():
                 break
 
-            self_obj = getattr(coro_factory, "__self__", None)
+            self_obj = _extract_task_owner(coro_factory)
             if self_obj is not None:
                 if hasattr(self_obj, "_running") and not self_obj._running:
                     logger.info(f"{name} stopped.")
+                    break
+                if hasattr(self_obj, "status") and str(getattr(self_obj, "status", "")).upper() in (
+                    "STOPPED",
+                    "DONE",
+                    "COMPLETED",
+                ):
+                    logger.info(f"{name} stopped (status={self_obj.status}).")
                     break
                 if hasattr(self_obj, "is_running"):
                     is_running_val = self_obj.is_running() if callable(self_obj.is_running) else self_obj.is_running

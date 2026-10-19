@@ -69,6 +69,7 @@ class EdgeStrategy(ABC):
         symbol: str,
         timeframe: str = "H1",
         limit: int = 100,
+        as_of: Optional[Any] = None,
     ) -> list[CandleDict]:
         """Built-in helper for quantitative strategies to retrieve historical OHLCV candles."""
         from sqlalchemy import select
@@ -76,7 +77,7 @@ class EdgeStrategy(ABC):
         from monika.infrastructure.database.models import PriceOHLCV
 
         norm_tf = timeframe.upper()
-        cache_key = (symbol, norm_tf)
+        cache_key = (symbol, norm_tf, str(as_of) if as_of is not None else None)
 
         # Check session-level in-memory cache to eliminate N+1 DB query storms
         if hasattr(session, "info") and isinstance(session.info, dict):
@@ -86,12 +87,11 @@ class EdgeStrategy(ABC):
                 if len(cached) >= limit:
                     return cached[-limit:]
 
-        stmt = (
-            select(PriceOHLCV)
-            .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == norm_tf)
-            .order_by(PriceOHLCV.timestamp.desc())
-            .limit(limit)
-        )
+        stmt = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == norm_tf)
+        if as_of is not None:
+            stmt = stmt.where(PriceOHLCV.timestamp <= as_of)
+        stmt = stmt.order_by(PriceOHLCV.timestamp.desc()).limit(limit)
+
         rows = (await session.execute(stmt)).scalars().all()
         rows = list(reversed(rows))
         candles = [
@@ -110,6 +110,43 @@ class EdgeStrategy(ABC):
         if hasattr(session, "info") and isinstance(session.info, dict):
             session.info.setdefault("candle_cache", {})[cache_key] = candles
         return candles
+
+    @staticmethod
+    def derive_atr_brackets(
+        entry_price: float,
+        candles: list[CandleDict],
+        direction: str,
+        atr_period: int = 14,
+        atr_multiplier_sl: float = 1.5,
+        risk_reward_ratio: float = 1.5,
+    ) -> tuple[float, float]:
+        """Compute robust ATR-based Stop Loss and Take Profit levels."""
+        if not candles or len(candles) < 2 or entry_price <= 0:
+            if direction.lower() == "buy":
+                return round(entry_price * 0.99, 5), round(entry_price * 1.015, 5)
+            else:
+                return round(entry_price * 1.01, 5), round(entry_price * 0.985, 5)
+
+        tr_list = []
+        for i in range(1, min(len(candles), atr_period + 1)):
+            h = float(candles[-i].high)
+            l = float(candles[-i].low)
+            prev_c = float(candles[-i - 1].close)
+            tr = max(h - l, abs(h - prev_c), abs(l - prev_c))
+            tr_list.append(tr)
+        atr = sum(tr_list) / len(tr_list) if tr_list else (entry_price * 0.005)
+
+        sl_dist = atr * atr_multiplier_sl
+        tp_dist = sl_dist * risk_reward_ratio
+
+        if direction.lower() == "buy":
+            sl = entry_price - sl_dist
+            tp = entry_price + tp_dist
+        else:
+            sl = entry_price + sl_dist
+            tp = entry_price - tp_dist
+
+        return round(sl, 5), round(tp, 5)
 
     @abstractmethod
     async def evaluate(

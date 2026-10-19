@@ -36,9 +36,12 @@ async def evaluate_pretrade_gate(
     if not strategy_type:
         return True, "ok"
 
+    is_trend_like = strategy_type in ("trend", "breakout", "tri_convergent")
+    is_mr_like = strategy_type in ("mean_reversion", "stat_arb")
+
     # 2. Volatility Chop Gate
     chop = await compute_bollinger_donchian_chop(session, symbol, "H4", settings, as_of=as_of)
-    if chop.get("chop_block") and strategy_type == "trend":
+    if chop.get("chop_block") and is_trend_like:
         return False, f"chop_block: {chop.get('reason')}"
 
     # 3. Volume Profile Regime Alignment
@@ -46,18 +49,18 @@ async def evaluate_pretrade_gate(
     vp_required = vp_cfg.get("required", False)
     vp = await compute_volume_profile(session, symbol, settings, as_of=as_of)
     if "error" in vp:
-        if vp_required and strategy_type in ("trend", "mean_reversion"):
+        if vp_required and (is_trend_like or is_mr_like):
             return False, f"volume_profile_unavailable: {vp['error']}"
     else:
-        if vp.get("regime") == "imbalanced" and strategy_type == "mean_reversion":
-            return False, "imbalanced volume regime blocks mean-reversion"
-        if vp.get("regime") == "balanced" and strategy_type == "trend":
-            return False, "balanced volume regime blocks pure trend-following"
+        if vp.get("regime") == "imbalanced" and is_mr_like:
+            return False, "imbalanced volume regime blocks mean-reversion / stat-arb"
+        if vp.get("regime") == "balanced" and is_trend_like:
+            return False, "balanced volume regime blocks pure trend/breakout"
 
     # 4. ADX Trend Confirmation
     regime = await classify_market_regime(session, symbol, settings, as_of=as_of)
     min_adx = settings.get("trading", {}).get("edge_strategy", {}).get("min_adx_for_trend", 20)
-    if strategy_type == "trend":
+    if is_trend_like:
         adx_val = regime.get("adx")
         if adx_val is not None and adx_val < min_adx:
             return False, f"ADX={adx_val:.1f} < {min_adx}"

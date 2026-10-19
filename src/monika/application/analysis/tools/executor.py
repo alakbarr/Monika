@@ -149,14 +149,10 @@ class ToolExecutor(
             except Exception:
                 self.registry = None
         if settings is None:
-            import os
-
-            import yaml
-
             try:
-                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                with open(os.path.join(base_dir, "config", "settings.yaml"), "r") as f:
-                    self.settings = yaml.safe_load(f)
+                from monika.core.config.settings import load_settings
+
+                self.settings = load_settings() or {}
             except Exception:
                 self.settings = {}
         else:
@@ -679,30 +675,6 @@ class ToolExecutor(
                     handler = _reg_wrapper
             except Exception as _reg_err:
                 logger.debug(f"Registry dispatch error for '{normalized_name}': {_reg_err}")
-
-        # 5. Direct fallback to UnifiedToolRegistry (plugins, dynamic tools)
-        if handler is None:
-            try:
-                from monika.application.analysis.tools.unified_registry import unified_tool_registry
-
-                u_entry = unified_tool_registry.get_tool(normalized_name)
-                if u_entry is not None:
-
-                    async def _unified_wrapper(inp_dict: dict, _ue=u_entry):
-                        params = dict(inp_dict) if isinstance(inp_dict, dict) else {}
-                        res = await unified_tool_registry.execute_tool(
-                            _ue.name, params, context=self, session=self.session
-                        )
-                        if isinstance(res, str):
-                            try:
-                                res = json.loads(res)
-                            except Exception:
-                                pass
-                        return res
-
-                    handler = _unified_wrapper
-            except Exception as _u_err:
-                logger.debug(f"Unified tool registry dispatch error for '{normalized_name}': {_u_err}")
 
         if handler is None:
             logger.warning(f"Unknown tool called: '{tool_name}' (normalized: '{normalized_name}')")

@@ -70,26 +70,46 @@ class TriConvergentAlphaStrategy(EdgeStrategy):
         scores["alpha_mr5"] = float(-(ret_rank - 0.5) * 2.0) if not np.isnan(ret_rank) else 0.0
 
         # Factor 2: Volume-weighted Price Momentum (Alpha101 #006 inspiration)
-        vol_z = ((volume - volume.rolling(20).mean()) / (volume.rolling(20).std() + 1e-9)).iloc[-1]
+        vol_std = volume.rolling(20).std().iloc[-1]
+        vol_mean = volume.rolling(20).mean().iloc[-1]
+        vol_z = float((volume.iloc[-1] - vol_mean) / (vol_std + 1e-9)) if (pd.notna(vol_std) and vol_std > 0) else 0.0
+        if np.isnan(vol_z) or np.isinf(vol_z):
+            vol_z = 0.0
         price_delta = (close - close.shift(5)).iloc[-1]
+        price_delta = float(price_delta) if pd.notna(price_delta) else 0.0
         mom_score = np.tanh((price_delta / (close.iloc[-1] * 0.01 + 1e-9)) * (1.0 + max(vol_z, 0.0) * 0.2))
-        scores["alpha_vw_mom"] = float(mom_score)
+        scores["alpha_vw_mom"] = float(mom_score) if not np.isnan(mom_score) else 0.0
 
         # Factor 3: Amihud illiquidity shock
         dollar_vol = close * (volume + 1.0)
         illiq = (ret.abs() / (dollar_vol + 1e-9)).rolling(10).mean()
-        illiq_z = ((illiq - illiq.rolling(20).mean()) / (illiq.rolling(20).std() + 1e-9)).iloc[-1]
+        illiq_std = illiq.rolling(20).std().iloc[-1]
+        illiq_mean = illiq.rolling(20).mean().iloc[-1]
+        illiq_z = (
+            float((illiq.iloc[-1] - illiq_mean) / (illiq_std + 1e-9))
+            if (pd.notna(illiq_std) and illiq_std > 0)
+            else 0.0
+        )
         scores["alpha_illiq_shock"] = float(np.clip(illiq_z / 3.0, -1.0, 1.0)) if not np.isnan(illiq_z) else 0.0
 
         # Factor 4: Breakout Volatility Expansion
         atr = (high - low).rolling(14).mean().iloc[-1]
-        range_expansion = (high.iloc[-1] - low.iloc[-1]) / (atr + 1e-9)
+        atr_val = float(atr) if pd.notna(atr) and atr > 0 else (close.iloc[-1] * 0.005)
+        range_expansion = (high.iloc[-1] - low.iloc[-1]) / (atr_val + 1e-9)
         dir_sign = 1.0 if close.iloc[-1] > df["open"].iloc[-1] else -1.0
-        scores["alpha_vol_expansion"] = float(np.clip((range_expansion - 1.0) * dir_sign, -1.0, 1.0))
+        vol_exp = (range_expansion - 1.0) * dir_sign
+        scores["alpha_vol_expansion"] = float(np.clip(vol_exp, -1.0, 1.0)) if not np.isnan(vol_exp) else 0.0
+
+        # Sanitize all scores
+        for k in scores:
+            if np.isnan(scores[k]) or np.isinf(scores[k]):
+                scores[k] = 0.0
 
         # Composite weighted score
         weights = {"alpha_mr5": 0.25, "alpha_vw_mom": 0.40, "alpha_illiq_shock": 0.15, "alpha_vol_expansion": 0.20}
         composite = sum(scores.get(k, 0.0) * w for k, w in weights.items())
+        if np.isnan(composite) or np.isinf(composite):
+            return 0.0, scores
         return float(np.clip(composite, -1.0, 1.0)), scores
 
     async def evaluate(self, session: AsyncSession, symbol: str, settings: dict) -> EdgeSignal:

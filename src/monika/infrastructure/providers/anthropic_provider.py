@@ -519,7 +519,9 @@ class AnthropicProvider(BaseLLMClient):
         thinking_budget = getattr(self, "thinking_budget", None) or self.THINKING_BUDGETS.get(self.thinking_level, 4096)
 
         system_block = _build_system_blocks(system_prompt)
-        cached_tools = list(tools)
+        from monika.infrastructure.providers.schema_normalizer import ToolSchemaNormalizer
+
+        cached_tools = ToolSchemaNormalizer.to_anthropic(tools)
         if cached_tools:
             last = dict(cached_tools[-1])
             last["cache_control"] = {"type": "ephemeral"}

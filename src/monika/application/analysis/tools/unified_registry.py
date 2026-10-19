@@ -358,6 +358,26 @@ class UnifiedToolRegistry:
         aliased = self._aliases.get(name)
         if aliased and aliased in self._tools:
             return self._tools[aliased]
+        # Fallback bridge to default_tool_registry
+        try:
+            from monika.application.analysis.tools.registry import default_tool_registry
+
+            def_tool = default_tool_registry._tools.get(name) or default_tool_registry._handlers.get(name)
+            if def_tool is not None:
+                desc = getattr(def_tool, "description", "") or (getattr(def_tool, "__doc__", "") or "").strip()
+                raw_handler = getattr(def_tool, "handler", def_tool)
+                handler: Callable[..., Any] = raw_handler if callable(raw_handler) else (lambda **kw: None)
+                params_schema = getattr(def_tool, "parameters", {})
+                return ToolEntry(
+                    name=name,
+                    category=getattr(def_tool, "toolset", "TRADING").upper(),
+                    description=desc,
+                    handler=handler,
+                    parameters_schema=params_schema,
+                    is_async=inspect.iscoroutinefunction(handler),
+                )
+        except Exception:
+            pass
         return None
 
     def list_tools(self, category: Optional[str] = None, only_available: bool = True) -> List[ToolEntry]:

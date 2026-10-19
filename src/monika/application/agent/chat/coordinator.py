@@ -259,9 +259,10 @@ class ChatAgent(
             from monika.application.agent.error_classifier import classify_api_error
 
             classified = classify_api_error(unhandled_exc)
-            err_msg = f"Maaf, terjadi kendala teknis: {classified.reason.value}. {classified.message}"
+            reason_str = classified.reason.value if classified.reason else "UNKNOWN"
+            err_msg = f"Maaf, terjadi kendala teknis: {reason_str}. {classified.message}"
             logger.error(f"[ChatAgent] Unhandled turn exception: {unhandled_exc}", exc_info=True)
-            await self._close_durable_failed_turn(session_id=session_id, reason=f"Error: {classified.reason.value}")
+            await self._close_durable_failed_turn(session_id=session_id, reason=f"Error: {reason_str}")
             return f"[PERINGATAN] {err_msg}", None
         finally:
             self._active_task = None

@@ -117,6 +117,10 @@ async def handle_get_slippage_summary(args: dict, **ctx) -> dict:
 
 def register_trading_tools():
     registry = ToolRegistry.get_instance()
+    try:
+        from monika.application.analysis.tools.unified_registry import unified_tool_registry
+    except Exception:
+        unified_tool_registry = None
     tools = [
         ToolDefinition(
             name="submit_asset_analysis",
@@ -199,6 +203,14 @@ def register_trading_tools():
     ]
     for t in tools:
         registry.register(t)
+        if unified_tool_registry is not None:
+            unified_tool_registry.register_tool(
+                name=t.name,
+                category="TRADING",
+                handler=t.handler,
+                parameters_schema=t.parameters,
+                description=t.description,
+            )
 
 
 register_trading_tools()

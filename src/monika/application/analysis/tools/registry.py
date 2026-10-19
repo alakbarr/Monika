@@ -476,8 +476,10 @@ class ToolRegistry:
             logger.error(f"Error executing tool {tool_name}: {e}", exc_info=True)
             return {"error": str(e)[:2048], "is_error": True}
 
-    def auto_discover(self, package_name: str = "analysis.tools.handlers"):
+    def auto_discover(self, package_name: str = "monika.application.analysis.tools.handlers"):
         """Dynamically import all handler submodules with AST pre-filtering (Phase 4.4)."""
+        if package_name == "analysis.tools.handlers":
+            package_name = "monika.application.analysis.tools.handlers"
         try:
             pkg = importlib.import_module(package_name)
             if hasattr(pkg, "__path__"):

@@ -52,8 +52,12 @@ def truncate_and_spill_output(
     # Persist full output to disk
     spill_dir: Path
     if not cache_dir:
-        base = Path(__file__).resolve().parent.parent.parent.parent
-        spill_dir = base / "data" / "cache" / "spillover"
+        try:
+            from monika.core.paths import get_repo_root
+
+            spill_dir = get_repo_root() / "data" / "cache" / "spillover"
+        except Exception:
+            spill_dir = Path("data") / "cache" / "spillover"
     else:
         spill_dir = Path(cache_dir)
 

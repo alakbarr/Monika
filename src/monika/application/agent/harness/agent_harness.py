@@ -1809,6 +1809,23 @@ class AgentHarness:
                             }
 
                 # c. Dynamic Execution via ToolExecutor with OpenTelemetry Tool Span and Plugin Hooks
+                from monika.application.agent.estop import is_estop_active
+
+                if is_estop_active():
+                    logger.critical(
+                        f"[{stage_name}][AgentHarness] ESTOP detected before executing tool '{c_name}'. Aborting tool execution."
+                    )
+                    return {
+                        "type": "tool_result",
+                        "tool_use_id": c_id,
+                        "name": c_name,
+                        "content": json.dumps({"error": "ESTOP is active. All tool executions are halted."}),
+                        "is_error": True,
+                    }
+
+                # Persist-before-execute: record tool intent before touching broker/external state
+                await self._log_tool_call(session, stage_name, c_name, c_input, {"status": "PENDING_EXECUTION"})
+
                 tool_calls_made += 1
                 called_tools.add(c_name)
                 res_obj = None

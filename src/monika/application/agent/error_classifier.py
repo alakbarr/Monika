@@ -22,24 +22,10 @@ from typing import Any, Dict, Optional, Tuple, Union
 logger = logging.getLogger("TradingAgent.Agent.ErrorClassifier")
 
 
-from monika.infrastructure.credentials.error_taxonomy import FailoverReason  # noqa: F401 (canonical re-export)
-
-
-@dataclass
-class ClassifiedError:
-    """Represents a categorized failure with concrete action directives."""
-
-    reason: FailoverReason
-    status_code: Optional[int] = None
-    error_code: Optional[str] = None
-    message: str = ""
-    retryable: bool = False
-    should_compress: bool = False
-    should_rotate_credential: bool = False
-    should_fallback: bool = False
-    should_quarantine_symbol: bool = False
-    cooldown_seconds: Optional[int] = None
-    raw_exception: Optional[Exception] = None
+from monika.infrastructure.credentials.error_taxonomy import (  # noqa: F401 (canonical re-export)
+    ClassifiedError,
+    FailoverReason,
+)
 
 
 # Regex patterns for matching common error strings

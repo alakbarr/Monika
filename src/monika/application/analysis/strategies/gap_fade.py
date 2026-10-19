@@ -140,14 +140,33 @@ class DailyReopenGapFade(EdgeStrategy):
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="gap consumed by costs")
 
         direction = "sell" if gap > 0 else "buy"
-        entry = today_open
+        current_price = safe_float(d1[0].close) or today_open
+
+        # Check if gap has already been filled
+        if direction == "sell" and current_price <= prev_close:
+            return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="gap already filled")
+        if direction == "buy" and current_price >= prev_close:
+            return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="gap already filled")
+
+        entry = current_price
+        remaining_gap_pips = abs(entry - prev_close) / pip
+        if remaining_gap_pips < (threshold * 0.5):
+            return EdgeSignal(
+                self.strategy_id,
+                symbol,
+                None,
+                False,
+                0.0,
+                rationale=f"remaining gap {remaining_gap_pips:.1f}p < min threshold",
+            )
+
         sl_distance = max(atr * 0.5 if atr else gap_pips * pip * 0.6, gap_pips * pip * 0.4)
         sl = entry + sl_distance if direction == "sell" else entry - sl_distance
         tp = prev_close  # fade target: fill back to prior close
         risk, reward = abs(entry - sl), abs(entry - tp)
-        if risk <= 0 or reward / risk < 1.5:
+        if risk <= 0 or reward / risk < 1.3:
             return EdgeSignal(
-                self.strategy_id, symbol, None, False, 0.0, rationale=f"R:R {reward / risk if risk else 0:.2f} < 1.5"
+                self.strategy_id, symbol, None, False, 0.0, rationale=f"R:R {reward / risk if risk else 0:.2f} < 1.3"
             )
 
         return EdgeSignal(

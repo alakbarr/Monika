@@ -11,6 +11,7 @@ import asyncio
 import json
 import logging
 import os
+import secrets
 import sys
 import tempfile
 from pathlib import Path
@@ -124,12 +125,13 @@ class PTCHandler:
                 "tokens_saved_estimate": 0,
             }
 
-        # 1. Start RPC server for tool access
-        rpc_server, rpc_port = await self._start_tool_rpc_server(allowed_tools)
+        # 1. Start RPC server for tool access with ephemeral auth token
+        auth_token = secrets.token_hex(24)
+        rpc_server, rpc_port = await self._start_tool_rpc_server(allowed_tools, auth_token)
 
         try:
             # 2. Write script to temp file with tool bridge preamble
-            script_content = self._build_sandboxed_script(code, rpc_port)
+            script_content = self._build_sandboxed_script(code, rpc_port, auth_token)
             with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as f:
                 f.write(script_content)
                 script_path = f.name
@@ -246,19 +248,20 @@ class PTCHandler:
             rpc_server.close()
             await rpc_server.wait_closed()
 
-    def _build_sandboxed_script(self, user_code: str, rpc_port: int) -> str:
+    def _build_sandboxed_script(self, user_code: str, rpc_port: int, auth_token: str) -> str:
         """Build script with tool bridge preamble."""
         return f'''import json, sys, socket
 
 class _ToolBridge:
     """RPC bridge to parent agent's tool executor."""
-    def __init__(self, port):
+    def __init__(self, port, token):
         self._port = port
+        self._token = token
 
     def _send_request(self, name, kwargs):
         sock = socket.create_connection(("127.0.0.1", self._port), timeout=60)
         try:
-            request = json.dumps({{"tool": name, "args": kwargs}}) + "\\n"
+            request = json.dumps({{"tool": name, "args": kwargs, "token": self._token}}) + "\\n"
             sock.sendall(request.encode("utf-8"))
             sock.shutdown(socket.SHUT_WR)
             response = b""
@@ -279,19 +282,31 @@ class _ToolBridge:
             return self._send_request(name, kwargs)
         return _call
 
-tools = _ToolBridge({rpc_port})
+tools = _ToolBridge({rpc_port}, "{auth_token}")
 
 # ── User Code ──
 {user_code}
 '''
 
-    async def _start_tool_rpc_server(self, allowed_tools):
-        """Start localhost TCP server that bridges tool calls to executor."""
+    async def _start_tool_rpc_server(self, allowed_tools: Optional[list], auth_token: str):
+        """Start localhost TCP server that bridges tool calls to executor with constant-time token auth."""
+        FORBIDDEN_PTC_TOOLS = {
+            "place_order",
+            "close_position",
+            "modify_position",
+            "kill",
+            "cancel_order",
+            "submit_asset_analysis",
+            "execute_manual_trade",
+            "modify_stop_loss",
+            "close_all_positions",
+        }
 
         class _RPCServer:
-            def __init__(self, executor, allowed):
+            def __init__(self, executor, allowed, token):
                 self.executor = executor
                 self.allowed = set(allowed) if allowed else None
+                self.token = token
                 self.call_count = 0
                 self._server: Optional[asyncio.Server] = None
 
@@ -301,10 +316,18 @@ tools = _ToolBridge({rpc_port})
                     if not data:
                         return
                     request = json.loads(data.decode("utf-8"))
-                    tool_name = request["tool"]
+                    req_token = request.get("token", "")
+                    if not secrets.compare_digest(str(req_token), self.token):
+                        writer.write(json.dumps({"error": "Unauthorized: invalid RPC token"}).encode("utf-8"))
+                        await writer.drain()
+                        return
+
+                    tool_name = request.get("tool", "")
                     tool_args = request.get("args", {})
 
-                    if self.allowed and tool_name not in self.allowed:
+                    if tool_name in FORBIDDEN_PTC_TOOLS:
+                        result = {"error": f"Tool '{tool_name}' is forbidden in PTC sandbox environment (fail-closed)"}
+                    elif self.allowed and tool_name not in self.allowed:
                         result = {"error": f"Tool '{tool_name}' not in allowed list"}
                     else:
                         self.call_count += 1
@@ -333,7 +356,7 @@ tools = _ToolBridge({rpc_port})
                 if self._server:
                     await self._server.wait_closed()
 
-        rpc = _RPCServer(self.tool_executor, allowed_tools)
+        rpc = _RPCServer(self.tool_executor, allowed_tools, auth_token)
         server = await asyncio.start_server(rpc.handle_client, "127.0.0.1", 0)
         rpc._server = server
         port = server.sockets[0].getsockname()[1]
