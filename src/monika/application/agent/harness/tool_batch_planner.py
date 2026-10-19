@@ -80,6 +80,17 @@ class ToolBatchPlanner:
         segments: List[Tuple[str, List[Dict[str, Any]]]] = []
         current_parallel: List[Dict[str, Any]] = []
 
+        def _flush_parallel(batch: List[Dict[str, Any]]) -> None:
+            if not batch:
+                return
+            from monika.application.agent.harness.symbol_segment_planner import SymbolSegmentPlanner
+
+            sub_segs = SymbolSegmentPlanner.plan_segments(batch)
+            if sub_segs:
+                segments.extend(sub_segs)
+            else:
+                segments.append(("parallel", batch))
+
         for tc in tool_calls:
             name = tc.get("name", "")
             if self.is_parallel_safe(name):
@@ -87,12 +98,12 @@ class ToolBatchPlanner:
             else:
                 # Flush pending parallel batch before barrier
                 if current_parallel:
-                    segments.append(("parallel", current_parallel))
+                    _flush_parallel(current_parallel)
                     current_parallel = []
                 # Barrier runs strictly sequentially
                 segments.append(("sequential", [tc]))
 
         if current_parallel:
-            segments.append(("parallel", current_parallel))
+            _flush_parallel(current_parallel)
 
         return segments

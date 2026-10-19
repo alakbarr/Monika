@@ -34,7 +34,7 @@ class ActionExecutionMixin(_ChatAgentMixinBase):
         from monika.application.execution.execution_service import ExecutionService
         from monika.core.config.settings import load_settings
 
-        svc = ExecutionService(self.settings)
+        svc = getattr(self, "execution_service", None) or ExecutionService(self.settings)
         params = action.params
 
         if action.action_type == "place_order":

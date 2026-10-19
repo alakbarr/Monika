@@ -46,6 +46,16 @@ READ_ONLY_TOOLS: Set[str] = {
     "search_tools",
     "describe_tool",
     "execute_analysis_code",
+    "calculate_position_size",
+    "calculate_optimal_sizing",
+    "calculate_correlation",
+    "calculate_risk_metrics",
+    "calculate_atr",
+    "estimate_slippage",
+    "check_risk_gate",
+    "inspect_code",
+    "list_tools",
+    "ping",
 }
 
 STATE_ADVANCING_TOOLS: Set[str] = {
@@ -80,7 +90,21 @@ class StallGuard:
             return False
         if tool_name in READ_ONLY_TOOLS:
             return True
-        return tool_name.startswith(("get_", "read_", "query_", "fetch_", "search_", "load_"))
+        return tool_name.startswith(
+            (
+                "get_",
+                "read_",
+                "query_",
+                "fetch_",
+                "search_",
+                "load_",
+                "calculate_",
+                "estimate_",
+                "check_",
+                "inspect_",
+                "list_",
+            )
+        )
 
     def record_call(self, tool_name: str, tool_result: Any = None, turn_idx: Optional[int] = None) -> None:
         """Record execution of a tool and update stall counters per reasoning turn."""

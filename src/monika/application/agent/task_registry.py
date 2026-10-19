@@ -179,6 +179,7 @@ async def _run_with_restart(
     name: str,
     coro_factory,
     shutdown_event: asyncio.Event,
+    is_finite: bool = False,
     max_restarts: int = 5,
     base_delay: float = 10.0,
     max_delay: float = 300.0,
@@ -194,6 +195,10 @@ async def _run_with_restart(
         try:
             await coro_factory()
             if shutdown_event.is_set():
+                break
+
+            if is_finite or getattr(coro_factory, "is_finite", False):
+                logger.info(f"{name} completed successfully (finite task).")
                 break
 
             self_obj = _extract_task_owner(coro_factory)
@@ -334,6 +339,7 @@ class TaskDefinition:
     runner: Callable[..., Coroutine]
     task_id: str
     is_core: bool = False
+    is_finite: bool = False
     max_restarts: int = 5
     base_delay: float = 10.0
     max_delay: float = 300.0
@@ -367,6 +373,7 @@ class TaskRegistry:
         runner: Callable[..., Coroutine],
         task_id: Optional[str] = None,
         is_core: Optional[bool] = None,
+        is_finite: bool = False,
         max_restarts: int = 5,
         base_delay: float = 10.0,
         max_delay: float = 300.0,
@@ -378,6 +385,7 @@ class TaskRegistry:
             runner=runner,
             task_id=tid,
             is_core=core_flag,
+            is_finite=is_finite,
             max_restarts=max_restarts,
             base_delay=base_delay,
             max_delay=max_delay,
@@ -399,6 +407,7 @@ class TaskRegistry:
                 defn.name,
                 defn.runner,
                 self.shutdown_event,
+                is_finite=defn.is_finite,
                 max_restarts=defn.max_restarts,
                 base_delay=defn.base_delay,
                 max_delay=defn.max_delay,

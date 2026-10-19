@@ -9,6 +9,7 @@ active analysis turn's steering queue without restarting the analysis cycle.
 
 import asyncio
 import logging
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
@@ -46,16 +47,20 @@ class SymbolTurnLeaseManager:
     """
 
     _instance: Optional["SymbolTurnLeaseManager"] = None
+    _init_lock: threading.Lock = threading.Lock()
 
     @classmethod
     def get_instance(cls) -> "SymbolTurnLeaseManager":
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._init_lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     @classmethod
     def reset(cls) -> None:
-        cls._instance = None
+        with cls._init_lock:
+            cls._instance = None
 
     def __init__(self):
         self._leases: Dict[str, SymbolLease] = {}
@@ -197,3 +202,16 @@ class SymbolTurnLeaseManager:
 def get_symbol_lease_manager() -> SymbolTurnLeaseManager:
     """Get or initialize global SymbolTurnLeaseManager singleton."""
     return SymbolTurnLeaseManager.get_instance()
+
+
+# Canonical aliases
+TurnLeaseManager = SymbolTurnLeaseManager
+get_turn_lease_manager = get_symbol_lease_manager
+
+__all__ = [
+    "SymbolLease",
+    "SymbolTurnLeaseManager",
+    "TurnLeaseManager",
+    "get_symbol_lease_manager",
+    "get_turn_lease_manager",
+]

@@ -59,11 +59,13 @@ class ChatAgent(
         user_id: int | str,
         is_admin: bool = False,
         interface: str = "telegram",
+        execution_service: Optional[Any] = None,
     ):
         self.settings = settings
         self.user_id = user_id
         self.is_admin = is_admin
         self.interface = interface
+        self.execution_service = execution_service
 
         is_cli = interface in ("cli", "interactive") or (
             isinstance(user_id, str) and (user_id.startswith("cli") or user_id == "api_client")
