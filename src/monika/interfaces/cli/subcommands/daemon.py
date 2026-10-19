@@ -38,7 +38,8 @@ class DaemonSubcommand(Subcommand):
         return parser
 
     async def execute(self, args: argparse.Namespace) -> int:
-        action = getattr(args, "daemon_action", None) or getattr(args, "command", "status")
+        raw_action = getattr(args, "daemon_action", None)
+        action = raw_action if raw_action and raw_action != "daemon" else "status"
         from monika.interfaces.cli.commands.daemon_ctrl import (
             _cmd_kill,
             _cmd_pause,

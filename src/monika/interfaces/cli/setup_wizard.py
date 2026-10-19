@@ -469,9 +469,9 @@ class SetupWizard:
                     f"\n{stamp_info('STEP 2/6')} [bold {BRASS}]Database Connection & Storage Engine[/] [{MUTED}]('b' to go back)[/]"
                 )
 
-                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                data_dir = os.path.join(base_dir, "data")
-                os.makedirs(data_dir, exist_ok=True)
+                from monika.core.paths import get_data_dir
+
+                data_dir = str(get_data_dir())
                 db_file = os.path.join(data_dir, "monika.db").replace("\\", "/")
                 sqlite_url = f"sqlite+aiosqlite:///{db_file}"
 
@@ -565,9 +565,11 @@ class SetupWizard:
                             import subprocess
 
                             console.print(f"{stamp_info('ALEMBIC')} Running database migrations...")
-                            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                            from monika.core.paths import get_repo_root
+
+                            repo_root = str(get_repo_root())
                             res = subprocess.run(
-                                ["alembic", "upgrade", "head"], cwd=base_dir, capture_output=True, text=True
+                                ["alembic", "upgrade", "head"], cwd=repo_root, capture_output=True, text=True
                             )
                             if res.returncode == 0:
                                 console.print(f"{stamp_ok('MIGRATION')} Database schema migrated to latest head.")

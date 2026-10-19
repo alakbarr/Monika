@@ -27,6 +27,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
   const [isMuted, setIsMuted] = useState(sounds.getMuted());
   const [showHaltModal, setShowHaltModal] = useState(false);
   const [halting, setHalting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const isHalted = overview?.trading_paused ?? false;
 
@@ -36,7 +37,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
       setHalting(true);
       api.resumeTrading()
         .then(() => fetchAll())
-        .catch((err) => console.error('Failed to resume trading:', err))
+        .catch((err) => {
+          console.error('Failed to resume trading:', err);
+          setActionError(err instanceof Error ? err.message : 'Failed to resume trading on server');
+        })
         .finally(() => setHalting(false));
     } else {
       setShowHaltModal(true);
@@ -49,7 +53,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
     sounds.playClick('shutter');
     api.emergencyKill()
       .then(() => fetchAll())
-      .catch((err) => console.error('Emergency kill failed:', err))
+      .catch((err) => {
+        console.error('Emergency kill failed:', err);
+        setActionError(err instanceof Error ? err.message : 'Emergency kill request failed on server');
+      })
       .finally(() => setHalting(false));
   };
 
@@ -389,6 +396,16 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, onOpenCommand
         danger={true}
         onConfirm={handleConfirmHalt}
         onCancel={() => setShowHaltModal(false)}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(actionError)}
+        title="[ERROR] Action Execution Failed"
+        actionSummary={actionError || ''}
+        confirmLabel="ACKNOWLEDGE"
+        danger={true}
+        onConfirm={() => setActionError(null)}
+        onCancel={() => setActionError(null)}
       />
 
       <KeyboardShortcutsPanel

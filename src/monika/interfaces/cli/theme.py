@@ -577,11 +577,12 @@ def persist_theme_to_settings(theme_name: str, config_path: Optional[str] = None
     if norm_name not in THEMES:
         return False
 
+    from monika.core.paths import resolve_config_path
+
     candidates = [
         config_path,
         os.getenv("SETTINGS_PATH"),
-        "config/settings.yaml",
-        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "settings.yaml"),
+        str(resolve_config_path("settings.yaml")),
     ]
     target_path = None
     for c in candidates:

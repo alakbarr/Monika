@@ -128,7 +128,10 @@ async def action_close_position(payload: ClosePositionRequest, request: Request)
                 )
             target_ticket = pos.mt5_ticket
             if payload.percentage is not None and target_volume is None and pos.volume:
-                target_volume = round(float(pos.volume) * (float(payload.percentage) / 100.0), 2)
+                import math
+
+                raw_vol = float(pos.volume) * (float(payload.percentage) / 100.0)
+                target_volume = math.floor(raw_vol * 100.0) / 100.0
             if target_ticket is None and pos.is_paper:
                 if exec_svc and hasattr(exec_svc, "_close_paper_position"):
                     res = await exec_svc._close_paper_position(
@@ -138,7 +141,10 @@ async def action_close_position(payload: ClosePositionRequest, request: Request)
         elif target_ticket is not None and payload.percentage is not None and target_volume is None:
             pos = await pos_repo.get_by_ticket(target_ticket)
             if pos and pos.volume:
-                target_volume = round(float(pos.volume) * (float(payload.percentage) / 100.0), 2)
+                import math
+
+                raw_vol = float(pos.volume) * (float(payload.percentage) / 100.0)
+                target_volume = math.floor(raw_vol * 100.0) / 100.0
 
     if target_ticket is None:
         return JSONResponse(
@@ -365,6 +371,16 @@ async def action_close_batch(payload: BatchCloseRequest, request: Request):
             open_positions = await pos_repo.get_open_positions(
                 symbol=payload.symbol.upper() if payload.symbol else None
             )
+            filter_type = getattr(payload, "filter_type", "all") or "all"
+            if filter_type == "profit_only":
+                open_positions = [
+                    p for p in open_positions if getattr(p, "floating_pnl", 0.0) > 0 or getattr(p, "profit", 0.0) > 0
+                ]
+            elif filter_type == "loss_only":
+                open_positions = [
+                    p for p in open_positions if getattr(p, "floating_pnl", 0.0) < 0 or getattr(p, "profit", 0.0) < 0
+                ]
+
             for p in open_positions:
                 if p.mt5_ticket is not None:
                     tickets.append(p.mt5_ticket)

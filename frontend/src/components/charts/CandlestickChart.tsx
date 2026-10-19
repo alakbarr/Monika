@@ -119,8 +119,12 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         const latest = sorted[sorted.length - 1];
         if (latest) {
           setLastPrice(latest.close);
-          const factor = symbol.includes('JPY') ? 100 : 10000;
-          setSpreadPips(Math.abs(latest.high - latest.low) * factor > 0 ? 1.2 : 0.8);
+          const backendSpread = (candleRes as any)?.spread ?? (latest as any)?.spread;
+          if (typeof backendSpread === 'number') {
+            setSpreadPips(backendSpread);
+          } else {
+            setSpreadPips(null);
+          }
         }
 
         chartInstanceRef.current.timeScale().fitContent();

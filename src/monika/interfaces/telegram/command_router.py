@@ -126,7 +126,7 @@ DIRECT_COMMANDS: dict[str, dict] = {
     "backup": {"type": CommandType.ADMIN, "admin_only": True},
     "stress_test": {"type": CommandType.DIRECT, "admin_only": False},
     "stresstest": {"type": CommandType.DIRECT, "admin_only": False},
-    "cron": {"type": CommandType.DIRECT, "admin_only": False},
+    "cron": {"type": CommandType.ADMIN, "admin_only": True},
     "cancel": {"type": CommandType.ADMIN, "admin_only": True},
     "account": {"type": CommandType.DIRECT, "admin_only": False},
     "tasks": {"type": CommandType.DIRECT, "admin_only": False},

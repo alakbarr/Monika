@@ -107,17 +107,23 @@ async def preview_manual_order(payload: ManualOrderPreviewRequest, request: Requ
 
     from monika.infrastructure.database.db import AsyncSessionLocal
 
-    is_allowed = True
+    is_allowed = False
     gate_reason = "Order within risk thresholds"
     if risk_gate:
         try:
             async with AsyncSessionLocal() as session:
                 allowed, reason = await risk_gate._check_not_paused(session)
-                if not allowed:
+                if allowed:
+                    is_allowed = True
+                else:
                     is_allowed = False
                     gate_reason = reason
-        except Exception:
-            pass
+        except Exception as e:
+            is_allowed = False
+            gate_reason = f"Risk evaluation failed closed: {e}"
+    else:
+        is_allowed = False
+        gate_reason = "RiskGate unavailable; orders rejected by default"
 
     return {
         "symbol": sym,
@@ -179,6 +185,16 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
     else:
         is_paper_setting = True
     is_paper = payload.is_paper if payload.is_paper is not None else is_paper_setting
+    if not is_paper:
+        user_role = getattr(request.state, "role", None)
+        if user_role != Role.ADMIN:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "status": "forbidden",
+                    "message": "Live real-capital manual order submission requires Role.ADMIN privilege.",
+                },
+            )
 
     dir_upper = direction.upper()
     prop_dir: Literal["BUY", "SELL", "WAIT"] = (

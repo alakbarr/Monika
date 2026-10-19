@@ -34,7 +34,9 @@ class TraderOnboarding:
         if base_dir:
             self.base_dir = Path(base_dir)
         else:
-            self.base_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            from monika.core.paths import get_base_dir
+
+            self.base_dir = get_base_dir()
         self.profile_file = self.base_dir / "data" / "memory" / "trader_profile.json"
         self.soul_file = self.base_dir / "config" / "TRADING_SOUL.md"
 

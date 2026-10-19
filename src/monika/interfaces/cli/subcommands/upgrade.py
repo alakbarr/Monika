@@ -104,7 +104,9 @@ class UpgradeSubcommand(Subcommand):
 
         env_updates: Dict[str, str] = {}
         settings_updates: Dict[str, Any] = {"installation_tier": "full"}
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from monika.core.paths import get_repo_root
+
+        base_dir = str(get_repo_root())
 
         # ── 1. Database Upgrade: SQLite -> PostgreSQL ──
         console.print(f"\n{stamp_info('DATABASE')} [bold {BRASS}]Phase 1: PostgreSQL Configuration[/]")

@@ -83,8 +83,27 @@ async def get_overview():
             await session.execute(select(AssetAnalysis).order_by(AssetAnalysis.generated_at.desc()).limit(1))
         ).scalar_one_or_none()
 
+        # Settings & Trading Mode (Paper vs Live)
+        settings = get_dashboard_dependency("settings")
+        if not settings:
+            try:
+                from monika.core.config.settings import load_settings
+
+                settings = load_settings()
+            except Exception:
+                settings = {}
+
+        pt_config = settings.get("paper_trading", {}) if isinstance(settings.get("paper_trading"), dict) else {}
+        if not pt_config and isinstance(settings.get("trading"), dict):
+            pt_config = settings.get("trading", {}).get("paper_trading", {})
+
+        is_paper = bool(pt_config.get("enabled", True)) if isinstance(pt_config, dict) else True
+        is_live = not is_paper
+
         return {
             "agent_status": "paused" if (risk and risk.trading_paused) else "active",
+            "is_live": is_live,
+            "is_paper": is_paper,
             "open_positions_count": pos_count,
             "daily_pnl": daily_pnl,
             "daily_pnl_pct": daily_pnl_pct,

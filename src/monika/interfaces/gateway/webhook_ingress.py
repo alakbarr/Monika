@@ -376,12 +376,19 @@ def normalize_tradingview_payload(raw_data: Union[dict, str, bytes]) -> dict:
 
     # 2. Direction normalization
     raw_dir = str(_get_val("action", "order", "side", "signal", "direction", default="BUY")).strip().lower()
-    if any(b in raw_dir for b in ["buy", "long"]):
+    if any(c in raw_dir for c in ["close", "exit", "flat"]):
+        direction = "CLOSE"
+        event_type = "close_signal"
+    elif any(b in raw_dir for b in ["buy", "long"]):
         direction = "BUY"
+        event_type = "trade_signal"
     elif any(s in raw_dir for s in ["sell", "short"]):
         direction = "SELL"
+        event_type = "trade_signal"
     else:
-        direction = "BUY"
+        raise ValueError(
+            f"Unknown alert action '{raw_dir}'. Rejecting unverified action under Mechanical Fortress Principle."
+        )
 
     # 3. Volume normalization
     raw_vol = _get_val("volume", "contracts", "lots", "qty", "amount", "order_contracts", default=0.01)
@@ -427,7 +434,7 @@ def normalize_tradingview_payload(raw_data: Union[dict, str, bytes]) -> dict:
     event_id = f"tv_{symbol.lower()}_{int(now)}"
 
     return {
-        "event_type": "trade_signal",
+        "event_type": event_type,
         "event_id": event_id,
         "source": "tradingview",
         "symbol": symbol,

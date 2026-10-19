@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Literal, Optional
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from monika.interfaces.dashboard.rbac import Role, require_role
@@ -178,29 +178,10 @@ async def action_kill_symbol(symbol: str, request: Request):
             reason=f"Emergency liquidation for symbol {sym}",
         )
     else:
-        from sqlalchemy import select
-
-        from monika.infrastructure.database.db import AsyncSessionLocal
-        from monika.infrastructure.database.models import ActivityLog, Position
-
-        async with AsyncSessionLocal() as session:
-            positions = (
-                (await session.execute(select(Position).where(Position.symbol == sym, Position.status == "open")))
-                .scalars()
-                .all()
-            )
-            for p in positions:
-                p.status = "closed"
-                p.closed_at = datetime.now(timezone.utc)
-            session.add(
-                ActivityLog(
-                    category="risk",
-                    description=f"Symbol {sym} liquidated ({len(positions)} positions closed)",
-                    actor="admin",
-                )
-            )
-            await session.commit()
-            res = {"success": True, "closed_count": len(positions), "symbol": sym}
+        raise HTTPException(
+            status_code=503,
+            detail=f"Execution service unavailable. Cannot verify broker liquidation for symbol {sym}; positions remain open on broker.",
+        )
 
     await broadcast_live_event(
         "symbol_liquidated",
@@ -219,26 +200,31 @@ async def action_kill_symbol(symbol: str, request: Request):
 @require_role(Role.ADMIN)
 async def action_emergency_kill(request: Request):
     """Trigger emergency kill switch and position liquidation safely via daemon."""
-    from monika.infrastructure.database.db import AsyncSessionLocal
-    from monika.infrastructure.database.repositories import ActivityLogRepository, SystemConfigRepository
-
-    async with AsyncSessionLocal() as session:
-        cfg_repo = SystemConfigRepository(session)
-        act_repo = ActivityLogRepository(session)
-        await cfg_repo.set_kill_switch(True)
-        await act_repo.log_activity(
-            category="system",
-            description="Emergency kill switch activated via Dashboard / CLI",
-            actor="admin",
-        )
-        await session.commit()
-
+    # Step 1: Engage in-memory kill switch immediately with zero latency
     exec_svc = get_dashboard_dependency("execution_service")
     guardian = get_dashboard_dependency("position_guardian")
     if exec_svc and hasattr(exec_svc, "kill_switch"):
         await exec_svc.kill_switch("Dashboard emergency kill switch")
     elif guardian and hasattr(guardian, "execution_service") and hasattr(guardian.execution_service, "kill_switch"):
         await guardian.execution_service.kill_switch("Dashboard emergency kill switch")
+
+    # Step 2: Persist state to database
+    from monika.infrastructure.database.db import AsyncSessionLocal
+    from monika.infrastructure.database.repositories import ActivityLogRepository, SystemConfigRepository
+
+    try:
+        async with AsyncSessionLocal() as session:
+            cfg_repo = SystemConfigRepository(session)
+            act_repo = ActivityLogRepository(session)
+            await cfg_repo.set_kill_switch(True)
+            await act_repo.log_activity(
+                category="system",
+                description="Emergency kill switch activated via Dashboard / CLI",
+                actor="admin",
+            )
+            await session.commit()
+    except Exception as db_err:
+        logger.error(f"Failed to persist kill switch activation to DB: {db_err}", exc_info=True)
 
     await broadcast_live_event(
         "kill_switch_activated",

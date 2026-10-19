@@ -206,89 +206,66 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
     pendingTicks[sym] = tick;
 
+    const flushTicks = () => {
+      tickRafId = null;
+      const ticksToApply = pendingTicks;
+      pendingTicks = {};
+
+      let positions = get().positions;
+      let marketQuotes = { ...get().marketQuotes };
+
+      for (const [s, t] of Object.entries(ticksToApply)) {
+        const bid = typeof t.bid === 'number' ? t.bid : Number(t.bid) || 0;
+        const floatingPnl =
+          typeof t.floating_pnl === 'number'
+            ? t.floating_pnl
+            : t.floating_pnl != null
+              ? Number(t.floating_pnl)
+              : undefined;
+
+        const tickTicket = t.ticket ? Number(t.ticket) : (t.mt5_ticket ? Number(t.mt5_ticket) : undefined);
+
+        positions = positions.map((p) => {
+          if (p.symbol !== s) return p;
+          if (tickTicket !== undefined && p.mt5_ticket !== tickTicket && p.id !== tickTicket) {
+            return p;
+          }
+          const posPnl = tickTicket !== undefined && floatingPnl !== undefined ? floatingPnl : p.pnl;
+          return {
+            ...p,
+            current_price: bid,
+            floating_pnl: posPnl !== null ? posPnl : undefined,
+            pnl: posPnl,
+          };
+        });
+
+        const existingQuote = marketQuotes[s];
+        const rawChange = t.change_pct ?? t.changePct ?? t.pct_change;
+        const changePct =
+          typeof rawChange === 'number'
+            ? rawChange
+            : rawChange != null
+              ? Number(rawChange) || 0
+              : existingQuote && existingQuote.price > 0
+                ? ((bid - existingQuote.price) / existingQuote.price) * 100
+                : 0;
+
+        marketQuotes[s] = { price: bid, changePct };
+      }
+
+      set({ positions, marketQuotes });
+    };
+
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
       if (tickRafId === null) {
-        tickRafId = window.requestAnimationFrame(() => {
-          tickRafId = null;
-          const ticksToApply = pendingTicks;
-          pendingTicks = {};
-
-          let positions = get().positions;
-          let marketQuotes = { ...get().marketQuotes };
-
-          for (const [s, t] of Object.entries(ticksToApply)) {
-            const bid = typeof t.bid === 'number' ? t.bid : Number(t.bid) || 0;
-            const floatingPnl =
-              typeof t.floating_pnl === 'number'
-                ? t.floating_pnl
-                : t.floating_pnl != null
-                  ? Number(t.floating_pnl)
-                  : undefined;
-
-            positions = positions.map((p) =>
-              p.symbol === s
-                ? {
-                    ...p,
-                    current_price: bid,
-                    floating_pnl: floatingPnl,
-                    pnl: floatingPnl !== undefined ? floatingPnl : p.pnl,
-                  }
-                : p
-            );
-
-            const existingQuote = marketQuotes[s];
-            const rawChange = t.change_pct ?? t.changePct ?? t.pct_change;
-            const changePct =
-              typeof rawChange === 'number'
-                ? rawChange
-                : rawChange != null
-                  ? Number(rawChange) || 0
-                  : existingQuote && existingQuote.price > 0
-                    ? ((bid - existingQuote.price) / existingQuote.price) * 100
-                    : 0;
-
-            marketQuotes[s] = { price: bid, changePct };
-          }
-
-          set({ positions, marketQuotes });
-        });
+        if (typeof document !== 'undefined' && document.hidden) {
+          tickRafId = window.setTimeout(flushTicks, 100) as unknown as number;
+        } else {
+          tickRafId = window.requestAnimationFrame(flushTicks);
+        }
       }
     } else {
-      // Immediate fallback for non-browser or test environments
-      const bid = typeof tick.bid === 'number' ? tick.bid : Number(tick.bid) || 0;
-      const floatingPnl =
-        typeof tick.floating_pnl === 'number'
-          ? tick.floating_pnl
-          : tick.floating_pnl != null
-            ? Number(tick.floating_pnl)
-            : undefined;
-
-      const positions = get().positions.map((p) =>
-        p.symbol === sym
-          ? {
-              ...p,
-              current_price: bid,
-              floating_pnl: floatingPnl,
-              pnl: floatingPnl !== undefined ? floatingPnl : p.pnl,
-            }
-          : p
-      );
-      const existingQuote = get().marketQuotes[sym];
-      const rawChange = tick.change_pct ?? tick.changePct ?? tick.pct_change;
-      const changePct =
-        typeof rawChange === 'number'
-          ? rawChange
-          : rawChange != null
-            ? Number(rawChange) || 0
-            : existingQuote && existingQuote.price > 0
-              ? ((bid - existingQuote.price) / existingQuote.price) * 100
-              : 0;
-
-      const marketQuotes = {
-        ...get().marketQuotes,
-        [sym]: { price: bid, changePct },
-      };
-      set({ positions, marketQuotes });
+      flushTicks();
     }
   },
 
@@ -318,4 +295,3 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     set({ activity });
   },
 }));
-

@@ -32,10 +32,11 @@ install_bootstrap_hardening()
 
 
 def _reset_terminal_modes() -> None:
-    """Restore terminal mouse, bracketed paste, and cursor visibility on exit."""
+    """Restore terminal mouse, screen buffer, bracketed paste, and cursor visibility on exit."""
     try:
-        if sys.stdout.isatty():
-            sys.stdout.write("\x1b[?1000l\x1b[?2004l\x1b[?25h")
+        if sys.stdout and hasattr(sys.stdout, "isatty") and sys.stdout.isatty():
+            # Disable mouse tracking (1000, 1002, 1003, 1006), exit alt buffer (1049), disable bracketed paste (2004), show cursor (25h)
+            sys.stdout.write("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?1049l\x1b[?2004l\x1b[?25h")
             sys.stdout.flush()
     except Exception:
         pass

@@ -245,7 +245,9 @@ async def get_market_candles(
         except Exception as e:
             logger.debug(f"Live candle fetch for {sym} failed: {e}")
 
+    is_synthetic = False
     if not candles:
+        is_synthetic = True
         import math
         import time
 
@@ -301,5 +303,6 @@ async def get_market_candles(
         "symbol": sym,
         "timeframe": timeframe.upper(),
         "count": len(candles),
+        "is_synthetic": is_synthetic,
         "candles": candles,
     }

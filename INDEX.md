@@ -13339,7 +13339,7 @@
     - `reset() -> None`
 - **Top-Level Functions**:
   - `get_dispatcher() -> MonikaMcpDispatcher`
-  - `async list_mcp_tools()`: List all MCP tools exposed by Monika.
+  - `async list_mcp_tools(request: Request)`: List all MCP tools exposed by Monika.
   - `async mcp_sse_endpoint(request: Request)`: Server-Sent Events (SSE) endpoint for standard MCP client connections.
   - `async mcp_post_message(request: Request, sessionId: Optional[str])`: Receives JSON-RPC requests from MCP clients and returns response.
 
@@ -13741,7 +13741,7 @@
     - `is_running() -> bool` - *Returns True if TelegramBot polling loop is active.*
     - `async start() -> None` - *Memulai polling Telegram (blocking).*
     - `async stop() -> None` - *Stop the telegram bot application cleanly.*
-    - `async send_notification(text: str, parse_mode: str, message_thread_id: Optional[int], ...) -> None` - *Mengirim pesan notifikasi ke admin melalui outbound queue.*
+    - `async send_notification(text: str, parse_mode: str, message_thread_id: Optional[int], ...) -> None` - *Mengirim pesan notifikasi ke admin atau chat spesifik melalui outbound queue.*
     - `async request_fallback_consent(prompt_text: str, tg_event: asyncio.Event, tg_result: dict) -> None` - *Mengirim notifikasi inline keyboard untuk fallback consent ke admin.*
 
 #### `chat_agent.py` - *Telegram Chat Agent Adapter — Presentation & Streaming Interface via Telegram.*

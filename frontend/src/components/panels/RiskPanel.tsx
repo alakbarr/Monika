@@ -58,13 +58,13 @@ export const RiskPanel: React.FC = () => {
   const maxRiskPerTrade = riskState?.max_risk_pct ?? 1.0;
   const totalOpenRiskPct = riskState?.total_open_risk_pct ?? (openPositions.length * maxRiskPerTrade);
   const dailyDrawdownPct = Math.abs(riskState?.daily_pnl_pct ?? overview?.daily_pnl_pct ?? (overview?.daily_pnl ? Math.min(5.0, Math.abs(overview.daily_pnl) / 100) : 0));
-  const marginUsagePct = riskState?.margin_usage_pct ?? (openPositions.length * 2.5);
+  const marginUsagePct = riskState?.margin_usage_pct ?? null;
   const consecutiveLosses = riskState?.consecutive_losses ?? 0;
   const maxConsecutiveLosses = riskState?.max_consecutive_losses ?? 3;
   const maxDailyDrawdown = riskState?.max_daily_drawdown_pct ?? 3.0;
   const maxPositions = riskState?.max_positions ?? 5;
-  const avgSpread = riskState?.avg_spread_pips ?? 1.2;
-  const avgRR = riskState?.avg_rr_ratio ?? 1.5;
+  const avgSpread = riskState?.avg_spread_pips ?? null;
+  const avgRR = riskState?.avg_rr_ratio ?? null;
 
   const isPaused = overview?.trading_paused ?? riskState?.trading_paused ?? false;
 
@@ -226,7 +226,7 @@ export const RiskPanel: React.FC = () => {
 
           <VuMeter
             label="MARGIN USAGE"
-            value={marginUsagePct}
+            value={marginUsagePct ?? 0}
             min={0}
             max={100}
             unit="%"
@@ -261,8 +261,18 @@ export const RiskPanel: React.FC = () => {
               { rule: 'Max Daily Drawdown', limit: `${maxDailyDrawdown.toFixed(1)}% Balance`, current: `${dailyDrawdownPct.toFixed(1)}%`, status: dailyDrawdownPct > (maxDailyDrawdown * 0.8) ? 'WARN' : 'OK' },
               { rule: 'Max Concurrent Positions', limit: `${maxPositions} Positions`, current: `${openPositions.length} Positions`, status: openPositions.length >= maxPositions ? 'MAX' : 'OK' },
               { rule: 'Consecutive Loss Circuit Breaker', limit: `${maxConsecutiveLosses} Consecutive Losses`, current: `${consecutiveLosses} / ${maxConsecutiveLosses}`, status: consecutiveLosses >= maxConsecutiveLosses ? 'MAX' : consecutiveLosses >= 2 ? 'WARN' : 'OK' },
-              { rule: 'Max Allowable Spread', limit: '3.0 Pips', current: `${avgSpread.toFixed(1)} Pips`, status: avgSpread > 2.5 ? 'WARN' : 'OK' },
-              { rule: 'Min Reward-to-Risk (R:R)', limit: '1 : 1.3 R', current: `1 : ${avgRR.toFixed(1)} R`, status: 'OK' },
+              {
+                rule: 'Max Allowable Spread',
+                limit: '3.0 Pips',
+                current: avgSpread !== null ? `${avgSpread.toFixed(1)} Pips` : '—',
+                status: avgSpread !== null ? (avgSpread > 2.5 ? 'WARN' : 'OK') : 'OK',
+              },
+              {
+                rule: 'Min Reward-to-Risk (R:R)',
+                limit: '1 : 1.3 R',
+                current: avgRR !== null ? `1 : ${avgRR.toFixed(1)} R` : '—',
+                status: avgRR !== null ? (avgRR < 1.3 ? 'WARN' : 'OK') : 'OK',
+              },
             ].map((item, idx) => (
               <div
                 key={idx}

@@ -30,8 +30,9 @@ class ProfileManager:
         if root_dir:
             self.root_dir = root_dir
         else:
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            self.root_dir = os.path.join(base_dir, "profiles")
+            from monika.core.paths import get_profiles_dir
+
+            self.root_dir = str(get_profiles_dir())
         os.makedirs(self.root_dir, exist_ok=True)
         self.active_marker_file = os.path.join(self.root_dir, "active_profile")
 
@@ -107,8 +108,10 @@ class ProfileManager:
         # Create isolated data dir
         os.makedirs(os.path.join(p_dir, "data"), exist_ok=True)
 
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        source_cfg = os.path.join(base_dir, "config", "settings.yaml")
+        from monika.core.paths import get_repo_root
+
+        repo_root = str(get_repo_root())
+        source_cfg = os.path.join(repo_root, "config", "settings.yaml")
 
         if clone_from and clone_from != "default":
             source_dir = os.path.join(self.root_dir, clone_from)
@@ -121,7 +124,7 @@ class ProfileManager:
             shutil.copy2(source_cfg, target_cfg)
 
         # Copy .env.example as initial placeholder if present
-        example_env = os.path.join(base_dir, ".env.example")
+        example_env = os.path.join(repo_root, ".env.example")
         if os.path.exists(example_env):
             target_env = os.path.join(p_dir, ".env")
             shutil.copy2(example_env, target_env)
@@ -153,15 +156,17 @@ class ProfileManager:
         import zipfile
 
         clean_name = name.strip().lower()
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        from monika.core.paths import get_repo_root
+
+        repo_root = str(get_repo_root())
 
         if clean_name == "default":
             # Export default settings and data folder safely without packing other profiles
             with zipfile.ZipFile(export_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-                default_cfg = os.path.join(base_dir, "config", "settings.yaml")
+                default_cfg = os.path.join(repo_root, "config", "settings.yaml")
                 if os.path.exists(default_cfg):
                     zipf.write(default_cfg, "settings.yaml")
-                default_data = os.path.join(base_dir, "data")
+                default_data = os.path.join(repo_root, "data")
                 if os.path.exists(default_data):
                     for root, _, files in os.walk(default_data):
                         for file in files:
@@ -234,9 +239,10 @@ class ProfileManager:
     def get_data_dir_for_active(self) -> str:
         """Returns the isolated data directory path for active profile."""
         active = self.get_active_profile_name()
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if active == "default":
-            d_dir = os.path.join(base_dir, "data")
+            from monika.core.paths import get_data_dir
+
+            d_dir = str(get_data_dir())
         else:
             d_dir = os.path.join(self.root_dir, active, "data")
         os.makedirs(d_dir, exist_ok=True)

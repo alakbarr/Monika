@@ -329,7 +329,11 @@ async def tradingview_webhook(request: Request):
 
     expected_passphrase = os.getenv("TRADINGVIEW_PASSPHRASE", "").strip()
 
-    normalized = normalize_tradingview_payload(raw_body)
+    try:
+        normalized = normalize_tradingview_payload(raw_body)
+    except ValueError as val_err:
+        logger.warning(f"[ApiServer] Invalid TradingView alert: {val_err}")
+        raise HTTPException(status_code=400, detail=str(val_err))
     if expected_passphrase:
         provided = normalized.get("passphrase") or request.headers.get("X-Passphrase", "")
         if provided != expected_passphrase:

@@ -15,6 +15,7 @@ from fastapi import APIRouter, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from monika.application.analysis.mcp.dispatcher import MonikaMcpDispatcher
+from monika.interfaces.dashboard.rbac import Role, require_role
 
 logger = logging.getLogger("TradingAgent.Dashboard.MCP")
 
@@ -45,7 +46,8 @@ def get_dispatcher() -> MonikaMcpDispatcher:
 
 
 @mcp_router.get("/tools")
-async def list_mcp_tools():
+@require_role(Role.VIEWER)
+async def list_mcp_tools(request: Request):
     """List all MCP tools exposed by Monika."""
     dispatcher = get_dispatcher()
     tools = dispatcher.get_tool_list()
@@ -53,6 +55,7 @@ async def list_mcp_tools():
 
 
 @mcp_router.get("/sse")
+@require_role(Role.VIEWER)
 async def mcp_sse_endpoint(request: Request):
     """Server-Sent Events (SSE) endpoint for standard MCP client connections."""
     session_id = str(uuid.uuid4())
@@ -92,6 +95,7 @@ async def mcp_sse_endpoint(request: Request):
 
 
 @mcp_router.post("/messages")
+@require_role(Role.VIEWER)
 async def mcp_post_message(request: Request, sessionId: Optional[str] = Query(None)):
     """Receives JSON-RPC requests from MCP clients and returns response."""
     try:

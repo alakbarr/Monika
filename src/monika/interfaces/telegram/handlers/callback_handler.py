@@ -59,7 +59,6 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
         if data.startswith("closeall:confirm:"):
             nonce = data.split(":", 2)[2]
             stored = getattr(self, "_active_nonces", {}).pop(nonce, None)
-            import time
 
             if not stored or time.time() > stored.get("expires", 0):
                 await query.edit_message_text("[PERINGATAN] Confirmation expired or invalid.")
@@ -82,7 +81,6 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
         if data.startswith("unsuspend_all:confirm:"):
             nonce = data.split(":", 2)[2]
             stored = getattr(self, "_active_nonces", {}).pop(nonce, None)
-            import time
 
             if not stored or time.time() > stored.get("expires", 0):
                 await query.edit_message_text("[PERINGATAN] Confirmation expired or invalid.")
@@ -102,14 +100,11 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
         if data.startswith("override:confirm:"):
             nonce = data.split(":", 2)[2]
             stored = getattr(self, "_active_nonces", {}).pop(nonce, None)
-            import time
-
             if not stored or time.time() > stored.get("expires", 0):
                 await query.edit_message_text("[PERINGATAN] Confirmation expired or invalid.")
                 return
             updated_fields = stored.get("updated_fields", {})
             param = stored.get("param", "")
-            import json
 
             from sqlalchemy import select
 
@@ -294,7 +289,6 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
             if not self._is_admin(update):
                 await query.answer("[AKSES DITOLAK] Pause command only permitted for Admin.", show_alert=True)
                 return
-            import time
 
             parts = data.split(":")
             nonce = parts[2] if len(parts) >= 3 else ""
@@ -333,7 +327,6 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
             if not self._is_admin(update):
                 await query.answer("[AKSES DITOLAK] Kill Switch only permitted for Admin.", show_alert=True)
                 return
-            import time
 
             parts = data.split(":")
             nonce = parts[2] if len(parts) >= 3 else ""
@@ -533,32 +526,81 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
                     try:
                         trade = req.details or {}
                         symbol = req.symbol
-                        direction = (req.action_type or "buy").lower()
+                        action_type = (req.action_type or "").lower().strip()
+                        lots = float(trade.get("lots") or trade.get("volume") or 0.0)
+
+                        if action_type in ("close", "close_position", "exit", "flat"):
+                            ticket = trade.get("ticket") or trade.get("mt5_ticket")
+                            if ticket:
+                                res = await self.execution_service.close_position_by_ticket(
+                                    ticket=int(ticket),
+                                    requested_by=f"tg_{user_id}",
+                                    reason=f"Voice approval close #{ticket}",
+                                    lots=lots if lots > 0 else None,
+                                )
+                                if res.get("success"):
+                                    await query.edit_message_text(
+                                        f"[BERHASIL] Posisi #{ticket} ({symbol}) berhasil ditutup."
+                                    )
+                                else:
+                                    await query.edit_message_text(
+                                        f"[GAGAL] Gagal menutup #{ticket}: {res.get('error', 'Unknown error')}"
+                                    )
+                            else:
+                                res = await self.execution_service.close_positions_batch(
+                                    filter_type="all",
+                                    requested_by=f"tg_{user_id}",
+                                    reason=f"Voice approval close symbol {symbol}",
+                                    symbol=symbol if symbol and symbol != "ALL" else None,
+                                )
+                                closed = res.get("closed_tickets", [])
+                                failed = res.get("failed_tickets", [])
+                                if closed:
+                                    await query.edit_message_text(
+                                        f"[BERHASIL] Ditutup {len(closed)} posisi untuk {symbol}."
+                                    )
+                                elif failed:
+                                    await query.edit_message_text(f"[GAGAL] Gagal menutup posisi: {res.get('errors')}")
+                                else:
+                                    await query.edit_message_text(f"[INFO] Tidak ada posisi terbuka untuk {symbol}.")
+                            return
+
+                        direction = action_type
                         if direction not in ("buy", "sell"):
-                            direction = "buy"
-                        lots = float(trade.get("lots") or trade.get("volume") or 0.01)
+                            await query.edit_message_text(
+                                f"[GAGAL] Action type '{action_type}' tidak valid untuk eksekusi order."
+                            )
+                            return
+
+                        effective_lots = lots if lots > 0 else 0.01
                         sl = float(trade["stop_loss"]) if trade.get("stop_loss") is not None else None
                         tp = float(trade["take_profit"]) if trade.get("take_profit") is not None else None
-
-                        import json
 
                         from monika.infrastructure.database.db import get_session
                         from monika.infrastructure.database.models import AssetAnalysis
 
                         async with get_session() as session:
+                            entry_zone_dict: dict[str, Any] = {"type": "market"}
+                            if effective_lots > 0:
+                                entry_zone_dict["lots"] = effective_lots
+                                entry_zone_dict["lot_size"] = effective_lots
                             analysis = AssetAnalysis(
                                 symbol=symbol,
                                 generated_at=datetime.now(timezone.utc),
                                 decision=direction,
                                 confidence=0.85,
-                                entry_zone=json.dumps({"type": "market"}),
+                                entry_zone=json.dumps(entry_zone_dict),
                                 stop_loss=sl,
                                 take_profit=tp,
                                 rationale=f"Voice Note Approval Execution: {trade.get('transcript', '')}",
                             )
                             session.add(analysis)
                             await session.flush()
-                            res = await self.execution_service.execute_analysis(session, analysis)
+                            exec_kwargs = {}
+                            if effective_lots > 0:
+                                exec_kwargs["lots"] = effective_lots
+                                exec_kwargs["lot_size"] = effective_lots
+                            res = await self.execution_service.execute_analysis(session, analysis, **exec_kwargs)
                             if res.executed:
                                 await query.edit_message_text(
                                     f"[BERHASIL] Order {res.decision.upper()} {res.executed_lots} lot {res.symbol} berhasil dieksekusi!\n"

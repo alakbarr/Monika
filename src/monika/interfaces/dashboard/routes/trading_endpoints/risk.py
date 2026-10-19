@@ -104,8 +104,7 @@ async def get_risk():
             margin_level_pct = float(account_info.get("margin_level") or 0.0)
             margin_usage_pct = (margin_used / equity * 100.0) if equity > 0 else 0.0
         else:
-            # Synthetic approximation if broker offline
-            margin_usage_pct = round(active_pos_count * 2.5, 2)
+            margin_usage_pct = 0.0
 
         total_open_risk_pct = round(active_pos_count * max_risk_pct, 2)
 
@@ -127,8 +126,8 @@ async def get_risk():
                 "max_risk_pct": max_risk_pct,
                 "max_daily_drawdown_pct": max_daily_dd,
                 "max_positions": max_positions,
-                "avg_spread_pips": 1.2,
-                "avg_rr_ratio": 1.5,
+                "avg_spread_pips": None,
+                "avg_rr_ratio": None,
                 "is_weekend": is_weekend,
             }
 
@@ -160,8 +159,8 @@ async def get_risk():
             "max_risk_pct": max_risk_pct,
             "max_daily_drawdown_pct": max_daily_dd,
             "max_positions": max_positions,
-            "avg_spread_pips": 1.2,
-            "avg_rr_ratio": 1.5,
+            "avg_spread_pips": None,
+            "avg_rr_ratio": None,
             "is_weekend": is_weekend,
         }
 

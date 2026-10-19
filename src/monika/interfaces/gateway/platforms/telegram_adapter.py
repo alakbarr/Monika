@@ -49,6 +49,8 @@ class TelegramPlatformAdapter(BasePlatformAdapter):
         self.debounce_window_s = debounce_window_s
         self._debounce_buffers: Dict[str, List[str]] = {}
         self._debounce_tasks: Dict[str, asyncio.Task] = {}
+        self._debounce_futures: Dict[str, List[asyncio.Future[str]]] = {}
+        self._background_tasks: set[asyncio.Task] = set()
         self._bot_instance: Optional[Any] = None
 
     def attach_bot_instance(self, bot: Any) -> None:
@@ -66,6 +68,11 @@ class TelegramPlatformAdapter(BasePlatformAdapter):
                 task.cancel()
         self._debounce_tasks.clear()
         self._debounce_buffers.clear()
+        for fut_list in self._debounce_futures.values():
+            for f in fut_list:
+                if not f.done():
+                    f.cancel()
+        self._debounce_futures.clear()
         logger.info("[TelegramAdapter] Telegram gateway adapter stopped.")
 
     async def send_message(
@@ -92,7 +99,9 @@ class TelegramPlatformAdapter(BasePlatformAdapter):
             try:
                 chat_id_int = int(target_id) if target_id.lstrip("-").isdigit() else None
                 if chat_id_int:
-                    asyncio.create_task(self._bot_instance.send_notification(content))
+                    task = asyncio.create_task(self._bot_instance.send_notification(content, chat_id=chat_id_int))
+                    self._background_tasks.add(task)
+                    task.add_done_callback(self._background_tasks.discard)
             except Exception as e:
                 logger.debug(f"[TelegramAdapter] Real bot dispatch deferred: {e}")
 
@@ -114,31 +123,48 @@ class TelegramPlatformAdapter(BasePlatformAdapter):
             self._debounce_buffers[key] = []
         self._debounce_buffers[key].append(message.strip())
 
+        future: asyncio.Future[str] = asyncio.get_running_loop().create_future()
+        if key not in self._debounce_futures:
+            self._debounce_futures[key] = []
+        self._debounce_futures[key].append(future)
+
         if key in self._debounce_tasks and not self._debounce_tasks[key].done():
             self._debounce_tasks[key].cancel()
 
-        future: asyncio.Future[str] = asyncio.get_running_loop().create_future()
-
         async def _flush_after_delay():
-            await asyncio.sleep(self.debounce_window_s)
-            buffered_msgs = self._debounce_buffers.pop(key, [])
-            combined_text = "\n".join(buffered_msgs)
-            res = await self.simulate_incoming(chat_id, user_id, combined_text)
-            if not future.done():
-                future.set_result(res)
+            try:
+                await asyncio.sleep(self.debounce_window_s)
+            except asyncio.CancelledError:
+                return
 
-        self._debounce_tasks[key] = asyncio.create_task(_flush_after_delay())
+            buffered_msgs = self._debounce_buffers.pop(key, [])
+            pending_futures = self._debounce_futures.pop(key, [])
+            combined_text = "\n".join(buffered_msgs)
+            try:
+                res = await self.simulate_incoming(chat_id, user_id, combined_text)
+                for f in pending_futures:
+                    if not f.done():
+                        f.set_result(res)
+            except Exception as e:
+                for f in pending_futures:
+                    if not f.done():
+                        f.set_exception(e)
+
+        flush_task = asyncio.create_task(_flush_after_delay())
+        self._debounce_tasks[key] = flush_task
+        self._background_tasks.add(flush_task)
+        flush_task.add_done_callback(self._background_tasks.discard)
         return await future
 
     async def simulate_incoming(self, chat_id: str, user_id: str, message: str) -> str:
         """Process incoming telegram message through loop guard, turn lease, and router."""
-        is_loop, reason = self.loop_guard.check_and_record(
+        is_allowed, reason = self.loop_guard.check_and_record(
             platform="telegram",
             chat_id=chat_id,
             sender_id=user_id,
             text=message,
         )
-        if is_loop:
+        if not is_allowed:
             logger.warning(f"[TelegramAdapter] Bot loop detected and blocked: {reason}")
             return f"[BLOCKED] Automated loop detected: {reason}"
 

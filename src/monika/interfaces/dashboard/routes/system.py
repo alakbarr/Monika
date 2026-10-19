@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
 
-from monika.interfaces.dashboard.rbac import Role
+from monika.interfaces.dashboard.rbac import Role, require_role
 from monika.interfaces.dashboard.routes.common import _start_time
 from monika.interfaces.dashboard.schemas import (
     ActionStatusResponse,
@@ -322,6 +322,7 @@ async def get_auth_role(request: Request):
 
 
 @router.post("/actions/shutdown", response_model=ActionStatusResponse, tags=["System"])
+@require_role(Role.ADMIN)
 async def shutdown_system(request: Request):
     """Gracefully request system/daemon shutdown."""
     import asyncio

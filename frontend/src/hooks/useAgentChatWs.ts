@@ -4,7 +4,7 @@
 // ==============================================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { getStoredToken } from '../lib/api';
+import { api, getStoredToken } from '../lib/api';
 import type { ChatMessage, ChatToolEvent, ChatProposedAction } from '../types/api';
 
 const DEFAULT_WELCOME: ChatMessage = {
@@ -31,6 +31,7 @@ export function useAgentChatWs() {
 
   const socketRef = useRef<WebSocket | null>(null);
   const isMountedRef = useRef<boolean>(true);
+  const reconnectAttemptsRef = useRef<number>(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pingTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
@@ -57,11 +58,23 @@ export function useAgentChatWs() {
         ws.close();
         return;
       }
+      reconnectAttemptsRef.current = 0;
       setWsConnected(true);
 
-      if (apiKey) {
-        ws.send(JSON.stringify({ type: 'authenticate', token: apiKey }));
-      }
+      // Authenticate via ephemeral ticket with API key fallback (H-13)
+      api.createWsTicket()
+        .then((res) => {
+          if (res?.ticket && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'authenticate', ticket: res.ticket }));
+          } else if (apiKey && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'authenticate', token: apiKey }));
+          }
+        })
+        .catch(() => {
+          if (apiKey && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'authenticate', token: apiKey }));
+          }
+        });
 
       if (pingTimerRef.current) clearInterval(pingTimerRef.current);
       pingTimerRef.current = setInterval(() => {
@@ -256,12 +269,16 @@ export function useAgentChatWs() {
       if (!isMountedRef.current) return;
       setWsConnected(false);
       setIsProcessing(false);
+      reconnectAttemptsRef.current += 1;
+      const baseDelay = Math.min(30000, 1000 * Math.pow(1.5, Math.min(reconnectAttemptsRef.current, 8)));
+      const jitter = Math.random() * 800;
+      const delay = Math.round(baseDelay + jitter);
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = setTimeout(() => {
         if (isMountedRef.current) {
           connect();
         }
-      }, 3000);
+      }, delay);
     };
 
     socketRef.current = ws;

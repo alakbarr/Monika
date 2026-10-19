@@ -29,7 +29,8 @@ class TradingSubcommand(Subcommand):
         return parser
 
     async def execute(self, args: argparse.Namespace) -> int:
-        action = getattr(args, "trading_action", None) or getattr(args, "command", "positions")
+        raw_action = getattr(args, "trading_action", None)
+        action = raw_action if raw_action and raw_action != "trading" else "positions"
         from monika.interfaces.cli.commands.daemon_ctrl import _cmd_positions, _cmd_unsuspend
 
         if action == "positions":

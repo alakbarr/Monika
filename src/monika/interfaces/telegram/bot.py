@@ -372,8 +372,8 @@ class TelegramBot(
             if global_delta < 0.04:
                 await asyncio.sleep(0.04 - global_delta)
 
-            # Per-chat rate limit: 1 msg/sec -> min interval 1.0s
-            if chat_id is not None:
+            # Per-chat rate limit: 1 msg/sec -> min interval 1.0s (bypassed for critical alerts)
+            if chat_id is not None and not is_critical:
                 chat_delta = time.time() - self._last_send_per_chat.get(chat_id, 0.0)
                 if chat_delta < 1.0:
                     await asyncio.sleep(1.0 - chat_delta)
@@ -398,8 +398,11 @@ class TelegramBot(
                     except TypeError, ValueError:
                         retry_seconds = 1.0
                 logger.warning(f"[TelegramOutbound] FloodControl RetryAfter({retry_seconds}s). Pausing queue...")
+                if is_critical:
+                    self._save_to_offline_buffer(item)
                 await asyncio.sleep(retry_seconds + 0.1)
-                await self._outbound_queue.put(item)
+                if not is_critical:
+                    await self._outbound_queue.put(item)
             except Exception as send_err:
                 if parse_mode == ParseMode.HTML and "can't parse entities" in str(send_err).lower():
                     try:
@@ -477,9 +480,11 @@ class TelegramBot(
         parse_mode: str = ParseMode.HTML,
         message_thread_id: Optional[int] = None,
         is_critical: bool = False,
+        chat_id: Optional[int] = None,
     ) -> None:
-        """Mengirim pesan notifikasi ke admin melalui outbound queue."""
-        if not self._app or not self.admin_chat_id or not self._is_running:
+        """Mengirim pesan notifikasi ke admin atau chat spesifik melalui outbound queue."""
+        target_chat_id = chat_id or self.admin_chat_id
+        if not self._app or not target_chat_id or not self._is_running:
             return
 
         is_html = parse_mode == ParseMode.HTML
@@ -504,7 +509,7 @@ class TelegramBot(
             ):
                 await self._outbound_queue.put(
                     {
-                        "chat_id": self.admin_chat_id,
+                        "chat_id": target_chat_id,
                         "text": formatted_chunk,
                         "raw_text": chunk,
                         "parse_mode": parse_mode,
@@ -515,7 +520,7 @@ class TelegramBot(
             else:
                 try:
                     await self._app.bot.send_message(
-                        chat_id=self.admin_chat_id,
+                        chat_id=target_chat_id,
                         text=formatted_chunk,
                         parse_mode=parse_mode,
                         **extra_kwargs,
@@ -525,7 +530,7 @@ class TelegramBot(
                     if critical_alert:
                         self._save_to_offline_buffer(
                             {
-                                "chat_id": self.admin_chat_id,
+                                "chat_id": target_chat_id,
                                 "text": formatted_chunk,
                                 "raw_text": chunk,
                                 "parse_mode": parse_mode,

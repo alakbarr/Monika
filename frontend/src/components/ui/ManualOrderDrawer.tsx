@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../lib/api';
 import { sounds } from '../../lib/soundEffects';
+import { useDashboardStore } from '../../store/dashboardStore';
 import { X, ArrowUpRight, ArrowDownRight, ShieldCheck, AlertTriangle } from 'lucide-react';
 
 interface ManualOrderDrawerProps {
@@ -72,7 +73,7 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
         risk_reward_ratio: (res as any).rr_ratio ?? (res as any).risk_reward_ratio,
         sl_distance_pips: (res as any).sl_distance_pips,
         tp_distance_pips: (res as any).tp_distance_pips,
-        passed_risk_gate: (res as any).risk_gate_allowed ?? (res as any).passed_risk_gate ?? true,
+        passed_risk_gate: (res as any).risk_gate_allowed ?? (res as any).passed_risk_gate ?? false,
         violations: (res as any).risk_gate_reason ? [(res as any).risk_gate_reason] : (res as any).violations ?? [],
       });
     } catch {
@@ -92,16 +93,38 @@ export const ManualOrderDrawer: React.FC<ManualOrderDrawerProps> = ({
   // Quick pip helpers
   const handleAddPips = (target: 'sl' | 'tp', pips: number) => {
     sounds.playClick('typewriter');
-    const isJpy = symbol.toUpperCase().includes('JPY');
-    const pipFactor = isJpy ? 0.01 : 0.0001;
-    const currentPrice = price ? parseFloat(price) : 1.0850;
+    const symUpper = symbol.toUpperCase();
+    const isJpy = symUpper.includes('JPY');
+    const isGold = symUpper.includes('XAU') || symUpper.includes('GOLD');
+    const isCrypto = symUpper.includes('BTC') || symUpper.includes('ETH');
+
+    let pipFactor = 0.0001;
+    let decimals = 5;
+    if (isJpy) {
+      pipFactor = 0.01;
+      decimals = 2;
+    } else if (isGold) {
+      pipFactor = 0.1;
+      decimals = 2;
+    } else if (isCrypto) {
+      pipFactor = 1.0;
+      decimals = 2;
+    }
+
+    const livePrice = useDashboardStore.getState().marketQuotes[symUpper]?.price;
+    const currentPrice = price ? parseFloat(price) : (livePrice ?? null);
+
+    if (!currentPrice || isNaN(currentPrice) || currentPrice <= 0) {
+      setErrorMsg(`Harga pasar terkini untuk ${symbol} belum tersedia. Masukkan harga entri terlebih dahulu.`);
+      return;
+    }
 
     if (target === 'sl') {
       const offset = direction === 'BUY' ? -pips * pipFactor : pips * pipFactor;
-      setSl((currentPrice + offset).toFixed(isJpy ? 2 : 5));
+      setSl((currentPrice + offset).toFixed(decimals));
     } else {
       const offset = direction === 'BUY' ? pips * pipFactor : -pips * pipFactor;
-      setTp((currentPrice + offset).toFixed(isJpy ? 2 : 5));
+      setTp((currentPrice + offset).toFixed(decimals));
     }
   };
 

@@ -319,7 +319,9 @@ async def _cmd_config_edit(args: Any) -> None:
     editor = os.environ.get("EDITOR") or ("notepad" if sys.platform == "win32" else "nano")
     console.print(f"{stamp_info('EDIT')} Opening {edit_target} with {editor}...")
     try:
-        res = subprocess.run([editor, edit_target])
+        import asyncio
+
+        res = await asyncio.to_thread(subprocess.run, [editor, edit_target])
         if res.returncode == 0:
             if is_plugin:
                 try:

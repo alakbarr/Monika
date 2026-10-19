@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useDashboardStore } from '../store/dashboardStore';
-import { getStoredToken } from '../lib/api';
+import { api, getStoredToken } from '../lib/api';
 
 interface LiveEvent {
   type:
@@ -23,6 +23,7 @@ interface LiveEvent {
 export const useWebSocket = () => {
   const ws = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const reconnectAttempts = useRef<number>(0);
   const pingTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const lastSeq = useRef<number>(0);
 
@@ -47,13 +48,27 @@ export const useWebSocket = () => {
       const socket = new WebSocket(url);
 
       socket.onopen = () => {
+        reconnectAttempts.current = 0;
         useDashboardStore.getState().setWsConnected(true);
 
-        // Authenticate via initial handshake message (H-13)
-        const apiKey = getStoredToken();
-        if (apiKey) {
-          socket.send(JSON.stringify({ type: 'authenticate', token: apiKey }));
-        }
+        // Authenticate via ephemeral ticket with API key fallback (H-13)
+        api.createWsTicket()
+          .then((res) => {
+            if (res?.ticket && socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({ type: 'authenticate', ticket: res.ticket }));
+            } else {
+              const apiKey = getStoredToken();
+              if (apiKey && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'authenticate', token: apiKey }));
+              }
+            }
+          })
+          .catch(() => {
+            const apiKey = getStoredToken();
+            if (apiKey && socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({ type: 'authenticate', token: apiKey }));
+            }
+          });
 
         // Keep-alive heartbeat ping every 25 seconds
         if (pingTimer.current) clearInterval(pingTimer.current);
@@ -138,8 +153,13 @@ export const useWebSocket = () => {
         useDashboardStore.getState().setWsConnected(false);
         if (pingTimer.current) clearInterval(pingTimer.current);
 
-        // If unauthorized / policy violation (1008), back off reconnect to 15s
-        const delay = ev.code === 1008 ? 15000 : 3000;
+        reconnectAttempts.current += 1;
+        const baseDelay =
+          ev.code === 1008
+            ? 15000
+            : Math.min(30000, 1000 * Math.pow(1.5, Math.min(reconnectAttempts.current, 8)));
+        const jitter = Math.random() * 800;
+        const delay = Math.round(baseDelay + jitter);
         clearTimeout(reconnectTimer.current);
         reconnectTimer.current = setTimeout(connect, delay);
       };
@@ -156,8 +176,10 @@ export const useWebSocket = () => {
       ws.current = socket;
     } catch {
       useDashboardStore.getState().setWsConnected(false);
+      reconnectAttempts.current += 1;
+      const delay = Math.min(30000, 2000 * Math.pow(1.5, Math.min(reconnectAttempts.current, 6)));
       clearTimeout(reconnectTimer.current);
-      reconnectTimer.current = setTimeout(connect, 5000);
+      reconnectTimer.current = setTimeout(connect, Math.round(delay));
     }
   }, []);
 
