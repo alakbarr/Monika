@@ -26,23 +26,25 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-load_dotenv()
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
-DATABASE_URL = os.getenv("DATABASE_URL")
-if DATABASE_URL:
-    url = DATABASE_URL
-    if url.startswith("postgresql://") and "+asyncpg" not in url:
-        url = url.replace("postgresql://", "postgresql+asyncpg://")
-    elif url.startswith("sqlite://") and "+aiosqlite" not in url:
-        url = url.replace("sqlite://", "sqlite+aiosqlite://")
-    config.set_main_option("sqlalchemy.url", url)
+custom_url = config.attributes.get("sqlalchemy_url") or config.get_main_option("custom_sqlalchemy_url")
+test_db_url = os.getenv("TEST_DATABASE_URL")
+if custom_url:
+    url = custom_url
+elif test_db_url:
+    url = test_db_url
 else:
-    url = config.get_main_option("sqlalchemy.url") or ""
-    if url.startswith("sqlite://") and "+aiosqlite" not in url:
-        config.set_main_option("sqlalchemy.url", url.replace("sqlite://", "sqlite+aiosqlite://"))
-    elif url.startswith("postgresql://") and "+asyncpg" not in url:
-        config.set_main_option("sqlalchemy.url", url.replace("postgresql://", "postgresql+asyncpg://"))
+    load_dotenv()
+    load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+    load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env"))
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    url = DATABASE_URL or config.get_main_option("sqlalchemy.url") or ""
+
+if url.startswith("postgresql://") and "+asyncpg" not in url:
+    url = url.replace("postgresql://", "postgresql+asyncpg://")
+elif url.startswith("sqlite://") and "+aiosqlite" not in url:
+    url = url.replace("sqlite://", "sqlite+aiosqlite://")
+
+config.set_main_option("sqlalchemy.url", url)
 
 
 def include_object(object, name, type_, reflected, compare_to):

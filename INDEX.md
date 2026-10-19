@@ -11234,7 +11234,8 @@
   - `get_sessionmaker()`: Lazy sessionmaker factory bound to engine (thread-safe).
   - `async init_db() -> None`: Initialize database schema via Alembic migrations, falling back to create_all if offline/testing.
   - `async get_db() -> AsyncGenerator[AsyncSession, None]`: Yield database session for FastAPI dependency injection.
-  - `async get_session() -> AsyncGenerator[AsyncSession, None]`: Yield an async session as an asynchronous context manager (optimistic / non-blocking).
+  - `async get_session(read_only: bool) -> AsyncGenerator[AsyncSession, None]`: Yield an async session as an asynchronous context manager (optimistic / non-blocking).
+  - `async get_read_session() -> AsyncGenerator[AsyncSession, None]`: Yield an async session explicitly configured for non-locking read-only operations.
   - `async get_write_session() -> AsyncGenerator[AsyncSession, None]`: Yield an async session serialized for write operations.
   - `async transactional_advisory_lock(session: AsyncSession, lock_key: Union[int, str]) -> AsyncGenerator[bool, None]`: Acquires a PostgreSQL transaction-level advisory lock (pg_try_advisory_xact_lock).
   - `async close_db() -> None`: Tutup koneksi database dengan aman.

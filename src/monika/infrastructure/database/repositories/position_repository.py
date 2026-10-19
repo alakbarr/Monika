@@ -104,13 +104,21 @@ class PositionRepository(PositionRepositoryPort):
         pair_group_id: Optional[str] = None,
     ) -> PositionEntity:
         """Create, persist, and return a new trading position domain entity."""
+        from decimal import Decimal
+
         pos = Position(
             symbol=symbol,
             direction=direction,
             volume=volume,
+            volume_num=Decimal(str(volume)) if volume is not None else None,
+            initial_volume=volume,
+            initial_volume_num=Decimal(str(volume)) if volume is not None else None,
             entry_price=entry_price,
+            entry_price_num=Decimal(str(entry_price)) if entry_price is not None else None,
             sl=sl,
+            sl_num=Decimal(str(sl)) if sl is not None else None,
             tp=tp,
+            tp_num=Decimal(str(tp)) if tp is not None else None,
             mt5_ticket=mt5_ticket,
             is_paper=is_paper,
             order_id=order_id,
@@ -138,6 +146,10 @@ class PositionRepository(PositionRepositoryPort):
             return None
         pos.status = "closed"
         pos.pnl = pnl
+        if pnl is not None:
+            from decimal import Decimal
+
+            pos.pnl_num = Decimal(str(pnl))
         pos.closed_at = closed_at or datetime.now(timezone.utc)
         await self.session.flush()
         return PositionEntity.from_orm(pos)

@@ -237,8 +237,8 @@ def get_engine():
                     else:
                         engine_kwargs.update(
                             {
-                                "pool_size": 20,
-                                "max_overflow": 30,
+                                "pool_size": 10,
+                                "max_overflow": 20,
                                 "pool_timeout": 60.0,
                                 "pool_pre_ping": True,
                                 "pool_recycle": 1800,
@@ -267,6 +267,9 @@ def get_engine():
 
                     @event.listens_for(new_engine.sync_engine, "begin")
                     def _sqlite_begin_immediate(conn):
+                        if conn.get_execution_options().get("read_only", False):
+                            conn.exec_driver_sql("BEGIN DEFERRED")
+                            return
                         conn.exec_driver_sql("BEGIN IMMEDIATE")
 
                 engine = new_engine
@@ -352,14 +355,20 @@ def _get_write_lock() -> asyncio.Lock:
 
 
 @asynccontextmanager
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """Yield an async session as an asynchronous context manager (optimistic / non-blocking)."""
+async def get_session(read_only: bool = False) -> AsyncGenerator[AsyncSession, None]:
+    """Yield an async session as an asynchronous context manager (optimistic / non-blocking).
+
+    Args:
+        read_only: If True, executes under SQLite BEGIN DEFERRED to prevent writer starvation.
+    """
     sm = (
         AsyncSessionLocal
         if (AsyncSessionLocal is not None and not isinstance(AsyncSessionLocal, _AsyncSessionLocalProxy))
         else get_sessionmaker()
     )
     async with sm() as session:
+        if read_only:
+            await session.connection(execution_options={"read_only": True})
         try:
             yield session
         except (Exception, asyncio.CancelledError) as e:
@@ -373,6 +382,13 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
             except Exception as rb_err:
                 logger.warning(f"Session rollback failed (original error preserved): {rb_err}")
             raise
+
+
+@asynccontextmanager
+async def get_read_session() -> AsyncGenerator[AsyncSession, None]:
+    """Yield an async session explicitly configured for non-locking read-only operations."""
+    async with get_session(read_only=True) as session:
+        yield session
 
 
 @asynccontextmanager
@@ -423,7 +439,7 @@ async def transactional_advisory_lock(
     Acquires a PostgreSQL transaction-level advisory lock (pg_try_advisory_xact_lock).
     Automatically releases when transaction commits/rolls back.
     Supports dynamic per-symbol or integer lock keys.
-    Falls back gracefully to in-memory per-key asyncio.Lock for SQLite/mock test environments.
+    Falls back to cross-process file lock and in-memory asyncio.Lock for SQLite/mock test environments.
     """
     import hashlib
 
@@ -462,7 +478,32 @@ async def transactional_advisory_lock(
     else:
         lock = _IN_MEMORY_EXECUTION_LOCKS.setdefault(numeric_key, asyncio.Lock())
         async with lock:
-            yield True
+            from pathlib import Path
+            from monika.infrastructure.database.session_db_wal import FileLockGuard
+
+            lock_dir = Path("data") / "locks"
+            lock_file = lock_dir / f"advisory_{numeric_key}.lock"
+            guard = None
+            try:
+
+                def _acquire_guard():
+                    return FileLockGuard(lock_file, timeout=1.0).__enter__()
+
+                guard = await asyncio.to_thread(_acquire_guard)
+            except Exception as lock_err:
+                logger.warning(f"[DB] Could not acquire cross-process advisory file lock {numeric_key}: {lock_err}")
+                yield False
+                return
+
+            try:
+                yield True
+            finally:
+                if guard is not None:
+
+                    def _release_guard():
+                        guard.__exit__(None, None, None)
+
+                    await asyncio.to_thread(_release_guard)
 
 
 async def close_db() -> None:
@@ -470,9 +511,11 @@ async def close_db() -> None:
     global engine, _async_session_factory
     _SQLITE_WRITE_LOCKS.clear()
     _IN_MEMORY_EXECUTION_LOCKS.clear()
-    if engine is not None:
-        logger.info("Disposing database engine...")
-        await engine.dispose()
+    with _engine_lock:
+        eng = engine
         engine = None
         _async_session_factory = None
+    if eng is not None:
+        logger.info("Disposing database engine...")
+        await eng.dispose()
         logger.info("Database engine disposed.")

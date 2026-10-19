@@ -4,7 +4,7 @@
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import and_, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +33,29 @@ from monika.infrastructure.database.models import (
 )
 
 logger = logging.getLogger("TradingAgent.DBCleanup")
+
+
+async def _chunked_delete(session: AsyncSession, model: Any, condition: Any, chunk_size: int = 5000) -> int:
+    """Delete rows matching condition in chunks to prevent locking and WAL bloat."""
+    id_col = getattr(model, "id", None)
+    if id_col is None:
+        result = await session.execute(delete(model).where(condition))
+        return getattr(result, "rowcount", 0) or 0
+
+    from sqlalchemy import select
+
+    total = 0
+    while True:
+        subq = select(id_col).where(condition).limit(chunk_size)
+        ids = (await session.execute(subq)).scalars().all()
+        if not ids:
+            break
+        res = await session.execute(delete(model).where(id_col.in_(ids)))
+        cnt = getattr(res, "rowcount", 0) or len(ids)
+        total += cnt
+        if len(ids) < chunk_size:
+            break
+    return total
 
 
 async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = None):
@@ -74,45 +97,33 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
         # ---- PriceOHLCV: Retensi per timeframe ----
         # Bar M15: retensi sangat pendek untuk akurasi paper trade
         m15_cutoff = now - timedelta(days=ohlcv_m15_days)
-        result = await session.execute(
-            delete(PriceOHLCV).where(
-                and_(
-                    PriceOHLCV.timeframe == "M15",
-                    PriceOHLCV.timestamp < m15_cutoff,
-                )
-            )
+        m15_deleted = await _chunked_delete(
+            session,
+            PriceOHLCV,
+            and_(PriceOHLCV.timeframe == "M15", PriceOHLCV.timestamp < m15_cutoff),
         )
-        m15_deleted = getattr(result, "rowcount", 0) or 0
         if m15_deleted > 0:
             logger.info(f"Deleted {m15_deleted} old M15 OHLCV rows (kept >= {ohlcv_m15_days} days)")
         total_deleted += m15_deleted
 
         # Bar D1: simpan >= 400 hari agar SMA_200 bisa dihitung
         d1_cutoff = now - timedelta(days=ohlcv_d1_days)
-        result = await session.execute(
-            delete(PriceOHLCV).where(
-                and_(
-                    PriceOHLCV.timeframe == "D1",
-                    PriceOHLCV.timestamp < d1_cutoff,
-                )
-            )
+        d1_deleted = await _chunked_delete(
+            session,
+            PriceOHLCV,
+            and_(PriceOHLCV.timeframe == "D1", PriceOHLCV.timestamp < d1_cutoff),
         )
-        d1_deleted = getattr(result, "rowcount", 0) or 0
         if d1_deleted > 0:
             logger.info(f"Deleted {d1_deleted} old D1 OHLCV rows (kept >= {ohlcv_d1_days} days)")
         total_deleted += d1_deleted
 
         # Bar H1/H4: retensi lebih pendek
         h_cutoff = now - timedelta(days=ohlcv_h1_h4_days)
-        result = await session.execute(
-            delete(PriceOHLCV).where(
-                and_(
-                    PriceOHLCV.timeframe.in_(["H1", "H4"]),
-                    PriceOHLCV.timestamp < h_cutoff,
-                )
-            )
+        h_deleted = await _chunked_delete(
+            session,
+            PriceOHLCV,
+            and_(PriceOHLCV.timeframe.in_(["H1", "H4"]), PriceOHLCV.timestamp < h_cutoff),
         )
-        h_deleted = getattr(result, "rowcount", 0) or 0
         if h_deleted > 0:
             logger.info(f"Deleted {h_deleted} old H1/H4 OHLCV rows (kept >= {ohlcv_h1_h4_days} days)")
         total_deleted += h_deleted
@@ -213,8 +224,7 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
                     update(AssetAnalysis).where(AssetAnalysis.brief_id.in_(expired_brief_ids)).values(brief_id=None)
                 )
 
-            result = await session.execute(delete(model).where(col < cutoff))
-            deleted = getattr(result, "rowcount", 0) or 0
+            deleted = await _chunked_delete(session, model, col < cutoff)
             if deleted > 0:
                 logger.info(f"Deleted {deleted} old records from {label} (kept >= {days} days)")
             total_deleted += deleted

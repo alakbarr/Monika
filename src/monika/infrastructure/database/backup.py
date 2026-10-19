@@ -43,6 +43,60 @@ async def create_backup(settings: dict, force: bool = False) -> Dict[str, Any]:
     if not db_url:
         return {"error": "DATABASE_URL not set"}
 
+    if "sqlite" in db_url:
+        import gzip
+        import shutil
+        import sqlite3
+        import tempfile
+        from monika.infrastructure.database.db import get_canonical_db_path
+
+        clean_url = db_url.replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
+        sqlite_file = (
+            Path(clean_url).resolve() if clean_url and ":memory:" not in clean_url else get_canonical_db_path()
+        )
+        if not sqlite_file.exists():
+            return {"error": f"SQLite database file not found at {sqlite_file}"}
+
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        backup_file = backup_dir / f"trading_agent_{timestamp}.db.gz"
+
+        def _do_sqlite_backup() -> None:
+            with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+                tmp_path = Path(tmp.name)
+            try:
+                with sqlite3.connect(str(sqlite_file)) as src, sqlite3.connect(str(tmp_path)) as dst:
+                    src.backup(dst)
+                with open(tmp_path, "rb") as f_in, gzip.open(backup_file, "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+            finally:
+                if tmp_path.exists():
+                    try:
+                        tmp_path.unlink()
+                    except OSError:
+                        pass
+
+        try:
+            await asyncio.to_thread(_do_sqlite_backup)
+            file_size_mb = backup_file.stat().st_size / (1024 * 1024)
+            logger.info(f"SQLite DB backup created: {backup_file} ({file_size_mb:.2f} MB)")
+
+            all_backups = sorted(backup_dir.glob("trading_agent_*.db.gz"))
+            if len(all_backups) > keep_last_n:
+                for old_backup in all_backups[:-keep_last_n]:
+                    old_backup.unlink()
+                    logger.info(f"Old SQLite backup removed: {old_backup}")
+
+            return {
+                "success": True,
+                "backup_file": str(backup_file),
+                "size_mb": round(file_size_mb, 2),
+                "timestamp": timestamp,
+            }
+        except Exception as e:
+            logger.error(f"SQLite backup failed: {e}")
+            return {"error": str(e)}
+
     # Parse connection info from DATABASE_URL
     parsed = urlparse(db_url)
     if not parsed.hostname or not parsed.username:
