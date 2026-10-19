@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
+from monika.infrastructure.api.http_retry import _DEFAULT_SSL_CONTEXT
 from monika.infrastructure.database.models import EconomicReportDecomposition
 from monika.infrastructure.database.safe_ops import safe_commit, safe_upsert
 
@@ -306,7 +307,9 @@ class GenericGovStatsFetcher:
                         f"{FRED_API_BASE_URL}?series_id={s_id}&api_key={api_key}&file_type=json&sort_order=desc&limit=3"
                     )
                     try:
-                        async with http_client.get(url, ssl=False, timeout=aiohttp.ClientTimeout(total=8)) as resp:
+                        async with http_client.get(
+                            url, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=8)
+                        ) as resp:
                             if resp.status == 200:
                                 data = await resp.json()
                                 obs = data.get("observations", [])

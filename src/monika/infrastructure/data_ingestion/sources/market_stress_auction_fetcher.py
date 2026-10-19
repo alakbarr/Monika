@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
+from monika.infrastructure.api.http_retry import _DEFAULT_SSL_CONTEXT
 from monika.infrastructure.database.models import MacroLiquidityCreditMetric
 from monika.infrastructure.database.safe_ops import safe_commit, safe_upsert
 
@@ -73,7 +74,7 @@ class MarketStressAuctionFetcher:
                 headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
                 async with aiohttp.ClientSession(headers=headers) as http_client:
                     async with http_client.get(
-                        TREASURY_DIRECT_API, ssl=False, timeout=aiohttp.ClientTimeout(total=12)
+                        TREASURY_DIRECT_API, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=12)
                     ) as resp:
                         if resp.status == 200:
                             data = await resp.json(content_type=None)
@@ -208,7 +209,9 @@ class MarketStressAuctionFetcher:
                 async with aiohttp.ClientSession(headers=headers) as http_client:
                     if hy_oas is None:
                         url_hy = f"https://api.stlouisfed.org/fred/series/observations?series_id=BAMLH0A0HYM2&api_key={api_key}&file_type=json&sort_order=desc&limit=2"
-                        async with http_client.get(url_hy, ssl=False, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                        async with http_client.get(
+                            url_hy, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=10)
+                        ) as resp:
                             if resp.status == 200:
                                 data = await resp.json()
                                 obs = data.get("observations", [])
@@ -222,7 +225,7 @@ class MarketStressAuctionFetcher:
                     if sofr is None:
                         url_sofr = f"https://api.stlouisfed.org/fred/series/observations?series_id=SOFR&api_key={api_key}&file_type=json&sort_order=desc&limit=2"
                         async with http_client.get(
-                            url_sofr, ssl=False, timeout=aiohttp.ClientTimeout(total=10)
+                            url_sofr, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=10)
                         ) as resp:
                             if resp.status == 200:
                                 data = await resp.json()

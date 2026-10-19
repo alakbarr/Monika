@@ -22,6 +22,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
+from monika.infrastructure.api.http_retry import _DEFAULT_SSL_CONTEXT
 from monika.infrastructure.database.models import CentralBankDocument
 from monika.infrastructure.database.safe_ops import safe_commit
 
@@ -165,7 +166,9 @@ class CentralBankDocScraper:
 
     async def _scrape_live_fed(self, http_client: aiohttp.ClientSession, doc_type: str) -> Optional[Dict[str, Any]]:
         """Scrapes Federal Reserve FOMC Statement or Minutes directly from federalreserve.gov."""
-        async with http_client.get(FED_CALENDAR_URL, ssl=False, timeout=aiohttp.ClientTimeout(total=12)) as resp:
+        async with http_client.get(
+            FED_CALENDAR_URL, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=12)
+        ) as resp:
             if resp.status != 200:
                 return None
             raw_bytes = await resp.read()
@@ -202,7 +205,9 @@ class CentralBankDocScraper:
         if target_link.startswith("/"):
             target_link = "https://www.federalreserve.gov" + target_link
 
-        async with http_client.get(target_link, ssl=False, timeout=aiohttp.ClientTimeout(total=15)) as doc_resp:
+        async with http_client.get(
+            target_link, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=15)
+        ) as doc_resp:
             if doc_resp.status != 200:
                 return None
             doc_raw = await doc_resp.read()
@@ -241,7 +246,9 @@ class CentralBankDocScraper:
 
     async def _scrape_live_ecb(self, http_client: aiohttp.ClientSession, doc_type: str) -> Optional[Dict[str, Any]]:
         """Scrapes ECB Monetary Policy Statement from ecb.europa.eu."""
-        async with http_client.get(ECB_PRESS_URL, ssl=False, timeout=aiohttp.ClientTimeout(total=12)) as resp:
+        async with http_client.get(
+            ECB_PRESS_URL, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=12)
+        ) as resp:
             if resp.status != 200:
                 return None
             raw_bytes = await resp.read()
@@ -276,7 +283,9 @@ class CentralBankDocScraper:
         if target_link.startswith("/"):
             target_link = "https://www.ecb.europa.eu" + target_link
 
-        async with http_client.get(target_link, ssl=False, timeout=aiohttp.ClientTimeout(total=15)) as doc_resp:
+        async with http_client.get(
+            target_link, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=15)
+        ) as doc_resp:
             if doc_resp.status != 200:
                 return None
             doc_raw = await doc_resp.read()
@@ -319,7 +328,9 @@ class CentralBankDocScraper:
         for year in ["2026", "2025"]:
             boj_url = f"https://www.boj.or.jp/en/mopo/mpmdeci/mpr_{year}/index.htm"
             try:
-                async with http_client.get(boj_url, ssl=False, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                async with http_client.get(
+                    boj_url, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
                     if resp.status != 200:
                         continue
                     raw_bytes = await resp.read()
@@ -344,7 +355,7 @@ class CentralBankDocScraper:
                         target_link = "https://www.boj.or.jp" + target_link
 
                     async with http_client.get(
-                        target_link, ssl=False, timeout=aiohttp.ClientTimeout(total=15)
+                        target_link, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=15)
                     ) as doc_resp:
                         if doc_resp.status == 200:
                             doc_raw = await doc_resp.read()

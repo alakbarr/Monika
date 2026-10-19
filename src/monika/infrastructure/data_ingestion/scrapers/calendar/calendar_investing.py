@@ -5,7 +5,7 @@
 import logging
 import re
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, List, Optional
 
 from bs4 import BeautifulSoup
@@ -25,7 +25,7 @@ class InvestingCalendarScraper(BaseScraper):
         if not self.page:
             return False
         page_obj: Any = self.page
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         if time_filter.lower() == "today":
             start_date = now
             end_date = now
@@ -336,7 +336,7 @@ class InvestingCalendarScraper(BaseScraper):
         current_date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         # Deteksi timezone browser atau system lokal
-        src_tz = datetime.now().astimezone().tzinfo
+        src_tz = datetime.now(timezone.utc).astimezone().tzinfo
         if hasattr(self, "page") and self.page:
             try:
                 page_obj: Any = self.page

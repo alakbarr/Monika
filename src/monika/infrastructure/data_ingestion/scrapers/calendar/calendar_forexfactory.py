@@ -190,7 +190,7 @@ class ForexFactoryCalendarScraper(BaseScraper):
                 continue
 
             current_time_str = "12:00am"
-            current_date_str = datetime.now().strftime("%Y-%m-%d")
+            current_date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             for row in table.find_all("tr", class_="calendar__row"):
                 if getattr(self, "is_closed", False):
                     break
@@ -259,11 +259,6 @@ class ForexFactoryCalendarScraper(BaseScraper):
                 previous = td_previous.get_text(strip=True) if td_previous else None
 
                 # Konversi waktu ForexFactory (US Eastern Time) ke UTC ISO format
-                from datetime import timezone
-                from zoneinfo import ZoneInfo
-
-                from dateutil import parser as dateutil_parser
-
                 eastern_tz = ZoneInfo("America/New_York")
                 try:
                     now_ny = datetime.now(eastern_tz)

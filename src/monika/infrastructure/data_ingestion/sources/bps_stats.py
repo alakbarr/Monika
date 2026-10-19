@@ -45,6 +45,8 @@ class BPSStatsFetcher:
                             "source": r.get("url"),
                             "snippet": snippet[:150],
                             "status": "success",
+                            "is_synthetic": False,
+                            "is_verified": True,
                         }
         except Exception as e:
             logger.debug(f"BPS inflation fetch note: {e}")
@@ -54,6 +56,8 @@ class BPSStatsFetcher:
             "indicator": "CPI Inflation YoY",
             "value_pct": 2.50,
             "status": "estimated_baseline",
+            "is_synthetic": True,
+            "is_verified": False,
             "note": "Target inflasi Bank Indonesia 2.5% ± 1%",
         }
 
@@ -79,6 +83,8 @@ class BPSStatsFetcher:
                         "source": r.get("url"),
                         "snippet": snippet[:150],
                         "status": "success",
+                        "is_synthetic": False,
+                        "is_verified": True,
                     }
         except Exception as e:
             logger.debug(f"BPS trade balance note: {e}")
@@ -89,6 +95,8 @@ class BPSStatsFetcher:
             "value_usd_billion": 2.8,
             "surplus": True,
             "status": "estimated_baseline",
+            "is_synthetic": True,
+            "is_verified": False,
         }
 
     async def fetch_all_idr_macro(self) -> Dict[str, Any]:
@@ -104,10 +112,16 @@ class BPSStatsFetcher:
             return_exceptions=True,
         )
 
+        has_synthetic = any(
+            isinstance(x, dict) and x.get("is_synthetic", False) for x in (bi_rate_res, jisdor_res, cpi_res, trade_res)
+        )
+
         return {
             "bi_rate": bi_rate_res if isinstance(bi_rate_res, dict) else {},
             "jisdor": jisdor_res if isinstance(jisdor_res, dict) else {},
             "inflation": cpi_res if isinstance(cpi_res, dict) else {},
             "trade_balance": trade_res if isinstance(trade_res, dict) else {},
-            "status": "success",
+            "status": "baseline_with_synthetic" if has_synthetic else "success",
+            "is_synthetic": has_synthetic,
+            "is_verified": not has_synthetic,
         }

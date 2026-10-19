@@ -50,6 +50,10 @@ class SovereignYieldSpreads:
 
     YIELD_TICKERS = {
         "US_10Y": "^TNX",
+        "GERMANY_10Y": "DE10YT=RR",
+        "JAPAN_10Y": "JP10YT=RR",
+        "UK_10Y": "GB10YT=RR",
+        "AUSTRALIA_10Y": "AU10YT=RR",
     }
 
     @classmethod
@@ -171,7 +175,8 @@ class SovereignYieldSpreads:
         Synchronous fallback calculating macro yield spreads.
         Fails closed if US 10Y data cannot be fetched.
         """
-        us_data = cls._fetch_yahoo_chart_sync(cls.YIELD_TICKERS["US_10Y"])
+        us_ticker = cls.YIELD_TICKERS.get("US_10Y")
+        us_data = cls._fetch_yahoo_chart_sync(us_ticker) if us_ticker else None
         if not us_data:
             return {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -181,10 +186,15 @@ class SovereignYieldSpreads:
                 "error": "US 10Y yield data unavailable",
             }
 
-        de_data = cls._fetch_yahoo_chart_sync(cls.YIELD_TICKERS["GERMANY_10Y"])
-        jp_data = cls._fetch_yahoo_chart_sync(cls.YIELD_TICKERS["JAPAN_10Y"])
-        uk_data = cls._fetch_yahoo_chart_sync(cls.YIELD_TICKERS["UK_10Y"])
-        au_data = cls._fetch_yahoo_chart_sync(cls.YIELD_TICKERS["AUSTRALIA_10Y"])
+        de_ticker = cls.YIELD_TICKERS.get("GERMANY_10Y")
+        jp_ticker = cls.YIELD_TICKERS.get("JAPAN_10Y")
+        uk_ticker = cls.YIELD_TICKERS.get("UK_10Y")
+        au_ticker = cls.YIELD_TICKERS.get("AUSTRALIA_10Y")
+
+        de_data = cls._fetch_yahoo_chart_sync(de_ticker) if de_ticker else None
+        jp_data = cls._fetch_yahoo_chart_sync(jp_ticker) if jp_ticker else None
+        uk_data = cls._fetch_yahoo_chart_sync(uk_ticker) if uk_ticker else None
+        au_data = cls._fetch_yahoo_chart_sync(au_ticker) if au_ticker else None
 
         us_yield, us_prev = us_data
         spreads = {}

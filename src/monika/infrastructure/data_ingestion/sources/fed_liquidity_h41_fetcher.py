@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
+from monika.infrastructure.api.http_retry import _DEFAULT_SSL_CONTEXT
 from monika.infrastructure.database.models import MacroLiquidityCreditMetric
 from monika.infrastructure.database.safe_ops import safe_commit, safe_upsert
 
@@ -68,7 +69,9 @@ class FedLiquidityH41Fetcher:
                     fetched_vals = {}
                     for key, s_id in series_map.items():
                         url = f"https://api.stlouisfed.org/fred/series/observations?series_id={s_id}&api_key={api_key}&file_type=json&sort_order=desc&limit=2"
-                        async with http_client.get(url, ssl=False, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                        async with http_client.get(
+                            url, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=10)
+                        ) as resp:
                             if resp.status == 200:
                                 data = await resp.json()
                                 obs = data.get("observations", [])

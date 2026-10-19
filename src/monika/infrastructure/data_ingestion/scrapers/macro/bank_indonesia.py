@@ -98,6 +98,8 @@ class BankIndonesiaFetcher:
                         "rate_pct": rate_val,
                         "source": url,
                         "status": "success",
+                        "is_synthetic": False,
+                        "is_verified": True,
                     }
         except Exception as e:
             logger.debug(f"Direct BI Rate scrape note: {e}")
@@ -122,6 +124,8 @@ class BankIndonesiaFetcher:
                             "source": r.get("url"),
                             "snippet": snippet[:150],
                             "status": "fallback_success",
+                            "is_synthetic": False,
+                            "is_verified": True,
                         }
         except Exception as fallback_err:
             logger.debug(f"BI Rate web search fallback error: {fallback_err}")
@@ -132,6 +136,8 @@ class BankIndonesiaFetcher:
             "rate_name": "BI-Rate",
             "rate_pct": 6.00,
             "status": "estimated_baseline",
+            "is_synthetic": True,
+            "is_verified": False,
             "note": "Live fetch timed out, returned baseline policy rate",
         }
 
@@ -162,6 +168,8 @@ class BankIndonesiaFetcher:
                             "rate": jisdor_val,
                             "source": url,
                             "status": "success",
+                            "is_synthetic": False,
+                            "is_verified": True,
                         }
         except Exception as e:
             logger.debug(f"Direct JISDOR scrape note: {e}")
@@ -186,6 +194,8 @@ class BankIndonesiaFetcher:
                     "reference_rate": "Yahoo Finance (IDR=X)",
                     "rate": round(yf_rate, 2),
                     "status": "fallback_success",
+                    "is_synthetic": False,
+                    "is_verified": True,
                 }
         except Exception as yf_err:
             logger.debug(f"JISDOR yfinance fallback error: {yf_err}")
@@ -195,4 +205,6 @@ class BankIndonesiaFetcher:
             "reference_rate": "USD/IDR Baseline",
             "rate": 16250.0,
             "status": "estimated_baseline",
+            "is_synthetic": True,
+            "is_verified": False,
         }
