@@ -146,7 +146,16 @@ class FilesystemMcpServer:
         ]
 
     def _resolve_path(self, raw_path: str) -> Path:
-        p = Path(os.path.expandvars(os.path.expanduser(raw_path))).resolve()
+        raw_path = raw_path.strip()
+        p = Path(os.path.expandvars(os.path.expanduser(raw_path)))
+        if not p.is_absolute():
+            p = (self.root_dir / p).resolve()
+        else:
+            p = p.resolve()
+        if not p.is_relative_to(self.root_dir):
+            raise PermissionError(
+                f"Access denied: path '{raw_path}' is outside the allowed workspace root '{self.root_dir}'."
+            )
         return p
 
     def _resolve_safe_path(self, filename: str) -> Path:

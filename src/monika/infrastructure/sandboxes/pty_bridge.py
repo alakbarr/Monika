@@ -182,6 +182,24 @@ class PtySession:
     def close(self) -> None:
         self.is_closed = True
         self._output_buffer.clear()
+        if self._h_pc is not None and sys.platform == "win32":
+            try:
+                import ctypes
+
+                ctypes.windll.kernel32.ClosePseudoConsole(self._h_pc)
+            except Exception:
+                pass
+            self._h_pc = None
+
+        if self.process:
+            try:
+                self.process.terminate()
+            except Exception:
+                try:
+                    self.process.kill()
+                except Exception:
+                    pass
+            self.process = None
 
 
 class PtyBridgeManager:
@@ -287,6 +305,10 @@ class PtyBridgeManager:
         async with self._lock:
             for sid, sess in list(self._sessions.items()):
                 if now - sess.last_active > timeout or sess.is_closed:
+                    try:
+                        await sess.close_process()
+                    except Exception as e:
+                        logger.debug(f"[PtyBridge] Error terminating process for '{sid}': {e}")
                     sess.close()
                     self._sessions.pop(sid, None)
                     reaped += 1

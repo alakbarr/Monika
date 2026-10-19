@@ -5,8 +5,10 @@
 # ==============================================================================
 
 import asyncio
+import ipaddress
 import json
 import re
+import socket
 import sys
 import urllib.parse
 import urllib.request
@@ -20,6 +22,40 @@ from monika.infrastructure.mcp.protocol import (
     make_error_response,
     make_result_response,
 )
+
+
+def validate_safe_url(url: str) -> None:
+    """Validate that the URL does not resolve to private, loopback, or cloud metadata IPs."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("URL must start with http:// or https://")
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("URL must include a valid hostname")
+
+    lowered = hostname.lower()
+    if lowered in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+        raise PermissionError(f"Access to private/local network address '{hostname}' is forbidden.")
+
+    try:
+        addr_info = socket.getaddrinfo(hostname, None)
+        for _, _, _, _, sockaddr in addr_info:
+            ip_str = sockaddr[0]
+            ip = ipaddress.ip_address(ip_str)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+                raise PermissionError(f"Access to private/local network IP '{ip_str}' is forbidden.")
+            if str(ip) in ("169.254.169.254", "169.254.170.2"):
+                raise PermissionError("Access to cloud metadata endpoint is forbidden.")
+    except socket.gaierror as e:
+        raise ValueError(f"Could not resolve hostname '{hostname}': {e}")
+
+
+class SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Enforces SSRF validation on every redirect location."""
+
+    def redirect_request(self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str) -> Any:
+        validate_safe_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 class FetchMcpServer:
@@ -62,14 +98,14 @@ class FetchMcpServer:
         if tool_name == "fetch_url_text":
             url = arguments.get("url", "").strip()
             max_chars = min(int(arguments.get("max_chars", 4000)), 12000)
-            if not url.startswith("http://") and not url.startswith("https://"):
-                raise ValueError("URL must start with http:// or https://")
+            validate_safe_url(url)
 
             req = urllib.request.Request(
                 url,
                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Monika/1.0"},
             )
-            with urllib.request.urlopen(req, timeout=10) as response:
+            opener = urllib.request.build_opener(SafeRedirectHandler)
+            with opener.open(req, timeout=10) as response:
                 html = response.read().decode("utf-8", errors="replace")
                 cleaned = self._clean_html(html)
                 return {"url": url, "length": len(cleaned), "content": cleaned[:max_chars]}

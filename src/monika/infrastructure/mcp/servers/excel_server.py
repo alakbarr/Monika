@@ -22,14 +22,16 @@ from monika.infrastructure.mcp.protocol import (
     make_error_response,
     make_result_response,
 )
+from monika.core.paths import get_repo_root
 
 
 class ExcelMcpServer:
     """Stdio-based MCP Server for Excel (.xlsx, .xls) and CSV spreadsheet files."""
 
-    def __init__(self):
+    def __init__(self, root_dir: Optional[Path] = None):
         self.name = "excel-tabular-server"
         self.version = "1.0.0"
+        self.root_dir = (root_dir or get_repo_root()).resolve()
 
     def get_tool_definitions(self) -> List[Dict[str, Any]]:
         return [
@@ -126,7 +128,16 @@ class ExcelMcpServer:
         ]
 
     def _resolve_path(self, file_path: str) -> Path:
-        p = Path(os.path.expandvars(os.path.expanduser(file_path))).resolve()
+        file_path = file_path.strip()
+        p = Path(os.path.expandvars(os.path.expanduser(file_path)))
+        if not p.is_absolute():
+            p = (self.root_dir / p).resolve()
+        else:
+            p = p.resolve()
+        if not p.is_relative_to(self.root_dir):
+            raise PermissionError(
+                f"Access denied: path '{file_path}' is outside the allowed workspace root '{self.root_dir}'."
+            )
         return p
 
     def handle_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Any:

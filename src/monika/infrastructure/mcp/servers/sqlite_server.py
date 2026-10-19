@@ -70,7 +70,7 @@ class SqliteMcpServer:
         ]
 
     def _get_default_db(self) -> str:
-        from monika.infrastructure.infra.paths import get_repo_root
+        from monika.core.paths import get_repo_root
 
         root = get_repo_root()
         chk = root / "checkpoints.db"
@@ -87,7 +87,18 @@ class SqliteMcpServer:
         return str(data_db)
 
     def handle_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
-        db_path = arguments.get("db_path") or self._get_default_db()
+        from monika.core.paths import get_repo_root
+
+        root = get_repo_root().resolve()
+        raw_db_path = arguments.get("db_path")
+        if raw_db_path:
+            p = Path(raw_db_path).resolve()
+            if not p.is_relative_to(root):
+                raise PermissionError(f"Access denied: db_path '{raw_db_path}' is outside workspace root.")
+            db_path = str(p)
+        else:
+            db_path = self._get_default_db()
+
         db_uri = Path(db_path).resolve().as_uri() + "?mode=ro"
 
         if tool_name == "sqlite_list_tables":
@@ -98,7 +109,8 @@ class SqliteMcpServer:
                 tables = [r[0] for r in cursor.fetchall()]
                 results = {}
                 for t in tables:
-                    cursor.execute(f"SELECT count(*) FROM {t}")
+                    clean_t = str(t).replace('"', '""')
+                    cursor.execute(f'SELECT count(*) FROM "{clean_t}"')
                     results[t] = cursor.fetchone()[0]
                 return {"database": db_path, "tables": results}
             finally:

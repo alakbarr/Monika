@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from monika.application.analysis.tools.kernel.env_sanitizer import get_sanitized_environment
-from monika.core.security.terminal_guard import assert_safe_write_path
+from monika.core.security.terminal_guard import assert_safe_read_path, assert_safe_write_path
 from monika.infrastructure.sandboxes.base import BaseTerminalBackend
 
 logger = logging.getLogger("TradingAgent.Execution.LocalBackend")
@@ -112,7 +112,8 @@ class LocalTerminalBackend(BaseTerminalBackend):
                 pass
 
     def read_file(self, path: str, offset: int = 0, limit: int = -1) -> str:
-        p = Path(path)
+        safe_path = assert_safe_read_path(path)
+        p = Path(safe_path)
         if not p.is_file():
             raise FileNotFoundError(f"File not found: {path}")
         text = p.read_text(encoding="utf-8", errors="replace")

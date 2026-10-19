@@ -97,9 +97,7 @@ class BaseScraper:
         try:
             self.page = self._initialize_browser(self.headless)
         except Exception:
-            if self._acquired_profile_lock and self._profile_lock:
-                self._profile_lock.release()
-                self._acquired_profile_lock = False
+            self.close()
             raise
 
     def __del__(self):

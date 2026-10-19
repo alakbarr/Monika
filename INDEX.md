@@ -12194,7 +12194,7 @@
 - **Path**: [`src/monika/infrastructure/mcp/servers/excel_server.py`](src/monika/infrastructure/mcp/servers/excel_server.py)
 - **Classes**:
   - `class ExcelMcpServer`: Stdio-based MCP Server for Excel (.xlsx, .xls) and CSV spreadsheet files.
-    - `__init__()`
+    - `__init__(root_dir: Optional[Path])`
     - `get_tool_definitions() -> List[Dict[str, Any]]`
     - `handle_tool_call(tool_name: str, arguments: Dict[str, Any]) -> Any`
     - `async handle_request(req: Dict[str, Any]) -> Optional[Dict[str, Any]]`
@@ -12203,12 +12203,16 @@
 #### `fetch_server.py`
 - **Path**: [`src/monika/infrastructure/mcp/servers/fetch_server.py`](src/monika/infrastructure/mcp/servers/fetch_server.py)
 - **Classes**:
+  - `class SafeRedirectHandler(urllib.request.HTTPRedirectHandler)`: Enforces SSRF validation on every redirect location.
+    - `redirect_request(req: Any, fp: Any, code: int, ...) -> Any`
   - `class FetchMcpServer`: Free web page text extraction MCP server.
     - `__init__()`
     - `get_tool_definitions() -> List[Dict[str, Any]]`
     - `handle_tool_call(tool_name: str, arguments: Dict[str, Any]) -> Any`
     - `async handle_request(req: Dict[str, Any]) -> Optional[Dict[str, Any]]`
     - `async run()`
+- **Top-Level Functions**:
+  - `validate_safe_url(url: str) -> None`: Validate that the URL does not resolve to private, loopback, or cloud metadata IPs.
 
 #### `filesystem_server.py`
 - **Path**: [`src/monika/infrastructure/mcp/servers/filesystem_server.py`](src/monika/infrastructure/mcp/servers/filesystem_server.py)

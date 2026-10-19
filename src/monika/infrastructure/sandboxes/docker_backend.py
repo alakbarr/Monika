@@ -13,6 +13,7 @@ providing full system sandboxing for untrusted code execution.
 from __future__ import annotations
 
 import logging
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -106,7 +107,8 @@ class DockerTerminalBackend(BaseTerminalBackend):
             return "", str(exc), -1
 
     def read_file(self, path: str, offset: int = 0, limit: int = -1) -> str:
-        stdout, stderr, code = self.execute(f"cat '{path}'")
+        safe_path = shlex.quote(path)
+        stdout, stderr, code = self.execute(f"cat {safe_path}")
         if code != 0:
             raise FileNotFoundError(f"Failed to read file in container: {stderr}")
         text = stdout
@@ -118,9 +120,10 @@ class DockerTerminalBackend(BaseTerminalBackend):
 
     def write_file(self, path: str, content: str, append: bool = False) -> bool:
         redir = ">>" if append else ">"
+        safe_path = shlex.quote(path)
         # Escape single quotes safely
         safe_content = content.replace("'", "'\\''")
-        cmd = f"printf '%s' '{safe_content}' {redir} '{path}'"
+        cmd = f"printf '%s' '{safe_content}' {redir} {safe_path}"
         _, stderr, code = self.execute(cmd)
         if code != 0:
             logger.error(f"[DockerBackend] Write failed: {stderr}")
