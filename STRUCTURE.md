@@ -2147,6 +2147,7 @@ Monika/
 │   │   │   ├── test_tool_guardrails.py
 │   │   │   ├── test_tooling_and_sandbox.py
 │   │   │   ├── test_unified_registry.py
+│   │   │   ├── test_unified_tool_registry_and_search.py
 │   │   │   ├── test_unified_tooling.py
 │   │   │   └── test_universal_tools.py
 │   │   ├── __init__.py
@@ -2967,4 +2968,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 252 | **Total Tracked Files**: 2685
+**Total Tracked Directories**: 252 | **Total Tracked Files**: 2686
