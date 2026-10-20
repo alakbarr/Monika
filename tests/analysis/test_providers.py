@@ -470,6 +470,8 @@ async def test_gemini_generate_rotates_key_on_503():
     )
 
     with patch.dict("os.environ", {"GEMINI_API_KEYS": "key_alpha,key_beta"}):
+        GeminiProvider._key_cooldowns.clear()
+        GeminiProvider._key_index = 0
         provider = GeminiProvider(
             model="gemini-3.8-flash", settings={"llm": {"providers": {"gemini": {"streaming": {"enabled": True}}}}}
         )

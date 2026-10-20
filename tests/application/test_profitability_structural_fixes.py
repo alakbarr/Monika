@@ -415,3 +415,144 @@ async def test_signal_arbitrator_preserves_llm_wait_on_exhaustion_warning():
     assert res.decision == "wait"
     assert res.selected_source == "llm"
     assert "exhaustion" in res.arbitration_reason.lower()
+
+
+@pytest.mark.asyncio
+async def test_arbitrator_rejects_inverted_physical_geometry():
+    """Verify SignalArbitrator strictly fails closed if any source outputs inverted SL/TP levels."""
+    arbitrator = SignalArbitrator(settings={})
+    session = create_mock_session()
+
+    # Case 1: BUY with SL >= Entry
+    inverted_buy_quant = EdgeSignal(
+        strategy_id="smt_divergence",
+        symbol="EURUSD",
+        direction="buy",
+        valid=True,
+        confidence=0.85,
+        entry_price=1.0900,
+        stop_loss=1.0950,  # Inverted!
+        take_profit=1.1100,
+    )
+    res_buy = await arbitrator.arbitrate(
+        session=session,
+        symbol="EURUSD",
+        quant_signal=inverted_buy_quant,
+        llm_decision=None,
+    )
+    assert res_buy.decision == "avoid"
+    assert res_buy.confidence == 0.0
+    assert res_buy.risk_multiplier == 0.0
+    assert res_buy.selected_source == "fail_closed_geometry_violation"
+
+    # Case 2: SELL with SL <= Entry
+    inverted_sell_llm = {
+        "decision": "sell",
+        "confidence": 0.85,
+        "entry_price": 1.0900,
+        "stop_loss": 1.0850,  # Inverted!
+        "take_profit": 1.0700,
+    }
+    res_sell = await arbitrator.arbitrate(
+        session=session,
+        symbol="EURUSD",
+        quant_signal=None,
+        llm_decision=inverted_sell_llm,
+    )
+    assert res_sell.decision == "avoid"
+    assert res_sell.confidence == 0.0
+    assert res_sell.risk_multiplier == 0.0
+    assert res_sell.selected_source == "fail_closed_geometry_violation"
+
+    # Case 3: BUY with TP <= Entry
+    inverted_tp_buy = {
+        "decision": "buy",
+        "confidence": 0.85,
+        "entry_price": 1.0900,
+        "stop_loss": 1.0800,
+        "take_profit": 1.0850,  # Inverted!
+    }
+    res_tp = await arbitrator.arbitrate(
+        session=session,
+        symbol="EURUSD",
+        quant_signal=None,
+        llm_decision=inverted_tp_buy,
+    )
+    assert res_tp.decision == "avoid"
+    assert res_tp.selected_source == "fail_closed_geometry_violation"
+
+
+@pytest.mark.asyncio
+async def test_arbitrator_scenario1_blocks_quarantined_and_incubating_alphas():
+    """Verify standalone quant execution without LLM strictly rejects quarantined and incubating alphas."""
+    arbitrator = SignalArbitrator(settings={})
+    session = create_mock_session()
+
+    # Quarantined strategy
+    quarantined_sig = EdgeSignal(
+        strategy_id="smc_fvg",
+        symbol="EURUSD",
+        direction="buy",
+        valid=True,
+        confidence=0.85,
+        entry_price=1.0900,
+        stop_loss=1.0850,
+        take_profit=1.1000,
+    )
+    res_q = await arbitrator.arbitrate(
+        session=session,
+        symbol="EURUSD",
+        quant_signal=quarantined_sig,
+        llm_decision=None,
+    )
+    assert res_q.decision == "avoid"
+    assert res_q.selected_source == "quarantine_suppression"
+
+    # Incubating candidate alpha
+    incubating_sig = EdgeSignal(
+        strategy_id="alpha_synth_999",
+        symbol="GBPUSD",
+        direction="buy",
+        valid=True,
+        confidence=0.85,
+        entry_price=1.3000,
+        stop_loss=1.2950,
+        take_profit=1.3100,
+        meta={"is_incubating": True},
+    )
+    res_inc = await arbitrator.arbitrate(
+        session=session,
+        symbol="GBPUSD",
+        quant_signal=incubating_sig,
+        llm_decision=None,
+    )
+    assert res_inc.decision == "avoid"
+    assert res_inc.selected_source == "incubation_gate"
+
+
+@pytest.mark.asyncio
+async def test_trailing_stop_manager_minimum_hold_time():
+    """Verify TrailingStopManager skips BE/trailing adjustment when position is held < 15 minutes."""
+    from datetime import datetime, timezone, timedelta
+    from monika.application.scheduler.trailing_stop_manager import TrailingStopManager
+
+    exec_mock = AsyncMock()
+    manager = TrailingStopManager(
+        settings={"trading": {"trailing_stop": {"enabled": True}}},
+        execution_service=exec_mock,
+    )
+
+    pos = MagicMock()
+    pos.symbol = "EURUSD"
+    pos.direction = "buy"
+    pos.entry_price = 1.0900
+    pos.sl = 1.0850
+    pos.mt5_ticket = 12345
+    # Position opened only 5 minutes ago
+    pos.opened_at = datetime.now(timezone.utc) - timedelta(minutes=5)
+    pos.trailing_override_json = None
+
+    session = AsyncMock()
+    result = await manager._check_position(session, pos, current_price_override=1.0950)
+    assert result == {}
+    exec_mock.modify_position_sl_tp.assert_not_called()

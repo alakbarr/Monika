@@ -2011,181 +2011,81 @@ llm:
       fallback_3: mercury-decide
       fallback_4: openrouter/free
     stage1_fundamental:
-      primary: muse-spark-1.3
-      per_model_timeout_seconds: 360.0
-      thinking:
-        primary: xhigh
-        fallback_1: high
-        fallback_2: max
-        fallback_3: high
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: high
-        groq: high
-        openrouter: high
-        ollama: high
-        openai_compatible: high
-      max_tokens: 16384
-      max_tool_turns: 12
-      max_cost_per_call: 0.05
+      primary: gemini-3.5-flash-lite
+      provider: gemini
+      per_model_timeout_seconds: 120.0
+      thinking: high
+      max_tokens: 8192
+      max_tool_turns: 8
       temperature: 0.0
-      fallback_1: gpt-6.1-sol
-      fallback_2: kimi-k3
-      fallback_3: gemini-3.8-flash
+      fallback_1: gemini-3.1-flash-lite
     stage1_escalation:
-      primary: claude-opus-5.5
-      thinking:
-        primary: high
-        fallback_1: max
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: high
-        groq: high
-        openrouter: high
-        ollama: high
-        openai_compatible: high
-      max_tokens: 16384
-      max_tool_turns: 15
+      primary: gemini-3.5-flash-lite
+      provider: gemini
+      thinking: high
+      max_tokens: 8192
+      max_tool_turns: 8
       temperature: 0.0
-      fallback_1: gpt-6.1-sol
+      fallback_1: gemini-3.1-flash-lite
     stage1_delta_revision:
-      primary: deepseek-v4.1-flash
-      thinking:
-        primary: max
-        fallback_1: max
+      primary: gemini-3.5-flash-lite
+      provider: gemini
+      thinking: none
       max_tokens: 4096
       temperature: 0.0
-      fallback_1: glm-5.3-flash
-      fallback_2: gemini-3.8-flash
+      fallback_1: gemini-3.1-flash-lite
     stage2_per_asset_primary:
-      primary: glm-5.3
-      thinking:
-        primary: max
-        fallback_1: xhigh
-        fallback_2: high
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: max
-        groq: high
-        openrouter: max
-        ollama: medium
-        openai_compatible: high
-      max_tokens: 16384
+      primary: gemini-3.5-flash-lite
+      provider: gemini
+      thinking: high
+      max_tokens: 8192
       max_tool_turns: 12
       temperature: 0.0
-      fallback_1: muse-spark-1.3
-      fallback_2: gemini-3.8-flash
+      fallback_1: gemini-3.1-flash-lite
     stage2_per_asset_secondary:
-      primary: glm-5.3
-      thinking:
-        primary: max
-        fallback_1: xhigh
-        fallback_2: high
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: max
-        groq: high
-        openrouter: max
-        ollama: medium
-        openai_compatible: high
-      max_tokens: 16384
+      primary: gemini-3.5-flash-lite
+      provider: gemini
+      thinking: high
+      max_tokens: 8192
       max_tool_turns: 12
       temperature: 0.0
-      fallback_1: muse-spark-1.3
-      fallback_2: gemini-3.8-flash
+      fallback_1: gemini-3.1-flash-lite
     stage2_session_trigger:
-      primary: glm-5.3-flash
-      thinking:
-        primary: max
-        fallback_1: max
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: max
-        groq: high
-        openrouter: max
-        ollama: medium
-        openai_compatible: high
+      primary: gemini-3.5-flash-lite
+      provider: gemini
+      thinking: none
       max_tokens: 4096
       max_tool_turns: 6
       temperature: 0.0
-      fallback_1: deepseek-v4.1-flash
+      fallback_1: gemini-3.1-flash-lite
     stage2_prescreen:
-      primary: jev-latest
-      thinking:
-        primary: none
-        fallback_1: none
-        fallback_2: none
-        fallback_3: none
-        fallback_4: max
-        fallback_5: max
-        anthropic: none
-        gemini: none
-        openai: none
-        deepseek: none
-        groq: none
-        openrouter: none
-        ollama: none
-        openai_compatible: none
+      primary: gemini-3.5-flash-lite
+      provider: gemini
+      thinking: none
       max_tokens: 2048
       temperature: 0.0
-      fallback_1: liquid-d1
-      fallback_2: luna-decision
-      fallback_3: mercury-decide
-      fallback_4: glm-5.3-flash
-      fallback_5: deepseek-v4.1-flash
+      fallback_1: gemini-3.1-flash-lite
     debate_bear:
-      primary: deepseek-v4.1-flash
-      thinking:
-        primary: max
-        fallback_1: max
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: max
-        groq: high
-        openrouter: max
-        ollama: medium
-        openai_compatible: high
+      primary: gemini-3.5-flash-lite
+      provider: gemini
+      thinking: high
       max_tokens: 4096
       temperature: 0.2
-      fallback_1: glm-5.3-flash
+      fallback_1: gemini-3.1-flash-lite
     debate_bull:
-      primary: deepseek-v4.1-flash
-      thinking:
-        primary: max
-        fallback_1: max
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: max
-        groq: high
-        openrouter: max
-        ollama: medium
-        openai_compatible: high
+      primary: gemini-3.5-flash-lite
+      provider: gemini
+      thinking: high
       max_tokens: 4096
       temperature: 0.2
-      fallback_1: glm-5.3-flash
+      fallback_1: gemini-3.1-flash-lite
     debate_judge:
-      primary: glm-5.3
-      thinking:
-        primary: max
-        fallback_1: high
-        anthropic: high
-        gemini: high
-        openai: high
-        deepseek: max
-        groq: high
-        openrouter: max
-        ollama: medium
-        openai_compatible: high
+      primary: gemini-3.5-flash-lite
+      provider: gemini
+      thinking: high
       max_tokens: 4096
       temperature: 0.0
-      fallback_1: gpt-6.1-sol
+      fallback_1: gemini-3.1-flash-lite
     risk_gate_conservative:
       primary: deepseek-v4.1-flash
       thinking:

@@ -3,6 +3,7 @@ SignalArbitrator: Arbitrase Sinyal Terpusat antara Quant Strategies dan LLM Deba
 """
 
 import logging
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -197,6 +198,55 @@ class SignalArbitrator:
             except ValueError, TypeError:
                 pass
 
+        def _parse_safe_price(val: Any) -> float:
+            if val is None:
+                return 0.0
+            if isinstance(val, (int, float)):
+                try:
+                    f = float(val)
+                    return f if not (math.isnan(f) or math.isinf(f)) else 0.0
+                except ValueError, TypeError:
+                    return 0.0
+            if isinstance(val, str):
+                cleaned = val.replace("$", "").replace(",", "").strip()
+                try:
+                    f = float(cleaned)
+                    return f if not (math.isnan(f) or math.isinf(f)) else 0.0
+                except ValueError, TypeError:
+                    return 0.0
+            return 0.0
+
+        # Financial Fortress: Physical Directional Geometry Sanity Guard
+        if res.decision in ("buy", "sell"):
+            e_p = _parse_safe_price(res.entry_price)
+            sl_p = _parse_safe_price(res.stop_loss)
+            tp_p = _parse_safe_price(res.take_profit)
+            geom_violation = None
+            if e_p > 0 and sl_p > 0:
+                if res.decision == "buy" and sl_p >= e_p:
+                    geom_violation = f"BUY Stop Loss ({sl_p:.5f}) >= Entry Price ({e_p:.5f})"
+                elif res.decision == "sell" and sl_p <= e_p:
+                    geom_violation = f"SELL Stop Loss ({sl_p:.5f}) <= Entry Price ({e_p:.5f})"
+            if not geom_violation and tp_p > 0 and e_p > 0:
+                if res.decision == "buy" and tp_p <= e_p:
+                    geom_violation = f"BUY Take Profit ({tp_p:.5f}) <= Entry Price ({e_p:.5f})"
+                elif res.decision == "sell" and tp_p >= e_p:
+                    geom_violation = f"SELL Take Profit ({tp_p:.5f}) >= Entry Price ({e_p:.5f})"
+
+            if geom_violation:
+                logger.error(
+                    f"[{symbol}] Physical geometry violation detected: {geom_violation}. "
+                    f"Failing closed -> AVOID (source={res.selected_source})."
+                )
+                res.decision = "avoid"
+                res.confidence = 0.0
+                res.risk_multiplier = 0.0
+                res.selected_source = "fail_closed_geometry_violation"
+                res.arbitration_reason = f"Fail-closed: {geom_violation}"
+                if not isinstance(res.meta, dict):
+                    res.meta = {}
+                res.meta["geometry_violation"] = geom_violation
+
         if session is not None:
             try:
                 from monika.infrastructure.database.event_store import TradingEventStore
@@ -290,6 +340,33 @@ class SignalArbitrator:
 
         # 1. Hanya sinyal Quant yang valid tersedia
         if quant_is_valid and llm_decision is None:
+            q_meta = (_get_q("meta", {}) or {}) if isinstance(_get_q("meta", {}), dict) else {}
+
+            # Guard: Quarantined strategies cannot execute standalone
+            if quant_strat_id in ("smc_fvg", "btc_donchian_breakout") or bool(q_meta.get("is_quarantined", False)):
+                return ArbitrationResult(
+                    symbol=symbol,
+                    decision="avoid",
+                    confidence=0.0,
+                    risk_multiplier=0.0,
+                    selected_source="quarantine_suppression",
+                    arbitration_reason=f"Quant strategy {quant_strat_id} is quarantined due to empirical negative expectancy.",
+                    meta={"strategy_id": quant_strat_id},
+                )
+
+            # Guard: Incubating or ungraduated synthesized alphas cannot execute standalone
+            is_incubating = bool(q_meta.get("is_incubating", False))
+            if is_incubating:
+                return ArbitrationResult(
+                    symbol=symbol,
+                    decision="avoid",
+                    confidence=0.0,
+                    risk_multiplier=0.0,
+                    selected_source="incubation_gate",
+                    arbitration_reason=f"Quant strategy {quant_strat_id} is incubating (not live-ready) — standalone execution blocked.",
+                    meta={"strategy_id": quant_strat_id, "is_incubating": True},
+                )
+
             direction = quant_dir
 
             # High VIX defense

@@ -443,8 +443,12 @@ class PaperTracker:
                 rr_achieved = None
                 pnl_pct = risk_pct if exit_reason == "tp_hit" else -risk_pct
 
-            if trade.opened_at and bar.timestamp:
-                holding_hours = (bar.timestamp - trade.opened_at).total_seconds() / 3600.0
+            raw_opened = trade.opened_at
+            raw_bar_ts = bar.timestamp
+            if raw_opened is not None and raw_bar_ts is not None:
+                bar_ts = raw_bar_ts if raw_bar_ts.tzinfo is not None else raw_bar_ts.replace(tzinfo=timezone.utc)
+                open_ts = raw_opened if raw_opened.tzinfo is not None else raw_opened.replace(tzinfo=timezone.utc)
+                holding_hours = max(0.01, (bar_ts - open_ts).total_seconds() / 3600.0)
             else:
                 holding_hours = 0.0
             trade.holding_hours = holding_hours
@@ -476,6 +480,12 @@ class PaperTracker:
 
             trade.status = "closed"
             trade.closed_at = bar.timestamp
+            raw_closed = trade.closed_at
+            if raw_opened is not None and raw_closed is not None:
+                c_ts = raw_closed if raw_closed.tzinfo is not None else raw_closed.replace(tzinfo=timezone.utc)
+                o_ts = raw_opened if raw_opened.tzinfo is not None else raw_opened.replace(tzinfo=timezone.utc)
+                if c_ts < o_ts:
+                    trade.closed_at = raw_opened
             trade.slippage_applied = slippage if exit_reason == "sl_hit" else 0.0
             trade.exit_price = exit_price
             trade.exit_reason = exit_reason[:100]

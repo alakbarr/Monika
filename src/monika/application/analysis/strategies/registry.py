@@ -20,6 +20,15 @@ class StrategyRegistry:
     _dynamic_symbol_params: dict[tuple[str, str], dict] = {}
     _blacklisted_ids: set[str] = set()
     QUARANTINED_STRATEGY_IDS: set[str] = {"smc_fvg", "btc_donchian_breakout", "bollinger_reversion"}
+    PROMOTED_EMPIRICAL_STRATEGIES: set[str] = {
+        "smt_divergence",
+        "bb_volume_profile",
+        "asian_range_fade",
+        "vwap_mean_reversion",
+        "tokyo_open_sweep",
+        "xau_trend_engine",
+        "xti_pairs_readiness",
+    }
     _last_load_time: float = 0.0
     _load_interval: float = 60.0
     MAX_SYNTHESIZED_PER_SYMBOL: int = 5
@@ -502,6 +511,21 @@ class StrategyRegistry:
         strat_cls = cls.get_strategy(strategy_id)
         if not strat_cls:
             logger.warning(f"[StrategyRegistry] Strategy '{strategy_id}' not found in registry.")
+            return None
+
+        if strategy_id in cls.QUARANTINED_STRATEGY_IDS or strategy_id in cls._blacklisted_ids:
+            logger.debug(
+                f"[StrategyRegistry] Suppressed: Strategy '{strategy_id}' is quarantined due to empirical negative expectancy."
+            )
+            return None
+
+        from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+
+        decay_mon = get_strategy_decay_monitor()
+        if not decay_mon.is_tradeable(strategy_id):
+            logger.debug(
+                f"[StrategyRegistry] Suppressed by StrategyDecayMonitor: Strategy '{strategy_id}' is not tradeable."
+            )
             return None
 
         if session and hasattr(session, "execute"):

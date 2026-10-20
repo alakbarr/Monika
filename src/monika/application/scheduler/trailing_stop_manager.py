@@ -145,10 +145,21 @@ class TrailingStopManager:
 
         news_window_minutes = self.settings.get("trading", {}).get("risk", {}).get("news_window_minutes", 30)
         window = timedelta(minutes=news_window_minutes)
-        pos_currencies = get_symbol_currencies(pos.symbol)
         now = datetime.now(timezone.utc)
 
+        # Minimum hold time check: 15 minutes hold required before auto-breakeven/trailing stop
+        opened_at_val = getattr(pos, "opened_at", None)
+        if isinstance(opened_at_val, datetime):
+            pos_open = opened_at_val if opened_at_val.tzinfo else opened_at_val.replace(tzinfo=timezone.utc)
+            if (now - pos_open).total_seconds() < 900:  # 15 min minimum hold
+                logger.debug(
+                    f"[TrailingStopManager] Position {pos.symbol} (ticket {pos.mt5_ticket}) "
+                    f"held < 15m ({(now - pos_open).total_seconds():.0f}s), skipping adjustment."
+                )
+                return {}
+
         try:
+            pos_currencies = get_symbol_currencies(pos.symbol)
             upcoming_pos_news = (
                 await session.execute(
                     select(EconomicCalendar)
@@ -399,16 +410,17 @@ class TrailingStopManager:
 
         # Financial Fortress: Physical Invariant Geometric Sanity Assertion
         if new_sl is not None:
-            if pos.direction == "buy" and new_sl >= current_price:
+            min_dist = (0.2 * atr) if atr > 0 else 0.0001
+            if pos.direction == "buy" and new_sl >= (current_price - min_dist):
                 logger.error(
                     f"[TrailingStopManager] Rejected suicide stop adjustment: "
-                    f"BUY new_sl ({new_sl}) >= current_price ({current_price}) for {pos.symbol} (ticket {pos.mt5_ticket})"
+                    f"BUY new_sl ({new_sl}) >= current_price ({current_price}) - buffer ({min_dist:.5f}) for {pos.symbol} (ticket {pos.mt5_ticket})"
                 )
                 new_sl = None
-            elif pos.direction == "sell" and new_sl <= current_price:
+            elif pos.direction == "sell" and new_sl <= (current_price + min_dist):
                 logger.error(
                     f"[TrailingStopManager] Rejected suicide stop adjustment: "
-                    f"SELL new_sl ({new_sl}) <= current_price ({current_price}) for {pos.symbol} (ticket {pos.mt5_ticket})"
+                    f"SELL new_sl ({new_sl}) <= current_price ({current_price}) + buffer ({min_dist:.5f}) for {pos.symbol} (ticket {pos.mt5_ticket})"
                 )
                 new_sl = None
 

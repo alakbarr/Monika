@@ -211,6 +211,7 @@ class RiskPortRegistry:
     evt_tail_calculator: Any | None = None
     strategy_factor_family_resolver: Any | None = None
     broker_client_factory: Any | None = None
+    suspended_symbols_provider: Any | None = None
     event_publisher: Any | None = None
     notifier: Any | None = None
     session_factory: Any | None = None
