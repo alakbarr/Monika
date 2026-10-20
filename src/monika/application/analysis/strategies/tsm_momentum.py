@@ -97,14 +97,15 @@ class TimeSeriesMomentum(EdgeStrategy):
 
         if symbol in STRICT_REGIME:
             regime = await classify_market_regime(session, symbol, settings)
-            if regime["regime"] not in ("TREND", "STRONG_TREND"):
+            reg_label = str(regime.get("regime", "") or "").upper()
+            if reg_label not in ("TREND", "STRONG_TREND", "BULLISH_TREND", "BEARISH_TREND", "WEAK_TREND"):
                 return EdgeSignal(
                     self.strategy_id,
                     symbol,
                     None,
                     False,
                     0.0,
-                    rationale=f"regime={regime['regime']} fails strict confirmation",
+                    rationale=f"regime={reg_label} fails strict confirmation",
                 )
 
         last_break = (

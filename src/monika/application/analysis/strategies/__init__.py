@@ -73,6 +73,26 @@ except Exception as e:
     logger.debug(f"bollinger_reversion not loaded: {e}")
 
 try:
+    import monika.application.analysis.strategies.usdjpy_atr_exhaustion
+except Exception as e:
+    logger.debug(f"usdjpy_atr_exhaustion not loaded: {e}")
+
+try:
+    import monika.application.analysis.strategies.xtiusd_atr_exhaustion
+except Exception as e:
+    logger.debug(f"xtiusd_atr_exhaustion not loaded: {e}")
+
+try:
+    import monika.application.analysis.strategies.xauusd_atr_exhaustion
+except Exception as e:
+    logger.debug(f"xauusd_atr_exhaustion not loaded: {e}")
+
+try:
+    import monika.application.analysis.strategies.btcusd_dynamic_donchian
+except Exception as e:
+    logger.debug(f"btcusd_dynamic_donchian not loaded: {e}")
+
+try:
     from monika.application.analysis.strategies.registry import StrategyRegistry
 
     StrategyRegistry.log_summary()

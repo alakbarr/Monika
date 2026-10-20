@@ -239,7 +239,7 @@ Respond in valid JSON format conforming to the schema."""
 
     try:
         parsed: Optional[Dict[str, Any]] = None
-        judge_max_tokens = getattr(client, "max_tokens", 6144) or 6144
+        judge_max_tokens = max(getattr(client, "max_tokens", 16384) or 16384, 16384)
         if hasattr(client, "classify_json"):
             parsed = await client.classify_json(
                 user_prompt, system_prompt=system_prompt, schema=schema, max_tokens=judge_max_tokens

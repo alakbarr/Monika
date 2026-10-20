@@ -629,6 +629,28 @@ def deep_repair_tool_arguments(
                     str(args.get("rationale") or "")
                     + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted confidence score."
                 ).strip()
+        elif missing_prop == "type":
+            if "entry_condition" in args and isinstance(args["entry_condition"], dict):
+                ec = args["entry_condition"]
+                if "type" not in ec or not ec.get("type"):
+                    ec["type"] = "limit" if ec.get("price") is not None else "market"
+                if "detail" not in ec or not ec.get("detail"):
+                    ec["detail"] = str(ec.get("price") or "Institutional entry condition")
+            if "reevaluation_trigger" in args and isinstance(args["reevaluation_trigger"], dict):
+                rt = args["reevaluation_trigger"]
+                if "type" not in rt or not rt.get("type"):
+                    rt["type"] = "time"
+                if "detail" not in rt or not rt.get("detail"):
+                    rt["detail"] = "Reevaluate upon next session open or structural breakout."
+        elif missing_prop == "detail":
+            if "entry_condition" in args and isinstance(args["entry_condition"], dict):
+                ec = args["entry_condition"]
+                if "detail" not in ec or not ec.get("detail"):
+                    ec["detail"] = str(ec.get("price") or ec.get("type") or "Institutional entry execution")
+            if "reevaluation_trigger" in args and isinstance(args["reevaluation_trigger"], dict):
+                rt = args["reevaluation_trigger"]
+                if "detail" not in rt or not rt.get("detail"):
+                    rt["detail"] = "Reevaluate upon next session open or structural breakout."
         elif missing_prop == "checklist":
             args["checklist"] = {"bias_vs_narrative_match": True, "contradiction_existed": False}
         elif missing_prop == "reevaluation_trigger":

@@ -19,13 +19,31 @@ class StrategyRegistry:
     _dynamic_params: dict[str, dict] = {}
     _dynamic_symbol_params: dict[tuple[str, str], dict] = {}
     _blacklisted_ids: set[str] = set()
-    QUARANTINED_STRATEGY_IDS: set[str] = {"smc_fvg", "btc_donchian_breakout", "bollinger_reversion"}
+    QUARANTINED_STRATEGY_IDS: set[str] = {
+        "smc_fvg",
+        "btc_donchian_breakout",
+        "bollinger_reversion",
+        "asian_range_fade",
+        "tokyo_open_sweep",
+        "alpha_xtiusd_374fa7",
+        "alpha_eurusd_8060ed",
+        "alpha_xauusd_5044bf",
+        "alpha_xauusd_7358c1",
+        "alpha_xauusd_a84e8d",
+        "alpha_xtiusd_83031c",
+    }
     PROMOTED_EMPIRICAL_STRATEGIES: set[str] = {
         "smt_divergence",
         "bb_volume_profile",
-        "asian_range_fade",
         "vwap_mean_reversion",
-        "tokyo_open_sweep",
+        "usdjpy_atr_exhaustion",
+        "xtiusd_atr_exhaustion",
+        "xauusd_atr_exhaustion",
+        "btcusd_dynamic_donchian",
+        "alpha_usdjpy_e3c1b2",
+        "alpha_xtiusd_f30ff5",
+        "alpha_xauusd_96d26b",
+        "alpha_btcusd_b22661",
         "xau_trend_engine",
         "xti_pairs_readiness",
         "tsm_momentum",
@@ -599,3 +617,5 @@ class StrategyRegistry:
 
 
 STRATEGY_REGISTRY = StrategyRegistry._registry
+QUARANTINED_STRATEGY_IDS = StrategyRegistry.QUARANTINED_STRATEGY_IDS
+PROMOTED_EMPIRICAL_STRATEGIES = StrategyRegistry.PROMOTED_EMPIRICAL_STRATEGIES

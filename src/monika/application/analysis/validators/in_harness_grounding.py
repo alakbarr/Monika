@@ -191,6 +191,25 @@ class InHarnessGroundingValidator:
                 sl_dist = abs(entry_f - sl_f)
                 if atr_val and atr_val > 0:
                     min_sl_dist = atr_val * 0.95  # 5% tolerance
+                    # Harmonize with ADR ceiling when market compression causes ATR floor to exceed ADR bounds
+                    adr_ceiling = None
+                    adr_pkg = data_bundle.get("get_daily_range_context") or data_bundle.get("adr_context")
+                    if isinstance(adr_pkg, dict) and "target_sl_max_distance" in adr_pkg:
+                        try:
+                            adr_ceiling = float(adr_pkg["target_sl_max_distance"])
+                        except ValueError, TypeError:
+                            pass
+                    if adr_ceiling is None:
+                        raw_adr = data_bundle.get("daily_adr") or data_bundle.get("adr")
+                        if raw_adr is not None:
+                            try:
+                                adr_ceiling = float(raw_adr) * 0.45
+                            except ValueError, TypeError:
+                                pass
+
+                    if adr_ceiling is not None and min_sl_dist > adr_ceiling:
+                        min_sl_dist = min(min_sl_dist, adr_ceiling * 0.90)
+
                     if sl_dist < min_sl_dist:
                         errors.append(
                             f"Stop loss distance {sl_dist:.4f} is too tight for market noise "

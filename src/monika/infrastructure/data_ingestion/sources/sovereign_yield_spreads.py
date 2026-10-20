@@ -124,12 +124,21 @@ class SovereignYieldSpreads:
             from monika.infrastructure.database.db import get_session
             from monika.infrastructure.database.domain_models.market import BondYieldData, TreasuryYield
 
+            alias_map = {
+                "GERMANY_10Y": ["DE_10Y", "GERMANY_10Y"],
+                "JAPAN_10Y": ["JP_10Y", "JAPAN_10Y"],
+                "UK_10Y": ["UK_10Y", "GB_10Y", "GB10Y"],
+                "AUSTRALIA_10Y": ["AU_10Y", "AUSTRALIA_10Y"],
+                "US_10Y": ["US_10Y", "US10Y"],
+            }
+            db_candidates = list(dict.fromkeys([country_tenor] + alias_map.get(country_tenor, [])))
+
             async def _query(s):
                 res = (
                     (
                         await s.execute(
                             select(BondYieldData.yield_percent)
-                            .where(BondYieldData.country_tenor == country_tenor)
+                            .where(BondYieldData.country_tenor.in_(db_candidates))
                             .order_by(BondYieldData.date.desc())
                             .limit(2)
                         )
