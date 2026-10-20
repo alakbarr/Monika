@@ -28,6 +28,7 @@ class StrategyRegistry:
         "tokyo_open_sweep",
         "xau_trend_engine",
         "xti_pairs_readiness",
+        "tsm_momentum",
     }
     _last_load_time: float = 0.0
     _load_interval: float = 60.0

@@ -537,7 +537,38 @@ class ContextCompactionEngine:
                         parts.append(f"cot_bias={data['commercial_bias']}")
                     if "long_pct" in data:
                         parts.append(f"retail_long_pct={data['long_pct']}")
-                # 8. Macro / DXY / VIX / News
+                # 8. Macro & Fundamental Brief
+                elif "fundamental" in t_lower or "brief" in t_lower or "currency_bias" in data or "macro_bias" in data:
+                    if "currency_bias" in data and isinstance(data["currency_bias"], dict):
+                        bias_strs = []
+                        for curr, b_val in data["currency_bias"].items():
+                            if isinstance(b_val, dict):
+                                b_text = b_val.get("bias", "neutral")
+                                conf = b_val.get("confidence")
+                                if conf is not None:
+                                    bias_strs.append(f"{curr}:{b_text}({conf})")
+                                else:
+                                    bias_strs.append(f"{curr}:{b_text}")
+                            elif isinstance(b_val, str):
+                                bias_strs.append(f"{curr}:{b_val}")
+                        if bias_strs:
+                            parts.append(f"currencies=[{', '.join(bias_strs)}]")
+                    if "overall_risk_regime" in data and data["overall_risk_regime"]:
+                        parts.append(f"risk_regime={data['overall_risk_regime']}")
+                    elif "risk_sentiment" in data and data["risk_sentiment"]:
+                        parts.append(f"risk_sentiment={data['risk_sentiment']}")
+                    if "dxy_trend" in data and data["dxy_trend"]:
+                        parts.append(f"dxy_trend={data['dxy_trend']}")
+                    elif "dxy_bias" in data and data["dxy_bias"]:
+                        parts.append(f"dxy_bias={data['dxy_bias']}")
+                    if "confidence" in data and data["confidence"] is not None:
+                        parts.append(f"confidence={data['confidence']}")
+                    if "age_hours" in data and data["age_hours"] is not None:
+                        parts.append(f"age_hours={data['age_hours']}")
+                    if "top_themes" in data and isinstance(data["top_themes"], list) and data["top_themes"]:
+                        themes_summary = "; ".join(str(t)[:40] for t in data["top_themes"][:3])
+                        parts.append(f"themes=[{themes_summary}]")
+                # 9. Macro / DXY / VIX / News
                 elif "dxy" in t_lower or "vix" in t_lower or "calendar" in t_lower:
                     if "close" in data:
                         parts.append(f"latest_close={data['close']}")
@@ -545,7 +576,7 @@ class ContextCompactionEngine:
                         parts.append(f"latest={data['latest'].get('close')}")
                     if "events" in data and isinstance(data["events"], list):
                         parts.append(f"events_count={len(data['events'])}")
-                # 9. Price History / OHLCV
+                # 10. Price History / OHLCV
                 elif "price_history" in t_lower or "ohlcv" in t_lower or "recent_bars" in data:
                     bars = data.get("recent_bars") or data.get("bars") or []
                     if bars and isinstance(bars, list):
@@ -554,7 +585,7 @@ class ContextCompactionEngine:
                             parts.append(f"last_close={last_c}")
                     total = data.get("total_bars_available") or len(bars)
                     parts.append(f"total_bars={total}")
-                # 10. Open Positions / Trades
+                # 11. Open Positions / Trades
                 elif "positions" in t_lower or "trades" in t_lower:
                     if "ticket" in data:
                         parts.append(f"ticket={data.get('ticket')}")

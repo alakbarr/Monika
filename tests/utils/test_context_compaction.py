@@ -214,3 +214,30 @@ def test_check_and_compact_intermediate_threshold():
     assert "Observation:" in compacted[3]["content"]
     # Recent tool output (turn 2) remains untouched
     assert compacted[5]["content"] == "current spread 0.8 pips"
+
+
+def test_extract_decisive_state_fundamental_brief():
+    """Verify _extract_decisive_state extracts currency bias, DXY, and macro themes from spilled fundamental briefs."""
+    engine = ContextCompactionEngine()
+    brief_data = {
+        "brief_id": 42,
+        "age_hours": 1.5,
+        "currency_bias": {
+            "USD": {"bias": "bearish", "confidence": 0.85},
+            "EUR": {"bias": "neutral", "confidence": 0.60},
+            "JPY": "bullish",
+        },
+        "dxy_trend": "bearish",
+        "overall_risk_regime": "risk_on",
+        "confidence": 0.82,
+        "top_themes": ["Fed rate cut expectations", "Disinflation trend", "Strong European services PMI"],
+    }
+    summary = engine._extract_decisive_state("get_fundamental_brief", json.dumps(brief_data))
+    assert "USD:bearish(0.85)" in summary
+    assert "EUR:neutral(0.6)" in summary
+    assert "JPY:bullish" in summary
+    assert "dxy_trend=bearish" in summary
+    assert "risk_regime=risk_on" in summary
+    assert "confidence=0.82" in summary
+    assert "age_hours=1.5" in summary
+    assert "Fed rate cut" in summary

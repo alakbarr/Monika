@@ -220,6 +220,17 @@ def format_invariants_for_prompt(invariants: Dict[str, Any]) -> str:
     else:
         lines.append("VALID STRUCTURAL ANCHORS: No immediate zone within 2x ATR. Require extra confirmation.")
 
+    opt_b = invariants.get("optimal_buy")
+    opt_s = invariants.get("optimal_sell")
+    if opt_b and opt_b.get("tp1") and opt_b.get("sl"):
+        lines.append(
+            f"RECOMMENDED BUY EXECUTION : Entry={opt_b.get('entry_price')} | SL={opt_b.get('sl')} | TP={opt_b.get('tp1')} (R:R={opt_b.get('selected_rr')})"
+        )
+    if opt_s and opt_s.get("tp1") and opt_s.get("sl"):
+        lines.append(
+            f"RECOMMENDED SELL EXECUTION: Entry={opt_s.get('entry_price')} | SL={opt_s.get('sl')} | TP={opt_s.get('tp1')} (R:R={opt_s.get('selected_rr')})"
+        )
+
     lines.append(
         "MANDATE: Select SL and TP that conform strictly to these pre-computed bounds. Zero manual floating-point math."
     )

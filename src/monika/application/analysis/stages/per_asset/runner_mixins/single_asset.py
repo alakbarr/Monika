@@ -130,8 +130,8 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         )
 
         # Compute Zero-Arithmetic Invariants (SOTA Grounding)
-        curr_px, atr_f, adr_f = compute_prompt_invariants(
-            self.settings, symbol, raw_bundle_data, initial_context_blocks
+        curr_px, atr_f, adr_f = await compute_prompt_invariants(
+            self.settings, symbol, raw_bundle_data, initial_context_blocks, session=session
         )
 
         # TimesFM 3.0 Quantile Skewness Alpha Injection

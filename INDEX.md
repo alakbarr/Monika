@@ -6691,7 +6691,7 @@
 #### `single_asset_helpers.py`
 - **Path**: [`src/monika/application/analysis/stages/per_asset/runner_mixins/single_asset_helpers.py`](src/monika/application/analysis/stages/per_asset/runner_mixins/single_asset_helpers.py)
 - **Top-Level Functions**:
-  - `compute_prompt_invariants(settings: dict, symbol: str, raw_bundle_data: Any, ...) -> tuple[Optional[float], Optional[float], Optional[float]]`: Compute zero-arithmetic invariants and format for prompt injection.
+  - `async compute_prompt_invariants(settings: dict, symbol: str, raw_bundle_data: Any, ...) -> tuple[Optional[float], Optional[float], Optional[float]]`: Compute zero-arithmetic invariants and format for prompt injection.
   - `async handle_billing_fallback(runner: Any, session: AsyncSession, symbol: str, ...) -> dict`: Handle LLM billing error with fallback model switch if approved.
   - `extract_entry_price_from_analysis(analysis: Optional[Any]) -> Optional[float]`: Extract entry price float safely from entry_zone or fallbacks.
 

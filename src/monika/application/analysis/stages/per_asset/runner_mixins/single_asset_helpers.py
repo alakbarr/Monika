@@ -23,11 +23,12 @@ def _get_create_client():
     return create_client
 
 
-def compute_prompt_invariants(
+async def compute_prompt_invariants(
     settings: dict,
     symbol: str,
     raw_bundle_data: Any,
     initial_context_blocks: list,
+    session: Optional[AsyncSession] = None,
 ) -> tuple[Optional[float], Optional[float], Optional[float]]:
     """Compute zero-arithmetic invariants and format for prompt injection."""
     curr_px: Optional[float] = None
@@ -82,6 +83,22 @@ def compute_prompt_invariants(
                     sr_zones=sr_f,
                     min_rr=float(settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)),
                 )
+
+                if session:
+                    try:
+                        from monika.application.analysis.calculators.intraday_level_optimizer import (
+                            compute_optimal_levels,
+                        )
+
+                        opt_buy = await compute_optimal_levels(session, symbol, "buy", float(curr_px), settings)
+                        opt_sell = await compute_optimal_levels(session, symbol, "sell", float(curr_px), settings)
+                        if opt_buy and opt_buy.get("entry_allowed"):
+                            invariants_dict["optimal_buy"] = opt_buy
+                        if opt_sell and opt_sell.get("entry_allowed"):
+                            invariants_dict["optimal_sell"] = opt_sell
+                    except Exception as opt_err:
+                        logger.debug(f"[{symbol}] Optimal levels precompute error: {opt_err}")
+
                 inv_block = format_invariants_for_prompt(invariants_dict)
                 initial_context_blocks.append(("PRE-COMPUTED TRADE INVARIANTS", inv_block))
     except Exception as inv_err:

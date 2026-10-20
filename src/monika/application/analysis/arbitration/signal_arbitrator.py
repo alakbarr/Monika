@@ -282,6 +282,8 @@ class SignalArbitrator:
         """
         Mengevaluasi sinyal kuantitatif dan keputusan LLM secara terintegrasi.
         """
+        from monika.application.analysis.strategies.registry import StrategyRegistry
+
         now = clock.now()
         market_regime = "ranging"
         if isinstance(regime_info, dict):
@@ -343,7 +345,7 @@ class SignalArbitrator:
             q_meta = (_get_q("meta", {}) or {}) if isinstance(_get_q("meta", {}), dict) else {}
 
             # Guard: Quarantined strategies cannot execute standalone
-            if quant_strat_id in ("smc_fvg", "btc_donchian_breakout") or bool(q_meta.get("is_quarantined", False)):
+            if quant_strat_id in StrategyRegistry.QUARANTINED_STRATEGY_IDS or bool(q_meta.get("is_quarantined", False)):
                 return ArbitrationResult(
                     symbol=symbol,
                     decision="avoid",
@@ -861,7 +863,13 @@ class SignalArbitrator:
                     and (q_conf - l_conf) >= 0.25
                     and not ((q_dir == "buy" and tfm_skew < -0.15) or (q_dir == "sell" and tfm_skew > 0.15))
                 )
-                if not is_incubating and not has_llm_exhaustion and (tfm_confirms or has_decisive_conviction):
+                is_promoted = quant_strat_id in StrategyRegistry.PROMOTED_EMPIRICAL_STRATEGIES
+                if (
+                    is_promoted
+                    and not is_incubating
+                    and not has_llm_exhaustion
+                    and (tfm_confirms and has_decisive_conviction)
+                ):
                     effective_mult = min(0.90, quant_priority_risk_mult + (0.15 if tfm_confirms else 0.05))
                     return ArbitrationResult(
                         symbol=symbol,

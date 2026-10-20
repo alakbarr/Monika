@@ -556,3 +556,68 @@ async def test_trailing_stop_manager_minimum_hold_time():
     result = await manager._check_position(session, pos, current_price_override=1.0950)
     assert result == {}
     exec_mock.modify_position_sl_tp.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_signal_arbitrator_blocks_unpromoted_override_on_llm_wait():
+    """Verify that an unpromoted strategy cannot override an LLM WAIT decision."""
+    from monika.application.analysis.arbitration.signal_arbitrator import SignalArbitrator
+    from monika.application.analysis.strategies.base_strategy import EdgeSignal
+
+    arbitrator = SignalArbitrator(settings={"trading": {"signal_arbitration": {}}})
+    session = AsyncMock()
+
+    unpromoted_sig = EdgeSignal(
+        strategy_id="alpha_unpromoted_xyz",
+        symbol="EURUSD",
+        direction="buy",
+        valid=True,
+        confidence=0.90,
+        entry_price=1.0900,
+        stop_loss=1.0850,
+        take_profit=1.1000,
+    )
+    llm_wait = {
+        "decision": "wait",
+        "confidence": 0.50,
+        "rationale": "Consolidation before macro news",
+    }
+
+    res = await arbitrator.arbitrate(
+        session=session,
+        symbol="EURUSD",
+        quant_signal=unpromoted_sig,
+        llm_decision=llm_wait,
+    )
+    assert res.decision == "wait"
+    assert res.selected_source == "llm"
+
+
+@pytest.mark.asyncio
+async def test_compute_prompt_invariants_formatting():
+    """Verify compute_prompt_invariants creates pre-computed invariants block with recommended execution levels."""
+    from monika.application.analysis.stages.per_asset.runner_mixins.single_asset_helpers import (
+        compute_prompt_invariants,
+    )
+
+    settings = {"trading": {"risk": {"min_rr_ratio": 1.5}}}
+    raw_bundle = {
+        "get_price_history_H4": {"bars": [{"close": 1.1500}]},
+        "get_atr_H4": {"atr": 0.0020},
+        "get_daily_range_context": {"adr_5d": 0.0060},
+    }
+    blocks = []
+    curr_px, atr, adr = await compute_prompt_invariants(
+        settings=settings,
+        symbol="EURUSD",
+        raw_bundle_data=raw_bundle,
+        initial_context_blocks=blocks,
+        session=None,
+    )
+    assert curr_px == 1.1500
+    assert atr == 0.0020
+    assert adr == 0.0060
+    assert len(blocks) == 1
+    assert blocks[0][0] == "PRE-COMPUTED TRADE INVARIANTS"
+    assert "BUY INVARIANTS" in blocks[0][1]
+    assert "SELL INVARIANTS" in blocks[0][1]

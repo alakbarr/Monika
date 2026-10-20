@@ -61,6 +61,7 @@ SYMBOL_FETCH_TASKS = [
     ("get_macro_bias_score", {}),
     ("get_volume_profile_context", {}),
     ("get_volatility_regime", {"timeframe": "H4"}),
+    ("get_daily_range_context", {}),
 ]
 
 

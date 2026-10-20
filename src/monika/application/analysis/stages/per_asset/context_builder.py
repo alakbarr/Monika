@@ -76,6 +76,7 @@ RULES & ADR BOUNDS:
   If ATR_14 exceeds 0.35x ADR due to elevated volatility, adjust lot size downwards (risk-adjusted sizing) rather than forcing WAIT.
 - Decision: Score >= Threshold → BUY/SELL; Score < Threshold → WAIT; Invalid → AVOID.
 - Priced-in score >= 8 + event < 12h → WAIT.
+- SQUEEZE & COMPRESSION DISCIPLINE: If Bollinger Band Width is in the lower 25th percentile (BB Squeeze) OR Volume Profile shows thin liquidity/squeeze without confirmed breakout expansion: DO NOT submit an aggressive market order. Either submit WAIT until expansion confirms direction, or specify a LIMIT order at the outer range boundary (OTE / FVG zone). Immediate market execution during low-volume squeezes triggers SSVP Hard Rejection.
 - Mandatory Bull/Bear Stress test: state 1 opposing scenario before finalizing BUY/SELL.
 
 TELEGRAPHIC THINKING & RESPONSE MANDATE:
