@@ -41,7 +41,8 @@ def test_strategy_governance_parity():
     assert "liquidity_sweep" not in QUARANTINED_STRATEGY_IDS
 
     assert "bb_volume_profile" in PROMOTED_EMPIRICAL_STRATEGIES
-    assert {"EURUSD", "GBPUSD", "AUDUSD"}.issubset(BBVolumeProfileMeanReversion.applicable_symbols)
+    assert {"EURUSD", "AUDUSD"}.issubset(BBVolumeProfileMeanReversion.applicable_symbols)
+    assert "GBPUSD" not in BBVolumeProfileMeanReversion.applicable_symbols
 
     assert "vwap_mean_reversion" in PROMOTED_EMPIRICAL_STRATEGIES
     assert {"EURUSD", "AUDUSD", "XTIUSD", "XBRUSD", "USDJPY"}.issubset(VWAPMeanReversionStrategy.applicable_symbols)

@@ -21,6 +21,7 @@ QUARANTINED_STRATEGY_IDS: set[str] = {
     "xti_pairs_readiness",
     "gbpusd_trend_breakout",
     "xauusd_atr_exhaustion",
+    "xau_trend_engine",
     "alpha_xtiusd_374fa7",
     "alpha_eurusd_8060ed",
     "alpha_xauusd_5044bf",
@@ -38,7 +39,6 @@ PROMOTED_EMPIRICAL_STRATEGIES: set[str] = {
     "usdjpy_atr_exhaustion",
     "xtiusd_atr_exhaustion",
     "btcusd_dynamic_donchian",
-    "xau_trend_engine",
     "tsm_momentum",
 }
 

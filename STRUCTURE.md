@@ -2332,6 +2332,7 @@ Monika/
 │   │   ├── test_alpha_validation.py
 │   │   ├── test_benchmark_tracker.py
 │   │   ├── test_canonical_price_loader.py
+│   │   ├── test_empirical_portfolio_monte_carlo.py
 │   │   ├── test_fase7_lookahead_and_kelly.py
 │   │   ├── test_langgraph_backtest_parity.py
 │   │   ├── test_monte_carlo_block_bootstrap.py
@@ -3024,4 +3025,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 257 | **Total Tracked Files**: 2737
+**Total Tracked Directories**: 257 | **Total Tracked Files**: 2738

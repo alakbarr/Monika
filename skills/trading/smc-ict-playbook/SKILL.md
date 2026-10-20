@@ -107,5 +107,6 @@ Before defaulting to WAIT, complete this Active Opportunity Scan:
 2. **H4 Zone**: Is price resting inside a valid unmitigated Order Block, FVG, or S/R zone?
 3. **Directional Alignment**: Does D1 trend match the proposed H4 entry direction?
 4. **Safety Filter**: Is VIX $< 30.0$ AND no high-impact economic news within 15 minutes?
+5. **Regime B Momentum Expansion**: If a confirmed Donchian or structural breakout occurs with volume (RVOL $\ge$ 1.2), do NOT reject on lack of older FVG proximity — enter on the expansion impulse with SL behind the breakout base.
 
-**If $\ge 3/4$ criteria are YES $\rightarrow$ An active institutional setup exists. Score and submit BUY/SELL if confluence $\ge$ threshold.**
+**If $\ge 3/5$ criteria are YES $\rightarrow$ An active institutional setup exists. Score and submit BUY/SELL if confluence $\ge$ threshold.**
