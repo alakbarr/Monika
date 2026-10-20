@@ -190,7 +190,13 @@ class ZeroLookaheadSliceSession(AsyncSession):
         self.candle_cache = candle_cache
         self.as_of_time = as_of_time
         self.symbol = symbol.upper()
-        self._custom_info: Dict[str, Any] = {"candle_cache": dict(candle_cache)}
+        full_cache: Dict[Any, List[CandleDict]] = dict(candle_cache)
+        as_of_str = str(as_of_time) if as_of_time is not None else None
+        for (sym, tf), c_list in list(candle_cache.items()):
+            if as_of_str is not None:
+                full_cache[(sym, tf, as_of_str)] = c_list
+            full_cache[(sym, tf, None)] = c_list
+        self._custom_info: Dict[str, Any] = {"candle_cache": full_cache}
 
     @property
     def info(self) -> Dict[str, Any]:
@@ -654,14 +660,21 @@ class IsolatedStrategyBacktestHarness:
             try:
                 # Freeze clock deterministically at historical bar time
                 with frozen_time(cur_time):
-                    sig = await asyncio.wait_for(
-                        strat_instance.evaluate(
+                    eval_fn = getattr(strat_instance, "evaluate")
+                    try:
+                        eval_coro = eval_fn(
                             session=slice_session,
                             symbol=self.symbol,
                             settings=self.settings,
-                        ),
-                        timeout=5.0,
-                    )
+                            as_of=cur_time,
+                        )
+                    except TypeError:
+                        eval_coro = eval_fn(
+                            session=slice_session,
+                            symbol=self.symbol,
+                            settings=self.settings,
+                        )
+                    sig = await asyncio.wait_for(eval_coro, timeout=5.0)
             except Exception as e:
                 logger.debug(f"[IsolatedHarness] Evaluation exception at bar {i} for {self.symbol}: {e}")
                 if self.fail_fast_on_error:
@@ -707,6 +720,7 @@ class IsolatedStrategyBacktestHarness:
                     logger.debug(f"[IsolatedHarness] Signal without SL/TP rejected under fail_fast for {self.symbol}")
                     return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
                 logger.debug(f"[IsolatedHarness] Signal without SL/TP rejected for {self.symbol}")
+                i += 1
                 continue
 
             # Forward bar-by-bar outcome simulation with conservative intra-bar sequencing and gap modeling
@@ -1024,14 +1038,21 @@ class IsolatedStrategyBacktestHarness:
 
             try:
                 with frozen_time(cur_time):
-                    sig = await asyncio.wait_for(
-                        strat_instance.evaluate(
+                    eval_fn = getattr(strat_instance, "evaluate")
+                    try:
+                        eval_coro = eval_fn(
                             session=slice_session,
                             symbol=self.symbol,
                             settings=self.settings,
-                        ),
-                        timeout=5.0,
-                    )
+                            as_of=cur_time,
+                        )
+                    except TypeError:
+                        eval_coro = eval_fn(
+                            session=slice_session,
+                            symbol=self.symbol,
+                            settings=self.settings,
+                        )
+                    sig = await asyncio.wait_for(eval_coro, timeout=5.0)
             except Exception:
                 i += 1
                 continue

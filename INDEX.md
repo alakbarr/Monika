@@ -6848,7 +6848,7 @@
 - **Path**: [`src/monika/application/analysis/strategies/liquidity_sweep_edge.py`](src/monika/application/analysis/strategies/liquidity_sweep_edge.py)
 - **Classes**:
   - `class LiquiditySweepStructuralShift(EdgeStrategy)`
-    - `async evaluate(session, symbol, settings) -> EdgeSignal`
+    - `async evaluate(session, symbol: str, settings: dict, ...) -> EdgeSignal`
 
 #### `pretrade_gate.py`
 - **Path**: [`src/monika/application/analysis/strategies/pretrade_gate.py`](src/monika/application/analysis/strategies/pretrade_gate.py)

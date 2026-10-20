@@ -61,7 +61,7 @@ def test_validation_gate_splitting():
     # 1. GATE_FATAL errors must classify as GATE or GATE_FATAL
     gate_fatal_errs = [
         "ENTRY BLOCKED: only 12% of today's typical ADR range remains",
-        "volatility regime gate active: market in extreme crash",
+        "macro bias gate active: conflicting with primary trend",
         "Priced-in conflict HARD BLOCKED: Stage 1 says fully priced in",
     ]
     for err in gate_fatal_errs:
@@ -69,6 +69,7 @@ def test_validation_gate_splitting():
 
     # 2. GATE_FIXABLE errors must classify as GATE_FIXABLE
     gate_fixable_errs = [
+        "volatility regime gate active: market in extreme crash",
         "SSVP BLOCKED: Price inside value area without limit trigger",
         "Liquidity sweep required for entry zone",
         "PRICED-IN CONFLICT (REVERSE): Your asset score contradicts Stage 1",

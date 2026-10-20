@@ -154,12 +154,27 @@ class BTCUSDDynamicDonchianStrategy(EdgeStrategy):
             tags.extend(["breakdown_short", "volume_expansion"])
 
         if direction is not None:
+            curr_atr = (
+                float(df.loc[last_idx, "atr"])
+                if "atr" in df.columns and df.loc[last_idx, "atr"] > 0
+                else (curr_close * 0.01)
+            )
+            sl, tp = self.build_bracket(
+                entry_price=curr_close,
+                direction=direction,
+                atr=curr_atr,
+                atr_multiplier_sl=1.5,
+                risk_reward_ratio=2.0,
+            )
             return EdgeSignal(
                 strategy_id=self.strategy_id,
                 symbol=symbol,
                 direction=direction,
                 valid=True,
                 confidence=round(confidence, 3),
+                entry_price=curr_close,
+                stop_loss=sl,
+                take_profit=tp,
                 rationale=rationale,
                 tags=tags,
             )

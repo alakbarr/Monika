@@ -31,7 +31,7 @@ def test_quarantined_and_promoted_strategies_integrity():
     # Ensure toxic alphas are quarantined
     for toxic_id in [
         "asian_range_fade",
-        "tokyo_open_sweep",
+        "xti_pairs_readiness",
         "alpha_xtiusd_374fa7",
         "alpha_eurusd_8060ed",
         "alpha_xauusd_5044bf",
@@ -40,6 +40,8 @@ def test_quarantined_and_promoted_strategies_integrity():
 
     # Ensure newly promoted empirical strategies are promoted
     for promoted_id in [
+        "tokyo_open_sweep",
+        "liquidity_sweep",
         "usdjpy_atr_exhaustion",
         "xtiusd_atr_exhaustion",
         "xauusd_atr_exhaustion",

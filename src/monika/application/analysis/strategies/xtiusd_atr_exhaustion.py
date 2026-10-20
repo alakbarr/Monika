@@ -139,6 +139,18 @@ class XTIUSDATRExhaustionStrategy(EdgeStrategy):
                     )
                     tags = ["mean_reversion", "overbought_exhaustion"]
 
+            entry_p = close
+            sl = None
+            tp = None
+            if direction is not None and atr > 0:
+                sl, tp = self.build_bracket(
+                    entry_price=entry_p,
+                    direction=direction,
+                    atr=atr,
+                    atr_multiplier_sl=1.5,
+                    risk_reward_ratio=2.0,
+                )
+
             valid = direction is not None
             return EdgeSignal(
                 strategy_id=self.strategy_id,
@@ -146,6 +158,9 @@ class XTIUSDATRExhaustionStrategy(EdgeStrategy):
                 direction=direction,
                 valid=valid,
                 confidence=float(confidence),
+                entry_price=entry_p if valid else None,
+                stop_loss=sl,
+                take_profit=tp,
                 rationale=rationale,
                 tags=tags,
             )

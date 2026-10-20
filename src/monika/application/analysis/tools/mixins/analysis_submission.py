@@ -718,24 +718,38 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                             or entry_cond.get("price_high")
                             or entry_cond.get("price_low")
                             or entry_cond.get("level")
+                            or inp.get("entry_price")
                         )
                     elif isinstance(entry_cond, str):
                         cond_type = entry_cond.lower()
                         cond_price = inp.get("entry_price") or inp.get("stop_loss")
 
                     is_limit_type = any(
-                        t in cond_type for t in ("limit", "order_block", "ob", "fvg", "pullback", "pending")
+                        t in cond_type
+                        for t in (
+                            "limit",
+                            "order_block",
+                            "ob",
+                            "fvg",
+                            "pullback",
+                            "pending",
+                            "structural",
+                            "rejection",
+                            "breakout",
+                            "sweep",
+                        )
                     )
                     conf_score = int(inp.get("confluence_score", 0) or 0)
                     is_structural_limit = is_limit_type and bool(cond_price) and conf_score >= 6
                     if is_structural_limit:
                         logger.info(
                             f"[{symbol}] Volatility squeeze detected ({chop.get('reason')}), "
-                            f"allowing structural limit entry with confluence {conf_score}."
+                            f"allowing structural entry ({cond_type}) with confluence {conf_score}."
                         )
                     else:
                         errors.append(
-                            f"VOLATILITY REGIME GATE: {chop.get('reason')} — no confirmed breakout. Submit WAIT."
+                            f"VOLATILITY REGIME GATE: {chop.get('reason')} — market order in squeeze is prone to chop. "
+                            f"Specify a structural limit/pullback/breakout entry condition at a confirmed level (OB/FVG/sweep) or submit WAIT."
                         )
         except Exception as e:
             logger.warning(f"Mechanical gates failed (fail-open): {e}")
@@ -1065,10 +1079,10 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     if ind_ts.tzinfo is None:
                         ind_ts = ind_ts.replace(tzinfo=timezone.utc)
                     indicator_age_hours = (clock.now() - ind_ts).total_seconds() / 3600
-                    if indicator_age_hours > 5.0:
+                    if indicator_age_hours > 10.0:
                         errors.append(
                             f"H4 technical indicators for {symbol} are {indicator_age_hours:.1f}h old "
-                            f"(limit: 5.0h). RSI/MACD/ATR values are stale — MT5 may be disconnected. "
+                            f"(limit: 10.0h). RSI/MACD/ATR values are stale — MT5 may be disconnected. "
                             f"Submit WAIT until fresh data is available."
                         )
             except Exception as e:

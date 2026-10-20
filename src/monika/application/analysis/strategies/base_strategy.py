@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 
@@ -17,7 +18,7 @@ QUARANTINED_STRATEGY_IDS: set[str] = {
     "btc_donchian_breakout",
     "bollinger_reversion",
     "asian_range_fade",
-    "tokyo_open_sweep",
+    "xti_pairs_readiness",
     "alpha_xtiusd_374fa7",
     "alpha_eurusd_8060ed",
     "alpha_xauusd_5044bf",
@@ -27,6 +28,8 @@ QUARANTINED_STRATEGY_IDS: set[str] = {
 }
 
 PROMOTED_EMPIRICAL_STRATEGIES: set[str] = {
+    "tokyo_open_sweep",
+    "liquidity_sweep",
     "smt_divergence",
     "bb_volume_profile",
     "vwap_mean_reversion",
@@ -36,7 +39,6 @@ PROMOTED_EMPIRICAL_STRATEGIES: set[str] = {
     "btcusd_dynamic_donchian",
     "gbpusd_trend_breakout",
     "xau_trend_engine",
-    "xti_pairs_readiness",
     "tsm_momentum",
 }
 
@@ -146,7 +148,11 @@ class EdgeStrategy(ABC):
             candle_cache = session.info.setdefault("candle_cache", {})
             if cache_key in candle_cache:
                 cached = candle_cache[cache_key]
-                if len(cached) >= limit:
+                if cached:
+                    return cached[-limit:]
+            elif (symbol, norm_tf) in candle_cache:
+                cached = candle_cache[(symbol, norm_tf)]
+                if cached:
                     return cached[-limit:]
 
         stmt = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == norm_tf)

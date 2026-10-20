@@ -31,7 +31,7 @@ def _calc_atr(candles, period: int = 14) -> float:
 @StrategyRegistry.register
 class TokyoSweepStrategy(EdgeStrategy):
     strategy_id = "tokyo_open_sweep"
-    applicable_symbols = {"EURUSD", "GBPUSD"}
+    applicable_symbols = {"USDJPY"}
     compatible_regimes = {"RANGING", "MEAN_REVERTING", "WEAK_TREND", "CHOPPY"}
     factor_family = "mean_reversion"
     min_sample_size = 20

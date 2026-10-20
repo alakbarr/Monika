@@ -246,7 +246,7 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
                     await self.session.execute(
                         select(FVGZone)
                         .where(FVGZone.symbol == symbol)
-                        .where(FVGZone.timeframe == "H4")
+                        .where(FVGZone.timeframe.in_(["H1", "H4"]))
                         .where(FVGZone.filled_at.is_(None))
                     )
                 )
@@ -264,7 +264,7 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
                     await self.session.execute(
                         select(OrderBlock)
                         .where(OrderBlock.symbol == symbol)
-                        .where(OrderBlock.timeframe == "H4")
+                        .where(OrderBlock.timeframe.in_(["H1", "H4"]))
                         .where(OrderBlock.mitigated_at.is_(None))
                     )
                 )
@@ -282,9 +282,9 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
                     await self.session.execute(
                         select(SwingPoint)
                         .where(SwingPoint.symbol == symbol)
-                        .where(SwingPoint.timeframe == "H4")
+                        .where(SwingPoint.timeframe.in_(["H1", "H4"]))
                         .order_by(SwingPoint.timestamp.desc())
-                        .limit(10)
+                        .limit(15)
                     )
                 )
                 .scalars()
@@ -300,7 +300,7 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
                     await self.session.execute(
                         select(LiquidityZone)
                         .where(LiquidityZone.symbol == symbol)
-                        .where(LiquidityZone.timeframe == "H4")
+                        .where(LiquidityZone.timeframe.in_(["H1", "H4"]))
                     )
                 )
                 .scalars()
@@ -314,8 +314,9 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
             round_increments = {
                 "XAUUSD": 10.0,
                 "XTIUSD": 1.0,
+                "XBRUSD": 1.0,
                 "BTCUSD": 1000.0,
-                "USDJPY": 0.5,
+                "USDJPY": 0.20,
                 "EURUSD": 0.0050,
                 "GBPUSD": 0.0050,
                 "AUDUSD": 0.0050,
@@ -435,7 +436,6 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
     def _classify_validation_errors(errs: list[str]) -> str:
         """Classify submit_asset_analysis validation errors into GATE, GATE_FIXABLE, STRUCTURAL, THRESHOLD, or FATAL."""
         GATE_FATAL_ERRORS = [
-            "volatility regime gate",
             "macro bias gate",
             "entry blocked: only",
             "adr range remains",
@@ -444,6 +444,8 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
         ]
 
         GATE_FIXABLE_ERRORS = [
+            "volatility regime gate",
+            "volatility squeeze",
             "price inside value area",
             "liquidity sweep",
             "priced-in conflict (reverse)",

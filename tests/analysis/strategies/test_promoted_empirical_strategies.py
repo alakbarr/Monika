@@ -64,7 +64,7 @@ def test_quarantined_strategies():
 
     # Verify curated applicable_symbols based on empirical backtest
     assert AsianRangeFadeStrategy.applicable_symbols == {"GBPUSD", "EURUSD"}
-    assert TokyoSweepStrategy.applicable_symbols == {"EURUSD", "GBPUSD"}
+    assert TokyoSweepStrategy.applicable_symbols == {"USDJPY"}
     assert SMTDivergenceStrategy.applicable_symbols == {"EURUSD"}
     assert "USDJPY" not in VWAPMeanReversionStrategy.applicable_symbols
 

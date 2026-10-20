@@ -142,12 +142,23 @@ class USDJPYATRExhaustionStrategy(EdgeStrategy):
                     tags.extend(["exhaustion_long", "oversold_reversal"])
 
             if direction is not None:
+                atr_val = float(curr["atr"]) if "atr" in curr and curr["atr"] > 0 else (curr_close * 0.005)
+                sl, tp = self.build_bracket(
+                    entry_price=curr_close,
+                    direction=direction,
+                    atr=atr_val,
+                    atr_multiplier_sl=1.5,
+                    risk_reward_ratio=2.0,
+                )
                 return EdgeSignal(
                     strategy_id=self.strategy_id,
                     symbol=symbol,
                     direction=direction,
                     valid=True,
                     confidence=round(confidence, 3),
+                    entry_price=curr_close,
+                    stop_loss=sl,
+                    take_profit=tp,
                     rationale=" ".join(rationale_parts),
                     tags=tags,
                 )

@@ -71,7 +71,7 @@ class XAUUSDATRExhaustionStrategy(EdgeStrategy):
         tr3 = np.abs(lows - prev_closes)
         true_range = np.maximum(tr1, np.maximum(tr2, tr3))
 
-        atr_series = pd.Series(true_range).rolling(window=self.atr_period).mean().to_numpy()
+        atr_series = np.asarray(pd.Series(true_range).rolling(window=self.atr_period).mean())
         current_atr = float(atr_series[-1])
 
         if math.isnan(current_atr) or current_atr <= 0.0:
@@ -86,7 +86,7 @@ class XAUUSDATRExhaustionStrategy(EdgeStrategy):
             )
 
         # Baseline EMA
-        baseline_series = pd.Series(closes).ewm(span=self.ma_period, adjust=False).mean().to_numpy()
+        baseline_series = np.asarray(pd.Series(closes).ewm(span=self.ma_period, adjust=False).mean())
         current_baseline = float(baseline_series[-1])
 
         # RSI
@@ -94,8 +94,8 @@ class XAUUSDATRExhaustionStrategy(EdgeStrategy):
         gains = np.maximum(diff, 0.0)
         losses = np.maximum(-diff, 0.0)
 
-        gain_series = pd.Series(gains).rolling(window=self.rsi_period).mean().to_numpy()
-        loss_series = pd.Series(losses).rolling(window=self.rsi_period).mean().to_numpy()
+        gain_series = np.asarray(pd.Series(gains).rolling(window=self.rsi_period).mean())
+        loss_series = np.asarray(pd.Series(losses).rolling(window=self.rsi_period).mean())
 
         latest_gain = float(gain_series[-1]) if len(gain_series) > 0 else 0.0
         latest_loss = float(loss_series[-1]) if len(loss_series) > 0 else 0.0
@@ -136,12 +136,22 @@ class XAUUSDATRExhaustionStrategy(EdgeStrategy):
             tags.extend(["oversold_exhaustion", "long_reversion"])
 
         if direction is not None:
+            sl, tp = self.build_bracket(
+                entry_price=current_price,
+                direction=direction,
+                atr=current_atr,
+                atr_multiplier_sl=1.5,
+                risk_reward_ratio=2.0,
+            )
             return EdgeSignal(
                 strategy_id=self.strategy_id,
                 symbol=symbol,
                 direction=direction,
                 valid=True,
                 confidence=round(confidence, 3),
+                entry_price=current_price,
+                stop_loss=sl,
+                take_profit=tp,
                 rationale=rationale,
                 tags=tags,
             )
