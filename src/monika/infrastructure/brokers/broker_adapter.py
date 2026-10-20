@@ -15,6 +15,7 @@ Adapters:
 
 import asyncio
 import logging
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
@@ -283,6 +284,7 @@ class MT5LiveAdapter(BrokerAdapter):
                     "last": float(cur_price.get("last", ask)),
                     "spread": spread,
                     "time": cur_price.get("time", clock.now()),
+                    "fetched_at": cur_price.get("fetched_at", time.time()),
                 }
         except Exception as e:
             logger.debug(f"[MT5LiveAdapter] get_current_price failed for {symbol}: {e}")
@@ -300,6 +302,7 @@ class MT5LiveAdapter(BrokerAdapter):
                 "last": ask,
                 "spread": spread,
                 "time": clock.now(),
+                "fetched_at": time.time(),
             }
         except Exception as e:
             logger.error(f"[MT5LiveAdapter] get_tick failed completely for {symbol}: {e}")
