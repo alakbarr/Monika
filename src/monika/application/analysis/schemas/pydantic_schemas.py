@@ -273,12 +273,30 @@ class EntryCondition(BaseModel):
             else:
                 data = {"type": "market", "detail": s}
         if isinstance(data, dict):
+            if "price" not in data or data.get("price") is None:
+                for k in ("price_low", "price_high", "level", "entry_price", "target_price"):
+                    if data.get(k) is not None:
+                        try:
+                            data["price"] = float(data[k])
+                            break
+                        except ValueError, TypeError:
+                            pass
             if "detail" not in data or not data.get("detail"):
                 data["detail"] = str(data.get("price") or data.get("type") or "Market entry")
             raw_type = str(data.get("type", "")).strip().lower()
             if raw_type in ("market", "instant", "market_order", "now"):
                 data["type"] = "market"
-            elif raw_type in ("limit", "pending", "limit_order", "fvg_entry", "ob_entry"):
+            elif raw_type in (
+                "limit",
+                "pending",
+                "limit_order",
+                "fvg_entry",
+                "ob_entry",
+                "order_block",
+                "fvg",
+                "pullback",
+                "ob",
+            ):
                 data["type"] = "limit"
             elif raw_type in ("trigger", "stop", "stop_order", "breakout"):
                 data["type"] = "trigger"

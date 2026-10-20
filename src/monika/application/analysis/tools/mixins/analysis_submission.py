@@ -708,16 +708,30 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 chop = await compute_bollinger_donchian_chop(self.session, symbol, "H4", self.settings)
                 if chop.get("chop_block"):
                     entry_cond = inp.get("entry_condition") or {}
-                    is_structural_limit = (
-                        isinstance(entry_cond, dict)
-                        and entry_cond.get("type") in ("limit", "order_block", "fvg")
-                        and bool(entry_cond.get("price"))
-                        and int(inp.get("confluence_score", 0) or 0) >= 7
+                    cond_type = ""
+                    cond_price = None
+                    if isinstance(entry_cond, dict):
+                        cond_type = str(entry_cond.get("type", "")).lower()
+                        cond_price = (
+                            entry_cond.get("price")
+                            or entry_cond.get("entry_price")
+                            or entry_cond.get("price_high")
+                            or entry_cond.get("price_low")
+                            or entry_cond.get("level")
+                        )
+                    elif isinstance(entry_cond, str):
+                        cond_type = entry_cond.lower()
+                        cond_price = inp.get("entry_price") or inp.get("stop_loss")
+
+                    is_limit_type = any(
+                        t in cond_type for t in ("limit", "order_block", "ob", "fvg", "pullback", "pending")
                     )
+                    conf_score = int(inp.get("confluence_score", 0) or 0)
+                    is_structural_limit = is_limit_type and bool(cond_price) and conf_score >= 6
                     if is_structural_limit:
                         logger.info(
                             f"[{symbol}] Volatility squeeze detected ({chop.get('reason')}), "
-                            f"allowing structural limit entry with confluence {inp.get('confluence_score')}."
+                            f"allowing structural limit entry with confluence {conf_score}."
                         )
                     else:
                         errors.append(
@@ -744,8 +758,24 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             tp_price = inp.get("take_profit")
             entry_price = None
 
-            if entry_zone:
-                entry_price = entry_zone.get("price") or entry_zone.get("price_high")
+            if isinstance(entry_zone, dict):
+                entry_price = (
+                    entry_zone.get("price")
+                    or entry_zone.get("entry_price")
+                    or entry_zone.get("level")
+                    or entry_zone.get("price_high")
+                    or entry_zone.get("price_low")
+                )
+            elif isinstance(entry_zone, (int, float)):
+                entry_price = float(entry_zone)
+
+            if not entry_price:
+                raw_ep = inp.get("entry_price")
+                if raw_ep is not None:
+                    try:
+                        entry_price = float(raw_ep)
+                    except ValueError, TypeError:
+                        pass
 
             if sl_price is not None and sl_price <= 0:
                 errors.append("stop_loss MUST be greater than 0.")
@@ -980,8 +1010,12 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
 
             # === MARKET PROXIMITY CHECK for LIMIT orders ===
             if decision in ("buy", "sell") and entry_zone:
-                entry_type = entry_zone.get("type", "market")
-                specified_price = entry_zone.get("price")
+                entry_type = entry_zone.get("type", "market") if isinstance(entry_zone, dict) else "market"
+                specified_price = (
+                    entry_zone.get("price")
+                    if isinstance(entry_zone, dict)
+                    else (float(entry_zone) if isinstance(entry_zone, (int, float)) else None)
+                )
 
                 if entry_type == "limit" and specified_price is not None:
                     # Check that limit price is within 3% of current market
@@ -1239,7 +1273,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             error_class = self._classify_validation_errors(errors)
 
             if error_class == "GATE":
-                logger.info(f"[{symbol}] Mechanical risk gate blocked entry. Gracefully forcing WAIT.")
+                logger.info(f"[{symbol}] Mechanical risk gate blocked entry. Gracefully forcing WAIT. Errors: {errors}")
                 decision = "wait"
                 confidence = 0.0
                 first_err = errors[0] if errors else "rule-based filter"

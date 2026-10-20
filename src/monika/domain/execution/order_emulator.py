@@ -144,8 +144,8 @@ class ClientOrderEmulator:
 
         trail_cfg = self.settings.get("trading", {}).get("trailing_stop") or self.settings.get("trailing_stop", {})
         self.enabled = trail_cfg.get("enabled", True)
-        self.breakeven_atr_multiple = float(trail_cfg.get("breakeven_atr_multiple", 1.0))
-        self.trail_atr_multiple = float(trail_cfg.get("trail_atr_multiple", 1.5))
+        self.breakeven_atr_multiple = float(trail_cfg.get("breakeven_atr_multiple", 1.8))
+        self.trail_atr_multiple = float(trail_cfg.get("trail_atr_multiple", 1.8))
         self.trailing_activation_atr_multiple = float(
             trail_cfg.get("trailing_activation_atr_multiple", 2.0 * self.breakeven_atr_multiple)
         )

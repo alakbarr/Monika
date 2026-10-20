@@ -165,7 +165,14 @@ async def confluence_filter_node(state: ReactiveState, config: Optional[Runnable
         config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
     ) or {}
     scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else None
-    settings = scheduler.settings if scheduler and hasattr(scheduler, "settings") else {}
+    settings = scheduler.settings if scheduler and hasattr(scheduler, "settings") else None
+    if not settings:
+        try:
+            from monika.core.config.settings import load_settings
+
+            settings = load_settings()
+        except Exception:
+            settings = {}
     trading_cfg = settings.get("trading", {})
 
     min_confluence = trading_cfg.get("auto_execute_min_confluence", 7)
@@ -334,7 +341,14 @@ async def reactive_execution_node(state: ReactiveState, config: Optional[Runnabl
         config.get("configurable") if isinstance(config, dict) else getattr(config, "configurable", None)
     ) or {}
     scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else None
-    settings = scheduler.settings if scheduler and hasattr(scheduler, "settings") else {}
+    settings = scheduler.settings if scheduler and hasattr(scheduler, "settings") else None
+    if not settings:
+        try:
+            from monika.core.config.settings import load_settings
+
+            settings = load_settings()
+        except Exception:
+            settings = {}
     trading_cfg = settings.get("trading", {})
     auto_execute = trading_cfg.get("auto_execute", False)
 

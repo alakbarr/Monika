@@ -277,6 +277,7 @@ Monika/
 │       │   │   │   ├── bb_volume_profile.py
 │       │   │   │   ├── bollinger_reversion.py
 │       │   │   │   ├── btc_donchian_breakout.py
+│       │   │   │   ├── btcusd_dynamic_donchian.py
 │       │   │   │   ├── decay_monitor.py
 │       │   │   │   ├── evidence_store.py
 │       │   │   │   ├── gap_fade.py
@@ -290,9 +291,12 @@ Monika/
 │       │   │   │   ├── tokyo_sweep.py
 │       │   │   │   ├── tri_convergent_alpha.py
 │       │   │   │   ├── tsm_momentum.py
+│       │   │   │   ├── usdjpy_atr_exhaustion.py
 │       │   │   │   ├── vwap_reversion.py
 │       │   │   │   ├── xau_trend_engine.py
-│       │   │   │   └── xti_pairs_readiness.py
+│       │   │   │   ├── xauusd_atr_exhaustion.py
+│       │   │   │   ├── xti_pairs_readiness.py
+│       │   │   │   └── xtiusd_atr_exhaustion.py
 │       │   │   ├── subagent/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── adhoc_manager.py
@@ -2295,6 +2299,7 @@ Monika/
 │   │   ├── test_universal_cache_telemetry.py
 │   │   └── test_working_scratchpad.py
 │   ├── application/
+│   │   ├── test_empirical_promoted_strategies.py
 │   │   └── test_profitability_structural_fixes.py
 │   ├── architecture/
 │   │   ├── test_docs_parity.py
@@ -3001,4 +3006,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 254 | **Total Tracked Files**: 2717
+**Total Tracked Directories**: 254 | **Total Tracked Files**: 2722

@@ -6738,6 +6738,13 @@
     - `async evaluate(session, symbol, settings) -> EdgeSignal`
   - `class DonchianBreakoutStrategy(BTCDonchianBreakout)`
 
+#### `btcusd_dynamic_donchian.py`
+- **Path**: [`src/monika/application/analysis/strategies/btcusd_dynamic_donchian.py`](src/monika/application/analysis/strategies/btcusd_dynamic_donchian.py)
+- **Classes**:
+  - `class BTCUSDDynamicDonchianStrategy(EdgeStrategy)`: Empirically Promoted Dynamic Donchian Breakout Strategy for Bitcoin (BTCUSD).
+    - `__init__(settings: Optional[Dict[str, Any]]) -> None`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
+
 #### `decay_monitor.py` - *Strategy Decay Monitor: Automated strategy degradation detection & state machine.*
 - **Path**: [`src/monika/application/analysis/strategies/decay_monitor.py`](src/monika/application/analysis/strategies/decay_monitor.py)
 - **Classes**:
@@ -6869,6 +6876,13 @@
     - `async evaluate(session, symbol, settings) -> EdgeSignal`
   - `class TrendTrailingMomentum(TimeSeriesMomentum)`
 
+#### `usdjpy_atr_exhaustion.py`
+- **Path**: [`src/monika/application/analysis/strategies/usdjpy_atr_exhaustion.py`](src/monika/application/analysis/strategies/usdjpy_atr_exhaustion.py)
+- **Classes**:
+  - `class USDJPYATRExhaustionStrategy(EdgeStrategy)`: Empirically Promoted Mean-Reversion Strategy for USDJPY.
+    - `__init__(settings: Optional[Dict[str, Any]]) -> None`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
+
 #### `vwap_reversion.py` - *VWAP Mean Reversion Stretch Strategy.*
 - **Path**: [`src/monika/application/analysis/strategies/vwap_reversion.py`](src/monika/application/analysis/strategies/vwap_reversion.py)
 - **Classes**:
@@ -6881,11 +6895,25 @@
   - `class XAUTrendEngine(EdgeStrategy)`
     - `async evaluate(session, symbol, settings) -> EdgeSignal`
 
+#### `xauusd_atr_exhaustion.py`
+- **Path**: [`src/monika/application/analysis/strategies/xauusd_atr_exhaustion.py`](src/monika/application/analysis/strategies/xauusd_atr_exhaustion.py)
+- **Classes**:
+  - `class XAUUSDATRExhaustionStrategy(EdgeStrategy)`: Empirically Promoted Mean-Reversion Strategy for Gold (XAUUSD).
+    - `__init__(settings: Optional[Dict[str, Any]]) -> None`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
+
 #### `xti_pairs_readiness.py`
 - **Path**: [`src/monika/application/analysis/strategies/xti_pairs_readiness.py`](src/monika/application/analysis/strategies/xti_pairs_readiness.py)
 - **Classes**:
   - `class XTIPairsReadiness(EdgeStrategy)`
     - `async evaluate(session, symbol, settings) -> EdgeSignal`
+
+#### `xtiusd_atr_exhaustion.py`
+- **Path**: [`src/monika/application/analysis/strategies/xtiusd_atr_exhaustion.py`](src/monika/application/analysis/strategies/xtiusd_atr_exhaustion.py)
+- **Classes**:
+  - `class XTIUSDATRExhaustionStrategy(EdgeStrategy)`: Empirically Promoted Mean-Reversion Strategy for WTI Crude (XTIUSD).
+    - `__init__(settings: Optional[Dict[str, Any]]) -> None`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
 
 ### Folder: `src/monika/application/analysis/subagent` <a id="folder-srcmonikaapplicationanalysissubagent"></a>
 

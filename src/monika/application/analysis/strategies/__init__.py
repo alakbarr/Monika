@@ -93,6 +93,11 @@ except Exception as e:
     logger.debug(f"btcusd_dynamic_donchian not loaded: {e}")
 
 try:
+    import monika.application.analysis.strategies.gbpusd_trend_breakout
+except Exception as e:
+    logger.debug(f"gbpusd_trend_breakout not loaded: {e}")
+
+try:
     from monika.application.analysis.strategies.registry import StrategyRegistry
 
     StrategyRegistry.log_summary()
