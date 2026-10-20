@@ -133,6 +133,9 @@ Monika/
 │       │   │   │   ├── multi_persona_risk_llm.py
 │       │   │   │   ├── neutral_risk_llm.py
 │       │   │   │   └── portfolio_manager.py
+│       │   │   ├── evaluation/
+│       │   │   │   ├── __init__.py
+│       │   │   │   └── decision_quality.py
 │       │   │   ├── grounding/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── declared_figures.py
@@ -2109,6 +2112,8 @@ Monika/
 │   │   │   └── test_quant_plateau_optimizer.py
 │   │   ├── debate/
 │   │   │   └── test_market_aware_judge.py
+│   │   ├── evaluation/
+│   │   │   └── test_decision_quality.py
 │   │   ├── grounding/
 │   │   │   └── test_extended_grounding.py
 │   │   ├── harness/
@@ -3019,4 +3024,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 255 | **Total Tracked Files**: 2734
+**Total Tracked Directories**: 257 | **Total Tracked Files**: 2737

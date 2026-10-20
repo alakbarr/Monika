@@ -46,6 +46,7 @@
 - [`src/monika/application/analysis/arbitration`](#folder-srcmonikaapplicationanalysisarbitration)
 - [`src/monika/application/analysis/calculators`](#folder-srcmonikaapplicationanalysiscalculators)
 - [`src/monika/application/analysis/debate`](#folder-srcmonikaapplicationanalysisdebate)
+- [`src/monika/application/analysis/evaluation`](#folder-srcmonikaapplicationanalysisevaluation)
 - [`src/monika/application/analysis/grounding`](#folder-srcmonikaapplicationanalysisgrounding)
 - [`src/monika/application/analysis/harness`](#folder-srcmonikaapplicationanalysisharness)
 - [`src/monika/application/analysis/journal`](#folder-srcmonikaapplicationanalysisjournal)
@@ -5711,6 +5712,21 @@
 - **Top-Level Functions**:
   - `async make_portfolio_decision(client: BaseLLMClient, symbol: str, risk_debate_states: dict, ...) -> dict`
   - `async evaluate_portfolio_impact(client: BaseLLMClient, proposal: dict, portfolio_state: dict | None, ...) -> dict`: Evaluates proposed trade impact on current portfolio.
+
+### Folder: `src/monika/application/analysis/evaluation` <a id="folder-srcmonikaapplicationanalysisevaluation"></a>
+
+#### `__init__.py` - *Decision Quality and Evaluation Package.*
+- **Path**: [`src/monika/application/analysis/evaluation/__init__.py`](src/monika/application/analysis/evaluation/__init__.py)
+
+#### `decision_quality.py` - *Decision Quality Evaluation & Shadow Replay Harness.*
+- **Path**: [`src/monika/application/analysis/evaluation/decision_quality.py`](src/monika/application/analysis/evaluation/decision_quality.py)
+- **Classes**:
+  - `class EvaluationOutcome`
+  - `class QualityMetrics`
+  - `class DecisionQualityEvaluator`: Evaluates individual decisions and batch histories against forward canonical bars.
+    - `__init__(horizon_bars: int, atr_regret_multiple: float)`
+    - `evaluate_decision(symbol: str, decision: str, decision_time: datetime, ...) -> EvaluationOutcome` - *Evaluate a single decision against subsequent forward bars.*
+    - `calculate_aggregate_metrics(outcomes: List[EvaluationOutcome]) -> QualityMetrics` - *Compute summary statistics across all evaluated outcomes.*
 
 ### Folder: `src/monika/application/analysis/grounding` <a id="folder-srcmonikaapplicationanalysisgrounding"></a>
 
