@@ -719,6 +719,7 @@ class ContextBuilderMixin:
                 symbol=symbol,
                 settings=self.settings,
                 current_regime=quant_regime,
+                as_of=_get_clock().now(),
             )
             valid_edge_signals = [
                 s for s in edge_signals if getattr(s, "valid", False) and getattr(s, "direction", None)

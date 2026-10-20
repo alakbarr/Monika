@@ -21,7 +21,15 @@ class GBPUSDTrendBreakoutStrategy(EdgeStrategy):
 
     strategy_id: str = "gbpusd_trend_breakout"
     applicable_symbols: set = {"GBPUSD"}
-    compatible_regimes: set = {"TREND", "STRONG_TREND", "BREAKOUT_EXPANSION", "VOLATILE_CHOP", "WEAK_TREND", "ALL"}
+    compatible_regimes: set = {
+        "TREND",
+        "STRONG_TREND",
+        "BREAKOUT_EXPANSION",
+        "EXPANDING_FAST",
+        "VOLATILE_CHOP",
+        "WEAK_TREND",
+        "ALL",
+    }
     factor_family: str = "trend"
     min_sample_size: int = 20
 

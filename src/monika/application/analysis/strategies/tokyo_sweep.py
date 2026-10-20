@@ -32,7 +32,15 @@ def _calc_atr(candles, period: int = 14) -> float:
 class TokyoSweepStrategy(EdgeStrategy):
     strategy_id = "tokyo_open_sweep"
     applicable_symbols = {"USDJPY"}
-    compatible_regimes = {"RANGING", "MEAN_REVERTING", "WEAK_TREND", "CHOPPY"}
+    compatible_regimes = {
+        "RANGE",
+        "RANGING",
+        "MEAN_REVERTING",
+        "WEAK_TREND",
+        "CHOPPY",
+        "VOLATILE_CHOP",
+        "SQUEEZE_CONSOLIDATION",
+    }
     factor_family = "mean_reversion"
     min_sample_size = 20
 

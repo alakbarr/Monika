@@ -741,10 +741,20 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     )
                     conf_score = int(inp.get("confluence_score", 0) or 0)
                     is_structural_limit = is_limit_type and bool(cond_price) and conf_score >= 6
+                    cand_price = cond_price or inp.get("entry_price")
                     if is_structural_limit:
                         logger.info(
                             f"[{symbol}] Volatility squeeze detected ({chop.get('reason')}), "
                             f"allowing structural entry ({cond_type}) with confluence {conf_score}."
+                        )
+                    elif conf_score >= 6 and decision in ("buy", "sell") and cand_price:
+                        inp["entry_condition"] = {
+                            "type": "limit",
+                            "price": float(cand_price),
+                            "detail": f"Structural limit entry in squeeze ({chop.get('reason')}) with confluence {conf_score}",
+                        }
+                        logger.info(
+                            f"[{symbol}] Volatility squeeze: auto-adapted market entry to structural limit at {cand_price} (confluence={conf_score})."
                         )
                     else:
                         errors.append(
@@ -1056,13 +1066,13 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                                 )
                     except Exception:
                         pass
-            # === H4 INDICATOR STALENESS CHECK ===
+            # === TECHNICAL INDICATOR STALENESS CHECK ===
             try:
                 latest_indicator_ts = (
                     await self.session.execute(
                         select(TechnicalIndicator.timestamp)
                         .where(TechnicalIndicator.symbol == symbol)
-                        .where(TechnicalIndicator.timeframe == "H4")
+                        .where(TechnicalIndicator.timeframe.in_(["H4", "H1"]))
                         .where(TechnicalIndicator.timestamp <= clock.now())
                         .order_by(TechnicalIndicator.timestamp.desc())
                         .limit(1)
@@ -1071,7 +1081,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
 
                 if latest_indicator_ts is None:
                     errors.append(
-                        f"No H4 technical indicators found for {symbol}. "
+                        f"No technical indicators found for {symbol}. "
                         f"Cannot assess RSI/MACD/ATR without data. Submit WAIT instead."
                     )
                 else:
@@ -1079,15 +1089,18 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     if ind_ts.tzinfo is None:
                         ind_ts = ind_ts.replace(tzinfo=timezone.utc)
                     indicator_age_hours = (clock.now() - ind_ts).total_seconds() / 3600
-                    if indicator_age_hours > 10.0:
+                    max_indicator_age = max(
+                        float(self.settings.get("analysis", {}).get("max_indicator_age_hours", 14.0)), 12.0
+                    )
+                    if indicator_age_hours > max_indicator_age:
                         errors.append(
-                            f"H4 technical indicators for {symbol} are {indicator_age_hours:.1f}h old "
-                            f"(limit: 10.0h). RSI/MACD/ATR values are stale — MT5 may be disconnected. "
+                            f"Technical indicators for {symbol} are {indicator_age_hours:.1f}h old "
+                            f"(limit: {max_indicator_age:.1f}h). RSI/MACD/ATR values are stale — MT5 may be disconnected. "
                             f"Submit WAIT until fresh data is available."
                         )
             except Exception as e:
                 logger.warning(
-                    f"[{symbol}] Could not verify H4 indicator freshness: {e}. Proceeding with analysis as a fallback."
+                    f"[{symbol}] Could not verify indicator freshness: {e}. Proceeding with analysis as a fallback."
                 )
 
         elif decision == "wait":

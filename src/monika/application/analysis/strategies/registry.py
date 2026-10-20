@@ -449,7 +449,16 @@ class StrategyRegistry:
                     )
                     continue
 
-                sig = await strat.evaluate(session, symbol, settings)
+                try:
+                    sig_params = inspect.signature(strat.evaluate).parameters
+                    eval_kwargs = {}
+                    if "as_of" in sig_params:
+                        eval_kwargs["as_of"] = as_of
+                    if "current_regime" in sig_params:
+                        eval_kwargs["current_regime"] = current_regime
+                    sig = await strat.evaluate(session, symbol, settings, **eval_kwargs)
+                except TypeError:
+                    sig = await strat.evaluate(session, symbol, settings)
                 if sig is not None and not isinstance(sig, EdgeSignal):
                     logger.warning(
                         f"[{strat_name}] evaluate returned non-EdgeSignal ({type(sig)}) for {symbol}, discarding"
@@ -472,7 +481,7 @@ class StrategyRegistry:
                     if sig.valid and (sig.stop_loss is None or sig.entry_price is None):
                         try:
                             if hasattr(strat, "get_historical_candles"):
-                                candles = await strat.get_historical_candles(session, symbol, "H1", 20)
+                                candles = await strat.get_historical_candles(session, symbol, "H1", 20, as_of=as_of)
                                 if candles:
                                     current_price = float(candles[-1].close)
                                     if sig.entry_price is None or sig.entry_price <= 0:
@@ -520,6 +529,7 @@ class StrategyRegistry:
         settings: dict,
         force_reload: bool = False,
         current_regime: Optional[str] = None,
+        as_of: Optional[Any] = None,
     ) -> Optional[EdgeSignal]:
         """Evaluate a single specific strategy by its strategy_id."""
         strat_cls = cls.get_strategy(strategy_id)
@@ -579,10 +589,12 @@ class StrategyRegistry:
 
         try:
             sig_params = inspect.signature(strat.evaluate).parameters
+            kwargs = {}
             if "current_regime" in sig_params:
-                res = getattr(strat, "evaluate")(session, symbol, settings, current_regime=current_regime)
-            else:
-                res = strat.evaluate(session, symbol, settings)
+                kwargs["current_regime"] = current_regime
+            if "as_of" in sig_params:
+                kwargs["as_of"] = as_of
+            res = getattr(strat, "evaluate")(session, symbol, settings, **kwargs)
         except ValueError, TypeError:
             res = strat.evaluate(session, symbol, settings)
         if inspect.isawaitable(res):
@@ -590,7 +602,7 @@ class StrategyRegistry:
         if res and isinstance(res, EdgeSignal) and res.valid and (res.stop_loss is None or res.entry_price is None):
             try:
                 if hasattr(strat, "get_historical_candles"):
-                    candles = await strat.get_historical_candles(session, symbol, "H1", 20)
+                    candles = await strat.get_historical_candles(session, symbol, "H1", 20, as_of=as_of)
                     if candles:
                         current_price = float(candles[-1].close)
                         if res.entry_price is None or res.entry_price <= 0:

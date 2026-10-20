@@ -33,7 +33,15 @@ def _calc_atr(candles, period: int = 14) -> float:
 class AsianRangeFadeStrategy(EdgeStrategy):
     strategy_id = "asian_range_fade"
     applicable_symbols = {"GBPUSD", "EURUSD"}
-    compatible_regimes = {"RANGING", "MEAN_REVERTING", "WEAK_TREND", "CHOPPY"}
+    compatible_regimes = {
+        "RANGE",
+        "RANGING",
+        "MEAN_REVERTING",
+        "WEAK_TREND",
+        "CHOPPY",
+        "VOLATILE_CHOP",
+        "SQUEEZE_CONSOLIDATION",
+    }
     factor_family = "mean_reversion"
     min_sample_size = 30
 

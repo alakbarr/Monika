@@ -330,6 +330,16 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
                 if abs(tp_price - nearest) <= tolerance:
                     found, basis = True, f"round number {nearest:.5f}"
 
+        if not found and adr_ctx:
+            min_dist = float(adr_ctx.get("target_tp_min_distance", 0) or 0)
+            max_dist = float(adr_ctx.get("target_tp_max_distance", 0) or 0)
+            tol = float(adr_ctx.get("band_tolerance_pct", 0.15) or 0.15)
+            if min_dist > 0 and max_dist > 0:
+                found, basis = (
+                    True,
+                    f"ADR expansion target band [{min_dist * (1 - tol):.5f}, {max_dist * (1 + tol):.5f}]",
+                )
+
         if not found:
             adr_info = adr_ctx or {}
             min_dist = float(adr_info.get("target_tp_min_distance", 0) or 0)

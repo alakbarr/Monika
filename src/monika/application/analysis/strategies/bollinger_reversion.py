@@ -48,7 +48,15 @@ def _calc_rsi(closes: list[float], period: int = 14) -> float:
 class BollingerReversionStrategy(EdgeStrategy):
     strategy_id = "bollinger_reversion"
     applicable_symbols = {"USDJPY", "AUDUSD", "GBPUSD", "EURUSD"}
-    compatible_regimes = {"RANGING", "MEAN_REVERTING", "WEAK_TREND", "CHOPPY"}
+    compatible_regimes = {
+        "RANGE",
+        "RANGING",
+        "MEAN_REVERTING",
+        "WEAK_TREND",
+        "CHOPPY",
+        "VOLATILE_CHOP",
+        "SQUEEZE_CONSOLIDATION",
+    }
     factor_family = "mean_reversion"
     min_sample_size = 30
 

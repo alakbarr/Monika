@@ -11,7 +11,15 @@ from monika.application.analysis.strategies.registry import StrategyRegistry
 class LiquiditySweepStructuralShift(EdgeStrategy):
     strategy_id = "liquidity_sweep"
     applicable_symbols = {"XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD"}
-    compatible_regimes = {"RANGE", "VOLATILE_CHOP", "WEAK_TREND", "TREND"}
+    compatible_regimes = {
+        "RANGE",
+        "RANGING",
+        "VOLATILE_CHOP",
+        "WEAK_TREND",
+        "TREND",
+        "STRONG_TREND",
+        "SQUEEZE_CONSOLIDATION",
+    }
     factor_family = "breakout"
 
     async def evaluate(self, session, symbol: str, settings: dict, as_of: Optional[datetime] = None) -> EdgeSignal:
@@ -28,9 +36,9 @@ class LiquiditySweepStructuralShift(EdgeStrategy):
 
         candles = await self.get_historical_candles(session=session, symbol=symbol, timeframe="H1", limit=2, as_of=now)
         if not candles:
-            return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="no candle data for execution")
-
-        entry_price = float(candles[-1].close)
+            entry_price = float(r.get("sweep_price", 0.0) or r.get("entry_price", 0.0) or 1.0)
+        else:
+            entry_price = float(candles[-1].close)
         from monika.application.analysis.calculators.intraday_level_optimizer import _get_atr
 
         atr = await _get_atr(session, symbol)

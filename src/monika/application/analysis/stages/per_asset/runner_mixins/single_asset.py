@@ -592,6 +592,7 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
                 select(AssetAnalysis)
                 .where(AssetAnalysis.symbol == symbol)
                 .where(AssetAnalysis.generated_at >= start_time - timedelta(seconds=15))
+                .where(AssetAnalysis.generated_at <= start_time + timedelta(minutes=5))
                 .order_by(AssetAnalysis.generated_at.desc())
                 .limit(1)
             )

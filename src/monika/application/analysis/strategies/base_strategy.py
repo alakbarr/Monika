@@ -125,7 +125,48 @@ class EdgeStrategy(ABC):
         if not self.compatible_regimes or "ALL" in self.compatible_regimes:
             return True
         norm_regime = str(regime or "").upper().replace(" ", "_")
-        return norm_regime in self.compatible_regimes
+        if norm_regime in self.compatible_regimes:
+            return True
+
+        # Normalized regime alias resolution covering all canonical and descriptive vocabularies
+        _REGIME_ALIASES = {
+            # Range / Mean Reverting / Consolidation family
+            "RANGE": {
+                "RANGE",
+                "RANGING",
+                "MEAN_REVERTING",
+                "COMPRESSED",
+                "SQUEEZE_CONSOLIDATION",
+                "CHOP_RANGING",
+                "RANGING_COMPRESSION",
+            },
+            "RANGING": {
+                "RANGE",
+                "RANGING",
+                "MEAN_REVERTING",
+                "COMPRESSED",
+                "SQUEEZE_CONSOLIDATION",
+                "CHOP_RANGING",
+                "RANGING_COMPRESSION",
+            },
+            "MEAN_REVERTING": {"RANGE", "RANGING", "MEAN_REVERTING", "COMPRESSED", "SQUEEZE_CONSOLIDATION"},
+            "COMPRESSED": {"RANGE", "RANGING", "COMPRESSED", "SQUEEZE_CONSOLIDATION"},
+            "SQUEEZE_CONSOLIDATION": {"RANGE", "RANGING", "COMPRESSED", "SQUEEZE_CONSOLIDATION", "MEAN_REVERTING"},
+            # Chop / Volatile Chop family
+            "CHOP": {"CHOP", "CHOPPY", "VOLATILE_CHOP", "CHOP_RANGING"},
+            "CHOPPY": {"CHOP", "CHOPPY", "VOLATILE_CHOP", "CHOP_RANGING"},
+            "VOLATILE_CHOP": {"CHOP", "CHOPPY", "VOLATILE_CHOP", "CHOP_RANGING"},
+            "CHOP_RANGING": {"CHOP", "CHOPPY", "VOLATILE_CHOP", "RANGE", "RANGING"},
+            # Trend / Breakout expansion family
+            "TREND": {"TREND", "TRENDING", "STRONG_TREND", "WEAK_TREND", "TRENDING_EXPANSION"},
+            "TRENDING": {"TREND", "TRENDING", "STRONG_TREND", "WEAK_TREND", "TRENDING_EXPANSION"},
+            "STRONG_TREND": {"STRONG_TREND", "TREND", "TRENDING", "EXPANDING_FAST", "BREAKOUT_EXPANSION"},
+            "WEAK_TREND": {"WEAK_TREND", "TREND", "TRENDING"},
+            "EXPANDING_FAST": {"EXPANDING_FAST", "BREAKOUT_EXPANSION", "STRONG_TREND", "TREND"},
+            "BREAKOUT_EXPANSION": {"BREAKOUT_EXPANSION", "EXPANDING_FAST", "STRONG_TREND", "TREND"},
+        }
+        aliases = _REGIME_ALIASES.get(norm_regime, {norm_regime})
+        return bool(aliases.intersection(self.compatible_regimes))
 
     async def get_historical_candles(
         self,
@@ -150,7 +191,7 @@ class EdgeStrategy(ABC):
                 cached = candle_cache[cache_key]
                 if cached:
                     return cached[-limit:]
-            elif (symbol, norm_tf) in candle_cache:
+            elif as_of is None and (symbol, norm_tf) in candle_cache:
                 cached = candle_cache[(symbol, norm_tf)]
                 if cached:
                     return cached[-limit:]

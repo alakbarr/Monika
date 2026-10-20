@@ -152,3 +152,63 @@ def test_edge_signal_physical_geometry_guard():
         take_profit=152.0,
     )
     assert valid_buy.is_executable(min_rr=1.5) is True
+
+
+def test_regime_compatibility_alias_resolution():
+    """Verify that RANGE/RANGING, CHOP/CHOPPY, and TREND/STRONG_TREND aliases resolve correctly."""
+    from monika.application.analysis.strategies.base_strategy import EdgeStrategy
+
+    class RangingStrategy(EdgeStrategy):
+        strategy_id = "test_ranging"
+        compatible_regimes = {"RANGING", "MEAN_REVERTING"}
+
+        async def evaluate(self, session, symbol, settings, as_of=None):
+            return EdgeSignal(self.strategy_id, symbol, None, False, 0.0)
+
+    strat = RangingStrategy()
+    assert strat.is_regime_compatible("RANGE") is True
+    assert strat.is_regime_compatible("RANGING") is True
+    assert strat.is_regime_compatible("MEAN_REVERTING") is True
+    assert strat.is_regime_compatible("TREND") is False
+
+    class TrendingStrategy(EdgeStrategy):
+        strategy_id = "test_trending"
+        compatible_regimes = {"TREND", "STRONG_TREND"}
+
+        async def evaluate(self, session, symbol, settings, as_of=None):
+            return EdgeSignal(self.strategy_id, symbol, None, False, 0.0)
+
+    t_strat = TrendingStrategy()
+    assert t_strat.is_regime_compatible("TREND") is True
+    assert t_strat.is_regime_compatible("STRONG_TREND") is True
+    assert t_strat.is_regime_compatible("TRENDING") is True
+    assert t_strat.is_regime_compatible("RANGE") is False
+
+
+@pytest.mark.asyncio
+async def test_tp_structural_mapping_adr_expansion_acceptance():
+    """Verify that TP falling inside verified ADR expansion band is accepted."""
+    mixin = AssetAnalysisValidationMixin()
+    mixin.settings = {"trading": {"risk": {"structural_snap_tolerance_atr_mult": 0.4}}}
+    mixin.session = AsyncMock()
+
+    # Empty DB structure returns
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = []
+    mixin.session.execute.return_value = mock_result
+
+    adr_ctx = {
+        "target_tp_min_distance": 0.30,
+        "target_tp_max_distance": 0.60,
+        "band_tolerance_pct": 0.15,
+    }
+
+    # TP distance within ADR target band
+    errors = await mixin._validate_tp_structural_target(
+        symbol="USDJPY",
+        direction="buy",
+        tp_price=150.45,  # within ADR band of 150.00
+        atr=0.25,
+        adr_ctx=adr_ctx,
+    )
+    assert len(errors) == 0

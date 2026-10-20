@@ -62,7 +62,7 @@ def _calc_rsi(closes: list[float], period: int = 14) -> list[float]:
 class SMTDivergenceStrategy(EdgeStrategy):
     strategy_id = "smt_divergence"
     applicable_symbols = {"EURUSD"}
-    compatible_regimes = {"RANGING", "MEAN_REVERTING", "WEAK_TREND", "VOLATILE_CHOP"}
+    compatible_regimes = {"RANGE", "RANGING", "MEAN_REVERTING", "WEAK_TREND", "VOLATILE_CHOP", "SQUEEZE_CONSOLIDATION"}
     factor_family = "mean_reversion"
     min_sample_size = 30
 
