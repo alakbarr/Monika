@@ -514,8 +514,12 @@ class IsolatedStrategyBacktestHarness:
         entry_price: float,
         atr: float,
         strat_instance: Optional[EdgeStrategy] = None,
-    ) -> tuple[float, float]:
-        """Resolves Stop Loss and Take Profit levels respecting dynamic strategy params."""
+    ) -> tuple[Optional[float], Optional[float]]:
+        """Resolves Stop Loss and Take Profit levels respecting dynamic strategy params.
+
+        Synthetic harness fabrication with ungrounded default multipliers is eliminated.
+        If self-contained levels or explicit strategy multipliers are absent, returns (None, None).
+        """
         if sig.stop_loss is not None and sig.take_profit is not None:
             return float(sig.stop_loss), float(sig.take_profit)
 
@@ -533,16 +537,13 @@ class IsolatedStrategyBacktestHarness:
         if tp_mult is None and strat_instance and hasattr(strat_instance, "cfg"):
             tp_mult = strat_instance.cfg.get("tp_sl_multiplier")
 
-        exit_style = getattr(sig, "exit_style", "intraday_adr")
-        if exit_style == "trend_trailing":
-            default_sl = 1.5
-            default_tp_ratio = 2.333
-        else:
-            default_sl = 1.2
-            default_tp_ratio = 2.0
+        if sl_mult is None or tp_mult is None:
+            # Self-contained bracket or explicit strategy parameter is mandatory.
+            # Never fabricate arbitrary synthetic default brackets.
+            return None, None
 
-        sl_atr = float(sl_mult) if sl_mult is not None else default_sl
-        tp_ratio = float(tp_mult) if tp_mult is not None else default_tp_ratio
+        sl_atr = float(sl_mult)
+        tp_ratio = float(tp_mult)
 
         sl_dist = atr * sl_atr
         tp_dist = sl_dist * tp_ratio
@@ -700,14 +701,13 @@ class IsolatedStrategyBacktestHarness:
             atr = self._calculate_atr(h1_slice, period=14)
 
             # Resolve Stop Loss and Take Profit
-            if sig.stop_loss is not None and sig.take_profit is not None:
-                sl = float(sig.stop_loss)
-                tp = float(sig.take_profit)
-            else:
+            sl, tp = self._resolve_sl_tp(sig, entry_price, atr, strat_instance)
+            if sl is None or tp is None:
                 if self.fail_fast_on_error:
                     logger.debug(f"[IsolatedHarness] Signal without SL/TP rejected under fail_fast for {self.symbol}")
                     return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-                sl, tp = self._resolve_sl_tp(sig, entry_price, atr, strat_instance)
+                logger.debug(f"[IsolatedHarness] Signal without SL/TP rejected for {self.symbol}")
+                continue
 
             # Forward bar-by-bar outcome simulation with conservative intra-bar sequencing and gap modeling
             exit_price = entry_price
@@ -973,7 +973,7 @@ class IsolatedStrategyBacktestHarness:
             wfe >= 0.60
             and avg_oos_sharpe >= 0.50
             and len(all_oos_trades) >= 5
-            and (dsr_score >= 0.55 if len(all_oos_trades) >= 15 else True)
+            and (dsr_score >= 0.90 if len(all_oos_trades) >= 15 else True)
             and alpha_val.passed
         )
 
@@ -1052,13 +1052,11 @@ class IsolatedStrategyBacktestHarness:
             )
             atr = self._calculate_atr(h1_slice, period=14)
 
-            if sig.stop_loss is not None and sig.take_profit is not None:
-                sl = float(sig.stop_loss)
-                tp = float(sig.take_profit)
-            else:
+            sl, tp = self._resolve_sl_tp(sig, entry_price, atr, strat_instance)
+            if sl is None or tp is None:
                 if self.fail_fast_on_error:
                     return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-                sl, tp = self._resolve_sl_tp(sig, entry_price, atr, strat_instance)
+                continue
 
             exit_price = entry_price
             exit_reason = "time_exit"

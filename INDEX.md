@@ -6711,14 +6711,17 @@
 #### `base_strategy.py`
 - **Path**: [`src/monika/application/analysis/strategies/base_strategy.py`](src/monika/application/analysis/strategies/base_strategy.py)
 - **Classes**:
+  - `class StrategyTier(str, Enum)`
   - `class CandleDict(dict)`: Dictionary supporting both item lookup (c['high']) and attribute access (c.high).
   - `class EdgeSignal`
+    - `is_executable(min_rr: float) -> bool` - *Validate physical geometry and completeness of executable trading signal.*
   - `class EdgeStrategy(ABC)`
     - `__init__(settings: Optional[dict])`
     - `is_enabled(symbol: str) -> bool`
     - `is_regime_compatible(regime: str) -> bool` - *Evaluates whether this strategy is designed to operate under the given market regime.*
     - `async get_historical_candles(session: AsyncSession, symbol: str, timeframe: str, ...) -> list[CandleDict]` - *Built-in helper for quantitative strategies to retrieve historical OHLCV candles.*
     - `derive_atr_brackets(entry_price: float, candles: list[CandleDict], direction: str, ...) -> tuple[float, float]` - *Compute robust ATR-based Stop Loss and Take Profit levels.*
+    - `build_bracket(entry_price: float, direction: str, atr: float, ...) -> tuple[float, float]` - *Compute robust, geometrically sound Stop Loss and Take Profit levels.*
     - `async evaluate(session: AsyncSession, symbol: str, settings: dict) -> EdgeSignal`
 
 #### `bb_volume_profile.py`
@@ -6832,6 +6835,7 @@
 - **Path**: [`src/monika/application/analysis/strategies/registry.py`](src/monika/application/analysis/strategies/registry.py)
 - **Classes**:
   - `class StrategyRegistry`
+    - `get_tier(strategy_id: str) -> StrategyTier`
     - `register(strategy_cls: Type[EdgeStrategy], overwrite: bool) -> Type[EdgeStrategy]`
     - `get_strategy_counts() -> tuple[int, dict[str, int]]` - *Returns total registered count and count per instrument.*
     - `log_summary() -> None` - *Logs concise summary of registered strategies: total and per instrument.*
@@ -8581,6 +8585,13 @@
     - `async execute_trade_parity(session: Any, analysis: AssetAnalysis) -> Optional[BacktestTrade]` - *Execute an AssetAnalysis through the full live ExecutionService pipeline*
     - `async run()` - *Main backtest execution routine.*
     - `async get_point_in_time_data(session: Any, model_cls: Any, as_of: datetime, ...) -> List[Any]` - *Query time series data with strict half-open window [as_of - lookback, as_of) (M7).*
+
+#### `price_series.py` - *Canonical Price Series Provider for Backtesting and Alpha Discovery.*
+- **Path**: [`src/monika/application/backtest/price_series.py`](src/monika/application/backtest/price_series.py)
+- **Classes**:
+  - `class CanonicalPriceLoader`: Canonical price series loader for backtesting, strategy validation, and playbooks.
+    - `__init__(settings: Optional[dict]) -> None`
+    - `async load_series(session: AsyncSession, symbol: str, timeframe: str, ...) -> pd.DataFrame` - *Load clean, deduplicated, monotonically ascending OHLCV dataframe.*
 
 #### `report_generator.py` - *Comprehensive Backtest Report Generator with Daily-Resampled Sharpe & Sortino Ratios.*
 - **Path**: [`src/monika/application/backtest/report_generator.py`](src/monika/application/backtest/report_generator.py)

@@ -8,7 +8,13 @@ from typing import Any, Dict, Optional, Type
 
 from sqlalchemy import delete, select, update
 
-from monika.application.analysis.strategies.base_strategy import EdgeSignal, EdgeStrategy
+from monika.application.analysis.strategies.base_strategy import (
+    PROMOTED_EMPIRICAL_STRATEGIES,
+    QUARANTINED_STRATEGY_IDS,
+    EdgeSignal,
+    EdgeStrategy,
+    StrategyTier,
+)
 from monika.infrastructure.database.models import SystemConfig
 
 logger = logging.getLogger("TradingAgent.StrategyRegistry")
@@ -19,36 +25,20 @@ class StrategyRegistry:
     _dynamic_params: dict[str, dict] = {}
     _dynamic_symbol_params: dict[tuple[str, str], dict] = {}
     _blacklisted_ids: set[str] = set()
-    QUARANTINED_STRATEGY_IDS: set[str] = {
-        "smc_fvg",
-        "btc_donchian_breakout",
-        "bollinger_reversion",
-        "asian_range_fade",
-        "tokyo_open_sweep",
-        "alpha_xtiusd_374fa7",
-        "alpha_eurusd_8060ed",
-        "alpha_xauusd_5044bf",
-        "alpha_xauusd_7358c1",
-        "alpha_xauusd_a84e8d",
-        "alpha_xtiusd_83031c",
-    }
-    PROMOTED_EMPIRICAL_STRATEGIES: set[str] = {
-        "smt_divergence",
-        "bb_volume_profile",
-        "vwap_mean_reversion",
-        "usdjpy_atr_exhaustion",
-        "xtiusd_atr_exhaustion",
-        "xauusd_atr_exhaustion",
-        "btcusd_dynamic_donchian",
-        "gbpusd_trend_breakout",
-        "xau_trend_engine",
-        "xti_pairs_readiness",
-        "tsm_momentum",
-    }
+    QUARANTINED_STRATEGY_IDS: set[str] = set(QUARANTINED_STRATEGY_IDS)
+    PROMOTED_EMPIRICAL_STRATEGIES: set[str] = set(PROMOTED_EMPIRICAL_STRATEGIES)
     _last_load_time: float = 0.0
     _load_interval: float = 60.0
     MAX_SYNTHESIZED_PER_SYMBOL: int = 5
     SYNTHESIZED_DIR: Path = Path(__file__).resolve().parent / "synthesized"
+
+    @classmethod
+    def get_tier(cls, strategy_id: str) -> StrategyTier:
+        if strategy_id in cls.QUARANTINED_STRATEGY_IDS:
+            return StrategyTier.QUARANTINED
+        if strategy_id in cls.PROMOTED_EMPIRICAL_STRATEGIES:
+            return StrategyTier.VALIDATED
+        return StrategyTier.EXPERIMENTAL
 
     @classmethod
     def register(cls, strategy_cls: Type[EdgeStrategy], overwrite: bool = True) -> Type[EdgeStrategy]:
@@ -501,6 +491,14 @@ class StrategyRegistry:
                         except Exception as sl_err:
                             logger.debug(f"[{strat_name}] Dynamic ATR SL/TP injection non-fatal: {sl_err}")
 
+                    # Tier assignment & execution geometry validation
+                    tier = cls.get_tier(strat_id)
+                    sig.meta["strategy_tier"] = tier.value
+                    if tier == StrategyTier.EXPERIMENTAL:
+                        sig.meta["is_incubating"] = True
+                        sig.meta["is_experimental"] = True
+
+                    sig.meta["is_executable"] = sig.is_executable(min_rr=1.0)
                     out.append(sig)
             except Exception as e:
                 logger.warning(f"[{strat_name}] evaluate_all failed for {symbol}: {e}")

@@ -138,7 +138,7 @@ class CanonicalPriceLoader:
             return
 
         is_crypto = any(c in symbol for c in ("BTC", "ETH", "SOL", "XRP"))
-        times = df.index.to_pydatetime()
+        times = list(df.index)
         gaps = 0
         total_intervals = len(times) - 1
 

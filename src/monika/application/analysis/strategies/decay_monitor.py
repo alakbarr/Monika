@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from monika.application.analysis.strategies.base_strategy import QUARANTINED_STRATEGY_IDS
+
 logger = logging.getLogger("TradingAgent.StrategyDecayMonitor")
 
 
@@ -31,11 +33,7 @@ _TRANSITIONS = {
 }
 
 
-QUARANTINED_STRATEGY_IDS: set[str] = {
-    "smc_fvg",
-    "btc_donchian_breakout",
-    "bollinger_reversion",
-}
+QUARANTINED_STRATEGY_IDS: set[str] = set(QUARANTINED_STRATEGY_IDS)
 
 CORE_STRATEGY_IDS: set[str] = {
     "bb_volume_profile",

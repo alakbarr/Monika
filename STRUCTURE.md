@@ -483,6 +483,7 @@ Monika/
 │       │   │   ├── offline_signal_engine.py
 │       │   │   ├── outcome_evaluator.py
 │       │   │   ├── point_in_time_engine.py
+│       │   │   ├── price_series.py
 │       │   │   ├── report_generator.py
 │       │   │   ├── run_card.py
 │       │   │   ├── statistical_tests.py
@@ -2321,6 +2322,7 @@ Monika/
 │   │   ├── __init__.py
 │   │   ├── test_alpha_validation.py
 │   │   ├── test_benchmark_tracker.py
+│   │   ├── test_canonical_price_loader.py
 │   │   ├── test_fase7_lookahead_and_kelly.py
 │   │   ├── test_langgraph_backtest_parity.py
 │   │   ├── test_monte_carlo_block_bootstrap.py
@@ -3013,4 +3015,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 254 | **Total Tracked Files**: 2729
+**Total Tracked Directories**: 254 | **Total Tracked Files**: 2731

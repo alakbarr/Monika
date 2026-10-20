@@ -1,8 +1,44 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
+
+class StrategyTier(str, Enum):
+    VALIDATED = "validated"  # Empirically verified, positive DSR/PF, zero ruin risk, allowed to trade live/paper
+    EXPERIMENTAL = "experimental"  # In discovery or incubation, paper-shadow only, cannot place live trades
+    QUARANTINED = "quarantined"  # Negative edge, high drawdown, structural flaw, or decaying: suppressed from execution
+
+
+QUARANTINED_STRATEGY_IDS: set[str] = {
+    "smc_fvg",
+    "btc_donchian_breakout",
+    "bollinger_reversion",
+    "asian_range_fade",
+    "tokyo_open_sweep",
+    "alpha_xtiusd_374fa7",
+    "alpha_eurusd_8060ed",
+    "alpha_xauusd_5044bf",
+    "alpha_xauusd_7358c1",
+    "alpha_xauusd_a84e8d",
+    "alpha_xtiusd_83031c",
+}
+
+PROMOTED_EMPIRICAL_STRATEGIES: set[str] = {
+    "smt_divergence",
+    "bb_volume_profile",
+    "vwap_mean_reversion",
+    "usdjpy_atr_exhaustion",
+    "xtiusd_atr_exhaustion",
+    "xauusd_atr_exhaustion",
+    "btcusd_dynamic_donchian",
+    "gbpusd_trend_breakout",
+    "xau_trend_engine",
+    "xti_pairs_readiness",
+    "tsm_momentum",
+}
 
 
 class CandleDict(dict):
@@ -37,6 +73,32 @@ class EdgeSignal:
     tags: list[str] = field(default_factory=list)  # e.g. "mean_reversion" | "trend"
     meta: dict = field(default_factory=dict)
     paired_leg: Optional["EdgeSignal"] = None  # Hedge leg for stat-arb pairs
+
+    def is_executable(self, min_rr: float = 1.0) -> bool:
+        """Validate physical geometry and completeness of executable trading signal."""
+        if not self.valid or self.direction not in ("buy", "sell"):
+            return False
+        if self.entry_price is None or self.entry_price <= 0:
+            return False
+        if self.stop_loss is None or self.stop_loss <= 0:
+            return False
+        if self.take_profit is None or self.take_profit <= 0:
+            return False
+
+        if self.direction == "buy":
+            if not (self.stop_loss < self.entry_price < self.take_profit):
+                return False
+            risk = self.entry_price - self.stop_loss
+            reward = self.take_profit - self.entry_price
+        else:
+            if not (self.take_profit < self.entry_price < self.stop_loss):
+                return False
+            risk = self.stop_loss - self.entry_price
+            reward = self.entry_price - self.take_profit
+
+        if risk <= 0 or (reward / risk) < min_rr:
+            return False
+        return True
 
 
 class EdgeStrategy(ABC):
@@ -147,6 +209,34 @@ class EdgeStrategy(ABC):
         else:
             sl = entry_price + sl_dist
             tp = entry_price - tp_dist
+
+        return round(sl, 5), round(tp, 5)
+
+    @classmethod
+    def build_bracket(
+        cls,
+        entry_price: float,
+        direction: str,
+        atr: float,
+        atr_multiplier_sl: float = 1.5,
+        risk_reward_ratio: float = 1.8,
+    ) -> tuple[float, float]:
+        """Compute robust, geometrically sound Stop Loss and Take Profit levels."""
+        if entry_price <= 0 or atr <= 0:
+            raise ValueError(f"Invalid entry ({entry_price}) or ATR ({atr}) for bracket calculation")
+
+        sl_dist = atr * atr_multiplier_sl
+        tp_dist = sl_dist * risk_reward_ratio
+
+        norm_dir = direction.lower()
+        if norm_dir == "buy":
+            sl = entry_price - sl_dist
+            tp = entry_price + tp_dist
+        elif norm_dir == "sell":
+            sl = entry_price + sl_dist
+            tp = entry_price - tp_dist
+        else:
+            raise ValueError(f"Invalid direction: {direction}")
 
         return round(sl, 5), round(tp, 5)
 

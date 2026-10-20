@@ -118,7 +118,7 @@ async def test_signal_arbitrator_single_quant_signal_high_vix():
     mock_session = create_mock_async_session()
 
     sig = EdgeSignal(
-        strategy_id="bollinger_reversion",
+        strategy_id="bb_volume_profile",
         symbol="BTCUSD",
         direction="sell",
         valid=True,
@@ -137,7 +137,7 @@ async def test_signal_arbitrator_single_quant_signal_high_vix():
     assert res.selected_source == "quant"
     assert res.risk_multiplier == 0.5
     assert "penalty applied: 0.5x" in res.arbitration_reason
-    assert res.meta.get("strategy_id") == "bollinger_reversion"
+    assert res.meta.get("strategy_id") == "bb_volume_profile"
 
 
 @pytest.mark.asyncio
@@ -272,7 +272,7 @@ async def test_quant_arbitration_skips_error_analyses_and_materializes_promoted_
     }
 
     mock_quant_signal = EdgeSignal(
-        strategy_id="donchian_breakout",
+        strategy_id="btcusd_dynamic_donchian",
         symbol="BTCUSD",
         direction="buy",
         valid=True,
@@ -289,6 +289,10 @@ async def test_quant_arbitration_skips_error_analyses_and_materializes_promoted_
             AsyncMock(return_value=[mock_quant_signal]),
         ),
         patch("monika.application.analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_decay,
+        patch(
+            "monika.infrastructure.ml.timesfm_engine.TimesFMEngine.get_latest_forecast",
+            AsyncMock(return_value={"quantile_skew": 0.25}),
+        ),
     ):
         mock_mon = MagicMock()
         mock_mon.is_live_ready.return_value = True
