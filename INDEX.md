@@ -932,6 +932,7 @@
     - `check_wal_integrity_and_repair() -> None` - *Verify SQLite WAL database files integrity and clear stale locks.*
     - `check_database_url_and_offline_integrity(settings: Optional[dict]) -> None` - *Validate DATABASE_URL formatting and perform offline file/integrity checks.*
     - `async check_redis(settings: dict) -> None` - *Verify Redis cache connectivity if configured or using localhost.*
+    - `async check_price_data_integrity() -> None` - *Verify that price_ohlcv has 0 duplicate bars and canonical timestamps.*
     - `async run_diagnostics() -> List[DiagnosticItem]` - *Runs the entire unified battery of doctor checks.*
 
 #### `metrics_exporter.py` - *Prometheus / OpenMetrics Exporter untuk AI Trading Agent.*
@@ -6792,6 +6793,13 @@
   - `class DailyReopenGapFade(EdgeStrategy)`
     - `async evaluate(session, symbol, settings, ...) -> EdgeSignal`
 
+#### `gbpusd_trend_breakout.py`
+- **Path**: [`src/monika/application/analysis/strategies/gbpusd_trend_breakout.py`](src/monika/application/analysis/strategies/gbpusd_trend_breakout.py)
+- **Classes**:
+  - `class GBPUSDTrendBreakoutStrategy(EdgeStrategy)`: Empirically Promoted Trend Breakout Strategy for GBPUSD.
+    - `__init__(settings: Optional[Dict[str, Any]]) -> None`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
+
 #### `hypothesis_registry.py` - *Durable Strategy Hypothesis Lifecycle Registry.*
 - **Path**: [`src/monika/application/analysis/strategies/hypothesis_registry.py`](src/monika/application/analysis/strategies/hypothesis_registry.py)
 - **Classes**:
@@ -11532,6 +11540,7 @@
   - `class CentralBankDocument(Base)`: Full-text repository for central bank monetary policy statements, minutes, and projections.
   - `class MacroLiquidityCreditMetric(Base)`: Storage for central bank balance sheets, systemic liquidity, debt auctions, and credit stress metrics.
   - `class PriceOHLCV(Base)`: Data harga OHLCV dari MT5.
+  - `class PriceOHLCVRejected(Base)`: Audit rejected/deduplicated price rows.
   - `class TechnicalIndicator(Base)`: Indikator teknikal terhitung (MA, RSI, MACD, dll).
   - `class SwingPoint(Base)`: Swing high/low yang terdeteksi dari data harga.
   - `class SRZone(Base)`: Support & Resistance zone dari klaster swing points.

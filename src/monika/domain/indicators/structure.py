@@ -339,9 +339,13 @@ class MarketStructureAnalyzer:
         # Balik urutan agar kembali kronologis (ascending) untuk kalkulasi
         rows = list(reversed(rows))
 
+        def _get_ts(r: Any) -> Any:
+            c = getattr(r, "canonical_timestamp", None)
+            return c if isinstance(c, datetime) else getattr(r, "timestamp", None)
+
         df = pd.DataFrame(
             {
-                "timestamp": [r.timestamp for r in rows],
+                "timestamp": [_get_ts(r) for r in rows],
                 "open": [r.open for r in rows],
                 "high": [r.high for r in rows],
                 "low": [r.low for r in rows],
@@ -349,6 +353,7 @@ class MarketStructureAnalyzer:
             }
         )
         df.set_index("timestamp", inplace=True)
+        df = df.loc[~df.index.duplicated(keep="last")]
         return df
 
     # ------------------------------------------------------------------

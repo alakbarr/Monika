@@ -266,9 +266,13 @@ class TechnicalIndicatorCalculator:
         # Balik urutan agar kembali kronologis (ascending) untuk perhitungan indikator
         rows = list(reversed(rows))
 
+        def _get_ts(r: Any) -> Any:
+            c = getattr(r, "canonical_timestamp", None)
+            return c if isinstance(c, datetime) else getattr(r, "timestamp", None)
+
         df = pd.DataFrame(
             {
-                "timestamp": [r.timestamp for r in rows],
+                "timestamp": [_get_ts(r) for r in rows],
                 "open": [r.open for r in rows],
                 "high": [r.high for r in rows],
                 "low": [r.low for r in rows],
@@ -278,12 +282,15 @@ class TechnicalIndicatorCalculator:
         )
         df.set_index("timestamp", inplace=True)
 
+        # Ensure index is timezone-aware UTC
+        df.index = pd.to_datetime(df.index, utc=True)
+
         # Ensure chronological monotonic index
         if not df.index.is_monotonic_increasing:
             df.sort_index(inplace=True)
 
-        # Ensure index is timezone-aware UTC
-        df.index = pd.to_datetime(df.index, utc=True)
+        # Immediate deduplication on canonical timestamp index
+        df = df.loc[~df.index.duplicated(keep="last")]
 
         # For D1, normalize timestamps to daily boundaries to prevent hour shifts from dropping candles
         if timeframe.upper() == "D1" and len(df) > 1:
@@ -303,11 +310,11 @@ class TechnicalIndicatorCalculator:
         freq = tf_freq_map.get(timeframe.upper())
         if freq and len(df) > 1:
             try:
-                deduped: pd.DataFrame = df.loc[~df.index.duplicated(keep="first")]
+                deduped: pd.DataFrame = df.loc[~df.index.duplicated(keep="last")]
                 if freq == "1D":
                     resampled = deduped.resample(freq).asfreq()
                 else:
-                    resampled = deduped.resample(freq, origin="start").asfreq()
+                    resampled = deduped.resample(freq, origin="epoch").asfreq()
                 # If resampling produced NaNs across the series, fallback to raw deduped data
                 if not resampled["close"].isna().all():
                     # Filter weekend market closure bars for Forex / Commodities (non-24/7 crypto)

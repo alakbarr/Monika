@@ -369,15 +369,10 @@ class TestMT5Client:
             volume=500.0,
         )
 
-        # Panggilan pertama (where timestamp == ts_dt) return None
-        # Panggilan kedua (where timestamp between +-6h) return existing_d1
-        first_res = MagicMock()
-        first_res.scalar_one_or_none.return_value = None
-
-        second_res = MagicMock()
-        second_res.scalar_one_or_none.return_value = existing_d1
-
-        mock_session.execute.side_effect = [first_res, second_res]
+        # Query mencocokkan bar yang sudah ada berdasarkan canonical_timestamp
+        res = MagicMock()
+        res.scalar_one_or_none.return_value = existing_d1
+        mock_session.execute.return_value = res
 
         # Candle masuk dengan timestamp 21:00 (bergeser 3 jam dari 00:00)
         df_new = pd.DataFrame(

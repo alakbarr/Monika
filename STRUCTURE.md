@@ -281,6 +281,7 @@ Monika/
 │       │   │   │   ├── decay_monitor.py
 │       │   │   │   ├── evidence_store.py
 │       │   │   │   ├── gap_fade.py
+│       │   │   │   ├── gbpusd_trend_breakout.py
 │       │   │   │   ├── hypothesis_registry.py
 │       │   │   │   ├── liquidity_sweep_edge.py
 │       │   │   │   ├── pretrade_gate.py
@@ -2148,6 +2149,7 @@ Monika/
 │   │   │   ├── test_structured_fallback.py
 │   │   │   └── test_typesafe_provider.py
 │   │   ├── strategies/
+│   │   │   ├── test_gbpusd_trend_breakout.py
 │   │   │   ├── test_promoted_empirical_strategies.py
 │   │   │   ├── test_quant_discovery_pipeline.py
 │   │   │   ├── test_strategy_registry_summary.py
@@ -2286,6 +2288,7 @@ Monika/
 │   │   ├── test_streaming.py
 │   │   ├── test_structured_output_degradation.py
 │   │   ├── test_subagent_blackboard.py
+│   │   ├── test_submission_structural_limit.py
 │   │   ├── test_summary_fallback.py
 │   │   ├── test_system_config_upsert.py
 │   │   ├── test_technical_analysis_improvements.py
@@ -3006,4 +3009,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 254 | **Total Tracked Files**: 2722
+**Total Tracked Directories**: 254 | **Total Tracked Files**: 2725

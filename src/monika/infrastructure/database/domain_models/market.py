@@ -228,6 +228,7 @@ class PriceOHLCV(Base):
     symbol: Mapped[str] = mapped_column(String(20))
     timeframe: Mapped[str] = mapped_column(String(10))  # H1, H4, D1
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    canonical_timestamp: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     open: Mapped[float] = mapped_column(Float)
     high: Mapped[float] = mapped_column(Float)
     low: Mapped[float] = mapped_column(Float)
@@ -243,8 +244,29 @@ class PriceOHLCV(Base):
 
     __table_args__ = (
         Index("idx_price_sym_tf_ts", "symbol", "timeframe", "timestamp"),
+        Index("idx_price_sym_tf_canonical_ts", "symbol", "timeframe", "canonical_timestamp"),
         UniqueConstraint("symbol", "timeframe", "timestamp", name="uq_price_sym_tf_ts"),
     )
+
+
+class PriceOHLCVRejected(Base):
+    """Audit rejected/deduplicated price rows."""
+
+    __tablename__ = "price_ohlcv_rejected"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    original_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    symbol: Mapped[str] = mapped_column(String(20))
+    timeframe: Mapped[str] = mapped_column(String(10))
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    canonical_timestamp: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    open: Mapped[float] = mapped_column(Float)
+    high: Mapped[float] = mapped_column(Float)
+    low: Mapped[float] = mapped_column(Float)
+    close: Mapped[float] = mapped_column(Float)
+    volume: Mapped[float] = mapped_column(Float)
+    rejected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    reason: Mapped[str] = mapped_column(String(255))
 
 
 class TechnicalIndicator(Base):
@@ -392,6 +414,7 @@ __all__ = [
     "CentralBankDocument",
     "MacroLiquidityCreditMetric",
     "PriceOHLCV",
+    "PriceOHLCVRejected",
     "TechnicalIndicator",
     "SwingPoint",
     "SRZone",

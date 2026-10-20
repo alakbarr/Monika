@@ -328,6 +328,26 @@ class SystemDoctor:
                 "MT5", "MT5_LOGIN", "WARN", "MT5 account login missing.", details="Set MT5_LOGIN in environment."
             )
 
+        # Broker UTC Offset resolver configuration
+        try:
+            from monika.infrastructure.brokers.mt5.broker_time import BrokerTimeResolver
+
+            offset_hours = BrokerTimeResolver.get_configured_offset_hours(settings)
+            self._record(
+                "MT5",
+                "BROKER_UTC_OFFSET",
+                "OK",
+                f"Broker UTC offset configured: {offset_hours:+.1f}h (BrokerTimeResolver active).",
+            )
+        except Exception as e:
+            self._record(
+                "MT5",
+                "BROKER_UTC_OFFSET",
+                "FAIL",
+                f"Broker UTC offset unconfigured: {e}",
+                details="Set trading.mt5.broker_utc_offset_hours in settings.yaml.",
+            )
+
     async def check_database_migrations(self) -> None:
         """Verify database connectivity, active DBA transaction locks, and schema migrations."""
         try:
@@ -559,6 +579,64 @@ class SystemDoctor:
                 f"Redis offline or unreachable ({str(e)[:70]}). Local in-memory cache active.",
             )
 
+    async def check_price_data_integrity(self) -> None:
+        """Verify that price_ohlcv has 0 duplicate bars and canonical timestamps."""
+        try:
+            from sqlalchemy import text
+            from monika.infrastructure.database.db import get_session
+
+            async with get_session() as session:
+                tbl_check = text("SELECT count(*) FROM information_schema.tables WHERE table_name = 'price_ohlcv'")
+                exists = (await session.execute(tbl_check)).scalar() or 0
+                if not exists:
+                    self._record("DataIntegrity", "price_ohlcv", "INFO", "price_ohlcv table not yet created.")
+                    return
+
+                col_check = text(
+                    "SELECT count(*) FROM information_schema.columns "
+                    "WHERE table_name = 'price_ohlcv' AND column_name = 'canonical_timestamp'"
+                )
+                col_exists = (await session.execute(col_check)).scalar() or 0
+                if not col_exists:
+                    self._record(
+                        "DataIntegrity",
+                        "price_ohlcv",
+                        "FAIL",
+                        "canonical_timestamp column missing in price_ohlcv.",
+                        details="Run scripts/repair_price_ohlcv.py --execute to repair.",
+                    )
+                    return
+
+                dup_check = text(
+                    """
+                    SELECT count(*) FROM (
+                        SELECT symbol, timeframe, canonical_timestamp
+                        FROM price_ohlcv
+                        WHERE canonical_timestamp IS NOT NULL
+                        GROUP BY symbol, timeframe, canonical_timestamp
+                        HAVING count(*) > 1
+                    ) sub
+                    """
+                )
+                dup_count = (await session.execute(dup_check)).scalar() or 0
+                if dup_count == 0:
+                    self._record(
+                        "DataIntegrity",
+                        "price_ohlcv",
+                        "OK",
+                        "Canonical bar grid clean: 0 duplicate bars in price_ohlcv.",
+                    )
+                else:
+                    self._record(
+                        "DataIntegrity",
+                        "price_ohlcv",
+                        "FAIL",
+                        f"Detected {dup_count} duplicate timestamp groups in price_ohlcv.",
+                        details="Run scripts/repair_price_ohlcv.py --execute to repair.",
+                    )
+        except Exception as e:
+            self._record("DataIntegrity", "price_ohlcv", "WARN", f"Could not verify price data integrity: {e}")
+
     async def run_diagnostics(self) -> List[DiagnosticItem]:
         """Runs the entire unified battery of doctor checks."""
         from monika.core.config.settings import load_all_config
@@ -582,6 +660,7 @@ class SystemDoctor:
             try:
                 await asyncio.gather(
                     self.check_database_migrations(),
+                    self.check_price_data_integrity(),
                     self.check_redis(settings),
                     self.check_startup_checker_suite(settings),
                     return_exceptions=True,

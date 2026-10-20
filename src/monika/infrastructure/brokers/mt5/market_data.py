@@ -10,7 +10,7 @@ import time
 from typing import Any, Optional, cast
 
 import pandas as pd
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.models import PriceOHLCV
@@ -147,53 +147,15 @@ class MT5MarketDataMixin(MT5MixinBase):
     async def get_broker_utc_offset_seconds(self) -> int:
         """
         Hitung selisih detik antara broker server time MT5 dan UTC.
-        Contoh: broker di UTC+3 -> return +10800 detik.
+        Menggunakan central process-wide BrokerTimeResolver (fail-closed jika tidak terkonfigurasi).
         """
         if self._broker_utc_offset_seconds is not None:
             return self._broker_utc_offset_seconds
 
-        # 1. Konfigurasi eksplisit dari settings jika tersedia
-        mt5_cfg = self.settings.get("trading", {}).get("mt5", {})
-        cfg_offset = mt5_cfg.get("broker_utc_offset_hours")
-        if cfg_offset is not None:
-            try:
-                self._broker_utc_offset_seconds = int(float(cfg_offset) * 3600)
-                logger.info(
-                    f"[MT5Client] Broker UTC offset configured: {float(cfg_offset):+.1f}h ({self._broker_utc_offset_seconds}s)"
-                )
-                return self._broker_utc_offset_seconds
-            except Exception as e:
-                logger.warning(f"[MT5Client] Invalid broker_utc_offset_hours in settings: {e}")
+        from monika.infrastructure.brokers.mt5.broker_time import BrokerTimeResolver
 
-        def _calc_offset() -> int:
-            try:
-                import MetaTrader5 as mt5_mod
-
-                now_utc = datetime.now(timezone.utc).timestamp()
-                # Prioritaskan simbol yang aktif berdetak (24/7 crypto), lalu forex mayor
-                symbols_to_check = ["BTCUSD", "ETHUSD", "EURUSD", "GBPUSD", "USDJPY", "XAUUSD"]
-                for s in symbols_to_check:
-                    t = mt5_mod.symbol_info_tick(s)
-                    if t and getattr(t, "time", 0) > 0:
-                        diff_s = t.time - now_utc
-                        offset_hours = round(diff_s / 3600.0)
-                        residual_s = abs(diff_s - (offset_hours * 3600))
-                        # Abaikan tick yang kadaluarsa (>30 menit) karena pasar tutup (cth: EURUSD di weekend)
-                        if residual_s < 1800 and -14 <= offset_hours <= 14:
-                            return int(offset_hours * 3600)
-            except Exception as e:
-                logger.debug(f"Failed to calculate broker UTC offset: {e}")
-            return 0
-
-        offset = await self._run(_calc_offset, priority=PRIORITY_NORMAL)
-        if isinstance(offset, (int, float)) and -14 * 3600 <= int(offset) <= 14 * 3600:
-            self._broker_utc_offset_seconds = int(offset)
-        else:
-            self._broker_utc_offset_seconds = 0
-        if self._broker_utc_offset_seconds != 0:
-            logger.info(
-                f"[MT5Client] Broker UTC offset auto-detected: {self._broker_utc_offset_seconds / 3600:+.1f}h ({self._broker_utc_offset_seconds}s)"
-            )
+        offset = BrokerTimeResolver.resolve_offset_seconds(self.settings)
+        self._broker_utc_offset_seconds = offset
         return self._broker_utc_offset_seconds
 
     async def get_ohlcv(
@@ -332,6 +294,9 @@ class MT5MarketDataMixin(MT5MixinBase):
         if df is None or df.empty:
             return 0
 
+        from monika.infrastructure.brokers.mt5.broker_time import BrokerTimeResolver
+
+        broker_offset = await self.get_broker_utc_offset_seconds()
         saved = 0
         for _, row in df.iterrows():
             row_data: Any = row
@@ -343,29 +308,27 @@ class MT5MarketDataMixin(MT5MixinBase):
             else:
                 ts_dt = ts
 
-            # Check if record exists
+            canonical_ts = BrokerTimeResolver.to_canonical_bar_timestamp(
+                ts_dt, timeframe, offset_seconds=broker_offset, settings=self.settings
+            )
+
+            # Check if record exists by canonical_timestamp (or legacy timestamp)
             exists = await session.execute(
                 select(PriceOHLCV)
                 .where(PriceOHLCV.symbol == symbol)
                 .where(PriceOHLCV.timeframe == timeframe)
-                .where(PriceOHLCV.timestamp == ts_dt)
+                .where(
+                    or_(
+                        PriceOHLCV.canonical_timestamp == canonical_ts,
+                        and_(PriceOHLCV.canonical_timestamp.is_(None), PriceOHLCV.timestamp == ts_dt),
+                    )
+                )
                 .limit(1)
             )
             existing_record = exists.scalar_one_or_none()
-            if existing_record is None and timeframe == "D1":
-                # Fallback: cek apakah bar D1 pada jendela hari yang sama (+-6 jam) sudah ada
-                near_exists = await session.execute(
-                    select(PriceOHLCV)
-                    .where(PriceOHLCV.symbol == symbol)
-                    .where(PriceOHLCV.timeframe == timeframe)
-                    .where(PriceOHLCV.timestamp >= ts_dt - timedelta(hours=6))
-                    .where(PriceOHLCV.timestamp <= ts_dt + timedelta(hours=6))
-                    .limit(1)
-                )
-                existing_record = near_exists.scalar_one_or_none()
-                if existing_record is not None:
-                    existing_record.timestamp = ts_dt
             if existing_record is not None:
+                if existing_record.canonical_timestamp is None:
+                    existing_record.canonical_timestamp = canonical_ts
                 # Update bar yang sedang aktif jika nilai OHLCV berubah
                 r_open = float(row_data["open"])
                 r_high = float(row_data["high"])
@@ -391,6 +354,7 @@ class MT5MarketDataMixin(MT5MixinBase):
                 symbol=symbol,
                 timeframe=timeframe,
                 timestamp=ts_dt,
+                canonical_timestamp=canonical_ts,
                 open=float(row_data["open"]),
                 high=float(row_data["high"]),
                 low=float(row_data["low"]),
