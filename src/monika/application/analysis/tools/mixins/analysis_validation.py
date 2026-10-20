@@ -433,7 +433,22 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
 
     @staticmethod
     def _classify_validation_errors(errs: list[str]) -> str:
-        """Classify submit_asset_analysis validation errors into GATE_FATAL, GATE_FIXABLE, STRUCTURAL, THRESHOLD, or FATAL."""
+        """Classify submit_asset_analysis validation errors into GATE, GATE_FIXABLE, STRUCTURAL, THRESHOLD, or FATAL."""
+        GATE_FATAL_ERRORS = [
+            "volatility regime gate",
+            "macro bias gate",
+            "entry blocked: only",
+            "adr range remains",
+            "priced-in conflict hard blocked",
+            "context discrepancy score",
+        ]
+
+        GATE_FIXABLE_ERRORS = [
+            "price inside value area",
+            "liquidity sweep",
+            "priced-in conflict (reverse)",
+        ]
+
         FATAL_ERRORS = [
             "no h4 technical indicators found",
             "technical indicators found",
@@ -441,21 +456,6 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
             "data unavailable",
             "symbol is required",
             "direction must be",
-        ]
-
-        GATE_FATAL_ERRORS = [
-            "volatility regime gate",
-            "macro bias gate",
-            "entry blocked: only",
-            "adr range remains",
-            "priced-in conflict hard blocked",
-        ]
-
-        GATE_FIXABLE_ERRORS = [
-            "ssvp blocked",
-            "liquidity sweep",
-            "priced-in conflict (reverse)",
-            "specialist disagreement",
         ]
 
         THRESHOLD_ERRORS = [
@@ -488,24 +488,25 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
             "cot_aligned",
             "vix_ok",
             "adjudication",
+            "specialist disagreement",
             "reevaluation_trigger",
         ]
 
         for err in errs:
             err_l = err.lower()
-            for fatal in FATAL_ERRORS:
-                if fatal in err_l:
-                    return "FATAL"
-        for err in errs:
-            err_l = err.lower()
             for g_fatal in GATE_FATAL_ERRORS:
                 if g_fatal in err_l:
-                    return "GATE_FATAL"
+                    return "GATE"
         for err in errs:
             err_l = err.lower()
             for g_fix in GATE_FIXABLE_ERRORS:
                 if g_fix in err_l:
                     return "GATE_FIXABLE"
+        for err in errs:
+            err_l = err.lower()
+            for fatal in FATAL_ERRORS:
+                if fatal in err_l:
+                    return "FATAL"
         for err in errs:
             err_l = err.lower()
             for threshold in THRESHOLD_ERRORS:

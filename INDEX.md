@@ -6483,6 +6483,14 @@
   - `compare_sections(a: PromptSection, b: PromptSection) -> int`: Sparse numeric order comparison with code-unit name tie-breaking.
   - `compose_ordered_prompt(sections: List[PromptSection], separator: str) -> str`: Sort prompt sections deterministically by order then code-unit name.
 
+#### `risk_contract.py` - *Unified Risk Contract: Canonical single-source-of-truth for trade level boundaries.*
+- **Path**: [`src/monika/application/analysis/prompt/risk_contract.py`](src/monika/application/analysis/prompt/risk_contract.py)
+- **Classes**:
+  - `class RiskContract`
+    - `render_prompt_contract() -> str` - *Render canonical risk contract section for injection into Stage 2 prompt.*
+- **Top-Level Functions**:
+  - `build_risk_contract(symbol: str, settings: Optional[Dict[str, Any]], system_config_multipliers: Optional[Dict[str, float]]) -> RiskContract`: Build unified RiskContract respecting symbol-specific settings and DB SystemConfig.
+
 ### Folder: `src/monika/application/analysis/research` <a id="folder-srcmonikaapplicationanalysisresearch"></a>
 
 #### `__init__.py` - *Macro playbooks and research runners.*

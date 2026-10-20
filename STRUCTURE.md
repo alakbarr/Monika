@@ -240,7 +240,8 @@ Monika/
 │       │   │   │   └── stage2_prefetcher.py
 │       │   │   ├── prompt/
 │       │   │   │   ├── __init__.py
-│       │   │   │   └── prompt_assembler.py
+│       │   │   │   ├── prompt_assembler.py
+│       │   │   │   └── risk_contract.py
 │       │   │   ├── research/
 │       │   │   │   ├── __init__.py
 │       │   │   │   └── macro_playbook_runner.py
@@ -2140,6 +2141,8 @@ Monika/
 │   │   │   ├── test_playbook_lifecycle.py
 │   │   │   ├── test_skill_curator.py
 │   │   │   └── test_specialist_and_playbook.py
+│   │   ├── prompt/
+│   │   │   └── test_unified_risk_contract_and_gates.py
 │   │   ├── providers/
 │   │   │   ├── test_capabilities.py
 │   │   │   ├── test_credential_pool_routing.py
@@ -3016,4 +3019,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 254 | **Total Tracked Files**: 2732
+**Total Tracked Directories**: 255 | **Total Tracked Files**: 2734

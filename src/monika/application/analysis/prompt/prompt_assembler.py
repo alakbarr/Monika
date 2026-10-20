@@ -46,7 +46,7 @@ TIER2_TOOL_STUBS = """## AVAILABLE TOOL CATEGORIES (use load_tool_category for f
 - EXECUTION: execute_order_guard, modify_position, close_position, set_trailing_stop, check_spread
 - POSITION: get_risk_state, get_portfolio_summary, get_correlation_matrix, get_trade_history, get_drawdown_report"""
 
-STAGE2_TOOL_STUBS = """## AVAILABLE TOOLS FOR INTRADAY ASSET ANALYSIS:
+STAGE2_TOOL_STUBS = """## AVAILABLE TOOL CATEGORIES (AVAILABLE TOOLS FOR INTRADAY ASSET ANALYSIS):
 - ANALYSIS & EXECUTION:
   * submit_asset_analysis: Final trade decision submission with confluence score and risk brackets
   * calculate_position_size: Deterministic lot sizing and risk-of-ruin verification

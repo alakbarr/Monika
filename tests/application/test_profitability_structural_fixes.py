@@ -67,14 +67,14 @@ async def test_signal_arbitrator_allows_genuine_trend_alpha_in_trend():
     from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
 
     decay_mon = get_strategy_decay_monitor()
-    decay_mon.get_health("alpha_xtiusd_374fa7").is_incubation_passed = True
+    decay_mon.get_health("tsm_momentum").is_incubation_passed = True
 
     arbitrator = SignalArbitrator(
         settings={"trading": {"signal_arbitration": {"min_quant_confidence_for_trend_override": 0.70}}}
     )
 
     trend_signal = EdgeSignal(
-        strategy_id="alpha_xtiusd_374fa7",
+        strategy_id="tsm_momentum",
         symbol="XTIUSD",
         direction="buy",
         valid=True,
