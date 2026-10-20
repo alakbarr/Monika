@@ -241,7 +241,12 @@ class GeminiProvider(BaseLLMClient):
             return api_key not in self.free_api_keys
         return False
 
-    def _get_api_key(self) -> Optional[str]:
+    @classmethod
+    def rotate_api_key(cls) -> None:
+        """Rotates active key index to the next free API key, called ONLY on 429/503 quota errors."""
+        cls._key_index += 1
+
+    def _get_api_key(self, sticky: bool = False) -> Optional[str]:
         now = time.time()
         is_paid_model = "pro" in self.model.lower() or "argon" in self.model.lower()
 
@@ -264,7 +269,40 @@ class GeminiProvider(BaseLLMClient):
                 f"Model {self.model} called but GEMINI_PAID_API_KEY is empty or cooling down. Fallback to free key."
             )
 
-        # 1. Rotate through static GEMINI_API_KEYS if present (respecting active cooldowns)
+        # 1. Sticky session mode (preserves per-key KV cache across turns)
+        if sticky or getattr(self, "_sticky_session_key", None):
+            sticky_key = getattr(self, "_sticky_session_key", None)
+            if (
+                sticky_key
+                and (
+                    sticky_key not in self.__class__._key_cooldowns or self.__class__._key_cooldowns[sticky_key] <= now
+                )
+                and (
+                    not self.free_api_keys
+                    or sticky_key == self.free_api_keys[GeminiProvider._key_index % len(self.free_api_keys)]
+                )
+            ):
+                return sticky_key
+
+            # Pick candidate key at GeminiProvider._key_index (or next available non-cooling) and pin it
+            if self.free_api_keys:
+                for offset in range(len(self.free_api_keys)):
+                    candidate = self.free_api_keys[(GeminiProvider._key_index + offset) % len(self.free_api_keys)]
+                    if (
+                        candidate not in self.__class__._key_cooldowns
+                        or self.__class__._key_cooldowns[candidate] <= now
+                    ):
+                        GeminiProvider._key_index = (GeminiProvider._key_index + offset) % len(self.free_api_keys)
+                        self._sticky_session_key = candidate
+                        return candidate
+
+            if self.api_key and (
+                self.api_key not in self.__class__._key_cooldowns or self.__class__._key_cooldowns[self.api_key] <= now
+            ):
+                self._sticky_session_key = self.api_key
+                return self.api_key
+
+        # 2. Round-robin mode (default outside pinned sessions, skipping cooldowns)
         if self.free_api_keys:
             for _ in range(len(self.free_api_keys)):
                 key = self.free_api_keys[GeminiProvider._key_index % len(self.free_api_keys)]
@@ -272,7 +310,7 @@ class GeminiProvider(BaseLLMClient):
                 if key not in self.__class__._key_cooldowns or self.__class__._key_cooldowns[key] <= now:
                     return key
 
-        # 2. Check explicit self.api_key if provided and not in active cooldown
+        # 3. Check explicit self.api_key if provided and not in active cooldown
         if self.api_key and (
             self.api_key not in self.__class__._key_cooldowns or self.__class__._key_cooldowns[self.api_key] <= now
         ):
@@ -402,6 +440,7 @@ class GeminiProvider(BaseLLMClient):
                 cooldown_sec = 65.0
 
         cls._key_cooldowns[api_key] = time.time() + cooldown_sec
+        cls.rotate_api_key()
         if api_key.startswith("ya29."):
             try:
                 from monika.infrastructure.auth.antigravity_bridge import mark_antigravity_account_cooldown
@@ -560,7 +599,7 @@ class GeminiProvider(BaseLLMClient):
         timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
         max_attempts = min(max(len(self.free_api_keys) if self.free_api_keys else 1, 1), 5)
         for attempt in range(max_attempts):
-            api_key = self._get_api_key()
+            api_key = self._get_api_key(sticky=True)
             if not api_key:
                 logger.error("No Gemini API key available.")
                 return None
@@ -1000,7 +1039,7 @@ class GeminiProvider(BaseLLMClient):
         timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
         max_attempts = min(max(len(self.free_api_keys) if self.free_api_keys else 1, 1), 5)
         for attempt in range(max_attempts):
-            api_key = self._get_api_key()
+            api_key = self._get_api_key(sticky=True)
             if not api_key:
                 break
 
@@ -1098,7 +1137,11 @@ class GeminiProvider(BaseLLMClient):
 
             for tc in stream_res.tool_calls:
                 ts = tc.get("thoughtSignature") or f"gemini_tool_fallback_{uuid.uuid4().hex[:8]}"
-                blocks.append(MockBlock(type="tool_use", name=tc["name"], input=tc.get("args", {}), id=ts))
+                b = MockBlock(type="tool_use", name=tc["name"], input=tc.get("args", {}), id=ts)
+                if tc.get("thoughtSignature"):
+                    setattr(b, "thoughtSignature", tc["thoughtSignature"])
+                    setattr(b, "thought_signature", tc["thoughtSignature"])
+                blocks.append(b)
                 stop_reason = "tool_use"
 
             usage = stream_res.usage or {}
@@ -1135,7 +1178,18 @@ class GeminiProvider(BaseLLMClient):
             for part in parts:
                 if "text" in part:
                     is_thought = part.get("thought") is True
-                    if not is_thought:
+                    ts = part.get("thoughtSignature") or part.get("thought_signature")
+                    if is_thought:
+                        blocks.append(
+                            MockBlock(
+                                type="thinking",
+                                text=part["text"],
+                                thought=True,
+                                thought_signature=ts,
+                                thoughtSignature=ts,
+                            )
+                        )
+                    else:
                         blocks.append(MockBlock(type="text", text=part["text"]))
                 elif "functionCall" in part:
                     fc = part["functionCall"]
@@ -1147,7 +1201,11 @@ class GeminiProvider(BaseLLMClient):
                         or fc.get("id")
                         or f"gemini_tool_fallback_{uuid.uuid4().hex[:8]}"
                     )
-                    blocks.append(MockBlock(type="tool_use", name=fc["name"], input=fc.get("args", {}), id=ts))
+                    b = MockBlock(type="tool_use", name=fc["name"], input=fc.get("args", {}), id=ts)
+                    if "thoughtSignature" in part or "thought_signature" in part:
+                        setattr(b, "thoughtSignature", ts)
+                        setattr(b, "thought_signature", ts)
+                    blocks.append(b)
                     stop_reason = "tool_use"
 
             usage = data.get("usageMetadata", {})

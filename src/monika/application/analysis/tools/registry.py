@@ -93,6 +93,8 @@ class ToolDefinition:
     requires_db: bool = False
     timeout_seconds: float = 30.0
     protected: bool = False
+    is_concurrency_safe: Optional[bool] = None
+    output_schema: Optional[Dict[str, Any]] = None
     _last_check_time: float = field(default=0.0, init=False, repr=False)
     _last_check_result: bool = field(default=True, init=False, repr=False)
     _last_healthy_time: float = field(default=0.0, init=False, repr=False)
@@ -200,6 +202,8 @@ class ToolRegistry:
         parallel_safe: Optional[bool] = None,
         allow_override: bool = False,
         protected: bool = False,
+        is_concurrency_safe: Optional[bool] = None,
+        output_schema: Optional[Dict[str, Any]] = None,
     ):
         """Register a tool definition, handler class, or handler instance with core shadowing protection."""
         if isinstance(handler_cls_or_instance, ToolDefinition):
@@ -216,6 +220,10 @@ class ToolRegistry:
                     )
             if protected:
                 tool.protected = True
+            if is_concurrency_safe is not None:
+                tool.is_concurrency_safe = is_concurrency_safe
+            if output_schema is not None:
+                tool.output_schema = output_schema
 
             self._tools[tool_name] = tool
             toolset = getattr(tool, "toolset", "default")
@@ -263,6 +271,10 @@ class ToolRegistry:
             instance.parallel_safe = tool_parallel_safe
             if protected:
                 instance.protected = True
+            if is_concurrency_safe is not None:
+                setattr(instance, "is_concurrency_safe", is_concurrency_safe)
+            if output_schema is not None:
+                setattr(instance, "output_schema", output_schema)
             self._handlers[tool_name] = instance
 
         for alias in tool_aliases:
@@ -351,6 +363,79 @@ class ToolRegistry:
         if handler is not None and hasattr(handler, "parallel_safe"):
             return bool(getattr(handler, "parallel_safe"))
         return True
+
+    @classmethod
+    def is_tool_concurrency_safe(cls, tool_name: str, args: Optional[dict] = None) -> bool:
+        """Determine whether a tool can safely execute concurrently without serial session lock contention.
+
+        Defaults to True for read-only analytical/data-fetching prefixes, and False (fail-closed)
+        for mutating tools (order placement, position modification, terminal execution, file patches, submissions).
+        """
+        instance = cls.get_instance()
+        canonical = instance.resolve_name(tool_name) if instance else tool_name
+
+        # Mutating tools: fail closed to False
+        MUTATING_PREFIXES = (
+            "execute_order",
+            "modify_position",
+            "close_position",
+            "patch_",
+            "patch",
+            "write_",
+            "write",
+            "run_terminal",
+            "terminal",
+            "submit_",
+            "submit",
+            "create_",
+            "update_",
+            "delete_",
+            "execute_market_order",
+            "execute_order_guard",
+            "propose_action",
+        )
+        if any(canonical.startswith(p) for p in MUTATING_PREFIXES):
+            return False
+
+        MUTATING_CORE_TOOLS = {
+            "submit_order",
+            "propose_action",
+            "execute_order",
+            "modify_position",
+            "close_position",
+        }
+        if canonical in MUTATING_CORE_TOOLS:
+            return False
+
+        # If explicitly registered with concurrency flag, respect it
+        if instance:
+            tool_def = instance._tools.get(canonical)
+            if tool_def is not None and tool_def.is_concurrency_safe is not None:
+                return bool(tool_def.is_concurrency_safe)
+
+            handler = instance.get(canonical)
+            if (
+                handler is not None
+                and hasattr(handler, "is_concurrency_safe")
+                and getattr(handler, "is_concurrency_safe") is not None
+            ):
+                return bool(getattr(handler, "is_concurrency_safe"))
+
+        READ_ONLY_PREFIXES = (
+            "get_",
+            "read_",
+            "search_",
+            "list_",
+            "calculate_",
+            "scan_",
+            "check_",
+            "describe_",
+            "retrieve_",
+        )
+        if any(canonical.startswith(p) for p in READ_ONLY_PREFIXES):
+            return True
+
+        return False
 
     def list_tools(self) -> List[str]:
         """Return all registered canonical tool names."""
@@ -514,6 +599,8 @@ def register_tool(
     aliases: Optional[List[str]] = None,
     category: Optional[str] = None,
     parallel_safe: bool = True,
+    is_concurrency_safe: Optional[bool] = None,
+    output_schema: Optional[Dict[str, Any]] = None,
 ):
     """Decorator to register tool handlers into the default_tool_registry."""
 
@@ -524,6 +611,8 @@ def register_tool(
             aliases=aliases,
             category=category,
             parallel_safe=parallel_safe,
+            is_concurrency_safe=is_concurrency_safe,
+            output_schema=output_schema,
         )
         return cls_or_instance
 

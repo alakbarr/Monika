@@ -40,6 +40,7 @@ import json
 import logging
 import os
 import re
+import threading
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -54,6 +55,172 @@ class FileReadRecord:
     mtime: float
     sha256: str
     read_timestamp: float
+
+
+# Session File Observation Tracking (ObservedStateGate pattern)
+_OBSERVED_FILES: Dict[str, Tuple[int, int]] = {}
+_FILE_LOCKS: Dict[str, threading.Lock] = {}
+_GLOBAL_FILE_LOCK = threading.Lock()
+
+
+def _get_file_lock(canonical_path: str) -> threading.Lock:
+    with _GLOBAL_FILE_LOCK:
+        if canonical_path not in _FILE_LOCKS:
+            _FILE_LOCKS[canonical_path] = threading.Lock()
+        return _FILE_LOCKS[canonical_path]
+
+
+def record_file_observation(path: str) -> None:
+    """Record session file observation tracking (mtime_ns, size)."""
+    norm_path = os.path.normpath(os.path.abspath(path))
+    if os.path.exists(norm_path):
+        try:
+            st = os.stat(norm_path)
+            _OBSERVED_FILES[norm_path] = (st.st_mtime_ns, st.st_size)
+        except OSError:
+            pass
+
+
+def check_file_observation(path: str, require_prior_read: bool = False) -> Tuple[bool, Optional[str]]:
+    """Check whether a file was previously observed and whether its disk state has changed externally."""
+    norm_path = os.path.normpath(os.path.abspath(path))
+    if not os.path.exists(norm_path):
+        return True, None
+
+    if norm_path not in _OBSERVED_FILES:
+        if require_prior_read:
+            return (
+                False,
+                f"Safety Guard: File '{path}' exists but has not been read in this session. "
+                "Read the file first to verify existing content before modifying.",
+            )
+        return True, None
+
+    try:
+        st = os.stat(norm_path)
+    except OSError as e:
+        return False, f"Safety Guard error stating file '{path}': {e}"
+
+    obs_mtime_ns, obs_size = _OBSERVED_FILES[norm_path]
+    if st.st_mtime_ns != obs_mtime_ns or st.st_size != obs_size:
+        return (
+            False,
+            f"Safety Guard: File '{path}' was modified externally on disk since last read "
+            f"(observed mtime_ns={obs_mtime_ns}, size={obs_size}; current mtime_ns={st.st_mtime_ns}, size={st.st_size}). "
+            "Re-read the file to ensure changes are not overwritten.",
+        )
+
+    return True, None
+
+
+def _normalize_fuzzy_text(text: str) -> str:
+    """Normalize line endings, trailing whitespace per line, smart quotes and dashes."""
+    text = text.replace("\r\n", "\n")
+    text = text.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
+    text = text.replace("–", "-").replace("—", "-")
+    lines = [line.rstrip() for line in text.split("\n")]
+    return "\n".join(lines)
+
+
+def _fuzzy_find_block(original_text: str, search_block: str) -> Tuple[Optional[Tuple[int, int]], str]:
+    """
+    Fuzzy match fallback normalizing line endings, trailing whitespace, and smart quotes/dashes.
+    Preserves original line endings and returns (span, stage_name).
+    """
+    if not search_block:
+        return None, "empty_search"
+
+    match_span, stage = FuzzyMatcher.find_match(original_text, search_block)
+    if match_span is not None:
+        return match_span, stage
+
+    norm_orig = _normalize_fuzzy_text(original_text)
+    norm_search = _normalize_fuzzy_text(search_block)
+
+    norm_idx = norm_orig.find(norm_search)
+    if norm_idx != -1:
+        orig_lines = original_text.splitlines(keepends=True)
+        search_lines_count = len(norm_search.split("\n"))
+        norm_line_idx = norm_orig[:norm_idx].count("\n")
+        start_char = sum(len(l) for l in orig_lines[:norm_line_idx])
+        end_char = sum(len(l) for l in orig_lines[: norm_line_idx + search_lines_count])
+        return (start_char, end_char), "normalized_fuzzy"
+
+    return None, "no_match"
+
+
+def apply_search_replace(
+    original_text: str,
+    search_block: str,
+    replace_block: str,
+    file_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Applies exact or fuzzy search-replace to text and returns a unified diff snippet preview.
+    Preserves original file line endings.
+    """
+    if not search_block:
+        return {
+            "success": False,
+            "error": "Empty search block provided.",
+            "patched_text": original_text,
+            "diff_preview": "",
+            "stage": "empty",
+        }
+
+    is_crlf = "\r\n" in original_text and "\n" not in original_text.replace("\r\n", "")
+    target_replace = replace_block
+    if is_crlf and "\r\n" not in target_replace:
+        target_replace = target_replace.replace("\n", "\r\n")
+
+    if search_block in original_text:
+        patched = original_text.replace(search_block, target_replace, 1)
+        stage = "exact"
+        diff_lines = list(
+            difflib.unified_diff(
+                original_text.splitlines(keepends=True),
+                patched.splitlines(keepends=True),
+                fromfile=f"a/{file_path or 'file'}",
+                tofile=f"b/{file_path or 'file'}",
+                n=3,
+            )
+        )
+        return {
+            "success": True,
+            "patched_text": patched,
+            "diff_preview": "".join(diff_lines),
+            "match_type": "exact",
+            "stage": stage,
+        }
+
+    span, stage = _fuzzy_find_block(original_text, search_block)
+    if span is not None:
+        start, end = span
+        patched = original_text[:start] + target_replace + original_text[end:]
+        diff_lines = list(
+            difflib.unified_diff(
+                original_text.splitlines(keepends=True),
+                patched.splitlines(keepends=True),
+                fromfile=f"a/{file_path or 'file'}",
+                tofile=f"b/{file_path or 'file'}",
+                n=3,
+            )
+        )
+        return {
+            "success": True,
+            "patched_text": patched,
+            "diff_preview": "".join(diff_lines),
+            "match_type": "fuzzy",
+            "stage": stage,
+        }
+
+    return {
+        "success": False,
+        "error": "Search block could not be matched across exact or fuzzy stages.",
+        "patched_text": original_text,
+        "diff_preview": "",
+        "stage": "no_match",
+    }
 
 
 class StaleOverwriteGuard:
@@ -80,6 +247,7 @@ class StaleOverwriteGuard:
                 sha256=file_hash,
                 read_timestamp=os.path.getmtime(norm_path),
             )
+            record_file_observation(norm_path)
 
     def verify_can_modify(self, path: str) -> Tuple[bool, Optional[str]]:
         """
@@ -97,6 +265,10 @@ class StaleOverwriteGuard:
         if not os.path.exists(norm_path):
             # Brand new file: modification is safe
             return True, None
+
+        obs_ok, obs_reason = check_file_observation(norm_path, require_prior_read=True)
+        if not obs_ok:
+            return False, obs_reason
 
         record = self._read_records.get(norm_path)
         if record is None:
@@ -363,6 +535,7 @@ class FilePatchEngine:
                 lines = f.readlines()
 
             self.guard.record_read(norm_path)
+            record_file_observation(norm_path)
 
             start = max(0, offset - 1)
             end = min(len(lines), start + limit)
@@ -382,86 +555,92 @@ class FilePatchEngine:
         if not content.strip():
             return False, "Safety Guard: Writing an empty file (0 bytes) is prohibited."
 
-        can_mod, reason = self.guard.verify_can_modify(path)
-        if not can_mod:
-            return False, reason or "Write rejected by safety guard."
-
         norm_path = os.path.normpath(os.path.abspath(path))
+        with _get_file_lock(norm_path):
+            can_mod, reason = self.guard.verify_can_modify(path)
+            if not can_mod:
+                return False, reason or "Write rejected by safety guard."
 
-        # Check existing file size/line count to prevent accidental full rewrites
-        if os.path.exists(norm_path) and not allow_overwrite:
+            # Check existing file size/line count to prevent accidental full rewrites
+            if os.path.exists(norm_path) and not allow_overwrite:
+                try:
+                    with open(norm_path, "r", encoding="utf-8", errors="replace") as f:
+                        existing_lines = sum(1 for _ in f)
+                    if existing_lines > 100:
+                        return (
+                            False,
+                            f"Safety Guard: Existing file '{path}' is large ({existing_lines} lines). "
+                            "To prevent accidental truncation or loss of codebase context, please use 'patch' "
+                            "for targeted edits, or explicitly pass allow_overwrite=True if replacing the entire file.",
+                        )
+                except Exception:
+                    pass
+
+            # Lint before saving
+            lint_err = SyntaxLinter.lint_content(path, content)
+            if lint_err:
+                return False, f"Write rejected due to syntax error:\n{lint_err}"
+
+            os.makedirs(os.path.dirname(norm_path), exist_ok=True)
+
             try:
-                with open(norm_path, "r", encoding="utf-8", errors="replace") as f:
-                    existing_lines = sum(1 for _ in f)
-                if existing_lines > 100:
-                    return (
-                        False,
-                        f"Safety Guard: Existing file '{path}' is large ({existing_lines} lines). "
-                        "To prevent accidental truncation or loss of codebase context, please use 'patch' "
-                        "for targeted edits, or explicitly pass allow_overwrite=True if replacing the entire file.",
-                    )
-            except Exception:
-                pass
-
-        # Lint before saving
-        lint_err = SyntaxLinter.lint_content(path, content)
-        if lint_err:
-            return False, f"Write rejected due to syntax error:\n{lint_err}"
-
-        os.makedirs(os.path.dirname(norm_path), exist_ok=True)
-
-        try:
-            with open(norm_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            self.guard.record_read(norm_path)
-            return True, f"Successfully wrote {len(content)} characters to '{path}'"
-        except Exception as exc:
-            return False, f"Failed writing to '{path}': {exc}"
+                with open(norm_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                self.guard.record_read(norm_path)
+                record_file_observation(norm_path)
+                return True, f"Successfully wrote {len(content)} characters to '{path}'"
+            except Exception as exc:
+                return False, f"Failed writing to '{path}': {exc}"
 
     def patch_file(self, path: str, old_string: str, new_string: str, replace_all: bool = False) -> Tuple[bool, str]:
         """
         Applies a targeted find-and-replace using 9-stage fuzzy matching.
         """
-        can_mod, reason = self.guard.verify_can_modify(path)
-        if not can_mod:
-            return False, reason or "Patch rejected by safety guard."
-
         norm_path = os.path.normpath(os.path.abspath(path))
-        if not os.path.exists(norm_path):
-            return False, f"File not found: '{path}'"
+        with _get_file_lock(norm_path):
+            can_mod, reason = self.guard.verify_can_modify(path)
+            if not can_mod:
+                return False, reason or "Patch rejected by safety guard."
 
-        try:
-            with open(norm_path, "r", encoding="utf-8", errors="replace") as f:
-                original_content = f.read()
+            if not os.path.exists(norm_path):
+                return False, f"File not found: '{path}'"
 
-            match_span, stage = FuzzyMatcher.find_match(original_content, old_string)
-            if match_span is None:
-                return False, f"Patch failed: target string not found in '{path}' across all 9 fuzzy matching stages."
+            try:
+                with open(norm_path, "r", encoding="utf-8", errors="replace") as f:
+                    original_content = f.read()
 
-            start, end = match_span
-            if replace_all:
-                patched_content = original_content.replace(old_string, new_string)
-            else:
-                patched_content = original_content[:start] + new_string + original_content[end:]
+                match_span, stage = FuzzyMatcher.find_match(original_content, old_string)
+                if match_span is None:
+                    return (
+                        False,
+                        f"Patch failed: target string not found in '{path}' across all 9 fuzzy matching stages.",
+                    )
 
-            # Post-edit linting
-            lint_err = SyntaxLinter.lint_content(path, patched_content)
-            if lint_err:
+                start, end = match_span
+                if replace_all:
+                    patched_content = original_content.replace(old_string, new_string)
+                else:
+                    patched_content = original_content[:start] + new_string + original_content[end:]
+
+                # Post-edit linting
+                lint_err = SyntaxLinter.lint_content(path, patched_content)
+                if lint_err:
+                    return (
+                        False,
+                        f"Patch resulted in syntax error (stage matched: {stage}). Aborting write:\n{lint_err}",
+                    )
+
+                with open(norm_path, "w", encoding="utf-8") as f:
+                    f.write(patched_content)
+
+                self.guard.record_read(norm_path)
+                record_file_observation(norm_path)
                 return (
-                    False,
-                    f"Patch resulted in syntax error (stage matched: {stage}). Aborting write:\n{lint_err}",
+                    True,
+                    f"Successfully patched '{path}' (matched via stage: {stage}). Replaced {end - start} chars.",
                 )
-
-            with open(norm_path, "w", encoding="utf-8") as f:
-                f.write(patched_content)
-
-            self.guard.record_read(norm_path)
-            return (
-                True,
-                f"Successfully patched '{path}' (matched via stage: {stage}). Replaced {end - start} chars.",
-            )
-        except Exception as exc:
-            return False, f"Error patching '{path}': {exc}"
+            except Exception as exc:
+                return False, f"Error patching '{path}': {exc}"
 
     def apply_multi_patch(self, patch_text: str, dry_run: bool = False) -> Tuple[bool, str, List[Dict[str, Any]]]:
         """

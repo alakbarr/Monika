@@ -112,7 +112,7 @@ class ContentDistiller:
             f"\n\n---\n"
             f"[Notice: Document '{title or url}' exceeded token budget ({raw_len:,} chars). "
             f"Spilled complete text to disk with key '{spill_key}'. "
-            f"Use tool 'retrieve_spilled_context(storage_key=\"{spill_key}\")' to view additional pages.]"
+            f"Use tool 'retrieve_spilled_context(blob_id=\"{spill_key}\")' to view additional pages.]"
         )
 
         final_distilled = narrative_text

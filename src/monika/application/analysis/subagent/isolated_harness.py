@@ -6,14 +6,16 @@ Each specialist gets a dedicated AgentHarness instance with:
 - Own compaction engine state
 - Timeout watchdog with clean cancellation
 - Structured output contract (only final result reaches parent)
+- KV cache sharing via completed turn prefix forking
 """
 
 import asyncio
+import contextvars
 import copy
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from monika.application.analysis.harness.agent_harness import AgentHarness
 
@@ -21,6 +23,53 @@ logger = logging.getLogger("TradingAgent.IsolatedSubagent")
 
 DEFAULT_TIMEOUT = 300  # 5 minutes per specialist
 HEARTBEAT_INTERVAL = 30  # Check liveness every 30s
+
+_subagent_depth: contextvars.ContextVar[int] = contextvars.ContextVar("_subagent_depth", default=0)
+MAX_SUBAGENT_DEPTH: int = 1
+
+
+def extract_completed_turn_prefix(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Returns a deep copy of messages up to the last complete turn boundary
+    where all assistant tool_use / tool_calls have matching tool results.
+    Extracts completed turn prefix events for deterministic replay.
+    """
+    if not messages:
+        return []
+
+    best_idx = 0
+    for cut_idx in range(len(messages), 0, -1):
+        candidate = messages[:cut_idx]
+        called_ids: Set[str] = set()
+        answered_ids: Set[str] = set()
+
+        for m in candidate:
+            role = m.get("role")
+            if role in ("assistant", "model"):
+                for tc in m.get("tool_calls", []):
+                    if isinstance(tc, dict) and tc.get("id"):
+                        called_ids.add(str(tc["id"]))
+                content = m.get("content")
+                if isinstance(content, list):
+                    for b in content:
+                        if isinstance(b, dict) and b.get("type") == "tool_use" and b.get("id"):
+                            called_ids.add(str(b["id"]))
+            elif role == "tool" and m.get("tool_call_id"):
+                answered_ids.add(str(m["tool_call_id"]))
+            elif role == "user" and isinstance(m.get("content"), list):
+                for b in m["content"]:
+                    if isinstance(b, dict) and b.get("type") == "tool_result" and b.get("tool_use_id"):
+                        answered_ids.add(str(b["tool_use_id"]))
+
+        # If all called tools within the candidate slice are answered, it's a complete turn boundary
+        if called_ids <= answered_ids:
+            best_idx = cut_idx
+            break
+
+    if best_idx == 0:
+        return []
+
+    return [copy.deepcopy(m) for m in messages[:best_idx]]
 
 
 def _extract_and_validate(
@@ -79,6 +128,9 @@ class IsolatedSubagentRunner:
         timeout: int = DEFAULT_TIMEOUT,
         session: Any = None,
         output_schema: Optional[Dict[str, Any]] = None,
+        fork_parent_context: bool = False,
+        parent_messages: Optional[List[Dict[str, Any]]] = None,
+        keep_tool_schema_invariant: bool = True,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -87,6 +139,51 @@ class IsolatedSubagentRunner:
         Returns only the final structured result — intermediate tool calls,
         reasoning, and errors stay isolated within the subagent's context.
         """
+        current_depth = _subagent_depth.get()
+        if current_depth >= MAX_SUBAGENT_DEPTH:
+            logger.warning(
+                f"[IsolatedSubagent:{role_name}] Maximum subagent delegation depth ({MAX_SUBAGENT_DEPTH}) reached. Rejecting spawn."
+            )
+            return {
+                "success": False,
+                "error": f"Maximum subagent delegation depth ({MAX_SUBAGENT_DEPTH}) reached.",
+                "final_text": "",
+                "tool_calls_made": 0,
+                "turns": 0,
+            }
+
+        depth_token = _subagent_depth.set(current_depth + 1)
+
+        # Preserve exact tool schemas by default to share KV cache prefix with parent orchestrator
+        if keep_tool_schema_invariant or fork_parent_context:
+            isolated_tools = list(tools)
+        else:
+            isolated_tools = [
+                t
+                for t in tools
+                if (t.get("name") if isinstance(t, dict) else getattr(t, "name", "")) != "delegate_specialist_analysis"
+            ]
+
+        # Context forking: share 100% of parent's (system_prompt, tools, messages_prefix) KV cache
+        if fork_parent_context and parent_messages:
+            prefix = extract_completed_turn_prefix(parent_messages)
+            subagent_prompt = ""
+            for m in messages:
+                if m.get("role") == "user":
+                    c = m.get("content", "")
+                    if isinstance(c, str):
+                        subagent_prompt = c
+                    elif isinstance(c, list):
+                        texts = [b.get("text", "") for b in c if isinstance(b, dict) and b.get("type") == "text"]
+                        subagent_prompt = "\n".join(texts)
+            tail_msg = {
+                "role": "user",
+                "content": f"<subagent_delegation>\nRole: {role_name}\nTask: {subagent_prompt}\n</subagent_delegation>",
+            }
+            active_messages = prefix + [tail_msg]
+        else:
+            active_messages = copy.deepcopy(messages)
+
         isolated_harness = AgentHarness(
             llm_client=llm_client,
             settings=self.settings,
@@ -107,8 +204,8 @@ class IsolatedSubagentRunner:
                 isolated_harness.run_agent_from_messages(
                     session=session,
                     system_prompt=system_prompt,
-                    messages=copy.deepcopy(messages),  # Deep copy — prevent cross-agent nested mutation
-                    tools=tools,
+                    messages=active_messages,
+                    tools=isolated_tools,
                     stage_name=f"{stage_name}_{role_name}",
                     **kwargs,
                 ),
@@ -134,7 +231,7 @@ class IsolatedSubagentRunner:
                         f"Target Schema:\n{json.dumps(output_schema, indent=2)}\n"
                         f"You MUST output ONLY a valid JSON object strictly conforming to this schema."
                     )
-                    correction_messages = copy.deepcopy(messages) + [
+                    correction_messages = copy.deepcopy(active_messages) + [
                         {"role": "assistant", "content": [{"type": "text", "text": result.get("final_text", "")}]},
                         {"role": "user", "content": correction_nudge},
                     ]
@@ -200,6 +297,7 @@ class IsolatedSubagentRunner:
             }
         finally:
             hb_task.cancel()
+            _subagent_depth.reset(depth_token)
 
     async def run_parallel_isolated(
         self,
@@ -225,3 +323,11 @@ class IsolatedSubagentRunner:
             else:
                 final.append(res)
         return final
+
+
+__all__ = [
+    "IsolatedSubagentRunner",
+    "extract_completed_turn_prefix",
+    "_subagent_depth",
+    "MAX_SUBAGENT_DEPTH",
+]

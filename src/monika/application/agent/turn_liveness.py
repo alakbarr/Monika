@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger("TradingAgent.Agent.TurnLiveness")
 
@@ -31,18 +31,29 @@ class TurnLivenessWatchdog:
         stall_timeout_seconds: float = 30.0,
         check_interval_seconds: float = 5.0,
         on_hang_detected: Optional[Callable[[str], None]] = None,
+        task_to_cancel: Optional[asyncio.Task[Any]] = None,
+        cancel_event: Optional[asyncio.Event] = None,
+        abort_on_hang: bool = False,
     ):
         self.turn_id = turn_id
         self.timeout_seconds = timeout_seconds
         self.stall_timeout_seconds = stall_timeout_seconds
         self.check_interval_seconds = check_interval_seconds
         self.on_hang_detected = on_hang_detected
+        self.task_to_cancel = task_to_cancel
+        self.cancel_event = cancel_event
+        self.abort_on_hang = abort_on_hang
+        self.hang_detected: bool = False
         self._last_activity_time = time.time()
         self._generation_counter = 0
         self._last_checked_gen = 0
         self._last_gen_advance_time = time.time()
         self._is_active = False
-        self._watchdog_task: Optional[asyncio.Task] = None
+        self._watchdog_task: Optional[asyncio.Task[Any]] = None
+
+    def set_task_to_cancel(self, task: asyncio.Task[Any]) -> None:
+        """Attach or update the task to be aborted on deadlock."""
+        self.task_to_cancel = task
 
     @property
     def generation(self) -> int:
@@ -100,11 +111,16 @@ class TurnLivenessWatchdog:
 
                 # 1. Total dead-stall check
                 if idle_duration > self.timeout_seconds:
+                    self.hang_detected = True
                     msg = (
                         f"[TurnLiveness] Turn {self.turn_id} deadlocked! "
                         f"No activity for {idle_duration:.1f}s (limit: {self.timeout_seconds:.1f}s)"
                     )
                     logger.error(msg)
+                    if self.cancel_event:
+                        self.cancel_event.set()
+                    if self.abort_on_hang and self.task_to_cancel and not self.task_to_cancel.done():
+                        self.task_to_cancel.cancel()
                     if self.on_hang_detected:
                         self.on_hang_detected(msg)
                     break

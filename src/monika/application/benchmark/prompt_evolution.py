@@ -10,7 +10,7 @@ Evolves trading system prompts offline using multi-objective Pareto optimization
 
 import json
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from monika.infrastructure.llm.prompt_compressor import estimate_tokens
 
@@ -29,6 +29,8 @@ class GEPALiteEvolver:
         population_size: int = 3,
         generations: int = 2,
         target_component: str = "stage2_system_prompt",
+        evaluator_fn: Optional[Callable[[str, List[Dict[str, Any]]], float]] = None,
+        scenarios: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Evolves prompt variants programmatically."""
         from monika.infrastructure.providers.llm_factory import get_client_for_task
@@ -40,6 +42,8 @@ class GEPALiteEvolver:
             client = None
 
         best_result = {"prompt": current_best, "score": 8.0, "tokens": estimate_tokens(current_best), "generation": 0}
+
+        scenario_list = scenarios or []
 
         if client:
             for gen in range(generations):
@@ -56,9 +60,18 @@ class GEPALiteEvolver:
                         min(1.0, float(tok_len) / float(best_result["tokens"])) if best_result["tokens"] > 0 else 1.0
                     )
                     compression_score = 7.0 + (1.0 - compression_ratio) * 3.0
-                    evaluated_score = round(0.5 * compression_score + 0.5 * 10.0, 2)
 
-                    if tok_len < best_result["tokens"] and len(mutation) > 200:
+                    if evaluator_fn is not None:
+                        raw_eval = float(evaluator_fn(mutation, scenario_list))
+                        evaluated_score = round(0.7 * raw_eval + 0.3 * compression_score, 2)
+                        should_select = (
+                            evaluated_score > best_result["score"] or tok_len < best_result["tokens"]
+                        ) and len(mutation) > 200
+                    else:
+                        evaluated_score = round(0.5 * compression_score + 0.5 * 10.0, 2)
+                        should_select = tok_len < best_result["tokens"] and len(mutation) > 200
+
+                    if should_select:
                         best_result = {
                             "prompt": mutation,
                             "score": evaluated_score,

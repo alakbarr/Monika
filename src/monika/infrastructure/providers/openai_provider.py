@@ -610,6 +610,18 @@ class OpenAIProvider(BaseLLMClient):
             extra_headers = kwargs.get("extra_headers") or {}
             kwargs["extra_headers"] = {**affinity_headers, **extra_headers}
 
+        # Auto-populate prompt_cache_key clamped to 64 chars when supported
+        if "prompt_cache_key" not in kwargs:
+            raw_key = (
+                getattr(self, "session_id", None)
+                or getattr(self, "_session_affinity_id", None)
+                or f"monika_{getattr(self, 'role', 'default')}"
+            )
+            key_str = str(raw_key).strip()
+            if not key_str.startswith("monika_"):
+                key_str = f"monika_{key_str}"
+            kwargs["prompt_cache_key"] = key_str[:64]
+
         provider_cfg = (self.settings or {}).get("llm", {}).get(provider_name, {})
         use_streaming = provider_cfg.get("streaming", {}).get("enabled", bool(self.settings))
 
@@ -1340,14 +1352,14 @@ class OpenAIProvider(BaseLLMClient):
 
         norm_msgs = self._normalize_messages(messages)
         if dynamic_sys and norm_msgs:
-            last_user = next((m for m in reversed(norm_msgs) if m.get("role") == "user"), None)
-            if last_user and "<context_snapshot>" not in str(last_user.get("content", "")):
-                if isinstance(last_user.get("content"), str):
-                    last_user["content"] = (
-                        f"{last_user['content']}\n\n<context_snapshot>\n{dynamic_sys}\n</context_snapshot>"
+            first_user = next((m for m in norm_msgs if m.get("role") == "user"), None)
+            if first_user and "<context_snapshot>" not in str(first_user.get("content", "")):
+                if isinstance(first_user.get("content"), str):
+                    first_user["content"] = (
+                        f"{first_user['content']}\n\n<context_snapshot>\n{dynamic_sys}\n</context_snapshot>"
                     )
-                elif isinstance(last_user.get("content"), list):
-                    last_user["content"].append(
+                elif isinstance(first_user.get("content"), list):
+                    first_user["content"].append(
                         {"type": "text", "text": f"\n\n<context_snapshot>\n{dynamic_sys}\n</context_snapshot>"}
                     )
 

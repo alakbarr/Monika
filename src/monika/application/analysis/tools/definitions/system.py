@@ -109,12 +109,17 @@ RETRIEVE_SPILLED_CONTEXT = _tool(
     name="retrieve_spilled_context",
     description=(
         "Retrieve spilled tool observations or large context blobs from PostgreSQL or disk caches by blob_id. "
-        "Supports pagination via offset and max_chars."
+        "Supports pagination via offset/max_chars, line pagination via line_offset/line_limit, "
+        "or search via grep_pattern."
     ),
     properties={
         "blob_id": {
             "type": "string",
             "description": "The blob pointer or identifier (e.g. 'spill_1234abcd' or 'db://spill/spill_1234abcd').",
+        },
+        "storage_key": {
+            "type": "string",
+            "description": "Backward-compatible alias for blob_id.",
         },
         "offset": {
             "type": "integer",
@@ -123,6 +128,18 @@ RETRIEVE_SPILLED_CONTEXT = _tool(
         "max_chars": {
             "type": "integer",
             "description": "Maximum characters to retrieve (default 4000, max 15000).",
+        },
+        "grep_pattern": {
+            "type": "string",
+            "description": "Optional regex or substring pattern to search lines within the spilled content with surrounding context.",
+        },
+        "line_offset": {
+            "type": "integer",
+            "description": "Starting line offset (0-based) for line pagination.",
+        },
+        "line_limit": {
+            "type": "integer",
+            "description": "Maximum number of lines to retrieve when using line pagination (1-500).",
         },
     },
     required=["blob_id"],

@@ -105,6 +105,7 @@ class AgentHarness:
         max_tool_turns: int = 15,
         max_context_chars: int = 500000,
         db_session: Optional[AsyncSession] = None,
+        fallback_client: Optional[Any] = None,
     ):
         """
         Initialize the Agent Harness.
@@ -115,8 +116,11 @@ class AgentHarness:
             max_tool_turns: Maximum allowed ReAct turns before forcing termination.
             max_context_chars: Maximum character budget before context trimming kicks in.
             db_session: Optional SQLAlchemy AsyncSession for pre-execute turn persistence.
+            fallback_client: Optional secondary LLM client for cross-provider failover.
         """
         self.llm_client = llm_client
+        self.fallback_client = fallback_client
+        self._last_normalized_extra: dict[str, Any] = {}
         self.settings = settings or {}
         self.max_tool_turns = max_tool_turns
         self.max_context_chars = max_context_chars
@@ -229,6 +233,41 @@ class AgentHarness:
                 "billing",
             )
         ):
+            return True
+        return False
+
+    def _detect_client_provider(self, client: Any = None) -> str:
+        """Detect provider name for client instance cleanly."""
+        target = client if client is not None else self.llm_client
+        if target is None:
+            return "unknown"
+        p = getattr(target, "provider", None)
+        if p is None or type(p).__name__.startswith("MagicMock"):
+            p = getattr(target, "provider_name", None)
+        if p is not None and not type(p).__name__.startswith("MagicMock"):
+            return str(p)
+        cls_name = getattr(target, "__class__", type(target)).__name__.lower()
+        for prov in ("anthropic", "gemini", "openai", "ollama", "groq"):
+            if prov in cls_name:
+                return prov
+        return "openai"
+
+    def _try_fallback_swap(self, stage_name: str, last_exc: Any) -> bool:
+        """
+        Attempt failover swap to fallback LLM client if configured.
+        Returns True if fallback client was swapped in.
+        """
+        if self.fallback_client is not None:
+            old_provider = self._detect_client_provider(self.llm_client)
+            old_model = getattr(self.llm_client, "model", "unknown")
+            self.llm_client = self.fallback_client
+            self.fallback_client = None
+            new_provider = self._detect_client_provider(self.llm_client)
+            new_model = getattr(self.llm_client, "model", "unknown")
+            logger.warning(
+                f"[{stage_name}][AgentHarness] Swapping to fallback LLM client "
+                f"({old_provider}:{old_model} -> {new_provider}:{new_model}) due to error: {last_exc}"
+            )
             return True
         return False
 
@@ -426,6 +465,7 @@ class AgentHarness:
         out_tok = 0
         cached_tok = 0
         thinking_tok = 0
+        self._last_normalized_extra = {}
 
         # Usage extraction helper
         def _safe_int(val: Any) -> int:
@@ -495,6 +535,33 @@ class AgentHarness:
             if not reasoning_content:
                 reasoning_content = getattr(msg, "reasoning_content", getattr(msg, "reasoning", None))
 
+            def _clean_val(v: Any) -> Any:
+                if v is None:
+                    return None
+                if type(v).__name__.startswith("MagicMock") or "Mock" in type(v).__name__:
+                    return None
+                return v
+
+            if reasoning_content is not None and (
+                type(reasoning_content).__name__.startswith("MagicMock") or "Mock" in type(reasoning_content).__name__
+            ):
+                reasoning_content = None
+
+            extra: dict[str, Any] = {}
+            model_extra = _clean_val(getattr(msg, "model_extra", None))
+            if isinstance(model_extra, dict):
+                for k, v in model_extra.items():
+                    cleaned_v = _clean_val(v)
+                    if cleaned_v is not None:
+                        extra[k] = cleaned_v
+
+            for field_name in ("thought_signature", "reasoning_details", "extra_content"):
+                val = _clean_val(getattr(msg, field_name, None))
+                if val is not None:
+                    extra[field_name] = val
+
+            self._last_normalized_extra = extra
+
             tool_calls = getattr(msg, "tool_calls", None) or []
             for tc in tool_calls:
                 fn = getattr(tc, "function", None)
@@ -537,6 +604,16 @@ class AgentHarness:
                         assistant_blocks.append(
                             {"type": "tool_use", "id": str(t_id), "name": str(t_name), "input": t_input}
                         )
+                    elif b_type == "thinking":
+                        th_text = b.get("thinking") if isinstance(b, dict) else getattr(b, "thinking", "")
+                        sig = b.get("signature") if isinstance(b, dict) else getattr(b, "signature", None)
+                        th_block: dict = {"type": "thinking", "thinking": str(th_text or "")}
+                        if sig:
+                            th_block["signature"] = str(sig)
+                        assistant_blocks.append(th_block)
+                    elif b_type == "redacted_thinking":
+                        data = b.get("data") if isinstance(b, dict) else getattr(b, "data", "")
+                        assistant_blocks.append({"type": "redacted_thinking", "data": str(data or "")})
                     elif isinstance(b, dict):
                         assistant_blocks.append(b)
             elif isinstance(raw_content, str) and raw_content:
@@ -834,6 +911,9 @@ class AgentHarness:
             except Exception as e:
                 logger.debug(f"Tool minification fallback (non-fatal): {e}")
 
+        active_tools: list[dict] = [dict(t) for t in tools] if tools else []
+        active_tools.sort(key=lambda t: str(t.get("name", "")))
+
         curr_max = getattr(self.llm_client, "max_tokens", None)
         if isinstance(curr_max, int) and curr_max < 32000:
             if getattr(self.llm_client, "provider_name", "") in ("groq", "openrouter"):
@@ -891,7 +971,7 @@ class AgentHarness:
 
         logger.info(
             f"[{stage_name}][AgentHarness] Starting ReAct loop "
-            f"(max_turns={effective_max_turns}, tools_available={len(tools)})"
+            f"(max_turns={effective_max_turns}, tools_available={len(active_tools)})"
         )
 
         _overflow_recovery_attempted = False
@@ -976,13 +1056,14 @@ class AgentHarness:
             if not is_floor_ok:
                 logger.warning(f"[{stage_name}][AgentHarness] Preflight context floor warning: {floor_msg}")
 
-            # Offload heavy multimodal chart data from historical turns (>2 turns old)
-            current_messages = offload_historical_charts(current_messages, retain_recent_turns=2)
-
-            # Surface Node 0 Invariant: Preserve messages[0] prefix across turns to maximize provider KV-cache reuse.
-            # Prefetch distillation is an emergency fallback triggered ONLY if conversation approaches context limit (>70% capacity).
+            # Surface Node 0 Invariant: Preserve messages[0] prefix and historical charts across turns
+            # to maximize provider KV-cache reuse. Compaction/offloading triggers ONLY at high-water mark (>80%).
             current_tokens = self.compactor.calculate_history_tokens(current_messages)
-            if current_tokens > (context_win * 0.70):
+            if current_tokens > int(context_win * 0.80):
+                # Offload heavy multimodal chart data from historical turns (>2 turns old)
+                current_messages = offload_historical_charts(current_messages, retain_recent_turns=2)
+
+            if current_tokens > int(context_win * 0.85):
                 try:
                     from monika.application.agent.harness.context_compressor import ContextCompressor
 
@@ -1015,7 +1096,7 @@ class AgentHarness:
                 stage_name=stage_name,
                 turn=turns,
                 messages=current_messages,
-                tools=tools,
+                tools=active_tools,
             )
 
             provider_name = getattr(self.llm_client, "provider_name", "unknown")
@@ -1148,7 +1229,7 @@ class AgentHarness:
                                 stall_timeout_seconds=min(30.0, max(5.0, turn_timeout / 2.0)),
                             ) as watchdog:
                                 response = await run_bounded_async(
-                                    self.llm_client.run_tool_agent(send_messages, tools, effective_sys),
+                                    self.llm_client.run_tool_agent(send_messages, active_tools, effective_sys),
                                     timeout_seconds=turn_timeout,
                                     timeout_message=f"Turn {turns} LLM call timed out after {turn_timeout:.0f}s",
                                 )
@@ -1240,6 +1321,20 @@ class AgentHarness:
                 )
 
                 if response is None:
+                    if self._try_fallback_swap(stage_name, last_exc):
+                        from monika.application.agent.harness.message_repair import transform_messages_for_target_model
+
+                        tgt_prov = self._detect_client_provider()
+                        tgt_model = getattr(self.llm_client, "model", "")
+                        current_messages = transform_messages_for_target_model(
+                            current_messages,
+                            target_provider=tgt_prov,
+                            target_model=tgt_model,
+                        )
+                        if turns >= effective_max_turns:
+                            effective_max_turns += 1
+                        continue
+
                     is_billing = self._is_billing_error(last_exc)
                     logger.error(
                         f"[{stage_name}][AgentHarness] Provider error on turn {turns}: {last_exc} (is_billing={is_billing})"
@@ -1372,6 +1467,14 @@ class AgentHarness:
             # I2: Thinking Signature Persistence
             if getattr(response, "thinking_signature", None):
                 assistant_msg["thinking_signature"] = getattr(response, "thinking_signature")
+            curr_provider = self._detect_client_provider()
+            assistant_msg["_source_provider"] = str(curr_provider)
+            assistant_msg["_source_model"] = str(model_name_curr)
+
+            if hasattr(self, "_last_normalized_extra") and self._last_normalized_extra:
+                for k, v in self._last_normalized_extra.items():
+                    if k not in assistant_msg:
+                        assistant_msg[k] = v
             current_messages.append(assistant_msg)
 
             # Check text blocks
@@ -1550,7 +1653,9 @@ class AgentHarness:
                 )
 
                 # ── Dual-Queue Follow-Up Processing ──
-                if self._follow_up_queue and turns < effective_max_turns:
+                if self._follow_up_queue:
+                    if turns >= effective_max_turns:
+                        effective_max_turns += 1
                     f_msg = self._follow_up_queue.popleft()
                     logger.info(f"[{stage_name}][AgentHarness] Draining follow-up directive from '{f_msg.sender}'.")
                     current_messages.append(
@@ -1665,6 +1770,7 @@ class AgentHarness:
                 c_name = call_item["name"]
                 c_input = call_item["input"]
                 c_id = call_item["id"]
+                needs_repeat_advisory = False
 
                 # Check if call was superseded by another parallel call
                 if call_item.get("_superseded"):
@@ -1752,6 +1858,7 @@ class AgentHarness:
                     }
 
                 # a. Progressive Anti-Oscillation Loop Guard (Hash-based + Sliding Window)
+                suppress_threshold = int(self.settings.get("repeat_tool_suppress_threshold", 2))
                 call_sig = self.compute_tool_signature(c_name, c_input)
                 total_sig_counts[call_sig] = total_sig_counts.get(call_sig, 0) + 1
 
@@ -1763,7 +1870,13 @@ class AgentHarness:
 
                 recent_repeats = sliding_window_sigs.count(call_sig)
 
-                if repeated_tool_count >= 2 or recent_repeats >= 2 or total_sig_counts[call_sig] >= 3:
+                is_hard_suppressed = (
+                    repeated_tool_count >= suppress_threshold
+                    or recent_repeats >= suppress_threshold
+                    or total_sig_counts[call_sig] >= (suppress_threshold + 1)
+                )
+
+                if is_hard_suppressed:
                     logger.warning(
                         f"[{stage_name}][AgentHarness] Anti-Oscillation: Suppressing repeated call for '{c_name}' "
                         f"(consecutive={repeated_tool_count}, recent={recent_repeats}, total={total_sig_counts[call_sig]})"
@@ -1783,6 +1896,10 @@ class AgentHarness:
                         "name": c_name,
                         "content": json.dumps(suppressed_result),
                     }
+
+                needs_repeat_advisory = (
+                    repeated_tool_count >= 2 or recent_repeats >= 1 or total_sig_counts[call_sig] >= 2
+                )
 
                 sliding_window_sigs.append(call_sig)
 
@@ -1981,6 +2098,44 @@ class AgentHarness:
                 self.stall_guard.record_call(c_name, res_obj, turn_idx=turns)
                 self.verification_ledger.record_tool_execution(c_name, c_input, res_obj)
 
+                if c_name == "load_tool_category" and isinstance(res_obj, dict):
+                    new_schemas = res_obj.get("schemas", [])
+                    if isinstance(new_schemas, list):
+                        existing_names = {str(t.get("name", "")) for t in active_tools}
+                        for sch in new_schemas:
+                            if isinstance(sch, dict) and str(sch.get("name", "")) not in existing_names:
+                                active_tools.append(dict(sch))
+                                existing_names.add(str(sch.get("name", "")))
+                        active_tools.sort(key=lambda t: str(t.get("name", "")))
+
+                if c_name in (
+                    "patch_source_file",
+                    "write_source_file",
+                    "edit_file",
+                    "apply_file_patch",
+                    "create_file",
+                ):
+                    target_file = (
+                        c_input.get("filepath") or c_input.get("path") or c_input.get("filename") or c_input.get("file")
+                    )
+                    if target_file:
+                        turn_state.stop_gate_context.mutated_files.append(str(target_file))
+                    turn_state.stop_gate_context.has_unverified_file_edits = True
+
+                if c_name in (
+                    "run_verification_gate",
+                    "verify_syntax",
+                    "run_terminal_command",
+                    "execute_code",
+                    "run_command",
+                ):
+                    turn_state.stop_gate_context.verification_commands_run.append(c_name)
+                    turn_state.stop_gate_context.has_unverified_file_edits = False
+
+                if c_name in ("propose_action", "propose_trade"):
+                    turn_state.stop_gate_context.proposed_actions.append(c_input)
+                    turn_state.stop_gate_context.has_unregistered_trade_proposals = False
+
                 # Disk spillover check for payload > 16KB to prevent context window bloat and JSON truncation
                 try:
                     from monika.application.analysis.tools.tool_result_storage import get_tool_result_storage
@@ -2045,6 +2200,13 @@ class AgentHarness:
                         f"{tool_res_content}\n"
                         f"</untrusted_external_content>"
                     )
+
+                if needs_repeat_advisory:
+                    advisory_note = (
+                        f"\n\n[ADVISORY REMINDER: Tool '{c_name}' with identical parameters was already called previously. "
+                        f"Avoid redundant calls. Synthesize collected data and conclude.]"
+                    )
+                    tool_res_content = f"{tool_res_content}{advisory_note}"
 
                 return {
                     "type": "tool_result",

@@ -405,8 +405,19 @@ class ContextCompactionEngine:
     # LAYER 2 & 3: Multi-turn History Compaction
     # =========================================================================
 
-    def calculate_history_tokens(self, messages: List[Dict[str, Any]]) -> int:
-        """Calculates total token load of a message list."""
+    def calculate_history_tokens(
+        self,
+        messages: List[Dict[str, Any]],
+        last_usage_tokens: Optional[int] = None,
+        trailing_delta_count: Optional[int] = None,
+    ) -> int:
+        """Calculates total token load of a message list with full block-type coverage and delta support."""
+        if last_usage_tokens is not None and last_usage_tokens > 0:
+            if trailing_delta_count is not None and trailing_delta_count > 0:
+                trailing_msgs = messages[-trailing_delta_count:]
+                return last_usage_tokens + self.calculate_history_tokens(trailing_msgs)
+            return last_usage_tokens
+
         total = 0
         for m in messages:
             content = m.get("content", "")
@@ -414,14 +425,76 @@ class ContextCompactionEngine:
                 total += estimate_tokens(content)
             elif isinstance(content, list):
                 for block in content:
-                    if isinstance(block, dict) and "text" in block:
-                        total += estimate_tokens(block["text"])
+                    if isinstance(block, dict):
+                        # 1. Text blocks
+                        if "text" in block and block["text"]:
+                            total += estimate_tokens(str(block["text"]))
+                        # 2. Tool result blocks
+                        b_type = block.get("type")
+                        if b_type == "tool_result" or "tool_use_id" in block:
+                            res_content = block.get("content")
+                            if res_content is not None and res_content != block.get("text"):
+                                total += estimate_tokens(
+                                    json.dumps(res_content)
+                                    if isinstance(res_content, (dict, list))
+                                    else str(res_content)
+                                )
+                        # 3. Tool use blocks
+                        elif b_type == "tool_use" or ("name" in block and "input" in block):
+                            t_name = str(block.get("name", ""))
+                            t_input = block.get("input", {})
+                            total += estimate_tokens(t_name)
+                            total += estimate_tokens(
+                                json.dumps(t_input) if isinstance(t_input, (dict, list)) else str(t_input)
+                            )
+                        # 4. Thinking / reasoning blocks
+                        elif b_type in ("thinking", "redacted_thinking") or "thinking" in block:
+                            th = block.get("thinking") or block.get("data") or ""
+                            total += estimate_tokens(str(th))
+                    else:
+                        # Non-dict SDK objects
+                        txt = getattr(block, "text", None)
+                        if txt:
+                            total += estimate_tokens(str(txt))
+                        cnt = getattr(block, "content", None)
+                        if cnt and cnt != txt:
+                            total += estimate_tokens(json.dumps(cnt) if isinstance(cnt, (dict, list)) else str(cnt))
+                        th = getattr(block, "thinking", None)
+                        if th:
+                            total += estimate_tokens(str(th))
+                        nm = getattr(block, "name", None)
+                        inp = getattr(block, "input", None)
+                        if nm and inp is not None:
+                            total += estimate_tokens(str(nm)) + estimate_tokens(
+                                json.dumps(inp) if isinstance(inp, (dict, list)) else str(inp)
+                            )
+
+            # OpenAI style tool_calls on assistant message
+            tool_calls = m.get("tool_calls")
+            if tool_calls and isinstance(tool_calls, list):
+                for tc in tool_calls:
+                    if isinstance(tc, dict):
+                        fn = tc.get("function", {})
+                        if isinstance(fn, dict):
+                            total += estimate_tokens(str(fn.get("name", "")))
+                            total += estimate_tokens(str(fn.get("arguments", "")))
+                    else:
+                        fn = getattr(tc, "function", None)
+                        if fn:
+                            total += estimate_tokens(str(getattr(fn, "name", "")))
+                            total += estimate_tokens(str(getattr(fn, "arguments", "")))
+
+            # Reasoning / thinking on message level
+            reasoning = m.get("reasoning_content") or m.get("thinking")
+            if reasoning:
+                total += estimate_tokens(str(reasoning))
+
         return total
 
     def emergency_guard(self, messages: List[Dict[str, Any]], context_window: int = 128000) -> List[Dict[str, Any]]:
         """
         Layer 3: Hard deterministic truncation at >=85% capacity.
-        Preserves system prompt + first user task + last 3 turns.
+        Preserves system prompt + first user task + recent turns with clean tool boundaries.
         Discards older tool turns and large intermediate artifacts.
         """
         if len(messages) <= 4:
@@ -437,12 +510,17 @@ class ContextCompactionEngine:
             return messages
 
         first_turn = non_system_msgs[0]
-        recent_turns = non_system_msgs[-3:]
 
-        middle_turns = non_system_msgs[1:-3]
+        # Snap boundary for recent_turns so no tool calls or results are split
+        target_split = max(1, len(non_system_msgs) - 3)
+        split_idx = self._snap_tool_boundary(non_system_msgs, target_split, min_idx=1, max_idx=len(non_system_msgs) - 1)
+
+        middle_turns = non_system_msgs[1:split_idx]
+        recent_turns = non_system_msgs[split_idx:]
+
         summarized_placeholder = {
             "role": "user",
-            "content": f"[SYSTEM NOTE: {len(middle_turns)} intermediate reasoning/tool turns compacted to prevent context overflow. Active focus: current state and last 3 turns.]",
+            "content": f"[SYSTEM NOTE: {len(middle_turns)} intermediate reasoning/tool turns compacted to prevent context overflow. Active focus: current state and recent turns.]",
         }
 
         compacted = system_msgs + [first_turn, summarized_placeholder] + recent_turns
@@ -709,60 +787,116 @@ class ContextCompactionEngine:
 
         return updated
 
-    def check_and_compact(self, messages: List[Dict[str, Any]], context_window: int = 128000) -> List[Dict[str, Any]]:
+    def check_and_compact(
+        self,
+        messages: List[Dict[str, Any]],
+        context_window: int = 128000,
+        reserved_output_tokens: int = 4096,
+        headroom_tokens: int = 2048,
+    ) -> List[Dict[str, Any]]:
         """
         Evaluates context pressure and applies Layer 1/2/3 defense.
-        Preserves KV-cache prefix during normal turns by triggering masking
-        under genuine context pressure (>=50% window, >32,000 tokens, or intermediate
-        accumulation of >10,000 tokens with >4 messages).
+        Preserves KV-cache prefix during normal turns by triggering compaction ONLY
+        under genuine high-watermark context pressure (>= 80% context window or
+        context_window - reserved_output_tokens - headroom_tokens).
         """
         if not messages or context_window <= 0:
             return messages
 
         current_tokens = self.calculate_history_tokens(messages)
-        ratio = current_tokens / context_window
+        high_watermark = min(
+            int(context_window * 0.80),
+            max(1000, context_window - reserved_output_tokens - headroom_tokens),
+        )
 
-        if ratio >= self.EMERGENCY_THRESHOLD or current_tokens >= self.EMERGENCY_THRESHOLD_ABSOLUTE:
-            return self.emergency_guard(messages, context_window)
-        elif ratio >= self.SYNTHESIS_THRESHOLD or current_tokens >= self.SYNTHESIS_THRESHOLD_ABSOLUTE:
-            # If above 50% capacity or >=28k tokens, prune older turns keeping the most recent 1-2 turns
-            return self.mask_aged_observations(messages, keep_recent_turns=1)
-        elif current_tokens > 10000 and len(messages) > 4:
-            # Intermediate tier: mask aged observations keeping recent turn intact
+        if current_tokens >= high_watermark:
+            ratio = current_tokens / context_window
+            if ratio >= self.EMERGENCY_THRESHOLD or current_tokens >= self.EMERGENCY_THRESHOLD_ABSOLUTE:
+                return self.emergency_guard(messages, context_window)
             return self.mask_aged_observations(messages, keep_recent_turns=1)
 
         return messages
+
+    @staticmethod
+    def _is_clean_boundary(messages: List[Dict[str, Any]], i: int) -> bool:
+        """
+        Returns True if index i is a safe cut-point that does not separate
+        an assistant tool call from its matching tool result.
+        """
+        if i <= 0 or i >= len(messages):
+            return True
+        msg = messages[i]
+        # 1. messages[i] cannot be a tool result
+        if msg.get("role") == "tool":
+            return False
+        content = msg.get("content")
+        if isinstance(content, list):
+            if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
+                return False
+
+        # 2. Check if messages prior to i have unresolved tool calls
+        emitted_ids = set()
+        resolved_ids = set()
+        has_generic_tool_calls = 0
+        generic_tool_results = 0
+
+        for m in messages[:i]:
+            if m.get("role") == "assistant":
+                tc_list = m.get("tool_calls")
+                if tc_list and isinstance(tc_list, list):
+                    for tc in tc_list:
+                        tc_id = tc.get("id") if isinstance(tc, dict) else getattr(tc, "id", None)
+                        if tc_id:
+                            emitted_ids.add(str(tc_id))
+                        else:
+                            has_generic_tool_calls += 1
+                c = m.get("content")
+                if isinstance(c, list):
+                    for b in c:
+                        if isinstance(b, dict) and b.get("type") == "tool_use":
+                            b_id = b.get("id")
+                            if b_id:
+                                emitted_ids.add(str(b_id))
+                            else:
+                                has_generic_tool_calls += 1
+            elif m.get("role") == "tool":
+                tid = m.get("tool_call_id")
+                if tid:
+                    resolved_ids.add(str(tid))
+                else:
+                    generic_tool_results += 1
+            else:
+                c = m.get("content")
+                if isinstance(c, list):
+                    for b in c:
+                        if isinstance(b, dict) and b.get("type") == "tool_result":
+                            b_id = b.get("tool_use_id")
+                            if b_id:
+                                resolved_ids.add(str(b_id))
+                            else:
+                                generic_tool_results += 1
+
+        unresolved = emitted_ids - resolved_ids
+        if unresolved or (has_generic_tool_calls > generic_tool_results):
+            return False
+
+        return True
 
     def _snap_tool_boundary(self, messages: List[Dict[str, Any]], target_idx: int, min_idx: int, max_idx: int) -> int:
         """
         Snap cut point forward past orphan tool results or tool call pairs.
         Ensures a tool call and its response are never split across the compaction boundary.
         """
-
-        def is_clean_boundary(i: int) -> bool:
-            if i >= len(messages):
-                return True
-            msg = messages[i]
-            if msg.get("role") == "tool":
-                return False
-            content = msg.get("content")
-            if isinstance(content, list):
-                if any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
-                    return False
-            if i > 0:
-                prev = messages[i - 1]
-                if prev.get("role") == "assistant" and prev.get("tool_calls"):
-                    return False
-            return True
+        target_idx = max(min_idx, min(target_idx, max_idx))
 
         forward = target_idx
-        while forward < max_idx and not is_clean_boundary(forward):
+        while forward < max_idx and not self._is_clean_boundary(messages, forward):
             forward += 1
-        if is_clean_boundary(forward):
+        if self._is_clean_boundary(messages, forward):
             return forward
 
         backward = target_idx
-        while backward > min_idx and not is_clean_boundary(backward):
+        while backward > min_idx and not self._is_clean_boundary(messages, backward):
             backward -= 1
         return backward
 

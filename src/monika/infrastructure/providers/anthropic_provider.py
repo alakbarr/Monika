@@ -45,7 +45,7 @@ def __getattr__(name: str) -> Any:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-def _build_system_blocks(system_prompt) -> list[dict]:
+def _build_system_blocks(system_prompt, cache_ttl: Optional[str] = None) -> list[dict]:
     """
     Menerima system_prompt sebagai:
       - list of dicts (langsung dari CacheBreakpointManager.wrap_system_tiers()), ATAU
@@ -54,19 +54,30 @@ def _build_system_blocks(system_prompt) -> list[dict]:
     """
     if not system_prompt:
         return []
+    cc: dict[str, Any] = {"type": "ephemeral"}
+    if cache_ttl in ("5m", "1h") or cache_ttl:
+        cc["ttl"] = cache_ttl
+
     if isinstance(system_prompt, list):
-        return [b for b in system_prompt if isinstance(b, dict) and b.get("text", "").strip()]
+        out = []
+        for b in system_prompt:
+            if isinstance(b, dict) and b.get("text", "").strip():
+                b_copy = dict(b)
+                if cache_ttl and "cache_control" in b_copy:
+                    b_copy["cache_control"] = dict(cc)
+                out.append(b_copy)
+        return out
     if isinstance(system_prompt, tuple):
         static_text, dynamic_text = system_prompt
         blocks = []
         if static_text and static_text.strip():
-            blocks.append({"type": "text", "text": static_text, "cache_control": {"type": "ephemeral"}})
+            blocks.append({"type": "text", "text": static_text, "cache_control": dict(cc)})
         if dynamic_text and dynamic_text.strip():
             blocks.append({"type": "text", "text": dynamic_text})
         return blocks
     if isinstance(system_prompt, str) and not system_prompt.strip():
         return []
-    return [{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}]
+    return [{"type": "text", "text": system_prompt, "cache_control": dict(cc)}]
 
 
 class AnthropicProvider(BaseLLMClient):
@@ -248,13 +259,15 @@ class AnthropicProvider(BaseLLMClient):
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
         }
+        cache_ttl = kwargs.get("cache_ttl")
         if system:
-            create_kwargs["system"] = _build_system_blocks(system)
+            create_kwargs["system"] = _build_system_blocks(system, cache_ttl=cache_ttl)
 
         if use_thinking:
             create_kwargs["max_tokens"] = max(safe_max, thinking_budget + 4000)
             create_kwargs["temperature"] = 1.0
-            create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
+            if not kwargs.get("adaptive_only", False):
+                create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
             if self.thinking_level and str(self.thinking_level).lower() != "none":
                 create_kwargs["output_config"] = {"effort": self.thinking_level}
         else:
@@ -273,12 +286,25 @@ class AnthropicProvider(BaseLLMClient):
                     response = await self.client.messages.create(**create_kwargs)
 
                 if hasattr(response, "usage") and response.usage:
-                    raw_inp = getattr(response.usage, "input_tokens", 0)
-                    outp = getattr(response.usage, "output_tokens", 0)
-                    cached_in = getattr(response.usage, "cache_read_input_tokens", 0) or 0
-                    cache_create = getattr(response.usage, "cache_creation_input_tokens", 0) or 0
+
+                    def _safe_int(val: Any) -> int:
+                        if isinstance(val, (int, float)) and not isinstance(val, bool):
+                            return int(val)
+                        return 0
+
+                    raw_inp = _safe_int(getattr(response.usage, "input_tokens", 0))
+                    outp = _safe_int(getattr(response.usage, "output_tokens", 0))
+                    cached_in = _safe_int(getattr(response.usage, "cache_read_input_tokens", 0))
+                    cached_1h = _safe_int(getattr(response.usage, "ephemeral_1h_input_tokens", 0))
+                    if cached_1h > 0:
+                        cached_in = max(cached_in, cached_1h)
+                    cache_create = _safe_int(getattr(response.usage, "cache_creation_input_tokens", 0))
                     outp_details = getattr(response.usage, "output_tokens_details", None)
-                    thinking = getattr(outp_details, "thinking_tokens", 0) or 0 if outp_details else 0
+                    thinking = (
+                        _safe_int(getattr(outp_details, "thinking_tokens", 0))
+                        if (outp_details and not type(outp_details).__name__.startswith("MagicMock"))
+                        else 0
+                    )
                     # Normalize input_tokens to total prompt tokens (uncached + cached_read)
                     inp = raw_inp + cached_in
                     await self._save_token_usage(

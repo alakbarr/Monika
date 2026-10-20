@@ -4905,6 +4905,7 @@
 - **Classes**:
   - `class TurnLivenessWatchdog`: Guards a running turn against unhandled hangs, deadlocked background tasks,
     - `__init__(turn_id: str, timeout_seconds: float, stall_timeout_seconds: float, ...)`
+    - `set_task_to_cancel(task: asyncio.Task[Any]) -> None` - *Attach or update the task to be aborted on deadlock.*
     - `generation() -> int` - *Current generation progress counter.*
     - `advance_generation(count: int) -> int` - *Advance the generation counter when tokens or chunks arrive.*
     - `record_activity(step_name: str, chunk_len: int) -> None` - *Updates activity timestamp and generation counter to postpone hang triggers.*
@@ -5103,7 +5104,8 @@
 #### `message_repair.py` - *Four-pass message history alternation cleaner and repair engine for provider API dispatch.*
 - **Path**: [`src/monika/application/agent/harness/message_repair.py`](src/monika/application/agent/harness/message_repair.py)
 - **Top-Level Functions**:
-  - `repair_message_history(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]`: Enforces strict role alternation and tool-result pairing integrity across message sequences.
+  - `repair_message_history(messages: List[Dict[str, Any]], close_unanswered: bool, executed_call_ids: Optional[Set[str]]) -> List[Dict[str, Any]]`: Enforces strict role alternation and tool-result pairing integrity across message sequences.
+  - `transform_messages_for_target_model(messages: List[Dict[str, Any]], target_provider: str, target_model: str) -> List[Dict[str, Any]]`: Transforms assistant reasoning and signature blocks when failing over across providers/models.
 
 #### `repetition_guard.py` - *Monitors assistant text generation for degenerate repetition loops.*
 - **Path**: [`src/monika/application/agent/harness/repetition_guard.py`](src/monika/application/agent/harness/repetition_guard.py)
@@ -6234,7 +6236,7 @@
 - **Classes**:
   - `class ProgressivePlaybookLoader`: Manages progressive 3-tier loading of trading playbooks.
     - `__init__(base_dir: Optional[str])`
-    - `get_level0_index() -> str` - *Level 0: Return ultra-compact index of available strategies and active regimes.*
+    - `get_level0_index() -> str` - *Level 0: Return compact progressive disclosure index of available strategies and active regimes*
     - `get_level1_playbook(symbol: str) -> Optional[str]` - *Level 1: Load symbol-specific or asset-class playbook.*
     - `get_level2_reference(topic: str) -> Optional[str]` - *Level 2: Load granular tactical micro-reference on-demand.*
 
@@ -6485,7 +6487,7 @@
   - `class PromptSection`: Named system prompt section with deterministic sparse numeric ordering.
   - `class PromptAssembler`: Assembles prompts with strict 4-tier ordering for maximum KV-cache efficiency.
     - `__init__(settings: Optional[dict])`
-    - `assemble_stage1_tiers(core_memory: str, pad_for_gemini: bool, model_name: Optional[str]) -> Tuple[str, str, str]` - *Returns structured 3 system tiers (Tier 1, Tier 2, Tier 3) for cache breakpoint injection.*
+    - `assemble_stage1_tiers(core_memory: str, pad_for_gemini: bool, model_name: Optional[str], ...) -> Tuple[str, str, str]` - *Returns structured 3 system tiers (Tier 1, Tier 2, Tier 3) for cache breakpoint injection.*
     - `assemble_stage1_tiered(core_memory: str, pad_for_gemini: bool) -> Any` - *Returns structured TieredSystemPrompt for Stage 1 prompt cache stability.*
     - `assemble_stage1_system_tuple(core_memory: str, behavioral_alert: str, pad_for_gemini: bool) -> Tuple[str, str]` - *Returns (static_system_prompt, dynamic_system_notes) for Stage 1 Macro Analysis.*
     - `assemble_stage1(data_bundle: str, portfolio_state: Optional[dict], core_memory: str, ...) -> Tuple[str, str]` - *Returns (system_prompt, user_message) for Stage 1 Macro Analysis.*
@@ -6979,6 +6981,8 @@
     - `__init__(settings: Optional[dict])`
     - `async run_isolated(role_name: str, llm_client: Any, system_prompt: str, ...) -> Dict[str, Any]` - *Spawn a subagent with dedicated AgentHarness instance.*
     - `async run_parallel_isolated(specs: List[Dict[str, Any]], timeout: int, session: Any) -> List[Dict[str, Any]]` - *Run multiple isolated subagents concurrently.*
+- **Top-Level Functions**:
+  - `extract_completed_turn_prefix(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]`: Returns a deep copy of messages up to the last complete turn boundary
 
 ### Folder: `src/monika/application/analysis/tools` <a id="folder-srcmonikaapplicationanalysistools"></a>
 
@@ -7035,6 +7039,10 @@
   - `class PatchOperation`
   - `class V4APatchParser`: Parses unified multi-file patches with syntax:
     - `parse(patch_text: str) -> List[PatchOperation]`
+- **Top-Level Functions**:
+  - `record_file_observation(path: str) -> None`: Record session file observation tracking (mtime_ns, size).
+  - `check_file_observation(path: str, require_prior_read: bool) -> Tuple[bool, Optional[str]]`: Check whether a file was previously observed and whether its disk state has changed externally.
+  - `apply_search_replace(original_text: str, search_block: str, replace_block: str, ...) -> Dict[str, Any]`: Applies exact or fuzzy search-replace to text and returns a unified diff snippet preview.
 
 #### `loop_guard.py` - *Tool Execution Loop Guard.*
 - **Path**: [`src/monika/application/analysis/tools/loop_guard.py`](src/monika/application/analysis/tools/loop_guard.py)
@@ -7065,6 +7073,7 @@
     - `get(name: str, settings: Optional[dict]) -> Any` - *Resolve canonical name and return an instantiated ToolHandler or ToolDefinition.*
     - `resolve_name(name: str) -> str` - *Resolve alias to canonical tool name.*
     - `is_parallel_safe(name: str) -> bool` - *Check if a tool can safely run concurrently in a batch segment.*
+    - `is_tool_concurrency_safe(tool_name: str, args: Optional[dict]) -> bool` - *Determine whether a tool can safely execute concurrently without serial session lock contention.*
     - `list_tools() -> List[str]` - *Return all registered canonical tool names.*
     - `get_by_category(category: str) -> List[str]` - *Return tool names under a given category.*
     - `get_available_tools(toolsets: Optional[Set[str]]) -> List[ToolDefinition]` - *Get tools filtered by toolset and availability.*
@@ -7090,6 +7099,8 @@
     - `handoff_process(session_id: str, new_owner_agent_id: str) -> Dict[str, Any]` - *Transfers process ownership from a subagent to parent orchestrator.*
 - **Top-Level Functions**:
   - `rewrite_sudo_command(command: str) -> str`: Sanitizes or rewrites 'sudo' commands for environments without sudo or running as root/Windows.
+  - `get_terminal_engine() -> TerminalProcessEngine`: Return or initialize the default TerminalProcessEngine singleton.
+  - `run_terminal_command(command: str, background: bool, timeout: int, ...) -> Dict[str, Any]`: Execute shell command with auto-promotion on timeout.
 
 #### `tool_catalog.py` - *File: analysis/tools/tool_catalog.py*
 - **Path**: [`src/monika/application/analysis/tools/tool_catalog.py`](src/monika/application/analysis/tools/tool_catalog.py)
@@ -7119,7 +7130,7 @@
     - `detect_cycle() -> Optional[tuple[int, int]]` - *Mengembalikan (period, laps) jika siklus berulang >= 2 lap penuh (3x putaran).*
     - `reset() -> None`
   - `class AntiOscillationGuard`: Mendeteksi dan menekan perulangan panggilan tool identik serta siklus multi-tool bergantian.
-    - `__init__(window_size: int)`
+    - `__init__(window_size: int, threshold: int)`
     - `evaluate(sig: str, tool_name: str) -> GuardrailVerdict`
     - `record(sig: str) -> None`
     - `reset() -> None`
@@ -7381,6 +7392,7 @@
     - `is_binary_file(path: Path) -> bool`
     - `search(pattern: str, base_path: str, file_pattern: Optional[str], ...) -> List[Dict[str, Any]]` - *Scans filesystem and returns structured search matches with context.*
 - **Top-Level Functions**:
+  - `sample_across_top_level(matches: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]`: Sample search results round-robin across top-level directories so a single
   - `async handle_search_files(params: CodeSearchInput, context: Optional[Any]) -> str`: Fast regex and keyword code search across codebase files with context windowing.
 
 #### `computer_use_tool.py` - *OS Computer Use and GUI Automation Tool.*
@@ -7509,6 +7521,7 @@
 - **Path**: [`src/monika/application/analysis/tools/domain/spill_reader_tool.py`](src/monika/application/analysis/tools/domain/spill_reader_tool.py)
 - **Classes**:
   - `class RetrieveSpilledContextInput(BaseModel)`: Input schema for retrieve_spilled_context tool.
+    - `validate_id_present(data: Any) -> Any`
   - `class RetrieveSpilledContextHandler(ToolHandler)`
     - `async execute(args: Dict[str, Any], session: AsyncSession, executor: Optional[Any]) -> Any`
 - **Top-Level Functions**:
@@ -8340,9 +8353,10 @@
   - `class CodeExecutionRpcServer`: Host-side Loopback TCP RPC Server for Programmatic Tool Calling.
     - `__init__(allowed_tools: Optional[FrozenSet[str] | Set[str]], max_tool_calls: int, dispatch_fn: Optional[Callable[[str, Dict[str, Any]], str]], ...)`
     - `start() -> int` - *Bind to ephemeral loopback port and start background listener thread.*
-    - `stop() -> None` - *Stop server and clean up socket.*
+    - `stop() -> None` - *Stop server, close socket, and clean up active client threads.*
 - **Top-Level Functions**:
   - `generate_monika_tools_client_code(port: int, token: str, allowed_tools: Set[str] | FrozenSet[str]) -> str`: Generate client stub script to be injected into the execution sandbox environment.
+  - `render_tools_sdk_py(tool_schemas: List[Dict[str, Any]]) -> str`: Generate clean Python TypedDict and Tools(Protocol) type stub documentation
 
 #### `env_sanitizer.py` - *Strict environment variable scrubbing for programmatic tool execution and subprocesses.*
 - **Path**: [`src/monika/application/analysis/tools/kernel/env_sanitizer.py`](src/monika/application/analysis/tools/kernel/env_sanitizer.py)
@@ -11948,6 +11962,8 @@
     - `compute_symbol_budget(symbol: str, context: Optional[Dict[str, Any]], base_budget: int, ...) -> int` - *Calculates exact thinking token budget (tokens) for a given symbol.*
     - `get_thinking_level(symbol: str, context: Optional[Dict[str, Any]]) -> str` - *Maps the adaptive computation to standardized thinking levels:*
     - `get_thinking_budget_for_task(task_role: Optional[str], symbol: str, context: Optional[Dict[str, Any]], ...) -> int` - *Determines the appropriate thinking token budget based on task role and symbol context.*
+- **Top-Level Functions**:
+  - `clamp_thinking_budget_to_answer_room(budget: int, max_tokens: int, min_answer_tokens: int) -> int`: Clamps thinking token budget so it never starves max_tokens of answer completion headroom.
 
 #### `cache_breakpoint_manager.py` - *Cache Breakpoint Manager — Optimizes Anthropic / Gemini Prompt Caching.*
 - **Path**: [`src/monika/infrastructure/llm/cache_breakpoint_manager.py`](src/monika/infrastructure/llm/cache_breakpoint_manager.py)
@@ -11958,18 +11974,36 @@
     - `pad_system_prompt_to_threshold(system_prompt: str, model_name: str, provider_name: str, ...) -> str` - *Pads system prompts with canonical invariant rules only when close to cache threshold (or force=True).*
     - `wrap_system_tiers(tier1_immutable: str, tier2_session_stable: str, tier3_cycle_stable: str, ...) -> List[Dict[str, Any]]` - *Wraps system prompt tiers into structured Anthropic content blocks with cache_control.*
     - `find_completed_transaction_endpoints(messages: List[Dict[str, Any]]) -> List[int]` - *Finds the message indices that represent the clean end of a completed tool transaction.*
-    - `apply_to_messages(messages: List[Dict[str, Any]], max_message_breakpoints: int, checkpoint_turn_index: Optional[int]) -> List[Dict[str, Any]]` - *Applies sliding cache breakpoints to the endpoints of the last completed tool transactions.*
+    - `apply_to_messages(messages: List[Dict[str, Any]], max_message_breakpoints: int, checkpoint_turn_index: Optional[int], ...) -> List[Dict[str, Any]]` - *Applies sliding cache breakpoints to the endpoints of the last completed tool transactions.*
     - `wrap_classify_json(system_prompt: Optional[str], tool_schema: Optional[Dict[str, Any]], pad_to_cache_threshold: bool) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]` - *Wraps system prompt and single tool schema into structured Anthropic blocks with cache_control.*
 
 #### `cache_miss_detector.py` - *Cache Miss Detector — identifies prompt cache misses and calculates financial waste.*
 - **Path**: [`src/monika/infrastructure/llm/cache_miss_detector.py`](src/monika/infrastructure/llm/cache_miss_detector.py)
 - **Classes**:
+  - `class CacheMissReason(str)`: Case-insensitive and alias-aware string for cache miss root-cause classification.
   - `class CacheMissReport`
   - `class CacheMissDetector`: Tracks cache efficiency across consecutive LLM calls and flags financial waste.
     - `__init__(cache_ttl_ms: float)`
+    - `note_compaction(caller_id: str) -> None` - *Records that compaction occurred for a caller/session, noting deliberate prefix mutation.*
     - `check(cached_tokens: int, cache_creation_tokens: int, model: str, ...) -> CacheMissReport` - *Check if current call missed cache vs. previous call within the same context.*
     - `get_summary() -> Dict[str, Any]`
     - `reset()` - *Reset internal metrics.*
+
+#### `cache_warmer.py`
+- **Path**: [`src/monika/infrastructure/llm/cache_warmer.py`](src/monika/infrastructure/llm/cache_warmer.py)
+- **Classes**:
+  - `class CacheWarmer`: Active economic prompt cache warmer.
+    - `__init__(settings: Optional[dict], default_ttl_ms: float)`
+    - `is_replayable(model_name: str, thinking_enabled: bool, adaptive_thinking: bool) -> bool`
+    - `evaluate_decision(prompt_tokens: int, warm_cost: float, miss_cost: float, ...) -> Dict[str, Any]`
+    - `schedule_warm(session_id: str, prompt_tokens: int, warm_cost: float, ...) -> bool` - *Schedules a background cache warming coroutine if economically rational.*
+    - `cancel_warm(session_id: str) -> None` - *Cancels a pending cache warming timer.*
+    - `cancel_all() -> None` - *Cancels all pending cache warming timers.*
+- **Top-Level Functions**:
+  - `get_cache_warming_delay_ms(ttl_ms: float) -> float`: Computes delay before cache warming dispatch:
+  - `get_refresh_deadline_at_ms(next_warm_at_ms: float, ttl_ms: float, delay_ms: float) -> float`: Computes the hard deadline beyond which a scheduled warm is aborted as stale.
+  - `is_replayable(model_name: str, thinking_enabled: bool, adaptive_thinking: bool) -> bool`: Determines whether a model invocation can be safely replayed for cache warming.
+  - `evaluate_warming_decision(prompt_tokens: int, warm_cost: float, miss_cost: float, ...) -> Dict[str, Any]`: Evaluates whether warming the prompt cache is economically rational:
 
 #### `caveman_compressor.py`
 - **Path**: [`src/monika/infrastructure/llm/caveman_compressor.py`](src/monika/infrastructure/llm/caveman_compressor.py)
@@ -11981,6 +12015,7 @@
 - **Classes**:
   - `class ConstrainedSamplingConfig`: Configuration for grammar-constrained LLM output generation.
 - **Top-Level Functions**:
+  - `can_use_strict_schema(schema: Dict[str, Any]) -> bool`: Recursively checks if a schema contains unsupported keywords for strict mode.
   - `make_strict_json_schema(schema: Dict[str, Any]) -> Dict[str, Any]`: Transform JSON Schema into strict mode subset for constrained sampling.
   - `resolve_grammar_for_provider(config: ConstrainedSamplingConfig, provider: str) -> Optional[Dict[str, Any]]`: Resolve constrained sampling config to provider-specific request parameters.
 
@@ -11991,10 +12026,10 @@
     - `check_tool_family_quota(tool_name: str, session_calls: List[str], max_quota: Optional[int]) -> tuple[bool, Optional[str]]` - *Guards against parameter-variant oscillation loops within the same tool family.*
     - `__init__(settings: Optional[dict])`
     - `micro_prune(tool_output: str, tool_name: str) -> str` - *Applies deterministic micro-compaction to raw tool output.*
-    - `calculate_history_tokens(messages: List[Dict[str, Any]]) -> int` - *Calculates total token load of a message list.*
+    - `calculate_history_tokens(messages: List[Dict[str, Any]], last_usage_tokens: Optional[int], trailing_delta_count: Optional[int]) -> int` - *Calculates total token load of a message list with full block-type coverage and delta support.*
     - `emergency_guard(messages: List[Dict[str, Any]], context_window: int) -> List[Dict[str, Any]]` - *Layer 3: Hard deterministic truncation at >=85% capacity.*
     - `mask_aged_observations(messages: List[Dict[str, Any]], keep_recent_turns: int, turns_to_keep: Optional[int]) -> List[Dict[str, Any]]` - *Observation Masking / Turn Aging.*
-    - `check_and_compact(messages: List[Dict[str, Any]], context_window: int) -> List[Dict[str, Any]]` - *Evaluates context pressure and applies Layer 1/2/3 defense.*
+    - `check_and_compact(messages: List[Dict[str, Any]], context_window: int, reserved_output_tokens: int, ...) -> List[Dict[str, Any]]` - *Evaluates context pressure and applies Layer 1/2/3 defense.*
     - `emergency_compact(messages: List[Dict[str, Any]], context_window: int, target_reduction: float) -> List[Dict[str, Any]]` - *Emergency compaction for context overflow recovery.*
     - `async compact_with_summary_model(messages: List[Dict[str, Any]], context_window: int, settings: Optional[dict]) -> List[Dict[str, Any]]` - *Layer 2 Synthesis with Model Offload and Warm-Prefix Replay.*
 - **Top-Level Functions**:
@@ -12019,7 +12054,8 @@
     - `max_context_window() -> int` - *Retrieve model context window limit from declared capabilities.*
     - `record_usage(input_tokens: int, output_tokens: int, cached_tokens: int, ...) -> None` - *Record token usage from a model invocation.*
     - `get_used_tokens() -> int` - *Current total tokens accumulated in the active cycle.*
-    - `get_utilization_ratio() -> float` - *Ratio of context window used (0.0 - 1.0).*
+    - `get_current_context_tokens() -> int` - *Current single-turn context tokens occupancy.*
+    - `get_utilization_ratio() -> float` - *Ratio of context window used by the current active turn (0.0 - 1.0).*
     - `get_cache_hit_rate() -> float` - *Percentage of input tokens served from cache.*
     - `is_approaching_limit(threshold: float) -> bool` - *Returns True if used tokens exceed the given threshold ratio.*
     - `reset(cycle_id: Optional[str], model: Optional[str]) -> None` - *Reset accumulator for a new cycle or conversation.*
@@ -12559,7 +12595,7 @@
 - **Path**: [`src/monika/infrastructure/providers/base_provider.py`](src/monika/infrastructure/providers/base_provider.py)
 - **Classes**:
   - `class MockBlock(dict)`: Blok konten respons yang kompatibel dengan format Anthropic.
-    - `__init__(type, text, name, ...)`
+    - `__init__(type: str, text: Optional[str], name: Optional[str], ...)`
     - `type()`
     - `text()`
     - `name()`
@@ -12626,6 +12662,7 @@
   - `class GeminiProvider(BaseLLMClient)`: Klien async untuk Gemini API.
     - `__init__(model: str, max_tokens: int, max_tool_turns: int, ...)`
     - `set_api_key(api_key: str) -> None` - *Update active API key on this GeminiProvider instance.*
+    - `rotate_api_key() -> None` - *Rotates active key index to the next free API key, called ONLY on 429/503 quota errors.*
     - `set_thinking_budget(budget: int) -> None` - *Sets thinking budget and resolves corresponding Gemini thinking level.*
     - `async generate(prompt: str, system: Any, temperature: Optional[float], ...) -> Optional[str]`
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`

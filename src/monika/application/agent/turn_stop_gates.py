@@ -27,6 +27,7 @@ class StopGateContext:
     proposed_actions: List[Dict[str, Any]] = field(default_factory=list)
     has_unregistered_trade_proposals: bool = False
     pending_response: Optional[str] = None
+    verification_commands_run: List[str] = field(default_factory=list)
 
 
 class TradingRiskStopGate:

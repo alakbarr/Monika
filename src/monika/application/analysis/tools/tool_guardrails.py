@@ -205,8 +205,9 @@ class BatchCycleGuard:
 class AntiOscillationGuard:
     """Mendeteksi dan menekan perulangan panggilan tool identik serta siklus multi-tool bergantian."""
 
-    def __init__(self, window_size: int = 10):
+    def __init__(self, window_size: int = 10, threshold: int = 2):
         self.window_size = window_size
+        self.threshold = threshold
         self._history: deque[str] = deque(maxlen=window_size)
         self._counts: Dict[str, int] = {}
         self._last_sig: Optional[str] = None
@@ -239,7 +240,8 @@ class AntiOscillationGuard:
         recent_count = self._history.count(sig)
         total_count = self._counts.get(sig, 0) + 1
 
-        if self._consecutive_count >= 2 or recent_count >= 2 or total_count >= 3:
+        threshold = getattr(self, "threshold", 2)
+        if self._consecutive_count >= threshold or recent_count >= threshold or total_count >= (threshold + 1):
             return GuardrailVerdict(
                 allowed=False,
                 guard_name="AntiOscillationGuard",
@@ -526,7 +528,8 @@ class ToolGuardrailController:
 
     def __init__(self, settings: Optional[Dict[str, Any]] = None):
         self.settings = settings or {}
-        self.anti_oscillation = AntiOscillationGuard()
+        repeat_thresh = int(self.settings.get("repeat_tool_suppress_threshold", 2))
+        self.anti_oscillation = AntiOscillationGuard(threshold=repeat_thresh)
         self.monotonic_risk = MonotonicRiskGuard()
         self.read_before_act = ReadBeforeActGuard()
         self.mandatory_sizing = MandatorySizingGuard()

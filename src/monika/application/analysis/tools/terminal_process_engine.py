@@ -44,6 +44,10 @@ MAX_OUTPUT_CHARS = 200_000
 FOREGROUND_MAX_TIMEOUT = 600
 DEFAULT_CHECKPOINT_FILE = "data/processes.json"
 
+# Active background process registry
+_ACTIVE_PROCESSES: Dict[str, Any] = {}
+_DEFAULT_ENGINE: Optional[TerminalProcessEngine] = None
+
 
 class PtyQueryResponder:
     """
@@ -160,6 +164,7 @@ class TerminalProcessEngine:
         pty: bool = False,
         notify: Any = False,
         owner_agent_id: str = "main",
+        promote_on_timeout: bool = True,
     ) -> Dict[str, Any]:
         """
         Executes a shell command either in foreground (blocking up to timeout) or
@@ -293,24 +298,58 @@ class TerminalProcessEngine:
                 "session_id": session_id,
             }
         except subprocess.TimeoutExpired:
-            # Demote to background rather than killing immediately
-            logger.warning(
-                f"[TerminalProcessEngine] Foreground command timed out after {timeout}s. Demoting to background process {session_id}."
-            )
-            with self._lock:
-                entry = self._processes.get(session_id)
-                if entry:
-                    entry.auto_demoted = True
-                    self._save_checkpoints()
+            if promote_on_timeout:
+                logger.warning(
+                    f"[TerminalProcessEngine] Foreground command timed out after {timeout}s. "
+                    f"Promoting to background process {session_id}."
+                )
+                with self._lock:
+                    entry = self._processes.get(session_id)
+                    if entry:
+                        entry.auto_demoted = True
+                        self._save_checkpoints()
+                        output_tail = entry.output_buffer[-500:] if entry.output_buffer else ""
+                    else:
+                        output_tail = ""
 
-            return {
-                "success": False,
-                "timed_out": True,
-                "session_id": session_id,
-                "pid": proc.pid,
-                "status": "running_background",
-                "message": f"Command exceeded foreground timeout ({timeout}s). Demoted to background process '{session_id}'.",
-            }
+                if proc.poll() is None:
+                    _ACTIVE_PROCESSES[session_id] = entry or proc
+
+                return {
+                    "success": False,
+                    "timed_out": True,
+                    "status": "promoted_to_background",
+                    "session_id": session_id,
+                    "job_id": session_id,
+                    "pid": proc.pid,
+                    "output_tail": output_tail,
+                    "output": output_tail,
+                    "message": f"Command exceeded foreground timeout ({timeout}s). Demoted to background process '{session_id}'.",
+                }
+            else:
+                try:
+                    proc.kill()
+                    proc.wait(timeout=2)
+                except Exception:
+                    pass
+                with self._lock:
+                    entry = self._processes.get(session_id)
+                    output = entry.output_buffer if entry else ""
+                    if entry:
+                        entry.is_running = False
+                        entry.exit_code = -9
+                        self._save_checkpoints()
+
+                return {
+                    "success": False,
+                    "timed_out": True,
+                    "status": "timed_out",
+                    "session_id": session_id,
+                    "pid": proc.pid,
+                    "output": output,
+                    "exit_code": -9,
+                    "message": f"Command timed out after {timeout}s and was terminated.",
+                }
 
     def _reader_worker(self, session_id: str, proc: subprocess.Popen) -> None:
         """Continuously reads stdout/stderr line-by-line and triggers notifications."""
@@ -477,3 +516,37 @@ class TerminalProcessEngine:
                 "session_id": session_id,
                 "message": f"Handoff completed: owner transferred from '{old_owner}' to '{new_owner_agent_id}'.",
             }
+
+    run_terminal_command = execute
+
+
+def get_terminal_engine() -> TerminalProcessEngine:
+    """Return or initialize the default TerminalProcessEngine singleton."""
+    global _DEFAULT_ENGINE
+    if _DEFAULT_ENGINE is None:
+        _DEFAULT_ENGINE = TerminalProcessEngine()
+    return _DEFAULT_ENGINE
+
+
+def run_terminal_command(
+    command: str,
+    background: bool = False,
+    timeout: int = 60,
+    workdir: Optional[str] = None,
+    pty: bool = False,
+    notify: Any = False,
+    owner_agent_id: str = "main",
+    promote_on_timeout: bool = True,
+) -> Dict[str, Any]:
+    """Execute shell command with auto-promotion on timeout."""
+    engine = get_terminal_engine()
+    return engine.execute(
+        command=command,
+        background=background,
+        timeout=timeout,
+        workdir=workdir,
+        pty=pty,
+        notify=notify,
+        owner_agent_id=owner_agent_id,
+        promote_on_timeout=promote_on_timeout,
+    )

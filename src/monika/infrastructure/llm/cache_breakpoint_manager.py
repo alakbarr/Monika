@@ -191,6 +191,8 @@ class CacheBreakpointManager:
         tier3_cycle_stable: str = "",
         pad_to_cache_threshold: bool = False,
         model_name: str = "",
+        ttl: Optional[str] = None,
+        single_system_breakpoint: bool = False,
     ) -> List[Dict[str, Any]]:
         """
         Wraps system prompt tiers into structured Anthropic content blocks with cache_control.
@@ -204,21 +206,30 @@ class CacheBreakpointManager:
         """
         blocks: List[Dict[str, Any]] = []
         min_chars = self.get_min_cacheable_chars(model_name)
+        cc: Dict[str, Any] = {"type": "ephemeral"}
+        if ttl in ("5m", "1h") or ttl:
+            cc["ttl"] = ttl
 
         # Konsolidasikan Tier 1 & Tier 2 ke dalam 1 breakpoint untuk menghemat kuota cache breakpoint (max 4 per request)
         tier1_clean = tier1_immutable.strip()
         tier2_clean = tier2_session_stable.strip()
         combined_t1_t2 = f"{tier1_clean}\n\n{tier2_clean}".strip()
 
+        has_tier3 = bool(tier3_cycle_stable.strip())
+
         if combined_t1_t2:
             # Ensure Tier 1+2 surpasses Anthropic minimum cacheable threshold (1,024+ tokens) when requested
             if pad_to_cache_threshold and len(combined_t1_t2) < min_chars:
                 combined_t1_t2 = f"{combined_t1_t2}\n\n{self.CANONICAL_INVARIANT_RULES.strip()}"
 
-            blocks.append({"type": "text", "text": combined_t1_t2, "cache_control": {"type": "ephemeral"}})
+            b1: Dict[str, Any] = {"type": "text", "text": combined_t1_t2}
+            # If single_system_breakpoint is active and tier3 exists, place breakpoint ONLY on tier3
+            if not (single_system_breakpoint and has_tier3):
+                b1["cache_control"] = dict(cc)
+            blocks.append(b1)
 
-        if tier3_cycle_stable.strip():
-            blocks.append({"type": "text", "text": tier3_cycle_stable.strip(), "cache_control": {"type": "ephemeral"}})
+        if has_tier3:
+            blocks.append({"type": "text", "text": tier3_cycle_stable.strip(), "cache_control": dict(cc)})
 
         return blocks
 
@@ -245,17 +256,22 @@ class CacheBreakpointManager:
     def apply_to_messages(
         self,
         messages: List[Dict[str, Any]],
-        max_message_breakpoints: int = 2,
+        max_message_breakpoints: int = 1,
         checkpoint_turn_index: Optional[int] = None,
+        ttl: Optional[str] = None,
         **kwargs: Any,
     ) -> List[Dict[str, Any]]:
         """
         Applies sliding cache breakpoints to the endpoints of the last completed tool transactions.
-        Transaction boundary isolation: ensures total breakpoints across system (1) +
-        tools (1) + messages (<= 2) never exceed Anthropic's hard limit of 4.
+        Transaction boundary isolation: ensures total breakpoints across system (<=2) +
+        tools (1) + messages (<= 1) strictly never exceed Anthropic's hard limit of 4.
         """
         if not messages:
             return messages
+
+        cc: Dict[str, Any] = {"type": "ephemeral"}
+        if ttl in ("5m", "1h") or ttl:
+            cc["ttl"] = ttl
 
         # Strip any existing cache_control from previous message turns to prevent exceeding 4 breakpoints
         updated_messages = []
@@ -277,11 +293,14 @@ class CacheBreakpointManager:
         endpoints = self.find_completed_transaction_endpoints(updated_messages)
         target_indices = []
 
+        # Cap max_message_breakpoints to 1 by default (or at most 2) so system(<=2) + tools(1) + msg(<=1) <= 4
+        effective_max = max(1, min(max_message_breakpoints, 2))
+
         if checkpoint_turn_index is not None:
             target_indices = [checkpoint_turn_index]
         elif endpoints:
-            # Take the last up to max_message_breakpoints completed endpoints
-            target_indices = endpoints[-max_message_breakpoints:]
+            # Take the last up to effective_max completed endpoints
+            target_indices = endpoints[-effective_max:]
         elif len(updated_messages) >= 2:
             # Fallback for non-tool conversations: anchor Turn N-2
             target_indices = [len(updated_messages) - 2]
@@ -295,10 +314,10 @@ class CacheBreakpointManager:
                 content = msg.get("content")
 
                 if isinstance(content, str):
-                    msg["content"] = [{"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}]
+                    msg["content"] = [{"type": "text", "text": content, "cache_control": dict(cc)}]
                 elif isinstance(content, list) and content:
                     last_block = dict(content[-1])
-                    last_block["cache_control"] = {"type": "ephemeral"}
+                    last_block["cache_control"] = dict(cc)
                     msg["content"] = content[:-1] + [last_block]
 
         return updated_messages

@@ -20,6 +20,30 @@ from monika.infrastructure.llm.prompt_compressor import estimate_tokens
 logger = logging.getLogger("TradingAgent.PostgresSpillSubsystem")
 
 
+def _format_head_tail_preview(text: str, head_budget: int = 500, tail_budget: int = 500) -> str:
+    """Format 50/50 head-tail preview aligned on line boundaries where possible."""
+    if len(text) <= head_budget + tail_budget:
+        return text
+
+    head_raw = text[:head_budget]
+    tail_raw = text[-tail_budget:]
+
+    last_nl = head_raw.rfind("\n")
+    if last_nl > head_budget // 2:
+        head = head_raw[:last_nl]
+    else:
+        head = head_raw
+
+    first_nl = tail_raw.find("\n")
+    if 0 <= first_nl < tail_budget // 2:
+        tail = tail_raw[first_nl + 1 :]
+    else:
+        tail = tail_raw
+
+    omitted = len(text) - len(head) - len(tail)
+    return f"{head}\n...[Omitted {omitted} chars]...\n{tail}"
+
+
 class PostgresSpillSubsystem:
     """
     Manages spilling oversized tool outputs to PostgreSQL and retrieving them on demand.
@@ -69,10 +93,12 @@ class PostgresSpillSubsystem:
                 f"State summary preserved."
             )
 
+            preview = _format_head_tail_preview(output, 500, 500)
             return (
                 f"[Observation Receipt: {tool_name} {state_summary}. "
+                f"Preview:\n{preview}\n"
                 f"Full payload ({tokens} tokens) spilled to PostgreSQL pointer 'db://spill/{blob_id}'. "
-                f"Use read_spilled_blob(blob_id='{blob_id}') if granular slice needed.]"
+                f"Use retrieve_spilled_context(blob_id='{blob_id}', offset=0, max_chars=4000, grep_pattern='...') to inspect or search within it.]"
             )
         except Exception as e:
             logger.warning(f"Failed to spill tool output to DB ({e}); returning original output.")

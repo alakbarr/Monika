@@ -587,6 +587,7 @@ def deep_repair_tool_arguments(
     schema: Dict[str, Any],
     error_msg: str,
     assistant_text: str = "",
+    strict_validation: bool = False,
 ) -> bool:
     """
     Attempt intelligent, self-healing repair of tool arguments when jsonschema.validate() fails.
@@ -598,6 +599,7 @@ def deep_repair_tool_arguments(
     import jsonschema
 
     props = schema.get("properties", {})
+    repaired_fields: list[str] = args.setdefault("_repaired_missing_fields", [])
 
     # Case 1: Missing required property
     req_match = re.search(r"['\"]([^'\"]+)['\"]\s+is a required property", error_msg)
@@ -606,23 +608,43 @@ def deep_repair_tool_arguments(
         if missing_prop == "macro_narrative":
             if assistant_text and len(assistant_text.strip()) > 30:
                 args["macro_narrative"] = assistant_text.strip()
+                if missing_prop not in repaired_fields:
+                    repaired_fields.append(missing_prop)
+            elif strict_validation:
+                return False
             else:
                 args["macro_narrative"] = (
                     "Macro fundamental overview synthesized from pre-fetched market indicators, "
                     "yield differentials, and monetary policy stances."
                 )
+                if missing_prop not in repaired_fields:
+                    repaired_fields.append(missing_prop)
         elif missing_prop == "risk_sentiment":
             t_low = (assistant_text or "").lower()
             if "risk-on" in t_low or "risk on" in t_low:
                 args["risk_sentiment"] = "risk-on"
+                if missing_prop not in repaired_fields:
+                    repaired_fields.append(missing_prop)
             elif "risk-off" in t_low or "risk off" in t_low:
                 args["risk_sentiment"] = "risk-off"
+                if missing_prop not in repaired_fields:
+                    repaired_fields.append(missing_prop)
+            elif strict_validation:
+                return False
             else:
                 args["risk_sentiment"] = "mixed"
+                if missing_prop not in repaired_fields:
+                    repaired_fields.append(missing_prop)
         elif missing_prop == "macro_regime":
+            if strict_validation:
+                return False
             args["macro_regime"] = "mixed"
+            if missing_prop not in repaired_fields:
+                repaired_fields.append(missing_prop)
         elif missing_prop == "confidence":
             args["confidence"] = 0.0
+            if missing_prop not in repaired_fields:
+                repaired_fields.append(missing_prop)
             if str(args.get("decision", "")).lower() in ("buy", "sell"):
                 args["decision"] = "wait"
                 args["rationale"] = (
@@ -642,6 +664,8 @@ def deep_repair_tool_arguments(
                     rt["type"] = "time"
                 if "detail" not in rt or not rt.get("detail"):
                     rt["detail"] = "Reevaluate upon next session open or structural breakout."
+            if missing_prop not in repaired_fields:
+                repaired_fields.append(missing_prop)
         elif missing_prop == "detail":
             if "entry_condition" in args and isinstance(args["entry_condition"], dict):
                 ec = args["entry_condition"]
@@ -651,18 +675,28 @@ def deep_repair_tool_arguments(
                 rt = args["reevaluation_trigger"]
                 if "detail" not in rt or not rt.get("detail"):
                     rt["detail"] = "Reevaluate upon next session open or structural breakout."
+            if missing_prop not in repaired_fields:
+                repaired_fields.append(missing_prop)
         elif missing_prop == "checklist":
+            if strict_validation:
+                return False
             args["checklist"] = {"bias_vs_narrative_match": True, "contradiction_existed": False}
+            if missing_prop not in repaired_fields:
+                repaired_fields.append(missing_prop)
         elif missing_prop == "reevaluation_trigger":
             args["reevaluation_trigger"] = {
                 "type": "time",
                 "detail": "Immediate reevaluation required due to missing model trigger.",
             }
+            if missing_prop not in repaired_fields:
+                repaired_fields.append(missing_prop)
         elif missing_prop == "entry_condition":
             args["entry_condition"] = {
                 "type": "market",
                 "detail": "Execution held pending valid institutional entry condition.",
             }
+            if missing_prop not in repaired_fields:
+                repaired_fields.append(missing_prop)
             if str(args.get("decision", "")).lower() in ("buy", "sell"):
                 args["decision"] = "wait"
                 args["rationale"] = (
@@ -670,13 +704,20 @@ def deep_repair_tool_arguments(
                     + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted entry condition."
                 ).strip()
         elif missing_prop == "rationale":
-            args["rationale"] = (
-                assistant_text[:500]
-                if assistant_text
-                else "Model rationale omitted; evaluated under fail-closed safety policy."
-            )
+            if assistant_text:
+                args["rationale"] = assistant_text[:500]
+                if missing_prop not in repaired_fields:
+                    repaired_fields.append(missing_prop)
+            elif strict_validation:
+                return False
+            else:
+                args["rationale"] = "Model rationale omitted; evaluated under fail-closed safety policy."
+                if missing_prop not in repaired_fields:
+                    repaired_fields.append(missing_prop)
         elif missing_prop == "confluence_score":
             args["confluence_score"] = 0
+            if missing_prop not in repaired_fields:
+                repaired_fields.append(missing_prop)
             if str(args.get("decision", "")).lower() in ("buy", "sell"):
                 args["decision"] = "wait"
                 args["rationale"] = (
@@ -685,14 +726,20 @@ def deep_repair_tool_arguments(
                 ).strip()
         elif missing_prop == "priced_in_score":
             args["priced_in_score"] = 1
+            if missing_prop not in repaired_fields:
+                repaired_fields.append(missing_prop)
             if str(args.get("decision", "")).lower() in ("buy", "sell"):
                 args["decision"] = "wait"
                 args["rationale"] = (
                     str(args.get("rationale") or "")
                     + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted priced-in score."
                 ).strip()
+        elif missing_prop in ("reasoning_summary", "cot_bias") and strict_validation:
+            return False
         elif missing_prop in props and "default" in props[missing_prop]:
             args[missing_prop] = props[missing_prop]["default"]
+            if missing_prop not in repaired_fields:
+                repaired_fields.append(missing_prop)
 
     # Case 2: Enum mismatch (e.g. 'BEARISH' is not one of [...])
     enum_match = re.search(r"['\"]([^'\"]+)['\"]\s+is not one of\s+\[(.*?)\]", error_msg)
@@ -740,9 +787,14 @@ def deep_repair_tool_arguments(
     # Re-run coerce_tool_arguments on updated args
     coerce_tool_arguments(args, schema)
 
+    # Clean up empty metadata
+    if "_repaired_missing_fields" in args and not args["_repaired_missing_fields"]:
+        args.pop("_repaired_missing_fields", None)
+
     # Re-validate
     try:
-        jsonschema.validate(instance=args, schema=schema)
+        clean_args = {k: v for k, v in args.items() if not k.startswith("_")}
+        jsonschema.validate(instance=clean_args, schema=schema)
         return True
     except Exception:
         return False

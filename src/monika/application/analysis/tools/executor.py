@@ -706,6 +706,10 @@ class ToolExecutor(
             except Exception as ce:
                 logger.debug(f"Tool cache lookup non-fatal exception: {ce}")
 
+        from monika.application.analysis.tools.registry import ToolRegistry
+
+        concurrency_safe = ToolRegistry.is_tool_concurrency_safe(normalized_name, tool_input)
+
         session_lock = getattr(self.session, "_session_lock", None) or getattr(self, "_session_lock", None)
         if session_lock is None:
             import asyncio
@@ -722,7 +726,9 @@ class ToolExecutor(
         _cur_task = _asyncio.current_task()
         for db_attempt in range(max_db_attempts):
             try:
-                if getattr(session_lock, "_owner_task", None) is _cur_task:
+                if concurrency_safe:
+                    result = await handler(tool_input)
+                elif getattr(session_lock, "_owner_task", None) is _cur_task:
                     # Reentrant: current task already holds the lock (nested execute).
                     result = await handler(tool_input)
                 else:

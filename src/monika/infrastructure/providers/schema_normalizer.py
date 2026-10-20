@@ -102,6 +102,8 @@ class ToolSchemaNormalizer:
     @classmethod
     def to_anthropic(cls, tools: Optional[List[Any]]) -> List[Dict[str, Any]]:
         """Serialize tools to Anthropic format: [{"name": ..., "description": ..., "input_schema": ...}]."""
+        from monika.infrastructure.providers.openai_provider import _canonicalize_schema
+
         canonical_tools = cls.normalize_tools(tools)
         sorted_tools = sorted(canonical_tools, key=lambda t: t.name)
         out: List[Dict[str, Any]] = []
@@ -110,7 +112,7 @@ class ToolSchemaNormalizer:
                 {
                     "name": ct.name,
                     "description": ct.description,
-                    "input_schema": ct.parameters,
+                    "input_schema": _canonicalize_schema(ct.parameters),
                 }
             )
         return out

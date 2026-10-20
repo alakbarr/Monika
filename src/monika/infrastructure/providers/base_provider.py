@@ -285,7 +285,18 @@ class MockBlock(dict):
     DIPINDAHKAN dari gemini_client.py
     """
 
-    def __init__(self, type, text=None, name=None, input=None, id=None):
+    def __init__(
+        self,
+        type: str,
+        text: Optional[str] = None,
+        name: Optional[str] = None,
+        input: Optional[Any] = None,
+        id: Optional[str] = None,
+        thought: Optional[bool] = None,
+        thought_signature: Optional[str] = None,
+        thoughtSignature: Optional[str] = None,
+        **kwargs: Any,
+    ):
         super().__init__()
         self["type"] = type
         if text is not None:
@@ -296,6 +307,15 @@ class MockBlock(dict):
             self["input"] = input
         if id is not None:
             self["id"] = id
+        if thought is not None:
+            self["thought"] = thought
+        if thought_signature is not None:
+            self["thought_signature"] = thought_signature
+        if thoughtSignature is not None:
+            self["thoughtSignature"] = thoughtSignature
+        for k, v in kwargs.items():
+            if v is not None:
+                self[k] = v
 
     @property
     def type(self):
@@ -714,7 +734,7 @@ class BaseLLMClient(LlmPort, ABC):
         """Generate session affinity headers to pin requests to the same GPU replica.
         Increases prompt cache hit rate across consecutive calls.
         """
-        session_id = getattr(self, "_session_affinity_id", None)
+        session_id = getattr(self, "session_id", None) or getattr(self, "_session_affinity_id", None)
         if not session_id:
             import hashlib
 

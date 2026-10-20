@@ -41,7 +41,7 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
         system_prompt = self._inject_macro_playbooks(system_prompt, user_query=message)
 
         all_mapped = {t.get("name"): t for t in OPERATOR_INTERACTIVE_TOOLS if t.get("name")}
-        all_tools = list(all_mapped.values())
+        all_tools = sorted(all_mapped.values(), key=lambda t: str(t.get("name", "")))
 
         async def _notify_progress(text: str):
             if status_callback:
@@ -195,6 +195,8 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
     ) -> dict:
         """Lite tier path untuk query sederhana menggunakan lean prompt (~150 token)."""
         selected_tools = self._tool_router.route_tools_for_query(message)
+        if selected_tools:
+            selected_tools = sorted(selected_tools, key=lambda t: str(t.get("name", "")))
         lean_sys = self._build_lean_system_prompt()
         payload = self._format_user_message_payload(message, image_bytes)
         response = await self._client_lite.run_chat_loop(
@@ -211,6 +213,8 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
     ) -> dict:
         """Medium tier path untuk query menengah."""
         selected_tools = self._tool_router.route_tools_for_query(message)
+        if selected_tools:
+            selected_tools = sorted(selected_tools, key=lambda t: str(t.get("name", "")))
         sys_prompt, user_msg = self._prepare_cache_invariant_prompt(system_prompt, message)
         payload = self._format_user_message_payload(user_msg, image_bytes)
         response = await self._client_medium.run_chat_loop(
@@ -228,6 +232,8 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
         """Deep tier path untuk analisis mendalam."""
         system_prompt = self._inject_macro_playbooks(system_prompt, user_query=message)
         selected_tools = self._tool_router.route_tools_for_query(message)
+        if selected_tools:
+            selected_tools = sorted(selected_tools, key=lambda t: str(t.get("name", "")))
         sys_prompt, user_msg = self._prepare_cache_invariant_prompt(system_prompt, message)
         payload = self._format_user_message_payload(user_msg, image_bytes)
         response = await self._client_deep.run_chat_loop(

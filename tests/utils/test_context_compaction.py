@@ -195,7 +195,7 @@ def test_mask_aged_observations_technical_and_smc_retention():
 
 
 def test_check_and_compact_intermediate_threshold():
-    """Verify check_and_compact triggers mask_aged_observations when tokens > 10,000 and len(messages) > 4."""
+    """Verify check_and_compact preserves prefix below watermark and triggers mask_aged_observations under high-watermark pressure."""
     engine = ContextCompactionEngine()
     messages = [
         {"role": "system", "content": "You are a trading agent."},
@@ -209,7 +209,12 @@ def test_check_and_compact_intermediate_threshold():
     assert tokens > 10000
     assert len(messages) > 4
 
-    compacted = engine.check_and_compact(messages, context_window=200000)
+    # 1. Below watermark: messages must NOT be mutated in-place
+    compacted_below = engine.check_and_compact(messages, context_window=200000)
+    assert compacted_below[3]["content"] == messages[3]["content"]
+
+    # 2. Under high-watermark pressure: triggers mask_aged_observations
+    compacted = engine.check_and_compact(messages, context_window=16000)
     # Price history should have been masked into an observation summary
     assert "Observation:" in compacted[3]["content"]
     # Recent tool output (turn 2) remains untouched

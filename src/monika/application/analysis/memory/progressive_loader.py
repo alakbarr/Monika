@@ -38,35 +38,61 @@ class ProgressivePlaybookLoader:
 
     def get_level0_index(self) -> str:
         """
-        Level 0: Return ultra-compact index of available strategies and active regimes.
-        Consumes < 150 tokens.
+        Level 0: Return compact progressive disclosure index of available strategies and active regimes
+        with parsed YAML frontmatter descriptions.
         """
+        from monika.application.skills.loader import parse_skill_frontmatter
+
         skills_summary: List[str] = []
+
+        def _format_entry(file_path: Path, prefix: str) -> str:
+            default_name = file_path.parent.name if file_path.name == "SKILL.md" else file_path.stem
+            clean_name = default_name.replace("-", " ").replace("_", " ").title()
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    head = f.read(1024)
+                meta, _ = parse_skill_frontmatter(head)
+                name = meta.get("name") or clean_name
+                desc = meta.get("description", "")
+                if desc:
+                    return f"- {prefix}: {name} — {desc.strip()[:50]}"
+                return f"- {prefix}: {name}"
+            except Exception:
+                return f"- {prefix}: {clean_name}"
 
         # Scan trading playbooks
         if self.playbooks_dir.exists():
             for p in sorted(self.playbooks_dir.glob("*/SKILL.md")):
-                stem = p.parent.name.replace("-", " ").replace("_", " ").title()
-                skills_summary.append(f"- Playbook: {stem}")
+                skills_summary.append(_format_entry(p, "Playbook"))
             for p in sorted(self.playbooks_dir.glob("*.md")):
                 if p.name != "SKILL.md":
-                    stem = p.stem.replace("_", " ").replace("-", " ").title()
-                    skills_summary.append(f"- Playbook: {stem}")
+                    skills_summary.append(_format_entry(p, "Playbook"))
 
         # Scan crystallized skills
         if self.crystallized_dir.exists():
             for c in sorted(self.crystallized_dir.glob("*/SKILL.md")):
-                stem = c.parent.name.replace("-", " ").replace("_", " ").title()
-                skills_summary.append(f"- Crystallized: {stem}")
+                skills_summary.append(_format_entry(c, "Crystallized"))
             for c in sorted(self.crystallized_dir.glob("*.md")):
                 if c.name != "SKILL.md":
-                    stem = c.stem.replace("_", " ").replace("-", " ").title()
-                    skills_summary.append(f"- Crystallized: {stem}")
+                    skills_summary.append(_format_entry(c, "Crystallized"))
 
         if not skills_summary:
-            return "[AVAILABLE_PLAYBOOKS]: Standard SMC/ICT and Macro Disciplinary Frameworks Active."
+            return (
+                "[AVAILABLE_PLAYBOOKS_INDEX (Level 0)]:\n"
+                "<available_skills>\n"
+                "- Playbook: Standard SMC/ICT and Macro Disciplinary Frameworks Active.\n"
+                "</available_skills>"
+            )
 
-        return "[AVAILABLE_PLAYBOOKS_INDEX (Level 0)]:\n" + "\n".join(skills_summary[:12])
+        selected: List[str] = []
+        current_len = 75
+        for item in skills_summary[:10]:
+            if current_len + len(item) + 1 > 920:
+                break
+            selected.append(item)
+            current_len += len(item) + 1
+        entries = "\n".join(selected)
+        return f"[AVAILABLE_PLAYBOOKS_INDEX (Level 0)]:\n<available_skills>\n{entries}\n</available_skills>"
 
     def get_level1_playbook(self, symbol: str) -> Optional[str]:
         """

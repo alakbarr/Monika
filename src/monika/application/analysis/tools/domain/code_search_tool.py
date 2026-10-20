@@ -88,8 +88,40 @@ class CodeSearchInput(BaseModel):
     is_regex: bool = Field(True, description="If True, treats pattern as regular expression; if False, literal string.")
 
 
+def sample_across_top_level(matches: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
+    """
+    Sample search results round-robin across top-level directories so a single
+    dense/noisy directory does not monopolize all returned results.
+    """
+    if len(matches) <= limit or limit <= 0:
+        return matches[:limit]
+
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    for m in matches:
+        file_path = m.get("file", "")
+        clean_path = file_path.replace("\\", "/").lstrip("/")
+        parts = clean_path.split("/")
+        top_level = parts[0] if len(parts) > 1 else "."
+        if top_level not in groups:
+            groups[top_level] = []
+        groups[top_level].append(m)
+
+    sampled: List[Dict[str, Any]] = []
+    group_keys = list(groups.keys())
+    while len(sampled) < limit and any(groups[k] for k in group_keys):
+        for k in group_keys:
+            if groups[k]:
+                sampled.append(groups[k].pop(0))
+                if len(sampled) >= limit:
+                    break
+
+    return sampled
+
+
 class CodeSearchEngine:
     """Core search engine scanning filesystem directories with safety filters."""
+
+    sample_across_top_level = staticmethod(sample_across_top_level)
 
     @classmethod
     def is_binary_file(cls, path: Path) -> bool:
@@ -145,8 +177,9 @@ class CodeSearchEngine:
                         continue
                     files_to_scan.append(fpath)
 
+        candidate_cap = max_results * 5
         for fpath in files_to_scan:
-            if len(matches) >= max_results:
+            if len(matches) >= candidate_cap:
                 break
 
             if cls.is_binary_file(fpath):
@@ -159,7 +192,7 @@ class CodeSearchEngine:
                 continue
 
             for idx, line in enumerate(lines):
-                if len(matches) >= max_results:
+                if len(matches) >= candidate_cap:
                     break
 
                 if regex.search(line):
@@ -181,6 +214,9 @@ class CodeSearchEngine:
                             "snippet": "".join(snippet),
                         }
                     )
+
+        if len(matches) > max_results:
+            matches = sample_across_top_level(matches, max_results)
 
         return matches
 

@@ -364,7 +364,10 @@ class PromptBuilderMixin(_ChatAgentMixinBase):
 
         # DYNAMIC TAIL: Current portfolio & time snapshot placed strictly in separate block to preserve static prefix cache
         dynamic_lines = []
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        now_dt = datetime.now(timezone.utc)
+        quantized_minute = (now_dt.minute // 10) * 10
+        now_quantized = now_dt.replace(minute=quantized_minute, second=0, microsecond=0)
+        now = now_quantized.strftime("%Y-%m-%d %H:%M UTC")
         dynamic_lines.append(f"## Current Session Snapshot ({now})")
 
         try:

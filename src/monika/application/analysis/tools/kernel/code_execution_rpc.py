@@ -71,7 +71,7 @@ def call_tool(tool_name: str, **kwargs) -> str:
     """Invoke a registered Monika tool directly via loopback RPC."""
     if tool_name not in _ALLOWED_TOOLS:
         raise ValueError(f"Tool '{{tool_name}}' is not allowed in sandbox. Allowed: {{sorted(_ALLOWED_TOOLS)}}")
-    
+
     payload = {{
         "token": _RPC_TOKEN,
         "tool": tool_name,
@@ -83,7 +83,7 @@ def call_tool(tool_name: str, **kwargs) -> str:
         sock.connect((_RPC_HOST, _RPC_PORT))
         req_bytes = (json.dumps(payload) + "\\n").encode("utf-8")
         sock.sendall(req_bytes)
-        
+
         response_buf = bytearray()
         while True:
             chunk = sock.recv(65536)
@@ -141,6 +141,9 @@ class CodeExecutionRpcServer:
         self.dispatch_fn = dispatch_fn
         self.loop = loop
         self._thread: Optional[threading.Thread] = None
+        self.semaphore = threading.Semaphore(10)  # max_parallel_sub_calls = 10
+        self._client_threads: List[threading.Thread] = []
+        self._threads_lock = threading.Lock()
 
     def start(self) -> int:
         """Bind to ephemeral loopback port and start background listener thread."""
@@ -163,13 +166,20 @@ class CodeExecutionRpcServer:
         return self.port
 
     def stop(self) -> None:
-        """Stop server and clean up socket."""
+        """Stop server, close socket, and clean up active client threads."""
         self.stop_event.set()
         if self.server_sock:
             try:
                 self.server_sock.close()
             except OSError:
                 pass
+        with self._threads_lock:
+            threads = list(self._client_threads)
+        for t in threads:
+            if t.is_alive():
+                t.join(timeout=0.5)
+        with self._threads_lock:
+            self._client_threads.clear()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=1.0)
         logger.debug("[CodeExecutionRPC] Server stopped.")
@@ -234,7 +244,7 @@ class CodeExecutionRpcServer:
         return result
 
     def _server_loop(self) -> None:
-        """Accept loopback connections and process newline-delimited JSON requests."""
+        """Accept loopback connections and spawn concurrent client workers gated by semaphore."""
         if not self.server_sock:
             return
         while not self.stop_event.is_set():
@@ -245,28 +255,137 @@ class CodeExecutionRpcServer:
             except OSError:
                 break
 
-            try:
-                conn.settimeout(60.0)
-                buf = bytearray()
-                while not self.stop_event.is_set():
-                    chunk = conn.recv(65536)
-                    if not chunk:
-                        break
-                    buf.extend(chunk)
-                    if b"\n" in chunk:
-                        break
-                if buf:
-                    line = buf.decode("utf-8").strip()
-                    try:
-                        req_data = json.loads(line)
-                        resp_str = self._handle_request(req_data)
-                    except Exception as e:
-                        resp_str = json.dumps({"error": f"Invalid RPC payload: {e}"})
-                    conn.sendall((resp_str + "\n").encode("utf-8"))
-            except Exception as e:
-                logger.debug(f"[CodeExecutionRPC] Connection error: {e}")
-            finally:
+            worker_thread = threading.Thread(
+                target=self._client_worker,
+                args=(conn,),
+                daemon=True,
+            )
+            with self._threads_lock:
+                self._client_threads.append(worker_thread)
+            worker_thread.start()
+
+    def _client_worker(self, conn: socket.socket) -> None:
+        cur_thread = threading.current_thread()
+        try:
+            with self.semaphore:
+                self._handle_client(conn)
+        finally:
+            with self._threads_lock:
+                if cur_thread in self._client_threads:
+                    self._client_threads.remove(cur_thread)
+
+    def _handle_client(self, conn: socket.socket) -> None:
+        try:
+            conn.settimeout(60.0)
+            buf = bytearray()
+            while not self.stop_event.is_set():
+                chunk = conn.recv(65536)
+                if not chunk:
+                    break
+                buf.extend(chunk)
+                if b"\n" in chunk:
+                    break
+            if buf:
+                line = buf.decode("utf-8").strip()
                 try:
-                    conn.close()
-                except OSError:
-                    pass
+                    req_data = json.loads(line)
+                    resp_str = self._handle_request(req_data)
+                except Exception as e:
+                    resp_str = json.dumps({"error": f"Invalid RPC payload: {e}"})
+                conn.sendall((resp_str + "\n").encode("utf-8"))
+        except Exception as e:
+            logger.debug(f"[CodeExecutionRPC] Connection error: {e}")
+        finally:
+            try:
+                conn.close()
+            except OSError:
+                pass
+
+
+def render_tools_sdk_py(tool_schemas: List[Dict[str, Any]]) -> str:
+    """
+    Generate clean Python TypedDict and Tools(Protocol) type stub documentation
+    from tool JSON schemas for read-only/analysis tools.
+    Generates strict Python type definitions for registered tool schemas.
+    """
+    lines: List[str] = [
+        '"""',
+        "Auto-generated Monika Tools SDK type definitions.",
+        "Provides TypedDict argument interfaces and Protocol method signatures.",
+        '"""',
+        "",
+        "from __future__ import annotations",
+        "",
+        "from typing import Any, Dict, List, Optional, Protocol, TypedDict",
+        "",
+    ]
+
+    type_mapping = {
+        "string": "str",
+        "integer": "int",
+        "number": "float",
+        "boolean": "bool",
+        "array": "List[Any]",
+        "object": "Dict[str, Any]",
+    }
+
+    protocol_methods: List[str] = []
+
+    for tool in tool_schemas:
+        fn_data = tool.get("function", tool)
+        name = fn_data.get("name", "")
+        if not name:
+            continue
+        description = fn_data.get("description", "")
+        params = fn_data.get("parameters", {})
+        properties = params.get("properties", {})
+        required = set(params.get("required", []))
+
+        pascal_name = "".join(part.capitalize() for part in name.split("_"))
+        typed_dict_name = f"{pascal_name}Args"
+
+        lines.append(f"class {typed_dict_name}(TypedDict, total=False):")
+        if description:
+            first_line = description.strip().splitlines()[0]
+            lines.append(f'    """{first_line}"""')
+
+        if not properties:
+            lines.append("    pass")
+        else:
+            for prop_name, prop_def in properties.items():
+                p_type_raw = prop_def.get("type", "any")
+                py_type = type_mapping.get(p_type_raw, "Any")
+                if prop_name not in required:
+                    py_type = f"Optional[{py_type}]"
+                p_desc = prop_def.get("description", "")
+                comment = f"  # {p_desc}" if p_desc else ""
+                lines.append(f"    {prop_name}: {py_type}{comment}")
+
+        lines.append("")
+
+        param_sigs = ["self"]
+        for prop_name, prop_def in properties.items():
+            p_type_raw = prop_def.get("type", "any")
+            py_type = type_mapping.get(p_type_raw, "Any")
+            if prop_name not in required:
+                param_sigs.append(f"{prop_name}: Optional[{py_type}] = None")
+            else:
+                param_sigs.append(f"{prop_name}: {py_type}")
+        param_sigs.append("**kwargs: Any")
+
+        method_doc = f'        """{description.strip()}"""' if description else '        """Execute tool."""'
+        sig_str = ", ".join(param_sigs)
+        protocol_methods.append(f"    def {name}({sig_str}) -> str:")
+        protocol_methods.append(method_doc)
+        protocol_methods.append("        ...")
+        protocol_methods.append("")
+
+    lines.append("class Tools(Protocol):")
+    lines.append('    """Protocol defining available Monika analysis and research tools."""')
+    lines.append("")
+    if not protocol_methods:
+        lines.append("    pass")
+    else:
+        lines.extend(protocol_methods)
+
+    return "\n".join(lines) + "\n"

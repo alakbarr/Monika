@@ -243,7 +243,7 @@ class ContextCompressor:
                 if ("Unknown tool:" in content or "validation_failed" in content) and len(content) > 300:
                     msg["content"] = "[Pruned error observation — tool was retried]"
 
-        # Deduplicate identical tool observations (preserving newest copy)
+        # Deduplicate identical tool observations (preserving newest copy, stubbing older duplicates)
         seen_hashes = set()
         for msg in reversed(pruned_messages):
             content = msg.get("content")
@@ -542,6 +542,80 @@ class ContextCompressor:
                             return facts
         return facts
 
+    def _extract_read_files(self, messages: List[dict]) -> List[str]:
+        """Extract files read from tool arguments or text."""
+        read_set = set()
+        for m in messages:
+            content = m.get("content", "")
+            tcs = m.get("tool_calls") or []
+            for tc in tcs:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else getattr(tc, "function", None)
+                fn_name = fn.get("name", "") if isinstance(fn, dict) else getattr(fn, "name", "")
+                if "read" in fn_name.lower() or "view" in fn_name.lower():
+                    args = fn.get("arguments", "{}") if isinstance(fn, dict) else getattr(fn, "arguments", "{}")
+                    try:
+                        parsed = json.loads(args) if isinstance(args, str) else args
+                        p = parsed.get("Path") or parsed.get("path") or parsed.get("file_path")
+                        if p:
+                            read_set.add(str(p))
+                    except Exception:
+                        pass
+            if isinstance(content, list):
+                for b in content:
+                    if isinstance(b, dict) and b.get("type") == "tool_use":
+                        nm = str(b.get("name", "")).lower()
+                        if "read" in nm or "view" in nm:
+                            inp = b.get("input", {})
+                            if isinstance(inp, dict):
+                                p = inp.get("Path") or inp.get("path") or inp.get("file_path")
+                                if p:
+                                    read_set.add(str(p))
+            text_str = str(content)
+            for m_path in re.findall(
+                r"(?:read|opened|reading|viewed)\s+[`'\"]?([a-zA-Z0-9_\-\./\\]+\.[a-zA-Z0-9]{1,6})[`'\"]?",
+                text_str,
+                re.IGNORECASE,
+            ):
+                read_set.add(m_path.strip())
+        return sorted(read_set)
+
+    def _extract_modified_files(self, messages: List[dict]) -> List[str]:
+        """Extract files modified or written from tool arguments or text."""
+        mod_set = set()
+        for m in messages:
+            content = m.get("content", "")
+            tcs = m.get("tool_calls") or []
+            for tc in tcs:
+                fn = tc.get("function", {}) if isinstance(tc, dict) else getattr(tc, "function", None)
+                fn_name = fn.get("name", "") if isinstance(fn, dict) else getattr(fn, "name", "")
+                if any(k in fn_name.lower() for k in ("edit", "write", "patch", "modify")):
+                    args = fn.get("arguments", "{}") if isinstance(fn, dict) else getattr(fn, "arguments", "{}")
+                    try:
+                        parsed = json.loads(args) if isinstance(args, str) else args
+                        p = parsed.get("Path") or parsed.get("path") or parsed.get("file_path")
+                        if p:
+                            mod_set.add(str(p))
+                    except Exception:
+                        pass
+            if isinstance(content, list):
+                for b in content:
+                    if isinstance(b, dict) and b.get("type") == "tool_use":
+                        nm = str(b.get("name", "")).lower()
+                        if any(k in nm for k in ("edit", "write", "patch", "modify")):
+                            inp = b.get("input", {})
+                            if isinstance(inp, dict):
+                                p = inp.get("Path") or inp.get("path") or inp.get("file_path")
+                                if p:
+                                    mod_set.add(str(p))
+            text_str = str(content)
+            for m_path in re.findall(
+                r"(?:edited|modified|written|patched)\s+[`'\"]?([a-zA-Z0-9_\-\./\\]+\.[a-zA-Z0-9]{1,6})[`'\"]?",
+                text_str,
+                re.IGNORECASE,
+            ):
+                mod_set.add(m_path.strip())
+        return sorted(mod_set)
+
     async def summarize_middle(self, middle_messages: List[dict]) -> str:
         """Phase 3: Auxiliary Model Summarization with Iterative Chaining.
 
@@ -555,6 +629,10 @@ class ContextCompressor:
         existing_summary, clean_middle = self._extract_existing_summary(middle_messages)
         facts = self._extract_deterministic_facts(clean_middle)
         categorized = self._extract_structured_trading_sections(clean_middle)
+
+        read_files = self._extract_read_files(clean_middle)
+        modified_files = self._extract_modified_files(clean_middle)
+        established_levels = categorized.get("established_levels", [])
 
         # Feasibility check: only invoke aux LLM if middle has substantial content or aux_client is explicitly provided
         should_call_llm = self.aux_client is not None or not self._feasibility_skip(clean_middle)
@@ -575,13 +653,13 @@ class ContextCompressor:
 
         if should_call_llm and client and hasattr(client, "generate"):
             try:
-                # Build concise middle text representation
+                # Build concise middle text representation (up to 2,000 chars per message, up to 40 messages)
                 snippets = []
                 for m in clean_middle:
                     role = m.get("role", "unknown")
-                    cnt = str(m.get("content", ""))[:400]
+                    cnt = str(m.get("content", ""))[:2000]
                     snippets.append(f"[{role}]: {cnt}")
-                chunk = "\n".join(snippets[:15])
+                chunk = "\n".join(snippets[:40])
 
                 prompt_parts = []
                 if existing_summary:
@@ -600,46 +678,63 @@ class ContextCompressor:
                     sum_clean = summary.strip()
                     if "<compacted-summary>" not in sum_clean:
                         sum_clean = f"<compacted-summary>\n{sum_clean}\n</compacted-summary>"
+
+                    # Append deterministic meta-blocks if not already present
+                    extra_blocks = []
+                    if read_files and "<read-files>" not in sum_clean:
+                        extra_blocks.append(
+                            "<read-files>\n" + "\n".join(f"- {f}" for f in read_files) + "\n</read-files>"
+                        )
+                    if modified_files and "<modified-files>" not in sum_clean:
+                        extra_blocks.append(
+                            "<modified-files>\n" + "\n".join(f"- {f}" for f in modified_files) + "\n</modified-files>"
+                        )
+                    if established_levels and "<established_levels>" not in sum_clean:
+                        extra_blocks.append(
+                            "<established_levels>\n"
+                            + "\n".join(f"- {lvl}" for lvl in established_levels)
+                            + "\n</established_levels>"
+                        )
+                    if extra_blocks:
+                        sum_clean = f"{sum_clean}\n" + "\n".join(extra_blocks)
+
                     return sum_clean
             except Exception as e:
                 logger.debug(f"Auxiliary model summarization failed, falling back to rule extraction: {e}")
 
-        # Fallback deterministic summary with 8-section structured format
-        if facts or existing_summary or any(categorized.values()):
-            lines = [
-                "Key established facts from prior turns:",
-                "<compacted-summary>",
-            ]
-            if existing_summary:
-                lines.append(f"  • Prior Summary: {existing_summary[:200]}")
-            for sec in TRADING_SUMMARY_SECTIONS:
-                items = categorized.get(sec, [])
-                if items:
-                    lines.append(f"  <{sec}>")
-                    for item in items:
-                        lines.append(f"    • {item}")
-                    lines.append(f"  </{sec}>")
-            # If any unclassified flat facts remain, include them
-            classified_items = {item for sublist in categorized.values() for item in sublist}
-            unclassified = [f for f in facts if f not in classified_items]
-            if unclassified:
-                lines.extend(f"  • {f}" for f in unclassified)
-            lines.append("</compacted-summary>")
-            return "\n".join(lines)
+        # Fallback deterministic summary with 8-section structured format + read/modified files
+        lines = [
+            "Key established facts from prior turns:",
+            "<compacted-summary>",
+        ]
+        if existing_summary:
+            lines.append(f"  • Prior Summary: {existing_summary[:200]}")
+        for sec in TRADING_SUMMARY_SECTIONS:
+            items = categorized.get(sec, [])
+            if items:
+                lines.append(f"  <{sec}>")
+                for item in items:
+                    lines.append(f"    • {item}")
+                lines.append(f"  </{sec}>")
+            elif sec == "established_levels" and established_levels:
+                lines.append(f"  <established_levels>")
+                for lvl in established_levels:
+                    lines.append(f"    • {lvl}")
+                lines.append(f"  </established_levels>")
 
-        return (
-            "Intermediate turns summarized: market data and technical indicators queried and evaluated.\n"
-            "<compacted-summary>\n"
-            "  <market_regime>None recorded</market_regime>\n"
-            "  <technical_structure>None recorded</technical_structure>\n"
-            "  <liquidity_pois>None recorded</liquidity_pois>\n"
-            "  <intermarket_sentiment>None recorded</intermarket_sentiment>\n"
-            "  <active_hypotheses>None recorded</active_hypotheses>\n"
-            "  <established_levels>None recorded</established_levels>\n"
-            "  <risk_constraints>None recorded</risk_constraints>\n"
-            "  <completed_actions_evidence>Market data and indicators queried</completed_actions_evidence>\n"
-            "</compacted-summary>"
-        )
+        # If any unclassified flat facts remain, include them
+        classified_items = {item for sublist in categorized.values() for item in sublist}
+        unclassified = [f for f in facts if f not in classified_items]
+        if unclassified:
+            lines.extend(f"  • {f}" for f in unclassified)
+        lines.append("</compacted-summary>")
+
+        if read_files:
+            lines.append("<read-files>\n" + "\n".join(f"- {f}" for f in read_files) + "\n</read-files>")
+        if modified_files:
+            lines.append("<modified-files>\n" + "\n".join(f"- {f}" for f in modified_files) + "\n</modified-files>")
+
+        return "\n".join(lines)
 
     async def compress(
         self,
@@ -650,12 +745,16 @@ class ContextCompressor:
         """Phase 4: Assembly.
 
         Executes full 4-phase context compression pipeline:
-        1. Feasibility Skip: Ignore small contexts (< 1000 tokens).
+        1. Feasibility Skip: Ignore small contexts (< 1000 tokens / max_context_chars).
         2. Prune redundant tool outputs.
         3. Split into Head, Middle, Tail (tool-pair snapped).
         4. Summarize Middle via aux model / rules with iterative chaining.
         5. Assemble Head + [Condensed Summary Message] + Tail.
         """
+        total_chars = sum(len(str(m.get("content", ""))) for m in messages)
+        if total_chars <= max_context_chars:
+            return messages
+
         # Phase 0: Offload historical high-res charts older than 2 turns to eliminate multimodal sinks
         messages = offload_historical_charts(messages, retain_recent_turns=2)
 

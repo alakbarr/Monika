@@ -1732,6 +1732,7 @@ Monika/
 │       │   │   ├── adaptive_thinking.py
 │       │   │   ├── cache_breakpoint_manager.py
 │       │   │   ├── cache_miss_detector.py
+│       │   │   ├── cache_warmer.py
 │       │   │   ├── caveman_compressor.py
 │       │   │   ├── constrained_sampling.py
 │       │   │   ├── context_compaction.py
@@ -2281,6 +2282,7 @@ Monika/
 │   │   ├── test_providers.py
 │   │   ├── test_providers_streaming.py
 │   │   ├── test_regime_and_factor_parity.py
+│   │   ├── test_regime_b_confluence_verification.py
 │   │   ├── test_sandbox_runner.py
 │   │   ├── test_scenario_tree.py
 │   │   ├── test_session_search.py
@@ -2702,6 +2704,10 @@ Monika/
 │   │   ├── test_telegram_pairing.py
 │   │   ├── test_telegram_streaming_tools.py
 │   │   └── test_voice_handler.py
+│   ├── unit/
+│   │   └── infrastructure/
+│   │       └── llm/
+│   │           └── test_kv_cache_invariance.py
 │   ├── utils/
 │   │   ├── __init__.py
 │   │   ├── test_analysis_tracker.py
@@ -3025,4 +3031,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 257 | **Total Tracked Files**: 2738
+**Total Tracked Directories**: 260 | **Total Tracked Files**: 2741

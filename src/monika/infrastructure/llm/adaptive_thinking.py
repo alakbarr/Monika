@@ -118,7 +118,7 @@ class PerSymbolAdaptiveThinkingAllocator:
             regime_mult = 1.0
 
         computed = int(base_budget * asset_mult * vix_mult * conf_mult * regime_mult)
-        clamped = max(1024, min(10000, computed))
+        clamped = max(1024, min(16000, computed))
 
         final_budget = QuantizedThinkingAllocator.quantize(clamped) if quantized else clamped
 
@@ -177,3 +177,21 @@ class PerSymbolAdaptiveThinkingAllocator:
             return base_budget
 
         return cls.compute_symbol_budget(symbol, context, base_budget=base_budget)
+
+
+def clamp_thinking_budget_to_answer_room(
+    budget: int,
+    max_tokens: int,
+    min_answer_tokens: int = 1024,
+) -> int:
+    """
+    Clamps thinking token budget so it never starves max_tokens of answer completion headroom.
+    Ensures at least min_answer_tokens remain available for the visible answer.
+    Clamps thinking token budgets to preserve response room.
+    """
+    if budget <= 0:
+        return 0
+    if max_tokens <= min_answer_tokens:
+        return 0
+    max_allowed_thinking = max(0, max_tokens - min_answer_tokens)
+    return max(0, min(budget, max_allowed_thinking))

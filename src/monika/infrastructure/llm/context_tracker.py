@@ -56,6 +56,7 @@ class ContextTracker:
         self.input_tokens: int = 0
         self.output_tokens: int = 0
         self.cached_tokens: int = 0
+        self.last_turn_context_tokens: int = 0
         self.spans: List[TokenSpan] = []
 
     @property
@@ -71,6 +72,7 @@ class ContextTracker:
         cached_tokens: int = 0,
         model: Optional[str] = None,
         step: str = "general",
+        current_turn_tokens: Optional[int] = None,
     ) -> None:
         """Record token usage from a model invocation."""
         inp = max(0, int(input_tokens or 0))
@@ -83,6 +85,11 @@ class ContextTracker:
         self.input_tokens += inp
         self.output_tokens += out
         self.cached_tokens += cache
+
+        if current_turn_tokens is not None and current_turn_tokens > 0:
+            self.last_turn_context_tokens = current_turn_tokens
+        else:
+            self.last_turn_context_tokens = inp + out
 
         self.spans.append(
             TokenSpan(
@@ -98,12 +105,17 @@ class ContextTracker:
         """Current total tokens accumulated in the active cycle."""
         return self.input_tokens + self.output_tokens
 
+    def get_current_context_tokens(self) -> int:
+        """Current single-turn context tokens occupancy."""
+        return self.last_turn_context_tokens if self.last_turn_context_tokens > 0 else self.get_used_tokens()
+
     def get_utilization_ratio(self) -> float:
-        """Ratio of context window used (0.0 - 1.0)."""
+        """Ratio of context window used by the current active turn (0.0 - 1.0)."""
         max_limit = self.max_context_window
         if max_limit <= 0:
             return 0.0
-        return min(1.0, max(0.0, self.get_used_tokens() / float(max_limit)))
+        active_tokens = self.get_current_context_tokens()
+        return min(1.0, max(0.0, active_tokens / float(max_limit)))
 
     def get_cache_hit_rate(self) -> float:
         """Percentage of input tokens served from cache."""
@@ -124,6 +136,7 @@ class ContextTracker:
         self.input_tokens = 0
         self.output_tokens = 0
         self.cached_tokens = 0
+        self.last_turn_context_tokens = 0
         self.spans.clear()
 
     def get_summary(self) -> Dict[str, Any]:
@@ -135,6 +148,7 @@ class ContextTracker:
             "output_tokens": self.output_tokens,
             "cached_tokens": self.cached_tokens,
             "used_tokens": self.get_used_tokens(),
+            "last_turn_context_tokens": self.last_turn_context_tokens,
             "max_context_window": self.max_context_window,
             "utilization_ratio": round(self.get_utilization_ratio(), 4),
             "utilization_pct": round(self.get_utilization_ratio() * 100.0, 1),

@@ -659,11 +659,26 @@ class SystemToolsMixin(_ToolExecutorMixinBase):
 
     async def _tool_delegate_specialist_analysis(self, inp: dict) -> dict:
         """Execute delegated specialist analysis in isolated subagent harness."""
+        from monika.application.analysis.subagent.isolated_harness import (
+            IsolatedSubagentRunner,
+            _subagent_depth,
+            MAX_SUBAGENT_DEPTH,
+        )
+
+        if _subagent_depth.get() >= MAX_SUBAGENT_DEPTH:
+            logger.warning("[SystemTools] Subagent delegation depth exceeded. Failing closed.")
+            return {
+                "status": "error",
+                "specialist_role": inp.get("specialist_role", "unknown"),
+                "summary": f"Recursion blocked: maximum subagent delegation depth ({MAX_SUBAGENT_DEPTH}) reached.",
+                "tool_calls_made": 0,
+            }
+
         role = inp.get("specialist_role", "technical_specialist")
         prompt = inp.get("task_prompt", "")
         symbol = inp.get("symbol", "")
+        fork_parent = inp.get("fork_parent_context", False)
 
-        from monika.application.analysis.subagent.isolated_harness import IsolatedSubagentRunner
         from monika.application.analysis.tools.tools_definitions import MACRO_ANALYSIS_TOOLS, ASSET_CORE_TOOLS
         from monika.infrastructure.providers.llm_factory import get_client_for_task
 
@@ -690,6 +705,11 @@ class SystemToolsMixin(_ToolExecutorMixinBase):
         user_content = f"Symbol: {symbol}\nTask: {prompt}" if symbol else prompt
         messages = [{"role": "user", "content": user_content}]
 
+        parent_messages = getattr(self, "messages", None) or getattr(self, "conversation_history", None)
+        parent_sys_prompt = getattr(self, "system_prompt", None)
+        if fork_parent and parent_sys_prompt:
+            sys_prompt = parent_sys_prompt
+
         res = await runner.run_isolated(
             role_name=role,
             llm_client=client,
@@ -699,6 +719,8 @@ class SystemToolsMixin(_ToolExecutorMixinBase):
             stage_name="chat_delegation",
             timeout=180,
             session=self.session,
+            fork_parent_context=bool(fork_parent and parent_messages),
+            parent_messages=parent_messages,
         )
 
         return {
