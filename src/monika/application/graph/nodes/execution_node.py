@@ -155,7 +155,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                     calibrated_conf = await get_calibrated_confidence(
                         cal_session, raw_conf, regime=r.get("market_regime") or r.get("regime")
                     )
-                effective_min = min_confidence - 0.03
+                effective_min = max(0.50, min_confidence - 0.08)
                 if calibrated_conf < effective_min:
                     logger.info(
                         f"Execution for {sym} skipped: calibrated confidence {calibrated_conf:.2f} < {effective_min:.2f} (base: {min_confidence:.2f})"

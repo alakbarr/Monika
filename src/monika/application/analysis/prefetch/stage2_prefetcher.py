@@ -624,13 +624,24 @@ class Stage2DataBundler:
             align_status = (
                 "ALIGNED"
                 if d1_bias == h4_bias and d1_bias != "NEUTRAL"
-                else "CONFLICTING"
+                else "PULLBACK_SETUP"
                 if (d1_bias in ("BULLISH", "BEARISH") and h4_bias in ("BULLISH", "BEARISH") and d1_bias != h4_bias)
                 else "NEUTRAL/PARTIAL"
             )
             lines.append(f"D1 Technical Bias: {d1_bias} | H4 Technical Bias: {h4_bias} | Alignment: {align_status}")
-            if align_status == "CONFLICTING":
-                lines.append("[PERINGATAN] WARNING: D1 trend and H4 entry timeframe are CONFLICTING. Prefer WAIT.")
+            if align_status == "PULLBACK_SETUP":
+                if d1_bias == "BULLISH" and h4_bias == "BEARISH":
+                    lines.append(
+                        "Multi-TF Structure: D1 Bullish trend with H4 corrective pullback into discount. "
+                        "Look for Bullish SMC/structure confirmation (FVG, Order Block, Value Area Low). "
+                        "Do NOT force WAIT solely due to pullback if key level confirms."
+                    )
+                elif d1_bias == "BEARISH" and h4_bias == "BULLISH":
+                    lines.append(
+                        "Multi-TF Structure: D1 Bearish trend with H4 corrective rally into premium. "
+                        "Look for Bearish SMC/structure confirmation (FVG, Order Block, Value Area High). "
+                        "Do NOT force WAIT solely due to pullback if key level confirms."
+                    )
             lines.append("")
 
         for key, value in data.items():

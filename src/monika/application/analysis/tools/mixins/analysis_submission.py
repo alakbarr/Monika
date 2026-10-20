@@ -414,6 +414,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
         context_snapshot_id: Optional[str] = None
         context_cds_score: Optional[float] = None
         min_sl_from_atr: float = 0.0
+        min_sl_multiplier: float = 1.0
 
         # Validation rules per spec §7.2
         errors = []
@@ -506,6 +507,10 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 "near_order_block",
                 "in_ote_zone",
                 "near_sr_zone",
+                "breakout_expansion",
+                "volume_expansion",
+                "trend_continuation",
+                "momentum_expansion",
                 "cot_aligned",
                 "vix_ok",
                 "post_event_entry",
@@ -945,19 +950,18 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     sl_dist = abs(entry_price - sl_price)
 
                     # Defensive reconciliation: if the ATR noise-floor for this cycle happens to
-                    # exceed the ADR-based ceiling, the ATR floor alone would make EVERY trade on
-                    # this symbol impossible under the intraday-range framework. Relax the floor
-                    # instead of hard-blocking — the dedicated ADR ceiling check below still
-                    # protects against an oversized stop.
-                    if adr_ctx_for_validation is not None:
-                        adr_sl_ceiling = adr_ctx_for_validation["target_sl_max_distance"]
-                        if min_sl_from_atr > adr_sl_ceiling:
-                            logger.warning(
-                                f"[{symbol}] ATR noise-floor ({min_sl_from_atr:.5f}) exceeds ADR-based SL "
-                                f"ceiling ({adr_sl_ceiling:.5f}) — relaxing ATR floor for this validation. "
-                                f"Consider lowering min_sl_atr_multiplier_by_symbol['{symbol}']."
+                    # exceed the ADR-based ceiling (e.g. volatile Gold/Oil expansion), dynamically
+                    # harmonize the ceiling so the floor and ceiling never form an impossible empty set.
+                    raw_min_sl = min_sl_from_atr
+                    if adr_ctx_for_validation is not None and "target_sl_max_distance" in adr_ctx_for_validation:
+                        adr_sl_ceiling = float(adr_ctx_for_validation["target_sl_max_distance"])
+                        effective_sl_ceiling = max(adr_sl_ceiling, raw_min_sl * 1.25)
+                        if raw_min_sl > adr_sl_ceiling:
+                            logger.info(
+                                f"[{symbol}] ATR noise-floor ({raw_min_sl:.5f}) exceeds ADR-based SL "
+                                f"ceiling ({adr_sl_ceiling:.5f}) — harmonizing ceiling to {effective_sl_ceiling:.5f} to accommodate volatility."
                             )
-                            min_sl_from_atr = min(min_sl_from_atr, adr_sl_ceiling * 0.85)
+                        min_sl_from_atr = min(raw_min_sl, effective_sl_ceiling * 0.85)
 
                     if sl_dist < (min_sl_from_atr - 1e-4):
                         errors.append(
@@ -971,10 +975,14 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 sl_dist_check = abs(entry_price - sl_price)
                 tp_min = adr_ctx_for_validation["target_tp_min_distance"] * (1 - tol)
                 tp_max = adr_ctx_for_validation["target_tp_max_distance"] * (1 + tol)
+                adr_sl_dist = float(adr_ctx_for_validation.get("target_sl_max_distance", min_sl_from_atr * 1.5))
                 effective_sl_ceiling = (
-                    max(adr_ctx_for_validation["target_sl_max_distance"], min_sl_from_atr * 1.25)
+                    max(
+                        adr_sl_dist,
+                        min_sl_from_atr * 1.25,
+                    )
                     if min_sl_from_atr > 0
-                    else adr_ctx_for_validation["target_sl_max_distance"]
+                    else adr_sl_dist
                 )
                 sl_max = effective_sl_ceiling * (1 + tol)
 
@@ -1322,6 +1330,36 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                         "detail": "Mechanical gate auto-reevaluate after 2 hours",
                     }
                 errors = []
+            elif (
+                attempts >= 3
+                and error_class == "STRUCTURAL"
+                and decision in ("buy", "sell")
+                and entry_price
+                and atr_value_for_validation
+            ):
+                # Auto-heal structural levels to prevent dropping high-conviction trade to WAIT
+                logger.info(
+                    f"[{symbol}] Attempt {attempts}: Auto-healing structural level geometry to preserve valid {decision.upper()} signal. Prior errors: {errors}"
+                )
+                atr_v = atr_value_for_validation
+                if decision == "buy":
+                    if not sl_price or sl_price >= entry_price or (entry_price - sl_price) < 0.5 * atr_v:
+                        sl_price = round(entry_price - (1.2 * atr_v), 5)
+                        inp["stop_loss"] = sl_price
+                    risk_dist = entry_price - sl_price
+                    if not tp_price or tp_price <= entry_price or (tp_price - entry_price) < 1.3 * risk_dist:
+                        tp_price = round(entry_price + (1.6 * risk_dist), 5)
+                        inp["take_profit"] = tp_price
+                else:
+                    if not sl_price or sl_price <= entry_price or (sl_price - entry_price) < 0.5 * atr_v:
+                        sl_price = round(entry_price + (1.2 * atr_v), 5)
+                        inp["stop_loss"] = sl_price
+                    risk_dist = sl_price - entry_price
+                    if not tp_price or tp_price >= entry_price or (entry_price - tp_price) < 1.3 * risk_dist:
+                        tp_price = round(entry_price - (1.6 * risk_dist), 5)
+                        inp["take_profit"] = tp_price
+                rationale += f"\n\n[SYSTEM AUTO-HEAL: Structural SL/TP aligned to valid ATR geometry (SL={sl_price}, TP={tp_price}, R:R={(abs(tp_price - entry_price) / max(0.00001, abs(entry_price - sl_price))):.2f})]"
+                errors = []
             elif error_class == "FATAL" or attempts >= 3:
                 if error_class == "FATAL":
                     logger.error(f"[{symbol}] submit_asset_analysis failed validation (FATAL: {errors}). Forcing WAIT.")
@@ -1399,6 +1437,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 direction=decision,
                 stop_loss=float(inp["stop_loss"]) if inp.get("stop_loss") is not None else 0.0,
                 atr=atr_value_for_validation,
+                confluence_factors=inp.get("confluence_factors"),
             )
             if proximity_warnings:
                 for w in proximity_warnings:

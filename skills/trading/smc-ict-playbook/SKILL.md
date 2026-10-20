@@ -33,22 +33,36 @@ Call `get_optimal_intraday_levels(symbol, direction, entry_price)` before finali
 - If `entry_allowed == False` (daily range exhausted) $\rightarrow$ Submit `WAIT`.
 
 ## MANDATORY CONFLUENCE SCORECARD FORMAT
-Output confluence assessment in EXACT format BEFORE calling `submit_asset_analysis`:
+Output confluence assessment in EXACT format BEFORE calling `submit_asset_analysis`.
+Choose either **REGIME A (PULLBACK / ZONE RETEST)** or **REGIME B (BREAKOUT / MOMENTUM EXPANSION)** depending on market context:
 
 ```text
 CONFLUENCE SCORECARD FOR {SYMBOL}:
+SETUP_TYPE: [PULLBACK_RETEST / BREAKOUT_EXPANSION]
+
+--- CORE STRUCTURAL & MACRO FACTORS ---
 [ ] F1_FUNDAMENTAL_BIAS: Macro brief supports {BUY/SELL}? YES(+2)/NO(0); Strong Conviction: YES(+3); Contra-Macro Setup (opposes Stage 1 bias when confidence >= 0.55): FORCED_PENALTY(-3) unless price breached Stage 1 invalidation level = __
-[ ] F2_DXY_CONFIRMS: DXY trend confirms direction? YES(+1)/NO(0) = __
-[ ] F3_D1_TREND: D1 trend aligns with H4 entry? YES(+2)/NO(0) = __
-[ ] F4_RSI_NEUTRAL: RSI not overbought/oversold at entry? YES(+1)/NO(0) = __
-[ ] F5_FVG_PROXIMITY: Entry within 0.5x ATR of unfilled FVG? YES(+2)/NO(0) = __
-[ ] F6_ORDER_BLOCK: Unmitigated OB within 0.5x ATR of entry? YES(+2)/NO(0) = __
+[ ] F2_DXY_CONFIRMS: DXY/Contagion confirms direction? YES(+1)/NO(0) = __
+[ ] F3_D1_TREND: D1 & H4 trend aligns with entry? YES(+2)/NO(0) = __
+[ ] F4_RSI_NEUTRAL_OR_MOMENTUM: RSI confirmed (not overbought/oversold for retest, or strong momentum 45-65 for breakout)? YES(+1)/NO(0) = __
+
+--- REGIME A: ZONE RETEST / SMC PULLBACK FACTORS (If entering on pullback) ---
+[ ] F5_FVG_PROXIMITY: Entry within 0.5x ATR of unfilled H1/H4 FVG? YES(+2)/NO(0) = __
+[ ] F6_ORDER_BLOCK: Unmitigated H1/H4 OB within 0.5x ATR of entry? YES(+2)/NO(0) = __
 [ ] F7_OTE_ZONE: Entry between Fib 0.618-0.786? YES(+1)/NO(0) = __
-[ ] F8_SR_ZONE: Entry at D1 or H4 S/R zone (within tolerance)? YES(+1)/NO(0) = __
-[ ] F9_COT_ALIGNED: COT not extreme against trade direction? YES(+1)/NO(0) = __
+[ ] F8_SR_ZONE: Entry at D1 or H4/H1 S/R zone (within tolerance)? YES(+1)/NO(0) = __
+
+--- REGIME B: BREAKOUT / MOMENTUM EXPANSION FACTORS (If entering on breakout) ---
+[ ] F5_BREAKOUT_EXPANSION: Breakout of Donchian channel or key structural high/low? YES(+2)/NO(0) = __
+[ ] F6_VOLUME_EXPANSION: Relative volume RVOL >= 1.2 or volume spike confirmed? YES(+2)/NO(0) = __
+[ ] F7_TREND_CONTINUATION: ADX > 25 and clean continuation impulse formed? YES(+2)/NO(0) = __
+[ ] F8_MOMENTUM_EXPANSION: Candle closing decisively outside recent range? YES(+1)/NO(0) = __
+
+--- SHARED CONTEXT & RISK FILTERS ---
+[ ] F9_COT_ALIGNED: COT / Positioning not extreme against trade direction? YES(+1)/NO(0) = __
 [ ] F10_VIX_OK: VIX < 20? YES(+1)/NO(0); VIX >= 30: BLOCKING_ISSUE = __
 [ ] F11_MICROSTRUCTURE_OK: VPIN < 0.50 or Kyle Lambda low? YES(+1)/NO(0); Toxic VPIN > 0.70: FORCED_SUBTRACT(-1) = __
-[ ] F12_PATTERN_CONSENSUS: Multi-timeframe historical pattern screening aligns direction (win rate >= 60%)? YES(+1)/NO(0) = __
+[ ] F12_PATTERN_CONSENSUS: Multi-timeframe pattern consensus or alpha screen aligns (win rate >= 60%)? YES(+1)/NO(0) = __
 
 BASE STRUCTURAL SCORE: __ / 14
 
@@ -66,7 +80,7 @@ EFFECTIVE THRESHOLD: __ / 14 (Standard 7 + Dynamic Adjustments)
 DECISION: __ (BUY/SELL if Total Confluence >= Effective Threshold, WAIT if sub-threshold, AVOID if structural invalidation)
 ```
 
-`confluence_factors` IDs: `"fundamental_bias"`, `"dxy_confirms"`, `"d1_trend"`, `"rsi_neutral"`, `"near_fvg"`, `"near_order_block"`, `"in_ote_zone"`, `"near_sr_zone"`, `"cot_aligned"`, `"vix_ok"`, `"post_event_entry"`, `"session_prime"`, `"liquidity_sweep_confirmed"`, `"microstructure_ok"`, `"historical_pattern_consensus"`, `"quant_strategy_edge"`, `"rr_ratio_bonus"`, `"adr_target_bonus"`.
+`confluence_factors` IDs: `"fundamental_bias"`, `"dxy_confirms"`, `"d1_trend"`, `"rsi_neutral"`, `"near_fvg"`, `"near_order_block"`, `"in_ote_zone"`, `"near_sr_zone"`, `"breakout_expansion"`, `"volume_expansion"`, `"trend_continuation"`, `"momentum_expansion"`, `"cot_aligned"`, `"vix_ok"`, `"post_event_entry"`, `"session_prime"`, `"liquidity_sweep_confirmed"`, `"microstructure_ok"`, `"historical_pattern_consensus"`, `"quant_strategy_edge"`, `"rr_ratio_bonus"`, `"adr_target_bonus"`.
 
 ## AUTOMATED SERVER-SIDE RISK ENFORCEMENT RULES
 1. **ATR Missing**: BUY/SELL rejected.

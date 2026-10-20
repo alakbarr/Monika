@@ -147,12 +147,12 @@ def test_edge_strategy_build_bracket():
 
 def test_strategy_tiers_and_registry_classification():
     # Quarantined strategy
-    for q_id in ("smc_fvg", "btc_donchian_breakout", "bollinger_reversion"):
+    for q_id in ("smc_fvg", "btc_donchian_breakout", "bollinger_reversion", "gbpusd_trend_breakout"):
         assert StrategyRegistry.get_tier(q_id) == StrategyTier.QUARANTINED
         assert q_id in QUARANTINED_STRATEGY_IDS
 
     # Validated strategy
-    for v_id in ("smt_divergence", "bb_volume_profile", "gbpusd_trend_breakout"):
+    for v_id in ("smt_divergence", "bb_volume_profile", "tokyo_open_sweep", "vwap_mean_reversion"):
         assert StrategyRegistry.get_tier(v_id) == StrategyTier.VALIDATED
         assert v_id in PROMOTED_EMPIRICAL_STRATEGIES
 

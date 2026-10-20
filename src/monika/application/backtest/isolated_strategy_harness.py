@@ -222,7 +222,10 @@ class ZeroLookaheadSliceSession(AsyncSession):
             def first(self):
                 return self._data[-1] if self._data else None
 
-        stmt_str = str(stmt).upper()
+        try:
+            stmt_str = str(stmt.compile(compile_kwargs={"literal_binds": True})).upper()
+        except Exception:
+            stmt_str = str(stmt).upper()
         h1_candles = self.candle_cache.get((self.symbol, "H1"), [])
         last_close = float(h1_candles[-1].close) if h1_candles else 1.0
 

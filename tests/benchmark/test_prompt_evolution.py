@@ -1,16 +1,22 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from monika.application.benchmark.prompt_evolution import GEPALiteEvolver
 from monika.application.benchmark.judge import JUDGE_PERSONAS, judge_output_ensemble
 
 
 @pytest.mark.asyncio
 async def test_gepa_lite_evolver():
-    evolver = GEPALiteEvolver()
-    res = await evolver.evolve_round(session=None, population_size=2, generations=1)
-    assert "prompt" in res
-    assert "score" in res
-    assert "tokens" in res
+    mock_client = AsyncMock()
+    mock_client.generate.return_value = (
+        "Mutated prompt variant with all safety rules preserved and compact instructions.\n"
+        "Must preserve all risk invariants and trading criteria."
+    )
+    with patch("monika.infrastructure.providers.llm_factory.get_client_for_task", return_value=mock_client):
+        evolver = GEPALiteEvolver()
+        res = await evolver.evolve_round(session=None, population_size=2, generations=1)
+        assert "prompt" in res
+        assert "score" in res
+        assert "tokens" in res
 
 
 def test_judge_personas_portfolio_assessor():

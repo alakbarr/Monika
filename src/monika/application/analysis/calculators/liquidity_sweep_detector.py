@@ -282,8 +282,29 @@ async def detect_liquidity_sweep(
     confirming_fvg = (await session.execute(fvg_stmt.order_by(FVGZone.formed_at.asc()).limit(1))).scalar_one_or_none()
 
     confirming = confirming_break or confirming_ob or confirming_fvg
+    basis = (
+        "ChoCH/BOS" if confirming_break else ("Order Block" if confirming_ob else ("FVG" if confirming_fvg else None))
+    )
+
+    if not confirming:
+        # Candle-based structural shift fallback (ensures robust operation without relying solely on async DB tables)
+        post_sweep_bars = [b for b in post_bars if b.timestamp >= sweep_bar.timestamp]
+        if post_sweep_bars:
+            latest_bar = post_sweep_bars[-1]
+            if sweep_direction == "sell_side" and latest_bar.close < sweep_bar.low:
+                confirming = True
+                basis = "Candle ChoCH (Close Below Sweep Low)"
+            elif sweep_direction == "buy_side" and latest_bar.close > sweep_bar.high:
+                confirming = True
+                basis = "Candle ChoCH (Close Above Sweep High)"
+            elif sweep_direction == "sell_side" and sweep_bar.close < asian["high"]:
+                confirming = True
+                basis = "Asian Range Rejection"
+            elif sweep_direction == "buy_side" and sweep_bar.close > asian["low"]:
+                confirming = True
+                basis = "Asian Range Rejection"
+
     if confirming:
-        basis = "ChoCH/BOS" if confirming_break else ("Order Block" if confirming_ob else "FVG")
         volume_confirmed = await _confirm_with_volume(session, symbol, sweep_bar)
         result.update(
             structure_confirmed=True,

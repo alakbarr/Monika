@@ -292,6 +292,12 @@ class TestToolExecutor:
             ToolExecutor._classify_validation_errors(
                 ["VOLATILITY REGIME GATE: Bollinger chop detected — no confirmed breakout. Submit WAIT."]
             )
+            == "GATE_FIXABLE"
+        )
+        assert (
+            ToolExecutor._classify_validation_errors(
+                ["MACRO BIAS GATE: Fundamental brief indicates strong divergence. Entry blocked."]
+            )
             == "GATE"
         )
         assert (

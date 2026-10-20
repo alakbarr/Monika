@@ -49,14 +49,14 @@ class LiquiditySweepStructuralShift(EdgeStrategy):
         sweep_price = r.get("sweep_price", entry_price)
 
         if direction == "buy":
-            stop_loss = round(min(sweep_price - buf, entry_price - (atr * 0.5)), 5)
+            stop_loss = round(sweep_price - buf, 5)
             risk = entry_price - stop_loss
             if risk <= 0:
                 stop_loss = round(entry_price - (atr * 1.0), 5)
                 risk = entry_price - stop_loss
             take_profit = round(entry_price + (risk * 2.0), 5)
         else:
-            stop_loss = round(max(sweep_price + buf, entry_price + (atr * 0.5)), 5)
+            stop_loss = round(sweep_price + buf, 5)
             risk = stop_loss - entry_price
             if risk <= 0:
                 stop_loss = round(entry_price + (atr * 1.0), 5)

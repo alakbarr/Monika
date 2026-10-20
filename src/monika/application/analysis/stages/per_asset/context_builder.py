@@ -888,7 +888,7 @@ class ContextBuilderMixin:
 
             lines.append(line)
 
-        # Add actionable insight if pattern detected
+        # Add actionable insight if pattern detected on LLM Stage 2 trades
         closed_trades = [
             t
             for t in [
@@ -896,7 +896,7 @@ class ContextBuilderMixin:
                     await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.analysis_id == prev.id))
                 ).scalar_one_or_none()
                 for prev in recent
-                if prev.id
+                if prev.id and (getattr(prev, "decision_source", None) in ("llm_stage2", None))
             ]
             if t and t.status == "closed"
         ]

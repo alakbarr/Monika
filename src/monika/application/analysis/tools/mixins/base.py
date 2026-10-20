@@ -27,6 +27,10 @@ FACTOR_POINT_MAP = {
     "near_order_block": 2,
     "in_ote_zone": 1,
     "near_sr_zone": 1,
+    "breakout_expansion": 2,
+    "volume_expansion": 2,
+    "trend_continuation": 2,
+    "momentum_expansion": 1,
     "cot_aligned": 1,
     "vix_ok": 1,
     "liquidity_sweep_confirmed": 2,
@@ -98,7 +102,13 @@ class _ToolExecutorMixinBase:
         @staticmethod
         def _classify_validation_errors(errs: list[str]) -> str: ...
         async def _validate_smc_entry_proximity(
-            self, symbol: str, entry_price: float, direction: str, stop_loss: float, atr: float
+            self,
+            symbol: str,
+            entry_price: float,
+            direction: str,
+            stop_loss: float,
+            atr: float,
+            confluence_factors: Optional[list[str]] = None,
         ) -> list[str]: ...
         async def execute(self, tool_name: str, tool_input: dict) -> Any: ...
 

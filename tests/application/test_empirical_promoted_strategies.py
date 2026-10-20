@@ -44,7 +44,7 @@ def test_quarantined_and_promoted_strategies_integrity():
         "liquidity_sweep",
         "usdjpy_atr_exhaustion",
         "xtiusd_atr_exhaustion",
-        "xauusd_atr_exhaustion",
+        "bb_volume_profile",
         "btcusd_dynamic_donchian",
     ]:
         assert promoted_id in PROMOTED_EMPIRICAL_STRATEGIES
@@ -52,6 +52,9 @@ def test_quarantined_and_promoted_strategies_integrity():
         assert strategy_cls is not None
         instance = strategy_cls()
         assert instance.strategy_id == promoted_id
+
+    # Verify quarantined strategies
+    assert "xauusd_atr_exhaustion" in QUARANTINED_STRATEGY_IDS
 
 
 def test_empirical_strategies_attributes():

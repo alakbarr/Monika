@@ -35,6 +35,8 @@ class BTCUSDDynamicDonchianStrategy(EdgeStrategy):
         self.volume_ma_period: int = int(self.settings.get("volume_ma_period", 20))
         self.rvol_threshold: float = float(self.settings.get("rvol_threshold", 1.35))
         self.expansion_threshold: float = float(self.settings.get("expansion_threshold", 1.15))
+        self.atr_multiplier_sl: float = float(self.settings.get("atr_multiplier_sl", 1.8))
+        self.risk_reward_ratio: float = float(self.settings.get("risk_reward_ratio", 2.0))
 
     async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:
         if symbol not in self.applicable_symbols:
@@ -163,8 +165,8 @@ class BTCUSDDynamicDonchianStrategy(EdgeStrategy):
                 entry_price=curr_close,
                 direction=direction,
                 atr=curr_atr,
-                atr_multiplier_sl=1.5,
-                risk_reward_ratio=2.0,
+                atr_multiplier_sl=self.atr_multiplier_sl,
+                risk_reward_ratio=self.risk_reward_ratio,
             )
             return EdgeSignal(
                 strategy_id=self.strategy_id,

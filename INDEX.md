@@ -6930,7 +6930,7 @@
 - **Path**: [`src/monika/application/analysis/strategies/xau_trend_engine.py`](src/monika/application/analysis/strategies/xau_trend_engine.py)
 - **Classes**:
   - `class XAUTrendEngine(EdgeStrategy)`
-    - `async evaluate(session, symbol, settings) -> EdgeSignal`
+    - `async evaluate(session, symbol: str, settings: dict, ...) -> EdgeSignal`
 
 #### `xauusd_atr_exhaustion.py`
 - **Path**: [`src/monika/application/analysis/strategies/xauusd_atr_exhaustion.py`](src/monika/application/analysis/strategies/xauusd_atr_exhaustion.py)

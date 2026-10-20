@@ -18,7 +18,7 @@ class BBVolumeProfileMeanReversion(EdgeStrategy):
     """
 
     strategy_id = "bb_volume_profile"
-    applicable_symbols = {"EURUSD"}
+    applicable_symbols = {"EURUSD", "GBPUSD", "AUDUSD"}
     compatible_regimes = {"RANGING", "CHOP", "MEAN_REVERTING", "COMPRESSED", "ALL"}
     factor_family = "mean_reversion"
 

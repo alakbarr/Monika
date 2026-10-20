@@ -306,9 +306,11 @@ async def get_calibrated_confidence(session: AsyncSession, raw_conf: float, regi
     except Exception:
         pass
     # Fallback saat N < 60 atau calibration params belum ada:
-    # Terapkan conservative discount agar overconfidence LLM tidak langsung meloloskan live trade
-    if raw_conf >= 0.50:
-        return round(min(raw_conf - 0.05, 0.65), 4)
+    # Terapkan conservative discount untuk nilai tinggi agar overconfidence LLM tidak langsung meloloskan live trade
+    if raw_conf >= 0.65:
+        return round(min(raw_conf - 0.05, 0.70), 4)
+    elif raw_conf >= 0.50:
+        return round(raw_conf, 4)
     return round(max(raw_conf - 0.05, 0.0), 4)
 
 

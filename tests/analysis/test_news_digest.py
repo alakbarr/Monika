@@ -241,6 +241,8 @@ class TestNewsDigestProcessor:
         mock_session.execute = AsyncMock(side_effect=mock_execute_side_effect)
 
         # Model only returns item 1 (index 1), completely omitting item 2
+        processor._classification_escalation.classify_json = AsyncMock(return_value=[])
+        processor._classification_verifier.classify_json = AsyncMock(return_value=[])
         processor._flash_lite.classify_json = AsyncMock(
             side_effect=[
                 [

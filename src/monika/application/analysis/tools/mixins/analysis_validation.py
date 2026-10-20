@@ -87,7 +87,13 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
     _get_gemini_precomputed = _get_precomputed_data
 
     async def _validate_smc_entry_proximity(
-        self, symbol: str, entry_price: float, direction: str, stop_loss: float, atr: float
+        self,
+        symbol: str,
+        entry_price: float,
+        direction: str,
+        stop_loss: float,
+        atr: float,
+        confluence_factors: Optional[list[str]] = None,
     ) -> list[str]:
         warnings = []
         if not entry_price or not atr or atr <= 0:
@@ -102,10 +108,10 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
                 await self.session.execute(
                     select(FVGZone)
                     .where(FVGZone.symbol == symbol)
-                    .where(FVGZone.timeframe == "H4")
+                    .where(FVGZone.timeframe.in_(["H1", "H4"]))
                     .where(FVGZone.filled_at.is_(None))
                     .order_by(FVGZone.formed_at.desc())
-                    .limit(10)
+                    .limit(15)
                 )
             )
             .scalars()
@@ -131,10 +137,10 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
                 await self.session.execute(
                     select(OrderBlock)
                     .where(OrderBlock.symbol == symbol)
-                    .where(OrderBlock.timeframe == "H4")
+                    .where(OrderBlock.timeframe.in_(["H1", "H4"]))
                     .where(OrderBlock.mitigated_at.is_(None))
                     .order_by(OrderBlock.formed_at.desc())
-                    .limit(5)
+                    .limit(10)
                 )
             )
             .scalars()
@@ -154,12 +160,30 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
                 near_ob = True
                 break
 
-        if not near_fvg and not near_ob:
-            warnings.append(
-                f"SMC PROXIMITY FAIL: Entry {entry_price:.5f} is NOT within 0.5×ATR ({proximity_threshold:.5f}) of any active H4 FVG or Order Block. "
-                f'Entry appears to be "chasing" price rather than waiting for pullback to institutional zone. '
-                f"Consider WAIT until price returns to a zone."
+        is_breakout = bool(
+            confluence_factors
+            and any(
+                f in confluence_factors
+                for f in ("breakout_expansion", "volume_expansion", "trend_continuation", "momentum_expansion")
             )
+        )
+        if not near_fvg and not near_ob:
+            if is_breakout:
+                matched_factors = [
+                    f
+                    for f in (confluence_factors or [])
+                    if f in ("breakout_expansion", "volume_expansion", "trend_continuation", "momentum_expansion")
+                ]
+                warnings.append(
+                    f"BREAKOUT EXPANSION NOTE: Entry {entry_price:.5f} is an active momentum/breakout setup "
+                    f"(confirmed by {matched_factors}). Evaluated on expansion criteria rather than pullback zone."
+                )
+            else:
+                warnings.append(
+                    f"SMC PROXIMITY FAIL: Entry {entry_price:.5f} is NOT within 0.5×ATR ({proximity_threshold:.5f}) of any active H1/H4 FVG or Order Block. "
+                    f'Entry appears to be "chasing" price rather than waiting for pullback to institutional zone. '
+                    f"Consider WAIT until price returns to a zone."
+                )
         elif not inside_fvg and not inside_ob and (near_fvg or near_ob):
             warnings.append(
                 f"SMC PROXIMITY NOTE: Entry is near but not inside an FVG/OB zone. "
@@ -173,11 +197,11 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
                     await self.session.execute(
                         select(SwingPoint)
                         .where(SwingPoint.symbol == symbol)
-                        .where(SwingPoint.timeframe == "H4")
+                        .where(SwingPoint.timeframe.in_(["H1", "H4"]))
                         .where(SwingPoint.type == "low")
                         .where(SwingPoint.price <= entry_price)
                         .order_by(SwingPoint.price.desc())
-                        .limit(3)
+                        .limit(5)
                     )
                 )
                 .scalars()
@@ -190,11 +214,11 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
                     await self.session.execute(
                         select(SwingPoint)
                         .where(SwingPoint.symbol == symbol)
-                        .where(SwingPoint.timeframe == "H4")
+                        .where(SwingPoint.timeframe.in_(["H1", "H4"]))
                         .where(SwingPoint.type == "high")
                         .where(SwingPoint.price >= entry_price)
                         .order_by(SwingPoint.price.asc())
-                        .limit(3)
+                        .limit(5)
                     )
                 )
                 .scalars()

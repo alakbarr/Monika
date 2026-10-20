@@ -20,9 +20,18 @@ from monika.application.analysis.tools.mixins.analysis_validation import AssetAn
 
 
 def test_strategy_governance_parity():
-    """Verify xti_pairs_readiness is quarantined and tokyo_open_sweep & liquidity_sweep are promoted."""
+    """Verify xti_pairs_readiness, gbpusd_trend_breakout, and xauusd_atr_exhaustion are quarantined and promoted strategies are correct."""
+    from monika.application.analysis.strategies.bb_volume_profile import BBVolumeProfileMeanReversion
+    from monika.application.analysis.strategies.vwap_reversion import VWAPMeanReversionStrategy
+
     assert "xti_pairs_readiness" in QUARANTINED_STRATEGY_IDS
     assert "xti_pairs_readiness" not in PROMOTED_EMPIRICAL_STRATEGIES
+
+    assert "gbpusd_trend_breakout" in QUARANTINED_STRATEGY_IDS
+    assert "gbpusd_trend_breakout" not in PROMOTED_EMPIRICAL_STRATEGIES
+
+    assert "xauusd_atr_exhaustion" in QUARANTINED_STRATEGY_IDS
+    assert "xauusd_atr_exhaustion" not in PROMOTED_EMPIRICAL_STRATEGIES
 
     assert "tokyo_open_sweep" in PROMOTED_EMPIRICAL_STRATEGIES
     assert "tokyo_open_sweep" not in QUARANTINED_STRATEGY_IDS
@@ -30,6 +39,32 @@ def test_strategy_governance_parity():
 
     assert "liquidity_sweep" in PROMOTED_EMPIRICAL_STRATEGIES
     assert "liquidity_sweep" not in QUARANTINED_STRATEGY_IDS
+
+    assert "bb_volume_profile" in PROMOTED_EMPIRICAL_STRATEGIES
+    assert {"EURUSD", "GBPUSD", "AUDUSD"}.issubset(BBVolumeProfileMeanReversion.applicable_symbols)
+
+    assert "vwap_mean_reversion" in PROMOTED_EMPIRICAL_STRATEGIES
+    assert {"EURUSD", "AUDUSD", "XTIUSD", "XBRUSD", "USDJPY"}.issubset(VWAPMeanReversionStrategy.applicable_symbols)
+
+
+@pytest.mark.asyncio
+async def test_confidence_calibration_haircut_preservation():
+    """Verify get_calibrated_confidence does not apply redundant subtractive penalties to moderate confidence."""
+    from monika.core.calibration.confidence_calibrator import get_calibrated_confidence
+
+    session = AsyncMock()
+    # Mock SystemConfig query returning None (fallback path)
+    mock_res = MagicMock()
+    mock_res.scalar_one_or_none.return_value = None
+    session.execute.return_value = mock_res
+
+    # Moderate confidence (0.50 - 0.64) preserved
+    cal_mod = await get_calibrated_confidence(session, 0.55)
+    assert cal_mod == 0.55
+
+    # High confidence (>= 0.65) safely discounted against overconfidence
+    cal_high = await get_calibrated_confidence(session, 0.70)
+    assert cal_high == 0.65
 
 
 def test_volatility_regime_error_classification():
