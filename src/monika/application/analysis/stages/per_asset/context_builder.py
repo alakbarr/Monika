@@ -389,14 +389,19 @@ class ContextBuilderMixin:
                 except Exception as d_err:
                     logger.debug(f"Dynamic micro-playbook assembly non-fatal for {symbol}: {d_err}")
 
+                from monika.application.analysis.prompt.risk_contract import build_risk_contract
+
+                risk_contract = build_risk_contract(symbol, self.settings)
+                risk_contract_block = risk_contract.render_prompt_contract()
+
                 dynamic_system_prompt = (
                     f"\n\n=== CURRENT ANALYSIS TARGET (Updated per invocation — use these exact values, "
                     f"NOT template examples) ===\n"
                     f"Symbol: {symbol}\n"
                     f"COT Code: {cot_code or 'N/A'}\n"
                     f"Effective Confluence Threshold: {effective_threshold}/14\n"
-                    f"Minimum R:R Ratio (Intraday Range Strategy): {_min_rr_val}\n"
                     f"Tool Guidance: {tool_order_guidance}\n"
+                    f"{risk_contract_block}"
                     f"{dynamic_micro_block}"
                     f"=== END TARGET INFO ===\n"
                 )

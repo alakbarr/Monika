@@ -2155,6 +2155,7 @@ Monika/
 │   │   │   ├── test_gbpusd_trend_breakout.py
 │   │   │   ├── test_promoted_empirical_strategies.py
 │   │   │   ├── test_quant_discovery_pipeline.py
+│   │   │   ├── test_strategy_governance_and_brackets.py
 │   │   │   ├── test_strategy_registry_summary.py
 │   │   │   ├── test_synthesized_strategy_resilience.py
 │   │   │   └── test_xti_pairs_readiness.py
@@ -3015,4 +3016,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 254 | **Total Tracked Files**: 2731
+**Total Tracked Directories**: 254 | **Total Tracked Files**: 2732

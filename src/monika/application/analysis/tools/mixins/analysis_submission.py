@@ -810,12 +810,10 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 # RR minimal 1.0 untuk approval awal
                 if sl_dist > 0 and tp_dist > 0:
                     rr = tp_dist / sl_dist if sl_dist else 0
-                    try:
-                        min_rr = float(
-                            getattr(self, "settings", {}).get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)
-                        )
-                    except Exception:
-                        min_rr = 1.3
+                    from monika.application.analysis.prompt.risk_contract import build_risk_contract
+
+                    risk_contract = build_risk_contract(symbol, getattr(self, "settings", {}))
+                    min_rr = risk_contract.min_rr_ratio
                     if rr < min_rr:
                         breakeven_wr = 100.0 / (1.0 + min_rr)
                         req_tp_dist = sl_dist * min_rr
@@ -1272,7 +1270,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
 
             error_class = self._classify_validation_errors(errors)
 
-            if error_class == "GATE":
+            if error_class in ("GATE", "GATE_FATAL"):
                 logger.info(f"[{symbol}] Mechanical risk gate blocked entry. Gracefully forcing WAIT. Errors: {errors}")
                 decision = "wait"
                 confidence = 0.0
@@ -1329,7 +1327,9 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                         if any("adjudication" in e.lower() or "specialist disagreement" in e.lower() for e in errors)
                         else {
                             "STRUCTURAL": "Recalculate entry/SL/TP. Try different structural level.",
+                            "GATE_FIXABLE": "Gate condition fixable: adjust entry type/zone (limit order at POC/VAH/VAL) or provide required override justification.",
                             "THRESHOLD": "Score insufficient. Submit WAIT with specific trigger.",
+                            "GATE_FATAL": "Mechanical gate active. Submit WAIT.",
                             "GATE": "Mechanical gate active. Submit WAIT.",
                             "FATAL": "Submit WAIT immediately. Do not retry.",
                         }.get(error_class, "")

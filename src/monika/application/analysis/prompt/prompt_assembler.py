@@ -46,6 +46,27 @@ TIER2_TOOL_STUBS = """## AVAILABLE TOOL CATEGORIES (use load_tool_category for f
 - EXECUTION: execute_order_guard, modify_position, close_position, set_trailing_stop, check_spread
 - POSITION: get_risk_state, get_portfolio_summary, get_correlation_matrix, get_trade_history, get_drawdown_report"""
 
+STAGE2_TOOL_STUBS = """## AVAILABLE TOOLS FOR INTRADAY ASSET ANALYSIS:
+- ANALYSIS & EXECUTION:
+  * submit_asset_analysis: Final trade decision submission with confluence score and risk brackets
+  * calculate_position_size: Deterministic lot sizing and risk-of-ruin verification
+- MARKET DATA & SNAPSHOT:
+  * get_market_quote: Live bid/ask quote and tick price
+  * get_verified_market_snapshot: Canonical market snapshot, spread, tick integrity
+  * get_price_data: Historical OHLCV candles across multiple timeframes (M15, H1, H4, D1)
+- TECHNICAL & INTRADAY STRUCTURE:
+  * get_technical_analysis: Full technical indicators (RSI, MACD, ATR, EMA, Bollinger Bands)
+  * get_optimal_intraday_levels: Pre-computed SMC/ADR execution levels (Order Blocks, FVGs, Swings)
+  * get_spread_snapshot: Current broker spread and execution friction
+  * scan_pattern_similarity: Quantitative fractal similarity matching
+- MACRO & SENTIMENT:
+  * get_economic_calendar: Upcoming high-impact macroeconomic releases
+  * get_news_items: Curated news and sentiment catalysts
+  * get_institutional_data: COT institutional positioning and commercial net bias
+  * get_eia_oil_inventory: Crude oil inventory reports (for XTIUSD/XBRUSD)
+- ANALYTICAL SCRATCHPAD:
+  * read_scratchpad / update_scratchpad: Working memory for multi-step reasoning"""
+
 
 from monika.core.primitives import _flatten_system_prompt
 
@@ -343,7 +364,7 @@ class PromptAssembler:
             except Exception:
                 pass
         tier2_sections = [
-            PromptSection(name="TOOL_STUBS", content=TIER2_TOOL_STUBS),
+            PromptSection(name="TOOL_STUBS", content=STAGE2_TOOL_STUBS),
         ]
         if discipline:
             tier2_sections.append(PromptSection(name="MODEL_DISCIPLINE", content=discipline))
