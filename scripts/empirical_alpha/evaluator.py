@@ -410,7 +410,20 @@ class EmpiricalEvaluator:
         arr = np.array(trade_returns)
         mean_r = np.mean(arr)
         std_r = np.std(arr)
-        sharpe = round(float((mean_r / std_r) * math.sqrt(252 * 24)), 2) if std_r > 1e-7 else 0.0
+        # Annualized Sharpe ratio based on actual trade frequency across calendar span
+        total_days = 252.0
+        if len(self.df) > 1 and "time" in self.df.columns:
+            try:
+                t0 = pd.to_datetime(self.df["time"].iloc[0])
+                t1 = pd.to_datetime(self.df["time"].iloc[-1])
+                diff_days = (t1 - t0).total_seconds() / 86400.0
+                if diff_days >= 30:
+                    total_days = diff_days
+            except Exception:
+                pass
+
+        annual_factor = (len(trade_returns) / (total_days / 365.25)) if total_days > 0 else 252.0
+        sharpe = round(float((mean_r / std_r) * math.sqrt(max(1.0, annual_factor))), 2) if std_r > 1e-7 else 0.0
 
         return {
             "total_trades": len(trade_returns),

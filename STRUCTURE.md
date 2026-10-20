@@ -1547,6 +1547,7 @@ Monika/
 │       │   │   ├── mt5/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base.py
+│       │   │   │   ├── broker_time.py
 │       │   │   │   ├── client.py
 │       │   │   │   ├── connection.py
 │       │   │   │   ├── constants.py
@@ -1664,6 +1665,7 @@ Monika/
 │       │   │   │   │   ├── 0006_consolidate_and_numeric.py
 │       │   │   │   │   ├── 0007_sync_queue_indexes_and_nullability.py
 │       │   │   │   │   ├── 0008_create_debate_transcripts.py
+│       │   │   │   │   ├── 0009_price_ohlcv_canonical_ts.py
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   └── c83c5e451412_sync_schema_indexes_types_and_.py
 │       │   │   │   ├── __init__.py
@@ -2429,6 +2431,7 @@ Monika/
 │   │   ├── test_idempotency_guard.py
 │   │   ├── test_inflight_reconciliation.py
 │   │   ├── test_modular_execution_service.py
+│   │   ├── test_mt5_broker_time.py
 │   │   ├── test_mt5_chunked_fetch.py
 │   │   ├── test_mt5_client.py
 │   │   ├── test_mt5_compat.py
@@ -2899,6 +2902,7 @@ Monika/
 │   ├── heal_kill_switch_state.py
 │   ├── migrate_runtime_home.py
 │   ├── migrate_sqlite_to_canonical.py
+│   ├── repair_price_ohlcv.py
 │   ├── reset_paper_trades.py
 │   ├── run_tests.bat
 │   ├── run_tests.sh
@@ -3009,4 +3013,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 254 | **Total Tracked Files**: 2725
+**Total Tracked Directories**: 254 | **Total Tracked Files**: 2729

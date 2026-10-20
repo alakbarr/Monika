@@ -71,6 +71,12 @@ class DataIngestionError(MonikaError):
     pass
 
 
+class DataQualityError(MonikaError):
+    """Raised when market data fails integrity, canonical grid, or continuity gates."""
+
+    pass
+
+
 class ModelInferenceError(MonikaError):
     """Raised when LLM providers, embedding models, or local time-series models fail."""
 

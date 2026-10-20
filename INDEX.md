@@ -201,6 +201,7 @@
   - `class ExecutionError(MonikaError)`: Raised when order submission, modification, or cancellation fails.
   - `class BrokerConnectionError(ExecutionError)`: Raised when connection to broker socket (e.g. MT5, FIX) drops or fails.
   - `class DataIngestionError(MonikaError)`: Raised when market data scrapers, feeds, or normalizers encounter fatal errors.
+  - `class DataQualityError(MonikaError)`: Raised when market data fails integrity, canonical grid, or continuity gates.
   - `class ModelInferenceError(MonikaError)`: Raised when LLM providers, embedding models, or local time-series models fail.
   - `class AuthenticationError(MonikaError)`: Raised when RBAC, API keys, or JWT tokens are invalid or expired.
   - `class CircuitBreakerOpenError(MonikaError)`: Raised when a circuit breaker trips open to prevent cascading failures.
@@ -10732,6 +10733,17 @@
     - `async get_rates(symbol: str, timeframe: str, count: int) -> pd.DataFrame`
     - `async copy_rates_range(symbol: str, timeframe: str, date_from: Any, ...) -> Optional[pd.DataFrame]`
 
+#### `broker_time.py` - *Central Broker Time & Canonical Bar Grid Resolver.*
+- **Path**: [`src/monika/infrastructure/brokers/mt5/broker_time.py`](src/monika/infrastructure/brokers/mt5/broker_time.py)
+- **Classes**:
+  - `class BrokerTimeResolver`: Process-wide resolver for MT5 broker server time and canonical bar timestamps.
+    - `get_configured_offset_hours(settings: Optional[dict]) -> float` - *Retrieve configured broker UTC offset hours from settings. Fails closed.*
+    - `resolve_offset_seconds(settings: Optional[dict], force_refresh: bool) -> int` - *Resolve the broker UTC offset in seconds.*
+    - `to_canonical_bar_timestamp(ts: Any, timeframe: str, offset_seconds: Optional[int], ...) -> datetime` - *Floor and normalize a bar timestamp to its exact canonical UTC instant.*
+- **Top-Level Functions**:
+  - `get_broker_utc_offset_seconds(settings: Optional[dict]) -> int`: Convenience helper for module consumers.
+  - `to_canonical_timestamp(ts: Any, timeframe: str, offset_seconds: Optional[int], ...) -> datetime`: Convenience helper for module consumers.
+
 #### `client.py` - *Composite MT5Client coordinating connection, market data, and execution mixins.*
 - **Path**: [`src/monika/infrastructure/brokers/mt5/client.py`](src/monika/infrastructure/brokers/mt5/client.py)
 - **Classes**:
@@ -11698,6 +11710,12 @@
 - **Top-Level Functions**:
   - `upgrade() -> None`: Upgrade schema: Create debate_transcripts table mandated by PRD.md §237.
   - `downgrade() -> None`: Downgrade schema: Drop debate_transcripts table.
+
+#### `0009_price_ohlcv_canonical_ts.py` - *Add canonical_timestamp and deduplication tables for PriceOHLCV.*
+- **Path**: [`src/monika/infrastructure/database/migrations/versions/0009_price_ohlcv_canonical_ts.py`](src/monika/infrastructure/database/migrations/versions/0009_price_ohlcv_canonical_ts.py)
+- **Top-Level Functions**:
+  - `upgrade() -> None`: Upgrade schema: Add canonical_timestamp and audit reject table.
+  - `downgrade() -> None`: Downgrade schema: Remove canonical_timestamp and indexes.
 
 #### `c83c5e451412_sync_schema_indexes_types_and_.py` - *sync_schema_indexes_types_and_constraints*
 - **Path**: [`src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py`](src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py)
