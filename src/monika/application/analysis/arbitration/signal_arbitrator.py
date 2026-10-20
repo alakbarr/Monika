@@ -293,6 +293,11 @@ class SignalArbitrator:
         elif "market_regime" in kwargs:
             market_regime = str(kwargs["market_regime"]).lower()
 
+        if quant_signal is None and kwargs.get("quant_signals"):
+            q_list = kwargs["quant_signals"]
+            if isinstance(q_list, list) and q_list:
+                quant_signal = q_list[0]
+
         def _get_q(field: str, default: Any = None) -> Any:
             if quant_signal is None:
                 return default
@@ -868,7 +873,7 @@ class SignalArbitrator:
                     is_promoted
                     and not is_incubating
                     and not has_llm_exhaustion
-                    and (tfm_confirms and has_decisive_conviction)
+                    and (tfm_confirms or has_decisive_conviction)
                 ):
                     effective_mult = min(0.90, quant_priority_risk_mult + (0.15 if tfm_confirms else 0.05))
                     return ArbitrationResult(

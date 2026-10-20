@@ -43,7 +43,7 @@ async def _get_cot_alignment_value(session, symbol: str, as_of: Optional[datetim
         stmt = stmt.where(COTReport.report_date <= as_of)
     stmt = stmt.order_by(COTReport.report_date.desc()).limit(1)
     cot_row = (await session.execute(stmt)).scalar_one_or_none()
-    if not cot_row:
+    if not cot_row or not getattr(cot_row, "report_date", None):
         return None
     now = as_of or clock.now()
     report_date = cot_row.report_date
@@ -181,6 +181,7 @@ async def calculate_confluence(
     tp: Optional[float] = None,
     settings: Optional[dict] = None,
     as_of: Optional[datetime] = None,
+    confluence_factors: Optional[list[str]] = None,
 ) -> dict:
     """
     Menghitung confluence score secara deterministik.
@@ -238,6 +239,51 @@ async def calculate_confluence(
             rsi_val = float(rsi_data.get("rsi", 50))
         except Exception as e:
             logger.debug(f"Confluence RSI sub-calculation skipped: {e}")
+
+    # EMA 20 & EMA 50 (H4/H1) for trend continuation
+    ema20_stmt = select(TechnicalIndicator).where(
+        TechnicalIndicator.symbol == symbol,
+        TechnicalIndicator.timeframe.in_(["H4", "H1"]),
+        TechnicalIndicator.indicator_name == "EMA_20",
+    )
+    if h4_cutoff:
+        ema20_stmt = ema20_stmt.where(TechnicalIndicator.timestamp <= h4_cutoff)
+    ema20_row = (
+        await session.execute(ema20_stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1))
+    ).scalar_one_or_none()
+    ema20_val = None
+    if ema20_row and ema20_row.value_json:
+        try:
+            d = json.loads(ema20_row.value_json)
+            ema20_val = float(d.get("value", d.get("ema", 0.0)))
+        except Exception as e:
+            logger.debug(f"Confluence EMA20 sub-calculation skipped: {e}")
+
+    ema50_stmt = select(TechnicalIndicator).where(
+        TechnicalIndicator.symbol == symbol,
+        TechnicalIndicator.timeframe.in_(["H4", "H1"]),
+        TechnicalIndicator.indicator_name == "EMA_50",
+    )
+    if h4_cutoff:
+        ema50_stmt = ema50_stmt.where(TechnicalIndicator.timestamp <= h4_cutoff)
+    ema50_row = (
+        await session.execute(ema50_stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1))
+    ).scalar_one_or_none()
+    ema50_val = None
+    if ema50_row and ema50_row.value_json:
+        try:
+            d = json.loads(ema50_row.value_json)
+            ema50_val = float(d.get("value", d.get("ema", 0.0)))
+        except Exception as e:
+            logger.debug(f"Confluence EMA50 sub-calculation skipped: {e}")
+
+    # Recent H4 bars for volume expansion & breakout levels
+    recent_h4_stmt = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == "H4")
+    if h4_cutoff:
+        recent_h4_stmt = recent_h4_stmt.where(PriceOHLCV.timestamp <= h4_cutoff)
+    recent_h4_bars = (
+        (await session.execute(recent_h4_stmt.order_by(PriceOHLCV.timestamp.desc()).limit(20))).scalars().all()
+    )
 
     # D1 Structure
     d1_stmt = select(StructureBreak).where(StructureBreak.symbol == symbol, StructureBreak.timeframe == "D1")
@@ -357,6 +403,10 @@ async def calculate_confluence(
     def _compute_for_direction(test_direction, test_entry, test_sl, test_tp):
         score = 0
         issues = []
+        near_fvg = False
+        near_ob = False
+        near_sr = False
+        in_ote = False
         test_direction = str(test_direction or "").strip().lower()
         test_dir = test_direction
         if (
@@ -515,7 +565,13 @@ async def calculate_confluence(
         if test_entry and atr_val > 0:
             near_sr = False
             for sr in sr_zones:
-                if sr.price_low - atr_val * 0.25 <= test_entry <= sr.price_high + atr_val * 0.25:
+                sr_low = float(
+                    getattr(sr, "price_low", 0.0) or (sr.get("price_low", 0.0) if isinstance(sr, dict) else 0.0)
+                )
+                sr_high = float(
+                    getattr(sr, "price_high", 0.0) or (sr.get("price_high", 0.0) if isinstance(sr, dict) else 0.0)
+                )
+                if sr_low > 0 and sr_high > 0 and sr_low - atr_val * 0.25 <= test_entry <= sr_high + atr_val * 0.25:
                     near_sr = True
                     break
             if near_sr:
@@ -525,21 +581,107 @@ async def calculate_confluence(
         if test_entry and len(recent_swings) >= 2:
             s1 = recent_swings[0]
             s2 = recent_swings[1]
-            if s1.type != s2.type:
+            s1_type = getattr(s1, "type", None)
+            s2_type = getattr(s2, "type", None)
+            if s1_type is not None and s2_type is not None and s1_type != s2_type:
                 now_utc = clock.now()
-                s1_ts = s1.timestamp.replace(tzinfo=timezone.utc) if s1.timestamp.tzinfo is None else s1.timestamp
-                s2_ts = s2.timestamp.replace(tzinfo=timezone.utc) if s2.timestamp.tzinfo is None else s2.timestamp
-                if (now_utc - s1_ts).days <= 14 and (now_utc - s2_ts).days <= 14:
-                    high = max(s1.price, s2.price)
-                    low = min(s1.price, s2.price)
-                    swing_range = high - low
-                    if swing_range > 0:
-                        if test_direction == "buy":
-                            fib = (high - test_entry) / swing_range
-                        else:
-                            fib = (test_entry - low) / swing_range
-                        if 0.618 <= fib <= 0.786:
-                            score += 1
+                s1_ts_raw = getattr(s1, "timestamp", None)
+                s2_ts_raw = getattr(s2, "timestamp", None)
+                if isinstance(s1_ts_raw, datetime) and isinstance(s2_ts_raw, datetime):
+                    s1_ts = s1_ts_raw.replace(tzinfo=timezone.utc) if s1_ts_raw.tzinfo is None else s1_ts_raw
+                    s2_ts = s2_ts_raw.replace(tzinfo=timezone.utc) if s2_ts_raw.tzinfo is None else s2_ts_raw
+                    if (now_utc - s1_ts).days <= 14 and (now_utc - s2_ts).days <= 14:
+                        p1 = float(getattr(s1, "price", 0.0))
+                        p2 = float(getattr(s2, "price", 0.0))
+                        high = max(p1, p2)
+                        low = min(p1, p2)
+                        swing_range = high - low
+                        if swing_range > 0:
+                            if test_direction == "buy":
+                                fib = (high - test_entry) / swing_range
+                            else:
+                                fib = (test_entry - low) / swing_range
+                            if 0.618 <= fib <= 0.786:
+                                score += 1
+                                in_ote = True
+
+        # === MECHANICAL VERIFICATION: Regime B Breakout / Momentum Expansion ===
+        breakout_ok = False
+        volume_ok = False
+        trend_ok = False
+        momentum_ok = False
+
+        if recent_h4_bars and len(recent_h4_bars) >= 5 and test_entry:
+            prior_bars = recent_h4_bars[1:]
+            prior_highs = [float(b.high) for b in prior_bars]
+            prior_lows = [float(b.low) for b in prior_bars]
+            if test_dir == "buy" and (
+                test_entry >= max(prior_highs) or (d1_breaks and d1_breaks.direction == "bullish")
+            ):
+                breakout_ok = True
+            elif test_dir == "sell" and (
+                test_entry <= min(prior_lows) or (d1_breaks and d1_breaks.direction == "bearish")
+            ):
+                breakout_ok = True
+
+            vols = [float(getattr(b, "volume", 0.0) or 0.0) for b in recent_h4_bars]
+            if len(vols) >= 5:
+                prior_vols = vols[1:]
+                mean_prior_vol = sum(prior_vols) / len(prior_vols) if prior_vols else 0.0
+                recent_vol = vols[0]
+                if mean_prior_vol > 0 and (recent_vol / mean_prior_vol) >= 1.15:
+                    volume_ok = True
+
+        if ema20_val is not None and ema50_val is not None:
+            if test_dir == "buy" and ema20_val >= ema50_val:
+                trend_ok = True
+            elif test_dir == "sell" and ema20_val <= ema50_val:
+                trend_ok = True
+        elif d1_breaks:
+            if (test_dir == "buy" and d1_breaks.direction == "bullish") or (
+                test_dir == "sell" and d1_breaks.direction == "bearish"
+            ):
+                trend_ok = True
+
+        if rsi_val is not None:
+            if test_dir == "buy" and rsi_val >= 55.0:
+                momentum_ok = True
+            elif test_dir == "sell" and rsi_val <= 45.0:
+                momentum_ok = True
+
+        if confluence_factors:
+            if "breakout_expansion" in confluence_factors:
+                if breakout_ok:
+                    score += 2
+                else:
+                    issues.append(
+                        f"breakout_expansion factor claimed but entry {test_entry} does not breach recent 20-period swing high/low"
+                    )
+            if "volume_expansion" in confluence_factors:
+                if volume_ok:
+                    score += 2
+                else:
+                    issues.append("volume_expansion factor claimed but RVOL < 1.15x average volume")
+            if "trend_continuation" in confluence_factors:
+                if trend_ok:
+                    score += 2
+                else:
+                    issues.append("trend_continuation factor claimed but EMA/D1 structure does not confirm trend")
+            if "momentum_expansion" in confluence_factors:
+                if momentum_ok:
+                    score += 1
+                else:
+                    issues.append(
+                        f"momentum_expansion factor claimed but RSI={rsi_val} does not indicate momentum expansion"
+                    )
+        else:
+            # Pre-hoc potential score evaluation: if setup is in expansion rather than resting at zone
+            zone_pts = (2 if near_fvg else 0) + (2 if near_ob else 0) + (1 if near_sr else 0) + (1 if in_ote else 0)
+            breakout_pts = (
+                (2 if breakout_ok else 0) + (2 if volume_ok else 0) + (2 if trend_ok else 0) + (1 if momentum_ok else 0)
+            )
+            if breakout_pts > zone_pts:
+                score += breakout_pts - zone_pts
 
         # VIX
         if vix_row:
@@ -549,9 +691,10 @@ async def calculate_confluence(
                 issues.append(f"VIX={vix_row.close:.1f} >= 30 (system-level pause threshold).")
 
         # Fundamental Bias
-        if brief and brief.structured_json:
+        brief_json = getattr(brief, "structured_json", None)
+        if brief and brief_json:
             try:
-                b_data = json.loads(brief.structured_json)
+                b_data = json.loads(brief_json)
                 import re as _re
 
                 clean_sym = _re.sub(r"[^A-Z]", "", symbol.upper())
@@ -682,8 +825,6 @@ async def calculate_confluence(
         # Pre-hoc context, we don't know the exact entry. Use last close price if entry is not provided
         price_to_test = entry_price
         if not price_to_test:
-            from monika.infrastructure.database.models import PriceOHLCV
-
             price_stmt = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol)
             if as_of:
                 price_stmt = price_stmt.where(PriceOHLCV.timestamp <= as_of)

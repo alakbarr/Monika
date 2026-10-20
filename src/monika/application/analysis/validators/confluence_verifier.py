@@ -33,7 +33,17 @@ async def verify_confluence(session: AsyncSession, analysis: AssetAnalysis, sett
     sl = analysis.stop_loss
     tp = analysis.take_profit
 
-    calc_res = await calculate_confluence(session, symbol, direction, entry_price, sl, tp, settings=settings)
+    raw_factors = getattr(analysis, "confluence_factors", None)
+    factors = []
+    if raw_factors:
+        try:
+            factors = json.loads(raw_factors) if isinstance(raw_factors, str) else list(raw_factors)
+        except Exception:
+            factors = []
+
+    calc_res = await calculate_confluence(
+        session, symbol, direction, entry_price, sl, tp, settings=settings, confluence_factors=factors
+    )
     computed_score = calc_res.get("computed_score", 0)
     blocking_issues = calc_res.get("blocking_issues", [])
 

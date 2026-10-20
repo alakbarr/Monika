@@ -207,20 +207,21 @@ class ZeroLookaheadSliceSession(AsyncSession):
         import re as _re
 
         class _SliceScalarResult:
-            def __init__(self, data):
+            def __init__(self, data, is_asc: bool = False):
                 self._data = data
+                self._is_asc = is_asc
 
             def scalars(self):
                 return self
 
             def all(self):
-                return list(reversed(self._data))
+                return list(self._data) if self._is_asc else list(reversed(self._data))
 
             def scalar_one_or_none(self):
                 return self._data[-1] if self._data else None
 
             def first(self):
-                return self._data[-1] if self._data else None
+                return self._data[0] if (self._is_asc and self._data) else (self._data[-1] if self._data else None)
 
         try:
             stmt_str = str(stmt.compile(compile_kwargs={"literal_binds": True})).upper()
@@ -376,17 +377,53 @@ class ZeroLookaheadSliceSession(AsyncSession):
             else:
                 candles = h1_candles
 
+        is_asc = " ASC" in stmt_str or "ASCENDING" in stmt_str
+        filtered = list(candles)
+        try:
+            compiled = stmt.compile(compile_kwargs={"literal_binds": True})
+            comp_str = str(compiled)
+            m_gte = _re.search(r"timestamp\s*>=\s*'([^']+)'", comp_str, _re.IGNORECASE)
+            m_lt = _re.search(r"timestamp\s*<\s*'([^']+)'", comp_str, _re.IGNORECASE)
+            m_lte = _re.search(r"timestamp\s*<=\s*'([^']+)'", comp_str, _re.IGNORECASE)
+            m_gt = _re.search(r"timestamp\s*>\s*'([^']+)'", comp_str, _re.IGNORECASE)
+
+            def _get_time(c):
+                t = getattr(c, "time", None) or getattr(c, "timestamp", None)
+                if isinstance(t, str):
+                    try:
+                        t = datetime.fromisoformat(t)
+                    except Exception:
+                        return None
+                if isinstance(t, datetime):
+                    return t.replace(tzinfo=timezone.utc) if t.tzinfo is None else t
+                return None
+
+            if m_gte:
+                t_gte = datetime.fromisoformat(m_gte.group(1)).replace(tzinfo=timezone.utc)
+                filtered = [c for c in filtered if (ct := _get_time(c)) is not None and ct >= t_gte]
+            if m_gt:
+                t_gt = datetime.fromisoformat(m_gt.group(1)).replace(tzinfo=timezone.utc)
+                filtered = [c for c in filtered if (ct := _get_time(c)) is not None and ct > t_gt]
+            if m_lt:
+                t_lt = datetime.fromisoformat(m_lt.group(1)).replace(tzinfo=timezone.utc)
+                filtered = [c for c in filtered if (ct := _get_time(c)) is not None and ct < t_lt]
+            if m_lte:
+                t_lte = datetime.fromisoformat(m_lte.group(1)).replace(tzinfo=timezone.utc)
+                filtered = [c for c in filtered if (ct := _get_time(c)) is not None and ct <= t_lte]
+        except Exception:
+            pass
+
         # If scalar column like .close was queried (e.g. tsm_momentum):
         if "PRICEOHLCV.CLOSE" in stmt_str or (
             ".CLOSE" in stmt_str and ".HIGH" not in stmt_str and ".OPEN" not in stmt_str
         ):
-            float_closes = [float(c.close) for c in candles]
-            return _SliceScalarResult(float_closes)
+            float_closes = [float(c.close) for c in filtered]
+            return _SliceScalarResult(float_closes, is_asc=is_asc)
         elif "PRICEOHLCV.VOLUME" in stmt_str and ".CLOSE" not in stmt_str:
-            float_vols = [float(getattr(c, "volume", 0.0) or 0.0) for c in candles]
-            return _SliceScalarResult(float_vols)
+            float_vols = [float(getattr(c, "volume", 0.0) or 0.0) for c in filtered]
+            return _SliceScalarResult(float_vols, is_asc=is_asc)
 
-        return _SliceScalarResult(candles)
+        return _SliceScalarResult(filtered, is_asc=is_asc)
 
     async def commit(self):
         pass
@@ -486,9 +523,7 @@ class IsolatedStrategyBacktestHarness:
         candles = [
             CandleDict(
                 {
-                    "timestamp": r.timestamp.isoformat()
-                    if hasattr(r, "timestamp") and hasattr(r.timestamp, "isoformat")
-                    else str(getattr(r, "timestamp", "")),
+                    "timestamp": getattr(r, "timestamp", None),
                     "time": getattr(r, "timestamp", None),
                     "open": float(getattr(r, "open", 0.0)),
                     "high": float(getattr(r, "high", 0.0)),

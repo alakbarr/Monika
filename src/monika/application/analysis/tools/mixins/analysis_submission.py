@@ -1241,7 +1241,14 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             from monika.application.analysis.calculators.confluence_calculator import calculate_confluence
 
             det_calc = await calculate_confluence(
-                self.session, symbol, decision, entry_price, sl_price, tp_price, settings=self.settings
+                self.session,
+                symbol,
+                decision,
+                entry_price,
+                sl_price,
+                tp_price,
+                settings=self.settings,
+                confluence_factors=inp.get("confluence_factors", []),
             )
             det_score = det_calc.get("computed_score", 0)
             non_det_uplift = submitted_score - det_score

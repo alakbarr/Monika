@@ -721,7 +721,7 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
             lines.append(f"Base SELL potential score: {calc_res.get('sell_potential_score', 0)}")
             lines.append(f"Reference entry price for potential: {calc_res.get('reference_price', 0)}")
             lines.append(
-                "NOTE: This is just a base computation. The final score depends on your specific R:R and entry."
+                "NOTE: This is an unbracketed baseline (excludes R:R bonus +1, ADR target bonus +1, and specific execution geometry). An unbracketed baseline of 3-5 routinely achieves an effective score of 7-9 upon selecting valid SL/TP brackets and confirmed setup factors. Do NOT default to WAIT based solely on this baseline."
             )
             lines.append("")
 
