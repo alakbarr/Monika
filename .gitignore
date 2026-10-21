@@ -127,6 +127,8 @@ scripts/*
 !scripts/generate_ast_docs.py
 !scripts/build_empirical_playbooks.py
 !scripts/build_curated_benchmark_fixtures.py
+!scripts/bootstrap_strategy_evidence.py
+!scripts/report_execution_funnel.py
 !scripts/cleanup_fvg_duplicates.py
 !scripts/repair_price_ohlcv.py
 !scripts/consolidate_sqlite_dbs.py
