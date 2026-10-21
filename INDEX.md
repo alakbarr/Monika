@@ -8589,6 +8589,7 @@
 - **Classes**:
   - `class StrategyTradeRecord`
   - `class HarnessMetrics`
+    - `is_evaluable() -> bool` - *A strategy that raised while being evaluated produced no valid evidence.*
     - `to_dict() -> Dict[str, Any]`
   - `class MockIndicatorRow`
     - `__init__(value_json: str, timestamp: Optional[datetime])`

@@ -2349,6 +2349,7 @@ Monika/
 │   │   ├── test_canonical_price_loader.py
 │   │   ├── test_empirical_portfolio_monte_carlo.py
 │   │   ├── test_fase7_lookahead_and_kelly.py
+│   │   ├── test_isolated_harness_fidelity.py
 │   │   ├── test_langgraph_backtest_parity.py
 │   │   ├── test_monte_carlo_block_bootstrap.py
 │   │   ├── test_offline_signal_engine_no_lookahead.py
@@ -2943,6 +2944,7 @@ Monika/
 │   ├── consolidate_sqlite_dbs.py
 │   ├── convert_tui_svg_to_png.js
 │   ├── download_timesfm_weights.py
+│   ├── evaluate_gate_filter_pnl.py
 │   ├── generate_ast_docs.py
 │   ├── generate_benchmark_leaderboard.py
 │   ├── generate_model_quadrant.py
@@ -3063,4 +3065,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 264 | **Total Tracked Files**: 2769
+**Total Tracked Directories**: 264 | **Total Tracked Files**: 2771

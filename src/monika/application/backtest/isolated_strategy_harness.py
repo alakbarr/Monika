@@ -65,6 +65,13 @@ class HarnessMetrics:
     calmar_ratio: float = 0.0
     trade_returns: List[float] = field(default_factory=list)
     trades: List[StrategyTradeRecord] = field(default_factory=list)
+    evaluation_errors: int = 0
+    error_samples: List[str] = field(default_factory=list)
+
+    @property
+    def is_evaluable(self) -> bool:
+        """A strategy that raised while being evaluated produced no valid evidence."""
+        return self.evaluation_errors == 0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -76,6 +83,7 @@ class HarnessMetrics:
             "max_drawdown_pct": self.max_drawdown_pct,
             "total_pnl_pct": self.total_pnl_pct,
             "calmar_ratio": self.calmar_ratio,
+            "evaluation_errors": self.evaluation_errors,
         }
 
 
@@ -169,6 +177,37 @@ class MockTimesFMForecastRow:
         self.reachability_envelope = _json.dumps([])
         self.model_backend = "mock_timesfm_backtest"
         self.is_fallback = False
+
+
+class _PriceRow:
+    """Row-like object for multi-column price queries.
+
+    Strategies read price rows in two different ways: attribute access
+    (``row.high``) and tuple unpacking (``ts, close = row``). A database row
+    supports both, so the harness emulation has to as well.
+    """
+
+    __slots__ = ("timestamp", "close", "open", "high", "low", "volume")
+
+    def __init__(self, candle: Any) -> None:
+        self.timestamp = getattr(candle, "time", None) or getattr(candle, "timestamp", None)
+        self.close = float(getattr(candle, "close", 0.0) or 0.0)
+        self.open = float(getattr(candle, "open", 0.0) or 0.0)
+        self.high = float(getattr(candle, "high", 0.0) or 0.0)
+        self.low = float(getattr(candle, "low", 0.0) or 0.0)
+        self.volume = float(getattr(candle, "volume", 0.0) or 0.0)
+
+    def __iter__(self):
+        return iter((self.timestamp, self.close))
+
+    def __getitem__(self, index: int):
+        return (self.timestamp, self.close)[index]
+
+    def __len__(self) -> int:
+        return 2
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging helper
+        return f"_PriceRow(timestamp={self.timestamp}, close={self.close})"
 
 
 class ZeroLookaheadSliceSession(AsyncSession):
@@ -355,8 +394,20 @@ class ZeroLookaheadSliceSession(AsyncSession):
             )
             return _SliceScalarResult([mock_tfm])
 
-        # 4. Other auxiliary table dispatch (EconomicCalendar, SystemConfig, VIX, etc.)
-        if any(tbl in stmt_str for tbl in ("ECONOMICCALENDAR", "SYSTEMCONFIG", "VIXDATA", "ASSETANALYSIS", "TRADE")):
+        # 4. Auxiliary tables without a candle-backed implementation return no rows.
+        #    Order blocks, FVG zones, swing points and friends cannot be rebuilt
+        #    from candles, so the slice session must answer with an empty result
+        #    exactly like a database without those rows. Falling through to the
+        #    candle branch would hand the strategy candle rows where it expects
+        #    zone rows, which fails with an unrelated AttributeError.
+        try:
+            compiled_stmt = stmt.compile(compile_kwargs={"literal_binds": True})
+            comp_str = str(compiled_stmt)
+        except Exception:
+            comp_str = stmt_str
+        m_from = _re.search(r"FROM\s+([a-zA-Z_][\w]*)", comp_str)
+        source_table = (m_from.group(1) if m_from else "").lower()
+        if source_table and source_table != "price_ohlcv":
             return _SliceScalarResult([])
 
         # 5. Determine timeframe from stmt
@@ -413,13 +464,30 @@ class ZeroLookaheadSliceSession(AsyncSession):
         except Exception:
             pass
 
+        # Which columns are actually selected? The SQL text cannot answer this:
+        # every time-filtered query mentions price_ohlcv.timestamp in its WHERE
+        # clause, so a text search would wrongly treat it as a selected column.
+        selected_columns: set[str] = set()
+        try:
+            selected_columns = {str(getattr(col, "name", "")).lower() for col in stmt.selected_columns}
+        except Exception:
+            selected_columns = set()
+
+        # A query that selects the timestamp together with the close must return
+        # rows that behave like database rows: attribute access (row.timestamp)
+        # and tuple unpacking (ts, close = row) both have to work. Returning a
+        # flat list of floats silently breaks strategies that unpack the rows.
+        selects_timestamp = "timestamp" in selected_columns
+        selects_close = "close" in selected_columns
+        if selects_close and selects_timestamp:
+            rows = [_PriceRow(c) for c in filtered]
+            return _SliceScalarResult(rows, is_asc=is_asc)
+
         # If scalar column like .close was queried (e.g. tsm_momentum):
-        if "PRICEOHLCV.CLOSE" in stmt_str or (
-            ".CLOSE" in stmt_str and ".HIGH" not in stmt_str and ".OPEN" not in stmt_str
-        ):
+        if selects_close and not selects_timestamp:
             float_closes = [float(c.close) for c in filtered]
             return _SliceScalarResult(float_closes, is_asc=is_asc)
-        elif "PRICEOHLCV.VOLUME" in stmt_str and ".CLOSE" not in stmt_str:
+        elif "volume" in selected_columns and not selects_close:
             float_vols = [float(getattr(c, "volume", 0.0) or 0.0) for c in filtered]
             return _SliceScalarResult(float_vols, is_asc=is_asc)
 
@@ -674,6 +742,8 @@ class IsolatedStrategyBacktestHarness:
         strat_instance = self._get_strategy_instance()
         trade_records: List[StrategyTradeRecord] = []
         trade_returns: List[float] = []
+        evaluation_errors = 0
+        error_samples: List[str] = []
 
         i = burn_in_bars
         while i < len(primary_candles) - 5:
@@ -715,6 +785,9 @@ class IsolatedStrategyBacktestHarness:
                     sig = await asyncio.wait_for(eval_coro, timeout=5.0)
             except Exception as e:
                 logger.debug(f"[IsolatedHarness] Evaluation exception at bar {i} for {self.symbol}: {e}")
+                evaluation_errors += 1
+                if len(error_samples) < 3:
+                    error_samples.append(f"{type(e).__name__}: {e}")
                 if self.fail_fast_on_error:
                     return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
                 i += 1
@@ -847,7 +920,10 @@ class IsolatedStrategyBacktestHarness:
 
             i += max(1, bars_held)
 
-        return self._compute_metrics(trade_returns, trade_records)
+        metrics = self._compute_metrics(trade_returns, trade_records)
+        metrics.evaluation_errors = evaluation_errors
+        metrics.error_samples = list(error_samples)
+        return metrics
 
     run_single_window = run_simulation
 
@@ -1052,6 +1128,8 @@ class IsolatedStrategyBacktestHarness:
         strat_instance = self._get_strategy_instance()
         trade_records: List[StrategyTradeRecord] = []
         trade_returns: List[float] = []
+        evaluation_errors = 0
+        error_samples: List[str] = []
 
         h4_candles = resample_candles(candles, 4)
         d1_candles = resample_candles(candles, 24)
@@ -1091,7 +1169,14 @@ class IsolatedStrategyBacktestHarness:
                             settings=self.settings,
                         )
                     sig = await asyncio.wait_for(eval_coro, timeout=5.0)
-            except Exception:
+            except Exception as exc:
+                # A strategy that raises must not look like a strategy without an
+                # edge: count the error so the caller can refuse to treat the
+                # result as evidence.
+                evaluation_errors += 1
+                if len(error_samples) < 3:
+                    error_samples.append(f"{type(exc).__name__}: {exc}")
+                logger.debug("[IsolatedHarness] Strategy evaluation error at %s: %s", cur_time, exc)
                 i += 1
                 continue
 
@@ -1199,7 +1284,10 @@ class IsolatedStrategyBacktestHarness:
             )
             i += max(1, bars_held)
 
-        return self._compute_metrics(trade_returns, trade_records)
+        metrics = self._compute_metrics(trade_returns, trade_records)
+        metrics.evaluation_errors = evaluation_errors
+        metrics.error_samples = list(error_samples)
+        return metrics
 
     def generate_markdown_report(self, res: Dict[str, Any]) -> str:
         """Generates an institutional markdown report for harness results."""

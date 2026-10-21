@@ -85,12 +85,18 @@ def _pool_metrics(per_symbol: dict[str, Any]) -> dict[str, Any]:
     sharpe_weighted = 0.0
     win_rate_weighted = 0.0
     max_dd = 0.0
-    for metrics in per_symbol.values():
+    errors = 0
+    error_samples: list[str] = []
+    for symbol, metrics in per_symbol.items():
         returns.extend(float(r) for r in metrics.trade_returns)
         weight = float(metrics.total_trades)
         sharpe_weighted += float(metrics.sharpe_ratio) * weight
         win_rate_weighted += float(metrics.win_rate_pct) * weight
         max_dd = max(max_dd, float(metrics.max_drawdown_pct))
+        errors += int(getattr(metrics, "evaluation_errors", 0) or 0)
+        for sample in getattr(metrics, "error_samples", []) or []:
+            if sample not in error_samples:
+                error_samples.append(sample)
 
     total_trades = len(returns)
     gross_profit = sum(r for r in returns if r > 0)
@@ -103,11 +109,13 @@ def _pool_metrics(per_symbol: dict[str, Any]) -> dict[str, Any]:
         "win_rate_pct": (win_rate_weighted / total_trades) if total_trades else 0.0,
         "sharpe_ratio": (sharpe_weighted / total_trades) if total_trades else 0.0,
         "max_drawdown_pct": max_dd,
+        "evaluation_errors": errors,
+        "error_samples": error_samples,
     }
 
 
-async def _evaluate_strategy(strategy_cls, symbol: str, lookback: int) -> Any:
-    harness = IsolatedStrategyBacktestHarness(strategy_cls=strategy_cls, symbol=symbol)
+async def _evaluate_strategy(strategy_cls, symbol: str, lookback: int, settings: dict) -> Any:
+    harness = IsolatedStrategyBacktestHarness(strategy_cls=strategy_cls, symbol=symbol, settings=settings)
     async with get_session(read_only=True) as session:
         return await harness.run_simulation(session=session, lookback_candles=lookback)
 
@@ -177,7 +185,7 @@ async def _run(args: argparse.Namespace) -> int:
         per_symbol: dict[str, Any] = {}
         for symbol in symbols:
             try:
-                per_symbol[symbol] = await _evaluate_strategy(strategy_cls, symbol, args.lookback)
+                per_symbol[symbol] = await _evaluate_strategy(strategy_cls, symbol, args.lookback, settings)
             except Exception as exc:  # noqa: BLE001 - one symbol must not abort the strategy
                 logger.warning("Harness failed for %s on %s: %s", strategy_id, symbol, exc)
 
@@ -190,6 +198,23 @@ async def _run(args: argparse.Namespace) -> int:
         profit_factor = float(pooled["profit_factor"])
         gross_return = float(pooled["gross_return"])
         symbol_label = symbols[0] if len(symbols) == 1 else f"MULTI({len(symbols)})"
+
+        if pooled["evaluation_errors"]:
+            # A strategy that raised while being evaluated has no evidence at all.
+            # Recording "no edge" for it would hide a broken strategy behind a
+            # performance verdict, so it is reported as an error instead.
+            results.append(
+                {
+                    "strategy_id": strategy_id,
+                    "symbol": symbol_label,
+                    "status": "error",
+                    "reason": (
+                        f"{pooled['evaluation_errors']} evaluation errors, first: "
+                        f"{pooled['error_samples'][0] if pooled['error_samples'] else 'unknown'}"
+                    ),
+                }
+            )
+            continue
 
         if trades < args.min_trades:
             results.append(
