@@ -47,7 +47,10 @@ from monika.application.analysis.strategies.evidence_store import (
 )
 from monika.application.analysis.strategies.registry import StrategyRegistry
 from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
-from monika.application.backtest.performance_metrics import compute_trade_statistics
+from monika.application.backtest.performance_metrics import (
+    MIN_T_STATISTIC_FOR_EVIDENCE,
+    compute_trade_statistics,
+)
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import PriceOHLCV
 from sqlalchemy import select
@@ -371,7 +374,7 @@ def main() -> int:
     parser.add_argument(
         "--min-t-statistic",
         type=float,
-        default=1.0,
+        default=MIN_T_STATISTIC_FOR_EVIDENCE,
         help="minimum t-statistic of the mean trade (evidence must be significant, not lucky)",
     )
     parser.add_argument("--include-synthesized", type=int, default=0, help="also evaluate N synthesized alphas")

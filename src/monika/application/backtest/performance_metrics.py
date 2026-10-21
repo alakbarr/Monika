@@ -34,6 +34,9 @@ DAYS_PER_YEAR = 365.25
 
 MIN_TRADES_FOR_RELIABILITY = 30
 MIN_WINDOW_DAYS_FOR_RELIABILITY = 90.0
+# Two-sided 5% significance of the mean trade. Below this a positive profit
+# factor is not separable from luck, so it must not become promotion evidence.
+MIN_T_STATISTIC_FOR_EVIDENCE = 2.0
 
 
 def _std(returns: Sequence[float]) -> float:
@@ -128,6 +131,7 @@ def window_days_from_trades(trades: Sequence[Any]) -> float | None:
 __all__ = [
     "DAYS_PER_YEAR",
     "MIN_TRADES_FOR_RELIABILITY",
+    "MIN_T_STATISTIC_FOR_EVIDENCE",
     "MIN_WINDOW_DAYS_FOR_RELIABILITY",
     "TRADING_DAYS_PER_YEAR",
     "compute_trade_statistics",
