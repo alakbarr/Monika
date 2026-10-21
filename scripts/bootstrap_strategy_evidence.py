@@ -47,6 +47,7 @@ from monika.application.analysis.strategies.evidence_store import (
 )
 from monika.application.analysis.strategies.registry import StrategyRegistry
 from monika.application.backtest.isolated_strategy_harness import IsolatedStrategyBacktestHarness
+from monika.application.backtest.performance_metrics import compute_trade_statistics
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import PriceOHLCV
 from sqlalchemy import select
@@ -87,6 +88,7 @@ def _pool_metrics(per_symbol: dict[str, Any]) -> dict[str, Any]:
     max_dd = 0.0
     errors = 0
     error_samples: list[str] = []
+    window_days: float | None = None
     for symbol, metrics in per_symbol.items():
         returns.extend(float(r) for r in metrics.trade_returns)
         weight = float(metrics.total_trades)
@@ -94,6 +96,9 @@ def _pool_metrics(per_symbol: dict[str, Any]) -> dict[str, Any]:
         win_rate_weighted += float(metrics.win_rate_pct) * weight
         max_dd = max(max_dd, float(metrics.max_drawdown_pct))
         errors += int(getattr(metrics, "evaluation_errors", 0) or 0)
+        symbol_window = getattr(metrics, "window_days", None)
+        if symbol_window:
+            window_days = max(window_days or 0.0, float(symbol_window))
         for sample in getattr(metrics, "error_samples", []) or []:
             if sample not in error_samples:
                 error_samples.append(sample)
@@ -105,12 +110,14 @@ def _pool_metrics(per_symbol: dict[str, Any]) -> dict[str, Any]:
     return {
         "total_trades": total_trades,
         "gross_return": sum(returns),
+        "returns": returns,
         "profit_factor": float(profit_factor),
         "win_rate_pct": (win_rate_weighted / total_trades) if total_trades else 0.0,
         "sharpe_ratio": (sharpe_weighted / total_trades) if total_trades else 0.0,
         "max_drawdown_pct": max_dd,
         "evaluation_errors": errors,
         "error_samples": error_samples,
+        "window_days": window_days,
     }
 
 
@@ -240,6 +247,24 @@ async def _run(args: argparse.Namespace) -> int:
             )
             continue
 
+        # Statistical significance: a positive edge on a small sample can still
+        # be luck. The t-statistic of the mean trade is what separates the two.
+        stats = compute_trade_statistics(pooled["returns"], window_days=pooled["window_days"])
+        t_statistic = float(stats["t_statistic"])
+        if t_statistic < args.min_t_statistic:
+            results.append(
+                {
+                    "strategy_id": strategy_id,
+                    "symbol": symbol_label,
+                    "trades": trades,
+                    "status": "rejected",
+                    "reason": (
+                        f"edge not statistically significant (t={t_statistic:.2f} < {args.min_t_statistic:.1f})"
+                    ),
+                }
+            )
+            continue
+
         window_end = await _latest_bar_end(symbols[0])
 
         if args.dry_run:
@@ -280,6 +305,11 @@ async def _run(args: argparse.Namespace) -> int:
                     "profit_factor": profit_factor,
                     "trades": trades,
                     "max_drawdown_pct": float(pooled["max_drawdown_pct"]),
+                    "t_statistic": t_statistic,
+                    "trades_per_year": stats["trades_per_year"],
+                    "window_days": stats["window_days"],
+                    "annualized_sharpe": stats["annualized_sharpe"],
+                    "is_reliable": bool(stats["is_reliable"]),
                 }
             },
         )
@@ -332,6 +362,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Bootstrap the strategy evidence store.")
     parser.add_argument("--lookback", type=int, default=1200, help="H1 candles per strategy")
     parser.add_argument("--min-trades", type=int, default=12, help="minimum closed trades to record")
+    parser.add_argument(
+        "--min-t-statistic",
+        type=float,
+        default=1.0,
+        help="minimum t-statistic of the mean trade (evidence must be significant, not lucky)",
+    )
     parser.add_argument("--include-synthesized", type=int, default=0, help="also evaluate N synthesized alphas")
     parser.add_argument(
         "--single-symbol",
