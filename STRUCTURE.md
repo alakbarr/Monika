@@ -2414,6 +2414,7 @@ Monika/
 │   │   ├── test_event_store.py
 │   │   ├── test_foreign_key_and_test_hygiene.py
 │   │   ├── test_hybrid_state.py
+│   │   ├── test_migration_0010_downgrade.py
 │   │   ├── test_models.py
 │   │   ├── test_repositories.py
 │   │   ├── test_schema_completeness_and_migrations.py
@@ -3048,4 +3049,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 263 | **Total Tracked Files**: 2755
+**Total Tracked Directories**: 263 | **Total Tracked Files**: 2756

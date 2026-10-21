@@ -183,6 +183,59 @@ def downgrade() -> None:
         return
 
     existing_columns = {column["name"] for column in insp.get_columns(TABLE)}
+
+    # Undo the anchored-PnL rewrite before dropping the anchor. Without this,
+    # a downgrade/upgrade roundtrip would feed the already anchored value back
+    # into the legacy formula and compound the preserved swap component.
+    if {"initial_stop_loss", "initial_risk_pct", "accounting_status"} <= existing_columns:
+        result = bind.execute(
+            sa.text(
+                f"SELECT id, direction, entry_price, exit_price, stop_loss, "
+                f"initial_stop_loss, initial_risk_pct, pnl_pct FROM {TABLE} "
+                "WHERE status = 'closed' AND accounting_status = 'ok' "
+                "AND (exit_reason IS NULL OR exit_reason NOT IN ('expired_limit', 'breakeven'))"
+            )
+        )
+        rows = result.mappings().all() if result is not None and hasattr(result, "mappings") else []
+        for row in rows:
+            entry = row["entry_price"]
+            exit_price = row["exit_price"]
+            initial_stop = row["initial_stop_loss"]
+            stored_stop = row["stop_loss"]
+            risk_pct = row["initial_risk_pct"]
+            anchored_pnl = row["pnl_pct"]
+            direction = str(row["direction"] or "").lower()
+            if (
+                entry is None
+                or exit_price is None
+                or initial_stop is None
+                or stored_stop is None
+                or risk_pct is None
+                or anchored_pnl is None
+            ):
+                continue
+            try:
+                entry_f = float(entry)
+                exit_f = float(exit_price)
+                initial_f = float(initial_stop)
+                stored_f = float(stored_stop)
+                risk_f = float(risk_pct)
+                anchored_f = float(anchored_pnl)
+            except TypeError, ValueError:
+                continue
+            if risk_f <= 0.0 or direction not in ("buy", "sell"):
+                continue
+            initial_distance = abs(entry_f - initial_f)
+            stored_distance = abs(entry_f - stored_f)
+            if initial_distance <= 1e-9 or stored_distance <= 1e-9:
+                continue
+            move = exit_f - entry_f if direction == "buy" else entry_f - exit_f
+            legacy_pnl = anchored_f - (risk_f * move / initial_distance) + (risk_f * move / stored_distance)
+            bind.execute(
+                sa.text(f"UPDATE {TABLE} SET pnl_pct = :pnl WHERE id = :id"),
+                {"pnl": round(legacy_pnl, 4), "id": row["id"]},
+            )
+
     with op.batch_alter_table(TABLE) as batch_op:
         if "accounting_status" in existing_columns:
             batch_op.drop_column("accounting_status")
