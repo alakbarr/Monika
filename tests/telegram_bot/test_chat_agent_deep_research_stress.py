@@ -1,7 +1,7 @@
 """
 Empirical Stress Test & Adversarial Challenge Harness for ChatAgent Tier 4 Deep Research.
 Executed by: m3_challenger_2
-Target: trading-agent/telegram_bot/chat_agent.py
+Target: src/monika/interfaces/telegram/chat_agent.py
 
 Areas Tested:
 1. Idempotency of `_inject_macro_playbooks` (single, double, 10x invocations, partial loading failures)

@@ -1,6 +1,5 @@
 """
 Cache Miss Detector — identifies prompt cache misses and calculates financial waste.
-Tracks prompt cache hit rates and cost deltas.
 """
 
 import logging

@@ -306,7 +306,6 @@ def render_tools_sdk_py(tool_schemas: List[Dict[str, Any]]) -> str:
     """
     Generate clean Python TypedDict and Tools(Protocol) type stub documentation
     from tool JSON schemas for read-only/analysis tools.
-    Generates strict Python type definitions for registered tool schemas.
     """
     lines: List[str] = [
         '"""',

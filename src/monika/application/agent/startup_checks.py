@@ -1,5 +1,5 @@
 """
-File: trading-agent/agent/startup_checks.py
+File: src/monika/application/agent/startup_checks.py
 Startup health and environment validation checks for Trading Agent.
 Extracted from main.py for modularity and maintainability.
 """

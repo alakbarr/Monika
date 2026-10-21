@@ -1,5 +1,5 @@
 """
-File: trading-agent/analysis/harness/agent_harness.py
+File: src/monika/application/agent/harness/agent_harness.py
 
 Unified Multi-Turn ReAct Agent Harness.
 Standardizes and centralizes:

@@ -4,7 +4,7 @@
 
 """
 Test Architecture Parity and Clean Service Layer Facades (Phase 5).
-Verifies two-way import parity between src/monika/ and trading-agent/ shims,
+Verifies import parity across the application service layer facades,
 as well as functional correctness of the Application Service Layer.
 """
 
@@ -23,7 +23,7 @@ from monika.application.services import (
     TradeExecutionResult,
 )
 
-# 2. Compatibility shim imports from trading-agent/services
+# 2. Compatibility shim imports via legacy facade aliases
 from monika.application.services import (
     TradingService as ShimTradingService,
     MarketIntelService as ShimMarketIntelService,

@@ -154,7 +154,7 @@ def test_trajectory_compressor_sanitizes_orphaned_tools():
 
 
 def test_tool_safety_oracle_catches_all_traps():
-    oracle = ToolSafetyOracle(fixture_path="trading-agent/evals/fixtures/tool_jailbreak_trap.json")
+    oracle = ToolSafetyOracle(fixture_path="src/monika/application/evals/fixtures/tool_jailbreak_trap.json")
     results = oracle.evaluate_traps_suite()
 
     assert len(results) >= 5, "Expected at least 5 security traps in fixture"

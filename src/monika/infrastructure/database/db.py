@@ -18,7 +18,7 @@ from monika.infrastructure.database.models import Base
 # Setup logger
 logger = logging.getLogger(__name__)
 
-# Search candidate .env locations (trading-agent/.env or repo root .env)
+# Search candidate .env locations (repo root .env and package-local .env)
 _cur_dir = Path(__file__).resolve().parent
 for _cand in [Path.cwd() / ".env", _cur_dir.parent.parent / ".env", _cur_dir.parent / ".env", _cur_dir / ".env"]:
     if _cand.exists():

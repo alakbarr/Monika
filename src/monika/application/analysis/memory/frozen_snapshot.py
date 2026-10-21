@@ -3,7 +3,7 @@ from pathlib import Path
 from monika.infrastructure.infra.paths import resolve_config_path
 
 """
-File: trading-agent/analysis/memory/frozen_snapshot.py
+File: src/monika/application/analysis/memory/frozen_snapshot.py
 
 Freeze-Snapshot Memory Engine & Prompt-Cache Preservation.
 Provides immutable, hash-verified memory snapshots for agent execution cycles,

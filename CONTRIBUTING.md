@@ -1,6 +1,6 @@
 # Contributing to Monika
 
-Thank you for your interest in contributing to **Monika**! 
+Thank you for your interest in contributing to **Monika**!
 
 Monika is an open-source, domain-specific **Trading Agent Harness and Multi-Agent Execution Framework for MetaTrader 5 (MT5)**. It bridges macroeconomic intelligence, Smart Money Concepts (SMC), dialectical Bull/Bear adversarial debate, deterministic risk fortresses, and broker execution.
 
@@ -55,15 +55,15 @@ source venv/bin/activate
 ### 3. Install Python Dependencies
 ```bash
 pip install --upgrade pip
-pip install -r trading-agent/requirements.txt
+pip install -r requirements.txt
 ```
 
 ### 4. Install Dashboard Frontend Dependencies
 ```bash
-cd trading-agent/logging_observability/dashboard/frontend
+cd frontend
 npm install
 npm run build
-cd ../../../..
+cd ..
 ```
 
 ### 5. Configure Local Environment
@@ -104,18 +104,18 @@ All contributions must include automated tests. Regression tests are strictly en
 **Running the test suite:**
 ```bash
 # Windows (PowerShell):
-$env:PYTHONPATH="trading-agent"; python -m pytest trading-agent/tests
+$env:PYTHONPATH="src"; python -m pytest tests
 
 # Linux / macOS:
-PYTHONPATH=trading-agent pytest trading-agent/tests
+PYTHONPATH=src pytest tests
 
 # Running a specific test file:
-PYTHONPATH=trading-agent pytest trading-agent/tests/risk/test_risk_gate.py -v
+PYTHONPATH=src pytest tests/risk/test_risk_gate.py -v
 ```
 
 > [!IMPORTANT]
 > - Never disable, weaken, or delete an existing test to make new code pass.
-> - When adding a new module or plugin, you must add corresponding unit tests in `trading-agent/tests/`.
+> - When adding a new module or plugin, you must add corresponding unit tests in `tests/`.
 > - Always test edge cases: empty data feeds, network timeouts, broker disconnects, and volatile market anomalies.
 
 ---

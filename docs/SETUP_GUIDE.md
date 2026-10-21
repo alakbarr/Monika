@@ -121,13 +121,13 @@ Pada sistem berbasis Unix, seluruh alur dikelola melalui script `start_monika.sh
    chmod +x start_monika.sh
    ./start_monika.sh
    ```
-3. Script akan memverifikasi runtime Python 3, menyusun virtual environment di `trading-agent/venv`, dan mengarahkan operator ke wizard setup interaktif.
+3. Script akan memverifikasi runtime Python 3, menyusun virtual environment di `venv`, dan mengarahkan operator ke wizard setup interaktif.
 
 ### Deployment VPS 24/7 Berbasis Systemd (Opsi Lanjutan)
 Untuk menjalankan Monika sebagai background service yang otomatis restart saat server reboot:
 1. Salin template service ke systemd:
    ```bash
-   sudo cp trading-agent/systemd/monika.service /etc/systemd/system/
+   sudo cp deploy/tradeagent.service /etc/systemd/system/
    sudo nano /etc/systemd/system/monika.service
    ```
 2. Sesuaikan direktori kerja dan user, lalu aktifkan:
@@ -149,7 +149,7 @@ Bagi pengguna VPS yang menginginkan isolasi penuh tanpa mengkonfigurasi dependen
    ```
 2. Salin file template environment:
    ```bash
-   cp trading-agent/.env.example .env
+   cp .env.example .env
    nano .env
    ```
 3. Jalankan container orchestration:
@@ -174,7 +174,7 @@ Jika beralih ke live execution pada Windows:
    - Centang **Allow WebRequest for listed URL** (tambahkan `http://localhost`).
 4. Kompilasi Expert Advisor Pengawas (`AIAgent_EA.mq5`):
    - Buka MetaEditor di MT5.
-   - Buka file `trading-agent/execution/ea_bridge/AIAgent_EA.mq5`.
+   - Buka file `src/monika/infrastructure/brokers/ea_bridge/AIAgent_EA.mq5`.
    - Tekan F7 untuk kompilasi hingga menghasilkan file `AIAgent_EA.ex5`.
    - Pasang EA tersebut ke salah satu chart di terminal MT5. EA ini berfungsi sebagai *dead-man's switch* yang otomatis mengamankan posisi terbuka jika proses Python terputus lebih dari 120 detik.
 
@@ -233,7 +233,7 @@ python -m monika.interfaces.cli.main doctor
 
 ### Opsi Perintah Tambahan
 - Mode Offline (tanpa probe API): `python -m monika.interfaces.cli.main doctor --offline`
-- Perbaikan Otomatis: `python -m monika.interfaces.cli.main doctor --fix`  
+- Perbaikan Otomatis: `python -m monika.interfaces.cli.main doctor --fix`
   (Otomatis membuat folder yang hilang, memperbaiki izin file, dan menjalankan migrasi skema yang tertinggal).
 - Mode Detail: `python -m monika.interfaces.cli.main doctor -v`
 
@@ -243,7 +243,7 @@ python -m monika.interfaces.cli.main doctor
 
 ### Masalah 1: Error 429 (Resource Exhausted / Rate Limit Exceeded)
 - **Penyebab**: Batas kuota gratis Google Gemini telah habis untuk hari tersebut.
-- **Solusi**: 
+- **Solusi**:
   1. Tambahkan 2 atau 3 API key tambahan di file `.env` pada variabel `GEMINI_API_KEYS=key1,key2,key3`.
   2. Ganti profil operasional ke mode hemat:
      ```bash
@@ -399,13 +399,13 @@ On Unix-based operating systems, execution is driven by `start_monika.sh`.
    chmod +x start_monika.sh
    ./start_monika.sh
    ```
-3. The script verifies dependencies, initializes `trading-agent/venv`, and launches the setup wizard.
+3. The script verifies dependencies, initializes `venv`, and launches the setup wizard.
 
 ### 24/7 VPS Systemd Daemon Integration
 For persistent background operation across server restarts:
 1. Copy the systemd unit file:
    ```bash
-   sudo cp trading-agent/systemd/monika.service /etc/systemd/system/
+   sudo cp deploy/tradeagent.service /etc/systemd/system/
    sudo nano /etc/systemd/system/monika.service
    ```
 2. Configure active user and directory paths, then register the service:
@@ -427,7 +427,7 @@ For zero-host-configuration deployment on headless Linux servers:
    ```
 2. Initialize environment credentials:
    ```bash
-   cp trading-agent/.env.example .env
+   cp .env.example .env
    nano .env
    ```
 3. Orchestrate the stack:
@@ -452,7 +452,7 @@ When deploying live execution on Windows:
    - Check **Allow WebRequest for listed URL** (add `http://localhost`).
 4. Compile the Watchdog Expert Advisor (`AIAgent_EA.mq5`):
    - Open MetaEditor within MT5.
-   - Open `trading-agent/execution/ea_bridge/AIAgent_EA.mq5`.
+   - Open `src/monika/infrastructure/brokers/ea_bridge/AIAgent_EA.mq5`.
    - Compile (F7) to generate `AIAgent_EA.ex5`.
    - Attach the compiled EA to an active chart. The EA monitors `heartbeat.txt` and executes defensive liquidations if the Python agent loses contact for more than 120 seconds.
 
@@ -511,7 +511,7 @@ python -m monika.interfaces.cli.main doctor
 
 ### Advanced Diagnostic Flags
 - Offline Validation (skips API pings): `python -m monika.interfaces.cli.main doctor --offline`
-- Automated Remediation: `python -m monika.interfaces.cli.main doctor --fix`  
+- Automated Remediation: `python -m monika.interfaces.cli.main doctor --fix`
   (Automatically repairs missing directories, file permissions, and missing table migrations).
 - Verbose Inspection: `python -m monika.interfaces.cli.main doctor -v`
 

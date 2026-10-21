@@ -1,6 +1,6 @@
 # ==============================================================================
 # File: src/monika/infrastructure/llm/cache_warmer.py
-# Description: Economic KV Prompt Cache Warmer for proactive KV prompt cache retention.
+# Description: Economic KV Prompt Cache Warmer.
 # ==============================================================================
 
 from __future__ import annotations

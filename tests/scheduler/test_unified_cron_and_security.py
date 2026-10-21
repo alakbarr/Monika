@@ -268,7 +268,7 @@ def test_terminal_guard_quote_and_hex_deobfuscation():
     safe_cmds = [
         "python main.py --dry-run",
         "git status --short",
-        "pytest trading-agent/tests/ -v",
+        "pytest tests/ -v",
         "ls -la data/",
     ]
     for cmd in safe_cmds:

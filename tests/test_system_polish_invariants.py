@@ -142,8 +142,8 @@ def test_l8_extension_loader_no_sys_path_mutation(tmp_path):
 
 
 def test_l10_no_loose_sql_files_in_migrations():
-    """L-10: No loose .sql files in trading-agent/database/migrations root."""
-    base_dir = Path(__file__).parent.parent / "database" / "migrations"
+    """L-10: No loose .sql files in the database migrations root."""
+    base_dir = Path(__file__).parent.parent / "src" / "monika" / "infrastructure" / "database" / "migrations"
     loose_sql = list(base_dir.glob("*.sql"))
     assert len(loose_sql) == 0, f"Found loose .sql files in migrations: {loose_sql}"
 

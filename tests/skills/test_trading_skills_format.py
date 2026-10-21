@@ -3,8 +3,8 @@
 # ==============================================================================
 
 """
-Unit tests validating that all skills in trading-agent/skills/trading/
-follow the standardized SKILL.md format identical to trading-agent/skills/general/.
+Unit tests validating that all skills in skills/trading/
+follow the standardized SKILL.md format identical to skills/general/.
 """
 
 import pytest
@@ -121,7 +121,7 @@ def test_skills_hub_resolves_trading_skills():
 
 
 def test_trading_skill_linter_zero_errors():
-    """Ensure TradingSkillLinter passes on trading-agent/skills/trading with 0 errors."""
+    """Ensure TradingSkillLinter passes on skills/trading with 0 errors."""
     base_dir = Path(__file__).resolve().parent.parent.parent / "skills" / "trading"
     linter = TradingSkillLinter()
     issues_by_file = linter.lint_directory(base_dir)

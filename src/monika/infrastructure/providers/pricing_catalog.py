@@ -1,5 +1,5 @@
 """
-File: trading-agent/analysis/providers/pricing_catalog.py
+File: src/monika/infrastructure/providers/pricing_catalog.py
 
 Centralized AI Model Pricing Catalog.
 Re-exports pricing definitions and cost calculations from utils.analytics.pricing,

@@ -3,7 +3,6 @@ Constrained Sampling Support — grammar-based structured output for local & rem
 
 Architecture preparation for Ollama/vLLM/OpenAI/Gemini providers supporting JSON schema
 and grammar constraints.
-Normalizes JSON schemas for constrained decoding.
 """
 
 import logging

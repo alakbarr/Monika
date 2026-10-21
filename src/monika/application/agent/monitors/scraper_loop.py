@@ -1,5 +1,5 @@
 """
-File: trading-agent/agent/monitors/scraper_loop.py
+File: src/monika/application/agent/monitors/scraper_loop.py
 Scraper background loop and news digest classification.
 """
 

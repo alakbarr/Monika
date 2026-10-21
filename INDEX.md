@@ -626,7 +626,7 @@
     - `defuse_binaries(text: str) -> str` - *Strips base64 image urls and large binary blocks.*
     - `distill(raw_text: str, title: str, url: str, ...) -> dict[str, Any]` - *Processes and compresses content using 75/25 partitioning and disk spill.*
 
-#### `event_bus.py` - *File: trading-agent/utils/protocol/event_bus.py*
+#### `event_bus.py` - *File: src/monika/core/primitives/event_bus.py*
 - **Path**: [`src/monika/core/primitives/event_bus.py`](src/monika/core/primitives/event_bus.py)
 - **Classes**:
   - `class AppEvent`: Base class for all application domain events.
@@ -852,7 +852,7 @@
   - `strip_emojis_and_emoticons(text: str) -> str`: Remove all Unicode emojis and text-based ASCII emoticons from text.
   - `sanitize_telegram_html(text: str) -> str`: Safely converts Markdown/plain-text into Telegram ParseMode.HTML compliant markup,
 
-#### `stream_scrubber.py` - *File: trading-agent/utils/streaming/stream_scrubber.py*
+#### `stream_scrubber.py` - *File: src/monika/core/streaming/stream_scrubber.py*
 - **Path**: [`src/monika/core/streaming/stream_scrubber.py`](src/monika/core/streaming/stream_scrubber.py)
 - **Classes**:
   - `class StatefulStreamScrubber`: Stateful streaming text scrubber with boundary buffering.
@@ -4813,7 +4813,7 @@
   - `clear_socket_graveyard() -> int`: Closes all deferred retired sockets during clean process shutdown.
   - `get_socket_guard_diagnostics() -> dict`: Returns diagnostics on the socket graveyard and active socket hygiene state.
 
-#### `startup_checks.py` - *File: trading-agent/agent/startup_checks.py*
+#### `startup_checks.py` - *File: src/monika/application/agent/startup_checks.py*
 - **Path**: [`src/monika/application/agent/startup_checks.py`](src/monika/application/agent/startup_checks.py)
 - **Classes**:
   - `class StartupChecker`: Runs all pre-flight startup validation checks.
@@ -4832,7 +4832,7 @@
     - `__init__(db: SessionDbWal)`
     - `rewind_session(session_id: str, user_ordinal: int, expected_active_ids: Optional[List[int]], ...) -> RewindOutcome` - *Rewind conversation state to just before the target user turn with concurrency checks.*
 
-#### `task_registry.py` - *File: trading-agent/agent/task_registry.py*
+#### `task_registry.py` - *File: src/monika/application/agent/task_registry.py*
 - **Path**: [`src/monika/application/agent/task_registry.py`](src/monika/application/agent/task_registry.py)
 - **Classes**:
   - `class EmergencyExitCoordinator`: Coordinates fail-closed emergency exit codes across daemon modules.
@@ -4879,7 +4879,7 @@
     - `extract_mechanical_invariants(messages: List[Dict[str, Any]]) -> List[str]` - *Extracts any protected <mechanical-invariants> tags found across messages.*
     - `compress(messages: List[Dict[str, Any]], mode: Optional[str], summarizer_fn: Optional[Callable[[str], str]], ...) -> List[Dict[str, Any]]` - *Compresses conversation trajectory.*
 
-#### `turn_lease_manager.py` - *File: trading-agent/agent/turn_lease_manager.py*
+#### `turn_lease_manager.py` - *File: src/monika/application/agent/turn_lease_manager.py*
 - **Path**: [`src/monika/application/agent/turn_lease_manager.py`](src/monika/application/agent/turn_lease_manager.py)
 - **Classes**:
   - `class SymbolLease`: Represents a durable time-bounded analysis lease on a trading symbol.
@@ -5047,7 +5047,7 @@
 #### `__init__.py`
 - **Path**: [`src/monika/application/agent/harness/__init__.py`](src/monika/application/agent/harness/__init__.py)
 
-#### `agent_harness.py` - *File: trading-agent/analysis/harness/agent_harness.py*
+#### `agent_harness.py` - *File: src/monika/application/agent/harness/agent_harness.py*
 - **Path**: [`src/monika/application/agent/harness/agent_harness.py`](src/monika/application/agent/harness/agent_harness.py)
 - **Classes**:
   - `class AgentHarness`: Unified ReAct Agent Execution Harness.
@@ -5174,22 +5174,22 @@
 #### `__init__.py` - *Package: agent.monitors*
 - **Path**: [`src/monika/application/agent/monitors/__init__.py`](src/monika/application/agent/monitors/__init__.py)
 
-#### `db_health.py` - *File: trading-agent/agent/monitors/db_health.py*
+#### `db_health.py` - *File: src/monika/application/agent/monitors/db_health.py*
 - **Path**: [`src/monika/application/agent/monitors/db_health.py`](src/monika/application/agent/monitors/db_health.py)
 - **Top-Level Functions**:
   - `async run_db_health_check(agent: Any) -> None`: Monitor Database connection pool health.
 
-#### `drawdown_monitor.py` - *File: trading-agent/agent/monitors/drawdown_monitor.py*
+#### `drawdown_monitor.py` - *File: src/monika/application/agent/monitors/drawdown_monitor.py*
 - **Path**: [`src/monika/application/agent/monitors/drawdown_monitor.py`](src/monika/application/agent/monitors/drawdown_monitor.py)
 - **Top-Level Functions**:
   - `async run_floating_drawdown_monitor(agent: Any) -> None`: Monitor floating drawdown. Uses hysteresis (2 consecutive breaches)
 
-#### `margin_monitor.py` - *File: trading-agent/agent/monitors/margin_monitor.py*
+#### `margin_monitor.py` - *File: src/monika/application/agent/monitors/margin_monitor.py*
 - **Path**: [`src/monika/application/agent/monitors/margin_monitor.py`](src/monika/application/agent/monitors/margin_monitor.py)
 - **Top-Level Functions**:
   - `async run_margin_monitor(agent: Any, alert_threshold_pct: float, poll_interval: float) -> None`: Monitors account margin level periodically.
 
-#### `paper_trade_monitor.py` - *File: trading-agent/agent/monitors/paper_trade_monitor.py*
+#### `paper_trade_monitor.py` - *File: src/monika/application/agent/monitors/paper_trade_monitor.py*
 - **Path**: [`src/monika/application/agent/monitors/paper_trade_monitor.py`](src/monika/application/agent/monitors/paper_trade_monitor.py)
 - **Top-Level Functions**:
   - `async run_paper_trade_monitor(agent: Any) -> None`: Dedicated loop to monitor and close paper trades based on price action.
@@ -5209,7 +5209,7 @@
 - **Top-Level Functions**:
   - `trigger_emergency_kill(source: str) -> bool`: Trip the emergency kill switch flags immediately across filesystem.
 
-#### `scraper_loop.py` - *File: trading-agent/agent/monitors/scraper_loop.py*
+#### `scraper_loop.py` - *File: src/monika/application/agent/monitors/scraper_loop.py*
 - **Path**: [`src/monika/application/agent/monitors/scraper_loop.py`](src/monika/application/agent/monitors/scraper_loop.py)
 - **Top-Level Functions**:
   - `async run_scraper_loop(agent: Any) -> None`: Scraper background loop (interval: 1h, Stage 2 every 2h).
@@ -12767,7 +12767,7 @@
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`
     - `async run_tool_agent(messages: list, tools: list, system_prompt: Any)`
 
-#### `pricing_catalog.py` - *File: trading-agent/analysis/providers/pricing_catalog.py*
+#### `pricing_catalog.py` - *File: src/monika/infrastructure/providers/pricing_catalog.py*
 - **Path**: [`src/monika/infrastructure/providers/pricing_catalog.py`](src/monika/infrastructure/providers/pricing_catalog.py)
 - **Top-Level Functions**:
   - `get_model_pricing(model_name: str) -> Price`: Lookup Price dataclass for a given model identifier.

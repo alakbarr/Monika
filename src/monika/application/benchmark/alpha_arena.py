@@ -1,7 +1,6 @@
 """
 Alpha Arena: Head-to-Head Tournament Engine for LLM Models & Strategies.
 Evaluates competitors on identical historical tick/candle windows using Elo ratings.
-Evaluates multi-model alpha arena tournaments.
 """
 
 import math

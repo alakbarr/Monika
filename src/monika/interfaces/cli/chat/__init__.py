@@ -5,8 +5,7 @@
 
 """
 Monika CLI Interactive Chat Subsystem.
-Provides an institutional-grade trading desk console for
-interactive CLI and gateway surfaces.
+Provides an institutional-grade trading desk console.
 """
 
 from typing import Optional

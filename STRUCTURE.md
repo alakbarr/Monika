@@ -2108,6 +2108,7 @@ Monika/
 │   │   └── test_turn_liveness_and_recovery.py
 │   ├── analysis/
 │   │   ├── arbitration/
+│   │   │   ├── test_degridlock_and_portfolio_invariants.py
 │   │   │   └── test_recency_brier_weighting.py
 │   │   ├── calculators/
 │   │   │   └── test_quant_plateau_optimizer.py
@@ -3037,4 +3038,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 263 | **Total Tracked Files**: 2744
+**Total Tracked Directories**: 263 | **Total Tracked Files**: 2745

@@ -1,5 +1,5 @@
 """
-File: trading-agent/agent/monitors/margin_monitor.py
+File: src/monika/application/agent/monitors/margin_monitor.py
 Margin level watcher and threshold alerting monitor (MarginGuardian).
 """
 

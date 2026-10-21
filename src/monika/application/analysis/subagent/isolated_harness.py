@@ -32,7 +32,6 @@ def extract_completed_turn_prefix(messages: List[Dict[str, Any]]) -> List[Dict[s
     """
     Returns a deep copy of messages up to the last complete turn boundary
     where all assistant tool_use / tool_calls have matching tool results.
-    Extracts completed turn prefix events for deterministic replay.
     """
     if not messages:
         return []

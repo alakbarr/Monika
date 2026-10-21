@@ -425,9 +425,7 @@ async def test_all_53_roles_case_builder_with_fixtures():
 
     from pathlib import Path
 
-    cfg_path = Path("trading-agent/config/settings.yaml")
-    if not cfg_path.exists():
-        cfg_path = Path("config/settings.yaml")
+    cfg_path = Path("config/settings.yaml")
     with open(cfg_path, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     expected_roles = list(cfg.get("llm", {}).get("task_roles", {}).keys())

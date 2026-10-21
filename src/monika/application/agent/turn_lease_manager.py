@@ -1,5 +1,5 @@
 """
-File: trading-agent/agent/turn_lease_manager.py
+File: src/monika/application/agent/turn_lease_manager.py
 
 Symbol Turn Lease & Event Coalescence Manager.
 Prevents concurrent analysis collisions across schedulers on identical asset symbols.

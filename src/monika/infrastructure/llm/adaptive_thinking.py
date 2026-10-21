@@ -187,7 +187,6 @@ def clamp_thinking_budget_to_answer_room(
     """
     Clamps thinking token budget so it never starves max_tokens of answer completion headroom.
     Ensures at least min_answer_tokens remain available for the visible answer.
-    Clamps thinking token budgets to preserve response room.
     """
     if budget <= 0:
         return 0

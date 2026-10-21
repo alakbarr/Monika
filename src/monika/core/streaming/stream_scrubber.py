@@ -1,5 +1,5 @@
 """
-File: trading-agent/utils/streaming/stream_scrubber.py
+File: src/monika/core/streaming/stream_scrubber.py
 
 Stateful Stream Scrubber Pipeline.
 Buffers and scrubs reasoning tokens (<think>...</think>), internal context tags,

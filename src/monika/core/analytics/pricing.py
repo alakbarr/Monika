@@ -17,9 +17,7 @@ logger = logging.getLogger("TradingAgent.Pricing")
 
 @dataclass(frozen=True)
 class PricingTier:
-    """Tiered pricing definition for models with threshold-based rates.
-    Supports threshold-based model pricing tiers.
-    """
+    """Tiered pricing definition for models with threshold-based rates."""
 
     threshold_tokens: int  # Threshold token count (e.g. 200_000 tokens)
     input_rate: float  # $ / 1M input token beyond threshold

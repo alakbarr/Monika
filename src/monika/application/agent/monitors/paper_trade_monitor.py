@@ -1,5 +1,5 @@
 """
-File: trading-agent/agent/monitors/paper_trade_monitor.py
+File: src/monika/application/agent/monitors/paper_trade_monitor.py
 Paper trading resolution and outcome monitoring loop.
 """
 

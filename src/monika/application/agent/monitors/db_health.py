@@ -1,5 +1,5 @@
 """
-File: trading-agent/agent/monitors/db_health.py
+File: src/monika/application/agent/monitors/db_health.py
 Database connection pool health monitoring.
 """
 

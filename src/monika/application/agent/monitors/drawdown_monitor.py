@@ -1,5 +1,5 @@
 """
-File: trading-agent/agent/monitors/drawdown_monitor.py
+File: src/monika/application/agent/monitors/drawdown_monitor.py
 Floating drawdown monitoring with hysteresis and auto-kill-switch.
 """
 

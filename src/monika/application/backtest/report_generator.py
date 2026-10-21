@@ -181,7 +181,7 @@ class ReportGenerator:
             self.wilson_lower = 0.0
             self.wilson_upper = 0.0
 
-        # 7. Extended Risk Metrics (Institutional Parity)
+        # 7. Extended Risk Metrics
         if len(daily_returns) > 1:
             var_5 = float(np.percentile(daily_returns, 5))
             tail_losses = [r for r in daily_returns if r <= var_5]

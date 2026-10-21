@@ -1,5 +1,5 @@
 """
-File: trading-agent/utils/protocol/event_bus.py
+File: src/monika/core/primitives/event_bus.py
 
 Typed Asynchronous Event Bus for High-Performance Decoupled Architecture.
 Supports:

@@ -1,5 +1,5 @@
 """
-File: trading-agent/agent/task_registry.py
+File: src/monika/application/agent/task_registry.py
 Background task definitions, lifecycle supervision, and restart supervision.
 Extracted from main.py for modularity and maintainability.
 """

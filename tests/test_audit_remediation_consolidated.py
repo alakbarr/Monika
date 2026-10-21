@@ -11,9 +11,7 @@ from pathlib import Path
 
 
 def test_settings_yaml_single_execution_block():
-    settings_path = Path("trading-agent/config/settings.yaml")
-    if not settings_path.exists():
-        settings_path = Path("config/settings.yaml")
+    settings_path = Path("config/settings.yaml")
     with open(settings_path, "r", encoding="utf-8") as f:
         content = f.read()
 
