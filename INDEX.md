@@ -741,6 +741,8 @@
 - **Path**: [`src/monika/core/risk/quant_scorecard.py`](src/monika/core/risk/quant_scorecard.py)
 - **Top-Level Functions**:
   - `is_quantitative_source(decision_source: str | None) -> bool`: Return True when a decision source is a quantitative (non-LLM) proposal.
+  - `is_concordant_source(decision_source: str | None) -> bool`: Return True for the concordant source (LLM and quant agreed).
+  - `evaluate_analysis_scorecard() -> tuple[bool, str]`: Single source of truth for the analysis scorecard requirement.
   - `build_quant_scorecard() -> dict[str, Any]`: Build a deterministic scorecard from the strategy's executable signal.
   - `attach_quant_scorecard(analysis: Any, scorecard: dict[str, Any]) -> None`: Persist a scorecard on an ``AssetAnalysis`` using the existing JSON column.
   - `extract_quant_scorecard(analysis: Any) -> dict[str, Any] | None`: Return the explicit scorecard, or ``None`` when it is missing/malformed.
