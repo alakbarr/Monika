@@ -2397,7 +2397,8 @@ Monika/
 │   │   ├── test_risk_contract_sync.py
 │   │   ├── test_settings.py
 │   │   ├── test_settings_llm.py
-│   │   └── test_settings_task_roles.py
+│   │   ├── test_settings_task_roles.py
+│   │   └── test_skill_risk_contract_sync.py
 │   ├── data_sources/
 │   │   ├── __init__.py
 │   │   ├── test_bond_yields.py
@@ -3062,4 +3063,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 264 | **Total Tracked Files**: 2768
+**Total Tracked Directories**: 264 | **Total Tracked Files**: 2769
