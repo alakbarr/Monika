@@ -599,28 +599,50 @@ class SignalArbitrator:
                 level_source = "llm"
 
                 if llm_entry > 0 and quant_entry > 0:
-                    entry_gap = abs(llm_entry - quant_entry)
-                    gap_threshold = (0.5 * atr_val) if atr_val > 0 else (0.005 * quant_entry)
+                    # In concordant agreement, prioritize LLM levels when LLM confidence is decisive (>= 0.65)
+                    if l_conf >= 0.65 and llm_entry > 0 and llm_sl > 0 and llm_tp > 0:
+                        entry_p, sl_p, tp_p = llm_entry, llm_sl, llm_tp
+                        level_source = "llm"
+                    else:
+                        entry_gap = abs(llm_entry - quant_entry)
+                        gap_threshold = (0.5 * atr_val) if atr_val > 0 else (0.005 * quant_entry)
 
-                    if entry_gap > gap_threshold:
-                        llm_risk = abs(llm_entry - llm_sl) if (llm_entry and llm_sl) else 0.0
-                        llm_reward = abs(llm_tp - llm_entry) if (llm_entry and llm_tp) else 0.0
-                        llm_rr = (llm_reward / llm_risk) if llm_risk > 0 else 0.0
+                        if entry_gap > gap_threshold:
+                            llm_risk = abs(llm_entry - llm_sl) if (llm_entry and llm_sl) else 0.0
+                            llm_reward = abs(llm_tp - llm_entry) if (llm_entry and llm_tp) else 0.0
+                            llm_rr = (llm_reward / llm_risk) if llm_risk > 0 else 0.0
 
-                        quant_risk = abs(quant_entry - quant_sl) if (quant_entry and quant_sl) else 0.0
-                        quant_reward = abs(quant_tp - quant_entry) if (quant_entry and quant_tp) else 0.0
-                        quant_rr = (quant_reward / quant_risk) if quant_risk > 0 else 0.0
+                            quant_risk = abs(quant_entry - quant_sl) if (quant_entry and quant_sl) else 0.0
+                            quant_reward = abs(quant_tp - quant_entry) if (quant_entry and quant_tp) else 0.0
+                            quant_rr = (quant_reward / quant_risk) if quant_risk > 0 else 0.0
 
-                        if quant_rr >= llm_rr or entry_gap > (gap_threshold * 2.0):
-                            entry_p, sl_p, tp_p = quant_entry, quant_sl, quant_tp
-                            level_source = "quant"
-                            logger.info(
-                                f"[{symbol}] Concordant ATR gap guard: gap={entry_gap:.5f} > {gap_threshold:.5f}. "
-                                f"Selected Quant levels with optimal R:R ({quant_rr:.2f} vs LLM {llm_rr:.2f})."
-                            )
-                        else:
-                            entry_p, sl_p, tp_p = llm_entry, llm_sl, llm_tp
-                            level_source = "llm"
+                            if quant_rr >= llm_rr or entry_gap > (gap_threshold * 2.0):
+                                entry_p, sl_p, tp_p = quant_entry, quant_sl, quant_tp
+                                level_source = "quant"
+                                logger.info(
+                                    f"[{symbol}] Concordant ATR gap guard: gap={entry_gap:.5f} > {gap_threshold:.5f}. "
+                                    f"Selected Quant levels with optimal R:R ({quant_rr:.2f} vs LLM {llm_rr:.2f})."
+                                )
+                            else:
+                                entry_p, sl_p, tp_p = llm_entry, llm_sl, llm_tp
+                                level_source = "llm"
+
+                if entry_p and sl_p and tp_p:
+                    try:
+                        from monika.domain.execution.bracket_optimizer import BracketOptimizer
+
+                        b_opt = BracketOptimizer()
+                        opt_b = b_opt.optimize(
+                            symbol=symbol,
+                            direction=q_dir,
+                            entry_price=float(entry_p),
+                            stop_loss=float(sl_p),
+                            take_profit=float(tp_p),
+                            atr=atr_val if atr_val > 0 else None,
+                        )
+                        entry_p, sl_p, tp_p = opt_b.entry_price, opt_b.stop_loss, opt_b.take_profit
+                    except Exception as b_err:
+                        logger.debug(f"[{symbol}] Concordant BracketOptimizer: {b_err}")
 
                 return ArbitrationResult(
                     symbol=symbol,
