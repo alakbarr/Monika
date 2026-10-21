@@ -43,6 +43,14 @@ class RegimeEvidence:
     profit_factor: float
     trade_count: int
     max_drawdown_pct: float
+    # Statistical significance of the measured edge. A positive profit factor on
+    # a small sample is not evidence, so the t-statistic of the mean trade is
+    # stored next to it.
+    t_statistic: float = 0.0
+    trades_per_year: Optional[float] = None
+    window_days: Optional[float] = None
+    annualized_sharpe: Optional[float] = None
+    is_reliable: bool = False
 
 
 @dataclass
@@ -226,6 +234,15 @@ class StrategyEvidenceStore:
                     profit_factor=float(r_vals.get("profit_factor", 1.0)),
                     trade_count=int(r_vals.get("trades", 0)),
                     max_drawdown_pct=float(r_vals.get("max_drawdown_pct", 0.0)),
+                    t_statistic=float(r_vals.get("t_statistic", 0.0) or 0.0),
+                    trades_per_year=(
+                        float(r_vals["trades_per_year"]) if r_vals.get("trades_per_year") is not None else None
+                    ),
+                    window_days=(float(r_vals["window_days"]) if r_vals.get("window_days") is not None else None),
+                    annualized_sharpe=(
+                        float(r_vals["annualized_sharpe"]) if r_vals.get("annualized_sharpe") is not None else None
+                    ),
+                    is_reliable=bool(r_vals.get("is_reliable", False)),
                 )
 
         now = time.time()

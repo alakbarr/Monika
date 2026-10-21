@@ -157,6 +157,12 @@ async def _run(args: argparse.Namespace) -> int:
     settings = load_settings() or {}
     store = StrategyEvidenceStore(DEFAULT_EVIDENCE_FILE)
 
+    if args.reset:
+        # Rebuild the store from scratch so that evidence recorded under an
+        # older admission rule cannot linger next to the current one.
+        store._store.clear()
+        logger.info("Evidence store cleared before rebuild")
+
     async with get_session(read_only=True) as session:
         available = await _available_symbols(session)
 
@@ -375,6 +381,11 @@ def main() -> int:
         help="evaluate only the first applicable symbol instead of pooling all of them",
     )
     parser.add_argument("--dry-run", action="store_true", help="evaluate without writing the evidence store")
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="clear the evidence store before recording, so only current evidence remains",
+    )
     args = parser.parse_args()
     return asyncio.run(_run(args))
 
