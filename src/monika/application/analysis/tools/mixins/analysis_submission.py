@@ -770,6 +770,11 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             logger.warning(f"Mechanical gates failed (fail-open): {e}")
 
         if decision in ("buy", "sell"):
+            from monika.application.analysis.prompt.risk_contract import build_risk_contract
+
+            risk_contract = build_risk_contract(symbol, getattr(self, "settings", {}))
+            min_rr: float = float(risk_contract.min_rr_ratio)
+
             if not inp.get("entry_condition"):
                 errors.append("entry_condition is required for buy/sell decision")
             if inp.get("stop_loss") is None:
@@ -839,10 +844,6 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 # RR minimal 1.0 untuk approval awal
                 if sl_dist > 0 and tp_dist > 0:
                     rr = tp_dist / sl_dist if sl_dist else 0
-                    from monika.application.analysis.prompt.risk_contract import build_risk_contract
-
-                    risk_contract = build_risk_contract(symbol, getattr(self, "settings", {}))
-                    min_rr = risk_contract.min_rr_ratio
                     if rr < min_rr:
                         breakeven_wr = 100.0 / (1.0 + min_rr)
                         req_tp_dist = sl_dist * min_rr
@@ -962,6 +963,41 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                                 f"ceiling ({adr_sl_ceiling:.5f}) — harmonizing ceiling to {effective_sl_ceiling:.5f} to accommodate volatility."
                             )
                         min_sl_from_atr = min(raw_min_sl, effective_sl_ceiling * 0.85)
+
+                    # Preflight auto-repair via BracketOptimizer: snap brackets into valid ATR / ADR ranges
+                    try:
+                        from monika.domain.execution.bracket_optimizer import BracketOptimizer
+
+                        bracket_opt = BracketOptimizer(default_min_rr=min_rr)
+                        opt_res = bracket_opt.optimize(
+                            symbol=symbol,
+                            direction=decision,
+                            entry_price=entry_price,
+                            stop_loss=float(sl_price or 0.0),
+                            take_profit=float(tp_price or 0.0),
+                            atr=atr_value_for_validation,
+                            adr_ctx=adr_ctx_for_validation,
+                            min_rr=min_rr,
+                            min_sl_atr_multiplier=min_sl_multiplier,
+                        )
+                        if opt_res.adjusted:
+                            logger.info(
+                                f"[{symbol}] BracketOptimizer aligned levels: {opt_res.adjustments} "
+                                f"(SL: {sl_price} -> {opt_res.stop_loss}, TP: {tp_price} -> {opt_res.take_profit})"
+                            )
+                            sl_price = opt_res.stop_loss
+                            tp_price = opt_res.take_profit
+                            inp["stop_loss"] = sl_price
+                            inp["take_profit"] = tp_price
+                            sl_dist = abs(entry_price - sl_price)
+                            tp_dist = abs(tp_price - entry_price)
+                            rationale += (
+                                f"\n\n[SYSTEM AUTO-ALIGNMENT (BracketOptimizer): "
+                                + "; ".join(opt_res.adjustments)
+                                + f" (SL={sl_price}, TP={tp_price}, R:R={opt_res.rr_ratio:.2f})]"
+                            )
+                    except Exception as opt_err:
+                        logger.debug(f"[{symbol}] BracketOptimizer preflight skipped: {opt_err}")
 
                     if sl_dist < (min_sl_from_atr - 1e-4):
                         errors.append(
@@ -1348,24 +1384,28 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 logger.info(
                     f"[{symbol}] Attempt {attempts}: Auto-healing structural level geometry to preserve valid {decision.upper()} signal. Prior errors: {errors}"
                 )
-                atr_v = atr_value_for_validation
-                if decision == "buy":
-                    if not sl_price or sl_price >= entry_price or (entry_price - sl_price) < 0.5 * atr_v:
-                        sl_price = round(entry_price - (1.2 * atr_v), 5)
-                        inp["stop_loss"] = sl_price
-                    risk_dist = entry_price - sl_price
-                    if not tp_price or tp_price <= entry_price or (tp_price - entry_price) < 1.5 * risk_dist:
-                        tp_price = round(entry_price + (1.6 * risk_dist), 5)
-                        inp["take_profit"] = tp_price
-                else:
-                    if not sl_price or sl_price <= entry_price or (sl_price - entry_price) < 0.5 * atr_v:
-                        sl_price = round(entry_price + (1.2 * atr_v), 5)
-                        inp["stop_loss"] = sl_price
-                    risk_dist = sl_price - entry_price
-                    if not tp_price or tp_price >= entry_price or (entry_price - tp_price) < 1.5 * risk_dist:
-                        tp_price = round(entry_price - (1.6 * risk_dist), 5)
-                        inp["take_profit"] = tp_price
-                rationale += f"\n\n[SYSTEM AUTO-HEAL: Structural SL/TP aligned to valid ATR geometry (SL={sl_price}, TP={tp_price}, R:R={(abs(tp_price - entry_price) / max(0.00001, abs(entry_price - sl_price))):.2f})]"
+                from monika.domain.execution.bracket_optimizer import BracketOptimizer
+
+                bracket_opt = BracketOptimizer(default_min_rr=1.50)
+                opt_res = bracket_opt.optimize(
+                    symbol=symbol,
+                    direction=decision,
+                    entry_price=entry_price,
+                    stop_loss=sl_price or 0.0,
+                    take_profit=tp_price or 0.0,
+                    atr=atr_value_for_validation,
+                    adr_ctx=locals().get("adr_ctx_for_validation"),
+                    min_rr=1.50,
+                    min_sl_atr_multiplier=1.2,
+                )
+                sl_price = opt_res.stop_loss
+                tp_price = opt_res.take_profit
+                inp["stop_loss"] = sl_price
+                inp["take_profit"] = tp_price
+                rationale += (
+                    f"\n\n[SYSTEM AUTO-HEAL (BracketOptimizer): Structural SL/TP aligned to valid geometry "
+                    f"(SL={sl_price}, TP={tp_price}, R:R={opt_res.rr_ratio:.2f})]"
+                )
                 errors = []
             elif error_class == "FATAL" or attempts >= 3:
                 if error_class == "FATAL":

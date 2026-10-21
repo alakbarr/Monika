@@ -8648,6 +8648,12 @@
     - `async simulate_risk_gate(trade: BacktestTrade, risk_gate: Optional[Any]) -> tuple[bool, str]` - *Simulate live RiskGate evaluation against backtest trade setup.*
     - `async evaluate_trade(trade: BacktestTrade, apply_costs: Optional[bool], risk_gate: Optional[Any], ...) -> Dict[str, Any]` - *Evaluate a trade against historical H1 OHLCV data.*
 
+#### `performance_metrics.py` - *Canonical per-trade performance statistics.*
+- **Path**: [`src/monika/application/backtest/performance_metrics.py`](src/monika/application/backtest/performance_metrics.py)
+- **Top-Level Functions**:
+  - `compute_trade_statistics(returns: Iterable[float], window_days: float | None) -> dict[str, Any]`: Compute the canonical statistics of a sequence of per-trade returns.
+  - `window_days_from_trades(trades: Sequence[Any]) -> float | None`: Length of the measurement window in days from trade entry/exit times.
+
 #### `point_in_time_engine.py` - *Point-in-Time Backtest Engine with Real Pipeline Parity and Zero Lookahead Bias.*
 - **Path**: [`src/monika/application/backtest/point_in_time_engine.py`](src/monika/application/backtest/point_in_time_engine.py)
 - **Classes**:

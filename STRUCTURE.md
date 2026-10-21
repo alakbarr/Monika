@@ -486,6 +486,7 @@ Monika/
 │       │   │   ├── monte_carlo_engine.py
 │       │   │   ├── offline_signal_engine.py
 │       │   │   ├── outcome_evaluator.py
+│       │   │   ├── performance_metrics.py
 │       │   │   ├── point_in_time_engine.py
 │       │   │   ├── price_series.py
 │       │   │   ├── report_generator.py
@@ -2275,6 +2276,7 @@ Monika/
 │   │   ├── test_openai_provider.py
 │   │   ├── test_openrouter_provider.py
 │   │   ├── test_output_verifier.py
+│   │   ├── test_paper_incubation_loop.py
 │   │   ├── test_per_asset_stage.py
 │   │   ├── test_per_asset_stage_recovery.py
 │   │   ├── test_pipeline_defensive_bias_fixes.py
@@ -2356,6 +2358,7 @@ Monika/
 │   │   ├── test_outcome_evaluator.py
 │   │   ├── test_outcome_evaluator_dynamic_friction.py
 │   │   ├── test_outcome_evaluator_realism.py
+│   │   ├── test_performance_metrics.py
 │   │   ├── test_point_in_time_engine.py
 │   │   ├── test_point_in_time_full_mode.py
 │   │   ├── test_purged_wfe_and_pbo.py
@@ -3065,4 +3068,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 264 | **Total Tracked Files**: 2771
+**Total Tracked Directories**: 264 | **Total Tracked Files**: 2774
