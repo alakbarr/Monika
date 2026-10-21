@@ -133,7 +133,7 @@ Session: [Tokyo/London/NY/Overlap]
 **Trigger Phrases**:
 > `"bisa buy?"`, `"entry gold aman?"`, `"ada sinyal?"`, `"sell eurusd?"`, `"buy sekarang?"`, `"setup apa hari ini?"`, `"aman ga entry?"`, `"boleh buy?"`, `"good to buy?"`, `"any setup?"`, `"rekomendasi"`, `"market scan"`, `"ada peluang?"`, `"cari setup"`, `"ada sinyal apa hari ini?"`, `"pair mana yang bagus?"`, `"mana yang paling aman?"`, `"[symbol] bisa [buy/sell]?"`, `"apakah [symbol] bagus?"`, `"entry dimana?"`, `"zona entry?"`, `"OTE zone?"`, `"discount zone?"`, `"premium zone?"`
 
-**Decoded Intent**: Confluence checklist verification. Does an institutional edge exist RIGHT NOW? Is R:R ≥ 1.3? Is there a news embargo? Is the volatility regime favorable?
+**Decoded Intent**: Confluence checklist verification. Does an institutional edge exist RIGHT NOW? Is R:R ≥ 1.5? Is there a news embargo? Is the volatility regime favorable?
 
 **Mandatory Tool Chain**:
 1. `get_verified_market_snapshot(symbol)` — ground-truth price, RSI, MACD, EMA, ATR, key S/R
@@ -821,7 +821,7 @@ Monika MUST factor in temporal context for tool selection:
    → Trigger: exact price level for entry
    → SL: structural invalidation level (with ATR validation)
    → TP: next major liquidity pool
-   → R:R: minimum 1.3:1
+   → R:R: minimum 1.5:1
    → OR: explicit WAIT with re-evaluation trigger
 ```
 

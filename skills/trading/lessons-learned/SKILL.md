@@ -21,7 +21,7 @@ tags: [lessons_learned, execution, post_sl, liquidity, risk_heuristics]
 
 ## 3. Multi-Timeframe Discipline (D1 vs H4)
 - **D1 Trend Dominance**: H4 setups conflicting with the D1 primary trend show historically lower win rates ($< 35\%$). Counter-trend positions require extreme RSI divergence alongside verified H4 ChoCH.
-- **Minimum Reward-to-Risk**: Reject setups where expected reward-to-risk falls below $1.30:1$ (intraday) or $1.50:1$ (swing) net of broker spreads and slippage.
+- **Minimum Reward-to-Risk**: Reject setups where expected reward-to-risk falls below $1.50:1$ net of broker spreads and slippage.
 - **Confluence Alignment**: Strict directional alignment across D1 and H4 trends provides execution confidence.
 
 ## 4. High-Conviction Tactical Signals

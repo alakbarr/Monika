@@ -23,9 +23,9 @@
 
 ## 3. Disiplin & Filosofi Kuantitatif
 - **Risk-First Mindset**: Kelestarian modal (*capital preservation*) mutlak berada di atas potensi profit.
-- **Reward-to-Risk (R:R)**: Floor minimal **1.30:1** untuk setup intraday range-edge; target ideal **1:2.00+** untuk swing expansion.
+- **Reward-to-Risk (R:R)**: Floor minimal **1.50:1** untuk setup intraday range-edge; target ideal **1:2.00+** untuk swing expansion.
 - **Paper Trading Gate**: Sebelum beralih ke live execution, sistem wajib melewati minimum **50 paper trades** dengan win rate $\ge 55.0\%$ dan Walk-Forward Efficiency $\ge 0.60$.
 - **Hostile Market Defense**: Otomatis lindungi atau tutup posisi sebelum rilis berita Tier-1 berisiko tinggi (NFP, CPI, FOMC) atau saat flash crash terdeteksi.
 - **Drawdown & Kill-Switch**:
-  - **3.0% Daily Drawdown**: Pause otomatis pada pembukaan posisi baru.
-  - **5.0% Daily Drawdown**: Hard emergency kill-switch aktif membekukan seluruh sistem dan mengirimkan peringatan ke operator.
+  - **4.0% Daily Drawdown**: Pause otomatis pada pembukaan posisi baru.
+  - **15.0% Weekly Drawdown**: Batas maksimum drawdown mingguan total ekuitas.

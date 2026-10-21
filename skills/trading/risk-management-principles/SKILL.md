@@ -27,14 +27,14 @@ $$\text{Lot Size} = \frac{\text{Risk Amount (\$) }}{\text{SL Distance (Points)} 
 - **ATR Distance Floor**: SL distance MUST be $\ge 0.5\times\text{ ATR}(14, \text{H4})$ to ensure the position is not stopped out by spread or micro-noise.
 - **ADR Distance Ceiling**: SL distance should generally be $\le 40\%$ of 5-day ADR, or up to $1.25\times\text{ ATR}(14, \text{H4})$ during contracting or volatile ADR regimes.
 - **Take Profit Target Band**: TP must land inside $40\%\text{--}85\%$ of ADR at a verified structural level.
-- **Reward-to-Risk (R:R)**: Minimum $1.30:1$ (hard floor for intraday execution); preferred target $1:2.00$ or higher.
+- **Reward-to-Risk (R:R)**: Minimum $1.50:1$ (hard floor for intraday execution); preferred target $1:2.00$ or higher.
 - **SL Tampering Prohibition**: NEVER widen or remove a stop loss post-execution.
 
 ## 3. Portfolio & Drawdown Risk Gates (Binding)
 1. **Daily Drawdown Limit**:
-   - Standard Daily Drawdown Ceiling: $\mathbf{3.0\%}$ (triggers system-level pause on new entries).
-   - Absolute Hard Emergency Kill-Switch: $\mathbf{5.0\%}$ (triggers emergency pause and operator notification).
-2. **Weekly Drawdown Limit**: Max $6.0\%$ total equity drawdown.
+   - Standard Daily Drawdown Ceiling: $\mathbf{4.0\%}$ (triggers system-level pause on new entries).
+   - Absolute Hard Emergency Kill-Switch: operator-triggered (manual kill switch) on top of the configured daily ceiling.
+2. **Weekly Drawdown Limit**: Max $15.0\%$ total equity drawdown.
 3. **Concurrent Exposure**: Maximum $5$ simultaneous open positions across portfolio; strictly max $1$ active position per symbol.
 4. **Consecutive Loss Cooldown**: $3$ consecutive stop-loss hits on a single asset triggers a mandatory $12$-hour symbol suspension.
 5. **Paper Trading Graduation Gate**: Live capital deployment requires $\ge 50$ closed paper trades with a win rate $\ge 55.0\%$.
