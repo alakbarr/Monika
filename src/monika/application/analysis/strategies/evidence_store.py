@@ -146,9 +146,33 @@ class StrategyEvidenceStore:
                 data = json.load(f)
             for item in data:
                 ev = StrategyEvidence.from_dict(item)
-                self._store[ev.strategy_id] = ev
+                self._store[ev.strategy_id] = self._refresh_status(ev)
         except Exception as e:
             logger.error(f"Failed loading evidence store from {self.file_path}: {e}")
+
+    @staticmethod
+    def _refresh_status(ev: StrategyEvidence) -> StrategyEvidence:
+        """Recompute the aging status of an evidence record against today's date.
+
+        The status is a derived value: the stored flag can be stale (or forged),
+        so it is always recalculated from ``data_window_end`` when the evidence
+        is read. Without this, evidence older than the staleness horizon would
+        keep trading forever.
+        """
+        try:
+            window_end = datetime.strptime(str(ev.data_window_end)[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except Exception:
+            return ev
+
+        age_days = max(0, (datetime.now(timezone.utc) - window_end).days)
+        ev.evidence_age_days = age_days
+        if age_days >= 180:
+            ev.status = EvidenceStatus.STALE
+        elif age_days >= 90:
+            ev.status = EvidenceStatus.AGING
+        else:
+            ev.status = EvidenceStatus.FRESH
+        return ev
 
     def _save(self) -> None:
         try:
@@ -242,26 +266,12 @@ class StrategyEvidenceStore:
         Scans all stored evidence and updates aging status based on calendar age.
         Returns number of strategies transitioned to AGING or STALE.
         """
-        now_dt = datetime.now(timezone.utc)
         transitions = 0
 
         for ev in self._store.values():
-            try:
-                dt_end = datetime.strptime(ev.data_window_end[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            except Exception:
-                continue
-
-            age_days = (now_dt - dt_end).days
-            ev.evidence_age_days = max(0, age_days)
-
-            new_status = EvidenceStatus.FRESH
-            if age_days >= 180:
-                new_status = EvidenceStatus.STALE
-            elif age_days >= 90:
-                new_status = EvidenceStatus.AGING
-
-            if new_status != ev.status:
-                ev.status = new_status
+            previous = ev.status
+            self._refresh_status(ev)
+            if ev.status != previous:
                 transitions += 1
 
         if transitions > 0:
