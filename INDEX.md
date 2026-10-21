@@ -4455,6 +4455,11 @@
   - `register_session_factory(factory: Any) -> None`: Register database session factory for domain risk state queries.
   - `get_default_session_factory() -> Any`: Returns registered database session factory or fallback.
 
+#### `position_math.py` - *Pure position-math helpers shared by risk checks and paper accounting.*
+- **Path**: [`src/monika/domain/risk/position_math.py`](src/monika/domain/risk/position_math.py)
+- **Top-Level Functions**:
+  - `validated_stop_distance(direction: str, entry_price: float | None, stop_loss: float | None) -> float | None`: Return the entry-to-stop distance on the loss side, or ``None`` when invalid.
+
 #### `position_sizing.py` - *Position Sizing Engine — Perhitungan lot berbasis risiko persentase (fixed-fractional).*
 - **Path**: [`src/monika/domain/risk/position_sizing.py`](src/monika/domain/risk/position_sizing.py)
 - **Classes**:
@@ -5826,6 +5831,8 @@
   - `class ProbeMetrics`: Quantitative performance and behavioral metrics observed during a probe run.
     - `composite_score() -> float` - *Calculates composite quality index (higher is better).*
   - `class ProbeResult`: The outcome of probing a single candidate harness.
+  - `class ScenarioBasedProbeRunner`: Evaluates candidate harness trees using paired scenario analysis.
+    - `__init__(settings: Optional[dict])`
   - `class HarnessProber`: Evaluates candidate harnesses by executing simulated scenario runs.
     - `__init__(custom_runner: Optional[ProbeRunner])`
     - `probe_candidates(base_tree: HarnessTree, candidates: Sequence[CandidateProposal], scenario_data: Mapping[str, Any]) -> Sequence[ProbeResult]` - *Runs probe evaluations across base and all candidate proposals.*
@@ -6135,6 +6142,8 @@
   - `cluster_lessons_semantically(lessons: List[str], similarity_threshold: float, min_cluster_size: int) -> List[Dict[str, Any]]`: Groups raw trade lessons into semantic theme clusters using token similarity.
   - `async consolidate_lessons_to_playbook(session, settings, auto_propose_only: bool) -> str | None`
   - `enforce_declarative_memory_rule(text: str) -> str`: Declarative Memory Rule.
+  - `prune_playbook_rules(body: str, max_rules: int) -> str`: Enforces token budget by keeping at most max_rules highest-density rules.
+  - `async generalize_cross_symbol_lessons(session, min_symbols: int) -> List[str]`: Extracts cross-symbol empirical generalizations (invariants) from promoted CandidateLessons.
   - `async promote_lesson_to_playbook(content: str) -> None`: Selectively appends or updates verified candidate lessons in lessons_learned.md per symbol.
   - `async auto_promote_high_confidence_rules(session, settings: Optional[Dict[str, Any]]) -> List[int]`: Evaluates shadow CandidateLesson entries in DB for immediate or high-confidence auto-promotion.
   - `async record_playbook_rule_outcome(session, rule_text: str, symbol: str, ...) -> Any`: SOTA Phase 4: Closed-Loop Playbook Rule Attribution & Evolution.
@@ -6158,6 +6167,9 @@
     - `__init__(base_stability_days: float, active_threshold: float, archive_threshold: float, ...)`
     - `compute_retention(node: MemoryNode, as_of: Optional[datetime]) -> float` - *Calculates retention probability R(t) = exp(-delta_t / S).*
     - `run_gc_pass(nodes: List[MemoryNode], as_of: Optional[datetime]) -> Tuple[List[MemoryNode], GCReport]` - *Evaluates a collection of memory nodes, updates retention scores,*
+  - `class DatabaseMemoryGCAdapter`: Bridges PostgreSQL memory records (DecisionReflection & CandidateLesson)
+    - `__init__(gc_engine: Optional[MemoryLifecycleGC])`
+    - `async run_database_gc(session, as_of: Optional[datetime], max_scan_limit: int) -> GCReport` - *Scans resolved DecisionReflections and CandidateLessons, executes Ebbinghaus decay pass,*
 
 #### `negative_constraint_generator.py` - *File: analysis/memory/negative_constraint_generator.py*
 - **Path**: [`src/monika/application/analysis/memory/negative_constraint_generator.py`](src/monika/application/analysis/memory/negative_constraint_generator.py)
@@ -8743,6 +8755,8 @@
     - `get_leaderboard() -> List[Dict[str, Any]]` - *Return leaderboard ranked by Elo rating.*
 - **Top-Level Functions**:
   - `update_elo(rating_a: float, rating_b: float, score_a: float, ...) -> Tuple[float, float, float, float]`: Standard Elo rating calculation.
+  - `async persist_tournament_leaderboard(tournament: AlphaArenaTournament, session) -> None`: Persists tournament Elo standings to SystemConfig for runtime routing.
+  - `async load_arena_leaderboard(session) -> List[Dict[str, Any]]`: Loads current tournament Elo standings from SystemConfig.
 
 #### `benchmark_scorer.py` - *Deterministic Multi-Pillar Benchmark Scorer for Monika Trading Agents.*
 - **Path**: [`src/monika/application/benchmark/benchmark_scorer.py`](src/monika/application/benchmark/benchmark_scorer.py)
@@ -8885,6 +8899,9 @@
     - `check_evolution_triggers(closed_trades_count: int, rolling_drawdown_pct: float, days_since_last_evolution: int) -> Tuple[bool, str]` - *Determines whether a GEPA evolution round should be initiated.*
     - `pareto_filter(candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]` - *Extracts the non-dominated Pareto frontier candidates across (quality_score, token_efficiency, invariant_score).*
     - `verify_invariant_compliance(prompt_text: str) -> Tuple[bool, List[str]]` - *Tier 1 Regression Safety Check: Ensures candidate prompt contains all mandatory safety invariants.*
+  - `class GEPAEvolutionRunner`: Orchestrates scheduled Genetic-Pareto evolutionary prompt optimization
+    - `__init__(settings: Optional[dict])`
+    - `async evaluate_and_evolve(session, target_component: str, force: bool) -> Optional[Dict[str, Any]]` - *Checks triggers against closed trades & drawdown, loads trajectories,*
 
 #### `report.py`
 - **Path**: [`src/monika/application/benchmark/report.py`](src/monika/application/benchmark/report.py)
@@ -10064,6 +10081,9 @@
     - `async run_session_trigger_loop() -> None`
     - `async run_once(forced: bool) -> dict`
     - `async cleanup_user_market_intel(cycle_id: str) -> dict` - *Post-cycle lifecycle cleanup for UserMarketIntel.*
+    - `async run_memory_lifecycle_gc() -> dict` - *Executes daily Ebbinghaus-decay memory garbage collection pass on PostgreSQL records.*
+    - `async run_weekend_harness_recursion() -> dict` - *Executes autonomous Harness^2 recursion cycle across active asset universe*
+    - `async run_prompt_evolution_cycle(force: bool) -> Optional[dict]` - *Evaluates closed trade trajectories and executes GEPA evolutionary prompt optimization*
 
 #### `macro_data_scheduler.py` - *Macro Data Scheduler: Worker independen untuk ingestion data makro & sentimen berkala.*
 - **Path**: [`src/monika/application/scheduler/macro_data_scheduler.py`](src/monika/application/scheduler/macro_data_scheduler.py)
@@ -10116,6 +10136,7 @@
     - `__init__(settings: Optional[Dict[str, Any]])`
     - `async run_once(session) -> Dict[str, Any]` - *Runs a curation cycle across all configured assets.*
     - `async curate_symbol(session, symbol: str) -> Optional[Dict[str, Any]]` - *Scans closed trades with positive PnL for a symbol and generates a validated playbook.*
+    - `run_domain_harness_recursion(domain: str, scenario_data: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]` - *Executes Task-Level and Harnessing-Level recursion cycle for the domain.*
     - `async start(interval_hours: int)` - *Starts background daemon loop.*
     - `stop()` - *Stops background daemon.*
 
@@ -11765,6 +11786,12 @@
 - **Top-Level Functions**:
   - `upgrade() -> None`: Upgrade schema: Add canonical_timestamp and audit reject table.
   - `downgrade() -> None`: Downgrade schema: Remove canonical_timestamp and indexes.
+
+#### `0010_paper_trade_initial_risk.py` - *paper trade initial risk anchor and accounting status*
+- **Path**: [`src/monika/infrastructure/database/migrations/versions/0010_paper_trade_initial_risk.py`](src/monika/infrastructure/database/migrations/versions/0010_paper_trade_initial_risk.py)
+- **Top-Level Functions**:
+  - `upgrade() -> None`: Add the immutable risk anchor and classify existing rows.
+  - `downgrade() -> None`: Remove the Phase 0 accounting columns.
 
 #### `c83c5e451412_sync_schema_indexes_types_and_.py` - *sync_schema_indexes_types_and_constraints*
 - **Path**: [`src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py`](src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py)

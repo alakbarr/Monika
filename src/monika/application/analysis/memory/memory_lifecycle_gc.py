@@ -188,3 +188,118 @@ class MemoryLifecycleGC:
                     f.write(json.dumps(record) + "\n")
         except Exception as e:
             logger.error(f"[MemoryGC] Failed to persist cold archive: {e}")
+
+
+class DatabaseMemoryGCAdapter:
+    """
+    Bridges PostgreSQL memory records (DecisionReflection & CandidateLesson)
+    with the Ebbinghaus forgetting curve MemoryLifecycleGC engine.
+    """
+
+    def __init__(self, gc_engine: Optional[MemoryLifecycleGC] = None):
+        self.gc = gc_engine or MemoryLifecycleGC()
+
+    async def run_database_gc(
+        self,
+        session,
+        as_of: Optional[datetime] = None,
+        max_scan_limit: int = 500,
+    ) -> GCReport:
+        """
+        Scans resolved DecisionReflections and CandidateLessons, executes Ebbinghaus decay pass,
+        archives obsolete records to JSONL cold storage, and flags dormant items.
+        """
+        from sqlalchemy import select
+
+        from monika.infrastructure.database.models import CandidateLesson, DecisionReflection
+
+        now_dt = as_of or datetime.now(timezone.utc)
+
+        # 1. Fetch resolved reflections with text
+        stmt_refl = (
+            select(DecisionReflection)
+            .where(DecisionReflection.status == "resolved")
+            .order_by(DecisionReflection.resolved_at.desc())
+            .limit(max_scan_limit)
+        )
+        refl_rows = (await session.execute(stmt_refl)).scalars().all()
+
+        nodes: List[MemoryNode] = []
+        node_map: Dict[str, Any] = {}
+
+        for r in refl_rows:
+            summary_txt = r.specific_lesson or r.reflection_text or ""
+            if not summary_txt:
+                continue
+            created = r.created_at or now_dt
+            last_seen = r.resolved_at or created
+            imp = 2.0 if (r.was_profitable is False and (r.confidence or 0.0) >= 0.8) else 1.0
+            node_id = f"refl_{r.id}"
+            node = MemoryNode(
+                id=node_id,
+                category="trade_reflection",
+                summary=summary_txt,
+                created_at=created,
+                last_retrieved_at=last_seen,
+                retrieval_count=1,
+                importance_weight=imp,
+                status="active",
+            )
+            nodes.append(node)
+            node_map[node_id] = r
+
+        # 2. Fetch candidate lessons
+        stmt_cand = (
+            select(CandidateLesson)
+            .where(CandidateLesson.status.in_(["shadow", "rejected", "promoted"]))
+            .order_by(CandidateLesson.proposed_at.desc())
+            .limit(200)
+        )
+        cand_rows = (await session.execute(stmt_cand)).scalars().all()
+
+        for c in cand_rows:
+            summary_txt = c.lesson_text or ""
+            if not summary_txt:
+                continue
+            created = c.proposed_at or now_dt
+            last_seen = c.promoted_at or created
+            imp = 1.5 if c.status == "promoted" else 0.8
+            node_id = f"cand_{c.id}"
+            node = MemoryNode(
+                id=node_id,
+                category="candidate_lesson",
+                summary=summary_txt,
+                created_at=created,
+                last_retrieved_at=last_seen,
+                retrieval_count=max(1, c.evaluated_trades_count),
+                importance_weight=imp,
+                status="active" if c.status != "rejected" else "dormant",
+            )
+            nodes.append(node)
+            node_map[node_id] = c
+
+        # 3. Run Ebbinghaus GC pass
+        remaining_nodes, report = self.gc.run_gc_pass(nodes, as_of=now_dt)
+
+        # 4. Apply status updates in database
+        for detail in report.details:
+            nid = detail["id"]
+            action = detail["action"]
+            db_item = node_map.get(nid)
+            if not db_item:
+                continue
+
+            if action == "archived_evicted":
+                if isinstance(db_item, CandidateLesson) and db_item.status == "rejected":
+                    db_item.rejection_reason = f"gc_archived_retention_{detail.get('retention', 0.0)}"
+                elif isinstance(db_item, DecisionReflection):
+                    if db_item.outcome_process_classification:
+                        db_item.outcome_process_classification = f"gc_archived_{db_item.outcome_process_classification}"
+                    else:
+                        db_item.outcome_process_classification = "gc_archived"
+
+        logger.info(
+            f"[DatabaseMemoryGC] Scanned {len(nodes)} records: {report.active_retained} active, "
+            f"{report.dormant_flagged} dormant, {report.archived_evicted} archived to cold storage."
+        )
+        return report

@@ -244,7 +244,69 @@ class LLMFactory:
                 if m_str and m_str != primary_model and m_str not in fallback_chain:
                     fallback_chain.append(m_str)
 
+        # Arena-Informed Dynamic Routing (if enabled)
+        arena_cfg = self._llm_config.get("arena_routing", {})
+        if arena_cfg.get("enabled", False):
+            try:
+                arena_winner = self._resolve_arena_preferred_model(
+                    task_role=task_role,
+                    current_primary=primary_model,
+                    min_matches=int(arena_cfg.get("min_matches", 10)),
+                    min_elo_delta=float(arena_cfg.get("min_elo_delta", 50.0)),
+                )
+                if arena_winner and arena_winner != primary_model:
+                    logger.info(
+                        f"[ArenaRouting] Dynamic model promotion for task '{task_role}': "
+                        f"Promoting '{arena_winner}' over '{primary_model}' based on Alpha Arena Elo rating."
+                    )
+                    if primary_model not in fallback_chain:
+                        fallback_chain.insert(0, primary_model)
+                    primary_model = arena_winner
+            except Exception as e_ar:
+                logger.debug(f"[ArenaRouting] Notice: {e_ar}")
+
         return self._create_client_with_fallback(primary_model, fallback_chain, role_config, task_role=task_role)
+
+    def _resolve_arena_preferred_model(
+        self,
+        task_role: str,
+        current_primary: str,
+        min_matches: int = 10,
+        min_elo_delta: float = 50.0,
+    ) -> Optional[str]:
+        """Checks cached Elo leaderboard to find if another model outperforms current primary."""
+        standings = getattr(self, "_cached_arena_standings", None)
+        if standings is None:
+            try:
+                import json
+                from monika.infrastructure.infra.paths import get_data_dir
+
+                lb_file = get_data_dir() / "arena_leaderboard.json"
+                if lb_file.exists():
+                    data = json.loads(lb_file.read_text(encoding="utf-8"))
+                    standings = data.get("standings", [])
+                    self._cached_arena_standings = standings
+            except Exception:
+                self._cached_arena_standings = []
+                standings = []
+
+        if not standings:
+            return None
+
+        current_elo = 1200.0
+        for s in standings:
+            if s.get("name") == current_primary:
+                current_elo = float(s.get("elo", 1200.0))
+                break
+
+        for s in standings:
+            candidate = s.get("name")
+            cand_elo = float(s.get("elo", 1200.0))
+            cand_matches = int(s.get("matches", 0))
+            if candidate and candidate != current_primary and cand_matches >= min_matches:
+                if (cand_elo - current_elo) >= min_elo_delta and (candidate in self._catalog or ":" in candidate):
+                    return candidate
+        return None
 
     def _resolve_provider(self, model_name: str) -> str:
         model_info = self._catalog.get(model_name, {})

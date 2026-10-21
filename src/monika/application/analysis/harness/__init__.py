@@ -21,7 +21,12 @@ from monika.application.analysis.harness.library import (
     DomainExperienceLibrary,
     sanitize_domain_slug,
 )
-from monika.application.analysis.harness.prober import HarnessProber, ProbeMetrics, ProbeResult
+from monika.application.analysis.harness.prober import (
+    HarnessProber,
+    ProbeMetrics,
+    ProbeResult,
+    ScenarioBasedProbeRunner,
+)
 from monika.application.analysis.harness.proposer import CandidateProposal, HarnessProposer
 from monika.application.analysis.harness.selector import (
     ContrastiveSelection,
@@ -64,6 +69,7 @@ __all__ = [
     "ProbeMetrics",
     "ProbeResult",
     "HarnessProber",
+    "ScenarioBasedProbeRunner",
     "ContrastiveSelection",
     "ContrastiveSelector",
     "CompositionResult",

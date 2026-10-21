@@ -134,3 +134,24 @@ def test_recursive_harness_service_end_to_end(tmp_path):
     assert res.domain == domain
     assert res.final_tree is not None
     assert isinstance(res.summary, str)
+
+
+def test_scenario_based_probe_runner():
+    from monika.application.analysis.harness.prober import ScenarioBasedProbeRunner
+
+    runner = ScenarioBasedProbeRunner()
+    tree = HarnessTree.build_baseline_tree()
+
+    # 1. Test fallback when no scenarios
+    metrics = runner(tree, {"domain": "UNKNOWN"})
+    assert metrics.composite_score > 0.0
+
+    # 2. Test with explicit scenarios
+    scenarios = [
+        {"pnl": 150.0, "vix": 16.0, "spread_pips": 1.2},
+        {"pnl": -50.0, "vix": 18.0, "spread_pips": 1.1},
+        {"pnl": 200.0, "vix": 15.0, "spread_pips": 1.0},
+    ]
+    scenario_metrics = runner(tree, {"domain": "EURUSD_TREND", "scenarios": scenarios})
+    assert scenario_metrics.composite_score > 0.0
+    assert scenario_metrics.details.get("scenarios_evaluated") == 3

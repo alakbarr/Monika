@@ -221,3 +221,107 @@ class GEPAFullEvolver:
                 violations.append(err_msg)
 
         return len(violations) == 0, violations
+
+
+class GEPAEvolutionRunner:
+    """
+    Orchestrates scheduled Genetic-Pareto evolutionary prompt optimization
+    using recorded trade trajectories.
+    """
+
+    def __init__(self, settings: Optional[dict] = None):
+        self.settings = settings or {}
+        self.evolver = GEPAFullEvolver(settings)
+
+    async def evaluate_and_evolve(
+        self,
+        session=None,
+        target_component: str = "stage2_system_prompt",
+        force: bool = False,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Checks triggers against closed trades & drawdown, loads trajectories,
+        and evolves candidate prompt variations respecting safety invariants.
+        """
+        from monika.application.benchmark.trade_trajectory_logger import TradeTrajectoryLogger
+
+        traj_logger = TradeTrajectoryLogger()
+        trajectories = []
+        if traj_logger.log_path.exists():
+            try:
+                with open(traj_logger.log_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            trajectories.append(json.loads(line))
+            except Exception as e:
+                logger.debug(f"[GEPA] Trajectory read error: {e}")
+
+        closed_count = len(trajectories)
+        rolling_dd = 0.0
+        if trajectories:
+            pnls = [float(t.get("pnl_pct", 0.0) or 0.0) for t in trajectories[-20:]]
+            cum = 0.0
+            peak = 0.0
+            max_dd = 0.0
+            for p in pnls:
+                cum += p
+                peak = max(peak, cum)
+                dd = peak - cum
+                max_dd = max(max_dd, dd)
+            rolling_dd = max_dd
+
+        days_since = 14
+
+        should_evolve, trigger_reason = self.evolver.check_evolution_triggers(
+            closed_trades_count=closed_count,
+            rolling_drawdown_pct=rolling_dd,
+            days_since_last_evolution=days_since,
+        )
+
+        if not should_evolve and not force:
+            logger.debug(f"[GEPA] Evolution skipped: {trigger_reason}")
+            return None
+
+        logger.info(f"[GEPA] Starting prompt evolution round: {trigger_reason}")
+
+        result = await self.evolver.lite_evolver.evolve_round(
+            session=session,
+            population_size=3,
+            generations=2,
+            target_component=target_component,
+            scenarios=trajectories[-10:] if trajectories else None,
+        )
+
+        is_safe, violations = self.evolver.verify_invariant_compliance(result.get("prompt", ""))
+        if not is_safe:
+            logger.warning(f"[GEPA] Evolved candidate failed safety invariants: {violations}")
+            return None
+
+        result["trigger_reason"] = trigger_reason
+        result["closed_trades_count"] = closed_count
+        result["rolling_drawdown_pct"] = rolling_dd
+
+        if session:
+            try:
+                import monika.core.primitives.clock as clock
+                from monika.infrastructure.database.models import CandidateLesson
+                from monika.infrastructure.database.safe_ops import safe_commit
+
+                now = clock.now()
+                candidate = CandidateLesson(
+                    symbol="UNIVERSAL",
+                    lesson_text=f"<!-- GEPA Evolved Prompt (Gen {result.get('generation', 0)}) -->\n{result.get('prompt', '')}",
+                    status="shadow",
+                    proposed_at=now,
+                    evaluated_trades_count=0,
+                )
+                session.add(candidate)
+                await safe_commit(session, label="gepa_prompt_candidate")
+                logger.info(
+                    f"[GEPA] Successfully saved evolved prompt candidate to CandidateLesson (id={candidate.id})"
+                )
+            except Exception as e:
+                logger.debug(f"[GEPA] Failed to save candidate to DB (non-fatal): {e}")
+
+        return result

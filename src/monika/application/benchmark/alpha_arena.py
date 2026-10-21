@@ -158,3 +158,46 @@ class AlphaArenaTournament:
             }
             for i, c in enumerate(ranked)
         ]
+
+
+async def persist_tournament_leaderboard(tournament: AlphaArenaTournament, session) -> None:
+    """Persists tournament Elo standings to SystemConfig for runtime routing."""
+    import json
+    import monika.core.primitives.clock as clock
+    from monika.infrastructure.database.models import SystemConfig
+
+    leaderboard = tournament.get_leaderboard()
+    now_str = clock.now().isoformat()
+    payload = json.dumps({"updated_at": now_str, "standings": leaderboard})
+    await SystemConfig.upsert(
+        session,
+        key="alpha_arena_leaderboard",
+        value=payload,
+        description="Alpha Arena Head-to-Head Tournament Elo Standings",
+    )
+
+    try:
+        from monika.infrastructure.infra.paths import get_data_dir
+
+        data_dir = get_data_dir()
+        data_dir.mkdir(parents=True, exist_ok=True)
+        (data_dir / "arena_leaderboard.json").write_text(payload, encoding="utf-8")
+    except Exception:
+        pass
+
+
+async def load_arena_leaderboard(session) -> List[Dict[str, Any]]:
+    """Loads current tournament Elo standings from SystemConfig."""
+    import json
+    from sqlalchemy import select
+    from monika.infrastructure.database.models import SystemConfig
+
+    stmt = select(SystemConfig).where(SystemConfig.key == "alpha_arena_leaderboard")
+    cfg = (await session.execute(stmt)).scalars().first()
+    if not cfg or not cfg.value:
+        return []
+    try:
+        data = json.loads(cfg.value)
+        return data.get("standings", [])
+    except Exception:
+        return []

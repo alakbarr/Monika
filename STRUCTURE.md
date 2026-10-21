@@ -1520,6 +1520,7 @@ Monika/
 │       │   │   ├── portfolio_correlation_gate.py
 │       │   │   ├── portfolio_optimizer.py
 │       │   │   ├── ports.py
+│       │   │   ├── position_math.py
 │       │   │   ├── position_sizing.py
 │       │   │   ├── risk_gate.py
 │       │   │   ├── risk_rule_plugin.py
@@ -1671,6 +1672,7 @@ Monika/
 │       │   │   │   │   ├── 0007_sync_queue_indexes_and_nullability.py
 │       │   │   │   │   ├── 0008_create_debate_transcripts.py
 │       │   │   │   │   ├── 0009_price_ohlcv_canonical_ts.py
+│       │   │   │   │   ├── 0010_paper_trade_initial_risk.py
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   └── c83c5e451412_sync_schema_indexes_types_and_.py
 │       │   │   │   ├── __init__.py
@@ -2478,6 +2480,7 @@ Monika/
 │   │   ├── test_debate_convergence.py
 │   │   ├── test_debate_subgraph.py
 │   │   ├── test_dual_checkpointer.py
+│   │   ├── test_duplicate_entry_guard.py
 │   │   ├── test_reactive_graph.py
 │   │   ├── test_risk_gate_node_levels.py
 │   │   ├── test_state_pruner_and_checkpointer.py
@@ -2578,7 +2581,8 @@ Monika/
 │   │   ├── test_safety_audit.py
 │   │   ├── test_subsystem5_risk_and_dom.py
 │   │   ├── test_timesfm_decoupled_risk_gate.py
-│   │   └── test_trade_proposal.py
+│   │   ├── test_trade_proposal.py
+│   │   └── test_weekly_drawdown_source.py
 │   ├── scheduler/
 │   │   ├── __init__.py
 │   │   ├── test_active_calendar_poller.py
@@ -2856,6 +2860,7 @@ Monika/
 │   ├── test_order_flow_engine.py
 │   ├── test_order_state_machine_parity.py
 │   ├── test_outcome_linker_pips.py
+│   ├── test_paper_tracker_accounting.py
 │   ├── test_paper_tracker_fix.py
 │   ├── test_paths.py
 │   ├── test_platform_compat.py
@@ -2881,6 +2886,7 @@ Monika/
 │   ├── test_telegram_message_formatter.py
 │   ├── test_token_efficiency_architectural.py
 │   ├── test_toolsets_and_terminal_guard.py
+│   ├── test_trade_lifecycle_immutability.py
 │   ├── test_universal_macro_and_capability_remediation.py
 │   ├── test_vector_factor_engine.py
 │   └── test_workspace_mcp_integration.py
@@ -3038,4 +3044,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 263 | **Total Tracked Files**: 2745
+**Total Tracked Directories**: 263 | **Total Tracked Files**: 2751

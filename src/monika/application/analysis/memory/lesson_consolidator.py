@@ -279,6 +279,65 @@ def enforce_declarative_memory_rule(text: str) -> str:
     return "\n".join(cleaned_lines)
 
 
+def prune_playbook_rules(body: str, max_rules: int = 25) -> str:
+    """Enforces token budget by keeping at most max_rules highest-density rules."""
+    lines = [line for line in body.split("\n") if line.strip()]
+    header_lines = [l for l in lines if l.startswith("#")]
+    bullet_lines = [l for l in lines if l.strip().startswith("-") or l.strip().startswith("*")]
+
+    if len(bullet_lines) <= max_rules:
+        return body
+
+    pruned_bullets = set(bullet_lines[-max_rules:])
+    result_lines = []
+    for l in lines:
+        if l in header_lines or l in pruned_bullets:
+            result_lines.append(l)
+    return "\n".join(result_lines)
+
+
+async def generalize_cross_symbol_lessons(session, min_symbols: int = 3) -> List[str]:
+    """
+    Extracts cross-symbol empirical generalizations (invariants) from promoted CandidateLessons.
+    If a pattern repeats across >= min_symbols, synthesizes a universal rule.
+    """
+    from sqlalchemy import select
+
+    from monika.infrastructure.database.models import CandidateLesson
+
+    stmt = select(CandidateLesson).where(CandidateLesson.status.in_(["promoted", "shadow"]))
+    rows = (await session.execute(stmt)).scalars().all()
+    if not rows:
+        return []
+
+    by_theme: Dict[str, set[str]] = {}
+    theme_text: Dict[str, str] = {}
+
+    for r in rows:
+        sym = r.symbol.upper()
+        if sym in ("UNIVERSAL", "GENERAL"):
+            continue
+        text = r.lesson_text or ""
+        tokens = _tokenize(text)
+        for tok in tokens:
+            if len(tok) >= 4:
+                by_theme.setdefault(tok, set()).add(sym)
+                if tok not in theme_text or len(text) > len(theme_text[tok]):
+                    theme_text[tok] = text
+
+    universal_rules: List[str] = []
+    for theme, symbols in by_theme.items():
+        if len(symbols) >= min_symbols:
+            rep_text = theme_text[theme]
+            sym_list = ", ".join(sorted(symbols))
+            decl_rule = enforce_declarative_memory_rule(rep_text)
+            clean_rule = decl_rule.lstrip("- ").strip()
+            rule_str = f"- Empirical observation: Across {sym_list} — {clean_rule}"
+            universal_rules.append(rule_str)
+
+    return universal_rules[:5]
+
+
 async def promote_lesson_to_playbook(content: str) -> None:
     """Selectively appends or updates verified candidate lessons in lessons_learned.md per symbol."""
     import re
@@ -318,6 +377,9 @@ async def promote_lesson_to_playbook(content: str) -> None:
             sec4_body = f"{sec4_body}\n\n{content.strip()}"
         else:
             sec4_body = content.strip()
+
+    # Enforce maximum 25 active rules cap to prevent prompt bloat
+    sec4_body = prune_playbook_rules(sec4_body, max_rules=25)
 
     updated_content = (
         f"{base_rules}\n\n{section_marker}\n*(Diperbarui tervalidasi OOS: {now.strftime('%Y-%m-%d')})*\n\n{sec4_body}\n"

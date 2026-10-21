@@ -188,6 +188,10 @@ async def main():
                 print(
                     f"#{lb['rank']} {lb['name']}: Elo {lb['elo']} (Record: {lb['record']}, WinRate: {lb['win_rate']}%)"
                 )
+            from monika.application.benchmark.alpha_arena import persist_tournament_leaderboard
+
+            await persist_tournament_leaderboard(tournament, sess)
+            print("\n[Alpha Arena] Leaderboard persisted to SystemConfig successfully.")
         except Exception as e_arena:
             print(f"Arena tournament error (non-fatal): {e_arena}")
 

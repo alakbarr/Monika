@@ -245,6 +245,20 @@ class PlaybookCurator:
             except Exception as h_err:
                 logger.debug(f"[{clean_sym}] Harness library record notice: {h_err}")
 
+            # Trigger recursive harness self-improvement cycle
+            try:
+                self.run_domain_harness_recursion(
+                    domain=f"{clean_sym}__TRENDING",
+                    scenario_data={
+                        "domain": f"{clean_sym}__TRENDING",
+                        "symbol": clean_sym,
+                        "win_rate": win_rate,
+                        "total_trades": total_count,
+                    },
+                )
+            except Exception as r_err:
+                logger.debug(f"[{clean_sym}] Recursive cycle notice: {r_err}")
+
         return {
             "symbol": clean_sym,
             "win_rate": win_rate,
@@ -252,6 +266,38 @@ class PlaybookCurator:
             "blob_hash": blob_hash,
             "path": str(playbook_path),
         }
+
+    def run_domain_harness_recursion(
+        self, domain: str, scenario_data: Optional[Dict[str, Any]] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Executes Task-Level and Harnessing-Level recursion cycle for the domain.
+        Uses RecursiveHarnessService to propose, probe, and compose harness updates.
+        """
+        try:
+            from monika.application.analysis.harness.service import RecursiveHarnessService
+
+            svc = RecursiveHarnessService()
+            result = svc.run_recursion_cycle(
+                domain=domain,
+                scenario_data=scenario_data or {"domain": domain},
+                k_candidates=2,
+            )
+            logger.info(
+                f"[{domain}] Recursive harness cycle completed: candidate='{result.selection.chosen_candidate_id}' "
+                f"modified={result.composition.was_modified}"
+            )
+            return {
+                "run_id": result.run_id,
+                "domain": result.domain,
+                "chosen_candidate": result.selection.chosen_candidate_id,
+                "composite_score": result.selection.composite_score,
+                "was_modified": result.composition.was_modified,
+                "summary": result.summary,
+            }
+        except Exception as e:
+            logger.warning(f"[{domain}] Recursive harness cycle error (non-fatal): {e}")
+            return None
 
     async def start(self, interval_hours: int = 24):
         """Starts background daemon loop."""

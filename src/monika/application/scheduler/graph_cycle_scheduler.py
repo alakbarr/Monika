@@ -1289,3 +1289,73 @@ class GraphCycleScheduler(CycleScheduler):
                 logger.info(f"UserMarketIntel lifecycle cleanup: {consumed_count} consumed, {expired_count} expired")
 
         return {"consumed": consumed_count, "expired": expired_count}
+
+    async def run_memory_lifecycle_gc(self) -> dict:
+        """
+        Executes daily Ebbinghaus-decay memory garbage collection pass on PostgreSQL records.
+        Archives obsolete items to cold storage JSONL files.
+        """
+        from monika.application.analysis.memory.memory_lifecycle_gc import DatabaseMemoryGCAdapter
+
+        async with get_session() as session:
+            adapter = DatabaseMemoryGCAdapter()
+            report = await adapter.run_database_gc(session)
+            await session.commit()
+            return {
+                "run_at": report.run_at,
+                "total_scanned": report.total_scanned,
+                "active_retained": report.active_retained,
+                "dormant_flagged": report.dormant_flagged,
+                "archived_evicted": report.archived_evicted,
+                "tokens_recovered_est": report.tokens_recovered_est,
+            }
+
+    async def run_weekend_harness_recursion(self) -> dict:
+        """
+        Executes autonomous Harness^2 recursion cycle across active asset universe
+        during weekend closure to update domain playbooks and guardrails.
+        """
+        from monika.application.analysis.harness.service import RecursiveHarnessService
+
+        svc = RecursiveHarnessService()
+        universe = self.settings.get("trading", {}).get(
+            "asset_universe", ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTCUSD"]
+        )
+        results = {}
+
+        for sym in universe:
+            domain = f"{sym.strip().upper()}__TRENDING"
+            try:
+                res = svc.run_recursion_cycle(
+                    domain=domain,
+                    scenario_data={"domain": domain, "mode": "weekend_cadence"},
+                    k_candidates=2,
+                )
+                results[sym] = {
+                    "run_id": res.run_id,
+                    "chosen_candidate": res.selection.chosen_candidate_id,
+                    "composite_score": res.selection.composite_score,
+                    "modified": res.composition.was_modified,
+                }
+            except Exception as e:
+                logger.debug(f"[GraphCycleScheduler] Weekend recursion notice for {sym}: {e}")
+
+        logger.info(f"[GraphCycleScheduler] Weekend harness recursion completed for {len(results)} assets.")
+        return results
+
+    async def run_prompt_evolution_cycle(self, force: bool = False) -> Optional[dict]:
+        """
+        Evaluates closed trade trajectories and executes GEPA evolutionary prompt optimization
+        if trigger thresholds are met.
+        """
+        from monika.application.benchmark.prompt_evolution import GEPAEvolutionRunner
+
+        async with get_session() as session:
+            runner = GEPAEvolutionRunner(self.settings)
+            result = await runner.evaluate_and_evolve(session=session, force=force)
+            if result:
+                logger.info(
+                    f"[GraphCycleScheduler] GEPA prompt evolution completed (generation {result.get('generation', 0)}): "
+                    f"tokens={result.get('tokens', 0)}, score={result.get('score', 0)}"
+                )
+            return result
