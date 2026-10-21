@@ -135,6 +135,7 @@ flowchart TD
 - **FR-3.2 (Adversarial Bull & Bear Specialists):** Candidate setups passing initial filters are debated across structured rounds by adversarial personas identifying structural flaws, liquidity traps, and counter-trend risks.
 - **FR-3.3 (Judicial Arbitration & Confidence Scoring):** An impartial `InvestmentJudge` evaluates debate transcripts against empirical price structure, emitting a calibrated confidence score ($0.0$ to $1.0$). Projections below configured thresholds (e.g., $0.70$) are discarded.
 - **FR-3.4 (Deterministic Coordinate Snapping):** The `OutputVerifier` automatically snaps LLM-proposed price coordinates to exact, verified swing pivots, order blocks, or FVG boundaries, rejecting proposals violating geometric invariants (e.g., stop loss on wrong side of entry).
+- **FR-3.5 (Signal Arbitration Governance):** The `SignalArbitrator` may only let a quantitative signal override an LLM stance (WAIT, AVOID, or the opposite direction) with TimesFM directional confirmation ($|skew| \geq 0.20$ in the trade direction). Without confirmation, the LLM stance is preserved or the conflict is avoided. Strategy promotion is decided exclusively by the strategy evidence store; incubation is granted only after real paper-trade results.
 
 ### FR-4: Deterministic Capital Protection (RiskGate) & Portfolio Optimization
 - **FR-4.1 (Mandatory 10-Point Risk Clearance):**

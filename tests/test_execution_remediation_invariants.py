@@ -182,9 +182,9 @@ async def test_signal_arbitrator_conflict_regime_and_vix():
                 vix_level=18.0,
                 regime_info={"regime": "strong_trend"},
             )
-        assert res_trend_neutral.decision == "buy"
-        assert res_trend_neutral.selected_source == "quant_conviction_precedence"
-        assert res_trend_neutral.risk_multiplier <= 0.70
+        assert res_trend_neutral.decision == "avoid"
+        assert res_trend_neutral.selected_source == "conflict_suppression"
+        assert res_trend_neutral.risk_multiplier == 0.0
     finally:
         monitor.register_incubating_strategy("xau_trend")
         StrategyDecayMonitor.reset()

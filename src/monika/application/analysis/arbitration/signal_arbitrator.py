@@ -949,18 +949,27 @@ class SignalArbitrator:
                     take_profit=llm_decision.get("take_profit"),
                     meta={"quant_signal": q_dir, "llm_signal": l_dir, "conviction_resolved": True},
                 )
-            elif q_conf >= (l_conf + 0.10) and q_dir in ("buy", "sell"):
+            elif q_conf >= (l_conf + 0.10) and q_dir in ("buy", "sell") and tfm_confirms:
                 return ArbitrationResult(
                     symbol=symbol,
                     decision=q_dir,
                     confidence=q_conf,
                     risk_multiplier=round(quant_priority_risk_mult * 0.80, 2),
                     selected_source="quant_conviction_precedence",
-                    arbitration_reason=f"Quant strategy ({quant_strat_id}) conviction ({q_conf:.2f}) took precedence over conflicting LLM ({l_conf:.2f}) with risk damping.",
+                    arbitration_reason=(
+                        f"Quant strategy ({quant_strat_id}) conviction ({q_conf:.2f}) took precedence over "
+                        f"conflicting LLM ({l_conf:.2f}) with risk damping and TimesFM confirmation "
+                        f"(skew={tfm_skew:+.2f})."
+                    ),
                     entry_price=_get_q("entry_price"),
                     stop_loss=_get_q("stop_loss"),
                     take_profit=_get_q("take_profit"),
-                    meta={"quant_signal": q_dir, "llm_signal": l_dir, "conviction_resolved": True},
+                    meta={
+                        "quant_signal": q_dir,
+                        "llm_signal": l_dir,
+                        "conviction_resolved": True,
+                        "timesfm_skew": tfm_skew,
+                    },
                 )
 
             return ArbitrationResult(
@@ -969,7 +978,10 @@ class SignalArbitrator:
                 confidence=0.0,
                 risk_multiplier=0.0,
                 selected_source="conflict_suppression",
-                arbitration_reason=f"Direct direction conflict ({q_dir.upper()} vs {l_dir.upper()}) with identical conviction in {market_regime} market. Trade avoided to preserve capital.",
+                arbitration_reason=(
+                    f"Direct direction conflict ({q_dir.upper()} vs {l_dir.upper()}) in {market_regime} market "
+                    f"without TimesFM directional confirmation (skew={tfm_skew:+.2f}). Trade avoided to preserve capital."
+                ),
                 meta={
                     "quant_signal": q_dir,
                     "llm_signal": l_dir,

@@ -142,6 +142,66 @@ async def test_legacy_promoted_strategy_has_no_special_override(db_session):
 
 
 @pytest.mark.asyncio
+async def test_direct_conflict_without_timesfm_confirmation_is_avoided(db_session):
+    """A quant signal may not win a direct LLM conflict without market confirmation."""
+    _make_live_ready(STRATEGY_ID)
+    await _save_forecast(db_session, "EURUSD", skew=0.0)
+
+    arbitrator = SignalArbitrator(settings={"trading": {"signal_arbitration": {}}})
+    result = await arbitrator.arbitrate(
+        db_session,
+        symbol="EURUSD",
+        quant_signal=_quant_signal(),
+        llm_decision={"decision": "sell", "confidence": 0.50},
+        vix_level=16.0,
+    )
+
+    assert result.decision == "avoid"
+    assert result.selected_source == "conflict_suppression"
+    assert result.risk_multiplier == 0.0
+
+
+@pytest.mark.asyncio
+async def test_direct_conflict_with_timesfm_confirmation_resolves_to_quant(db_session):
+    """With directional confirmation the conflict is resolved in favour of the quant side."""
+    _make_live_ready(STRATEGY_ID)
+    await _save_forecast(db_session, "EURUSD", skew=0.30)
+
+    arbitrator = SignalArbitrator(settings={"trading": {"signal_arbitration": {}}})
+    result = await arbitrator.arbitrate(
+        db_session,
+        symbol="EURUSD",
+        quant_signal=_quant_signal(),
+        llm_decision={"decision": "sell", "confidence": 0.50},
+        vix_level=16.0,
+    )
+
+    assert result.decision == "buy"
+    assert result.selected_source in ("timesfm_tie_break_quant", "quant_conviction_precedence")
+    assert result.risk_multiplier > 0.0
+
+
+@pytest.mark.asyncio
+async def test_llm_conviction_precedence_still_wins_without_confirmation(db_session):
+    """The LLM side of a conflict keeps precedence on conviction, no confirmation needed."""
+    _make_live_ready(STRATEGY_ID)
+    await _save_forecast(db_session, "EURUSD", skew=0.0)
+
+    arbitrator = SignalArbitrator(settings={"trading": {"signal_arbitration": {}}})
+    result = await arbitrator.arbitrate(
+        db_session,
+        symbol="EURUSD",
+        quant_signal=_quant_signal(),
+        llm_decision={"decision": "sell", "confidence": 0.90},
+        vix_level=16.0,
+    )
+
+    assert result.decision == "sell"
+    assert result.selected_source == "llm_conviction_precedence"
+    assert result.risk_multiplier == 0.75
+
+
+@pytest.mark.asyncio
 async def test_decisive_conviction_without_confirmation_does_not_override(db_session):
     """Confidence delta alone is no longer sufficient to override the LLM WAIT."""
     _make_live_ready(STRATEGY_ID)
