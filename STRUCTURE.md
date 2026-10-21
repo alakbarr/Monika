@@ -2172,6 +2172,7 @@ Monika/
 │   │   ├── strategies/
 │   │   │   ├── test_gbpusd_trend_breakout.py
 │   │   │   ├── test_promoted_empirical_strategies.py
+│   │   │   ├── test_promotion_evidence_source.py
 │   │   │   ├── test_quant_discovery_pipeline.py
 │   │   │   ├── test_strategy_governance_and_brackets.py
 │   │   │   ├── test_strategy_registry_summary.py
@@ -2230,6 +2231,7 @@ Monika/
 │   │   ├── test_debate_orchestrator_and_transcript_persistence.py
 │   │   ├── test_debate_risk_and_pm.py
 │   │   ├── test_decay_monitor.py
+│   │   ├── test_decay_monitor_incubation.py
 │   │   ├── test_deliberation_and_redaction.py
 │   │   ├── test_denial_breaker_guard.py
 │   │   ├── test_digest_slice_generator.py
@@ -2296,6 +2298,7 @@ Monika/
 │   │   ├── test_scenario_tree.py
 │   │   ├── test_session_search.py
 │   │   ├── test_signal_arbitrator_bayesian_pooling.py
+│   │   ├── test_signal_arbitrator_confirmation.py
 │   │   ├── test_signal_arbitrator_runtime_integration.py
 │   │   ├── test_signal_arbitrator_timesfm.py
 │   │   ├── test_signal_arbitrator_volatile_chop.py
@@ -2390,6 +2393,7 @@ Monika/
 │   │   ├── test_key_validator.py
 │   │   ├── test_migrations.py
 │   │   ├── test_modular_config.py
+│   │   ├── test_risk_contract_sync.py
 │   │   ├── test_settings.py
 │   │   ├── test_settings_llm.py
 │   │   └── test_settings_task_roles.py
@@ -2574,6 +2578,7 @@ Monika/
 │   │   ├── test_bounded_mandate_and_runcard.py
 │   │   ├── test_calendar_freshness.py
 │   │   ├── test_daily_rollover_ny_close.py
+│   │   ├── test_evidence_gate_fail_closed.py
 │   │   ├── test_execution_simulator.py
 │   │   ├── test_flash_crash_risk_gate.py
 │   │   ├── test_fortress_invariants.py
@@ -2583,6 +2588,7 @@ Monika/
 │   │   ├── test_portfolio_correlation_gate.py
 │   │   ├── test_position_sizing.py
 │   │   ├── test_property_sizing_hypothesis.py
+│   │   ├── test_quant_scorecard_gate.py
 │   │   ├── test_risk_gate.py
 │   │   ├── test_risk_gate_expectancy.py
 │   │   ├── test_risk_rule_pipeline.py
@@ -3053,4 +3059,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 264 | **Total Tracked Files**: 2759
+**Total Tracked Directories**: 264 | **Total Tracked Files**: 2765
