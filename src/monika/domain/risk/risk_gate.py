@@ -401,6 +401,10 @@ class RiskGate(
                     session, symbol, simulated_positions=simulated_positions, is_backtest=is_backtest
                 ),
             ),
+            (
+                "macro_regime",
+                self._check_macro_regime(session, symbol, direction, as_of=as_of, is_backtest=is_backtest),
+            ),
             ("vpin_toxicity", self._check_vpin_toxicity(session, symbol, as_of=as_of, is_backtest=is_backtest)),
             (
                 "adv_liquidity_floor",
@@ -955,6 +959,7 @@ class RiskGate(
             ("data_freshness", self._check_data_freshness(session, symbol)),
             ("timesfm_expectancy", self._check_timesfm_expectancy(session, symbol, "buy", dummy_sizing)),
             ("schmitt_regime", self._check_schmitt_regime(session, symbol)),
+            ("macro_regime", self._check_macro_regime(session, symbol, "buy")),
             ("vpin_toxicity", self._check_vpin_toxicity(session, symbol)),
             ("adv_liquidity_floor", self._check_adv_liquidity(session, symbol, dummy_sizing)),
             ("copula_tail_risk", self._check_copula_tail_risk(session, symbol)),

@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone, UTC
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import monika.core.primitives.clock as clock
+from monika.domain.macro.regime_classifier import RegimeClassifier
 from monika.domain.market.currency_utils import get_symbol_currencies
 from monika.domain.risk.evaluators.base import _RiskGateMixinBase, resolve_model
 from monika.domain.risk.position_sizing import SizingResult
@@ -27,6 +28,8 @@ VIXData: Any = resolve_model("VIXData")
 UserPreference: Any = resolve_model("UserPreference")
 TechnicalIndicator: Any = resolve_model("TechnicalIndicator")
 SystemConfig: Any = resolve_model("SystemConfig")
+DXYData: Any = resolve_model("DXYData")
+TreasuryYield: Any = resolve_model("TreasuryYield")
 
 logger = logging.getLogger("TradingAgent.RiskGate")
 
@@ -389,6 +392,57 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
         except Exception as e:
             logger.warning(f"Schmitt regime check error: {e}")
             return False, f"schmitt_regime_check_failed: {e}"
+
+    async def _check_macro_regime(
+        self,
+        session: Any,
+        symbol: str,
+        direction: str,
+        as_of: datetime | None = None,
+        is_backtest: bool = False,
+    ) -> tuple[bool, str]:
+        """
+        Deterministic Macro Regime & Sovereign Flow admissibility (RegimeClassifier).
+        Blocks BUY orders on commodities (XAU, XTI, XBR) and crypto (BTC) when DXY >= 101.0
+        or US 10Y Real Yields >= 1.50%.
+        """
+        try:
+            from sqlalchemy import select
+
+            dxy_cls = DXYData or resolve_model("DXYData")
+            yield_cls = TreasuryYield or resolve_model("TreasuryYield")
+
+            dxy_val = 100.0
+            if dxy_cls is not None:
+                dxy_stmt = select(dxy_cls)
+                if as_of is not None:
+                    dxy_stmt = dxy_stmt.where(dxy_cls.date <= as_of.date())
+                dxy_stmt = dxy_stmt.order_by(dxy_cls.date.desc()).limit(1)
+                dxy_row = (await session.execute(dxy_stmt)).scalar_one_or_none()
+                if dxy_row and getattr(dxy_row, "close", None) is not None:
+                    dxy_val = float(dxy_row.close)
+
+            yield_val: Optional[float] = None
+            if yield_cls is not None:
+                for tenor in ("10Y_REAL", "10Y"):
+                    yield_stmt = select(yield_cls).where(yield_cls.tenor == tenor)
+                    if as_of is not None:
+                        yield_stmt = yield_stmt.where(yield_cls.date <= as_of.date())
+                    yield_stmt = yield_stmt.order_by(yield_cls.date.desc()).limit(1)
+                    yield_row = (await session.execute(yield_stmt)).scalar_one_or_none()
+                    if yield_row and getattr(yield_row, "yield_percent", None) is not None:
+                        yield_val = float(yield_row.yield_percent)
+                        break
+
+            return RegimeClassifier.is_trade_allowed(
+                symbol=symbol,
+                direction=direction,
+                dxy=dxy_val,
+                us10y_yield=yield_val,
+            )
+        except Exception as e:
+            logger.warning(f"Macro regime check error: {e}")
+            return False, f"macro_regime_check_failed: {e}"
 
     async def _check_vpin_toxicity(
         self, session: Any, symbol: str, as_of: datetime | None = None, is_backtest: bool = False

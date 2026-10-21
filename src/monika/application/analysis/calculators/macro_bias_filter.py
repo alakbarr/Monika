@@ -130,6 +130,48 @@ async def evaluate_macro_alignment(
         return result
     threshold = float(cfg.get("strong_misalignment_threshold", 0.8))
 
+    sym_upper = symbol.upper()
+    is_commodity = any(k in sym_upper for k in ("XAU", "XTI", "XBR", "GOLD", "OIL"))
+    is_crypto = any(k in sym_upper for k in ("BTC", "ETH", "SOL"))
+
+    if is_commodity or is_crypto:
+        from monika.domain.macro.regime_classifier import RegimeClassifier
+        from monika.infrastructure.database.models import DXYData
+
+        dxy_stmt = select(DXYData)
+        if as_of is not None:
+            dxy_stmt = dxy_stmt.where(DXYData.date <= as_of.date())
+        dxy_stmt = dxy_stmt.order_by(DXYData.date.desc()).limit(1)
+        dxy_row = (await session.execute(dxy_stmt)).scalar_one_or_none()
+        dxy_val = float(dxy_row.close) if (dxy_row and dxy_row.close is not None) else 100.0
+
+        yield_val: Optional[float] = None
+        for tenor in ("10Y_REAL", "10Y"):
+            yield_stmt = select(TreasuryYield).where(TreasuryYield.tenor == tenor)
+            if as_of is not None:
+                yield_stmt = yield_stmt.where(TreasuryYield.date <= as_of.date())
+            yield_stmt = yield_stmt.order_by(TreasuryYield.date.desc()).limit(1)
+            yield_row = (await session.execute(yield_stmt)).scalar_one_or_none()
+            if yield_row and yield_row.yield_percent is not None:
+                yield_val = float(yield_row.yield_percent)
+                break
+
+        allowed, reason = RegimeClassifier.is_trade_allowed(
+            symbol=symbol,
+            direction=direction or "buy",
+            dxy=dxy_val,
+            us10y_yield=yield_val,
+        )
+
+        if not allowed:
+            result.update(aligned=False, strong_conflict=True, pair_macro_score=-1.0, implied_direction="sell")
+            result["reasons"].append(f"RegimeClassifier: {reason}")
+            return result
+        elif symbol != "XAUUSD":
+            result.update(aligned=True, strong_conflict=False, pair_macro_score=0.5, implied_direction=direction)
+            result["reasons"].append(f"RegimeClassifier: {reason}")
+            return result
+
     if symbol == "XAUUSD":
         usd = await compute_currency_macro_score(session, "USD", settings, as_of=as_of)
         pair_score = -usd["score"]  # gold inversely tracks USD real-yield/rate pressure

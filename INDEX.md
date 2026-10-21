@@ -32,6 +32,7 @@
 - [`src/monika/domain/indicators/alpha_zoo/factors/microsoft_qlib_158`](#folder-srcmonikadomainindicatorsalphazoofactorsmicrosoftqlib158)
 - [`src/monika/domain/indicators/alpha_zoo/factors/worldquant_101`](#folder-srcmonikadomainindicatorsalphazoofactorsworldquant101)
 - [`src/monika/domain/indicators/pattern_similarity`](#folder-srcmonikadomainindicatorspatternsimilarity)
+- [`src/monika/domain/macro`](#folder-srcmonikadomainmacro)
 - [`src/monika/domain/market`](#folder-srcmonikadomainmarket)
 - [`src/monika/domain/ports`](#folder-srcmonikadomainports)
 - [`src/monika/domain/risk`](#folder-srcmonikadomainrisk)
@@ -4085,6 +4086,20 @@
   - `class SimilarityScanner`: Vectorized pattern similarity scanning engine.
     - `find_similar_patterns(current_bars: np.ndarray, historical_bars: np.ndarray, window_size: int, ...) -> List[PatternMatch]` - *Scans entire historical array for segments matching current_bars.*
     - `compute_dtw_distance(series_a: np.ndarray, series_b: np.ndarray, sakoe_chiba_radius: int) -> float` - *Computes Dynamic Time Warping (DTW) distance with Sakoe-Chiba constraint band.*
+
+### Folder: `src/monika/domain/macro` <a id="folder-srcmonikadomainmacro"></a>
+
+#### `__init__.py` - *Macro regime domain models and classification components.*
+- **Path**: [`src/monika/domain/macro/__init__.py`](src/monika/domain/macro/__init__.py)
+
+#### `regime_classifier.py` - *Macro Regime Classification and Sovereign Flow Adjudication Engine.*
+- **Path**: [`src/monika/domain/macro/regime_classifier.py`](src/monika/domain/macro/regime_classifier.py)
+- **Classes**:
+  - `class MacroRegime(str, Enum)`: Systemic macro regimes affecting asset cross-correlations.
+  - `class MacroEnvironment`: Immutable representation of classified macro environment.
+  - `class RegimeClassifier`: Deterministic Macro Regime Classifier.
+    - `classify(dxy: float, us10y_yield: Optional[float]) -> MacroEnvironment` - *Classify macro environment from point-in-time DXY and US 10Y yield.*
+    - `is_trade_allowed(symbol: str, direction: str, dxy: float, ...) -> Tuple[bool, str]` - *Validates whether a proposed trade direction is permitted under current macro regime.*
 
 ### Folder: `src/monika/domain/market` <a id="folder-srcmonikadomainmarket"></a>
 

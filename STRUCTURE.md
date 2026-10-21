@@ -1478,6 +1478,9 @@ Monika/
 │       │   │   ├── smc_advanced.py
 │       │   │   ├── structure.py
 │       │   │   └── technical.py
+│       │   ├── macro/
+│       │   │   ├── __init__.py
+│       │   │   └── regime_classifier.py
 │       │   ├── market/
 │       │   │   ├── __init__.py
 │       │   │   ├── bias_utils.py
@@ -2251,6 +2254,7 @@ Monika/
 │   │   ├── test_fundamental_stage.py
 │   │   ├── test_funding_rate_and_fedwatch_fixes.py
 │   │   ├── test_gemini_and_news_fixes.py
+│   │   ├── test_gemini_schema_normalization.py
 │   │   ├── test_gemini_token_governance.py
 │   │   ├── test_groq_provider.py
 │   │   ├── test_hierarchical_risk_parity.py
@@ -2334,7 +2338,8 @@ Monika/
 │   │   └── test_working_scratchpad.py
 │   ├── application/
 │   │   ├── test_empirical_promoted_strategies.py
-│   │   └── test_profitability_structural_fixes.py
+│   │   ├── test_profitability_structural_fixes.py
+│   │   └── test_signal_arbitrator_refinement.py
 │   ├── architecture/
 │   │   ├── test_docs_parity.py
 │   │   ├── test_domain_ports_compliance.py
@@ -2441,8 +2446,10 @@ Monika/
 │   ├── deploy/
 │   │   └── test_deployment_configs.py
 │   ├── domain/
-│   │   └── execution/
-│   │       └── test_bracket_optimizer.py
+│   │   ├── execution/
+│   │   │   └── test_bracket_optimizer.py
+│   │   ├── test_bracket_optimizer_buffers.py
+│   │   └── test_macro_regime_classifier.py
 │   ├── evals/
 │   │   ├── __init__.py
 │   │   ├── test_eval_metrics_and_ab_runner.py
@@ -2618,6 +2625,7 @@ Monika/
 │   │   ├── test_cycle_scheduler_demo_gate.py
 │   │   ├── test_digest_slice_scheduler.py
 │   │   ├── test_edge_strategy_runner.py
+│   │   ├── test_edge_strategy_runner_admission.py
 │   │   ├── test_flash_crash_detector.py
 │   │   ├── test_friday_gap_protection.py
 │   │   ├── test_macro_data_scheduler.py
@@ -3073,4 +3081,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 266 | **Total Tracked Files**: 2777
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2784
