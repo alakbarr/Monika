@@ -21,6 +21,7 @@ tags: [adjudication, synthesis, confluence, stage2, trade_gate]
 | **Full Alignment** | Tech=BULL/BEAR, Macro=BULL/BEAR, Sent=ALIGNED/NEUT | **BUY / SELL** | Standard risk sizing ($1.0\times$). Execute at structural zone with score $\ge \text{threshold}$. |
 | **Contrarian Sentiment** | Tech=BULL, Macro=BULL, Retail=BEARISH ($> 70\%$) | **BUY** | Standard risk sizing ($1.0\times$). Retail trap amplifies institutional move. |
 | **Contrarian Sentiment** | Tech=BEAR, Macro=BEAR, Retail=BULLISH ($> 70\%$) | **SELL** | Standard risk sizing ($1.0\times$). |
+| **Trend-Pullback OTE** | Tech=PULLBACK, D1=BULL/BEAR (Trend), Sent=ALIGNED/NEUT | **BUY / SELL** (Follow D1 Trend) | Standard risk sizing ($1.0\times$). H4 counter-trend retracement into unmitigated key level is an institutional discount entry, not a conflict. |
 | **Technical vs Macro Conflict** | Tech=BULL, Macro=BEAR (or vice-versa) | **BUY / SELL** (Follow Tech) | Downscale risk to $0.70\times$. Must have confirmed H4 Market Structure Shift + FVG retest. If structure is weak $\rightarrow$ `WAIT`. |
 | **Tech Neutral + Strong Macro** | Tech=NEUT (Mid-range), Macro=STRONG ($\text{Conf} \ge 0.80$) | **WAIT for Pullback** | Do not chase. Place pending limit/stop order at structural OTE / Order Block level. |
 | **Macro Neutral + Strong Tech** | Tech=STRONG ($\text{Score} \ge 8$), Macro=NEUT | **BUY / SELL** | Standard risk sizing ($1.0\times$). Technical edge independently verifiable. |
