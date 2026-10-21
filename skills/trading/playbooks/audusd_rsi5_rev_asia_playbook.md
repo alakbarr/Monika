@@ -6,7 +6,8 @@ regime: trending
 timeframe: H1
 min_rr: 1.62
 status: active
-sharpe_ratio: 16.87
+sharpe_ratio: null
+legacy_t_statistic: 16.87
 profit_factor: 1.56
 max_drawdown_pct: 4.4
 win_rate: 0.527
@@ -17,12 +18,13 @@ win_rate: 0.527
 ## Quantitative Track Record
 - **Asset / Instrument**: AUDUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 16.87 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 16.87 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.56 (55 verified trade executions)
 - **Max Drawdown**: 4.4% (Institutional risk profile)
 - **Total PnL Return**: +16.8%
 - **Win Rate**: 52.7% (Normalized at minimum 1:1.62 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 0.8x ATR, Take-Profit = 1.3x ATR, Max Holding = 12 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.

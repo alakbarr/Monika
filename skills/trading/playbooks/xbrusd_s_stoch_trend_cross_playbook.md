@@ -6,7 +6,8 @@ regime: ranging
 timeframe: H1
 min_rr: 1.82
 status: active
-sharpe_ratio: 11.04
+sharpe_ratio: null
+legacy_t_statistic: 11.04
 profit_factor: 1.35
 max_drawdown_pct: 11.6
 win_rate: 0.464
@@ -17,12 +18,13 @@ win_rate: 0.464
 ## Quantitative Track Record
 - **Asset / Instrument**: XBRUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 11.04 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 11.04 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.35 (140 verified trade executions)
 - **Max Drawdown**: 11.6% (Institutional risk profile)
 - **Total PnL Return**: +30.9%
 - **Win Rate**: 46.4% (Normalized at minimum 1:1.82 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.1x ATR, Take-Profit = 2.0x ATR, Max Holding = 18 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.

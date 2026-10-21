@@ -6,7 +6,8 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 10.1
+sharpe_ratio: null
+legacy_t_statistic: 10.1
 profit_factor: 1.32
 max_drawdown_pct: 10.0
 win_rate: 0.434
@@ -17,12 +18,13 @@ win_rate: 0.434
 ## Quantitative Track Record
 - **Asset / Instrument**: XTIUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 10.10 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 10.10 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.32 (83 verified trade executions)
 - **Max Drawdown**: 10.0% (Institutional risk profile)
 - **Total PnL Return**: +15.5%
 - **Win Rate**: 43.4% (Normalized at minimum 1:2.0 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.0x ATR, Max Holding = 16 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Two consecutive strong candles each with body >= 0.6x 14-period ATR.

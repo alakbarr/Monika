@@ -25,6 +25,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from monika.application.analysis.strategies.base_strategy import CandleDict, EdgeSignal, EdgeStrategy
 from monika.application.backtest.alpha_validation import AlphaValidation, validate_alpha
 from monika.application.backtest.outcome_evaluator import ASSET_FRICTION_PROFILE
+from monika.application.backtest.performance_metrics import (
+    compute_trade_statistics,
+    window_days_from_trades,
+)
 from monika.application.backtest.statistical_tests import (
     compute_sample_moments,
     deflated_sharpe_ratio,
@@ -67,6 +71,11 @@ class HarnessMetrics:
     trades: List[StrategyTradeRecord] = field(default_factory=list)
     evaluation_errors: int = 0
     error_samples: List[str] = field(default_factory=list)
+    per_trade_sharpe: float = 0.0
+    t_statistic: float = 0.0
+    trades_per_year: Optional[float] = None
+    window_days: Optional[float] = None
+    is_reliable: bool = False
 
     @property
     def is_evaluable(self) -> bool:
@@ -84,6 +93,11 @@ class HarnessMetrics:
             "total_pnl_pct": self.total_pnl_pct,
             "calmar_ratio": self.calmar_ratio,
             "evaluation_errors": self.evaluation_errors,
+            "per_trade_sharpe": self.per_trade_sharpe,
+            "t_statistic": self.t_statistic,
+            "trades_per_year": self.trades_per_year,
+            "window_days": self.window_days,
+            "is_reliable": self.is_reliable,
         }
 
 
@@ -944,14 +958,19 @@ class IsolatedStrategyBacktestHarness:
 
         mean_ret = float(np.mean(returns))
         std_ret = float(np.std(returns, ddof=1)) if len(returns) > 1 else 1e-6
-        ann_factor = (
-            math.sqrt(252.0 * 24.0 / max(1.0, np.mean([r.bars_held for r in records]))) if records else math.sqrt(252.0)
-        )
-        sharpe_ratio = round(float((mean_ret / (std_ret + 1e-9)) * ann_factor), 2)
+
+        # Canonical statistics: a per-trade ratio, an annualised ratio derived
+        # from the observed trade frequency, and the t-statistic kept separate.
+        stats = compute_trade_statistics(returns, window_days=window_days_from_trades(records))
+        sharpe_ratio = stats["annualized_sharpe"] if stats["annualized_sharpe"] is not None else 0.0
 
         downside_var = sum(r * r for r in losses) / max(1, total_trades) if losses else 0.0
         downside_std = math.sqrt(downside_var) if downside_var > 0 else 1e-6
-        sortino_ratio = round(float((mean_ret / (downside_std + 1e-9)) * ann_factor), 2)
+        sortino_ratio = (
+            round(float((mean_ret / (downside_std + 1e-9)) * stats["trades_per_year"] ** 0.5), 2)
+            if stats["trades_per_year"]
+            else 0.0
+        )
 
         equity = 1.0
         peak = 1.0
@@ -978,6 +997,11 @@ class IsolatedStrategyBacktestHarness:
             calmar_ratio=calmar_ratio,
             trade_returns=returns,
             trades=records,
+            per_trade_sharpe=round(float(stats["per_trade_sharpe"]), 3),
+            t_statistic=float(stats["t_statistic"]),
+            trades_per_year=stats["trades_per_year"],
+            window_days=stats["window_days"],
+            is_reliable=bool(stats["is_reliable"]),
         )
 
     async def run_walk_forward(

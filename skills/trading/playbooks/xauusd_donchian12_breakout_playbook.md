@@ -6,7 +6,8 @@ regime: breakout
 timeframe: H1
 min_rr: 2.2
 status: active
-sharpe_ratio: 11.91
+sharpe_ratio: null
+legacy_t_statistic: 11.91
 profit_factor: 1.39
 max_drawdown_pct: 13.4
 win_rate: 0.401
@@ -17,12 +18,13 @@ win_rate: 0.401
 ## Quantitative Track Record
 - **Asset / Instrument**: XAUUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 11.91 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 11.91 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.39 (269 verified trade executions)
 - **Max Drawdown**: 13.4% (Institutional risk profile)
 - **Total PnL Return**: +82.0%
 - **Win Rate**: 40.1% (Normalized at minimum 1:2.2 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.2x ATR, Max Holding = 18 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Calculate 12-period Donchian Channel on H1 timeframe.

@@ -27,6 +27,9 @@ class PlaybookLinter:
     """
 
     REQUIRED_METADATA = ["symbol", "regime", "timeframe", "min_rr"]
+    # A Sharpe ratio above this is not credible for a retail-sized strategy and
+    # usually means a t-statistic was labelled as a Sharpe ratio.
+    MAX_PLAUSIBLE_SHARPE = 5.0
     VALID_REGIMES = {
         "TRENDING",
         "TRENDING_UP",
@@ -125,6 +128,26 @@ class PlaybookLinter:
                         errors.append(f"win_rate must be between 0.0 and 1.0, got: {metadata['win_rate']}")
                 except ValueError, TypeError:
                     errors.append(f"Invalid numeric value for win_rate: {metadata['win_rate']}")
+
+            # Check the risk-adjusted ratio: an implausible Sharpe usually means a
+            # t-statistic was labelled as a Sharpe ratio, which is how playbooks
+            # ended up claiming ratios of 10 or 30.
+            if metadata.get("sharpe_ratio") is not None:
+                try:
+                    sharpe = float(metadata["sharpe_ratio"])
+                    if sharpe > self.MAX_PLAUSIBLE_SHARPE:
+                        errors.append(
+                            f"Implausible Sharpe ratio ({sharpe:.2f} > {self.MAX_PLAUSIBLE_SHARPE:.1f}): "
+                            "a t-statistic must not be reported as an annualised Sharpe ratio."
+                        )
+                except ValueError, TypeError:
+                    errors.append(f"Invalid numeric value for sharpe_ratio: {metadata['sharpe_ratio']}")
+
+            if "Statistical Reliability" not in body:
+                warnings.append(
+                    "Playbook does not state its statistical reliability; a Sharpe ratio without a "
+                    "sample size and window cannot be verified."
+                )
 
         # 2. Check for narrative incident log patterns
         body_lower = body.lower()

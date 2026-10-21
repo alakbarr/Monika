@@ -6,7 +6,8 @@ regime: breakout
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 6.22
+sharpe_ratio: null
+legacy_t_statistic: 6.22
 profit_factor: 1.19
 max_drawdown_pct: 10.0
 win_rate: 0.406
@@ -17,12 +18,13 @@ win_rate: 0.406
 ## Quantitative Track Record
 - **Asset / Instrument**: XTIUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 6.22 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 6.22 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.19 (160 verified trade executions)
 - **Max Drawdown**: 10.0% (Institutional risk profile)
 - **Total PnL Return**: +17.5%
 - **Win Rate**: 40.6% (Normalized at minimum 1:2.0 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.5x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.

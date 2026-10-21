@@ -6,7 +6,8 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.33
 status: active
-sharpe_ratio: 10.89
+sharpe_ratio: null
+legacy_t_statistic: 10.89
 profit_factor: 1.36
 max_drawdown_pct: 8.6
 win_rate: 0.406
@@ -17,12 +18,13 @@ win_rate: 0.406
 ## Quantitative Track Record
 - **Asset / Instrument**: EURUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 10.89 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 10.89 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.36 (101 verified trade executions)
 - **Max Drawdown**: 8.6% (Institutional risk profile)
 - **Total PnL Return**: +22.7%
 - **Win Rate**: 40.6% (Normalized at minimum 1:2.33 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.8x ATR, Max Holding = 24 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Calculate intraday session VWAP and ATR-normalized deviation.

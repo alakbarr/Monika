@@ -6,7 +6,8 @@ regime: ranging
 timeframe: H1
 min_rr: 2.5
 status: active
-sharpe_ratio: 13.84
+sharpe_ratio: null
+legacy_t_statistic: 13.84
 profit_factor: 1.49
 max_drawdown_pct: 11.1
 win_rate: 0.413
@@ -17,12 +18,13 @@ win_rate: 0.413
 ## Quantitative Track Record
 - **Asset / Instrument**: BTCUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 13.84 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 13.84 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.49 (92 verified trade executions)
 - **Max Drawdown**: 11.1% (Institutional risk profile)
 - **Total PnL Return**: +29.0%
 - **Win Rate**: 41.3% (Normalized at minimum 1:2.5 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.5x ATR, Max Holding = 20 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.

@@ -6,7 +6,8 @@ regime: breakout
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 26.58
+sharpe_ratio: null
+legacy_t_statistic: 26.58
 profit_factor: 2.09
 max_drawdown_pct: 4.4
 win_rate: 0.514
@@ -17,12 +18,13 @@ win_rate: 0.514
 ## Quantitative Track Record
 - **Asset / Instrument**: XAUUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 26.58 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 26.58 (Zero-Lookahead simulation)
 - **Profit Factor**: 2.09 (35 verified trade executions)
 - **Max Drawdown**: 4.4% (Institutional risk profile)
 - **Total PnL Return**: +18.1%
 - **Win Rate**: 51.4% (Normalized at minimum 1:2.0 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.5x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Monitor market hours 07:00, 08:00, and 09:00 UTC during European liquidity surge.

@@ -6,7 +6,8 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 6.72
+sharpe_ratio: null
+legacy_t_statistic: 6.72
 profit_factor: 1.2
 max_drawdown_pct: 11.5
 win_rate: 0.403
@@ -17,12 +18,13 @@ win_rate: 0.403
 ## Quantitative Track Record
 - **Asset / Instrument**: AUDUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 6.72 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 6.72 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.20 (144 verified trade executions)
 - **Max Drawdown**: 11.5% (Institutional risk profile)
 - **Total PnL Return**: +17.5%
 - **Win Rate**: 40.3% (Normalized at minimum 1:2.0 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.5x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Calculate 20-period Bollinger Bands (2.0 standard deviations) on H1.

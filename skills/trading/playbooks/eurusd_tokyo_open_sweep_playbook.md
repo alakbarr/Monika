@@ -6,7 +6,8 @@ regime: mean_reverting
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 37.56
+sharpe_ratio: null
+legacy_t_statistic: 37.56
 profit_factor: 2.71
 max_drawdown_pct: 3.0
 win_rate: 0.567
@@ -17,12 +18,13 @@ win_rate: 0.567
 ## Quantitative Track Record
 - **Asset / Instrument**: EURUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 37.56 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 37.56 (Zero-Lookahead simulation)
 - **Profit Factor**: 2.71 (30 verified trade executions)
 - **Max Drawdown**: 3.0% (Institutional risk profile)
 - **Total PnL Return**: +23.4%
 - **Win Rate**: 56.7% (Normalized at minimum 1:2.0 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.0x ATR, Max Holding = 16 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Active during Tokyo open hours between 00:00 and 02:00 UTC.

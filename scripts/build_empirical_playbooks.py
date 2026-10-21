@@ -31,6 +31,10 @@ sys.path.insert(0, str(ROOT_DIR))
 import MetaTrader5 as mt5
 
 from monika.application.backtest.outcome_evaluator import ASSET_FRICTION_PROFILE
+from monika.application.backtest.performance_metrics import (
+    compute_trade_statistics,
+    window_days_from_trades,
+)
 from monika.application.skills.trading_skill_linter import TradingSkillLinter
 from monika.application.analysis.memory.playbook_linter import PlaybookLinter
 from monika.application.analysis.memory.playbook_ledger import PlaybookLedger, PlaybookMetadata, PlaybookState
@@ -355,6 +359,8 @@ class Evaluator:
                     "r_mult": r_mult,
                     "bars_held": bars_held,
                     "exit_reason": exit_reason,
+                    "entry_time": self.datetimes[fill_bar],
+                    "exit_time": self.datetimes[min(max_eval - 1, self.n - 1)],
                 }
             )
             i = fill_bar + max(1, bars_held)
@@ -368,6 +374,11 @@ class Evaluator:
                 "win_rate_pct": 0.0,
                 "profit_factor": 0.0,
                 "sharpe_ratio": 0.0,
+                "per_trade_sharpe": 0.0,
+                "t_statistic": 0.0,
+                "trades_per_year": None,
+                "window_days": None,
+                "is_reliable": False,
                 "max_drawdown_pct": 0.0,
                 "total_pnl_pct": 0.0,
             }
@@ -383,8 +394,13 @@ class Evaluator:
 
         mean_ret = float(np.mean(returns))
         std_ret = float(np.std(returns, ddof=1)) if len(returns) > 1 else 1e-6
-        ann_factor = math.sqrt(min(252.0, max(1.0, float(total_trades))))
-        sharpe_ratio = round(float((mean_ret / (std_ret + 1e-9)) * ann_factor), 2)
+
+        # Canonical statistics: the per-trade ratio, an annualised ratio derived
+        # from the observed trade frequency of the window, and the t-statistic.
+        # Multiplying by sqrt(trade_count) would yield the t-statistic, not a
+        # Sharpe ratio, which is how playbooks ended up claiming a Sharpe of 10.
+        stats = compute_trade_statistics(returns, window_days=window_days_from_trades(trades))
+        sharpe_ratio = stats["annualized_sharpe"] if stats["annualized_sharpe"] is not None else 0.0
 
         equity = 1.0
         peak = 1.0
@@ -403,6 +419,11 @@ class Evaluator:
             "win_rate_pct": win_rate_pct,
             "profit_factor": profit_factor,
             "sharpe_ratio": sharpe_ratio,
+            "per_trade_sharpe": round(float(stats["per_trade_sharpe"]), 3),
+            "t_statistic": stats["t_statistic"],
+            "trades_per_year": stats["trades_per_year"],
+            "window_days": stats["window_days"],
+            "is_reliable": bool(stats["is_reliable"]),
             "max_drawdown_pct": round(max_dd, 2),
             "total_pnl_pct": total_pnl_pct,
         }
@@ -435,6 +456,19 @@ def generate_playbook_markdown(
     dd = metrics["max_drawdown_pct"]
     trades_n = metrics["total_trades"]
     pnl = metrics["total_pnl_pct"]
+    per_trade_sharpe = metrics.get("per_trade_sharpe", 0.0)
+    t_statistic = metrics.get("t_statistic", 0.0)
+    window_days = metrics.get("window_days")
+    trades_per_year = metrics.get("trades_per_year")
+    is_reliable = bool(metrics.get("is_reliable"))
+    reliability_note = (
+        "Sample and window are large enough to annualise the ratio."
+        if is_reliable
+        else (
+            "CAUTION: small sample and/or short window - the annualised ratio is an "
+            "extrapolation and must not be treated as a verified long-run figure."
+        )
+    )
 
     content = f"""---
 name: {name}
@@ -445,6 +479,10 @@ timeframe: H1
 min_rr: {min_rr}
 status: active
 sharpe_ratio: {sharpe}
+per_trade_sharpe: {per_trade_sharpe}
+t_statistic: {t_statistic}
+trades_per_year: {trades_per_year}
+window_days: {window_days}
 profit_factor: {pf}
 max_drawdown_pct: {dd}
 win_rate: {wr_float}
@@ -455,12 +493,15 @@ win_rate: {wr_float}
 ## Quantitative Track Record
 - **Asset / Instrument**: {symbol.upper()}
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: {sharpe:.2f} (Zero-Lookahead simulation)
+- **Annualised Sharpe Ratio**: {sharpe:.2f} (zero-lookahead simulation, annualised at the observed trade frequency of {trades_per_year} trades/year over {window_days} days)
+- **Per-Trade Sharpe**: {per_trade_sharpe:.3f} (mean trade return / standard deviation of trade returns)
+- **t-Statistic of Mean Trade**: {t_statistic:.2f} (significance of the average trade, not a Sharpe ratio)
 - **Profit Factor**: {pf:.2f} ({trades_n} verified trade executions)
 - **Max Drawdown**: {dd:.1f}% (Institutional risk profile)
 - **Total PnL Return**: {pnl:+.1f}%
 - **Win Rate**: {wr_pct:.1f}% (Normalized at minimum 1:{min_rr} contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = {params["sl"]}x ATR, Take-Profit = {params["tp"]}x ATR, Max Holding = {params["hold"]} bars
+- **Statistical Reliability**: {reliability_note}
 
 ## Trigger Conditions & Tactical Directives
 {meta["trigger"]}

@@ -6,7 +6,8 @@ regime: breakout
 timeframe: H1
 min_rr: 2.33
 status: active
-sharpe_ratio: 17.03
+sharpe_ratio: null
+legacy_t_statistic: 17.03
 profit_factor: 1.61
 max_drawdown_pct: 9.5
 win_rate: 0.408
@@ -17,12 +18,13 @@ win_rate: 0.408
 ## Quantitative Track Record
 - **Asset / Instrument**: GBPUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 17.03 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 17.03 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.61 (49 verified trade executions)
 - **Max Drawdown**: 9.5% (Institutional risk profile)
 - **Total PnL Return**: +18.5%
 - **Win Rate**: 40.8% (Normalized at minimum 1:2.33 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.8x ATR, Max Holding = 24 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Monitor market hours 07:00, 08:00, and 09:00 UTC during European liquidity surge.

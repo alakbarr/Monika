@@ -6,7 +6,8 @@ regime: trending
 timeframe: H1
 min_rr: 2.4
 status: active
-sharpe_ratio: 17.36
+sharpe_ratio: null
+legacy_t_statistic: 17.36
 profit_factor: 1.61
 max_drawdown_pct: 8.3
 win_rate: 0.418
@@ -17,12 +18,13 @@ win_rate: 0.418
 ## Quantitative Track Record
 - **Asset / Instrument**: EURUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 17.36 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 17.36 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.61 (55 verified trade executions)
 - **Max Drawdown**: 8.3% (Institutional risk profile)
 - **Total PnL Return**: +22.4%
 - **Win Rate**: 41.8% (Normalized at minimum 1:2.4 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 0.5x ATR, Take-Profit = 1.2x ATR, Max Holding = 10 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.

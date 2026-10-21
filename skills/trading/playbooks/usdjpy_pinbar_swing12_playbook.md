@@ -6,7 +6,8 @@ regime: trending
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 12.82
+sharpe_ratio: null
+legacy_t_statistic: 12.82
 profit_factor: 1.42
 max_drawdown_pct: 7.2
 win_rate: 0.446
@@ -17,12 +18,13 @@ win_rate: 0.446
 ## Quantitative Track Record
 - **Asset / Instrument**: USDJPY
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 12.82 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 12.82 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.42 (92 verified trade executions)
 - **Max Drawdown**: 7.2% (Institutional risk profile)
 - **Total PnL Return**: +23.5%
 - **Win Rate**: 44.6% (Normalized at minimum 1:2.0 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.2x ATR, Take-Profit = 2.4x ATR, Max Holding = 20 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.

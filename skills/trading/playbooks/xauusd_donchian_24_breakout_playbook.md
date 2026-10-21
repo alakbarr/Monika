@@ -6,7 +6,8 @@ regime: breakout
 timeframe: H1
 min_rr: 2.2
 status: active
-sharpe_ratio: 11.98
+sharpe_ratio: null
+legacy_t_statistic: 11.98
 profit_factor: 1.39
 max_drawdown_pct: 9.3
 win_rate: 0.408
@@ -17,12 +18,13 @@ win_rate: 0.408
 ## Quantitative Track Record
 - **Asset / Instrument**: XAUUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 11.98 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 11.98 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.39 (206 verified trade executions)
 - **Max Drawdown**: 9.3% (Institutional risk profile)
 - **Total PnL Return**: +58.5%
 - **Win Rate**: 40.8% (Normalized at minimum 1:2.2 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.0x ATR, Take-Profit = 2.2x ATR, Max Holding = 18 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Long Trigger: Price expands above upper boundary with tick volume confirmation and bullish close.

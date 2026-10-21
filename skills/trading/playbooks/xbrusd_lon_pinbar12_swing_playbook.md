@@ -6,7 +6,8 @@ regime: trending
 timeframe: H1
 min_rr: 2.6
 status: active
-sharpe_ratio: 20.19
+sharpe_ratio: null
+legacy_t_statistic: 20.19
 profit_factor: 1.76
 max_drawdown_pct: 8.0
 win_rate: 0.421
@@ -17,12 +18,13 @@ win_rate: 0.421
 ## Quantitative Track Record
 - **Asset / Instrument**: XBRUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 20.19 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 20.19 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.76 (38 verified trade executions)
 - **Max Drawdown**: 8.0% (Institutional risk profile)
 - **Total PnL Return**: +18.8%
 - **Win Rate**: 42.1% (Normalized at minimum 1:2.6 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 0.5x ATR, Take-Profit = 1.3x ATR, Max Holding = 12 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Long Trigger: Price pulls back to dynamic EMA support while in higher-timeframe uptrend, printing bullish confirmation.

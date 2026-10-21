@@ -6,7 +6,8 @@ regime: ranging
 timeframe: H1
 min_rr: 2.0
 status: active
-sharpe_ratio: 11.1
+sharpe_ratio: null
+legacy_t_statistic: 11.1
 profit_factor: 1.36
 max_drawdown_pct: 8.6
 win_rate: 0.426
@@ -17,12 +18,13 @@ win_rate: 0.426
 ## Quantitative Track Record
 - **Asset / Instrument**: AUDUSD
 - **Data Source**: 4,500 H1 historical bars verified directly from connected MetaTrader 5 terminal
-- **Verified Sharpe Ratio**: 11.10 (Zero-Lookahead simulation)
+- **Legacy Risk-Adjusted Statistic (t-statistic, not a Sharpe ratio)**: 11.10 (Zero-Lookahead simulation)
 - **Profit Factor**: 1.36 (141 verified trade executions)
 - **Max Drawdown**: 8.6% (Institutional risk profile)
 - **Total PnL Return**: +30.9%
 - **Win Rate**: 42.6% (Normalized at minimum 1:2.0 contractual reward-to-risk)
 - **Calibrated Horizon**: Stop-Loss = 1.5x ATR, Take-Profit = 3.0x ATR, Max Holding = 28 bars
+- **Statistical Reliability**: CAUTION: the legacy risk-adjusted figure above is a t-statistic, not an annualised Sharpe ratio, and it is based on a small in-sample window. Regenerate this playbook on a live terminal before relying on it.
 
 ## Trigger Conditions & Tactical Directives
 - Long Trigger: Price sweeps support band/lower boundary, showing bullish rejection wick on H1.
