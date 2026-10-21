@@ -846,6 +846,9 @@ class PaperTracker:
                     strategy_id=str(strat_id),
                     win=(trade.pnl_pct or 0.0) > 0,
                     is_paper=True,
+                    # The realised result of this paper trade is the evidence; the
+                    # synthetic 1.5/1.0 fallback would misstate the profit factor.
+                    profit=(float(trade.pnl_pct) if trade.pnl_pct is not None else None),
                 )
                 await mon.save_to_db(session)
                 logger.debug(
