@@ -129,6 +129,7 @@ scripts/*
 !scripts/build_curated_benchmark_fixtures.py
 !scripts/bootstrap_strategy_evidence.py
 !scripts/report_execution_funnel.py
+!scripts/evaluate_gate_filter_pnl.py
 !scripts/cleanup_fvg_duplicates.py
 !scripts/repair_price_ohlcv.py
 !scripts/consolidate_sqlite_dbs.py
