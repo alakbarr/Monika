@@ -23,9 +23,9 @@ from monika.core.config.risk_defaults import (
     DEFAULT_MIN_RR_RATIO,
 )
 from monika.core.risk.quant_scorecard import (
+    evaluate_analysis_scorecard,
     extract_quant_scorecard,
     is_quantitative_source,
-    validate_quant_scorecard,
 )
 
 Position: Any = resolve_model("Position")
@@ -203,27 +203,38 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
             return (False, "No analysis object provided")
 
         decision_source = str(getattr(analysis, "decision_source", "") or "")
+        trading_cfg = self.settings.get("trading", {}) if isinstance(self.settings, dict) else {}
+        risk_cfg = trading_cfg.get("risk", {}) if isinstance(trading_cfg, dict) else {}
+        min_confidence = float(trading_cfg.get("auto_execute_min_confidence", DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE))
+        min_rr_ratio = float(risk_cfg.get("min_rr_ratio", DEFAULT_MIN_RR_RATIO))
+        min_confluence = int(trading_cfg.get("auto_execute_min_confluence", DEFAULT_AUTO_EXECUTE_MIN_CONFLUENCE))
+
+        if session and getattr(analysis, "symbol", None):
+            try:
+                from monika.domain.risk.ports import get_default_adaptive_risk_policy
+
+                policy = get_default_adaptive_risk_policy(self.settings)
+                if policy is not None:
+                    eff_thresh, reason = await policy.get_effective_threshold(session, analysis.symbol)
+                    min_confluence = int(eff_thresh)
+                    logger.debug(f"[{analysis.symbol}] RiskGate adaptive threshold: {eff_thresh} ({reason})")
+            except Exception as e:
+                logger.debug(f"AdaptiveRiskPolicy lookup in RiskGate non-fatal: {e}")
+
+        passed, reason = evaluate_analysis_scorecard(
+            decision_source=decision_source,
+            quant_scorecard=extract_quant_scorecard(analysis),
+            confluence_score=getattr(analysis, "confluence_score", None),
+            priced_in_score=getattr(analysis, "priced_in_score", None),
+            min_confidence=min_confidence,
+            min_rr_ratio=min_rr_ratio,
+            min_confluence=min_confluence,
+        )
+        if not passed:
+            return False, reason
+
         if is_quantitative_source(decision_source):
-            trading_cfg = self.settings.get("trading", {}) if isinstance(self.settings, dict) else {}
-            risk_cfg = trading_cfg.get("risk", {}) if isinstance(trading_cfg, dict) else {}
-            min_confidence = float(trading_cfg.get("auto_execute_min_confidence", DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE))
-            min_rr_ratio = float(risk_cfg.get("min_rr_ratio", DEFAULT_MIN_RR_RATIO))
-
-            scorecard = extract_quant_scorecard(analysis)
-            if scorecard is None:
-                return (
-                    False,
-                    f"{decision_source or 'quantitative'} signal has no explicit quant_scorecard. Execution blocked.",
-                )
-
-            scorecard_ok, scorecard_reason = validate_quant_scorecard(
-                scorecard,
-                min_confidence=min_confidence,
-                min_rr_ratio=min_rr_ratio,
-            )
-            if not scorecard_ok:
-                return False, scorecard_reason
-
+            scorecard = extract_quant_scorecard(analysis) or {}
             confidence_raw = getattr(analysis, "confidence", None)
             if isinstance(confidence_raw, bool) or not isinstance(confidence_raw, (int, float, str)):
                 return False, f"{decision_source or 'quantitative'} signal confidence is missing/non-finite."
@@ -246,54 +257,9 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
                     f"{analysis_direction}. Execution blocked.",
                 )
 
-            return True, (f"{decision_source or 'quantitative'}_quantitative_signal_passed ({scorecard_reason})")
+            return True, (f"{decision_source or 'quantitative'}_quantitative_signal_passed ({reason})")
 
-        if analysis.confluence_score is None:
-            return (
-                False,
-                f"confluence_score is None for {analysis.symbol}. "
-                f"Model did not fill required scorecard. Blocking execution.",
-            )
-
-        if analysis.priced_in_score is None:
-            return (
-                False,
-                f"priced_in_score is None for {analysis.symbol}. "
-                f"Priced-in assessment not completed. Blocking execution.",
-            )
-
-        if analysis.priced_in_score >= 8:
-            return (
-                False,
-                f"priced_in_score={analysis.priced_in_score} >= 8 for {analysis.symbol}. "
-                f"Event fully priced in (score >= 8) — high sell-the-news reversal risk.",
-            )
-
-        min_confluence = self.settings.get("trading", {}).get(
-            "auto_execute_min_confluence", DEFAULT_AUTO_EXECUTE_MIN_CONFLUENCE
-        )
-        if session and getattr(analysis, "symbol", None):
-            try:
-                from monika.domain.risk.ports import get_default_adaptive_risk_policy
-
-                policy = get_default_adaptive_risk_policy(self.settings)
-                if policy is not None:
-                    eff_thresh, reason = await policy.get_effective_threshold(session, analysis.symbol)
-                    min_confluence = eff_thresh
-                    logger.debug(f"[{analysis.symbol}] RiskGate adaptive threshold: {eff_thresh} ({reason})")
-            except Exception as e:
-                logger.debug(f"AdaptiveRiskPolicy lookup in RiskGate non-fatal: {e}")
-
-        if analysis.confluence_score < min_confluence:
-            return (
-                False,
-                f"confluence_score={analysis.confluence_score} < {min_confluence} (adaptive policy threshold).",
-            )
-
-        return (
-            True,
-            f"quality_scores_ok(confluence={analysis.confluence_score}, priced_in={analysis.priced_in_score}, threshold={min_confluence})",
-        )
+        return True, reason
 
     async def _check_edge_status_not_paused(self, session: Any, is_backtest: bool = False) -> tuple[bool, str]:
         if is_backtest:

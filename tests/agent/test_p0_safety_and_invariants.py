@@ -24,8 +24,9 @@ def test_estop_candidates_include_repo_root_and_cwd():
     assert (get_repo_root() / "ESTOP") in candidates
 
 
-def test_evidence_store_fail_closed_on_empty_store():
-    store = StrategyEvidenceStore()
+def test_evidence_store_fail_closed_on_empty_store(tmp_path):
+    # Use a temporary store so the test does not depend on runtime evidence state.
+    store = StrategyEvidenceStore(tmp_path / "strategy_evidence_store.json")
     assert len(store._store) == 0
 
     # General baseline allowed

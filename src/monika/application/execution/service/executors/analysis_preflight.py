@@ -26,13 +26,15 @@ import monika.core.primitives.clock as clock
 from monika.application.execution.service.base import _ExecutionServiceMixinBase
 from monika.core.config.risk_defaults import (
     DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE,
+    DEFAULT_AUTO_EXECUTE_MIN_CONFLUENCE,
     DEFAULT_MIN_RR_RATIO,
     DEFAULT_MIN_VERIFIABLE_CONFLUENCE,
 )
 from monika.core.risk.quant_scorecard import (
+    evaluate_analysis_scorecard,
     extract_quant_scorecard,
+    is_concordant_source,
     is_quantitative_source,
-    validate_quant_scorecard,
 )
 from monika.domain.execution.sizing_calculator import SizingCalculator
 from monika.domain.risk.position_sizing import PositionSizer, SizingResult
@@ -888,12 +890,12 @@ class AnalysisPreflightMixin(_ExecutionServiceMixinBase):
 
         decision_source = str(getattr(analysis, "decision_source", "") or "")
         is_edge_signal = is_quantitative_source(decision_source)
+        trading_cfg = self.settings.get("trading", {}) if isinstance(self.settings, dict) else {}
+        risk_cfg = trading_cfg.get("risk", {}) if isinstance(trading_cfg, dict) else {}
+        min_confidence = float(trading_cfg.get("auto_execute_min_confidence", DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE))
+        min_rr_ratio = float(risk_cfg.get("min_rr_ratio", DEFAULT_MIN_RR_RATIO))
 
         if verdict.approved and analysis.decision in ("buy", "sell") and is_edge_signal:
-            trading_cfg = self.settings.get("trading", {}) if isinstance(self.settings, dict) else {}
-            risk_cfg = trading_cfg.get("risk", {}) if isinstance(trading_cfg, dict) else {}
-            min_confidence = float(trading_cfg.get("auto_execute_min_confidence", DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE))
-            min_rr_ratio = float(risk_cfg.get("min_rr_ratio", DEFAULT_MIN_RR_RATIO))
             confidence = analysis.confidence or 0.0
             if confidence < min_confidence:
                 elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
@@ -918,11 +920,19 @@ class AnalysisPreflightMixin(_ExecutionServiceMixinBase):
                     elapsed_ms=elapsed,
                 ), None
 
-            scorecard = extract_quant_scorecard(analysis)
-            scorecard_ok, scorecard_reason = validate_quant_scorecard(
-                scorecard,
+        if (
+            verdict.approved
+            and analysis.decision in ("buy", "sell")
+            and (is_edge_signal or is_concordant_source(decision_source))
+        ):
+            scorecard_ok, scorecard_reason = evaluate_analysis_scorecard(
+                decision_source=decision_source,
+                quant_scorecard=extract_quant_scorecard(analysis),
+                confluence_score=getattr(analysis, "confluence_score", None),
+                priced_in_score=getattr(analysis, "priced_in_score", None),
                 min_confidence=min_confidence,
                 min_rr_ratio=min_rr_ratio,
+                min_confluence=int(trading_cfg.get("auto_execute_min_confluence", DEFAULT_AUTO_EXECUTE_MIN_CONFLUENCE)),
             )
             if not scorecard_ok:
                 elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
@@ -933,7 +943,7 @@ class AnalysisPreflightMixin(_ExecutionServiceMixinBase):
                     sizing=sizing,
                     risk_approved=False,
                     risk_checks_passed=verdict.checks_passed,
-                    risk_checks_failed=verdict.checks_failed + ["edge_signal_quant_scorecard"],
+                    risk_checks_failed=verdict.checks_failed + ["analysis_quant_scorecard"],
                     risk_rejection_reasons=[scorecard_reason],
                     executed=False,
                     mt5_ticket=None,

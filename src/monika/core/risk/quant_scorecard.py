@@ -34,6 +34,82 @@ def is_quantitative_source(decision_source: str | None) -> bool:
     return source in _QUANT_DECISION_SOURCES or source.startswith("quant_")
 
 
+def is_concordant_source(decision_source: str | None) -> bool:
+    """Return True for the concordant source (LLM and quant agreed)."""
+    return str(decision_source or "").strip().lower() == "concordant"
+
+
+def evaluate_analysis_scorecard(
+    *,
+    decision_source: str | None,
+    quant_scorecard: dict[str, Any] | None,
+    confluence_score: Any = None,
+    priced_in_score: Any = None,
+    min_confidence: float,
+    min_rr_ratio: float,
+    min_confluence: int,
+) -> tuple[bool, str]:
+    """Single source of truth for the analysis scorecard requirement.
+
+    * Quantitative sources must carry an explicit, valid ``quant_scorecard``.
+    * LLM sources must carry the equivalent LLM scorecard (confluence + priced-in).
+    * Concordant sources accept either one, because the analysis may originate
+      from the LLM leg or from the quant leg (edge-registry analyses are
+      relabelled ``concordant`` by the arbitration node).
+    """
+    source = str(decision_source or "").strip().lower()
+    label = source or "analysis"
+
+    if is_quantitative_source(source):
+        ok, reason = validate_quant_scorecard(
+            quant_scorecard,
+            min_confidence=min_confidence,
+            min_rr_ratio=min_rr_ratio,
+        )
+        return (True, reason) if ok else (False, f"{label}: {reason}")
+
+    llm_scorecard_present = confluence_score is not None and priced_in_score is not None
+
+    if is_concordant_source(source) and not llm_scorecard_present:
+        ok, reason = validate_quant_scorecard(
+            quant_scorecard,
+            min_confidence=min_confidence,
+            min_rr_ratio=min_rr_ratio,
+        )
+        return (True, reason) if ok else (False, f"{label}: {reason}")
+
+    if confluence_score is None:
+        return (
+            False,
+            f"confluence_score is None. Model did not fill required scorecard. Blocking execution.",
+        )
+
+    if priced_in_score is None:
+        return (
+            False,
+            f"priced_in_score is None. Priced-in assessment not completed. Blocking execution.",
+        )
+
+    if float(priced_in_score) >= 8:
+        return (
+            False,
+            f"priced_in_score={priced_in_score} >= 8. Event fully priced in (score >= 8) — "
+            "high sell-the-news reversal risk.",
+        )
+
+    if float(confluence_score) < int(min_confluence):
+        return (
+            False,
+            f"confluence_score={confluence_score} < {int(min_confluence)} (adaptive policy threshold).",
+        )
+
+    return (
+        True,
+        f"quality_scores_ok(confluence={confluence_score}, priced_in={priced_in_score}, "
+        f"threshold={int(min_confluence)})",
+    )
+
+
 _REQUIRED_FIELDS = (
     "strategy_id",
     "direction",
@@ -182,7 +258,9 @@ __all__ = [
     "QUANT_SCORECARD_VERSION",
     "attach_quant_scorecard",
     "build_quant_scorecard",
+    "evaluate_analysis_scorecard",
     "extract_quant_scorecard",
+    "is_concordant_source",
     "is_quantitative_source",
     "validate_quant_scorecard",
 ]

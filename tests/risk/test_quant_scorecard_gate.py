@@ -223,3 +223,78 @@ class TestLLMSourcesKeepTheirOwnScorecard:
         passed, reason = await gate._check_analysis_quality_scores(analysis)
         assert passed is False
         assert "confluence_score" in reason
+
+
+@pytest.mark.asyncio
+class TestConcordantAcceptsEitherScorecard:
+    """Edge-registry analyses are relabelled 'concordant' by the arbitration node.
+
+    Such an analysis carries the quantitative scorecard, while an LLM-originated
+    concordant analysis carries the LLM scorecard. Either one is acceptable.
+    """
+
+    async def test_concordant_with_quant_scorecard_is_accepted(self):
+        gate = RiskGate(_settings())
+        analysis = SimpleNamespace(
+            symbol="EURUSD",
+            decision="buy",
+            decision_source="concordant",
+            source_strategy_id="alpha_x",
+            strategy_id=None,
+            confidence=0.72,
+            confluence_score=None,
+            priced_in_score=None,
+        )
+        attach_quant_scorecard(analysis, _valid_scorecard())
+        passed, reason = await gate._check_analysis_quality_scores(analysis)
+        assert passed is True
+        assert "quant_scorecard_ok" in reason
+
+    async def test_concordant_with_llm_scorecard_is_accepted(self):
+        gate = RiskGate(_settings())
+        analysis = SimpleNamespace(
+            symbol="EURUSD",
+            decision="buy",
+            decision_source="concordant",
+            source_strategy_id="alpha_x",
+            strategy_id=None,
+            confidence=0.75,
+            confluence_score=9,
+            priced_in_score=3,
+        )
+        passed, reason = await gate._check_analysis_quality_scores(analysis)
+        assert passed is True
+        assert "quality_scores_ok" in reason
+
+    async def test_concordant_without_any_scorecard_is_rejected(self):
+        gate = RiskGate(_settings())
+        analysis = SimpleNamespace(
+            symbol="EURUSD",
+            decision="buy",
+            decision_source="concordant",
+            source_strategy_id="alpha_x",
+            strategy_id=None,
+            confidence=0.75,
+            confluence_score=None,
+            priced_in_score=None,
+        )
+        passed, reason = await gate._check_analysis_quality_scores(analysis)
+        assert passed is False
+        assert "quant_scorecard" in reason
+
+    async def test_concordant_with_invalid_quant_scorecard_is_rejected(self):
+        gate = RiskGate(_settings())
+        analysis = SimpleNamespace(
+            symbol="EURUSD",
+            decision="buy",
+            decision_source="concordant",
+            source_strategy_id="alpha_x",
+            strategy_id=None,
+            confidence=0.75,
+            confluence_score=None,
+            priced_in_score=None,
+        )
+        attach_quant_scorecard(analysis, _valid_scorecard(valid=False))
+        passed, reason = await gate._check_analysis_quality_scores(analysis)
+        assert passed is False
+        assert "invalid" in reason

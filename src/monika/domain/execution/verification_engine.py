@@ -15,7 +15,10 @@ from monika.core.config.risk_defaults import (
     DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE,
     DEFAULT_MIN_RR_RATIO,
 )
-from monika.core.risk.quant_scorecard import is_quantitative_source, validate_quant_scorecard
+from monika.core.risk.quant_scorecard import (
+    evaluate_analysis_scorecard,
+    is_quantitative_source,
+)
 
 logger = logging.getLogger("TradingAgent.EvidenceVerifier")
 
@@ -153,35 +156,41 @@ class EvidenceFirstVerifier:
                 f"ASSERT_6: Confidence ({confidence:.2f}) is below execution floor ({min_confidence:.2f})."
             )
 
-        # 6b. Quantitative signals must carry an explicit, valid scorecard.
-        if is_edge_signal:
-            scorecard = signal.get("quant_scorecard")
-            if isinstance(scorecard, str):
+        # 6b. Scorecard requirement: quantitative signals need an explicit scorecard,
+        # LLM signals need the confluence/priced-in scorecard, concordant signals accept either.
+        scorecard = signal.get("quant_scorecard")
+        if isinstance(scorecard, str):
+            try:
+                scorecard = json.loads(scorecard)
+            except TypeError, ValueError:
+                scorecard = None
+        if scorecard is None:
+            raw_factors = signal.get("confluence_factors_json")
+            if isinstance(raw_factors, str):
                 try:
-                    scorecard = json.loads(scorecard)
+                    raw_factors = json.loads(raw_factors)
                 except TypeError, ValueError:
-                    scorecard = None
-            if scorecard is None:
-                raw_factors = signal.get("confluence_factors_json")
-                if isinstance(raw_factors, str):
-                    try:
-                        raw_factors = json.loads(raw_factors)
-                    except TypeError, ValueError:
-                        raw_factors = None
-                if isinstance(raw_factors, dict):
-                    scorecard = raw_factors.get("quant_scorecard")
-            scorecard_ok, scorecard_reason = validate_quant_scorecard(
-                scorecard,
-                min_confidence=self.min_edge_confidence,
-                min_rr_ratio=self.min_rr_ratio,
-            )
-            if not scorecard_ok or not isinstance(scorecard, dict):
-                violations.append(f"ASSERT_6b: {scorecard_reason}")
-            elif str(scorecard.get("direction", "")).lower() != decision.lower():
+                    raw_factors = None
+            if isinstance(raw_factors, dict):
+                scorecard = raw_factors.get("quant_scorecard")
+
+        scorecard_ok, scorecard_reason = evaluate_analysis_scorecard(
+            decision_source=decision_source,
+            quant_scorecard=scorecard if isinstance(scorecard, dict) else None,
+            confluence_score=signal.get("confluence_score"),
+            priced_in_score=signal.get("priced_in_score"),
+            min_confidence=self.min_edge_confidence,
+            min_rr_ratio=self.min_rr_ratio,
+            min_confluence=int(signal.get("min_confluence") or getattr(self, "min_confluence", 4)),
+        )
+        if not scorecard_ok:
+            violations.append(f"ASSERT_6b: {scorecard_reason}")
+        elif isinstance(scorecard, dict) and scorecard.get("direction"):
+            if str(scorecard.get("direction", "")).lower() != decision.lower():
                 violations.append("ASSERT_6b: quant_scorecard direction does not match the order direction.")
 
         # 7. Confluence Score (LLM Stage 2 signals require 14-point scorecard, quantitative edge signals are exempted)
-        if not is_edge_signal:
+        if not is_edge_signal and not (isinstance(scorecard, dict) and scorecard.get("valid") is True):
             min_conf = float(signal.get("min_confluence") or getattr(self, "min_confluence", 4))
             if confluence_score < min_conf:
                 violations.append(

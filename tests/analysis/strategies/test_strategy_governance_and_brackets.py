@@ -146,12 +146,20 @@ def test_edge_strategy_build_bracket():
 
 
 def test_strategy_tiers_and_registry_classification(monkeypatch):
+    class _EmptyEvidenceStore:
+        def is_strategy_eligible_to_trade(self, strategy_id: str, min_breakeven_bps: float = 3.0):
+            return False, f"No verified backtest evidence on file for {strategy_id}"
+
     # Quarantined strategy
     for q_id in ("smc_fvg", "btc_donchian_breakout", "bollinger_reversion", "gbpusd_trend_breakout"):
         assert StrategyRegistry.get_tier(q_id) == StrategyTier.QUARANTINED
         assert q_id in QUARANTINED_STRATEGY_IDS
 
     # Promotion is evidence-driven: without evidence on file a strategy stays experimental.
+    monkeypatch.setattr(
+        "monika.domain.risk.ports.get_default_evidence_store",
+        lambda: _EmptyEvidenceStore(),
+    )
     assert PROMOTED_EMPIRICAL_STRATEGIES == set()
     for v_id in ("smt_divergence", "bb_volume_profile", "tokyo_open_sweep", "vwap_mean_reversion"):
         assert StrategyRegistry.get_tier(v_id) == StrategyTier.EXPERIMENTAL
