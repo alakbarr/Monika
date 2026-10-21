@@ -959,6 +959,7 @@ Monika/
 │       │   ├── execution/
 │       │   │   ├── __init__.py
 │       │   │   ├── base.py
+│       │   │   ├── bracket_optimizer.py
 │       │   │   ├── broker_plugin.py
 │       │   │   ├── order_creator.py
 │       │   │   ├── order_emulator.py
@@ -2438,6 +2439,9 @@ Monika/
 │   │   └── test_user_market_intel.py
 │   ├── deploy/
 │   │   └── test_deployment_configs.py
+│   ├── domain/
+│   │   └── execution/
+│   │       └── test_bracket_optimizer.py
 │   ├── evals/
 │   │   ├── __init__.py
 │   │   ├── test_eval_metrics_and_ab_runner.py
@@ -3068,4 +3072,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 264 | **Total Tracked Files**: 2774
+**Total Tracked Directories**: 266 | **Total Tracked Files**: 2776

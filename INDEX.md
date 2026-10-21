@@ -1255,6 +1255,16 @@
 #### `base.py` - *Backward-compatibility facade for ExecutionService mixin base.*
 - **Path**: [`src/monika/domain/execution/base.py`](src/monika/domain/execution/base.py)
 
+#### `bracket_optimizer.py` - *Deterministic Bracket Optimizer and Alignment Engine.*
+- **Path**: [`src/monika/domain/execution/bracket_optimizer.py`](src/monika/domain/execution/bracket_optimizer.py)
+- **Classes**:
+  - `class OptimizedBrackets`: Represents normalized, mathematically aligned trade brackets.
+  - `class BracketOptimizer`: Deterministic bracket optimizer.
+    - `__init__(default_min_rr: float) -> None`
+    - `optimize(symbol: str, direction: str, entry_price: float, ...) -> OptimizedBrackets` - *Calculates optimized brackets respecting ATR noise floors, ADR bands,*
+- **Top-Level Functions**:
+  - `get_symbol_decimals(symbol: str) -> int`: Derives standard price display/order decimals for a given symbol.
+
 #### `broker_plugin.py` - *Unified Broker Plugin Interface & Standard Data Transfer Objects (DTO).*
 - **Path**: [`src/monika/domain/execution/broker_plugin.py`](src/monika/domain/execution/broker_plugin.py)
 - **Classes**:
