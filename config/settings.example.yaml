@@ -155,7 +155,7 @@ trading:
   signal_arbitration:
     enabled: true
     concordant_boost_conf: 0.05
-    concordant_risk_multiplier: 1.15
+    concordant_risk_multiplier: 1.0
     max_risk_multiplier: 1.25
     quant_priority_risk_multiplier: 0.7
     min_quant_confidence_for_trend_override: 0.75

@@ -51,7 +51,10 @@ class SignalArbitrator:
 
     def __init__(self, settings: Optional[dict] = None, arbitration_cfg: Optional[dict] = None):
         self.settings = settings or {}
-        self.arbitration_cfg = arbitration_cfg or self.settings.get("trading", {}).get("signal_arbitration", {})
+        trading_cfg = self.settings.get("trading", {})
+        self.arbitration_cfg = (
+            arbitration_cfg or trading_cfg.get("signal_arbitration") or trading_cfg.get("arbitration") or {}
+        )
 
     async def _log_arbitration_telemetry(
         self,
@@ -511,7 +514,7 @@ class SignalArbitrator:
                     "concordant_boost_conf", self.arbitration_cfg.get("concordant_boost_confidence", 0.05)
                 )
             )
-            concordant_risk_mult = float(self.arbitration_cfg.get("concordant_risk_multiplier", 1.15))
+            concordant_risk_mult = float(self.arbitration_cfg.get("concordant_risk_multiplier", 1.0))
             max_risk_mult = float(self.arbitration_cfg.get("max_risk_multiplier", 1.25))
             quant_priority_risk_mult = float(self.arbitration_cfg.get("quant_priority_risk_multiplier", 0.70))
             min_q_trend_override = float(self.arbitration_cfg.get("min_quant_confidence_for_trend_override", 0.75))
@@ -599,8 +602,9 @@ class SignalArbitrator:
                 level_source = "llm"
 
                 if llm_entry > 0 and quant_entry > 0:
-                    # In concordant agreement, prioritize LLM levels when LLM confidence is decisive (>= 0.65)
-                    if l_conf >= 0.65 and llm_entry > 0 and llm_sl > 0 and llm_tp > 0:
+                    # In concordant agreement, prioritize LLM structural levels when LLM provides valid geometry
+                    # and confidence is decisive (>= 0.60).
+                    if l_conf >= 0.60 and llm_entry > 0 and llm_sl > 0 and llm_tp > 0:
                         entry_p, sl_p, tp_p = llm_entry, llm_sl, llm_tp
                         level_source = "llm"
                     else:
@@ -631,6 +635,7 @@ class SignalArbitrator:
                     try:
                         from monika.domain.execution.bracket_optimizer import BracketOptimizer
 
+                        enforce_buf = bool(self.arbitration_cfg.get("enforce_structural_buffer", False))
                         b_opt = BracketOptimizer()
                         opt_b = b_opt.optimize(
                             symbol=symbol,
@@ -639,6 +644,7 @@ class SignalArbitrator:
                             stop_loss=float(sl_p),
                             take_profit=float(tp_p),
                             atr=atr_val if atr_val > 0 else None,
+                            enforce_structural_buffer=enforce_buf,
                         )
                         entry_p, sl_p, tp_p = opt_b.entry_price, opt_b.stop_loss, opt_b.take_profit
                     except Exception as b_err:

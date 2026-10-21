@@ -93,7 +93,15 @@ def _sanitize_schema_for_gemini(schema: dict) -> dict:
                 sanitized["nullable"] = True
             continue
         if k == "type" and isinstance(v, str):
-            sanitized[k] = v.upper()
+            if "enum" in schema:
+                sanitized[k] = "STRING"
+            else:
+                sanitized[k] = v.upper()
+            continue
+        if k == "enum" and isinstance(v, list):
+            sanitized[k] = [str(x) for x in v]
+            if "type" in sanitized:
+                sanitized["type"] = "STRING"
             continue
 
         if isinstance(v, dict):

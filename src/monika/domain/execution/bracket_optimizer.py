@@ -71,10 +71,12 @@ class BracketOptimizer:
         adr_ctx: Optional[Dict[str, Any]] = None,
         min_rr: Optional[float] = None,
         min_sl_atr_multiplier: float = 1.0,
+        structural_buffer: Optional[float] = None,
+        enforce_structural_buffer: bool = False,
     ) -> OptimizedBrackets:
         """
         Calculates optimized brackets respecting ATR noise floors, ADR bands,
-        and minimum R:R constraints.
+        structural invalidation buffers, and minimum R:R constraints.
         """
         dir_clean = str(direction).lower().strip()
         if dir_clean not in ("buy", "sell"):
@@ -112,9 +114,19 @@ class BracketOptimizer:
                 cur_tp = entry_price - (inverted_tp_dist if inverted_tp_dist > 0 else 0.002)
                 adjustments.append(f"Inverted SELL TP flipped below entry to {cur_tp:.{decimals}f}")
 
-        # 2. Stop Loss Floor Alignment (ATR Floor)
+        # 2. Stop Loss Floor Alignment (ATR Floor & Structural Invalidation Buffer)
         raw_sl_dist = abs(entry_price - cur_sl) if cur_sl > 0 else 0.0
         effective_atr = float(atr) if atr is not None and atr > 0 else None
+
+        # Determine structural buffer
+        applied_buffer = 0.0
+        if structural_buffer is not None and structural_buffer > 0:
+            applied_buffer = float(structural_buffer)
+        elif enforce_structural_buffer and effective_atr is not None:
+            sym_upper = symbol.upper()
+            is_commodity_or_crypto = any(k in sym_upper for k in ("XAU", "XTI", "XBR", "BTC"))
+            buf_mult = 1.20 if is_commodity_or_crypto else 0.35
+            applied_buffer = effective_atr * buf_mult
 
         min_sl_dist = 0.0
         if effective_atr is not None:
@@ -133,6 +145,12 @@ class BracketOptimizer:
             min_sl_dist = min(min_sl_dist, effective_sl_ceiling * 0.85)
 
         target_sl_dist = raw_sl_dist
+        if applied_buffer > 0:
+            target_sl_dist = target_sl_dist + applied_buffer
+            adjustments.append(
+                f"Structural noise buffer (+{applied_buffer:.{decimals}f}) added to SL distance -> {target_sl_dist:.{decimals}f}"
+            )
+
         if min_sl_dist > 0 and target_sl_dist < min_sl_dist:
             target_sl_dist = min_sl_dist
             adjustments.append(
@@ -160,7 +178,7 @@ class BracketOptimizer:
 
         target_tp_dist = raw_tp_dist
         if target_tp_dist < required_min_tp_dist:
-            target_tp_dist = required_min_tp_dist
+            target_tp_dist = required_min_tp_dist + (10**-decimals * 0.5)
             adjustments.append(
                 f"TP distance expanded from {raw_tp_dist:.{decimals}f} to meet R:R >= {target_min_rr:.2f} ({target_tp_dist:.{decimals}f})"
             )
@@ -188,6 +206,26 @@ class BracketOptimizer:
         aligned_tp = (entry_price + target_tp_dist) if is_buy else (entry_price - target_tp_dist)
         aligned_tp = round(aligned_tp, decimals)
         final_tp_dist = round(abs(aligned_tp - entry_price), decimals)
+
+        # Strict fail-closed verification of execution geometry
+        if is_buy:
+            if aligned_sl >= entry_price:
+                raise ValueError(
+                    f"Fail-closed: BUY stop_loss ({aligned_sl}) must be strictly below entry_price ({entry_price})"
+                )
+            if aligned_tp <= entry_price:
+                raise ValueError(
+                    f"Fail-closed: BUY take_profit ({aligned_tp}) must be strictly above entry_price ({entry_price})"
+                )
+        else:
+            if aligned_sl <= entry_price:
+                raise ValueError(
+                    f"Fail-closed: SELL stop_loss ({aligned_sl}) must be strictly above entry_price ({entry_price})"
+                )
+            if aligned_tp >= entry_price:
+                raise ValueError(
+                    f"Fail-closed: SELL take_profit ({aligned_tp}) must be strictly below entry_price ({entry_price})"
+                )
 
         final_rr = (final_tp_dist / final_sl_dist) if final_sl_dist > 0 else 0.0
 

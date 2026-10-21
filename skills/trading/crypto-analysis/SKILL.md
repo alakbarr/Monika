@@ -29,6 +29,10 @@ tags: [crypto, btcusd, etf_flows, funding_rate, fear_greed, digital_assets]
    - Extreme Fear ($< 20$): Contrarian accumulation bias ONLY when higher-timeframe weekly structure remains intact.
    - Extreme Greed ($> 80$): Strict trailing stop management; take-profit targets tightened to 50% ADR.
 
+## Macro Dollar Liquidity Squeeze Rule (BTCUSD)
+- **Surging Dollar & Yield Contraction**: When DXY >= 101.00 and US 10Y real yields are elevated (>= 1.50%), speculative liquidity contracts sharply across digital assets.
+- **Strict Long Prohibition**: Do NOT enter BUY on BTCUSD during a surging dollar regime unless daily (D1) trend structure confirms breakout continuation with positive ETF net inflows (> +$300M). Default stance is WAIT or hedged scalp.
+
 ## Technical & Execution Rules for BTCUSD
 - **24/7 Market Structure**: Use 7-day lookback for Average Daily Range calculation (via `get_daily_range_context`).
 - **Optimal Liquidity Hours**: Highest execution quality occurs during London/NY overlap (12:00–20:00 UTC).

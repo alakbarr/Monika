@@ -18,6 +18,11 @@ tags: [commodity, oil, xtiusd, xauusd, eia, opec, energy, inventory, gold]
 2. **Central Bank Net Purchases**: Track sovereign reserve diversification flows (PBoC, RBI, CBR). Structural physical floor.
 3. **Geopolitical Flight-to-Safety**: Immediate spike driver upon escalation; fades once military theater stabilizes unless real yields compress simultaneously.
 
+### Mandatory Commodity-Dollar Inverse Rule (Institutional Directive)
+- **DXY Headwind Condition**: When DXY is strong (DXY >= 101.00) and US 10Y real yields are elevated (>= 1.50%), dollar-denominated commodities (XAUUSD, XTIUSD, XBRUSD) face intense institutional liquidation pressure. DXY strength DOES NOT confirm commodity longs.
+- **Strict Long Prohibition**: NEVER initiate a BUY trade on XAUUSD, XTIUSD, or XBRUSD during a strong DXY regime unless an unambiguous H4 Market Structure Shift (MSS) with institutional volume confirmation has occurred.
+- **Default Stance**: Under a strong dollar regime, the default stance for commodities is WAIT or SELL at premium supply/order blocks.
+
 ### Technical & Execution Rules for XAUUSD
 - **Spread & Volatility Calibration**: Normal spread is 1.5–3.5 pips. During London/NY overlap, normal M1 ATR is \$1.50–\$3.00.
 - **Mandatory Stop Loss Sizing**: Stop Loss distance MUST be $\ge 1.1\times$ verified H4 ATR(14). Never place tighter stops on gold due to deep stop-hunting sweeps.

@@ -27,13 +27,14 @@ from .base import BenchmarkCase, _sym
 
 def _stage2_system_prompt(settings: dict[str, Any], symbol: str, cot_code: str, threshold: int) -> str:
     skills = [
+        "adjudication_framework",
         "smc_ict_playbook",
         "market_dynamics_framework",
         "liquidity_and_macro_edge",
         "risk_management_principles",
         "session_timing_rules",
     ]
-    if symbol == "XTIUSD":
+    if symbol in ("XTIUSD", "XBRUSD", "XAUUSD"):
         skills.insert(1, "commodity_analysis")
     elif symbol in settings.get("trading", {}).get("24_7_assets", ["BTCUSD"]):
         skills.insert(1, "crypto_analysis")

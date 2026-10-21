@@ -8,7 +8,7 @@ from typing import Optional
 from sqlalchemy import select
 
 import monika.core.primitives.clock as clock
-from monika.application.analysis.strategies.base_strategy import EdgeSignal
+from monika.application.analysis.strategies.base_strategy import EdgeSignal, StrategyTier
 from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
 from monika.application.analysis.strategies.pretrade_gate import evaluate_pretrade_gate
 from monika.application.analysis.strategies.registry import StrategyRegistry
@@ -232,6 +232,12 @@ class EdgeStrategyRunner:
                             logger.debug(
                                 f"[{sig.strategy_id}] Suppressed by StrategyDecayMonitor (state={decay_mon.get_health(sig.strategy_id).state.value})"
                             )
+                            continue
+
+                        # Evidence Store & Tier Admission Gate:
+                        tier = StrategyRegistry.get_tier(sig.strategy_id)
+                        if tier == StrategyTier.QUARANTINED:
+                            logger.debug(f"[{sig.strategy_id}] Suppressed: Strategy is QUARANTINED.")
                             continue
 
                         # Incubation Gate: Synthesized alphas starting with 'alpha_' must have passed incubation
@@ -704,6 +710,22 @@ class EdgeStrategyRunner:
                     pass
                 return
             analyses_to_execute.append(hedge_analysis)
+
+        # Evidence Store Gate: Unvalidated/Experimental Alphas blocked from live execution
+        tier = StrategyRegistry.get_tier(sig.strategy_id)
+        is_live = not bool(self.settings.get("trading", {}).get("paper_trading", {}).get("enabled", True))
+        if is_live and tier != StrategyTier.VALIDATED:
+            logger.warning(
+                f"[{sig.strategy_id}] Blocked from live execution: StrategyTier is {tier.value}. "
+                f"Requires VALIDATED status in evidence store. Persisted in shadow analysis mode only."
+            )
+            primary_analysis.execution_status = "shadow_only"
+            primary_analysis.execution_notes = f"Live execution blocked: unvalidated alpha (tier={tier.value})"
+            try:
+                await session.commit()
+            except Exception:
+                pass
+            return
 
         # LangGraph Reactive Entry Point (CRITICAL-01)
         try:

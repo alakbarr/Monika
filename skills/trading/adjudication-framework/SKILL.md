@@ -32,3 +32,11 @@ tags: [adjudication, synthesis, confluence, stage2, trade_gate]
 - **Priced-In Exhaustion**: If `priced_in_score >= 8` $\rightarrow$ Decision MUST be `WAIT`.
 - **RiskGate Invalidation**: If RiskGate returns an active blocking issue (drawdown, spread, news window) $\rightarrow$ Decision MUST be `WAIT` or `AVOID`.
 - Output structured analysis strictly via `submit_asset_analysis`.
+
+## 4. Structural Stop Loss Anchoring Invariant
+- **Major H4 Swing Anchoring**: Stop Loss MUST be placed beyond the major H4 swing level, NOT minor M15 intraday noise.
+- **Mandatory Structural Buffer**: Always inject a noise buffer beyond the structural swing high/low (+0.35x ATR for Forex, +1.20x ATR for Commodities/Gold) to prevent liquidity wick stops.
+
+## 5. Sovereign Dollar Regime Invariant
+- **Commodity Inverse Rule**: When DXY >= 101.00, BUY trades on commodities (Gold, Crude Oil) are prohibited without confirmed H4 Market Structure Shift. Default stance: WAIT or SELL at resistance.
+- **Crypto Liquidity Squeeze**: When DXY >= 101.00 and US 10Y Yields >= 1.50%, BUY on BTCUSD is prohibited unless D1 confirms continuation. Default stance: WAIT.
