@@ -10,7 +10,7 @@ from monika.application.analysis.strategies.registry import StrategyRegistry
 @StrategyRegistry.register
 class LiquiditySweepStructuralShift(EdgeStrategy):
     strategy_id = "liquidity_sweep"
-    applicable_symbols = {"XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD"}
+    applicable_symbols = {"EURUSD", "USDJPY", "AUDUSD"}
     compatible_regimes = {
         "RANGE",
         "RANGING",

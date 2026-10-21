@@ -2705,6 +2705,12 @@ Monika/
 │   │   ├── test_telegram_streaming_tools.py
 │   │   └── test_voice_handler.py
 │   ├── unit/
+│   │   ├── application/
+│   │   │   ├── agent/
+│   │   │   │   └── test_replay_envelope_and_recovery.py
+│   │   │   └── analysis/
+│   │   │       ├── test_forked_subagent_cache.py
+│   │   │       └── test_spill_and_ptc_parallel.py
 │   │   └── infrastructure/
 │   │       └── llm/
 │   │           └── test_kv_cache_invariance.py
@@ -3031,4 +3037,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 260 | **Total Tracked Files**: 2741
+**Total Tracked Directories**: 263 | **Total Tracked Files**: 2744

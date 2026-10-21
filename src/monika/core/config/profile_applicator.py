@@ -285,7 +285,7 @@ class ProfileApplicator:
             elif role in heavy_roles:
                 p_mod = heavy_primary
                 fb_mod = heavy_fallback
-                tokens = 8192 if "high_analysis" in profile_key else 4096
+                tokens = 8192
                 temp = 0.0
             elif role in debater_roles:
                 p_mod = debater_primary

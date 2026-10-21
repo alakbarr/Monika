@@ -128,6 +128,12 @@ class PreFlightTurnGate:
         now_utc = override_time or clock.now()
         hour = now_utc.hour
         minute = now_utc.minute
+        is_replay_or_sim = (
+            clock.is_simulated()
+            or bool(cfg.get("replay_mode", False))
+            or bool(cfg.get("simulation_mode", False))
+            or bool(cfg.get("backtest_mode", False))
+        )
 
         # 1. 24/7 Asset Exception (Crypto is traded 24/7, exempt from FX rollover freeze)
         always_open = set(cfg.get("trading", {}).get("24_7_assets", ["BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD"]))
@@ -191,7 +197,7 @@ class PreFlightTurnGate:
 
                     tick_utc_ts = tick_ts - broker_offset
                     age = abs(now_utc.timestamp() - tick_utc_ts)
-                    if age > 180 and not is_24_7:
+                    if not is_replay_or_sim and age > 180 and not is_24_7:
                         reason = f"MT5 quote stale for {sym_clean} (age={age:.0f}s > 180s)."
                         logger.info(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")
                         return False, reason
@@ -207,8 +213,10 @@ class PreFlightTurnGate:
                     import math
 
                     if math.isnan(curr_spread) or curr_spread <= 0:
-                        is_dry_run = cfg.get("trading", {}).get("dry_run", False) or not cfg.get("trading", {}).get(
-                            "auto_execute", False
+                        is_dry_run = (
+                            is_replay_or_sim
+                            or cfg.get("trading", {}).get("dry_run", False)
+                            or not cfg.get("trading", {}).get("auto_execute", False)
                         )
                         if not is_dry_run:
                             reason = f"Invalid or non-positive spread ({raw_spread}) for {sym_clean} in live mode."
@@ -237,8 +245,10 @@ class PreFlightTurnGate:
                                 logger.info(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")
                                 return False, reason
             else:
-                is_dry_run = cfg.get("trading", {}).get("dry_run", False) or not cfg.get("trading", {}).get(
-                    "auto_execute", False
+                is_dry_run = (
+                    is_replay_or_sim
+                    or cfg.get("trading", {}).get("dry_run", False)
+                    or not cfg.get("trading", {}).get("auto_execute", False)
                 )
                 if not is_dry_run:
                     reason = f"MT5 tick data unavailable for {sym_clean} in live execution mode."

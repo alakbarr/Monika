@@ -745,14 +745,14 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                         )
                     )
                     conf_score = int(inp.get("confluence_score", 0) or 0)
-                    is_structural_limit = is_limit_type and bool(cond_price) and conf_score >= 6
+                    is_structural_limit = is_limit_type and bool(cond_price) and conf_score >= 5
                     cand_price = cond_price or inp.get("entry_price")
                     if is_structural_limit:
                         logger.info(
                             f"[{symbol}] Volatility squeeze detected ({chop.get('reason')}), "
                             f"allowing structural entry ({cond_type}) with confluence {conf_score}."
                         )
-                    elif conf_score >= 6 and decision in ("buy", "sell") and cand_price:
+                    elif conf_score >= 5 and decision in ("buy", "sell") and cand_price:
                         inp["entry_condition"] = {
                             "type": "limit",
                             "price": float(cand_price),
