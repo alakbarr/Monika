@@ -632,6 +632,7 @@ Monika/
 │       │   │   ├── eval_metrics.py
 │       │   │   ├── eval_runner.py
 │       │   │   ├── hostile_market_probe.py
+│       │   │   ├── llm_replay.py
 │       │   │   ├── runner.py
 │       │   │   └── simulation_clock.py
 │       │   ├── execution/
@@ -2426,6 +2427,7 @@ Monika/
 │   │   ├── __init__.py
 │   │   ├── test_eval_metrics_and_ab_runner.py
 │   │   ├── test_evals_and_observability.py
+│   │   ├── test_llm_replay.py
 │   │   ├── test_offline_evals.py
 │   │   ├── test_offline_oracles.py
 │   │   └── test_simulation_and_oracles.py
@@ -2935,6 +2937,7 @@ Monika/
 │   ├── migrate_runtime_home.py
 │   ├── migrate_sqlite_to_canonical.py
 │   ├── repair_price_ohlcv.py
+│   ├── replay_llm_analysis.py
 │   ├── reset_paper_trades.py
 │   ├── run_tests.bat
 │   ├── run_tests.sh
@@ -3045,4 +3048,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 263 | **Total Tracked Files**: 2752
+**Total Tracked Directories**: 263 | **Total Tracked Files**: 2755

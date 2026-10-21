@@ -9025,6 +9025,29 @@
     - `generate_battery() -> List[HostileTickScenario]` - *Builds an exhaustive suite of adversarial tick anomalies.*
     - `verify_resilience(risk_validator: Callable[[Dict[str, Any]], Tuple[bool, str]]) -> Dict[str, Any]` - *Runs the battery against a validation function (e.g. RiskGate.evaluate or pre_trade_check).*
 
+#### `llm_replay.py` - *Point-in-time LLM replay for historical per-asset analyses.*
+- **Path**: [`src/monika/application/evals/llm_replay.py`](src/monika/application/evals/llm_replay.py)
+- **Classes**:
+  - `class ToolAgentProvider(Protocol)`: Minimal provider interface required by the replay runner.
+    - `async run_tool_agent() -> Any`
+- **Top-Level Functions**:
+  - `tool_uses(message: Mapping[str, Any]) -> list[JsonDict]`: Return ``tool_use`` blocks from a message.
+  - `find_submit_indices(messages: Sequence[Mapping[str, Any]]) -> list[int]`: Return indexes of assistant messages that call ``submit_asset_analysis``.
+  - `last_submit_index(messages: Sequence[Mapping[str, Any]]) -> int | None`
+  - `last_submit_input(messages: Sequence[Mapping[str, Any]]) -> JsonDict | None`: Return the input of the last historical ``submit_asset_analysis`` call.
+  - `truncate_before_last_submit(messages: Sequence[Mapping[str, Any]]) -> tuple[list[Mapping[str, Any]], int | None]`: Return the transcript before the final submit, plus that submit's index.
+  - `serialize_transcript(messages: Sequence[Mapping[str, Any]]) -> str`: Serialise stored provider messages into a deterministic text transcript.
+  - `build_decision_prompt(record: Mapping[str, Any]) -> tuple[str, int]`: Build the decision-turn replay prompt and return the final submit index.
+  - `response_blocks(response: Any) -> list[JsonDict]`: Extract Anthropic-style content blocks from a provider response.
+  - `response_tool_uses(blocks: Sequence[Mapping[str, Any]]) -> list[JsonDict]`
+  - `response_text(blocks: Sequence[Mapping[str, Any]]) -> str`
+  - `extract_usage(response: Any) -> JsonDict`
+  - `compare_submissions(original: Mapping[str, Any] | None, replay: Mapping[str, Any] | None) -> JsonDict`: Compare the stored final submit with the replay submit.
+  - `audit_sl_geometry() -> JsonDict`: Apply the historical SL floor/ADR ceiling rule to a replay proposal.
+  - `parse_sl_risk_inputs(context_text: str, symbol: str, rationale: str) -> JsonDict`: Extract the point-in-time SL rule inputs from the stored prompt.
+  - `async run_decision_replay(provider: ToolAgentProvider, record: Mapping[str, Any]) -> JsonDict`: Replay the final decision turn for one stored analysis.
+  - `summarize_results(results: Sequence[Mapping[str, Any]]) -> JsonDict`: Aggregate raw and risk-gated replay parity, deltas, and token usage.
+
 #### `runner.py`
 - **Path**: [`src/monika/application/evals/runner.py`](src/monika/application/evals/runner.py)
 - **Classes**:
