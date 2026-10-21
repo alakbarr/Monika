@@ -2930,6 +2930,7 @@ Monika/
 │   ├── benchmark_news_classification_openrouter.py
 │   ├── benchmark_stage1_openrouter.py
 │   ├── benchmark_stage2_openrouter.py
+│   ├── bootstrap_strategy_evidence.py
 │   ├── build_curated_benchmark_fixtures.py
 │   ├── build_empirical_playbooks.py
 │   ├── capture_dashboard_screenshots.js
@@ -2949,6 +2950,7 @@ Monika/
 │   ├── migrate_sqlite_to_canonical.py
 │   ├── repair_price_ohlcv.py
 │   ├── replay_llm_analysis.py
+│   ├── report_execution_funnel.py
 │   ├── reset_paper_trades.py
 │   ├── run_tests.bat
 │   ├── run_tests.sh
@@ -3059,4 +3061,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 264 | **Total Tracked Files**: 2765
+**Total Tracked Directories**: 264 | **Total Tracked Files**: 2767
