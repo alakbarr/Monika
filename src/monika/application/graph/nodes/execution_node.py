@@ -33,6 +33,15 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
     if auto_execute and scheduler._mt5 and actionable:
         min_confluence = trading_cfg.get("auto_execute_min_confluence", 7)
         min_confidence = trading_cfg.get("auto_execute_min_confidence", 0.60)
+        # Structured execution telemetry. CyclePerformance must report what
+        # actually reached the broker, not a string log grep.
+        exec_stats: Dict[str, Any] = {
+            "attempted": 0,
+            "executed": 0,
+            "rejected": 0,
+            "failed": 0,
+            "symbols_executed": [],
+        }
 
         # [NEW] Check override
         try:
@@ -419,6 +428,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                             continue
 
                         try:
+                            exec_stats["attempted"] += 1
                             result = await exec_svc.execute_analysis(session, ana, equity)
                             exec_results[sym] = result.summary() if hasattr(result, "summary") else str(result)
                             logger.info(f"Execution for {sym}: {exec_results[sym]}")
@@ -427,15 +437,21 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                             if hasattr(result, "executed"):
                                 if result.executed:
                                     ana.execution_status = "executed"
+                                    exec_stats["executed"] += 1
+                                    exec_stats["symbols_executed"].append(sym)
                                 elif not getattr(result, "risk_approved", False):
                                     ana.execution_status = "rejected"
+                                    exec_stats["rejected"] += 1
                                 else:
                                     ana.execution_status = "failed"  # MT5 Error
+                                    exec_stats["failed"] += 1
                             else:
                                 ana.execution_status = "failed"
+                                exec_stats["failed"] += 1
                         except Exception as e:
                             logger.error(f"Execution failed for {sym}: {e}")
                             exec_results[sym] = f"error: {str(e)[:100]}"
+                            exec_stats["failed"] += 1
                             try:
                                 await session.rollback()
                                 ana = (
@@ -451,6 +467,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                         logger.warning(f"Analysis {analysis_id} not found for execution")
 
             summary["execution"] = exec_results
+            summary["execution_stats"] = exec_stats
 
     # Hitung API Cost
     try:

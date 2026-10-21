@@ -940,6 +940,8 @@ class GraphCycleScheduler(CycleScheduler):
                     stage2_out = sum(r.get("output_tokens", 0) for r in pa_results.values() if isinstance(r, dict))
 
                     actionable = final_state.get("actionable_trades", [])
+                    execution_stats = summary_data.get("execution_stats", {})
+                    trades_executed = int(execution_stats.get("executed", 0) or 0)
 
                     api_cost_val = summary_data.get("api_cost_usd")
                     if api_cost_val is None:
@@ -973,6 +975,7 @@ class GraphCycleScheduler(CycleScheduler):
                         stage2_tokens_in=stage2_in,
                         stage2_tokens_out=stage2_out,
                         trades_proposed=len(actionable),
+                        trades_executed=trades_executed,
                         api_cost_usd=api_cost_val,
                     )
 

@@ -420,6 +420,12 @@ class PaperTradeRecord(Base):
     exit_reason: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # sl_hit, tp_hit, manual, etc.
     detection_method: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, default="close_price")
     risk_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=0.75)
+    # Phase 0 accounting truth: immutable entry-time risk anchor.
+    # `stop_loss` above keeps moving with trailing; these never change after open,
+    # so realized R is always measured against the risk actually taken at entry.
+    initial_stop_loss: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    initial_risk_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    accounting_status: Mapped[str] = mapped_column(String(30), nullable=False, default="ok", server_default="ok")
     entry_condition_type: Mapped[Optional[str]] = mapped_column(
         String(20), nullable=True, default="market"
     )  # 'market', 'limit', 'trigger'

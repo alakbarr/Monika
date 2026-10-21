@@ -336,7 +336,11 @@ class RiskGate(
             (
                 "daily_drawdown",
                 self._check_daily_drawdown(
-                    session, equity, simulated_daily_pnl=simulated_daily_pnl, is_backtest=is_backtest
+                    session,
+                    equity,
+                    simulated_daily_pnl=simulated_daily_pnl,
+                    is_backtest=is_backtest,
+                    is_paper=effective_is_paper,
                 ),
             ),
             (

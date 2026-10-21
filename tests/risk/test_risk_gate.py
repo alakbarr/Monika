@@ -396,15 +396,17 @@ class TestRiskGate:
         mock_paper.direction = "buy"
         mock_paper.entry_price = 1.1000
         mock_paper.stop_loss = 1.0900  # sl_dist = 0.0100
+        mock_paper.initial_stop_loss = 1.0900
         mock_paper.risk_pct = 5.0
+        mock_paper.initial_risk_pct = 5.0
 
         mock_session = create_mock_async_session()
 
-        # 1st execute: select(RiskState) -> None
+        # 1st execute: select(PaperTradeRecord closed today) -> none
         exec_state = MagicMock()
-        exec_state.scalar_one_or_none.return_value = None
+        exec_state.scalars.return_value.all.return_value = []
 
-        # 2nd execute: select(PaperTradeRecord) -> [mock_paper]
+        # 2nd execute: select(PaperTradeRecord open) -> [mock_paper]
         exec_paper = MagicMock()
         exec_paper.scalars.return_value.all.return_value = [mock_paper]
 

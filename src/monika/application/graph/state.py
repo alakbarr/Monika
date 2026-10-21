@@ -106,6 +106,7 @@ class TradingSummary(TypedDict, total=False):
     # Risk Gate & Execution
     portfolio_synthesis_approved: List[str]
     execution: Optional[Dict[str, Any]]
+    execution_stats: Dict[str, Any]
     api_cost_usd: Optional[float]
     plan_refinements: Optional[Any]
     is_ad_hoc: Optional[bool]

@@ -321,7 +321,7 @@
 - **Classes**:
   - `class PaperTracker`: Memantau posisi paper trade terbuka & melikuidasi saat menyentuh SL/TP.
     - `__init__(settings: dict | None)`
-    - `async update_paper_trade_sl(session: AsyncSession, analysis_id: int, new_sl: float) -> None` - *Update Stop Loss for an open paper trade (used by TrailingStopManager).*
+    - `async update_paper_trade_sl(session: AsyncSession, analysis_id: int, new_sl: float) -> None` - *Update the *current* stop loss for an open paper trade (used by TrailingStopManager).*
     - `async open_paper_trade(session: AsyncSession, analysis: AssetAnalysis, risk_pct: float) -> None` - *Open a paper trade respecting the entry condition type.*
     - `async check_and_close_trades(session: AsyncSession) -> list[dict]` - *Check and close paper trades using M15 data for accuracy.*
     - `async get_suspended_symbols(session: AsyncSession) -> list[str]` - *Return list of symbols currently suspended due to poor performance*

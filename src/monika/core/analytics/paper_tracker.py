@@ -10,6 +10,7 @@ dan mensimulasikan hasil jika harga mengenai SL atau TP.
 
 import asyncio
 import logging
+import math
 from datetime import datetime, timedelta, timezone, UTC
 from typing import Any, Dict, List, Optional
 
@@ -18,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
 from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
+from monika.domain.risk.position_math import validated_stop_distance
 from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord, Position, PriceOHLCV
 
 logger = logging.getLogger("TradingAgent.PaperTracker")
@@ -47,7 +49,14 @@ class PaperTracker:
             self.settings = settings
 
     async def update_paper_trade_sl(self, session: AsyncSession, analysis_id: int, new_sl: float) -> None:
-        """Update Stop Loss for an open paper trade (used by TrailingStopManager)."""
+        """Update the *current* stop loss for an open paper trade (used by TrailingStopManager).
+
+        The entry-time anchor (``initial_stop_loss``) is never touched here: it is
+        the denominator of realized R and must stay immutable.
+        """
+        if new_sl is None or not math.isfinite(float(new_sl)) or float(new_sl) <= 0:
+            logger.error(f"[PAPER] Refusing invalid trailing SL {new_sl!r} for analysis_id {analysis_id}")
+            return
         trade = (
             await session.execute(
                 select(PaperTradeRecord)
@@ -57,8 +66,29 @@ class PaperTracker:
         ).scalar_one_or_none()
 
         if trade:
-            trade.stop_loss = new_sl
+            trade.stop_loss = float(new_sl)
             logger.debug(f"[PAPER] Updated SL for analysis_id {analysis_id} to {new_sl}")
+
+    async def _resolve_initial_stop_loss(self, session: AsyncSession, trade: PaperTradeRecord) -> float | None:
+        """Return the immutable entry stop, resolving it deterministically when legacy rows lack it.
+
+        Never reads the mutable ``stop_loss`` column and never relies on an ORM
+        relationship: the previous lazy-relationship fallback silently returned
+        the trailing stop, which is exactly the accounting bug being fixed.
+        """
+        if trade.initial_stop_loss is not None:
+            return float(trade.initial_stop_loss)
+        if not trade.analysis_id:
+            return None
+        resolved = (
+            await session.execute(select(AssetAnalysis.stop_loss).where(AssetAnalysis.id == trade.analysis_id))
+        ).scalar_one_or_none()
+        if resolved is None:
+            return None
+        trade.initial_stop_loss = float(resolved)
+        if trade.initial_risk_pct is None and trade.risk_pct is not None:
+            trade.initial_risk_pct = float(trade.risk_pct)
+        return trade.initial_stop_loss
 
     async def _close_linked_position(self, session: AsyncSession, trade: PaperTradeRecord) -> None:
         """Mirror PaperTradeRecord closure into the Position table.
@@ -77,7 +107,23 @@ class PaperTracker:
         ).scalar_one_or_none()
         if pos:
             pos.status = "closed"
-            pos.closed_at = trade.closed_at or datetime.now(UTC)
+            closed_at = trade.closed_at or datetime.now(UTC)
+            if closed_at.tzinfo is None:
+                closed_at = closed_at.replace(tzinfo=UTC)
+            if pos.opened_at is not None:
+                if pos.opened_at.tzinfo is None:
+                    pos.opened_at = pos.opened_at.replace(tzinfo=UTC)
+                if closed_at < pos.opened_at:
+                    closed_at = pos.opened_at
+            pos.closed_at = closed_at
+            # Mirror the verified paper result into Position.pnl; never fabricate a
+            # number when accounting is unverifiable (fail closed, leave NULL).
+            if trade.pnl_pct is not None:
+                init_bal = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0) or 10000.0)
+                pos.pnl = round(init_bal * (trade.pnl_pct / 100.0), 2)
+            else:
+                pos.pnl = None
+            pos.sl = trade.stop_loss
             logger.debug(f"[PAPER] Linked Position id={pos.id} closed with PaperTradeRecord {trade.id}")
 
     # -------------------------------------------------------------------------
@@ -190,6 +236,14 @@ class PaperTracker:
         req_lot = kwargs.get("requested_lot") or kwargs.get("lot_size")
         req_lot_float = float(req_lot) if req_lot is not None else None
 
+        entry_anchor_ok = validated_stop_distance(analysis.decision, actual_entry, analysis.stop_loss) is not None
+        if not entry_anchor_ok:
+            logger.error(
+                f"[PAPER] Invalid entry risk anchor for {analysis.symbol} {analysis.decision}: "
+                f"entry={actual_entry} stop_loss={analysis.stop_loss}. "
+                "Trade is recorded but its realized PnL will not be trusted (fail closed)."
+            )
+
         trade = PaperTradeRecord(
             analysis_id=analysis.id,
             symbol=analysis.symbol,
@@ -197,6 +251,10 @@ class PaperTracker:
             entry_price=actual_entry,  # Stated/actual fill price
             stop_loss=analysis.stop_loss,
             take_profit=analysis.take_profit,
+            # Immutable entry-time anchor: trailing must never rewrite realized R.
+            initial_stop_loss=analysis.stop_loss,
+            initial_risk_pct=risk_pct,
+            accounting_status="ok" if entry_anchor_ok else "invalid_initial_stop",
             opened_at=clock.now(),
             status="open",
             risk_pct=risk_pct,
@@ -299,16 +357,25 @@ class PaperTracker:
         # harga. Ini membuat biaya exit tidak konsisten dengan biaya entry.
         spread = self._get_realistic_spread(trade.symbol)
         try:
-            default_risk = float(self.settings.get("trading", {}).get("risk", {}).get("risk_percent_per_trade", 0.5))
             tp_method = self.settings.get("paper_trading", {}).get("tp_detection_method", "close_price")
             sl_conflict = self.settings.get("paper_trading", {}).get("realistic_sl_tp_conflict", "sl_wins")
         except Exception:
-            default_risk = 0.5
             tp_method = "close_price"
             sl_conflict = "sl_wins"
 
-        # Get risk_pct - use stored value or default from settings
-        risk_pct = getattr(trade, "risk_pct", None) or default_risk
+        # Realized R must be measured against the risk taken at entry, not the
+        # stop that trailing may have moved since. Resolve it once per call.
+        risk_pct = trade.initial_risk_pct if trade.initial_risk_pct is not None else trade.risk_pct
+        if risk_pct is None or float(risk_pct) <= 0.0:
+            risk_pct = None
+        initial_stop = await self._resolve_initial_stop_loss(session, trade)
+        sl_distance = validated_stop_distance(trade.direction, trade.entry_price, initial_stop)
+        if sl_distance is None:
+            logger.error(
+                f"[PAPER] Unverifiable risk anchor for trade {trade.id} "
+                f"({trade.symbol} {trade.direction}): entry={trade.entry_price} "
+                f"initial_stop={initial_stop}. Realized PnL will be recorded as unverified."
+            )
 
         def _get_slip_key(bar_timestamp, is_news):
             if is_news:
@@ -373,7 +440,8 @@ class PaperTracker:
             actual_slippage = slippage * gap_multiplier
             # Apply half-spread symmetrically on exit legs for both long and short positions.
             if sl_hit:
-                # Check if SL is at or beyond breakeven (entry price)
+                # A stop at/beyond entry is a breakeven or profit-locked trailing
+                # stop. Its PnL must come from the exit price, not be forced to 0.
                 is_be_or_profit_sl = False
                 if trade.entry_price and trade.stop_loss:
                     if trade.direction == "buy" and trade.stop_loss >= trade.entry_price:
@@ -382,11 +450,11 @@ class PaperTracker:
                         is_be_or_profit_sl = True
 
                 if is_be_or_profit_sl:
-                    exit_reason = "breakeven"
                     if trade.direction == "buy":
                         exit_price = max(trade.entry_price, trade.stop_loss - spread / 2)
                     else:
                         exit_price = min(trade.entry_price, trade.stop_loss + spread / 2)
+                    exit_reason = "breakeven" if abs(exit_price - trade.entry_price) < 1e-9 else "trailing_sl"
                 else:
                     exit_reason = "sl_hit"
                     if trade.direction == "buy":
@@ -400,48 +468,24 @@ class PaperTracker:
                 else:
                     exit_price = trade.take_profit + spread / 2 + slippage * 0.5
 
-            # Kalkulasi P&L
-            if trade.entry_price and exit_price:
-                if trade.direction == "buy":
-                    actual_move = exit_price - trade.entry_price
+            # Realized R against the immutable entry anchor. Never fall back to
+            # the mutable trailing stop and never invent a default R.
+            rr_achieved: float | None = None
+            pnl_pct: float | None = None
+            if trade.entry_price is not None and exit_price is not None:
+                if sl_distance is not None and risk_pct is not None:
+                    actual_move = (
+                        float(exit_price) - float(trade.entry_price)
+                        if trade.direction == "buy"
+                        else float(trade.entry_price) - float(exit_price)
+                    )
+                    rr_achieved = actual_move / sl_distance
+                    pnl_pct = risk_pct * rr_achieved
+                    trade.accounting_status = "ok"
                 else:
-                    actual_move = trade.entry_price - exit_price
-
-                # Check for Breakeven exit (exit_reason or virtually zero price difference)
-                is_breakeven = False
-                if exit_reason in ("breakeven", "breakeven_sl", "be_hit"):
-                    is_breakeven = True
-                elif abs(exit_price - trade.entry_price) < 1e-5:
-                    is_breakeven = True
-
-                if is_breakeven:
-                    rr_achieved = 0.0
-                    pnl_pct = 0.0
-                elif trade.stop_loss:
-                    # Determine initial SL distance if available via analysis or current SL
-                    initial_sl = None
-                    if getattr(trade, "analysis_id", None):
-                        try:
-                            analysis_obj = getattr(trade, "analysis", None)
-                            if analysis_obj and getattr(analysis_obj, "stop_loss", None):
-                                initial_sl = analysis_obj.stop_loss
-                        except Exception:
-                            pass
-                    sl_ref = initial_sl if initial_sl is not None else trade.stop_loss
-                    sl_distance = abs(trade.entry_price - sl_ref)
-
-                    if sl_distance > 1e-6:
-                        rr_achieved = actual_move / sl_distance
-                        pnl_pct = risk_pct * rr_achieved
-                    else:
-                        rr_achieved = 0.0 if abs(actual_move) < 1e-5 else (1.0 if actual_move > 0 else -1.0)
-                        pnl_pct = 0.0 if abs(actual_move) < 1e-5 else (risk_pct if actual_move > 0 else -risk_pct)
-                else:
-                    rr_achieved = None
-                    pnl_pct = risk_pct if exit_reason == "tp_hit" else -risk_pct
+                    trade.accounting_status = "invalid_initial_stop"
             else:
-                rr_achieved = None
-                pnl_pct = risk_pct if exit_reason == "tp_hit" else -risk_pct
+                trade.accounting_status = "invalid_exit_price"
 
             raw_opened = trade.opened_at
             raw_bar_ts = bar.timestamp
@@ -453,7 +497,7 @@ class PaperTracker:
                 holding_hours = 0.0
             trade.holding_hours = holding_hours
 
-            if holding_hours > 24:
+            if holding_hours > 24 and pnl_pct is not None:
                 swap_enabled = (
                     self.settings.get("trading", {}).get("edge_strategy", {}).get("swap_modeling_enabled", True)
                 )
@@ -479,7 +523,7 @@ class PaperTracker:
                     pnl_pct += swap_abs / max(1.0, init_bal) * 100
 
             trade.status = "closed"
-            trade.closed_at = bar.timestamp
+            trade.closed_at = bar.timestamp if bar.timestamp.tzinfo is not None else bar.timestamp.replace(tzinfo=UTC)
             raw_closed = trade.closed_at
             if raw_opened is not None and raw_closed is not None:
                 c_ts = raw_closed if raw_closed.tzinfo is not None else raw_closed.replace(tzinfo=timezone.utc)
@@ -490,7 +534,7 @@ class PaperTracker:
             trade.exit_price = exit_price
             trade.exit_reason = exit_reason[:100]
             trade.detection_method = f"{tp_method}_tp_{sl_conflict}_sl"[:100]
-            trade.pnl_pct = round(pnl_pct, 4)
+            trade.pnl_pct = round(pnl_pct, 4) if pnl_pct is not None else None
 
             return {
                 "symbol": trade.symbol,
@@ -501,6 +545,7 @@ class PaperTracker:
                 "exit_reason": trade.exit_reason,
                 "holding_hours": trade.holding_hours,
                 "rr_achieved": rr_achieved,
+                "accounting_status": trade.accounting_status,
                 "detection_tf": timeframe,
             }
         return None
@@ -537,21 +582,37 @@ class PaperTracker:
                                 )
                             ).scalar_one_or_none()
 
-                            if last_bar:
-                                exit_price = last_bar.close
-                                if trade.entry_price:
-                                    move = exit_price - trade.entry_price
-                                    if trade.direction == "sell":
-                                        move = -move
-                                    sl_dist = abs(trade.entry_price - trade.stop_loss) if trade.stop_loss else 1
-                                    pnl_pct = (move / sl_dist) * (trade.risk_pct or 0.75) if sl_dist > 0 else 0
-                                else:
-                                    pnl_pct = 0
-                            else:
-                                exit_price = trade.entry_price
-                                pnl_pct = 0
+                            exit_price = float(last_bar.close) if last_bar and last_bar.close else None
+                            initial_stop = await self._resolve_initial_stop_loss(session, trade)
+                            sl_dist = validated_stop_distance(trade.direction, trade.entry_price, initial_stop)
+                            risk_pct = trade.initial_risk_pct if trade.initial_risk_pct is not None else trade.risk_pct
+                            if risk_pct is not None and float(risk_pct) <= 0.0:
+                                risk_pct = None
 
-                            if age_hours > 24:
+                            pnl_pct: float | None = None
+                            if exit_price is None:
+                                trade.accounting_status = "invalid_exit_price"
+                                logger.error(
+                                    f"[PAPER] Force-close {trade.symbol} trade {trade.id}: no price bar available; "
+                                    "PnL left unverified"
+                                )
+                            elif sl_dist is None or risk_pct is None:
+                                trade.accounting_status = "invalid_initial_stop"
+                                logger.error(
+                                    f"[PAPER] Force-close {trade.symbol} trade {trade.id}: invalid risk anchor "
+                                    f"(entry={trade.entry_price}, initial_sl={initial_stop}, risk_pct={risk_pct}); "
+                                    "PnL left unverified"
+                                )
+                            else:
+                                move = (
+                                    exit_price - trade.entry_price
+                                    if trade.direction == "buy"
+                                    else trade.entry_price - exit_price
+                                )
+                                pnl_pct = (move / sl_dist) * float(risk_pct)
+                                trade.accounting_status = "ok"
+
+                            if age_hours > 24 and pnl_pct is not None:
                                 swap_enabled = (
                                     self.settings.get("trading", {})
                                     .get("edge_strategy", {})
@@ -584,16 +645,18 @@ class PaperTracker:
                             trade.closed_at = now
                             trade.exit_price = exit_price
                             trade.exit_reason = "max_holding_time"
-                            trade.pnl_pct = round(pnl_pct, 4)
+                            trade.pnl_pct = round(pnl_pct, 4) if pnl_pct is not None else None
                             trade.holding_hours = age_hours
                             await self._close_linked_position(session, trade)
                             logger.warning(
-                                f"[PAPER] Force-closed {trade.symbol} after {age_hours:.0f}h (max holding time)"
+                                f"[PAPER] Force-closed {trade.symbol} after {age_hours:.0f}h (max holding time), "
+                                f"accounting={trade.accounting_status}"
                             )
                             current_closed_item = {
                                 "symbol": trade.symbol,
                                 "exit_reason": "max_holding_time",
-                                "pnl_pct": pnl_pct,
+                                "pnl_pct": trade.pnl_pct,
+                                "accounting_status": trade.accounting_status,
                             }
                             closed.append(current_closed_item)
                             try:
@@ -618,6 +681,9 @@ class PaperTracker:
                                 trade.exit_reason = "expired_limit"
                                 trade.pnl_pct = 0.0
                                 trade.exit_price = trade.entry_price
+                                # No capital was ever at risk: zero PnL is a fact,
+                                # not an unverified estimate.
+                                trade.accounting_status = "not_filled"
                                 await self._close_linked_position(session, trade)
                                 logger.info(
                                     f"[PAPER] EXPIRED limit order {trade.symbol} {trade.direction} (never filled after 48h)"
@@ -644,9 +710,11 @@ class PaperTracker:
                         current_closed_item = result
                         closed.append(result)
                         await self._close_linked_position(session, trade)
+                        pnl_text = f"{result['pnl_pct']:.2f}%" if result["pnl_pct"] is not None else "UNVERIFIED"
                         logger.info(
                             f"[PAPER] Closed {trade.symbol} {trade.direction}: "
-                            f"{result['exit_reason']}, P&L={result['pnl_pct']:.2f}%, "
+                            f"{result['exit_reason']}, P&L={pnl_text}, "
+                            f"accounting={result.get('accounting_status', 'unknown')}, "
                             f"detected_on={result.get('detection_tf', 'unknown')}"
                         )
 
@@ -668,14 +736,14 @@ class PaperTracker:
                         except Exception as e:
                             logger.debug(f"Decay outcome recording failed (non-fatal): {e}")
 
-                        if trade.analysis_id:
+                        if trade.analysis_id and trade.pnl_pct is not None:
                             try:
                                 from monika.application.analysis.memory.outcome_linker import OutcomeLinker
 
                                 await OutcomeLinker(self.settings).process_closed_position(
                                     session,
                                     analysis_id=trade.analysis_id,
-                                    pnl=trade.pnl_pct or 0.0,
+                                    pnl=trade.pnl_pct,
                                     holding_hours=trade.holding_hours or 0.0,
                                     exit_reason=trade.exit_reason or "unknown",
                                 )
@@ -757,6 +825,9 @@ class PaperTracker:
     async def _record_decay_outcome(self, session: AsyncSession, trade: PaperTradeRecord) -> None:
         """Record paper trade outcome into StrategyDecayMonitor for edge alpha degradation tracking."""
         if not trade.analysis_id:
+            return
+        if trade.pnl_pct is None:
+            logger.warning(f"[PAPER] Skipping decay outcome for trade {trade.id}: PnL is unverified")
             return
         try:
             from monika.infrastructure.database.models import AssetAnalysis
@@ -1116,6 +1187,10 @@ class PaperTracker:
             select(PaperTradeRecord, AssetAnalysis)
             .outerjoin(AssetAnalysis, PaperTradeRecord.analysis_id == AssetAnalysis.id)
             .where(PaperTradeRecord.status == "closed")
+            # Phase 0: only rows with a verified entry-time risk anchor may
+            # contribute to expectancy/win-rate/PF. Unverified rows are excluded
+            # instead of being silently counted as breakeven.
+            .where(PaperTradeRecord.accounting_status == "ok")
         )
         if days_back is not None:
             since = clock.now() - timedelta(days=days_back)

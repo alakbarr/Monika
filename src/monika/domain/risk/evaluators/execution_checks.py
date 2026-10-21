@@ -480,6 +480,21 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
         if pending_order is not None and not pair_group_id:
             return False, f"Already have an active pending/in-flight order for {symbol} (id={pending_order})"
 
+        # Phase 0: in paper mode the PaperTradeRecord IS the exposure. Position
+        # rows are synced later, so relying on them alone allowed duplicate
+        # entries (two BTCUSD buys 74 minutes apart on 16 Oct 2026).
+        if is_paper and not pair_group_id:
+            existing_paper = (
+                await session.execute(
+                    select(PaperTradeRecord.id)
+                    .where(PaperTradeRecord.symbol == symbol)
+                    .where(PaperTradeRecord.status == "open")
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if existing_paper is not None:
+                return False, f"Already have an open paper trade for {symbol} (id={existing_paper})"
+
         if pair_group_id:
             # DB-15: Posisi dengan pair_group_id diizinkan multi-leg/tranche dalam group yang sama
             conflict_stmt = (

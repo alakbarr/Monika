@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 import monika.core.primitives.clock as clock
 from monika.domain.market.currency_utils import get_symbol_currencies
 from monika.domain.risk.evaluators.base import _RiskGateMixinBase, get_trading_day_start, resolve_model
+from monika.domain.risk.position_math import validated_stop_distance
 from monika.domain.risk.position_sizing import PositionSizer, SizingResult
 
 Position: Any = resolve_model("Position")
@@ -113,54 +114,59 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
 
         now = clock.now()
         week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-
-        # Paper trades closed this week
-        paper_trades = (
-            (
-                await session.execute(
-                    select(PaperTradeRecord).where(
-                        PaperTradeRecord.closed_at >= week_start,
-                        PaperTradeRecord.closed_at <= now,
-                        PaperTradeRecord.status == "closed",
-                    )
-                )
-            )
-            .scalars()
-            .all()
-        )
-        paper_weekly_pnl = sum(t.pnl_pct or 0 for t in paper_trades)
-
-        # Live trades closed this week
-        live_outcomes = (
-            (
-                await session.execute(
-                    select(TradeOutcome).where(TradeOutcome.closed_at >= week_start, TradeOutcome.closed_at <= now)
-                )
-            )
-            .scalars()
-            .all()
-        )
-        live_weekly_pnl = 0.0
+        max_weekly = float(self.settings.get("trading", {}).get("risk", {}).get("max_weekly_drawdown_percent", 6.0))
+        # Direct callers (unit tests, wellness) historically used ``dry_run`` as
+        # the paper-mode signal. The main evaluate() path passes is_paper
+        # explicitly, so this default only preserves that contract.
+        is_paper_mode = is_paper if is_paper is not None else bool(getattr(self, "dry_run", False))
         eff_equity = (
-            equity
+            float(equity)
             if (equity is not None and equity > 0)
             else float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
         )
-        if live_outcomes and eff_equity > 0:
-            total_live_profit = sum(o.pnl_usd or 0.0 for o in live_outcomes)
-            live_weekly_pnl = (total_live_profit / eff_equity) * 100.0
+        if eff_equity <= 0:
+            return False, "Weekly drawdown unverifiable: equity is missing or non-positive"
 
-        # Decouple: Live trading is governed by live PnL; paper trading by paper PnL.
-        is_paper_mode = (
-            is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
-        )
-        if not is_paper_mode and live_outcomes:
-            weekly_pnl = live_weekly_pnl
-        elif live_outcomes and not is_paper_mode:
-            weekly_pnl = live_weekly_pnl
+        if is_paper_mode:
+            paper_trades = (
+                (
+                    await session.execute(
+                        select(PaperTradeRecord).where(
+                            PaperTradeRecord.closed_at >= week_start,
+                            PaperTradeRecord.closed_at <= now,
+                            PaperTradeRecord.status == "closed",
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            # Phase 0 fail-closed: a closed trade whose entry-time anchor cannot
+            # be verified must block the limit, not be silently counted as zero.
+            unverified = [t for t in paper_trades if t.accounting_status not in ("ok", "not_filled")]
+            if unverified:
+                sample = unverified[0]
+                return False, (
+                    f"Weekly drawdown unverifiable: {len(unverified)} closed paper trade(s) this week lack "
+                    f"a verified entry-time risk anchor (e.g. {sample.symbol} id={sample.id}, "
+                    f"status={sample.accounting_status}). Refusing to trust unverified PnL."
+                )
+            verified = [t for t in paper_trades if t.accounting_status == "ok"]
+            total_paper_profit = sum(eff_equity * (float(t.pnl_pct or 0.0) / 100.0) for t in verified)
+            weekly_pnl = (total_paper_profit / eff_equity) * 100.0
         else:
-            weekly_pnl = paper_weekly_pnl
-        max_weekly = self.settings.get("trading", {}).get("risk", {}).get("max_weekly_drawdown_percent", 6.0)
+            live_outcomes = (
+                (
+                    await session.execute(
+                        select(TradeOutcome).where(TradeOutcome.closed_at >= week_start, TradeOutcome.closed_at <= now)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            total_live_profit = sum(float(o.pnl_usd or 0.0) for o in live_outcomes)
+            weekly_pnl = (total_live_profit / eff_equity) * 100.0
+
         if weekly_pnl <= -max_weekly:
             return False, f"Weekly loss {weekly_pnl:.2f}% >= limit {max_weekly}%"
         return True, f"weekly_pnl={weekly_pnl:.2f}%/{-max_weekly}%"
@@ -171,6 +177,7 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
         equity: float | None = None,
         simulated_daily_pnl: float | None = None,
         is_backtest: bool = False,
+        is_paper: bool | None = None,
     ) -> tuple[bool, str]:
         """Periksa apakah drawdown hari ini (realized + unrealized loss) belum melampaui batas."""
         if is_backtest:
@@ -187,82 +194,129 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
         from sqlalchemy import select
 
         today_start = get_trading_day_start(self.settings)
-        state = (
-            await session.execute(
-                select(RiskState).where(RiskState.date >= today_start).order_by(RiskState.date.desc()).limit(1)
-            )
-        ).scalar_one_or_none()
-
-        realized_pnl = 0.0
-        if state is None:
-            # First trade of the day: initialize baseline state record from account equity
-            try:
-                state = RiskState(
-                    date=clock.now(),
-                    daily_pnl=0.0,
-                    current_drawdown=0.0,
-                    trading_paused=False,
-                )
-                session.add(state)
-                await session.flush()
-            except Exception as init_err:
-                logger.debug(f"Failed to initialize baseline RiskState: {init_err}")
-        else:
-            realized_pnl = state.daily_pnl
-
-        # Calculate unrealized PnL from MT5
-        unrealized_pnl = 0.0
-        is_dry = getattr(self, "dry_run", getattr(self, "_dry_run", False))
-        if self._mt5 and not is_dry:
-            try:
-                positions = await self._mt5.get_open_positions()
-                unrealized_pnl = sum(p.get("profit", 0.0) for p in positions)
-            except Exception as e:
-                logger.debug(f"Failed to fetch MT5 positions for unrealized PnL: {e}")
-        elif is_dry:
-            try:
-                open_papers = (
-                    (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open")))
-                    .scalars()
-                    .all()
-                )
-                unrealized_pnl = 0.0
-                for paper in open_papers:
-                    last_bar = (
-                        await session.execute(
-                            select(PriceOHLCV.close)
-                            .where(PriceOHLCV.symbol == paper.symbol)
-                            .order_by(PriceOHLCV.timestamp.desc())
-                            .limit(1)
-                        )
-                    ).scalar_one_or_none()
-                    if last_bar and paper.entry_price and paper.stop_loss:
-                        sl_dist = abs(paper.entry_price - paper.stop_loss)
-                        if sl_dist > 0:
-                            diff = (
-                                (last_bar - paper.entry_price)
-                                if paper.direction == "buy"
-                                else (paper.entry_price - last_bar)
-                            )
-                            risk_pct = paper.risk_pct or 0.75
-                            trade_pnl_pct = risk_pct * (diff / sl_dist)
-                            unrealized_pnl += (equity or 10000.0) * (trade_pnl_pct / 100.0)
-            except Exception as e:
-                logger.debug(f"Failed to calc paper unrealized PnL: {e}")
-
-        # We track Daily Drawdown as the net daily PnL (realized + unrealized).
-        # A true daily loss limit is based on the starting equity of the day.
+        now = clock.now()
+        # See _check_weekly_drawdown: evaluate() passes is_paper explicitly;
+        # direct callers keep the historical dry_run signal.
+        is_paper_mode = is_paper if is_paper is not None else bool(getattr(self, "dry_run", False))
         eff_equity = (
-            equity
+            float(equity)
             if (equity is not None and equity > 0)
             else float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
         )
-        total_daily_pnl = (state.daily_pnl if state else realized_pnl) + unrealized_pnl
-        drawdown_pct = (abs(total_daily_pnl) / eff_equity * 100) if (eff_equity > 0 and total_daily_pnl < 0) else 0.0
+        if eff_equity <= 0:
+            return False, "Daily drawdown unverifiable: equity is missing or non-positive"
+
+        if is_paper_mode:
+            # Paper closes never reach RiskGate.update_risk_state (that path is
+            # wired to broker closes), so RiskState.daily_pnl is structurally
+            # zero in paper mode. Derive today's realized PnL from the verified
+            # paper ledger itself.
+            closed_today = (
+                (
+                    await session.execute(
+                        select(PaperTradeRecord).where(
+                            PaperTradeRecord.status == "closed",
+                            PaperTradeRecord.closed_at >= today_start,
+                            PaperTradeRecord.closed_at <= now,
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            unverified = [t for t in closed_today if t.accounting_status not in ("ok", "not_filled")]
+            if unverified:
+                sample = unverified[0]
+                return False, (
+                    f"Daily drawdown unverifiable: {len(unverified)} closed paper trade(s) today lack "
+                    f"a verified entry-time risk anchor (e.g. {sample.symbol} id={sample.id}, "
+                    f"status={sample.accounting_status}). Refusing to trust unverified PnL."
+                )
+            realized_pnl = sum(
+                eff_equity * (float(t.pnl_pct or 0.0) / 100.0) for t in closed_today if t.accounting_status == "ok"
+            )
+
+            unrealized_pnl = 0.0
+            open_papers = (
+                (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open")))
+                .scalars()
+                .all()
+            )
+            for paper in open_papers:
+                last_bar = (
+                    await session.execute(
+                        select(PriceOHLCV.close)
+                        .where(PriceOHLCV.symbol == paper.symbol)
+                        .order_by(PriceOHLCV.timestamp.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
+                if last_bar is None:
+                    return False, (
+                        f"Daily drawdown unverifiable: no price for open paper trade {paper.symbol} id={paper.id}"
+                    )
+                anchor = paper.initial_stop_loss
+                if anchor is None and paper.analysis_id:
+                    anchor = (
+                        await session.execute(
+                            select(AssetAnalysis.stop_loss).where(AssetAnalysis.id == paper.analysis_id)
+                        )
+                    ).scalar_one_or_none()
+                sl_dist = validated_stop_distance(paper.direction, paper.entry_price, anchor)
+                if sl_dist is None:
+                    return False, (
+                        f"Daily drawdown unverifiable: invalid entry stop for open paper trade "
+                        f"{paper.symbol} id={paper.id} (entry={paper.entry_price}, anchor={anchor})"
+                    )
+                risk_pct = paper.initial_risk_pct if paper.initial_risk_pct is not None else paper.risk_pct
+                if risk_pct is None or float(risk_pct) <= 0.0:
+                    return False, (
+                        f"Daily drawdown unverifiable: missing risk_pct for open paper trade "
+                        f"{paper.symbol} id={paper.id}"
+                    )
+                diff = (
+                    (float(last_bar) - paper.entry_price)
+                    if paper.direction == "buy"
+                    else (paper.entry_price - float(last_bar))
+                )
+                trade_pnl_pct = float(risk_pct) * (diff / sl_dist)
+                unrealized_pnl += eff_equity * (trade_pnl_pct / 100.0)
+        else:
+            state = (
+                await session.execute(
+                    select(RiskState).where(RiskState.date >= today_start).order_by(RiskState.date.desc()).limit(1)
+                )
+            ).scalar_one_or_none()
+            if state is None:
+                try:
+                    state = RiskState(
+                        date=clock.now(),
+                        daily_pnl=0.0,
+                        current_drawdown=0.0,
+                        trading_paused=False,
+                    )
+                    session.add(state)
+                    await session.flush()
+                except Exception as init_err:
+                    logger.debug(f"Failed to initialize baseline RiskState: {init_err}")
+            realized_pnl = float(state.daily_pnl) if state is not None else 0.0
+
+            unrealized_pnl = 0.0
+            if self._mt5:
+                try:
+                    positions = await self._mt5.get_open_positions()
+                    unrealized_pnl = sum(float(p.get("profit", 0.0)) for p in positions)
+                except Exception as e:
+                    logger.debug(f"Failed to fetch MT5 positions for unrealized PnL: {e}")
+
+        # We track Daily Drawdown as the net daily PnL (realized + unrealized).
+        # A true daily loss limit is based on the starting equity of the day.
+        total_daily_pnl = realized_pnl + unrealized_pnl
+        drawdown_pct = (abs(total_daily_pnl) / eff_equity * 100) if total_daily_pnl < 0 else 0.0
 
         # We also enforce that unrealized loss on its own cannot exceed the limit.
         if unrealized_pnl < 0:
-            unrealized_dd_pct = (abs(unrealized_pnl) / eff_equity * 100) if eff_equity > 0 else 0.0
+            unrealized_dd_pct = abs(unrealized_pnl) / eff_equity * 100
             if unrealized_dd_pct >= self.max_daily_drawdown_pct:
                 return False, (
                     f"Unrealized drawdown {unrealized_dd_pct:.2f}% >= limit {self.max_daily_drawdown_pct}%. "
