@@ -2172,6 +2172,7 @@ Monika/
 │   │   │   ├── test_structured_fallback.py
 │   │   │   └── test_typesafe_provider.py
 │   │   ├── strategies/
+│   │   │   ├── test_evidence_significance.py
 │   │   │   ├── test_evidence_store_aging.py
 │   │   │   ├── test_gbpusd_trend_breakout.py
 │   │   │   ├── test_promoted_empirical_strategies.py
@@ -3072,4 +3073,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 266 | **Total Tracked Files**: 2776
+**Total Tracked Directories**: 266 | **Total Tracked Files**: 2777

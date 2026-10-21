@@ -87,7 +87,7 @@ async def test_lesson_consolidator_symbol_partitioning():
 
 @pytest.mark.asyncio
 async def test_signal_arbitrator_concordant_atr_gap_guard_quant_priority():
-    """Verify ATR gap guard selects Quant levels when Quant has superior R:R and gap > 0.5 ATR."""
+    """Verify the ATR gap guard still selects Quant levels when the LLM is not decisive."""
     arbitrator = SignalArbitrator(
         settings={"trading": {"arbitration": {"concordant_boost_conf": 0.05, "concordant_risk_multiplier": 1.15}}}
     )
@@ -106,6 +106,55 @@ async def test_signal_arbitrator_concordant_atr_gap_guard_quant_priority():
 
     # LLM setup: Stale/Divergent Entry 1.1050 (Gap = 0.0050 > 0.5*0.0020=0.0010)
     # SL 1.1020 (Risk 0.0030), TP 1.1080 (Reward 0.0030) -> R:R = 1.0
+    llm_dec = {
+        "decision": "buy",
+        "confidence": 0.55,
+        "entry_price": 1.1050,
+        "stop_loss": 1.1020,
+        "take_profit": 1.1080,
+        "risk_multiplier": 1.0,
+    }
+
+    mock_session = create_mock_async_session()
+    with patch(
+        "monika.core.calibration.confidence_calibrator.get_calibrated_confidence", new_callable=AsyncMock
+    ) as mock_cal:
+        mock_cal.return_value = 0.55
+        res = await arbitrator.arbitrate(
+            session=mock_session,
+            symbol="EURUSD",
+            quant_signal=quant_sig,
+            llm_decision=llm_dec,
+            market_regime="trending_bullish",
+        )
+
+        assert res.decision == "buy"
+        assert res.selected_source == "concordant"
+        # Should pick Quant's optimal R:R levels
+        assert res.entry_price == 1.1000
+        assert res.stop_loss == 1.0950
+        assert res.take_profit == 1.1150
+        assert res.meta.get("level_source") == "quant"
+
+
+@pytest.mark.asyncio
+async def test_signal_arbitrator_concordant_decisive_llm_keeps_its_levels():
+    """A decisive LLM keeps its own execution levels; the bracket optimizer then
+    guarantees the minimum R:R instead of the quant leg overriding it."""
+    arbitrator = SignalArbitrator(
+        settings={"trading": {"arbitration": {"concordant_boost_conf": 0.05, "concordant_risk_multiplier": 1.15}}}
+    )
+
+    quant_sig = MagicMock(
+        symbol="EURUSD",
+        direction="buy",
+        confidence=0.80,
+        strategy_id="xau_trend",
+        entry_price=1.1000,
+        stop_loss=1.0950,
+        take_profit=1.1150,
+        meta={"atr": 0.0020},
+    )
     llm_dec = {
         "decision": "buy",
         "confidence": 0.75,
@@ -128,13 +177,16 @@ async def test_signal_arbitrator_concordant_atr_gap_guard_quant_priority():
             market_regime="trending_bullish",
         )
 
-        assert res.decision == "buy"
-        assert res.selected_source == "concordant"
-        # Should pick Quant's optimal R:R levels
-        assert res.entry_price == 1.1000
-        assert res.stop_loss == 1.0950
-        assert res.take_profit == 1.1150
-        assert res.meta.get("level_source") == "quant"
+    assert res.decision == "buy"
+    assert res.selected_source == "concordant"
+    assert res.meta.get("level_source") == "llm"
+    # The bracket must stay on the correct side of the entry and respect the
+    # minimum reward-to-risk of the canonical contract.
+    assert res.entry_price > res.stop_loss
+    assert res.take_profit > res.entry_price
+    risk = res.entry_price - res.stop_loss
+    reward = res.take_profit - res.entry_price
+    assert reward / risk >= 1.5
 
 
 # ==============================================================================
