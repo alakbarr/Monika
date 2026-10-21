@@ -75,7 +75,7 @@ async def validate_and_apply_judge_adjustments(
     except ValueError as e:
         return False, f"Judge SL distance error: {e}"
 
-    raw_min_rr = settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)
+    raw_min_rr = settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5)
     min_rr = to_exact_decimal(raw_min_rr)
     if rr < min_rr:
         return False, f"Judge-adjusted R:R={float(rr):.2f} di bawah minimum {float(min_rr)}"

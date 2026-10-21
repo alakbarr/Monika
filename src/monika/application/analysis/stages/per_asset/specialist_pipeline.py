@@ -721,7 +721,7 @@ class SpecialistPipelineMixin:
             }
             from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
-            min_rr = float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3))
+            min_rr = float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5))
             base_sys = (
                 "You are a skeptical second-opinion risk reviewer. Independently sanity-check "
                 f"this trade using ONLY the structured facts given. disagree=true if: R:R < {min_rr:.1f}, "

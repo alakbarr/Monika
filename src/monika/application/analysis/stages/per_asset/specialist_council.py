@@ -184,7 +184,7 @@ class SpecialistCouncil:
             )
 
         # Invariant checks: minimum R:R >= configured min_rr (Fix 6.3)
-        min_rr = float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3))
+        min_rr = float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5))
         est_rr = bundle_data.get("estimated_rr", 2.0)
         if tentative_action != "HOLD" and est_rr < min_rr:
             return SpecialistVote(

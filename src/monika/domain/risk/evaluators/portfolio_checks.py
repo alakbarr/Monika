@@ -114,7 +114,7 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
 
         now = clock.now()
         week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-        max_weekly = float(self.settings.get("trading", {}).get("risk", {}).get("max_weekly_drawdown_percent", 6.0))
+        max_weekly = float(self.settings.get("trading", {}).get("risk", {}).get("max_weekly_drawdown_percent", 15.0))
         # Direct callers (unit tests, wellness) historically used ``dry_run`` as
         # the paper-mode signal. The main evaluate() path passes is_paper
         # explicitly, so this default only preserves that contract.

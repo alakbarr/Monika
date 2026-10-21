@@ -186,7 +186,7 @@ class OutcomeEvaluator:
 
         r_dist = abs(trade.entry_price - trade.stop_loss)
         reward_dist = abs(trade.take_profit - trade.entry_price)
-        min_rr = getattr(risk_gate, "min_rr_ratio", 1.3) if risk_gate else 1.3
+        min_rr = getattr(risk_gate, "min_rr_ratio", 1.5) if risk_gate else 1.5
         if r_dist > 0 and (reward_dist / r_dist) < (min_rr - 1e-4):
             return False, f"RR ratio {reward_dist / r_dist:.2f} < minimum {min_rr}"
 

@@ -39,6 +39,7 @@ from monika.infrastructure.database.models import (
     TradePlanLeg,
 )
 from monika.core.analytics.paper_tracker import PaperTracker
+from monika.core.risk.quant_scorecard import extract_quant_scorecard
 
 if TYPE_CHECKING:
     from monika.application.execution.service.executors.analysis_preflight import PreflightContext
@@ -290,6 +291,7 @@ class AnalysisSubmissionMixin(_ExecutionServiceMixinBase):
                         rat = getattr(analysis, "rationale", "") or ""
                         key_evidence = [s.strip() for s in rat.split(".") if len(s.strip()) > 10][:3]
 
+                    quant_scorecard = extract_quant_scorecard(analysis)
                     signal_dict = {
                         "symbol": symbol,
                         "decision": decision,
@@ -308,6 +310,8 @@ class AnalysisSubmissionMixin(_ExecutionServiceMixinBase):
                         "decision_source": getattr(analysis, "decision_source", None),
                         "source_strategy_id": getattr(analysis, "source_strategy_id", None),
                     }
+                    if quant_scorecard is not None:
+                        signal_dict["quant_scorecard"] = quant_scorecard
                     passed, assertions_failed = await self.evidence_verifier.pre_trade_assertions(
                         signal_dict, session=session
                     )

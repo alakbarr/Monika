@@ -35,7 +35,7 @@ def compute_trade_invariants(
     smc_zones: Optional[List[Dict[str, Any]]] = None,
     sr_zones: Optional[List[Any]] = None,
     timesfm_envelope: Optional[Dict[str, Any]] = None,
-    min_rr: float = 1.3,
+    min_rr: float = 1.5,
     max_adr_sl_pct: float = 0.35,
     tp_adr_min_pct: float = 0.50,
     tp_adr_max_pct: float = 0.80,
@@ -199,7 +199,7 @@ def format_invariants_for_prompt(invariants: Dict[str, Any]) -> str:
     px = invariants.get("current_price", 0.0)
     atr = invariants.get("atr_14", 0.0)
     adr = invariants.get("adr_5d", 0.0)
-    min_rr = invariants.get("min_rr_ratio", 1.3)
+    min_rr = invariants.get("min_rr_ratio", 1.5)
     b_sl = invariants.get("buy_bounds", {}).get("sl_range", [0, 0])
     b_tp = invariants.get("buy_bounds", {}).get("tp_range", [0, 0])
     s_sl = invariants.get("sell_bounds", {}).get("sl_range", [0, 0])

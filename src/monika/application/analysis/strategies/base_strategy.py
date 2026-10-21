@@ -30,17 +30,9 @@ QUARANTINED_STRATEGY_IDS: set[str] = {
     "alpha_xtiusd_83031c",
 }
 
-PROMOTED_EMPIRICAL_STRATEGIES: set[str] = {
-    "tokyo_open_sweep",
-    "liquidity_sweep",
-    "smt_divergence",
-    "bb_volume_profile",
-    "vwap_mean_reversion",
-    "usdjpy_atr_exhaustion",
-    "xtiusd_atr_exhaustion",
-    "btcusd_dynamic_donchian",
-    "tsm_momentum",
-}
+# Deprecated compatibility symbol. Strategy promotion is decided exclusively by the
+# evidence store (see StrategyRegistry.get_tier); this set must stay empty.
+PROMOTED_EMPIRICAL_STRATEGIES: set[str] = set()
 
 
 class CandleDict(dict):

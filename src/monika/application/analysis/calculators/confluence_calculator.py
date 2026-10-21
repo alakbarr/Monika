@@ -192,7 +192,7 @@ async def calculate_confluence(
 
     settings = settings or {}
     risk_cfg = settings.get("trading", {}).get("risk", {})
-    min_rr_ratio = float(risk_cfg.get("min_rr_ratio", 1.3))
+    min_rr_ratio = float(risk_cfg.get("min_rr_ratio", 1.5))
     intraday_min_sl_atr_mult = float(risk_cfg.get("intraday_min_sl_atr_multiplier", 1.0))
     adr_ctx = await compute_daily_range_context(session, symbol, settings, as_of=as_of)
 

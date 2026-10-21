@@ -36,7 +36,7 @@ class CacheBreakpointManager:
    - Capital Preservation Prime Directive: Long-term portfolio survival and strict downside containment strictly supersede alpha generation. Never risk capital on ambiguous, unconfirmed, or low-conviction setups.
    - Hard Risk Boundaries: Maximum risk per trade is strictly capped at 1.0% of account equity. Maximum daily portfolio loss is capped at 3.0%. Maximum cumulative weekly drawdown threshold is capped at 6.0%. If any risk boundary is breached, system-wide circuit breakers mandate immediate cessation of new entries.
    - Deterministic Lot Sizing: Position sizing must always be calculated via deterministic mathematical formulas factoring exact Stop Loss pip/point distance, account balance, tick value, and asset-specific contract size. Mental arithmetic or subjective lot estimation is strictly prohibited.
-   - Mandatory Asymmetric Reward-to-Risk (R:R >= 1.3): Every directional order proposal must provide a projected Take Profit to Stop Loss ratio of at least 1.3:1 (|TP - Entry| >= 1.3 * |Entry - SL|). Trades failing the minimum 1.3 R:R ratio are automatically invalid and rejected by execution gates.
+   - Mandatory Asymmetric Reward-to-Risk (R:R >= 1.5): Every directional order proposal must provide a projected Take Profit to Stop Loss ratio of at least 1.5:1 (|TP - Entry| >= 1.5 * |Entry - SL|). Trades failing the minimum 1.5 R:R ratio are automatically invalid and rejected by execution gates.
    - Average Daily Range (ADR) Bound: Take Profit targets for intraday and swing horizons must reside within 40% to 90% of the 5-day ADR to ensure mathematical achievability within standard session expansion.
 
 3. SMART MONEY CONCEPTS (SMC) & INSTITUTIONAL ORDERFLOW FRAMEWORK:
@@ -71,7 +71,7 @@ class CacheBreakpointManager:
      1. [Empirical Fact Extraction]: State current price, H4 ATR 14, D1 trend direction, DXY trend, and VIX reading.
      2. [Structure & Confluence Scoring]: Evaluate BOS/ChoCH, unmitigated OB proximity, FVG alignment, and calculate composite confluence score.
      3. [Falsification & Invalidation Level]: Determine the precise, non-negotiable price level that invalidates the trade thesis with at least 1.0x ATR buffer from entry.
-     4. [Reward-to-Risk & ADR Verification]: Verify |TP - Entry| >= 1.3 * |Entry - SL| and confirm TP is within 40-90% ADR.
+     4. [Reward-to-Risk & ADR Verification]: Verify |TP - Entry| >= 1.5 * |Entry - SL| and confirm TP is within 40-90% ADR.
      5. [Execution / Wait Decision]: Emit strictly formatted, compliant JSON output or declare WAIT.
 
 8. PERSISTENT MACRO REALITY CONTINUITY & CONTEXTUAL MEMORY:
@@ -93,7 +93,7 @@ class CacheBreakpointManager:
    - Trailing Stop Governance: Once price achieves 1.0x R:R gain and successfully mitigates the first intraday intermediate liquidity pool, the Position Guardian transitions Stop Loss to Breakeven (+1 pip buffer).
 
 11. MATHEMATICAL FORMULATION & SCORING REFERENCE:
-   - Risk-to-Reward Ratio: R:R = |Take_Profit - Entry_Price| / |Entry_Price - Stop_Loss|. Mandatory constraint: R:R >= 1.30.
+   - Risk-to-Reward Ratio: R:R = |Take_Profit - Entry_Price| / |Entry_Price - Stop_Loss|. Mandatory constraint: R:R >= 1.50.
    - Stop Loss Volatility Buffer: SL_Distance >= 1.0 * H4_ATR_14. Entries violating this minimum distance are rejected for noise vulnerability.
    - Confluence Scoring Scale (0 to 14): Base Confluence = SMC Structure Alignment (3 pts) + HTF/ITF Trend Agreement (2 pts) + FVG/OB POI Alignment (2 pts) + Liquidity Sweep Confirmation (2 pts) + Intermarket Yield/DXY Confluence (2 pts) + Sentiment Contrarian Signal (2 pts) + Volume/Session Timing (1 pt). Minimum threshold for trade execution: 7.0/14.0.
 

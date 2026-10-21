@@ -121,7 +121,7 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
                         elif equity < balance and balance > 0:
                             drawdown_pct = (balance - equity) / balance * 100
                             risk_cfg = agent.settings.get("trading", {}).get("risk", {})
-                            max_dd = risk_cfg.get("max_daily_drawdown_percent", 3.0)
+                            max_dd = risk_cfg.get("max_daily_drawdown_percent", 4.0)
                             if drawdown_pct >= max_dd:
                                 consecutive_breach_count += 1
                                 logger.warning(

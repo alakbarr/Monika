@@ -194,7 +194,7 @@ class OutputVerifier:
                     sl_dist = abs(entry - sl)
                     snaps.append(f"Deterministic snap: widened SELL SL from {old_sl} to 1.0x ATR ({sl})")
 
-        min_rr = (settings or {}).get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)
+        min_rr = (settings or {}).get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5)
         sl_dist = abs(entry - sl)
         tp_dist = abs(entry - tp)
 
@@ -346,7 +346,7 @@ class OutputVerifier:
             # Check 3: R:R minimum
             sl_dist = abs(entry - sl)
             tp_dist = abs(entry - tp)
-            min_rr = (settings or {}).get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)
+            min_rr = (settings or {}).get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5)
             if sl_dist > 0:
                 rr = tp_dist / sl_dist
                 if rr < (min_rr - 0.05):  # allow tiny tolerance for rounding

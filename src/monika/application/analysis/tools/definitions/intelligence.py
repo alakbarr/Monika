@@ -278,7 +278,7 @@ UPDATE_SCRATCHPAD = _tool(
         },
         "structural_sl": {"type": "object", "properties": {"price": {"type": "number"}, "basis": {"type": "string"}}},
         "target_tp": {"type": "object", "properties": {"price": {"type": "number"}, "basis": {"type": "string"}}},
-        "rr_ratio": {"type": "number", "description": "Projected Reward-to-Risk ratio (must be >= 1.30)"},
+        "rr_ratio": {"type": "number", "description": "Projected Reward-to-Risk ratio (must be >= 1.50)"},
         "confluence_score": {"type": "number", "description": "Composite confluence score out of 14"},
         "verified_confluences": {
             "type": "array",

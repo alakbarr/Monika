@@ -192,7 +192,7 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
 
 ## Execution Invariants
 - Minimum Confluence Score: 7.5 / 14.0
-- Minimum Reward-to-Risk: 1.30
+- Minimum Reward-to-Risk: 1.50
 - Mandatory Stop Loss Buffer: >= 1.0x verified H4 ATR 14
 
 ## Invalidation Scenarios

@@ -874,6 +874,7 @@ Monika/
 │       │   │   ├── migrations.py
 │       │   │   ├── profile_applicator.py
 │       │   │   ├── protocols.py
+│       │   │   ├── risk_defaults.py
 │       │   │   ├── schemas.py
 │       │   │   ├── security.py
 │       │   │   └── settings.py
@@ -891,6 +892,9 @@ Monika/
 │       │   │   ├── retry.py
 │       │   │   ├── turn_marker.py
 │       │   │   └── worktree.py
+│       │   ├── risk/
+│       │   │   ├── __init__.py
+│       │   │   └── quant_scorecard.py
 │       │   ├── security/
 │       │   │   ├── __init__.py
 │       │   │   ├── credential_vault.py
@@ -3049,4 +3053,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 263 | **Total Tracked Files**: 2756
+**Total Tracked Directories**: 264 | **Total Tracked Files**: 2759

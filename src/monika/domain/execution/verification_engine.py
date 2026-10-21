@@ -11,6 +11,12 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+from monika.core.config.risk_defaults import (
+    DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE,
+    DEFAULT_MIN_RR_RATIO,
+)
+from monika.core.risk.quant_scorecard import is_quantitative_source, validate_quant_scorecard
+
 logger = logging.getLogger("TradingAgent.EvidenceVerifier")
 
 
@@ -19,9 +25,20 @@ class EvidenceFirstVerifier:
 
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
-        risk_cfg = self.settings.get("trading", {}).get("risk", {})
+        trading_cfg = self.settings.get("trading", {})
+        risk_cfg = trading_cfg.get("risk", {})
         self.max_risk_per_trade_pct = float(risk_cfg.get("max_risk_per_trade", 0.01) or 0.01) * 100
-        self.min_rr_ratio = float(risk_cfg.get("min_reward_risk_ratio", 1.3) or 1.3)
+        self.min_rr_ratio = float(
+            risk_cfg.get(
+                "min_rr_ratio",
+                risk_cfg.get("min_reward_risk_ratio", DEFAULT_MIN_RR_RATIO),
+            )
+            or DEFAULT_MIN_RR_RATIO
+        )
+        self.min_edge_confidence = float(
+            trading_cfg.get("auto_execute_min_confidence", DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE)
+            or DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE
+        )
         self.minimum_sl_pips = float(risk_cfg.get("minimum_sl_pips", 5.0) or 5.0)
         self.max_slippage = float(risk_cfg.get("max_slippage_pips", 3.0) or 3.0)
 
@@ -129,16 +146,39 @@ class EvidenceFirstVerifier:
 
         # 6. Confidence Score
         decision_source = str(signal.get("decision_source") or "").lower()
-        is_edge_signal = (
-            decision_source == "edge_registry"
-            or decision_source.startswith("quant_")
-            or bool(signal.get("source_strategy_id"))
-        )
-        min_confidence = 0.30 if is_edge_signal else 0.50
+        is_edge_signal = is_quantitative_source(decision_source)
+        min_confidence = self.min_edge_confidence if is_edge_signal else 0.50
         if confidence < min_confidence:
             violations.append(
                 f"ASSERT_6: Confidence ({confidence:.2f}) is below execution floor ({min_confidence:.2f})."
             )
+
+        # 6b. Quantitative signals must carry an explicit, valid scorecard.
+        if is_edge_signal:
+            scorecard = signal.get("quant_scorecard")
+            if isinstance(scorecard, str):
+                try:
+                    scorecard = json.loads(scorecard)
+                except TypeError, ValueError:
+                    scorecard = None
+            if scorecard is None:
+                raw_factors = signal.get("confluence_factors_json")
+                if isinstance(raw_factors, str):
+                    try:
+                        raw_factors = json.loads(raw_factors)
+                    except TypeError, ValueError:
+                        raw_factors = None
+                if isinstance(raw_factors, dict):
+                    scorecard = raw_factors.get("quant_scorecard")
+            scorecard_ok, scorecard_reason = validate_quant_scorecard(
+                scorecard,
+                min_confidence=self.min_edge_confidence,
+                min_rr_ratio=self.min_rr_ratio,
+            )
+            if not scorecard_ok or not isinstance(scorecard, dict):
+                violations.append(f"ASSERT_6b: {scorecard_reason}")
+            elif str(scorecard.get("direction", "")).lower() != decision.lower():
+                violations.append("ASSERT_6b: quant_scorecard direction does not match the order direction.")
 
         # 7. Confluence Score (LLM Stage 2 signals require 14-point scorecard, quantitative edge signals are exempted)
         if not is_edge_signal:

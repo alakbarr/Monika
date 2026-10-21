@@ -54,7 +54,7 @@ MULTI_PERSONA_SYS_PROMPT = """You are a collegiate Risk Evaluation Board analyzi
    - veto_trade=true ONLY if daily_pnl_pct <= -2.5% (hard emergency kill switch).
 
 3. NEUTRAL RISK PERSONA (Mandate: Objective statistical balance):
-   - Assess asymmetric R:R (must be >= 1.3).
+   - Assess asymmetric R:R (must be >= 1.5).
    - Calculate objective multiplier based on confluence / 14.0 adjusted for current market regime.
    - veto_trade=true if confluence < 5.0 or structural stop-loss invalidated.
 

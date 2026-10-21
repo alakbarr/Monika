@@ -94,7 +94,7 @@ async def _case_risk_gate_neutral(session: Any, settings: dict[str, Any], ex: An
 async def _case_portfolio_manager_per_trade(session: Any, settings: dict[str, Any], ex: Any) -> BenchmarkCase:
     symbol = _sym(settings)
     strict_context, _ = await _build_strict_risk_context(session, settings, ex, symbol)
-    min_rr = settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)
+    min_rr = settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5)
     risk_debate_states = {
         "conservative": analyze_risk_conservative(strict_context),
         "aggressive": analyze_risk_aggressive(strict_context, min_rr_ratio=min_rr),

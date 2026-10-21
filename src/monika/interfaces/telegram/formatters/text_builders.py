@@ -289,7 +289,7 @@ class TelegramFormatterMixin(_TelegramBotMixinBase):
                     risk
                     and getattr(risk, "current_drawdown", 0)
                     and risk.current_drawdown
-                    >= float(self.settings.get("trading", {}).get("risk", {}).get("max_daily_drawdown_percent", 3.0))
+                    >= float(self.settings.get("trading", {}).get("risk", {}).get("max_daily_drawdown_percent", 4.0))
                 ):
                     cb_status = "MAX DD TRIGGERED"
 

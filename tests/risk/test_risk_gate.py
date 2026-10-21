@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone, timedelta
+from types import SimpleNamespace
 from monika.domain.risk.risk_gate import RiskGate, RiskVerdict
 from monika.domain.risk.position_sizing import SizingResult
 
@@ -218,7 +219,19 @@ class TestRiskGate:
 
         mock_session = self._setup_mock_session(return_value_scalars=[])
         mock_session.add = MagicMock()
-        verdict = await gate.check(mock_session, "XAUUSD", "buy", sizing, 10000.0)
+        analysis = SimpleNamespace(
+            symbol="XAUUSD",
+            decision="buy",
+            decision_source="llm_stage2",
+            source_strategy_id=None,
+            strategy_id=None,
+            confidence=0.75,
+            confluence_score=9,
+            priced_in_score=3,
+            market_regime_at_analysis=None,
+            market_regime="UNKNOWN",
+        )
+        verdict = await gate.check(mock_session, "XAUUSD", "buy", sizing, 10000.0, analysis=analysis)
 
         assert verdict.approved
         assert len(verdict.checks_failed) == 0

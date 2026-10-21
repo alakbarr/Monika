@@ -1420,7 +1420,7 @@ class PaperTracker:
 
         # Ambang batas lebih dinamis berdasarkan R:R minimal
         risk_cfg = settings.get("trading", {}).get("risk", {})
-        min_rr = risk_cfg.get("min_rr_ratio", 1.3)
+        min_rr = risk_cfg.get("min_rr_ratio", 1.5)
 
         # Breakeven WR% = 100 / (1 + RR)
         breakeven_wr = 100 / (1 + min_rr)

@@ -22,7 +22,7 @@ from monika.application.analysis.tools.mixins.analysis_validation import (
 def test_build_risk_contract_defaults():
     contract = build_risk_contract("EURUSD", settings={})
     assert contract.symbol == "EURUSD"
-    assert contract.min_rr_ratio == 1.3
+    assert contract.min_rr_ratio == 1.5
     assert contract.min_sl_atr_multiplier == 1.0
     assert contract.max_sl_adr_pct == 0.35
     assert contract.target_tp_min_adr_pct == 0.50
@@ -30,7 +30,7 @@ def test_build_risk_contract_defaults():
 
     rendered = contract.render_prompt_contract()
     assert "CANONICAL RISK CONTRACT (EURUSD)" in rendered
-    assert "Minimum Reward-to-Risk (R:R) Ratio: >= 1.30" in rendered
+    assert "Minimum Reward-to-Risk (R:R) Ratio: >= 1.50" in rendered
     assert "Stop Loss (SL) Minimum Distance: >= 1.00x H4 ATR" in rendered
 
 

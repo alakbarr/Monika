@@ -81,7 +81,7 @@ async def compute_prompt_invariants(
                     adr_5d=float(adr_f) if adr_f else float(atr_f) * 2.5,
                     smc_zones=smc_f,
                     sr_zones=sr_f,
-                    min_rr=float(settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)),
+                    min_rr=float(settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5)),
                 )
 
                 if session:

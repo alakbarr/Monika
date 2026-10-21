@@ -35,23 +35,6 @@ _TRANSITIONS = {
 
 QUARANTINED_STRATEGY_IDS: set[str] = set(QUARANTINED_STRATEGY_IDS)
 
-CORE_STRATEGY_IDS: set[str] = {
-    "bb_volume_profile",
-    "gap_fade",
-    "tri_convergent_alpha",
-    "tsm_momentum",
-    "xau_trend",
-    "xau_trend_engine",
-    "asian_range_fade",
-    "smt_divergence",
-    "tokyo_open_sweep",
-    "vwap_mean_reversion",
-    "bollinger_reversion",
-    "liquidity_sweep",
-    "general",
-    "default",
-}
-
 
 @dataclass
 class StrategyHealth:
@@ -133,20 +116,30 @@ class StrategyDecayMonitor:
         self._health_map: Dict[str, StrategyHealth] = {}
 
     def get_health(self, strategy_id: str) -> StrategyHealth:
-        if strategy_id not in self._health_map:
-            is_quarantined = strategy_id in QUARANTINED_STRATEGY_IDS
-            is_core = strategy_id in CORE_STRATEGY_IDS and not is_quarantined
-            self._health_map[strategy_id] = StrategyHealth(
+        health = self._health_map.get(strategy_id)
+        if health is None:
+            health = StrategyHealth(
                 strategy_id=strategy_id,
-                state=DecayState.DISABLED if is_quarantined else DecayState.ACTIVE,
-                is_incubation_passed=is_core,
-                reason="Quarantined due to empirical negative expectancy (WR < 30% / PF < 1.0)"
-                if is_quarantined
-                else (
-                    "" if is_core else f"Incubating in paper trading (min {self.min_incubation_trades} trades required)"
-                ),
+                state=DecayState.ACTIVE,
+                is_incubation_passed=False,
+                reason=f"Incubating in paper trading (min {self.min_incubation_trades} trades required)",
             )
-        return self._health_map[strategy_id]
+            self._health_map[strategy_id] = health
+
+        # Quarantine always wins over any cached or persisted state.
+        if strategy_id in QUARANTINED_STRATEGY_IDS:
+            health.state = DecayState.DISABLED
+            health.is_incubation_passed = False
+            health.reason = "Quarantined due to empirical negative expectancy (WR < 30% / PF < 1.0)"
+            return health
+
+        # A strategy can only be live-ready after real paper-trade results.
+        if health.is_incubation_passed and health.paper_trades_count < self.min_incubation_trades:
+            health.is_incubation_passed = False
+            health.reason = (
+                f"Incubation reset: {health.paper_trades_count} paper trades < minimum {self.min_incubation_trades}"
+            )
+        return health
 
     def register_incubating_strategy(self, strategy_id: str) -> StrategyHealth:
         """Register a new alpha/synthesized strategy for paper trading incubation."""

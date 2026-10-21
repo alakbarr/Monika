@@ -11,11 +11,22 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 from datetime import datetime, timedelta, timezone, UTC
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from monika.domain.risk.evaluators.base import _RiskGateMixinBase, resolve_model
 from monika.domain.risk.position_sizing import SizingResult
+from monika.core.config.risk_defaults import (
+    DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE,
+    DEFAULT_AUTO_EXECUTE_MIN_CONFLUENCE,
+    DEFAULT_MIN_RR_RATIO,
+)
+from monika.core.risk.quant_scorecard import (
+    extract_quant_scorecard,
+    is_quantitative_source,
+    validate_quant_scorecard,
+)
 
 Position: Any = resolve_model("Position")
 AssetAnalysis: Any = resolve_model("AssetAnalysis")
@@ -192,14 +203,50 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
             return (False, "No analysis object provided")
 
         decision_source = str(getattr(analysis, "decision_source", "") or "")
-        if (
-            decision_source == "edge_registry"
-            or decision_source.startswith("quant_")
-            or bool(getattr(analysis, "source_strategy_id", None))
-        ):
-            if analysis.confidence is None or float(analysis.confidence) < 0.3:
-                return False, f"{decision_source or 'quantitative'} signal confidence too low ({analysis.confidence})"
-            return True, f"{decision_source or 'quantitative'}_quantitative_signal_passed"
+        if is_quantitative_source(decision_source):
+            trading_cfg = self.settings.get("trading", {}) if isinstance(self.settings, dict) else {}
+            risk_cfg = trading_cfg.get("risk", {}) if isinstance(trading_cfg, dict) else {}
+            min_confidence = float(trading_cfg.get("auto_execute_min_confidence", DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE))
+            min_rr_ratio = float(risk_cfg.get("min_rr_ratio", DEFAULT_MIN_RR_RATIO))
+
+            scorecard = extract_quant_scorecard(analysis)
+            if scorecard is None:
+                return (
+                    False,
+                    f"{decision_source or 'quantitative'} signal has no explicit quant_scorecard. Execution blocked.",
+                )
+
+            scorecard_ok, scorecard_reason = validate_quant_scorecard(
+                scorecard,
+                min_confidence=min_confidence,
+                min_rr_ratio=min_rr_ratio,
+            )
+            if not scorecard_ok:
+                return False, scorecard_reason
+
+            confidence_raw = getattr(analysis, "confidence", None)
+            if isinstance(confidence_raw, bool) or not isinstance(confidence_raw, (int, float, str)):
+                return False, f"{decision_source or 'quantitative'} signal confidence is missing/non-finite."
+            try:
+                confidence = float(confidence_raw)
+            except TypeError, ValueError:
+                return False, f"{decision_source or 'quantitative'} signal confidence is missing/non-finite."
+            if not math.isfinite(confidence) or confidence < min_confidence:
+                return (
+                    False,
+                    f"{decision_source or 'quantitative'} signal confidence {confidence_raw} < {min_confidence:.2f}.",
+                )
+
+            analysis_direction = str(getattr(analysis, "decision", "") or "").lower()
+            scorecard_direction = str(scorecard.get("direction", "")).lower()
+            if analysis_direction in ("buy", "sell") and analysis_direction != scorecard_direction:
+                return (
+                    False,
+                    f"quant_scorecard direction {scorecard_direction} does not match analysis decision "
+                    f"{analysis_direction}. Execution blocked.",
+                )
+
+            return True, (f"{decision_source or 'quantitative'}_quantitative_signal_passed ({scorecard_reason})")
 
         if analysis.confluence_score is None:
             return (
@@ -222,7 +269,9 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
                 f"Event fully priced in (score >= 8) — high sell-the-news reversal risk.",
             )
 
-        min_confluence = self.settings.get("trading", {}).get("auto_execute_min_confluence", 7)
+        min_confluence = self.settings.get("trading", {}).get(
+            "auto_execute_min_confluence", DEFAULT_AUTO_EXECUTE_MIN_CONFLUENCE
+        )
         if session and getattr(analysis, "symbol", None):
             try:
                 from monika.domain.risk.ports import get_default_adaptive_risk_policy
@@ -276,8 +325,11 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
         Verifies that the proposing strategy has non-negative empirical expectancy
         in the current regime before permitting execution.
         """
-        if is_backtest or analysis is None:
-            return True, "Evidence gate skipped for backtest or missing analysis"
+        if is_backtest:
+            return True, "Evidence gate skipped for backtest"
+
+        if analysis is None:
+            return False, "Evidence gate rejected: analysis is missing (fail-closed)."
 
         try:
             from monika.domain.risk.ports import get_default_evidence_store
@@ -292,10 +344,12 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
             )
 
             ev_store = get_default_evidence_store()
-            if ev_store is not None:
-                is_valid, reason = ev_store.validate_strategy_for_trade(strat_id, regime)
-                if not is_valid:
-                    return False, f"EvidenceStore rejected trade: {reason}"
+            if ev_store is None:
+                return False, "Evidence gate rejected: evidence store unavailable (fail-closed)."
+
+            is_valid, reason = ev_store.validate_strategy_for_trade(strat_id, regime)
+            if not is_valid:
+                return False, f"EvidenceStore rejected trade: {reason}"
         except Exception as e:
             logger.warning(f"[{symbol}] Evidence gate check failed: {e}")
             return False, f"evidence_gate_check_failed: {e}"

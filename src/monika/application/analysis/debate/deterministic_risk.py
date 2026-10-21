@@ -80,7 +80,7 @@ def analyze_risk_aggressive(ctx: dict, min_rr_ratio: float = 1.5) -> dict:
     }
 
 
-def analyze_risk_neutral(ctx: dict, min_rr_ratio: float = 1.3) -> dict:
+def analyze_risk_neutral(ctx: dict, min_rr_ratio: float = 1.5) -> dict:
     state = ctx.get("actual_risk_state") or {}
     daily_pnl_pct = state.get("daily_pnl_pct", 0.0)
     heat_pct = state.get("portfolio_heat_pct", 0.0)

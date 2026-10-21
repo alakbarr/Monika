@@ -107,7 +107,7 @@ class PositionSizer:
         self.settings = settings
         risk_cfg = settings.get("trading", {}).get("risk", {})
         self.risk_percent: float = risk_cfg.get("risk_percent_per_trade", 1.0)
-        self.min_rr: float = risk_cfg.get("min_rr_ratio", 1.3)
+        self.min_rr: float = risk_cfg.get("min_rr_ratio", 1.5)
         self._mt5 = mt5_client
 
     @classmethod

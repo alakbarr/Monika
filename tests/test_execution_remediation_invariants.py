@@ -139,18 +139,55 @@ async def test_signal_arbitrator_conflict_regime_and_vix():
     assert res_high_vix.decision == "avoid"
     assert res_high_vix.selected_source == "defensive_override"
 
-    # Case 2: Verified Strong Trend regime -> Quant Trend strategy prioritized with caution scaling
-    res_trend = await arbitrator.arbitrate(
-        session=mock_session,
-        symbol="XAUUSD",
-        quant_signal=quant_sig,
-        llm_decision=llm_dec,
-        vix_level=18.0,
-        regime_info={"regime": "strong_trend"},
+    # Case 2: Verified Strong Trend regime + TimesFM confirmation -> Quant Trend strategy prioritized.
+    # Promotion requires real paper results, so the strategy is graduated first.
+    from monika.application.analysis.strategies.decay_monitor import (
+        StrategyDecayMonitor,
+        get_strategy_decay_monitor,
     )
-    assert res_trend.decision == "buy"
-    assert res_trend.selected_source == "quant"
-    assert res_trend.risk_multiplier <= 0.75  # Scaled down caution sizing
+
+    monitor = get_strategy_decay_monitor()
+    monitor.register_incubating_strategy("xau_trend")
+    for _ in range(StrategyDecayMonitor.MIN_INCUBATION_TRADES):
+        monitor.record_trade_outcome("xau_trend", win=True, is_paper=True, profit=2.0)
+    assert monitor.is_live_ready("xau_trend") is True
+
+    try:
+        with patch(
+            "monika.infrastructure.ml.timesfm_engine.TimesFMEngine.get_latest_forecast", new_callable=AsyncMock
+        ) as mock_tfm:
+            mock_tfm.return_value = {"quantile_skew": 0.35}  # Confirms BUY
+            res_trend = await arbitrator.arbitrate(
+                session=mock_session,
+                symbol="XAUUSD",
+                quant_signal=quant_sig,
+                llm_decision=llm_dec,
+                vix_level=18.0,
+                regime_info={"regime": "strong_trend"},
+            )
+        assert res_trend.decision == "buy"
+        assert res_trend.selected_source == "quant"
+        assert res_trend.risk_multiplier <= 0.75  # Scaled down caution sizing
+
+        # Case 2b: Strong Trend regime without TimesFM confirmation -> no regime precedence override
+        with patch(
+            "monika.infrastructure.ml.timesfm_engine.TimesFMEngine.get_latest_forecast", new_callable=AsyncMock
+        ) as mock_tfm:
+            mock_tfm.return_value = {"quantile_skew": 0.0}  # Neutral
+            res_trend_neutral = await arbitrator.arbitrate(
+                session=mock_session,
+                symbol="XAUUSD",
+                quant_signal=quant_sig,
+                llm_decision=llm_dec,
+                vix_level=18.0,
+                regime_info={"regime": "strong_trend"},
+            )
+        assert res_trend_neutral.decision == "buy"
+        assert res_trend_neutral.selected_source == "quant_conviction_precedence"
+        assert res_trend_neutral.risk_multiplier <= 0.70
+    finally:
+        monitor.register_incubating_strategy("xau_trend")
+        StrategyDecayMonitor.reset()
 
     # Case 3: Ranging market conflict -> Mutual Suppression (equal conviction)
     res_ranging = await arbitrator.arbitrate(

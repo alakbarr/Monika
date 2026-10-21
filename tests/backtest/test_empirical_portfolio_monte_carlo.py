@@ -32,7 +32,8 @@ def test_curated_strategy_governance_invariants():
     assert "GBPUSD" not in BBVolumeProfileMeanReversion.applicable_symbols
     assert {"EURUSD", "AUDUSD"}.issubset(BBVolumeProfileMeanReversion.applicable_symbols)
 
-    # Ensure core institutional alphas are promoted
+    # Promotion is evidence-driven, so no strategy may sit in a hardcoded whitelist.
+    assert PROMOTED_EMPIRICAL_STRATEGIES == set()
     for valid_id in [
         "tokyo_open_sweep",
         "usdjpy_atr_exhaustion",
@@ -41,7 +42,8 @@ def test_curated_strategy_governance_invariants():
         "vwap_mean_reversion",
         "btcusd_dynamic_donchian",
     ]:
-        assert valid_id in PROMOTED_EMPIRICAL_STRATEGIES
+        assert valid_id not in PROMOTED_EMPIRICAL_STRATEGIES
+        assert valid_id not in QUARANTINED_STRATEGY_IDS
         assert valid_id not in QUARANTINED_STRATEGY_IDS
         strat_cls = StrategyRegistry.get(valid_id)
         assert strat_cls is not None

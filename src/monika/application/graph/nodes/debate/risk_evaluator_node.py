@@ -86,7 +86,7 @@ async def risk_evaluator_node(state: TradingState, config: Optional[RunnableConf
 
     user_market_intel = state.get("user_market_intel") or []
     use_deterministic = settings.get("agent_architecture", {}).get("deterministic_risk_gate", True)
-    min_rr = settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)
+    min_rr = settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5)
 
     surviving_trades: List[Tuple[str, dict]] = []
     semaphore = asyncio.Semaphore(3)

@@ -145,16 +145,37 @@ def test_edge_strategy_build_bracket():
         EdgeStrategy.build_bracket(entry_price=100.0, direction="invalid", atr=1.0)
 
 
-def test_strategy_tiers_and_registry_classification():
+def test_strategy_tiers_and_registry_classification(monkeypatch):
     # Quarantined strategy
     for q_id in ("smc_fvg", "btc_donchian_breakout", "bollinger_reversion", "gbpusd_trend_breakout"):
         assert StrategyRegistry.get_tier(q_id) == StrategyTier.QUARANTINED
         assert q_id in QUARANTINED_STRATEGY_IDS
 
-    # Validated strategy
+    # Promotion is evidence-driven: without evidence on file a strategy stays experimental.
+    assert PROMOTED_EMPIRICAL_STRATEGIES == set()
     for v_id in ("smt_divergence", "bb_volume_profile", "tokyo_open_sweep", "vwap_mean_reversion"):
+        assert StrategyRegistry.get_tier(v_id) == StrategyTier.EXPERIMENTAL
+
+    # With verified evidence on file the same strategy becomes validated.
+    evidence_backed = {
+        "smt_divergence",
+        "bb_volume_profile",
+        "tokyo_open_sweep",
+        "vwap_mean_reversion",
+    }
+
+    class _EligibleEvidenceStore:
+        def is_strategy_eligible_to_trade(self, strategy_id: str, min_breakeven_bps: float = 3.0):
+            if strategy_id in evidence_backed:
+                return True, "Approved by Evidence Gate"
+            return False, f"No verified backtest evidence on file for {strategy_id}"
+
+    monkeypatch.setattr(
+        "monika.domain.risk.ports.get_default_evidence_store",
+        lambda: _EligibleEvidenceStore(),
+    )
+    for v_id in evidence_backed:
         assert StrategyRegistry.get_tier(v_id) == StrategyTier.VALIDATED
-        assert v_id in PROMOTED_EMPIRICAL_STRATEGIES
 
     # Experimental strategy
     assert StrategyRegistry.get_tier("unpromoted_novel_strategy") == StrategyTier.EXPERIMENTAL

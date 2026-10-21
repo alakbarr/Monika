@@ -9,7 +9,6 @@ from typing import Any, Dict, Optional, Type
 from sqlalchemy import delete, select, update
 
 from monika.application.analysis.strategies.base_strategy import (
-    PROMOTED_EMPIRICAL_STRATEGIES,
     QUARANTINED_STRATEGY_IDS,
     EdgeSignal,
     EdgeStrategy,
@@ -26,7 +25,6 @@ class StrategyRegistry:
     _dynamic_symbol_params: dict[tuple[str, str], dict] = {}
     _blacklisted_ids: set[str] = set()
     QUARANTINED_STRATEGY_IDS: set[str] = set(QUARANTINED_STRATEGY_IDS)
-    PROMOTED_EMPIRICAL_STRATEGIES: set[str] = set(PROMOTED_EMPIRICAL_STRATEGIES)
     _last_load_time: float = 0.0
     _load_interval: float = 60.0
     MAX_SYNTHESIZED_PER_SYMBOL: int = 5
@@ -36,8 +34,18 @@ class StrategyRegistry:
     def get_tier(cls, strategy_id: str) -> StrategyTier:
         if strategy_id in cls.QUARANTINED_STRATEGY_IDS:
             return StrategyTier.QUARANTINED
-        if strategy_id in cls.PROMOTED_EMPIRICAL_STRATEGIES:
-            return StrategyTier.VALIDATED
+        try:
+            from monika.domain.risk.ports import get_default_evidence_store
+
+            evidence_store = get_default_evidence_store()
+            if evidence_store is None:
+                return StrategyTier.EXPERIMENTAL
+            eligible, reason = evidence_store.is_strategy_eligible_to_trade(strategy_id)
+            if eligible:
+                return StrategyTier.VALIDATED
+            logger.debug(f"[StrategyRegistry] {strategy_id} remains experimental: {reason}")
+        except Exception as exc:
+            logger.warning(f"[StrategyRegistry] Evidence lookup failed for {strategy_id}: {exc}")
         return StrategyTier.EXPERIMENTAL
 
     @classmethod
@@ -625,4 +633,5 @@ class StrategyRegistry:
 
 STRATEGY_REGISTRY = StrategyRegistry._registry
 QUARANTINED_STRATEGY_IDS = StrategyRegistry.QUARANTINED_STRATEGY_IDS
-PROMOTED_EMPIRICAL_STRATEGIES = StrategyRegistry.PROMOTED_EMPIRICAL_STRATEGIES
+# Deprecated compatibility alias; promotion is evidence-store driven.
+PROMOTED_EMPIRICAL_STRATEGIES: set[str] = set()

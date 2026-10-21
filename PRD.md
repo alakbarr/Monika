@@ -140,13 +140,13 @@ flowchart TD
 - **FR-4.1 (Mandatory 10-Point Risk Clearance):**
   1. System operational status (active / pause).
   2. Positive lot sizing and broker minimum volume verification.
-  3. Daily realized and unrealized drawdown ceilings (default maximum 3.0%).
+  3. Daily realized and unrealized drawdown ceilings (default maximum 4.0%; weekly 15.0%).
   4. Maximum concurrent open positions ceiling (default maximum 5).
   5. Duplicate asset and direction exposure block.
   6. High-impact news event proximity filter ($\pm 15$ minutes blackout).
   7. Cross-asset portfolio correlation cap (prevents concentrated directional exposure).
   8. Maximum spread threshold filter (blocks execution during broker spread expansion).
-  9. Minimum Risk-to-Reward ratio verification (default minimum $1:1.3$ or $1:2.0$).
+  9. Minimum Risk-to-Reward ratio verification (default minimum $1:1.5$ or $1:2.0$). Quantitative (non-LLM) proposals must additionally carry an explicit, valid `quant_scorecard`; the evidence gate fails closed when the strategy evidence store or the originating analysis is unavailable.
   10. Weekend gap risk quarantine (halts new trades late Friday UTC).
 - **FR-4.2 (Position Sizing & Portfolio Optimization):** Volatility parity, fractional Kelly criterion sizing, and risk parity portfolio allocation (`portfolio_optimizer.py`).
 - **FR-4.3 (Circuit Breakers & Flash Crash Protection):** Automatic trading freeze and defensive stop trailing upon detecting abnormal price dislocation ($>5\times$ ATR within 30 seconds) or drawdown breach.

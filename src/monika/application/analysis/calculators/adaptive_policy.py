@@ -6,6 +6,8 @@ from typing import Any, Dict, Optional, Tuple
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.core.config.risk_defaults import DEFAULT_AUTO_EXECUTE_MIN_CONFLUENCE
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,8 +19,16 @@ class AdaptiveRiskPolicy:
 
     def __init__(self, settings: Dict[str, Any]):
         self.settings = settings
-        self.base_min_confluence = settings.get("trading", {}).get("auto_execute_min_confluence", 7)
+        self.base_min_confluence = int(
+            settings.get("trading", {}).get("auto_execute_min_confluence", DEFAULT_AUTO_EXECUTE_MIN_CONFLUENCE)
+        )
         self.max_score_inflation = settings.get("trading", {}).get("risk", {}).get("max_score_inflation", 2)
+
+    def _clamp_threshold(self, value: int) -> int:
+        """Adaptive policy may move the configured threshold by at most one point."""
+        lower = max(1, self.base_min_confluence - 1)
+        upper = min(20, self.base_min_confluence + 1)
+        return max(lower, min(upper, int(value)))
 
     async def get_effective_threshold(
         self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None
@@ -87,11 +97,11 @@ class AdaptiveRiskPolicy:
         # Policy decisions
         if wilson_lower > target_win_rate + 0.1:
             # Strong statistical edge, we can afford to be slightly more aggressive
-            effective_threshold = max(self.base_min_confluence - 1, 5)
+            effective_threshold = self._clamp_threshold(self.base_min_confluence - 1)
             reason = f"Strong edge detected (Wilson lower {wilson_lower:.1%} > {target_win_rate + 0.1:.1%}). Relaxing threshold to {effective_threshold}."
         elif wilson_lower < target_win_rate - 0.15:
             # Genuinely weak edge — tighten moderately
-            effective_threshold = min(self.base_min_confluence + 1, 9)
+            effective_threshold = self._clamp_threshold(self.base_min_confluence + 1)
             reason = f"Weak edge detected (Wilson lower {wilson_lower:.1%} < {target_win_rate - 0.15:.1%}). Tightening threshold to {effective_threshold}."
         else:
             effective_threshold = self.base_min_confluence

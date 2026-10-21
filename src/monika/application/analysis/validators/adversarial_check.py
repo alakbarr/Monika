@@ -64,7 +64,7 @@ async def run_adversarial_check(session: AsyncSession, analysis: AssetAnalysis, 
         deterministic_flags = []
 
         # Existing checks
-        min_rr = float(settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3))
+        min_rr = float(settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5))
         effective_entry = getattr(analysis, "entry_price", None)
         if effective_entry is None and getattr(analysis, "entry_zone", None):
             try:

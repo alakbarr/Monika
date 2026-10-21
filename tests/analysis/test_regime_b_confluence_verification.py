@@ -75,8 +75,8 @@ async def test_confluence_calculator_regime_b_breakout_verified():
 
 
 @pytest.mark.asyncio
-async def test_signal_arbitrator_promoted_quant_overrides_llm_wait_neutral_timesfm():
-    """Verify that promoted empirical strategies can execute when LLM is WAIT and TimesFM is neutral/offline."""
+async def test_signal_arbitrator_neutral_timesfm_preserves_llm_wait():
+    """Without TimesFM directional confirmation the LLM wait stance must be preserved."""
     quant_signal = EdgeSignal(
         strategy_id="tokyo_open_sweep",
         symbol="USDJPY",
@@ -106,8 +106,7 @@ async def test_signal_arbitrator_promoted_quant_overrides_llm_wait_neutral_times
     )
 
     assert isinstance(res, ArbitrationResult)
-    assert res.decision == "buy", (
+    assert res.decision == "wait", (
         f"Arbitration reason: {res.arbitration_reason}, selected: {res.selected_source}, meta: {res.meta}"
     )
-    assert res.selected_source == "quant"
-    assert res.meta.get("quant_precedence") is True
+    assert res.risk_multiplier == 0.0

@@ -20,7 +20,7 @@ from monika.application.analysis.tools.mixins.analysis_validation import AssetAn
 
 
 def test_strategy_governance_parity():
-    """Verify xti_pairs_readiness, gbpusd_trend_breakout, and xauusd_atr_exhaustion are quarantined and promoted strategies are correct."""
+    """Verify xti_pairs_readiness, gbpusd_trend_breakout, and xauusd_atr_exhaustion are quarantined."""
     from monika.application.analysis.strategies.bb_volume_profile import BBVolumeProfileMeanReversion
     from monika.application.analysis.strategies.vwap_reversion import VWAPMeanReversionStrategy
 
@@ -33,18 +33,16 @@ def test_strategy_governance_parity():
     assert "xauusd_atr_exhaustion" in QUARANTINED_STRATEGY_IDS
     assert "xauusd_atr_exhaustion" not in PROMOTED_EMPIRICAL_STRATEGIES
 
-    assert "tokyo_open_sweep" in PROMOTED_EMPIRICAL_STRATEGIES
+    # Promotion is evidence-driven, so no strategy may sit in a hardcoded whitelist.
+    assert PROMOTED_EMPIRICAL_STRATEGIES == set()
     assert "tokyo_open_sweep" not in QUARANTINED_STRATEGY_IDS
     assert TokyoSweepStrategy.applicable_symbols == {"USDJPY"}
 
-    assert "liquidity_sweep" in PROMOTED_EMPIRICAL_STRATEGIES
     assert "liquidity_sweep" not in QUARANTINED_STRATEGY_IDS
 
-    assert "bb_volume_profile" in PROMOTED_EMPIRICAL_STRATEGIES
     assert {"EURUSD", "AUDUSD"}.issubset(BBVolumeProfileMeanReversion.applicable_symbols)
     assert "GBPUSD" not in BBVolumeProfileMeanReversion.applicable_symbols
 
-    assert "vwap_mean_reversion" in PROMOTED_EMPIRICAL_STRATEGIES
     assert {"EURUSD", "AUDUSD", "XTIUSD", "XBRUSD", "USDJPY"}.issubset(VWAPMeanReversionStrategy.applicable_symbols)
 
 

@@ -186,7 +186,7 @@ class FortressAdmissionValidator:
         max_age_seconds: float = MAX_PROPOSAL_AGE_SECONDS,
         require_provenance: bool = False,
         is_backtest: bool = False,
-        min_rr_ratio: float = 1.3,
+        min_rr_ratio: float = 1.5,
     ) -> tuple[bool, list[str]]:
         """
         Validates that a proposal satisfies Financial Fortress admission rules:

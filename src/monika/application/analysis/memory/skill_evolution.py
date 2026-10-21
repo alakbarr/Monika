@@ -152,7 +152,7 @@ class MicroPlaybookCompiler:
 symbol: {sym}
 regime: {linter_regime}
 timeframe: H4
-min_rr: 1.3
+min_rr: 1.5
 win_rate: {win_rate:.2f}
 sample_size: {len(trades)}
 ---
@@ -167,9 +167,9 @@ sample_size: {len(trades)}
 ## Invalidation & Stop Loss Rules
 - Invalidate thesis immediately on break of swing high/low prior to entry block.
 - Enforce Stop Loss >= 1.0x verified ATR 14 buffer.
-- Ensure Take Profit satisfies minimum 1.3:1 Reward-to-Risk within ADR bounds.
+- Ensure Take Profit satisfies minimum 1.5:1 Reward-to-Risk within ADR bounds.
 """
-                    linter = PlaybookLinter(min_rr_threshold=1.3)
+                    linter = PlaybookLinter(min_rr_threshold=1.5)
                     lint_res = linter.lint(content)
                     if not lint_res.is_valid:
                         logger.warning(f"MicroPlaybookCompiler: Lint failed for '{playbook_name}': {lint_res.errors}")

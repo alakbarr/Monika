@@ -156,7 +156,7 @@ async def _case_harness_self_correction(session: Any, settings: dict[str, Any], 
         "- Entry: 1.1000\n"
         "- Stop Loss: 1.1050 (ERROR: Stop loss is ABOVE entry for a BUY order)\n"
         "- Take Profit: 1.1100\n\n"
-        "Correct this decision so that SL is strictly BELOW entry (e.g. 1.0950) and R:R >= 1.3."
+        "Correct this decision so that SL is strictly BELOW entry (e.g. 1.0950) and R:R >= 1.5."
     )
     return BenchmarkCase(
         "stage2_prescreen",

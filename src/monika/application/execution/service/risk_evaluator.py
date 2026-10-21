@@ -124,7 +124,7 @@ class RiskEvaluatorMixin(_ExecutionServiceMixinBase):
             if realized_payoff and realized_payoff > 0:
                 rr_ratio = float(realized_payoff)
             else:
-                rr_ratio = float(risk_cfg.get("min_rr_ratio", 1.3))
+                rr_ratio = float(risk_cfg.get("min_rr_ratio", 1.5))
             kelly = win_rate - (1 - win_rate) / rr_ratio
 
             if kelly <= 0:

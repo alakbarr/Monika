@@ -1,0 +1,188 @@
+"""Explicit, persisted scorecard for quantitative (non-LLM) trade proposals.
+
+The LLM path has ``confluence_score`` and ``priced_in_score``. Quantitative
+strategies do not, so they must carry an equally explicit scorecard before the
+RiskGate may approve an execution. The scorecard is stored inside the existing
+``AssetAnalysis.confluence_factors_json`` column to avoid an unnecessary schema
+migration; the value is a JSON object with a single ``quant_scorecard`` key.
+"""
+
+from __future__ import annotations
+
+import json
+import math
+from typing import Any
+
+QUANT_SCORECARD_KEY = "quant_scorecard"
+QUANT_SCORECARD_VERSION = 1
+
+_QUANT_DECISION_SOURCES = ("edge_registry",)
+
+
+def is_quantitative_source(decision_source: str | None) -> bool:
+    """Return True when a decision source is a quantitative (non-LLM) proposal.
+
+    The LLM path carries its own scorecard (``confluence_score`` +
+    ``priced_in_score``); quantitative proposals must instead carry an explicit
+    ``quant_scorecard``. Detection is based on the decision source only — a
+    strategy id on an LLM analysis (playbook id, concordant quant leg) must not
+    downgrade the LLM scorecard requirements.
+    """
+    source = str(decision_source or "").strip().lower()
+    if not source:
+        return False
+    return source in _QUANT_DECISION_SOURCES or source.startswith("quant_")
+
+
+_REQUIRED_FIELDS = (
+    "strategy_id",
+    "direction",
+    "confidence",
+    "rr_ratio",
+    "valid",
+    "scorecard_version",
+)
+
+
+def _finite_float(value: Any) -> float | None:
+    try:
+        parsed = float(value)
+    except TypeError, ValueError:
+        return None
+    return parsed if math.isfinite(parsed) else None
+
+
+def _risk_reward(entry: Any, stop_loss: Any, take_profit: Any) -> float | None:
+    entry_f = _finite_float(entry)
+    sl_f = _finite_float(stop_loss)
+    tp_f = _finite_float(take_profit)
+    if entry_f is None or sl_f is None or tp_f is None:
+        return None
+    risk = abs(entry_f - sl_f)
+    reward = abs(tp_f - entry_f)
+    if risk <= 0 or reward <= 0:
+        return None
+    return round(reward / risk, 6)
+
+
+def build_quant_scorecard(
+    *,
+    strategy_id: str | None,
+    direction: str | None,
+    confidence: Any,
+    entry_price: Any = None,
+    stop_loss: Any = None,
+    take_profit: Any = None,
+    regime: str | None = None,
+    evidence_status: str | None = None,
+) -> dict[str, Any]:
+    """Build a deterministic scorecard from the strategy's executable signal.
+
+    Invalid or incomplete data is represented by ``valid=False``; callers must
+    never treat a malformed scorecard as an approval.
+    """
+    normalized_direction = str(direction or "").strip().lower()
+    confidence_f = _finite_float(confidence)
+    rr_ratio = _risk_reward(entry_price, stop_loss, take_profit)
+    valid = bool(
+        strategy_id
+        and normalized_direction in ("buy", "sell")
+        and confidence_f is not None
+        and 0.0 <= confidence_f <= 1.0
+        and rr_ratio is not None
+        and rr_ratio > 0.0
+    )
+    return {
+        "scorecard_version": QUANT_SCORECARD_VERSION,
+        "strategy_id": str(strategy_id or ""),
+        "direction": normalized_direction,
+        "confidence": confidence_f,
+        "rr_ratio": rr_ratio,
+        "valid": valid,
+        "regime": str(regime or "UNKNOWN"),
+        "evidence_status": str(evidence_status or "unknown"),
+    }
+
+
+def attach_quant_scorecard(analysis: Any, scorecard: dict[str, Any]) -> None:
+    """Persist a scorecard on an ``AssetAnalysis`` using the existing JSON column."""
+    if analysis is None:
+        raise ValueError("analysis is required to attach a quant scorecard")
+    analysis.confluence_factors_json = json.dumps({QUANT_SCORECARD_KEY: scorecard}, sort_keys=True)
+
+
+def extract_quant_scorecard(analysis: Any) -> dict[str, Any] | None:
+    """Return the explicit scorecard, or ``None`` when it is missing/malformed."""
+    if analysis is None:
+        return None
+    raw = getattr(analysis, "confluence_factors_json", None)
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw) if isinstance(raw, str) else raw
+    except TypeError, ValueError, json.JSONDecodeError:
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    scorecard = parsed.get(QUANT_SCORECARD_KEY)
+    return scorecard if isinstance(scorecard, dict) else None
+
+
+def validate_quant_scorecard(
+    scorecard: dict[str, Any] | None,
+    *,
+    min_confidence: float,
+    min_rr_ratio: float,
+) -> tuple[bool, str]:
+    """Validate an explicit quant scorecard against the canonical risk contract."""
+    if not isinstance(scorecard, dict):
+        return False, "quant_scorecard missing or malformed; execution blocked."
+
+    missing = [key for key in _REQUIRED_FIELDS if key not in scorecard]
+    if missing:
+        return False, f"quant_scorecard missing required fields: {', '.join(missing)}."
+
+    if scorecard.get("valid") is not True:
+        return False, "quant_scorecard is marked invalid; execution blocked."
+
+    if int(scorecard.get("scorecard_version") or 0) != QUANT_SCORECARD_VERSION:
+        return False, "quant_scorecard version is unsupported; execution blocked."
+
+    if not str(scorecard.get("strategy_id") or "").strip():
+        return False, "quant_scorecard has no strategy_id; execution blocked."
+
+    if str(scorecard.get("direction") or "").lower() not in ("buy", "sell"):
+        return False, "quant_scorecard has no actionable direction; execution blocked."
+
+    confidence = _finite_float(scorecard.get("confidence"))
+    if confidence is None:
+        return False, "quant_scorecard confidence is missing/non-finite; execution blocked."
+    if confidence < float(min_confidence):
+        return (
+            False,
+            f"quant_scorecard confidence {confidence:.2f} < {float(min_confidence):.2f}; execution blocked.",
+        )
+
+    rr_ratio = _finite_float(scorecard.get("rr_ratio"))
+    if rr_ratio is None:
+        return False, "quant_scorecard R:R is missing/non-finite; execution blocked."
+    if rr_ratio < float(min_rr_ratio):
+        return (
+            False,
+            f"quant_scorecard R:R {rr_ratio:.2f} < {float(min_rr_ratio):.2f}; execution blocked.",
+        )
+
+    return True, (
+        f"quant_scorecard_ok(strategy={scorecard.get('strategy_id')}, confidence={confidence:.2f}, rr={rr_ratio:.2f})"
+    )
+
+
+__all__ = [
+    "QUANT_SCORECARD_KEY",
+    "QUANT_SCORECARD_VERSION",
+    "attach_quant_scorecard",
+    "build_quant_scorecard",
+    "extract_quant_scorecard",
+    "is_quantitative_source",
+    "validate_quant_scorecard",
+]

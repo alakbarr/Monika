@@ -6,6 +6,14 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field, SecretStr, model_validator
 
+from monika.core.config.risk_defaults import (
+    DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE,
+    DEFAULT_AUTO_EXECUTE_MIN_CONFLUENCE,
+    DEFAULT_MAX_DAILY_DRAWDOWN_PERCENT,
+    DEFAULT_MAX_WEEKLY_DRAWDOWN_PERCENT,
+    DEFAULT_MIN_RR_RATIO,
+)
+
 
 class SubscriptableConfig(BaseModel, extra="allow"):
     def __getitem__(self, item: str) -> Any:
@@ -32,8 +40,8 @@ class SubscriptableConfig(BaseModel, extra="allow"):
 
 
 class RiskConfig(SubscriptableConfig):
-    max_daily_drawdown_percent: float | None = Field(default=3.0, ge=0.5, le=15.0)
-    max_weekly_drawdown_percent: float | None = Field(default=6.0, ge=1.0, le=25.0)
+    max_daily_drawdown_percent: float | None = Field(default=DEFAULT_MAX_DAILY_DRAWDOWN_PERCENT, ge=0.5, le=15.0)
+    max_weekly_drawdown_percent: float | None = Field(default=DEFAULT_MAX_WEEKLY_DRAWDOWN_PERCENT, ge=1.0, le=25.0)
     max_concurrent_positions: int | None = Field(default=5, ge=1, le=50)
     max_portfolio_heat_pct: float | None = Field(default=4.0, ge=0.5, le=20.0)
     max_daily_trades: int | None = Field(default=10, ge=1, le=100)
@@ -41,7 +49,7 @@ class RiskConfig(SubscriptableConfig):
     post_sl_cooldown_hours: float | None = Field(default=2.0, ge=0.0, le=72.0)
     consecutive_loss_pause_threshold: int | None = Field(default=3, ge=1, le=20)
     max_consecutive_losses_per_symbol: int | None = Field(default=3, ge=1, le=20)
-    min_rr_ratio: float | None = Field(default=1.3, ge=0.5, le=10.0)
+    min_rr_ratio: float | None = Field(default=DEFAULT_MIN_RR_RATIO, ge=0.5, le=10.0)
     daily_drawdown_limit: float | None = Field(default=None, ge=0.5, le=15.0)
 
 
@@ -125,8 +133,8 @@ class IndicatorsConfig(SubscriptableConfig):
 class TradingConfig(SubscriptableConfig):
     cost_mode: str | None = "standard"
     auto_execute: bool | None = False
-    auto_execute_min_confluence: int | None = Field(default=7, ge=1, le=20)
-    auto_execute_min_confidence: float | None = Field(default=0.60, ge=0.0, le=1.0)
+    auto_execute_min_confluence: int | None = Field(default=DEFAULT_AUTO_EXECUTE_MIN_CONFLUENCE, ge=1, le=20)
+    auto_execute_min_confidence: float | None = Field(default=DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE, ge=0.0, le=1.0)
     auto_execute_active_hours_utc_start: int | None = Field(default=6, ge=0, le=23)
     auto_execute_active_hours_utc_end: int | None = Field(default=22, ge=0, le=23)
     min_reanalysis_minutes: int | None = Field(default=30, ge=1, le=1440)

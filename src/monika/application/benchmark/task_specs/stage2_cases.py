@@ -46,7 +46,7 @@ def _stage2_system_prompt(settings: dict[str, Any], symbol: str, cot_code: str, 
     dyn = (
         f"\n\n=== CURRENT ANALYSIS TARGET ===\nSymbol: {symbol}\nCOT Code: {cot_code or 'N/A'}\n"
         f"Effective Confluence Threshold: {threshold}/14\n"
-        f"Minimum R:R Ratio: {settings.get('trading', {}).get('risk', {}).get('min_rr_ratio', 1.3)}\n"
+        f"Minimum R:R Ratio: {settings.get('trading', {}).get('risk', {}).get('min_rr_ratio', 1.5)}\n"
         "=== END TARGET ===\n"
     )
     return static + dyn

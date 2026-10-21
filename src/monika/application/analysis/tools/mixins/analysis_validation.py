@@ -604,7 +604,7 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
             if take_profit >= entry_price:
                 errors.append(f"For SELL, take_profit ({take_profit}) must be BELOW entry_price ({entry_price})")
 
-        min_rr = self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)
+        min_rr = self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5)
         if risk > 0:
             rr_ratio = reward / risk
             if rr_ratio < min_rr:

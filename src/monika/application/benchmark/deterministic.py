@@ -74,7 +74,7 @@ async def score_trade_payload(session, settings, symbol: str, payload: dict) -> 
             checks["sl_tp_correct_side"] = bool(correct_side)
             sl_d, tp_d = abs(entry - sl), abs(entry - tp)
             rr = (tp_d / sl_d) if sl_d else 0
-            min_rr = settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)
+            min_rr = settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5)
             checks["rr_meets_minimum"] = rr >= min_rr
 
             adr = await compute_daily_range_context(session, symbol, settings)

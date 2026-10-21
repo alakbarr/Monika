@@ -12,6 +12,7 @@
 - [`src/monika/core/config`](#folder-srcmonikacoreconfig)
 - [`src/monika/core/contracts`](#folder-srcmonikacorecontracts)
 - [`src/monika/core/primitives`](#folder-srcmonikacoreprimitives)
+- [`src/monika/core/risk`](#folder-srcmonikacorerisk)
 - [`src/monika/core/security`](#folder-srcmonikacoresecurity)
 - [`src/monika/core/streaming`](#folder-srcmonikacorestreaming)
 - [`src/monika/core/telemetry`](#folder-srcmonikacoretelemetry)
@@ -510,6 +511,9 @@
   - `register_config_listener(listener: Callable[[dict[str, Any]], None]) -> None`: Register a callback that receives configuration updates.
   - `notify_config_listeners(config: dict[str, Any]) -> None`: Notify all registered listeners about updated configuration.
 
+#### `risk_defaults.py` - *Canonical risk-contract defaults shared by code and ``settings.example.yaml``.*
+- **Path**: [`src/monika/core/config/risk_defaults.py`](src/monika/core/config/risk_defaults.py)
+
 #### `schemas.py` - *Pydantic Schemas for strongly-typed configuration validation (H6, M-3, M-4).*
 - **Path**: [`src/monika/core/config/schemas.py`](src/monika/core/config/schemas.py)
 - **Classes**:
@@ -727,6 +731,20 @@
     - `setup() -> Path` - *Create the worktree directory and branch.*
     - `get_diff() -> str` - *Return the git diff of changes made inside the worktree against HEAD.*
     - `cleanup() -> None` - *Prune and safely delete the worktree and temporary branch.*
+
+### Folder: `src/monika/core/risk` <a id="folder-srcmonikacorerisk"></a>
+
+#### `__init__.py` - *Risk-domain primitives shared by the domain and application layers.*
+- **Path**: [`src/monika/core/risk/__init__.py`](src/monika/core/risk/__init__.py)
+
+#### `quant_scorecard.py` - *Explicit, persisted scorecard for quantitative (non-LLM) trade proposals.*
+- **Path**: [`src/monika/core/risk/quant_scorecard.py`](src/monika/core/risk/quant_scorecard.py)
+- **Top-Level Functions**:
+  - `is_quantitative_source(decision_source: str | None) -> bool`: Return True when a decision source is a quantitative (non-LLM) proposal.
+  - `build_quant_scorecard() -> dict[str, Any]`: Build a deterministic scorecard from the strategy's executable signal.
+  - `attach_quant_scorecard(analysis: Any, scorecard: dict[str, Any]) -> None`: Persist a scorecard on an ``AssetAnalysis`` using the existing JSON column.
+  - `extract_quant_scorecard(analysis: Any) -> dict[str, Any] | None`: Return the explicit scorecard, or ``None`` when it is missing/malformed.
+  - `validate_quant_scorecard(scorecard: dict[str, Any] | None) -> tuple[bool, str]`: Validate an explicit quant scorecard against the canonical risk contract.
 
 ### Folder: `src/monika/core/security` <a id="folder-srcmonikacoresecurity"></a>
 
@@ -6503,10 +6521,10 @@
     - `assemble_stage1_tiered(core_memory: str, pad_for_gemini: bool) -> Any` - *Returns structured TieredSystemPrompt for Stage 1 prompt cache stability.*
     - `assemble_stage1_system_tuple(core_memory: str, behavioral_alert: str, pad_for_gemini: bool) -> Tuple[str, str]` - *Returns (static_system_prompt, dynamic_system_notes) for Stage 1 Macro Analysis.*
     - `assemble_stage1(data_bundle: str, portfolio_state: Optional[dict], core_memory: str, ...) -> Tuple[str, str]` - *Returns (system_prompt, user_message) for Stage 1 Macro Analysis.*
-    - `assemble_stage2_tiers(symbol: str, cot_code: str, effective_threshold: int, ...) -> Tuple[str, str, str]` - *Returns structured 3 system tiers for Stage 2 per-asset analysis.*
-    - `assemble_stage2_tiered(symbol: str, cot_code: str, effective_threshold: int, ...) -> Any` - *Returns structured TieredSystemPrompt for Stage 2 prompt cache stability.*
+    - `assemble_stage2_tiers(symbol: str, cot_code: str, effective_threshold: Optional[int], ...) -> Tuple[str, str, str]` - *Returns structured 3 system tiers for Stage 2 per-asset analysis.*
+    - `assemble_stage2_tiered(symbol: str, cot_code: str, effective_threshold: Optional[int], ...) -> Any` - *Returns structured TieredSystemPrompt for Stage 2 prompt cache stability.*
     - `build_target_user_message(symbol: str, cot_code: str, effective_threshold: int, ...) -> str` - *Asset-specific context as initial user message (preserves system prompt cache).*
-    - `assemble_stage2_system_tuple(symbol: str, cot_code: str, effective_threshold: int, ...) -> Tuple[str, str]` - *Returns (static_system_prompt, dynamic_target_note) for Stage 2.*
+    - `assemble_stage2_system_tuple(symbol: str, cot_code: str, effective_threshold: Optional[int], ...) -> Tuple[str, str]` - *Returns (static_system_prompt, dynamic_target_note) for Stage 2.*
     - `assemble_stage2(symbol: str, data_bundle: str, cot_code: str, ...) -> Tuple[str, str]` - *Returns (system_prompt, user_message) for Stage 2 Per-Asset Analysis.*
     - `assemble_3zone_prompt(zone_a_anchor: str, zone_b_context: str, zone_c_volatile_tail: str) -> Dict[str, str]` - *Structured 3-Zone prompt pack:*
 - **Top-Level Functions**:

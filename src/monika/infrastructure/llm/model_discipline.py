@@ -15,7 +15,7 @@ Never end your turn with a promise of future action without executing it now."""
 TRADING_VERIFICATION_GUIDANCE = """# Verification & Mathematical Grounding
 Before submitting any trading recommendation or concluding analysis:
 1. Verify SL and TP distances are mathematically grounded in ATR and structure, not arbitrary guesses.
-2. Confirm R:R ratio meets minimum policy requirements (>= 1.3:1).
+2. Confirm R:R ratio meets minimum policy requirements (>= 1.5:1).
 3. If tool calls returned errors or empty sets, label data unavailable — NEVER fabricate indicator values.
 4. If confluences are below threshold (min 5/14), conclude with WAIT immediately."""
 

@@ -17,7 +17,7 @@ RISK_SCHEMA = {
 
 
 async def analyze_risk_neutral_llm(client: BaseLLMClient, symbol: str, strict_context: dict) -> dict:
-    min_rr = float(strict_context.get("min_rr_ratio", 1.3) or 1.3)
+    min_rr = float(strict_context.get("min_rr_ratio", 1.5) or 1.5)
     sys_prompt = f"""You are the NEUTRAL Risk Manager. Your role is balanced governance: capturing genuine edge while strictly enforcing capital preservation principles.
 EVALUATION MANDATES:
 1. VETO CONDITIONS: Set veto_trade=true if:

@@ -716,6 +716,9 @@ class SignalArbitrator:
                 except Exception as tfm_err:
                     logger.debug(f"[{symbol}] TimesFM lookup in arbitrator failed (non-fatal): {tfm_err}")
 
+            tfm_confirms = (q_dir == "buy" and tfm_skew >= 0.20) or (q_dir == "sell" and tfm_skew <= -0.20)
+            tfm_opposes = (q_dir == "buy" and tfm_skew < -0.15) or (q_dir == "sell" and tfm_skew > 0.15)
+
             # If TimesFM strongly opposes Quant, suppress to avoid false breakout
             if (q_dir == "buy" and tfm_skew < -0.30) or (q_dir == "sell" and tfm_skew > 0.30):
                 return ArbitrationResult(
@@ -822,7 +825,7 @@ class SignalArbitrator:
                 and is_trend_strat
                 and not is_mean_rev_strat
                 and not has_llm_exhaustion
-                and not ((q_dir == "buy" and tfm_skew < -0.20) or (q_dir == "sell" and tfm_skew > 0.20))
+                and tfm_confirms
             ):
                 return ArbitrationResult(
                     symbol=symbol,
@@ -845,7 +848,7 @@ class SignalArbitrator:
                 and is_mean_rev_strat
                 and l_dir == "wait"
                 and not has_llm_exhaustion
-                and ((q_dir == "buy" and tfm_skew >= 0.20) or (q_dir == "sell" and tfm_skew <= -0.20))
+                and tfm_confirms
             ):
                 return ArbitrationResult(
                     symbol=symbol,
@@ -862,12 +865,8 @@ class SignalArbitrator:
 
             # 4f. If LLM is waiting ("wait") and Quant has active valid signal:
             if l_dir == "wait" and q_dir in ("buy", "sell"):
-                tfm_opposes = (q_dir == "buy" and tfm_skew < -0.15) or (q_dir == "sell" and tfm_skew > 0.15)
-                tfm_confirms = (q_dir == "buy" and tfm_skew >= 0.20) or (q_dir == "sell" and tfm_skew <= -0.20)
-                has_decisive_conviction = q_conf >= 0.80 and (q_conf - l_conf) >= 0.25 and not tfm_opposes
-                is_promoted = quant_strat_id in StrategyRegistry.PROMOTED_EMPIRICAL_STRATEGIES
-                if is_promoted and not is_incubating and not has_llm_exhaustion and not tfm_opposes:
-                    effective_mult = min(0.90, quant_priority_risk_mult + (0.15 if tfm_confirms else 0.0))
+                if not is_incubating and not has_llm_exhaustion and tfm_confirms:
+                    effective_mult = min(0.90, quant_priority_risk_mult + 0.15)
                     return ArbitrationResult(
                         symbol=symbol,
                         decision=q_dir,
@@ -875,23 +874,9 @@ class SignalArbitrator:
                         risk_multiplier=round(effective_mult, 2),
                         selected_source="quant",
                         arbitration_reason=(
-                            f"Promoted quant signal {quant_strat_id} executed while LLM is in {l_dir} "
-                            f"(TimesFM skew={tfm_skew:+.2f}{', confirming' if tfm_confirms else ', neutral/non-opposing'})."
+                            f"Quant signal {quant_strat_id} executed while LLM is in {l_dir} "
+                            f"with TimesFM directional confirmation (skew={tfm_skew:+.2f})."
                         ),
-                        entry_price=_get_q("entry_price"),
-                        stop_loss=_get_q("stop_loss"),
-                        take_profit=_get_q("take_profit"),
-                        meta={"quant_precedence": True, "overridden_llm_decision": l_dir, "timesfm_skew": tfm_skew},
-                    )
-                elif not is_incubating and not has_llm_exhaustion and (tfm_confirms or has_decisive_conviction):
-                    effective_mult = min(0.90, quant_priority_risk_mult + (0.15 if tfm_confirms else 0.05))
-                    return ArbitrationResult(
-                        symbol=symbol,
-                        decision=q_dir,
-                        confidence=q_conf,
-                        risk_multiplier=round(effective_mult, 2),
-                        selected_source="quant",
-                        arbitration_reason=f"Quant signal {quant_strat_id} executed with TimesFM confirmation while LLM is in {l_dir} (TimesFM skew={tfm_skew:+.2f}).",
                         entry_price=_get_q("entry_price"),
                         stop_loss=_get_q("stop_loss"),
                         take_profit=_get_q("take_profit"),
@@ -907,7 +892,7 @@ class SignalArbitrator:
                     elif tfm_opposes:
                         reason = f"LLM wait stance preserved: Quant {quant_strat_id} contradicts TimesFM skew ({tfm_skew:+.2f})."
                     else:
-                        reason = f"LLM wait stance preserved: Quant {quant_strat_id} lacks TimesFM directional confirmation (|skew| >= 0.25 required, actual={tfm_skew:+.2f})."
+                        reason = f"LLM wait stance preserved: Quant {quant_strat_id} lacks TimesFM directional confirmation (|skew| >= 0.20 required, actual={tfm_skew:+.2f})."
                     return ArbitrationResult(
                         symbol=symbol,
                         decision="wait",

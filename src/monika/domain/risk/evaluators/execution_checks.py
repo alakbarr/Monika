@@ -326,7 +326,7 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
                 False,
                 "Risk-to-reward ratio missing, non-finite, or non-positive; rejected by FR-4.1 fail-closed protection",
             )
-        min_rr = float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3))
+        min_rr = float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5))
         if rr < min_rr:
             return False, f"Risk-to-reward ratio {rr:.2f} is below minimum requirement {min_rr:.2f}"
         return True, f"rr_ratio={rr:.2f} >= {min_rr:.2f} (valid)"

@@ -13,6 +13,7 @@ from monika.application.analysis.strategies.decay_monitor import get_strategy_de
 from monika.application.analysis.strategies.pretrade_gate import evaluate_pretrade_gate
 from monika.application.analysis.strategies.registry import StrategyRegistry
 from monika.core.validation.data_validator import validate_data_freshness
+from monika.core.risk.quant_scorecard import attach_quant_scorecard, build_quant_scorecard
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import (
     AssetAnalysis,
@@ -436,7 +437,7 @@ class EdgeStrategyRunner:
 
                 trend_cfg = self.settings.get("trading", {}).get("edge_strategy", {}).get("trend_trailing") or {}
                 risk_cfg = self.settings.get("trading", {}).get("risk", {})
-                min_rr = float(risk_cfg.get("min_rr_ratio", 1.3))
+                min_rr = float(risk_cfg.get("min_rr_ratio", 1.5))
                 mult_map = risk_cfg.get("min_sl_atr_multiplier_by_symbol", {})
                 default_sl_mult = trend_cfg.get("sl_atr_multiplier", 1.5)
                 mult = mult_map.get(sig.symbol, mult_map.get("default", default_sl_mult))
@@ -473,7 +474,7 @@ class EdgeStrategyRunner:
 
         # Upstream R:R pre-filter check
         risk_cfg = (self.settings or {}).get("trading", {}).get("risk", {})
-        min_rr = float(risk_cfg.get("min_rr_ratio", 1.3))
+        min_rr = float(risk_cfg.get("min_rr_ratio", 1.5))
         sl_dist = abs(sig.entry_price - sig.stop_loss)
         tp_dist = abs(sig.take_profit - sig.entry_price)
         if sl_dist <= 0:
@@ -625,6 +626,17 @@ class EdgeStrategyRunner:
             analysis.source_strategy_id = leg.strategy_id
             if pair_group_id:
                 analysis.pair_group_id = pair_group_id
+            scorecard = build_quant_scorecard(
+                strategy_id=leg.strategy_id,
+                direction=leg.direction,
+                confidence=leg.confidence,
+                entry_price=entry_price_val,
+                stop_loss=leg.stop_loss,
+                take_profit=leg.take_profit,
+                regime=str((leg.meta or {}).get("regime") or "UNKNOWN"),
+                evidence_status=StrategyRegistry.get_tier(leg.strategy_id).value,
+            )
+            attach_quant_scorecard(analysis, scorecard)
             session.add(analysis)
             try:
                 await session.commit()

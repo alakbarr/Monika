@@ -170,7 +170,7 @@ class RiskGate(
         """
         risk_cfg = settings.get("trading", {}).get("risk", {})
         self.settings = settings
-        self.max_daily_drawdown_pct: float = risk_cfg.get("max_daily_drawdown_percent", 3.0)
+        self.max_daily_drawdown_pct: float = risk_cfg.get("max_daily_drawdown_percent", 4.0)
         self.max_concurrent: int = risk_cfg.get("max_concurrent_positions", 5)
         self.correlation_limit: int = risk_cfg.get("correlation_limit", 3)
         self.news_window_minutes: int = risk_cfg.get("news_window_minutes", 15)
@@ -555,7 +555,7 @@ class RiskGate(
                 "proposal": proposal,
                 "max_drawdown_limit": self.max_daily_drawdown_pct,
                 "current_drawdown_pct": current_dd_pct,
-                "min_rr_ratio": float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.3)),
+                "min_rr_ratio": float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5)),
             }
             inv_results = get_global_invariant_registry().run_all(inv_ctx, fail_fast=False)
             inv_failures = [r for r in inv_results if r.failed]
@@ -1026,7 +1026,7 @@ async def get_current_risk_state(session: Any | None = None, settings: dict | No
     if asyncio.iscoroutine(pos_count):
         pos_count = await pos_count
     pos_count = pos_count or 0
-    max_dd = float((settings or {}).get("trading", {}).get("risk", {}).get("max_daily_drawdown_percent", 3.0))
+    max_dd = float((settings or {}).get("trading", {}).get("risk", {}).get("max_daily_drawdown_percent", 4.0))
 
     # Fetch live equity from MT5 or fallback to paper trading initial balance
     live_equity = 0.0

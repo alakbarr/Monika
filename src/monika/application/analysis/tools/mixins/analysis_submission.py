@@ -1354,7 +1354,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                         sl_price = round(entry_price - (1.2 * atr_v), 5)
                         inp["stop_loss"] = sl_price
                     risk_dist = entry_price - sl_price
-                    if not tp_price or tp_price <= entry_price or (tp_price - entry_price) < 1.3 * risk_dist:
+                    if not tp_price or tp_price <= entry_price or (tp_price - entry_price) < 1.5 * risk_dist:
                         tp_price = round(entry_price + (1.6 * risk_dist), 5)
                         inp["take_profit"] = tp_price
                 else:
@@ -1362,7 +1362,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                         sl_price = round(entry_price + (1.2 * atr_v), 5)
                         inp["stop_loss"] = sl_price
                     risk_dist = sl_price - entry_price
-                    if not tp_price or tp_price >= entry_price or (entry_price - tp_price) < 1.3 * risk_dist:
+                    if not tp_price or tp_price >= entry_price or (entry_price - tp_price) < 1.5 * risk_dist:
                         tp_price = round(entry_price - (1.6 * risk_dist), 5)
                         inp["take_profit"] = tp_price
                 rationale += f"\n\n[SYSTEM AUTO-HEAL: Structural SL/TP aligned to valid ATR geometry (SL={sl_price}, TP={tp_price}, R:R={(abs(tp_price - entry_price) / max(0.00001, abs(entry_price - sl_price))):.2f})]"

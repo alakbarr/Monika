@@ -169,7 +169,7 @@ def score_stage2_per_asset(
 ) -> Dict[str, Any]:
     """
     Evaluates Stage 2 Per-Asset Primary Execution across 4 objective pillars (0 - 100):
-    1. Risk & Mathematical Rigor (0 - 35 pts): SL/TP sides, R:R >= 1.3, reasonable ADR bounds.
+    1. Risk & Mathematical Rigor (0 - 35 pts): SL/TP sides, R:R >= 1.5, reasonable ADR bounds.
     2. Structural Grounding & Confluence (0 - 25 pts): Entry tied to market structure, confluence.
     3. Decision Discipline & Invalidation (0 - 20 pts): Substantive rationale, invalidation price.
     4. Execution & Sizing Compliance (0 - 20 pts): Sizing passed RiskGate, latency efficiency.
@@ -459,7 +459,7 @@ def generate_leaderboard_markdown(leaderboard: List[Dict[str, Any]]) -> str:
             "- **Efficiency (20 pts)**: Latency under 600s budget and non-runaway token consumption.",
             "",
             "### Stage 2: Per-Asset Execution EURUSD (Max 100 pts)",
-            "- **Risk & Math Compliance (35 pts)**: Mathematically correct SL/TP side relative to entry, R:R >= 1.3, and ADR boundary compliance.",
+            "- **Risk & Math Compliance (35 pts)**: Mathematically correct SL/TP side relative to entry, R:R >= 1.5, and ADR boundary compliance.",
             "- **Structural Confluence (25 pts)**: Order Block / FVG / Liquidity level citations in rationale and valid confluence score.",
             "- **Decision Discipline (20 pts)**: Quantitative invalidation levels and re-evaluation trigger presence.",
             "- **Execution & Sizing (20 pts)**: Clean lot sizing execution via RiskGate and operational latency efficiency.",

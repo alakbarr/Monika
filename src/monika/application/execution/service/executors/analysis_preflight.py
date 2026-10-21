@@ -24,6 +24,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
 from monika.application.execution.service.base import _ExecutionServiceMixinBase
+from monika.core.config.risk_defaults import (
+    DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE,
+    DEFAULT_MIN_RR_RATIO,
+    DEFAULT_MIN_VERIFIABLE_CONFLUENCE,
+)
+from monika.core.risk.quant_scorecard import (
+    extract_quant_scorecard,
+    is_quantitative_source,
+    validate_quant_scorecard,
+)
 from monika.domain.execution.sizing_calculator import SizingCalculator
 from monika.domain.risk.position_sizing import PositionSizer, SizingResult
 from monika.infrastructure.brokers.broker_adapter import MT5LiveAdapter
@@ -876,10 +886,16 @@ class AnalysisPreflightMixin(_ExecutionServiceMixinBase):
                 logger.warning(f"Execution blocked: {result.summary()}")
                 return result, None
 
-        is_edge_signal = getattr(analysis, "decision_source", None) == "edge_registry"
+        decision_source = str(getattr(analysis, "decision_source", "") or "")
+        is_edge_signal = is_quantitative_source(decision_source)
 
         if verdict.approved and analysis.decision in ("buy", "sell") and is_edge_signal:
-            if (analysis.confidence or 0.0) < 0.3:
+            trading_cfg = self.settings.get("trading", {}) if isinstance(self.settings, dict) else {}
+            risk_cfg = trading_cfg.get("risk", {}) if isinstance(trading_cfg, dict) else {}
+            min_confidence = float(trading_cfg.get("auto_execute_min_confidence", DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE))
+            min_rr_ratio = float(risk_cfg.get("min_rr_ratio", DEFAULT_MIN_RR_RATIO))
+            confidence = analysis.confidence or 0.0
+            if confidence < min_confidence:
                 elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
                 return ExecutionResult(
                     symbol=symbol,
@@ -889,7 +905,36 @@ class AnalysisPreflightMixin(_ExecutionServiceMixinBase):
                     risk_approved=False,
                     risk_checks_passed=verdict.checks_passed,
                     risk_checks_failed=verdict.checks_failed + ["edge_signal_low_confidence"],
-                    risk_rejection_reasons=[f"Edge signal confidence {analysis.confidence} < 0.3 minimum"],
+                    risk_rejection_reasons=[
+                        f"Edge signal confidence {analysis.confidence} < {min_confidence:.2f} minimum"
+                    ],
+                    executed=False,
+                    mt5_ticket=None,
+                    executed_price=None,
+                    executed_lots=None,
+                    mt5_error=None,
+                    position_id=None,
+                    timestamp=start,
+                    elapsed_ms=elapsed,
+                ), None
+
+            scorecard = extract_quant_scorecard(analysis)
+            scorecard_ok, scorecard_reason = validate_quant_scorecard(
+                scorecard,
+                min_confidence=min_confidence,
+                min_rr_ratio=min_rr_ratio,
+            )
+            if not scorecard_ok:
+                elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+                return ExecutionResult(
+                    symbol=symbol,
+                    analysis_id=analysis.id,
+                    decision=decision,
+                    sizing=sizing,
+                    risk_approved=False,
+                    risk_checks_passed=verdict.checks_passed,
+                    risk_checks_failed=verdict.checks_failed + ["edge_signal_quant_scorecard"],
+                    risk_rejection_reasons=[scorecard_reason],
                     executed=False,
                     mt5_ticket=None,
                     executed_price=None,
@@ -902,7 +947,11 @@ class AnalysisPreflightMixin(_ExecutionServiceMixinBase):
 
         if verdict.approved and analysis.decision in ("buy", "sell") and not is_edge_signal:
             # --- MINIMUM VERIFIABLE CONFLUENCE GATE ---
-            min_verifiable = self.settings.get("trading", {}).get("risk", {}).get("min_verifiable_confluence", 4)
+            min_verifiable = (
+                self.settings.get("trading", {})
+                .get("risk", {})
+                .get("min_verifiable_confluence", DEFAULT_MIN_VERIFIABLE_CONFLUENCE)
+            )
             if (analysis.confluence_score or 0) < min_verifiable:
                 logger.warning(
                     f"Execution BLOCKED for {symbol}: confluence score {analysis.confluence_score} < min_verifiable ({min_verifiable})"

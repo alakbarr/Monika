@@ -218,7 +218,7 @@ class StartupChecker:
                 f"{risk_cfg.get('intraday_tp_min_adr_pct', 0.5) * 100:.0f}-"
                 f"{risk_cfg.get('intraday_tp_max_adr_pct', 0.8) * 100:.0f}% ADR, "
                 f"SL ceiling {risk_cfg.get('intraday_max_sl_adr_pct', 0.35) * 100:.0f}% ADR, "
-                f"min_rr_ratio={risk_cfg.get('min_rr_ratio', 1.3)}"
+                f"min_rr_ratio={risk_cfg.get('min_rr_ratio', 1.5)}"
             )
         risk_pct = risk_cfg.get("risk_percent_per_trade", 1.0)
         if risk_pct > 1.0:

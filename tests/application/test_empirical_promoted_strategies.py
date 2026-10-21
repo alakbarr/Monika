@@ -27,7 +27,7 @@ class DummyCandle:
 
 
 def test_quarantined_and_promoted_strategies_integrity():
-    """Verify toxic alphas are quarantined and newly promoted empirical alphas are in the whitelist."""
+    """Verify toxic alphas are quarantined and no hardcoded promotion whitelist survives."""
     # Ensure toxic alphas are quarantined
     for toxic_id in [
         "asian_range_fade",
@@ -38,7 +38,10 @@ def test_quarantined_and_promoted_strategies_integrity():
     ]:
         assert toxic_id in QUARANTINED_STRATEGY_IDS
 
-    # Ensure newly promoted empirical strategies are promoted
+    # Promotion is decided by the evidence store, never by a hardcoded whitelist.
+    assert PROMOTED_EMPIRICAL_STRATEGIES == set()
+
+    # The strategies themselves must still be registered and instantiable.
     for promoted_id in [
         "tokyo_open_sweep",
         "liquidity_sweep",
@@ -47,7 +50,6 @@ def test_quarantined_and_promoted_strategies_integrity():
         "bb_volume_profile",
         "btcusd_dynamic_donchian",
     ]:
-        assert promoted_id in PROMOTED_EMPIRICAL_STRATEGIES
         strategy_cls = StrategyRegistry.get(promoted_id)
         assert strategy_cls is not None
         instance = strategy_cls()

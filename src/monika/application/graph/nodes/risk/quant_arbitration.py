@@ -14,6 +14,7 @@ import logging
 from typing import Any, Dict, List, Mapping, Tuple
 
 from monika.application.graph.nodes.risk.level_synthesizer import resolve_and_repair_levels
+from monika.core.risk.quant_scorecard import attach_quant_scorecard, build_quant_scorecard
 
 logger = logging.getLogger("TradingAgent.Graph.Risk.QuantArbitration")
 
@@ -261,6 +262,28 @@ async def run_quant_arbitration(
                         ana.arbitration_reason = r["arbitration_reason"]
                     if r.get("source_strategy_id"):
                         ana.source_strategy_id = r["source_strategy_id"]
+
+                    # Quantitative proposals must carry an explicit scorecard; the
+                    # RiskGate and pre-trade verifier both fail closed without it.
+                    quant_source = str(r.get("decision_source", "")).startswith("quant_")
+                    if quant_source and str(ana.decision).lower() in ("buy", "sell"):
+                        scorecard = build_quant_scorecard(
+                            strategy_id=ana.source_strategy_id or r.get("source_strategy_id"),
+                            direction=ana.decision,
+                            confidence=ana.confidence,
+                            entry_price=ana.entry_price,
+                            stop_loss=ana.stop_loss,
+                            take_profit=ana.take_profit,
+                            regime=(
+                                regime_dict.get("regime")
+                                if isinstance(regime_dict, dict)
+                                else str(regime_dict or "UNKNOWN")
+                            ),
+                            evidence_status=str(arb_res.meta.get("evidence_status", "arbitrated")),
+                        )
+                        attach_quant_scorecard(ana, scorecard)
+                        r["quant_scorecard"] = scorecard
+
                     await session.commit()
                     logger.info(
                         f"[QuantArbitration] Persisted arbitrated trade {sym} ({ana.decision.upper()}) to AssetAnalysis #{ana.id}"

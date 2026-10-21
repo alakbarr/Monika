@@ -8,11 +8,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+from monika.core.config.risk_defaults import DEFAULT_MIN_RR_RATIO
+
 
 @dataclass(frozen=True)
 class RiskContract:
     symbol: str
-    min_rr_ratio: float = 1.3
+    min_rr_ratio: float = DEFAULT_MIN_RR_RATIO
     min_sl_atr_multiplier: float = 1.0
     max_sl_adr_pct: float = 0.35
     target_tp_min_adr_pct: float = 0.50
@@ -46,7 +48,7 @@ def build_risk_contract(
     trading_risk = cfg.get("trading", {}).get("risk", {})
 
     # 1. Min R:R Ratio
-    min_rr = float(trading_risk.get("min_rr_ratio", 1.3) or 1.3)
+    min_rr = float(trading_risk.get("min_rr_ratio", DEFAULT_MIN_RR_RATIO) or DEFAULT_MIN_RR_RATIO)
 
     # 2. Min SL ATR multiplier (symbol-specific override > config > default 1.0)
     sym_multipliers = system_config_multipliers or trading_risk.get("min_sl_atr_multiplier_by_symbol", {})

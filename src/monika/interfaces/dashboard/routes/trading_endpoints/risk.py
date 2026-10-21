@@ -48,7 +48,7 @@ async def get_risk():
     settings = get_dashboard_dependency("settings") or {}
     trading_risk = settings.get("trading", {}).get("risk", {}) if isinstance(settings, dict) else {}
     max_risk_pct = float(trading_risk.get("risk_percent_per_trade", 1.0))
-    max_daily_dd = float(trading_risk.get("max_daily_drawdown_percent", 3.0))
+    max_daily_dd = float(trading_risk.get("max_daily_drawdown_percent", 4.0))
     max_positions = int(trading_risk.get("max_concurrent_positions", 5))
 
     now_utc = datetime.now(timezone.utc)
