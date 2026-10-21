@@ -331,7 +331,7 @@ def _print_report(results: list[dict[str, Any]], recorded: int, dry_run: bool) -
 def main() -> int:
     parser = argparse.ArgumentParser(description="Bootstrap the strategy evidence store.")
     parser.add_argument("--lookback", type=int, default=1200, help="H1 candles per strategy")
-    parser.add_argument("--min-trades", type=int, default=20, help="minimum closed trades to record")
+    parser.add_argument("--min-trades", type=int, default=12, help="minimum closed trades to record")
     parser.add_argument("--include-synthesized", type=int, default=0, help="also evaluate N synthesized alphas")
     parser.add_argument(
         "--single-symbol",
