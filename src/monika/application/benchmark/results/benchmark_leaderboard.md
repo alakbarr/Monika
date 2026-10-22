@@ -23,7 +23,7 @@
 - **Efficiency (20 pts)**: Latency under 600s budget and non-runaway token consumption.
 
 ### Stage 2: Per-Asset Execution EURUSD (Max 100 pts)
-- **Risk & Math Compliance (35 pts)**: Mathematically correct SL/TP side relative to entry, R:R >= 1.3, and ADR boundary compliance.
+- **Risk & Math Compliance (35 pts)**: Mathematically correct SL/TP side relative to entry, R:R >= 1.5, and ADR boundary compliance.
 - **Structural Confluence (25 pts)**: Order Block / FVG / Liquidity level citations in rationale and valid confluence score.
 - **Decision Discipline (20 pts)**: Quantitative invalidation levels and re-evaluation trigger presence.
 - **Execution & Sizing (20 pts)**: Clean lot sizing execution via RiskGate and operational latency efficiency.

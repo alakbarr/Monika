@@ -1,7 +1,7 @@
 {
   "dataset_name": "Monika Benchmark Golden Production Fixtures",
   "snapshot_date": "2026-10-01",
-  "extracted_at": "2026-10-05T07:08:56.829069+00:00",
+  "extracted_at": "2026-10-22T11:39:19.461894+00:00",
   "database_engine": "PostgreSQL 16.3 (Local)",
   "mt5_terminal_build": "6230 (FBS-Demo)",
   "total_task_roles_covered": 56,

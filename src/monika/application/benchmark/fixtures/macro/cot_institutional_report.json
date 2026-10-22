@@ -52,5 +52,14 @@
     "leveraged_long": 92560,
     "leveraged_short": 31968,
     "net_leveraged": 60592
+  },
+  "133741": {
+    "dealer_long": 6892,
+    "dealer_short": 4212,
+    "asset_mgr_long": 5069,
+    "asset_mgr_short": 1483,
+    "leveraged_long": 4980,
+    "leveraged_short": 11836,
+    "net_leveraged": -6856
   }
 }
