@@ -63,6 +63,26 @@ class SystemToolsMixin(_ToolExecutorMixinBase):
 
         return await handle_web_search(inp, session=self.session, executor=self, settings=self.settings)
 
+    async def _tool_todo_write(self, inp: dict) -> dict:
+        """Record and update multi-step task planning checklist."""
+        todo_state = getattr(self, "todo_state", None)
+        if todo_state is None:
+            from monika.application.agent.harness.interactive_todo import TodoListState
+
+            self.todo_state = TodoListState()
+            todo_state = self.todo_state
+
+        raw_todos = inp.get("todos", []) if isinstance(inp, dict) else []
+        success, message = todo_state.update_todos(raw_todos)
+        in_prog = todo_state.get_in_progress_task()
+        return {
+            "status": "success" if success else "error",
+            "message": message,
+            "todos": todo_state.to_dict_list(),
+            "in_progress_task": in_prog.to_dict() if in_prog else None,
+            "all_completed": todo_state.all_completed(),
+        }
+
     async def _tool_update_scratchpad(self, inp: dict) -> dict:
         """Updates active working scratchpad with intermediate calculation anchors."""
         symbol = self._resolve_symbol(inp) or self.symbol or "DEFAULT"

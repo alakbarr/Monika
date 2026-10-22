@@ -646,7 +646,7 @@
   - `class Subscription`: Handler subscription record with priority ordering.
   - `class EventBus`: Central Asynchronous Event Bus.
     - `__init__()`
-    - `subscribe(event_type: type[E], handler: Callable[[E], Union[Coroutine[Any, Any, None], Any]], priority: int) -> Callable[[E], Union[Coroutine[Any, Any, None], Any]]` - *Register a subscriber for a specific event type or base class.*
+    - `subscribe(event_type: type[E], handler: Union[Callable[[E], Union[Coroutine[Any, Any, None], Any]], Callable[[E, Any], Union[Coroutine[Any, Any, Any], Any]]], priority: int) -> Any` - *Register a subscriber for a specific event type or base class.*
     - `unsubscribe(event_type: type[E], handler: Callable[[E], Union[Coroutine[Any, Any, None], Any]]) -> bool` - *Unsubscribe a handler from an event type.*
     - `get_subscribers(event_type: type[AppEvent]) -> list[Subscription]` - *Get all subscriptions matching the event type, including polymorphic bases.*
     - `async publish(event: AppEvent) -> list[Any]` - *Publish an event to all matching subscribers with full exception isolation.*
@@ -5118,9 +5118,11 @@
     - `prune_oversized_tool_results(messages: List[dict], threshold_chars: int, head_chars: int, ...) -> List[dict]` - *Stage 0: Deterministic model-free pruning of individual oversized tool results.*
     - `prune_deterministic_tools(messages: List[dict]) -> List[dict]` - *Phase 1: Deterministic Tool Pruning & Deduplication.*
     - `distill_initial_bundle_after_turn_1(messages: List[dict]) -> List[dict]` - *P0 Token Optimization: Prunes the verbose 50k character raw prefetch bundle*
+    - `is_balanced_tool_boundary(messages: List[dict], split_idx: int) -> bool` - *Verifies whether splitting messages at split_idx keeps all tool-use/tool-result pairs balanced.*
     - `split_boundaries(messages: List[dict], tail_turns: int) -> Tuple[List[dict], List[dict], List[dict]]` - *Phase 2: Protected Boundary Split with Warm-Prefix Preservation and Tool-Pair Snap.*
     - `async summarize_middle(middle_messages: List[dict]) -> str` - *Phase 3: Auxiliary Model Summarization with Iterative Chaining.*
-    - `async compress(messages: List[dict], max_context_chars: int, tail_turns: int) -> List[dict]` - *Phase 4: Assembly.*
+    - `async summarize_with_replay_prefix(head: List[dict], middle: List[dict], client: Optional[Any]) -> str` - *Phase 3 (Optimized): Replay-Prefix KV-Cache Preserving Summarization.*
+    - `async compress(messages: List[dict], max_context_chars: int, tail_turns: int, ...) -> List[dict]` - *Phase 4: Assembly.*
 - **Top-Level Functions**:
   - `safe_unicode_slice(text: str, max_chars: int) -> str`: Slices string by Unicode code points without corrupting multi-byte characters
   - `safe_unicode_tail(text: str, max_chars: int) -> str`: Slices string tail by Unicode code points without corrupting multi-byte characters
@@ -5138,6 +5140,10 @@
     - `safe_unicode_slice(text: str, start: Optional[int], end: Optional[int]) -> str` - *Slices string safely without splitting surrogate pairs or multibyte characters.*
     - `prune_text(text: str, max_chars: int, tool_name: str, ...) -> str` - *Prunes arbitrary plain-text output (e.g. bash stdout/stderr, file reads, logs)*
     - `prune_json(data: Union[Dict[str, Any], List[Any], str], max_chars: int, tool_name: str) -> str` - *Prunes JSON structures. If the payload is JSON-serializable and exceeds max_chars,*
+    - `truncate_line(line: str, max_chars: int) -> str` - *Truncate single line to avoid minified files or massive lines bloating context.*
+    - `truncate_head(text: str, max_chars: int, max_lines: int, ...) -> str` - *Truncate file content keeping head lines (headers, imports, declarations).*
+    - `truncate_tail(text: str, max_chars: int, max_lines: int, ...) -> str` - *Truncate shell/terminal/build logs keeping tail lines (exit code, stack trace, error message).*
+    - `prune_by_tool_type(tool_name: str, content: Union[str, Dict[str, Any], List[Any]], max_chars: int) -> str` - *Routes tool result content to the optimal pruning strategy:*
 
 #### `harness_state.py` - *Typed state machine and phase models for autonomous agent harness loop.*
 - **Path**: [`src/monika/application/agent/harness/harness_state.py`](src/monika/application/agent/harness/harness_state.py)
@@ -5159,6 +5165,23 @@
   - `evaluate_response_phase(state: HarnessState, response: Any, stop_reason: str, ...) -> PhaseVerdict`: Post-LLM phase: Check truncation, safety refusals, and response quality.
   - `handle_error_phase(state: HarnessState, exc: Exception) -> PhaseVerdict`: Error handling phase: Classify exception and assign recovery verdict.
 
+#### `interactive_todo.py` - *Interactive Todo State Machine & Task Progress Tracking.*
+- **Path**: [`src/monika/application/agent/harness/interactive_todo.py`](src/monika/application/agent/harness/interactive_todo.py)
+- **Classes**:
+  - `class TodoItem`
+    - `to_dict() -> Dict[str, str]`
+  - `class TodoListState`: Manages active task checklist state across turns.
+    - `has_todos() -> bool`
+    - `has_items() -> bool`
+    - `has_active_todos() -> bool`
+    - `get_in_progress_task() -> Optional[TodoItem]`
+    - `all_completed() -> bool`
+    - `update_todos(raw_todos: List[Dict[str, Any]]) -> Tuple[bool, str]` - *Replaces and validates the entire todo list with whole-list replacement.*
+    - `format_scaffold() -> str` - *Renders markdown checklist scaffold for prompt context.*
+    - `to_dict_list() -> List[Dict[str, str]]`
+    - `audit_completion() -> Tuple[bool, str]` - *Audits whether all tasks in the TODO list are completed or cancelled.*
+    - `reset() -> None`
+
 #### `message_repair.py` - *Four-pass message history alternation cleaner and repair engine for provider API dispatch.*
 - **Path**: [`src/monika/application/agent/harness/message_repair.py`](src/monika/application/agent/harness/message_repair.py)
 - **Top-Level Functions**:
@@ -5171,6 +5194,8 @@
   - `class DeliverableVerdict`
   - `class PhysicalDeliverableGate`: Physical Ground-Truth Probing Gate for Agent Harness Deliverables.
     - `__init__(workspace_root: Optional[str])`
+    - `capture_git_snapshot() -> Optional[Set[str]]` - *Captures working tree porcelain status at turn start.*
+    - `get_git_diff_changes() -> Set[str]` - *Returns set of relative paths changed/created since start of turn.*
     - `resolve_path(path_str: str) -> Path` - *Resolves path safely against workspace root.*
     - `verify_file_deliverable(path_str: str, min_bytes: int) -> DeliverableVerdict` - *Probes a single file deliverable for existence and minimum size.*
     - `verify_deliverables_batch(paths: List[str], min_bytes: int) -> DeliverableVerdict` - *Probes multiple deliverables, collecting verified and missing paths.*
@@ -5241,8 +5266,10 @@
     - `has_general_evidence(category: Optional[str], target: Optional[str], required_status: str) -> bool` - *Verifies whether empirical evidence exists meeting category, target, and status requirements.*
     - `get_general_records(category: Optional[str], target: Optional[str]) -> List[GeneralizedEvidenceRecord]` - *Returns matching general evidence records.*
     - `has_passed_evidence(symbol: Optional[str]) -> bool` - *Check if passing verification evidence exists (optionally for a specific symbol).*
-    - `verify_proposal_integrity(symbol: Optional[str], entry_price: Optional[float], stop_loss: Optional[float]) -> tuple[bool, str]` - *Verifies that trade proposal parameters match verified risk calculation evidence.*
+    - `verify_proposal_integrity(symbol: Optional[str], entry_price: Optional[float], stop_loss: Optional[float], ...) -> tuple[bool, str]` - *Verifies that trade proposal parameters match verified risk calculation evidence.*
     - `get_passed_records(symbol: Optional[str]) -> List[VerificationRecord]` - *Return list of passed records for a symbol.*
+- **Top-Level Functions**:
+  - `compute_evidence_hash(symbol: str, entry: float, stop_loss: float, ...) -> str`: Produces canonical SHA-256 fingerprint for verified trading parameters.
 
 ### Folder: `src/monika/application/agent/monitors` <a id="folder-srcmonikaapplicationagentmonitors"></a>
 
@@ -7269,6 +7296,12 @@
     - `evaluate(tool_name: str) -> GuardrailVerdict`
     - `record_denial() -> bool` - *Record a denial/rejection event. Returns True if breaker just tripped.*
     - `record_success() -> None` - *Reset consecutive denials upon successful action.*
+    - `reset() -> None`
+  - `class ReadBeforeMutateGuard`: Enforces that existing files must be observed/read before being modified in the current session.
+    - `__init__()`
+    - `record_read(path: str) -> None` - *Record path read and sync with FilePatchEngine observation tracker.*
+    - `evaluate(tool_name: str, args: Dict[str, Any]) -> GuardrailVerdict`
+    - `validate_mutation(tool_name: str, args: Dict[str, Any]) -> GuardrailVerdict` - *Alias for evaluate to provide direct, expressive guard checking.*
     - `reset() -> None`
   - `class ToolGuardrailController`: Unified Tool Guardrail Controller.
     - `__init__(settings: Optional[Dict[str, Any]])`
@@ -11838,6 +11871,7 @@
     - `side() -> str`
     - `exit_price() -> Optional[float]`
     - `exit_reason() -> str`
+    - `exit_reason(val: Any) -> None`
     - `pnl_pct() -> float`
   - `class TradeOutcome(Base)`: Link antara AssetAnalysis -> Position -> actual P&L outcome.
   - `class PaperTradeRecord(Base)`: Pelacakan paper trade persisten untuk mode dry-run.

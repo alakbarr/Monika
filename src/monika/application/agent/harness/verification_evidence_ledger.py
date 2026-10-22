@@ -5,12 +5,27 @@ spread verification, and generalized execution proof) executed during an agent's
 multi-turn reasoning cycle.
 """
 
+import hashlib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 
 logger = logging.getLogger("TradingAgent.Harness.VerificationEvidence")
+
+
+def compute_evidence_hash(
+    symbol: str,
+    entry: float,
+    stop_loss: float,
+    take_profit: Optional[float] = None,
+    lot_size: Optional[float] = None,
+) -> str:
+    """Produces canonical SHA-256 fingerprint for verified trading parameters."""
+    canonical = (
+        f"{symbol.strip().upper()}:{entry:.5f}:{stop_loss:.5f}:{(take_profit or 0.0):.5f}:{(lot_size or 0.0):.4f}"
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
 
 
 @dataclass
@@ -22,6 +37,8 @@ class VerificationRecord:
     entry_price: Optional[float] = None
     stop_loss: Optional[float] = None
     take_profit: Optional[float] = None
+    lot_size: Optional[float] = None
+    evidence_hash: Optional[str] = None
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -36,6 +53,7 @@ class GeneralizedEvidenceRecord:
     target: str  # e.g., "EURUSD", "src/monika/core/risk.py", "pytest tests/domain"
     status: str  # "passed", "failed", "warning"
     details: Dict[str, Any]
+    evidence_hash: Optional[str] = None
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -133,6 +151,7 @@ class VerificationEvidenceLedger:
         entry = None
         sl = None
         tp = None
+        lot_size = None
         if isinstance(tool_input, dict):
             try:
                 raw_entry = tool_input.get("entry") or tool_input.get("entry_price")
@@ -144,8 +163,23 @@ class VerificationEvidenceLedger:
                 raw_tp = tool_input.get("tp") or tool_input.get("take_profit")
                 if raw_tp is not None:
                     tp = float(raw_tp)
+                raw_lots = tool_input.get("lot_size") or tool_input.get("lots") or tool_input.get("volume")
+                if raw_lots is None and isinstance(result, dict):
+                    raw_lots = result.get("lot_size") or result.get("calculated_lot_size")
+                if raw_lots is not None:
+                    lot_size = float(raw_lots)
             except ValueError, TypeError:
                 pass
+
+        ev_hash = None
+        if symbol and entry is not None and sl is not None:
+            ev_hash = compute_evidence_hash(
+                symbol=symbol,
+                entry=entry,
+                stop_loss=sl,
+                take_profit=tp,
+                lot_size=lot_size,
+            )
 
         record = VerificationRecord(
             tool_name=tool_name,
@@ -155,9 +189,14 @@ class VerificationEvidenceLedger:
             entry_price=entry,
             stop_loss=sl,
             take_profit=tp,
+            lot_size=lot_size,
+            evidence_hash=ev_hash,
         )
         self.records.append(record)
-        logger.debug(f"[VerificationLedger] Recorded {tool_name} for symbol {symbol}: {status} (SL={sl}, TP={tp})")
+        logger.debug(
+            f"[VerificationLedger] Recorded {tool_name} for symbol {symbol}: {status} "
+            f"(SL={sl}, TP={tp}, Lots={lot_size}, Hash={ev_hash})"
+        )
         return record
 
     def record_general_evidence(
@@ -167,14 +206,18 @@ class VerificationEvidenceLedger:
         Explicitly records a verified empirical event for general-purpose tasks.
         (e.g., verifying a file was created on disk, a test suite passed, syntax verified).
         """
+        ev_hash = hashlib.sha256(f"{category}:{target}:{status}".encode("utf-8")).hexdigest()[:16]
         record = GeneralizedEvidenceRecord(
             category=category,
             target=target,
             status=status,
             details=details,
+            evidence_hash=ev_hash,
         )
         self.general_records.append(record)
-        logger.debug(f"[VerificationLedger] Recorded general evidence [{category}] on '{target}': {status}")
+        logger.debug(
+            f"[VerificationLedger] Recorded general evidence [{category}] on '{target}': {status} (Hash={ev_hash})"
+        )
         return record
 
     def has_general_evidence(
@@ -215,11 +258,18 @@ class VerificationEvidenceLedger:
         return False
 
     def verify_proposal_integrity(
-        self, symbol: Optional[str], entry_price: Optional[float] = None, stop_loss: Optional[float] = None
+        self,
+        symbol: Optional[str],
+        entry_price: Optional[float] = None,
+        stop_loss: Optional[float] = None,
+        take_profit: Optional[float] = None,
+        lot_size: Optional[float] = None,
+        expected_hash: Optional[str] = None,
     ) -> tuple[bool, str]:
         """
         Verifies that trade proposal parameters match verified risk calculation evidence.
         Prevents submitting modified stop_loss levels without re-calculating risk sizing.
+        Supports both cryptographic hash matching and financial tolerance checks.
         """
         clean_sym = str(symbol).upper() if symbol else None
         passed_sizing = [
@@ -233,6 +283,30 @@ class VerificationEvidenceLedger:
             return False, f"No verified sizing/risk evidence recorded for {clean_sym}."
 
         latest = passed_sizing[-1]
+
+        # 1. Cryptographic match check if hash is available
+        if expected_hash and latest.evidence_hash:
+            if expected_hash == latest.evidence_hash:
+                return True, "OK (Cryptographically verified)"
+
+        if (
+            latest.evidence_hash
+            and clean_sym
+            and entry_price is not None
+            and stop_loss is not None
+            and lot_size is not None
+        ):
+            prop_hash = compute_evidence_hash(
+                symbol=clean_sym,
+                entry=entry_price,
+                stop_loss=stop_loss,
+                take_profit=take_profit,
+                lot_size=lot_size,
+            )
+            if prop_hash == latest.evidence_hash:
+                return True, "OK (Cryptographic hash matched)"
+
+        # 2. Tolerance check fallback (allows minor broker rounding)
         if stop_loss is not None and latest.stop_loss is not None:
             denom = abs(latest.stop_loss) or 1.0
             # FIX 6.9: 1.5% tolerance (instead of overly strict 0.5%) prevents rejecting minor rounding adjustments

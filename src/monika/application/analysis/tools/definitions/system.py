@@ -766,7 +766,37 @@ EVALUATE_DEBATE_EFFICACY_TOOL = _tool(
 )
 
 
+TODO_WRITE = _tool(
+    name="todo_write",
+    description=(
+        "Record and update a structured task checklist to plan multi-step work and track execution progress. "
+        "Provide the complete list of tasks. While work remains, keep exactly one task 'in_progress'. "
+        "Mark each task 'completed' as soon as its verification proof is obtained."
+    ),
+    properties={
+        "todos": {
+            "type": "array",
+            "description": "The complete list of planned tasks.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "content": {"type": "string", "description": "Clear imperative action item."},
+                    "status": {
+                        "type": "string",
+                        "enum": ["pending", "in_progress", "completed", "cancelled"],
+                        "description": "Current status of this task.",
+                    },
+                },
+                "required": ["content", "status"],
+            },
+        }
+    },
+    required=["todos"],
+)
+
+
 __all__ = [
+    "TODO_WRITE",
     "GET_SYSTEM_HEALTH",
     "GET_TOKEN_USAGE_AND_COSTS",
     "INSPECT_DATABASE_SCHEMA",

@@ -27,6 +27,7 @@ Monika/
 │       │   │   │   ├── error_classifier.py
 │       │   │   │   ├── general_tool_pruner.py
 │       │   │   │   ├── harness_state.py
+│       │   │   │   ├── interactive_todo.py
 │       │   │   │   ├── message_repair.py
 │       │   │   │   ├── physical_deliverable_gate.py
 │       │   │   │   ├── repetition_guard.py
@@ -2140,6 +2141,7 @@ Monika/
 │   │   ├── grounding/
 │   │   │   └── test_extended_grounding.py
 │   │   ├── harness/
+│   │   │   ├── test_advanced_harness_enhancements.py
 │   │   │   ├── test_agent_harness.py
 │   │   │   ├── test_capabilities_and_structured.py
 │   │   │   ├── test_context_compressor.py
@@ -3093,4 +3095,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2796
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2798

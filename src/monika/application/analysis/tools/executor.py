@@ -496,6 +496,9 @@ class ToolExecutor(
             code_str = tool_input.get("code", "") if isinstance(tool_input, dict) else str(tool_input)
             return await ptc.execute(code=code_str)
 
+        if normalized_name == "todo_write":
+            return await self._tool_todo_write(tool_input)
+
         # Progressive Tool Disclosure Dispatch
         if normalized_name == "search_tools":
             from monika.application.analysis.tools.tool_registry import default_registry

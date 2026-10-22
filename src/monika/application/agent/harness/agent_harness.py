@@ -154,6 +154,10 @@ class AgentHarness:
         from monika.application.agent.harness.general_tool_pruner import GeneralToolPruner
 
         self.general_tool_pruner = GeneralToolPruner()
+        from monika.application.agent.harness.interactive_todo import TodoListState
+
+        self.todo_state = TodoListState()
+        self._active_turn_task: Optional[asyncio.Task] = None
 
         # Dual-Queue Steering Engine (Immediate Steering + Follow-Up Processing)
         self._steering_queue: deque = deque()
@@ -191,6 +195,14 @@ class AgentHarness:
             self._follow_up_queue.append(msg)
         else:
             self._steering_queue.append(msg)
+            # In-flight emergency steering cancellation
+            if any(marker in content.upper() for marker in ("ESTOP", "HALT", "EMERGENCY", "ABORT", "CANCEL")):
+                if self._active_turn_task and not self._active_turn_task.done():
+                    logger.warning(
+                        f"[AgentHarness] Immediate emergency directive '{content[:50]}' detected. "
+                        f"Cancelling in-flight turn task."
+                    )
+                    self._active_turn_task.cancel()
         logger.info(f"[AgentHarness] Enqueued {mode} steering directive from '{sender}': {content[:80]}...")
 
     # --------------------------------------------------------------------------
@@ -672,6 +684,41 @@ class AgentHarness:
         except Exception:
             return f"{tool_name}:{hashlib.md5(str(tool_input).encode('utf-8')).hexdigest()}"
 
+    @staticmethod
+    def _stub_exploration_tools(tools: list[dict], called_tools: Set[str]) -> list[dict]:
+        """
+        Dynamic tool stubbing for Turn >= 6:
+        Replaces lengthy descriptions of previously called heavy exploration tools
+        with a concise 1-line signature to conserve input tokens without breaking tool schema.
+        """
+        stubbed: list[dict] = []
+        heavy_prefixes = (
+            "get_historical",
+            "get_candles",
+            "get_calendar",
+            "get_cot",
+            "get_market_sentiment",
+            "get_order_book",
+        )
+        for t in tools:
+            name = str(t.get("name", ""))
+            desc = str(t.get("description", ""))
+            is_heavy = (
+                name in called_tools
+                and (any(name.startswith(p) for p in heavy_prefixes) or len(desc) > 150)
+                and not name.startswith("submit_")
+                and name not in ("todo_write", "request_human_guidance")
+            )
+            if is_heavy:
+                t_copy = dict(t)
+                t_copy["description"] = (
+                    f"{name}: previously executed exploration tool. Retains schema; call only if new parameters required."
+                )
+                stubbed.append(t_copy)
+            else:
+                stubbed.append(t)
+        return stubbed
+
     # --------------------------------------------------------------------------
     # State Preservation Context Truncation
     # --------------------------------------------------------------------------
@@ -950,6 +997,7 @@ class AgentHarness:
             )
         if executor is not None:
             executor.verification_ledger = self.verification_ledger
+            executor.todo_state = self.todo_state
         else:
             raise RuntimeError("ToolExecutor failed to initialize in run_agent_loop")
 
@@ -1089,7 +1137,10 @@ class AgentHarness:
             if hasattr(self, "context_compressor") and self.context_compressor:
                 try:
                     current_messages = await self.context_compressor.compress(
-                        current_messages, max_context_chars=self.max_context_chars, tail_turns=3
+                        current_messages,
+                        max_context_chars=self.max_context_chars,
+                        tail_turns=3,
+                        primary_client=self.llm_client,
                     )
                 except Exception as comp_err:
                     logger.debug(f"ContextCompressor skipped or failed: {comp_err}")
@@ -1098,6 +1149,12 @@ class AgentHarness:
             current_messages = self._apply_truncation_guardrail(
                 current_messages, system_prompt=system_prompt, stage_name=stage_name
             )
+
+            # Dynamic Tool Definition Stubbing (Turn >= 6) for Heavy Exploration Tools
+            if turns >= 6 and not self.settings.get("disable_tool_stubbing", False):
+                effective_tools = self._stub_exploration_tools(active_tools, called_tools)
+            else:
+                effective_tools = active_tools
 
             # 3. Provider Call with Transient Retry, Distributed Tracing, and Plugin Hooks
             from monika.application.plugins.manager.manager import PluginHook, get_plugin_manager
@@ -1108,7 +1165,7 @@ class AgentHarness:
                 stage_name=stage_name,
                 turn=turns,
                 messages=current_messages,
-                tools=active_tools,
+                tools=effective_tools,
             )
 
             provider_name = getattr(self.llm_client, "provider_name", "unknown")
@@ -1232,6 +1289,28 @@ class AgentHarness:
                                 else:
                                     send_messages.append({"role": "user", "content": snapshot_text})
 
+                        # 1.4: Active TODO list scaffold injection into latest user message
+                        if hasattr(self, "todo_state") and self.todo_state and self.todo_state.has_items():
+                            todo_scaffold = self.todo_state.format_scaffold()
+                            if todo_scaffold:
+                                todo_block = f"<active_todos>\n{todo_scaffold}\n</active_todos>"
+                                last_user_msg = next(
+                                    (m for m in reversed(send_messages) if m.get("role") == "user"), None
+                                )
+                                if last_user_msg:
+                                    prev_c = last_user_msg.get("content")
+                                    if isinstance(prev_c, str) and "<active_todos>" not in prev_c:
+                                        last_user_msg["content"] = f"{prev_c}\n\n{todo_block}"
+                                    elif isinstance(prev_c, list):
+                                        if not any(
+                                            "<active_todos>" in str(b.get("text", ""))
+                                            for b in prev_c
+                                            if isinstance(b, dict)
+                                        ):
+                                            last_user_msg["content"].append(
+                                                {"type": "text", "text": f"\n\n{todo_block}"}
+                                            )
+
                         turn_state.current_phase = TurnPhase.API_CALL
                         t_api_start = asyncio.get_event_loop().time()
                         try:
@@ -1240,14 +1319,24 @@ class AgentHarness:
                                 timeout_seconds=turn_timeout,
                                 stall_timeout_seconds=min(30.0, max(5.0, turn_timeout / 2.0)),
                             ) as watchdog:
-                                response = await run_bounded_async(
-                                    self.llm_client.run_tool_agent(send_messages, active_tools, effective_sys),
+                                api_coro = run_bounded_async(
+                                    self.llm_client.run_tool_agent(send_messages, effective_tools, effective_sys),
                                     timeout_seconds=turn_timeout,
                                     timeout_message=f"Turn {turns} LLM call timed out after {turn_timeout:.0f}s",
                                 )
+                                self._active_turn_task = asyncio.create_task(api_coro)
+                                try:
+                                    response = await self._active_turn_task
+                                finally:
+                                    self._active_turn_task = None
                                 watchdog.record_activity("api_response_received")
                         except (asyncio.TimeoutError, TimeoutError) as to_err:
                             raise TimeoutError(f"Turn {turns} LLM call timed out after {turn_timeout:.0f}s") from to_err
+                        except asyncio.CancelledError:
+                            logger.warning(
+                                f"[{stage_name}][AgentHarness] Active LLM call cancelled on turn {turns} (in-flight steering or abort)."
+                            )
+                            raise
                         finally:
                             turn_state.phase_latencies[f"api_call_turn_{turns}"] = (
                                 asyncio.get_event_loop().time() - t_api_start
@@ -1556,6 +1645,22 @@ class AgentHarness:
                         f"truncation error(s) as tool results for self-correction."
                     )
                     continue  # Next turn — model will re-issue with complete args
+                else:
+                    if turns < effective_max_turns:
+                        logger.warning(
+                            f"[{stage_name}][AgentHarness] Narrative truncated by output token limit on turn {turns}. "
+                            f"Injecting continuation prompt."
+                        )
+                        current_messages.append(
+                            {
+                                "role": "user",
+                                "content": (
+                                    "[SYSTEM NOTICE: Your previous narrative was truncated by max_tokens. "
+                                    "Continue directly from where you stopped without repeating prior content.]"
+                                ),
+                            }
+                        )
+                        continue
 
             # ── Structured Response Validation (Phase 3) ──
             from monika.application.agent.harness.error_classifier import ErrorClassifier, RecoveryAction
@@ -1675,6 +1780,26 @@ class AgentHarness:
                             f"{deliverable_verdict.message}"
                         )
                         current_messages.append({"role": "user", "content": deliverable_verdict.message})
+                        continue
+
+                # ── Interactive TODO List Audit (Ensure no unfinished tasks before exit) ──
+                if hasattr(self, "todo_state") and self.todo_state and self.todo_state.has_items():
+                    all_done, todo_audit_msg = self.todo_state.audit_completion()
+                    if not all_done and turns < effective_max_turns:
+                        logger.info(
+                            f"[{stage_name}][AgentHarness] Active TODOs incomplete: {todo_audit_msg}. "
+                            f"Nudging agent on turn {turns}/{effective_max_turns}..."
+                        )
+                        current_messages.append(
+                            {
+                                "role": "user",
+                                "content": (
+                                    f"[CRITICAL TODO AUDIT]: You have unfinished items in your TODO list:\n"
+                                    f"{todo_audit_msg}\n"
+                                    f"Please finish the in-progress tasks or mark them completed/cancelled using 'todo_write'."
+                                ),
+                            }
+                        )
                         continue
 
                 logger.info(
@@ -1900,6 +2025,12 @@ class AgentHarness:
 
                 recent_repeats = sliding_window_sigs.count(call_sig)
 
+                # Format canonical JSON-sorted arguments for deterministic tracking & reminders
+                try:
+                    canonical_args = json.dumps(c_input, sort_keys=True)
+                except Exception:
+                    canonical_args = str(c_input)
+
                 is_hard_suppressed = (
                     repeated_tool_count >= suppress_threshold
                     or recent_repeats >= suppress_threshold
@@ -1914,7 +2045,8 @@ class AgentHarness:
                     suppressed_result = {
                         "status": "already_executed",
                         "notice": (
-                            f"Tool '{c_name}' with identical parameters was already executed. "
+                            f"Tool '{c_name}' with identical parameters was already executed {repeated_tool_count} time(s). "
+                            f"Arguments: {canonical_args}. "
                             f"Do not repeat identical calls. Synthesize data already collected and conclude analysis."
                         ),
                     }
@@ -2270,10 +2402,22 @@ class AgentHarness:
                     )
 
                 if needs_repeat_advisory:
-                    advisory_note = (
-                        f"\n\n[ADVISORY REMINDER: Tool '{c_name}' with identical parameters was already called previously. "
-                        f"Avoid redundant calls. Synthesize collected data and conclude.]"
-                    )
+                    if repeated_tool_count >= 5 or total_sig_counts.get(call_sig, 0) >= 5:
+                        advisory_note = (
+                            f"\n\n[STRONG WARNING: Tool '{c_name}' has been executed {repeated_tool_count} times "
+                            f"with identical arguments: {canonical_args}. This indicates an unproductive loop. "
+                            f"You MUST shift strategies or synthesize your findings now.]"
+                        )
+                    elif repeated_tool_count >= 3 or total_sig_counts.get(call_sig, 0) >= 3:
+                        advisory_note = (
+                            f"\n\n[REFLECTION ADVISORY: Tool '{c_name}' has been invoked {repeated_tool_count} times "
+                            f"with these exact arguments. Reflect on whether new information is being gained.]"
+                        )
+                    else:
+                        advisory_note = (
+                            f"\n\n[ADVISORY REMINDER: Tool '{c_name}' with identical parameters was already called previously. "
+                            f"Avoid redundant calls. Synthesize collected data and conclude.]"
+                        )
                     tool_res_content = f"{tool_res_content}{advisory_note}"
 
                 return {

@@ -140,3 +140,120 @@ class GeneralToolPruner:
             "raw_snippet": cls.prune_text(raw_str, max_chars=max(max_chars - 120, 50), tool_name=tool_name),
         }
         return json.dumps(fallback_payload, default=str)
+
+    @classmethod
+    def truncate_line(cls, line: str, max_chars: int = 500) -> str:
+        """Truncate single line to avoid minified files or massive lines bloating context."""
+        if len(line) <= max_chars:
+            return line
+        half = (max_chars - 30) // 2
+        return f"{line[:half]}...[line truncated]...{line[-half:]}"
+
+    @classmethod
+    def truncate_head(
+        cls,
+        text: str,
+        max_chars: int = DEFAULT_MAX_CHARS,
+        max_lines: int = 120,
+        tool_name: str = "file_read",
+    ) -> str:
+        """
+        Truncate file content keeping head lines (headers, imports, declarations).
+        Omits trailing lines beyond budget.
+        """
+        if not text:
+            return ""
+        lines = [cls.truncate_line(line) for line in text.splitlines()]
+        if len(text) <= max_chars and len(lines) <= max_lines:
+            return "\n".join(lines)
+
+        kept: List[str] = []
+        char_count = 0
+        for line in lines[:max_lines]:
+            if char_count + len(line) + 1 > max_chars:
+                break
+            kept.append(line)
+            char_count += len(line) + 1
+
+        omitted_lines = len(lines) - len(kept)
+        omitted_chars = len(text) - char_count
+        notice = f"\n\n[... {omitted_lines} remaining lines ({omitted_chars} chars) omitted from '{tool_name}' ...]"
+        return "\n".join(kept) + notice
+
+    @classmethod
+    def truncate_tail(
+        cls,
+        text: str,
+        max_chars: int = DEFAULT_MAX_CHARS,
+        max_lines: int = 120,
+        tool_name: str = "execution_log",
+    ) -> str:
+        """
+        Truncate shell/terminal/build logs keeping tail lines (exit code, stack trace, error message).
+        Omits early lines beyond budget.
+        """
+        if not text:
+            return ""
+        lines = [cls.truncate_line(line) for line in text.splitlines()]
+        if len(text) <= max_chars and len(lines) <= max_lines:
+            return "\n".join(lines)
+
+        kept: List[str] = []
+        char_count = 0
+        for line in reversed(lines[-max_lines:]):
+            if char_count + len(line) + 1 > max_chars:
+                break
+            kept.append(line)
+            char_count += len(line) + 1
+
+        kept.reverse()
+        omitted_lines = len(lines) - len(kept)
+        omitted_chars = len(text) - char_count
+        notice = f"[... {omitted_lines} earlier lines ({omitted_chars} chars) omitted from '{tool_name}' ...]\n\n"
+        return notice + "\n".join(kept)
+
+    @classmethod
+    def prune_by_tool_type(
+        cls,
+        tool_name: str,
+        content: Union[str, Dict[str, Any], List[Any]],
+        max_chars: int = DEFAULT_MAX_CHARS,
+    ) -> str:
+        """
+        Routes tool result content to the optimal pruning strategy:
+        - JSON structures -> prune_json
+        - File reads -> truncate_head
+        - Terminal/logs/commands -> truncate_tail
+        - Search/grep -> line-by-line truncation + prune_text
+        - Generic text -> prune_text (40/60)
+        """
+        t_lower = tool_name.lower()
+        if isinstance(content, (dict, list)):
+            return cls.prune_json(content, max_chars=max_chars, tool_name=tool_name)
+
+        text_str = str(content)
+        # Check if text is actually valid JSON
+        if text_str.startswith(("{", "[")) and len(text_str) > max_chars:
+            try:
+                parsed = json.loads(text_str)
+                return cls.prune_json(parsed, max_chars=max_chars, tool_name=tool_name)
+            except Exception:
+                pass
+
+        if any(k in t_lower for k in ("read", "view", "source", "inspect", "file")):
+            return cls.truncate_head(text_str, max_chars=max_chars, tool_name=tool_name)
+
+        if any(k in t_lower for k in ("terminal", "command", "exec", "shell", "test", "run", "log", "broker")):
+            return cls.truncate_tail(text_str, max_chars=max_chars, tool_name=tool_name)
+
+        if any(k in t_lower for k in ("grep", "search", "find")):
+            pruned_lines = [cls.truncate_line(line) for line in text_str.splitlines()]
+            joined = "\n".join(pruned_lines)
+            return cls.prune_text(joined, max_chars=max_chars, tool_name=tool_name)
+
+        return cls.prune_text(text_str, max_chars=max_chars, tool_name=tool_name)
+
+
+truncate_line = GeneralToolPruner.truncate_line
+truncate_head = GeneralToolPruner.truncate_head
+truncate_tail = GeneralToolPruner.truncate_tail

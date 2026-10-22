@@ -10,7 +10,7 @@ import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Set
 
 logger = logging.getLogger("TradingAgent.Harness.PhysicalDeliverableGate")
 
@@ -22,13 +22,14 @@ class DeliverableVerdict:
     message: Optional[str] = None
     verified_paths: List[str] = field(default_factory=list)
     missing_paths: List[str] = field(default_factory=list)
+    git_confirmed_paths: List[str] = field(default_factory=list)
 
 
 class PhysicalDeliverableGate:
     """
     Physical Ground-Truth Probing Gate for Agent Harness Deliverables.
     Verifies that files claimed to be created or modified exist on disk, are non-empty,
-    and match declared deliverable criteria.
+    and match declared deliverable criteria using both OS filesystem probes and Git working tree snapshots.
     """
 
     FILE_MENTION_PATTERN = re.compile(
@@ -38,6 +39,55 @@ class PhysicalDeliverableGate:
 
     def __init__(self, workspace_root: Optional[str] = None):
         self.workspace_root = workspace_root or os.getcwd()
+        self._initial_git_snapshot: Optional[Set[str]] = None
+
+    def capture_git_snapshot(self) -> Optional[Set[str]]:
+        """Captures working tree porcelain status at turn start."""
+        try:
+            import subprocess
+
+            res = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=self.workspace_root,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if res.returncode == 0:
+                snapshot = set()
+                for line in res.stdout.splitlines():
+                    if len(line) > 3:
+                        snapshot.add(line[3:].strip().replace("/", os.sep))
+                self._initial_git_snapshot = snapshot
+                return snapshot
+        except Exception as e:
+            logger.debug(f"[PhysicalDeliverableGate] Git snapshot capture skipped: {e}")
+        self._initial_git_snapshot = None
+        return None
+
+    def get_git_diff_changes(self) -> Set[str]:
+        """Returns set of relative paths changed/created since start of turn."""
+        try:
+            import subprocess
+
+            res = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=self.workspace_root,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if res.returncode == 0:
+                current_lines = set()
+                for line in res.stdout.splitlines():
+                    if len(line) > 3:
+                        current_lines.add(line[3:].strip().replace("/", os.sep))
+                if self._initial_git_snapshot is not None:
+                    return current_lines - self._initial_git_snapshot
+                return current_lines
+        except Exception as e:
+            logger.debug(f"[PhysicalDeliverableGate] Git diff detection skipped: {e}")
+        return set()
 
     def resolve_path(self, path_str: str) -> Path:
         """Resolves path safely against workspace root."""
@@ -150,4 +200,16 @@ class PhysicalDeliverableGate:
                 f"file(s) are missing or empty on disk: {', '.join(verdict.missing_paths)}. "
                 f"Inspect the workspace and physically create or write the files before claiming task completion."
             )
+        else:
+            # Check git changes to confirm files modified in working tree
+            git_changes = self.get_git_diff_changes()
+            git_confirmed = []
+            for p in verdict.verified_paths:
+                try:
+                    rel = os.path.relpath(p, self.workspace_root).replace("/", os.sep)
+                    if rel in git_changes or any(rel.endswith(gc) for gc in git_changes):
+                        git_confirmed.append(p)
+                except Exception:
+                    pass
+            verdict.git_confirmed_paths = git_confirmed
         return verdict

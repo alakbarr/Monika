@@ -13,6 +13,7 @@ Replaces crude static truncation with an intelligent 4-phase pipeline:
 
 import copy
 import hashlib
+import inspect
 import json
 import logging
 import re
@@ -333,6 +334,39 @@ class ContextCompressor:
         messages_copy[0] = new_first
         return messages_copy
 
+    @staticmethod
+    def is_balanced_tool_boundary(messages: List[dict], split_idx: int) -> bool:
+        """
+        Verifies whether splitting messages at split_idx keeps all tool-use/tool-result pairs balanced.
+        Returns True if no step is severed across the boundary.
+        """
+        if split_idx <= 0 or split_idx >= len(messages):
+            return True
+
+        # Preceding message has open tool_calls/tool_use but next message is not yet included
+        prev_msg = messages[split_idx - 1]
+        p_calls = prev_msg.get("tool_calls") or []
+        p_content = prev_msg.get("content")
+        has_tool_use = bool(p_calls)
+        if not has_tool_use and isinstance(p_content, list):
+            has_tool_use = any(isinstance(b, dict) and b.get("type") in ("tool_use", "tool_call") for b in p_content)
+
+        if has_tool_use:
+            return False
+
+        # Current message is a tool result, which means preceding assistant was before the split
+        curr_msg = messages[split_idx]
+        c_role = curr_msg.get("role")
+        c_content = curr_msg.get("content")
+        if c_role == "tool":
+            return False
+        if isinstance(c_content, list) and any(
+            isinstance(b, dict) and b.get("type") == "tool_result" for b in c_content
+        ):
+            return False
+
+        return True
+
     def _snap_boundary(self, messages: List[dict], split_idx: int) -> int:
         """Snaps split index to ensure tool-pair integrity (prevents orphaned tool_use or tool_result)."""
         if split_idx <= 1 or split_idx >= len(messages):
@@ -357,12 +391,14 @@ class ContextCompressor:
                 prev_msg = messages[curr - 1]
                 prev_role = prev_msg.get("role")
                 if prev_role == "assistant":
-                    return curr - 1
+                    res_idx = curr - 1
+                    return res_idx if self.is_balanced_tool_boundary(messages, res_idx) else max(1, res_idx - 1)
                 elif prev_role in ("tool", "user"):
                     curr -= 1
                 else:
                     break
-            return max(1, curr - 1)
+            res_idx = max(1, curr - 1)
+            return res_idx if self.is_balanced_tool_boundary(messages, res_idx) else max(1, res_idx - 1)
 
         # If preceding message has tool_use or tool_calls, shift back to keep pair intact
         prev_msg = messages[split_idx - 1]
@@ -373,7 +409,8 @@ class ContextCompressor:
         elif isinstance(prev_content, list):
             has_tool_use = any(isinstance(b, dict) and b.get("type") in ("tool_use", "tool_call") for b in prev_content)
         if has_tool_use and split_idx > 1:
-            return split_idx - 1
+            res_idx = split_idx - 1
+            return res_idx if self.is_balanced_tool_boundary(messages, res_idx) else max(1, res_idx - 1)
 
         return split_idx
 
@@ -736,11 +773,84 @@ class ContextCompressor:
 
         return "\n".join(lines)
 
+    async def summarize_with_replay_prefix(
+        self,
+        head: List[dict],
+        middle: List[dict],
+        client: Optional[Any] = None,
+    ) -> str:
+        """
+        Phase 3 (Optimized): Replay-Prefix KV-Cache Preserving Summarization.
+        Structures compaction as an append-only extension of the active conversation prefix (Head + Middle),
+        achieving maximum KV-cache hit rate on primary models.
+        Falls back cleanly to summarize_middle if client does not support message replay or fails.
+        """
+        if not client:
+            return await self.summarize_middle(middle)
+
+        from collections.abc import Callable
+
+        generate_fn: Optional[Callable[..., Any]] = getattr(client, "generate_from_messages", None) or getattr(
+            client, "run_agent_from_messages", None
+        )
+        if not callable(generate_fn):
+            return await self.summarize_middle(middle)
+
+        _existing_summary, clean_middle = self._extract_existing_summary(middle)
+        read_files = self._extract_read_files(clean_middle)
+        modified_files = self._extract_modified_files(clean_middle)
+        categorized = self._extract_structured_trading_sections(clean_middle)
+        established_levels = categorized.get("established_levels", [])
+
+        compaction_directive = (
+            "You are an expert quantitative trading context compactor. Condense the conversation ABOVE into "
+            "the 8 standardized trading sections: <market_regime>, <technical_structure>, <liquidity_pois>, "
+            "<intermarket_sentiment>, <active_hypotheses>, <established_levels>, <risk_constraints>, "
+            "<completed_actions_evidence>.\n"
+            "Enclose the output within <compacted-summary>...</compacted-summary>."
+        )
+
+        replay_messages = list(head) + list(clean_middle) + [{"role": "user", "content": compaction_directive}]
+        try:
+            resp = await generate_fn(messages=replay_messages, max_tokens=450)
+            summary_text = getattr(resp, "content", str(resp))
+            if isinstance(summary_text, list):
+                summary_text = " ".join(
+                    str(b.get("text", "")) for b in summary_text if isinstance(b, dict) and b.get("type") == "text"
+                )
+            summary_str = str(summary_text).strip()
+            if len(summary_str) > 30:
+                if "<compacted-summary>" not in summary_str:
+                    summary_str = f"<compacted-summary>\n{summary_str}\n</compacted-summary>"
+                extra_blocks = []
+                if read_files and "<read-files>" not in summary_str:
+                    extra_blocks.append("<read-files>\n" + "\n".join(f"- {f}" for f in read_files) + "\n</read-files>")
+                if modified_files and "<modified-files>" not in summary_str:
+                    extra_blocks.append(
+                        "<modified-files>\n" + "\n".join(f"- {f}" for f in modified_files) + "\n</modified-files>"
+                    )
+                if established_levels and "<established_levels>" not in summary_str:
+                    extra_blocks.append(
+                        "<established_levels>\n"
+                        + "\n".join(f"- {lvl}" for lvl in established_levels)
+                        + "\n</established_levels>"
+                    )
+                if extra_blocks:
+                    summary_str = f"{summary_str}\n" + "\n".join(extra_blocks)
+                return summary_str
+        except Exception as e:
+            logger.debug(
+                f"[ContextCompressor] Replay prefix summarization failed, falling back to modular summarizer: {e}"
+            )
+
+        return await self.summarize_middle(middle)
+
     async def compress(
         self,
         messages: List[dict],
         max_context_chars: int = 100000,
         tail_turns: int = 3,
+        primary_client: Optional[Any] = None,
     ) -> List[dict]:
         """Phase 4: Assembly.
 
@@ -748,7 +858,7 @@ class ContextCompressor:
         1. Feasibility Skip: Ignore small contexts (< 1000 tokens / max_context_chars).
         2. Prune redundant tool outputs.
         3. Split into Head, Middle, Tail (tool-pair snapped).
-        4. Summarize Middle via aux model / rules with iterative chaining.
+        4. Summarize Middle via aux model / rules with iterative chaining (or replay-prefix).
         5. Assemble Head + [Condensed Summary Message] + Tail.
         """
         total_chars = sum(len(str(m.get("content", ""))) for m in messages)
@@ -791,8 +901,11 @@ class ContextCompressor:
                 self._ineffective_compression_count = 0
             return assembled
 
-        # Phase 3: Auxiliary Model Summarization
-        summary_text = await self.summarize_middle(middle)
+        # Phase 3: Auxiliary Model Summarization (with Replay-Prefix KV-Cache Optimization)
+        if primary_client:
+            summary_text = await self.summarize_with_replay_prefix(head, middle, client=primary_client)
+        else:
+            summary_text = await self.summarize_middle(middle)
 
         # Phase 4: Assembly
         summary_message = {
@@ -825,3 +938,6 @@ class ContextCompressor:
             f"-> {len(assembled)} messages ({chars_after} chars, {reduction_ratio:.1%} freed)."
         )
         return assembled
+
+
+is_balanced_tool_boundary = ContextCompressor.is_balanced_tool_boundary

@@ -19,6 +19,7 @@ Key Protections:
 import hashlib
 import json
 import logging
+import os
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
@@ -520,6 +521,79 @@ class DenialCircuitBreakerGuard:
         self._is_tripped = False
 
 
+class ReadBeforeMutateGuard:
+    """
+    Enforces that existing files must be observed/read before being modified in the current session.
+    Eliminates ungrounded code and configuration mutation hallucinations.
+    """
+
+    MUTATION_TOOLS: Set[str] = {
+        "write_file",
+        "patch_file",
+        "edit_file",
+        "modify_file",
+        "patch_source_file",
+        "write_source_file",
+    }
+
+    READ_TOOLS: Set[str] = {
+        "read_file",
+        "view_file",
+        "get_source_code",
+        "read_source_file",
+    }
+
+    def __init__(self):
+        self.observed_paths: Set[str] = set()
+
+    def record_read(self, path: str) -> None:
+        """Record path read and sync with FilePatchEngine observation tracker."""
+        if not path:
+            return
+        norm = os.path.normpath(os.path.abspath(str(path)))
+        self.observed_paths.add(norm)
+        try:
+            from monika.application.analysis.tools.file_patch_engine import record_file_observation
+
+            record_file_observation(norm)
+        except Exception:
+            pass
+
+    def evaluate(self, tool_name: str, args: Dict[str, Any]) -> GuardrailVerdict:
+        if tool_name not in self.MUTATION_TOOLS:
+            return GuardrailVerdict(allowed=True, guard_name="ReadBeforeMutateGuard", reason="OK")
+
+        raw_path = args.get("path") or args.get("Path") or args.get("file_path") or args.get("target_file")
+        if not raw_path:
+            return GuardrailVerdict(allowed=True, guard_name="ReadBeforeMutateGuard", reason="OK")
+
+        norm = os.path.normpath(os.path.abspath(str(raw_path)))
+        # If file does not exist on disk, fresh file creation is allowed
+        if not os.path.exists(norm):
+            return GuardrailVerdict(allowed=True, guard_name="ReadBeforeMutateGuard", reason="OK (Fresh file)")
+
+        if norm not in self.observed_paths:
+            return GuardrailVerdict(
+                allowed=False,
+                guard_name="ReadBeforeMutateGuard",
+                reason=(
+                    f"[READ-BEFORE-MUTATE VIOLATION]: File '{raw_path}' exists on disk but has not been read "
+                    f"in this session. You must call read_file or view_file before editing it."
+                ),
+                action="reject",
+                suggested_fix=f"Call read_file on '{raw_path}' first to verify existing content before modifying.",
+            )
+
+        return GuardrailVerdict(allowed=True, guard_name="ReadBeforeMutateGuard", reason="OK")
+
+    def validate_mutation(self, tool_name: str, args: Dict[str, Any]) -> GuardrailVerdict:
+        """Alias for evaluate to provide direct, expressive guard checking."""
+        return self.evaluate(tool_name, args)
+
+    def reset(self) -> None:
+        self.observed_paths.clear()
+
+
 class ToolGuardrailController:
     """
     Unified Tool Guardrail Controller.
@@ -532,6 +606,7 @@ class ToolGuardrailController:
         self.anti_oscillation = AntiOscillationGuard(threshold=repeat_thresh)
         self.monotonic_risk = MonotonicRiskGuard()
         self.read_before_act = ReadBeforeActGuard()
+        self.read_before_mutate = ReadBeforeMutateGuard()
         self.mandatory_sizing = MandatorySizingGuard()
         self.category_turn_cap = CategoryTurnCapGuard()
         self.denial_breaker = DenialCircuitBreakerGuard(threshold=int(self.settings.get("denial_breaker_threshold", 3)))
@@ -636,6 +711,12 @@ class ToolGuardrailController:
             logger.warning(f"[Guardrails] SUPPRESSED by {v_osc.guard_name}: {v_osc.reason}")
             return v_osc
 
+        # 6. Read Before Mutate Guard (File modification integrity)
+        v_mutate = self.read_before_mutate.evaluate(tool_name, args)
+        if not v_mutate.allowed:
+            logger.warning(f"[Guardrails] BLOCKED by {v_mutate.guard_name}: {v_mutate.reason}")
+            return v_mutate
+
         return GuardrailVerdict(allowed=True, guard_name="AllGuards", reason="Passed all guardrails")
 
     def record_tool_call(self, tool_name: str, args: Dict[str, Any], result: Any = None) -> None:
@@ -645,6 +726,12 @@ class ToolGuardrailController:
         self.read_before_act.record_call(tool_name)
         self.category_turn_cap.record_call(tool_name)
 
+        # Track file observation for read and mutation tools
+        if tool_name in self.read_before_mutate.READ_TOOLS or tool_name in self.read_before_mutate.MUTATION_TOOLS:
+            raw_path = args.get("path") or args.get("Path") or args.get("file_path") or args.get("target_file")
+            if raw_path:
+                self.read_before_mutate.record_read(str(raw_path))
+
     def reset_turn(self) -> None:
         """Reset per-turn counters."""
         self.category_turn_cap.reset()
@@ -653,4 +740,5 @@ class ToolGuardrailController:
         """Reset seluruh guard (misal: siklus baru dimulai)."""
         self.anti_oscillation.reset()
         self.read_before_act.reset()
+        self.read_before_mutate.reset()
         self.category_turn_cap.reset()
