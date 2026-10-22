@@ -131,8 +131,8 @@ class TokyoSweepStrategy(EdgeStrategy):
                 rationale="No Tokyo liquidity sweep pattern detected",
             )
 
-        # Empirically verified geometry: SL 1.0x ATR, TP 1.8x ATR (R:R = 1.8, WR 58.6%)
-        sl_dist = 1.0 * atr
+        # Empirically verified geometry: SL 1.2x ATR, TP 1.8x ATR (R:R = 1.5, WR 60.3%, PF 1.91)
+        sl_dist = 1.2 * atr
         tp_dist = 1.8 * atr
 
         if direction == "buy":

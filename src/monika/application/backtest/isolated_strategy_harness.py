@@ -760,14 +760,25 @@ class IsolatedStrategyBacktestHarness:
         error_samples: List[str] = []
 
         i = burn_in_bars
+        m15_idx = 0
+        h4_idx = 0
+        d1_idx = 0
+
         while i < len(primary_candles) - 5:
             current_bar = primary_candles[i]
             cur_time = current_bar.get("time") or datetime.now(timezone.utc)
 
+            while m15_idx < len(m15_candles) and (m15_candles[m15_idx].get("time") or cur_time) <= cur_time:
+                m15_idx += 1
+            while h4_idx < len(h4_candles) and (h4_candles[h4_idx].get("time") or cur_time) <= cur_time:
+                h4_idx += 1
+            while d1_idx < len(d1_candles) and (d1_candles[d1_idx].get("time") or cur_time) <= cur_time:
+                d1_idx += 1
+
             h1_slice = primary_candles[: i + 1]
-            m15_slice = [c for c in m15_candles if (c.get("time") or cur_time) <= cur_time]
-            h4_slice = [c for c in h4_candles if (c.get("time") or cur_time) <= cur_time]
-            d1_slice = [c for c in d1_candles if (c.get("time") or cur_time) <= cur_time]
+            m15_slice = m15_candles[:m15_idx]
+            h4_slice = h4_candles[:h4_idx]
+            d1_slice = d1_candles[:d1_idx]
 
             slice_cache: Dict[tuple[str, str], List[CandleDict]] = {
                 (self.symbol, "H1"): h1_slice,

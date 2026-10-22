@@ -6891,8 +6891,8 @@
 #### `gap_fade.py`
 - **Path**: [`src/monika/application/analysis/strategies/gap_fade.py`](src/monika/application/analysis/strategies/gap_fade.py)
 - **Classes**:
-  - `class DailyReopenGapFade(EdgeStrategy)`
-    - `async evaluate(session, symbol, settings, ...) -> EdgeSignal`
+  - `class DailyReopenGapFade(EdgeStrategy)`: Intraday & Session Gap Fill Mean-Reversion Strategy.
+    - `async evaluate(session, symbol: str, settings: dict, ...) -> EdgeSignal`
 
 #### `gbpusd_trend_breakout.py`
 - **Path**: [`src/monika/application/analysis/strategies/gbpusd_trend_breakout.py`](src/monika/application/analysis/strategies/gbpusd_trend_breakout.py)
@@ -6979,6 +6979,12 @@
     - `async on_register(container: Any, event_bus: Any) -> None` - *Auto-register the strategy class into StrategyRegistry upon plugin load.*
 - **Top-Level Functions**:
   - `wrap_strategy_as_plugin(strategy_cls: Type[EdgeStrategy]) -> StrategyPlugin`: Convenience factory to wrap an existing EdgeStrategy class into a StrategyPlugin.
+
+#### `tokyo_range_fade.py` - *Tokyo Range Fade Strategy.*
+- **Path**: [`src/monika/application/analysis/strategies/tokyo_range_fade.py`](src/monika/application/analysis/strategies/tokyo_range_fade.py)
+- **Classes**:
+  - `class TokyoRangeFadeStrategy(EdgeStrategy)`
+    - `async evaluate(session, symbol: str, settings: dict, ...) -> EdgeSignal`
 
 #### `tokyo_sweep.py` - *Tokyo Open Liquidity Sweep Strategy.*
 - **Path**: [`src/monika/application/analysis/strategies/tokyo_sweep.py`](src/monika/application/analysis/strategies/tokyo_sweep.py)

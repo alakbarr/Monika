@@ -297,6 +297,7 @@ Monika/
 │       │   │   │   ├── smc_fvg.py
 │       │   │   │   ├── smt_divergence.py
 │       │   │   │   ├── strategy_plugin.py
+│       │   │   │   ├── tokyo_range_fade.py
 │       │   │   │   ├── tokyo_sweep.py
 │       │   │   │   ├── tri_convergent_alpha.py
 │       │   │   │   ├── tsm_momentum.py
@@ -3087,4 +3088,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2790
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2791

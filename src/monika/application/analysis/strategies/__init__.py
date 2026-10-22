@@ -118,6 +118,11 @@ except Exception as e:
     logger.debug(f"btc_us_momentum not loaded: {e}")
 
 try:
+    import monika.application.analysis.strategies.tokyo_range_fade
+except Exception as e:
+    logger.debug(f"tokyo_range_fade not loaded: {e}")
+
+try:
     from monika.application.analysis.strategies.registry import StrategyRegistry
 
     StrategyRegistry.log_summary()

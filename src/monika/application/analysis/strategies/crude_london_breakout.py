@@ -54,9 +54,9 @@ class CrudeLondonBreakoutStrategy(EdgeStrategy):
 
     def __init__(self, settings: Optional[Dict[str, Any]] = None, *args, **kwargs) -> None:
         super().__init__(settings or {}, *args, **kwargs)
-        self.sl_mult: float = float(self.settings.get("sl_mult", 1.0))
-        self.tp_mult: float = float(self.settings.get("tp_mult", 2.0))
-        self.max_hold_hours: int = int(self.settings.get("max_hold_hours", 10))
+        self.sl_mult: float = float(self.settings.get("sl_mult", 1.5))
+        self.tp_mult: float = float(self.settings.get("tp_mult", 3.0))
+        self.max_hold_hours: int = int(self.settings.get("max_hold_hours", 24))
 
     async def evaluate(
         self,
@@ -77,15 +77,15 @@ class CrudeLondonBreakoutStrategy(EdgeStrategy):
             )
 
         now = as_of or clock.now()
-        # London Open window: strictly 07:00 UTC bar
-        if now.hour != 7:
+        # European / London energy breakout window: 07:00 - 08:00 UTC
+        if now.hour not in (7, 8):
             return EdgeSignal(
                 strategy_id=self.strategy_id,
                 symbol=symbol,
                 direction=None,
                 valid=False,
                 confidence=0.0,
-                rationale="Outside London Open window (strictly 07:00 UTC bar).",
+                rationale="Outside London Open window (07:00 - 08:00 UTC).",
                 tags=["outside_window"],
             )
 
