@@ -98,6 +98,26 @@ except Exception as e:
     logger.debug(f"gbpusd_trend_breakout not loaded: {e}")
 
 try:
+    import monika.application.analysis.strategies.london_trend_breakout
+except Exception as e:
+    logger.debug(f"london_trend_breakout not loaded: {e}")
+
+try:
+    import monika.application.analysis.strategies.london_gold_breakout
+except Exception as e:
+    logger.debug(f"london_gold_breakout not loaded: {e}")
+
+try:
+    import monika.application.analysis.strategies.crude_london_breakout
+except Exception as e:
+    logger.debug(f"crude_london_breakout not loaded: {e}")
+
+try:
+    import monika.application.analysis.strategies.btc_us_momentum
+except Exception as e:
+    logger.debug(f"btc_us_momentum not loaded: {e}")
+
+try:
     from monika.application.analysis.strategies.registry import StrategyRegistry
 
     StrategyRegistry.log_summary()

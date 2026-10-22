@@ -6826,12 +6826,26 @@
     - `async evaluate(session, symbol, settings) -> EdgeSignal`
   - `class DonchianBreakoutStrategy(BTCDonchianBreakout)`
 
+#### `btc_us_momentum.py`
+- **Path**: [`src/monika/application/analysis/strategies/btc_us_momentum.py`](src/monika/application/analysis/strategies/btc_us_momentum.py)
+- **Classes**:
+  - `class BTCUSMomentumStrategy(EdgeStrategy)`: Empirically Promoted US Session Momentum Strategy for Bitcoin (BTCUSD).
+    - `__init__(settings: Optional[Dict[str, Any]]) -> None`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Optional[Dict[str, Any]], ...) -> EdgeSignal`
+
 #### `btcusd_dynamic_donchian.py`
 - **Path**: [`src/monika/application/analysis/strategies/btcusd_dynamic_donchian.py`](src/monika/application/analysis/strategies/btcusd_dynamic_donchian.py)
 - **Classes**:
   - `class BTCUSDDynamicDonchianStrategy(EdgeStrategy)`: Empirically Promoted Dynamic Donchian Breakout Strategy for Bitcoin (BTCUSD).
     - `__init__(settings: Optional[Dict[str, Any]]) -> None`
     - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
+
+#### `crude_london_breakout.py`
+- **Path**: [`src/monika/application/analysis/strategies/crude_london_breakout.py`](src/monika/application/analysis/strategies/crude_london_breakout.py)
+- **Classes**:
+  - `class CrudeLondonBreakoutStrategy(EdgeStrategy)`: Empirically Promoted London Breakout Strategy for Crude Oil (XTIUSD & XBRUSD).
+    - `__init__(settings: Optional[Dict[str, Any]]) -> None`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Optional[Dict[str, Any]], ...) -> EdgeSignal`
 
 #### `decay_monitor.py` - *Strategy Decay Monitor: Automated strategy degradation detection & state machine.*
 - **Path**: [`src/monika/application/analysis/strategies/decay_monitor.py`](src/monika/application/analysis/strategies/decay_monitor.py)
@@ -6908,6 +6922,20 @@
 - **Classes**:
   - `class LiquiditySweepStructuralShift(EdgeStrategy)`
     - `async evaluate(session, symbol: str, settings: dict, ...) -> EdgeSignal`
+
+#### `london_gold_breakout.py`
+- **Path**: [`src/monika/application/analysis/strategies/london_gold_breakout.py`](src/monika/application/analysis/strategies/london_gold_breakout.py)
+- **Classes**:
+  - `class LondonGoldBreakoutStrategy(EdgeStrategy)`: Empirically Promoted London Open Breakout Strategy for Gold (XAUUSD).
+    - `__init__(settings: Optional[Dict[str, Any]]) -> None`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Optional[Dict[str, Any]], ...) -> EdgeSignal`
+
+#### `london_trend_breakout.py`
+- **Path**: [`src/monika/application/analysis/strategies/london_trend_breakout.py`](src/monika/application/analysis/strategies/london_trend_breakout.py)
+- **Classes**:
+  - `class LondonTrendBreakoutStrategy(EdgeStrategy)`: Empirically Promoted London Trend Breakout Strategy for GBPUSD and AUDUSD.
+    - `__init__(settings: Optional[Dict[str, Any]]) -> None`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Optional[Dict[str, Any]], ...) -> EdgeSignal`
 
 #### `pretrade_gate.py`
 - **Path**: [`src/monika/application/analysis/strategies/pretrade_gate.py`](src/monika/application/analysis/strategies/pretrade_gate.py)

@@ -281,13 +281,17 @@ Monika/
 │       │   │   │   ├── bb_volume_profile.py
 │       │   │   │   ├── bollinger_reversion.py
 │       │   │   │   ├── btc_donchian_breakout.py
+│       │   │   │   ├── btc_us_momentum.py
 │       │   │   │   ├── btcusd_dynamic_donchian.py
+│       │   │   │   ├── crude_london_breakout.py
 │       │   │   │   ├── decay_monitor.py
 │       │   │   │   ├── evidence_store.py
 │       │   │   │   ├── gap_fade.py
 │       │   │   │   ├── gbpusd_trend_breakout.py
 │       │   │   │   ├── hypothesis_registry.py
 │       │   │   │   ├── liquidity_sweep_edge.py
+│       │   │   │   ├── london_gold_breakout.py
+│       │   │   │   ├── london_trend_breakout.py
 │       │   │   │   ├── pretrade_gate.py
 │       │   │   │   ├── registry.py
 │       │   │   │   ├── smc_fvg.py
@@ -2178,6 +2182,7 @@ Monika/
 │   │   │   ├── test_evidence_significance.py
 │   │   │   ├── test_evidence_store_aging.py
 │   │   │   ├── test_gbpusd_trend_breakout.py
+│   │   │   ├── test_new_empirical_strategies.py
 │   │   │   ├── test_promoted_empirical_strategies.py
 │   │   │   ├── test_promotion_evidence_source.py
 │   │   │   ├── test_quant_discovery_pipeline.py
@@ -3082,4 +3087,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2785
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2790
