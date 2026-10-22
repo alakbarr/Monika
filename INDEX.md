@@ -95,6 +95,7 @@
 - [`src/monika/application/harness`](#folder-srcmonikaapplicationharness)
 - [`src/monika/application/harness/adapters`](#folder-srcmonikaapplicationharnessadapters)
 - [`src/monika/application/orchestrator`](#folder-srcmonikaapplicationorchestrator)
+- [`src/monika/application/planning`](#folder-srcmonikaapplicationplanning)
 - [`src/monika/application/plugins`](#folder-srcmonikaapplicationplugins)
 - [`src/monika/application/plugins/alerts/discord_alert`](#folder-srcmonikaapplicationpluginsalertsdiscordalert)
 - [`src/monika/application/plugins/analysis_pipelines/macro_to_asset`](#folder-srcmonikaapplicationpluginsanalysispipelinesmacrotoasset)
@@ -9760,6 +9761,20 @@
   - `class AgentRecoveryMixin`: Mixin responsible for post-restart state reconstruction and approval flows.
     - `async publish_tick(symbol: str, bid: float, ask: float, ...) -> None` - *Publish a live TickPriceEvent to the centralized EventBus.*
     - `async request_fallback_consent(prompt_text: str) -> bool` - *Coordinate fallback consent request across CLI and Telegram channels.*
+
+### Folder: `src/monika/application/planning` <a id="folder-srcmonikaapplicationplanning"></a>
+
+#### `session_plan.py` - *Session-scoped planning mechanism for trading analysis tasks.*
+- **Path**: [`src/monika/application/planning/session_plan.py`](src/monika/application/planning/session_plan.py)
+- **Classes**:
+  - `class SessionPlan`: Task-scoped plan manager tied to a session ID.
+    - `__init__(session_id: str, goal: Optional[str])`
+    - `get_or_create(session_id: str, goal: Optional[str]) -> 'SessionPlan'`
+    - `add_task(task: str, priority: str) -> Dict[str, Any]`
+    - `update_task(task_index: int, status: str, note: Optional[str]) -> bool`
+    - `get_plan() -> Dict[str, Any]`
+    - `summary_text() -> str`
+    - `clear() -> None`
 
 ### Folder: `src/monika/application/plugins` <a id="folder-srcmonikaapplicationplugins"></a>
 

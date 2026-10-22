@@ -735,6 +735,8 @@ Monika/
 │       │   │   ├── lifecycle.py
 │       │   │   ├── monitors.py
 │       │   │   └── recovery.py
+│       │   ├── planning/
+│       │   │   └── session_plan.py
 │       │   ├── plugins/
 │       │   │   ├── alerts/
 │       │   │   │   └── discord_alert/
@@ -2117,7 +2119,9 @@ Monika/
 │   └── vite.config.ts
 │   ├── agent/
 │   │   ├── test_agent_loop.py
+│   │   ├── test_chat_memory_budget.py
 │   │   ├── test_core_and_error_taxonomy.py
+│   │   ├── test_file_write_approval.py
 │   │   ├── test_mcp_write_approval.py
 │   │   ├── test_memory_skills_and_traps.py
 │   │   ├── test_moa_loop.py
@@ -2205,6 +2209,7 @@ Monika/
 │   │   ├── tools/
 │   │   │   ├── test_domain_handlers.py
 │   │   │   ├── test_domain_universal_tools.py
+│   │   │   ├── test_file_tool_catalog_integration.py
 │   │   │   ├── test_handlers_regression.py
 │   │   │   ├── test_loop_guard.py
 │   │   │   ├── test_market_quote_tool.py
@@ -2590,6 +2595,8 @@ Monika/
 │   ├── perf/
 │   │   ├── test_memory_budget.py
 │   │   └── test_microstructure_perf.py
+│   ├── planning/
+│   │   └── test_session_plan.py
 │   ├── plugins/
 │   │   ├── test_plugin_lifecycle.py
 │   │   ├── test_plugin_manifest_and_loader.py
@@ -3102,4 +3109,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2805
+**Total Tracked Directories**: 269 | **Total Tracked Files**: 2810
