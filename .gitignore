@@ -137,6 +137,8 @@ scripts/*
 !scripts/test_strict_edge.py
 !scripts/empirical_alpha/
 !scripts/empirical_alpha/**
+scripts/empirical_alpha/**/__pycache__/
+scripts/empirical_alpha/**/*.pyc
 contoh_pertanyaan.md
 prompt_benchmark.md
 
