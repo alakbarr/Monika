@@ -11902,6 +11902,12 @@
   - `upgrade() -> None`: Add the immutable risk anchor and classify existing rows.
   - `downgrade() -> None`: Remove the Phase 0 accounting columns.
 
+#### `0011_sync_indexes_constraints.py` - *sync technical indicators and telegram topic indexes*
+- **Path**: [`src/monika/infrastructure/database/migrations/versions/0011_sync_indexes_constraints.py`](src/monika/infrastructure/database/migrations/versions/0011_sync_indexes_constraints.py)
+- **Top-Level Functions**:
+  - `upgrade() -> None`: Upgrade schema: Drop duplicate index on technical_indicators and enforce unique session_id.
+  - `downgrade() -> None`: Downgrade schema: Restore duplicate index and non-unique session_id index.
+
 #### `c83c5e451412_sync_schema_indexes_types_and_.py` - *sync_schema_indexes_types_and_constraints*
 - **Path**: [`src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py`](src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py)
 - **Top-Level Functions**:

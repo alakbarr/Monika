@@ -1688,6 +1688,7 @@ Monika/
 │       │   │   │   │   ├── 0008_create_debate_transcripts.py
 │       │   │   │   │   ├── 0009_price_ohlcv_canonical_ts.py
 │       │   │   │   │   ├── 0010_paper_trade_initial_risk.py
+│       │   │   │   │   ├── 0011_sync_indexes_constraints.py
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   └── c83c5e451412_sync_schema_indexes_types_and_.py
 │       │   │   │   ├── __init__.py
@@ -3088,4 +3089,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2791
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2792

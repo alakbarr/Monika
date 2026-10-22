@@ -62,7 +62,11 @@ async def test_outcome_evaluator_cost_friction():
 @pytest.mark.asyncio
 async def test_signal_arbitrator_concordant_boost():
     """Verify SignalArbitrator boosts conviction when Quant and LLM agree."""
-    arbitrator = SignalArbitrator(settings={})
+    arbitrator = SignalArbitrator(
+        settings={
+            "trading": {"signal_arbitration": {"concordant_boost_conf": 0.05, "concordant_risk_multiplier": 1.15}}
+        }
+    )
     mock_session = create_mock_async_session()
 
     quant_sig = EdgeSignal(
@@ -102,7 +106,11 @@ async def test_signal_arbitrator_concordant_boost():
 @pytest.mark.asyncio
 async def test_signal_arbitrator_conflict_regime_and_vix():
     """Verify SignalArbitrator resolves conflicts based on VIX uncertainty and trend regime."""
-    arbitrator = SignalArbitrator(settings={})
+    arbitrator = SignalArbitrator(
+        settings={
+            "trading": {"signal_arbitration": {"concordant_boost_conf": 0.05, "concordant_risk_multiplier": 1.15}}
+        }
+    )
     mock_session = create_mock_async_session()
 
     quant_sig = EdgeSignal(
