@@ -115,3 +115,7 @@ async def debate_node(state: TradingState, config: Optional[RunnableConfig] = No
         "investment_verdicts": current_state.get("investment_verdicts", {}),
         "portfolio_decisions": current_state.get("portfolio_decisions", {}),
     }
+
+
+# Initialize baseline facade attributes at module load time so mock patches are accurately tracked
+sync_facade_patches()

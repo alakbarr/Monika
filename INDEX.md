@@ -12132,8 +12132,11 @@
 
 ### Folder: `src/monika/infrastructure/infra` <a id="folder-srcmonikainfrastructureinfra"></a>
 
-#### `audit_settings_keys.py` - *Backward-compatibility facade for audit_settings_keys script.*
+#### `audit_settings_keys.py` - *Audit queried settings keys in codebase against config/settings.yaml.*
 - **Path**: [`src/monika/infrastructure/infra/audit_settings_keys.py`](src/monika/infrastructure/infra/audit_settings_keys.py)
+- **Top-Level Functions**:
+  - `flatten_dict(d: Dict[str, Any], parent_key: str, sep: str) -> Dict[str, Any]`
+  - `audit_keys() -> None`
 
 #### `container.py` - *Compatibility facade for canonical ServiceContainer.*
 - **Path**: [`src/monika/infrastructure/infra/container.py`](src/monika/infrastructure/infra/container.py)

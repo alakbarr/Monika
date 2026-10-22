@@ -411,6 +411,7 @@ async def test_news_digest_macro_overview_and_currency_elevation():
     processor = NewsDigestProcessor(settings={})
     processor._macro_synth = mock_client
     processor._digest_generator = mock_client
+    processor._verifier = mock_client
 
     mock_session = AsyncMock()
     mock_session.add = MagicMock()
