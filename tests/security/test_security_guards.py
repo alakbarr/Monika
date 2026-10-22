@@ -102,6 +102,21 @@ class TestTerminalGuard:
             is_blocked, _ = is_hardline_blocked_command(cmd)
             assert is_blocked is False
 
+    def test_interpreter_secret_reads_blocked(self):
+        commands = [
+            "python -c \"print(open('.env').read())\"",
+            "python3 -c \"from pathlib import Path; print(Path('.env').read_text())\"",
+            "node -e \"console.log(require('fs').readFileSync('.env','utf8'))\"",
+        ]
+        for cmd in commands:
+            is_blocked, reason = is_hardline_blocked_command(cmd)
+            assert is_blocked is True, f"Expected '{cmd}' to be blocked!"
+            assert "prohibited security signature" in reason
+
+    def test_env_example_interpreter_read_allowed(self):
+        is_blocked, _ = is_hardline_blocked_command("python -c \"print(open('.env.example').read())\"")
+        assert is_blocked is False
+
     def test_assert_safe_write_path(self, tmp_path):
         safe_root = tmp_path / "workspace"
         safe_root.mkdir()

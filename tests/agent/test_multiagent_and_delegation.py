@@ -74,6 +74,35 @@ async def test_delegate_tool_execution(tmp_path: Path):
     assert "Status: Success" in result
 
 
+@pytest.mark.asyncio
+async def test_delegate_tool_execution_reports_failure_truthfully(tmp_path: Path):
+    """A failed worker must not be described as a successful delegation."""
+    params = DelegateTaskInput(
+        task="Audit EURUSD trendline breakout on 1H timeframe",
+        role="quant_analyst",
+        context="RSI is 64, MACD bullish crossover",
+        isolated_worktree=False,
+    )
+
+    with patch(
+        "monika.application.analysis.subagent_spawner.SubagentWorker.run",
+        new_callable=AsyncMock,
+    ) as run_mock:
+        run_mock.return_value = SubagentResult(
+            worker_id="sub_fail",
+            role="quant_analyst",
+            success=False,
+            content="",
+            error="provider quota exhausted",
+        )
+        result = await handle_delegate_task(params)
+
+    assert "Status: Failed" in result
+    assert "failed under role" in result
+    assert "addressed successfully" not in result
+    assert "provider quota exhausted" in result
+
+
 def test_moa_context_trimming():
     """Verify trim_head_tail_context truncates long tool outputs and limits message depth."""
     long_tool_output = "X" * 2000

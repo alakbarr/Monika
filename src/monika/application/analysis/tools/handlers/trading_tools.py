@@ -163,6 +163,7 @@ def register_trading_tools():
                     "symbol": {"type": "string"},
                     "entry_price": {"type": "number"},
                     "stop_loss": {"type": "number"},
+                    "take_profit": {"type": "number"},
                 },
             },
             handler=handle_calculate_position_size,

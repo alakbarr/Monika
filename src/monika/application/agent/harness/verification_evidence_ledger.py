@@ -7,6 +7,7 @@ multi-turn reasoning cycle.
 
 import hashlib
 import logging
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
@@ -26,6 +27,25 @@ def compute_evidence_hash(
         f"{symbol.strip().upper()}:{entry:.5f}:{stop_loss:.5f}:{(take_profit or 0.0):.5f}:{(lot_size or 0.0):.4f}"
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+
+
+def _is_valid_price(value: Any) -> bool:
+    """True for a positive, finite price; rejects None, non-numeric strings, NaN, and zero."""
+    if value is None or isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return False
+    try:
+        parsed = float(value)
+    except ValueError:
+        return False
+    return math.isfinite(parsed) and parsed > 0.0
+
+
+def _within_price_tolerance(verified: float, proposal: float, tolerance: float = 0.015) -> bool:
+    """Compare prices with the broker-rounding tolerance used by the ledger."""
+    verified_f = float(verified)
+    proposal_f = float(proposal)
+    denom = abs(verified_f) or 1.0
+    return abs(verified_f - proposal_f) / denom <= tolerance
 
 
 @dataclass
@@ -253,7 +273,7 @@ class VerificationEvidenceLedger:
         clean_sym = str(symbol).upper() if symbol else None
         for r in self.records:
             if r.status == "passed":
-                if clean_sym is None or r.symbol == clean_sym or r.symbol is None:
+                if clean_sym is None or r.symbol == clean_sym:
                     return True
         return False
 
@@ -268,61 +288,97 @@ class VerificationEvidenceLedger:
     ) -> tuple[bool, str]:
         """
         Verifies that trade proposal parameters match verified risk calculation evidence.
-        Prevents submitting modified stop_loss levels without re-calculating risk sizing.
+        Prevents submitting modified entry/SL/TP/lot values without re-calculating risk sizing.
         Supports both cryptographic hash matching and financial tolerance checks.
         """
-        clean_sym = str(symbol).upper() if symbol else None
+        clean_sym = str(symbol).strip().upper() if symbol else None
+        if not clean_sym:
+            return False, "Proposal symbol is required for sizing verification."
+
+        # Fail closed before touching evidence if the proposal itself is malformed.
+        if stop_loss is None or not _is_valid_price(stop_loss):
+            return False, "Proposal stop_loss is required and must be a positive finite price."
+        if take_profit is None or not _is_valid_price(take_profit):
+            return False, "Proposal take_profit is required and must be a positive finite price."
+        if entry_price is not None and not _is_valid_price(entry_price):
+            return False, "Proposal entry_price must be a positive finite price."
+        if lot_size is not None and not _is_valid_price(lot_size):
+            return False, "Proposal lot_size must be a positive finite number."
+
         passed_sizing = [
             r
             for r in self.records
             if r.status == "passed"
             and r.tool_name in ("calculate_position_size", "validate_risk_limits")
-            and (clean_sym is None or r.symbol == clean_sym or r.symbol is None)
+            and r.symbol == clean_sym
         ]
         if not passed_sizing:
             return False, f"No verified sizing/risk evidence recorded for {clean_sym}."
 
-        latest = passed_sizing[-1]
+        sizing_only = [r for r in passed_sizing if r.tool_name == "calculate_position_size"]
+        latest = (sizing_only or passed_sizing)[-1]
 
-        # 1. Cryptographic match check if hash is available
-        if expected_hash and latest.evidence_hash:
-            if expected_hash == latest.evidence_hash:
-                return True, "OK (Cryptographically verified)"
+        verified_sl = latest.stop_loss
+        verified_tp = latest.take_profit
+        if verified_sl is None or not _is_valid_price(verified_sl):
+            return False, "Verified sizing evidence has no valid stop_loss; recalculate position size."
+        if verified_tp is None or not _is_valid_price(verified_tp):
+            return False, (
+                "Verified sizing evidence has no valid take_profit; recalculate position size with the exact take profit."
+            )
 
-        if (
-            latest.evidence_hash
-            and clean_sym
-            and entry_price is not None
-            and stop_loss is not None
-            and lot_size is not None
-        ):
+        # 1. The caller-supplied hash is an additional binding check, never a bypass.
+        if expected_hash:
+            if not latest.evidence_hash:
+                return False, "Verified sizing evidence has no cryptographic hash."
+            if expected_hash != latest.evidence_hash:
+                return False, "Proposal hash does not match the verified sizing evidence."
+
+        hash_matched = False
+        if latest.evidence_hash and entry_price is not None and lot_size is not None:
             prop_hash = compute_evidence_hash(
                 symbol=clean_sym,
-                entry=entry_price,
-                stop_loss=stop_loss,
-                take_profit=take_profit,
-                lot_size=lot_size,
+                entry=float(entry_price),
+                stop_loss=float(stop_loss),
+                take_profit=float(take_profit),
+                lot_size=float(lot_size),
             )
-            if prop_hash == latest.evidence_hash:
-                return True, "OK (Cryptographic hash matched)"
+            hash_matched = prop_hash == latest.evidence_hash
 
-        # 2. Tolerance check fallback (allows minor broker rounding)
-        if stop_loss is not None and latest.stop_loss is not None:
-            denom = abs(latest.stop_loss) or 1.0
-            # FIX 6.9: 1.5% tolerance (instead of overly strict 0.5%) prevents rejecting minor rounding adjustments
-            if abs(latest.stop_loss - stop_loss) / denom > 0.015:
+        # 2. Field-by-field tolerance check (allows minor broker rounding, rejects stale levels).
+        if not _within_price_tolerance(verified_sl, float(stop_loss)):
+            return False, (
+                f"Stop loss in proposal ({stop_loss}) deviates significantly from verified level ({verified_sl}). "
+                f"Prior position sizing calculation is stale. Recalculate position size with new stop loss."
+            )
+        if not _within_price_tolerance(verified_tp, float(take_profit)):
+            return False, (
+                f"Take profit in proposal ({take_profit}) deviates significantly from verified level "
+                f"({verified_tp}). Recalculate position size with the new take profit."
+            )
+        verified_entry = latest.entry_price
+        if entry_price is not None:
+            if verified_entry is None or not _is_valid_price(verified_entry):
+                return False, "Verified sizing evidence has no valid entry_price; recalculate position size."
+            if not _within_price_tolerance(verified_entry, float(entry_price)):
                 return False, (
-                    f"Stop loss in proposal ({stop_loss}) deviates significantly from verified level ({latest.stop_loss}). "
-                    f"Prior position sizing calculation is stale. Recalculate position size with new stop loss."
+                    f"Entry price in proposal ({entry_price}) deviates significantly from verified level "
+                    f"({verified_entry}). Recalculate position size with the new entry."
                 )
+        verified_lot = latest.lot_size
+        if lot_size is not None:
+            if verified_lot is None or not _is_valid_price(verified_lot):
+                return False, "Verified sizing evidence has no valid lot_size; recalculate position size."
+            if abs(float(verified_lot) - float(lot_size)) > 1e-9:
+                return False, f"Lot size in proposal ({lot_size}) does not match verified lot size ({verified_lot})."
 
+        if expected_hash:
+            return True, "OK (Cryptographically verified)"
+        if hash_matched:
+            return True, "OK (Cryptographic hash matched)"
         return True, "OK"
 
     def get_passed_records(self, symbol: Optional[str] = None) -> List[VerificationRecord]:
         """Return list of passed records for a symbol."""
         clean_sym = str(symbol).upper() if symbol else None
-        return [
-            r
-            for r in self.records
-            if r.status == "passed" and (clean_sym is None or r.symbol == clean_sym or r.symbol is None)
-        ]
+        return [r for r in self.records if r.status == "passed" and (clean_sym is None or r.symbol == clean_sym)]

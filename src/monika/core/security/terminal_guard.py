@@ -50,6 +50,23 @@ HARDLINE_BLOCKLIST_PATTERNS = [
         r"\b(cat|type|more|less|head|tail|Get-Content|gc)\s+.*(/etc/shadow|/etc/passwd|\.ssh/id_|\.env)\b",
         re.IGNORECASE,
     ),
+    # Interpreter-based secret reads (e.g. python -c "open('.env').read()")
+    re.compile(
+        r"\b(?:python[0-9.]*|py|node|ruby|perl|php|powershell|pwsh|bash|sh|zsh)\b[^\n]*"
+        r"\b(?:open|read|read_text|read_bytes|readalltext|readallbytes|opentext|"
+        r"readfile|readfilesync|load|loads|require)\b[^\n]*"
+        r"(?:/etc/shadow|/etc/passwd|\.ssh/id_|\.env(?!\.example)|\.pem|\.key|"
+        r"id_rsa|id_ed25519|credentials[^\s]*\.json)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:python[0-9.]*|py|node|ruby|perl|php|powershell|pwsh|bash|sh|zsh)\b[^\n]*"
+        r"(?:/etc/shadow|/etc/passwd|\.ssh/id_|\.env(?!\.example)|\.pem|\.key|"
+        r"id_rsa|id_ed25519|credentials[^\s]*\.json)[^\n]*"
+        r"\b(?:open|read|read_text|read_bytes|readalltext|readallbytes|opentext|"
+        r"readfile|readfilesync|load|loads|require)\b",
+        re.IGNORECASE,
+    ),
     # Cloud Instance Metadata Service (IMDS) SSRF Protection
     re.compile(
         r"(?:169\.254\.169\.254|169\.254\.170\.2|metadata\.google\.internal|100\.100\.100\.200|fd00:ec2::254|2852039166)",

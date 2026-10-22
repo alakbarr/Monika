@@ -635,6 +635,7 @@ class ChatAgent(
                 "execute_terminal_command",
                 "desktop_gui_action",
                 "db_mutation",
+                "mcp_write",
             }
             can_auto_execute = (
                 bool(action_sym)

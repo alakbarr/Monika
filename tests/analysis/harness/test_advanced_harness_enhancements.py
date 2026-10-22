@@ -82,6 +82,37 @@ def test_verification_ledger_cryptographic_matching():
     assert "Stop loss in proposal" in reason_bad
 
 
+def test_verification_ledger_rejects_tampered_or_missing_parameters():
+    ledger = VerificationEvidenceLedger()
+    ledger.record_tool_execution(
+        "calculate_position_size",
+        {"symbol": "EURUSD", "entry": 1.0850, "stop_loss": 1.0800, "take_profit": 1.0950, "lot_size": 0.45},
+        {"status": "passed", "symbol": "EURUSD", "lot_size": 0.45},
+    )
+
+    ok_tp, _ = ledger.verify_proposal_integrity("EURUSD", 1.0850, 1.0800, 1.2000, 0.45)
+    ok_lot, _ = ledger.verify_proposal_integrity("EURUSD", 1.0850, 1.0800, 1.0950, 9.99)
+    ok_missing_sl, _ = ledger.verify_proposal_integrity("EURUSD", 1.0850, None, 1.0950, 0.45)
+
+    assert ok_tp is False
+    assert ok_lot is False
+    assert ok_missing_sl is False
+
+
+def test_verification_ledger_symbol_scoping_rejects_symbolless_evidence():
+    ledger = VerificationEvidenceLedger()
+    ledger.record_tool_execution(
+        "calculate_position_size",
+        {"entry": 1.0850, "stop_loss": 1.0800, "take_profit": 1.0950, "lot_size": 0.45},
+        {"status": "passed", "lot_size": 0.45},
+    )
+
+    ok, _ = ledger.verify_proposal_integrity("XAUUSD", 1.0850, 1.0800, 1.0950, 0.45)
+
+    assert ok is False
+    assert ledger.has_passed_evidence("XAUUSD") is False
+
+
 # ==============================================================================
 # Phase 2: Read-Before-Mutate Guardrail
 # ==============================================================================

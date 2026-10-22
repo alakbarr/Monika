@@ -533,6 +533,22 @@ class ActionExecutionMixin(_ChatAgentMixinBase):
                 res = await executor.execute("computer_use", params)
                 return f"[GUI ACTION RESULT]\n{res}"
 
+        elif action.action_type == "mcp_write":
+            if not getattr(self, "is_admin", False):
+                return "[GAGAL] Akses Ditolak: MCP write hanya diizinkan untuk Admin."
+            tool_name = str(params.get("tool_name") or "")
+            tool_args = params.get("args") or {}
+            if not tool_name.startswith("mcp_"):
+                return "[ERROR] MCP write proposal is missing a valid MCP tool name."
+            if not isinstance(tool_args, dict):
+                return "[ERROR] MCP write proposal args must be an object."
+            from monika.application.analysis.tools.tool_executor import ToolExecutor
+
+            async with get_session() as session:
+                executor = ToolExecutor(session, settings=self.settings)
+                res = await executor.execute(tool_name, tool_args)
+                return f"[MCP WRITE OUTPUT]\n{res}"
+
         elif action.action_type == "partial_close_and_breakeven":
             from monika.infrastructure.database.models import Position
 

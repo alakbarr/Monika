@@ -2117,6 +2117,7 @@ Monika/
 │   ├── agent/
 │   │   ├── test_agent_loop.py
 │   │   ├── test_core_and_error_taxonomy.py
+│   │   ├── test_mcp_write_approval.py
 │   │   ├── test_memory_skills_and_traps.py
 │   │   ├── test_moa_loop.py
 │   │   ├── test_multiagent_and_delegation.py
@@ -2413,6 +2414,7 @@ Monika/
 │   ├── config/
 │   │   ├── __init__.py
 │   │   ├── test_atomic_writer.py
+│   │   ├── test_audit_settings_keys.py
 │   │   ├── test_config_manager.py
 │   │   ├── test_config_migrations.py
 │   │   ├── test_config_schemas.py
@@ -3099,4 +3101,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2802
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2804

@@ -275,6 +275,7 @@ class ActionStateMixin(_ChatAgentMixinBase):
             "update_user_preference",
             "execute_terminal_command",
             "desktop_gui_action",
+            "mcp_write",
             "partial_close_and_breakeven",
         ):
             logger.warning(f"Unknown proposed action type: {action_type}")
@@ -292,6 +293,9 @@ class ActionStateMixin(_ChatAgentMixinBase):
                 f"• Data: {json.dumps(params.get('data', {}))}\n"
                 f"• Alasan: {rsn}"
             )
+        elif action_type == "mcp_write" and not getattr(self, "is_admin", False):
+            logger.warning("[ChatAgent] MCP write proposal rejected: admin access is required.")
+            return None
         elif action_type == "close_all_positions":
             flt = params.get("filter", "all")
             rsn = proposed.get("reason") or params.get("reason", "Permintaan penutupan posisi massal")
@@ -322,6 +326,10 @@ class ActionStateMixin(_ChatAgentMixinBase):
         elif action_type == "desktop_gui_action":
             act = params.get("action", "unknown")
             description = f"Desktop GUI Interaction:\n• Aksi: {act}\n• Detail: {json.dumps(params)}"
+        elif action_type == "mcp_write":
+            tool_name = params.get("tool_name", "unknown")
+            tool_args = params.get("args", {})
+            description = f"MCP Write Tool:\n• Tool: {tool_name}\n• Args: {json.dumps(tool_args)}"
         elif action_type == "partial_close_and_breakeven":
             tck = params.get("ticket")
             vol = params.get("volume") or params.get("lots")

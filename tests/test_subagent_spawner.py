@@ -55,6 +55,49 @@ async def test_subagent_worker_success():
 
 
 @pytest.mark.asyncio
+async def test_subagent_worker_reports_provider_failure():
+    """A provider-level failure must never be reported as a successful delegation."""
+    spec = SubagentSpec(
+        worker_id="w_provider_failure",
+        role="Macro Specialist",
+        system_prompt="You are Macro Specialist",
+        query="Analyze inflation outlook",
+        timeout_seconds=5.0,
+    )
+
+    mock_client = MagicMock()
+    mock_client.run_chat_loop = AsyncMock(
+        return_value={"success": False, "reply": "provider quota exhausted", "error": "quota"}
+    )
+
+    result = await SubagentWorker(spec=spec, client=mock_client).run()
+
+    assert result.success is False
+    assert result.error == "quota"
+    assert "provider quota exhausted" in result.content
+
+
+@pytest.mark.asyncio
+async def test_subagent_worker_rejects_empty_response():
+    """An empty provider response is a failed delegation, not a successful one."""
+    spec = SubagentSpec(
+        worker_id="w_empty",
+        role="Macro Specialist",
+        system_prompt="You are Macro Specialist",
+        query="Analyze inflation outlook",
+        timeout_seconds=5.0,
+    )
+
+    mock_client = MagicMock()
+    mock_client.run_chat_loop = AsyncMock(return_value={"reply": "   "})
+
+    result = await SubagentWorker(spec=spec, client=mock_client).run()
+
+    assert result.success is False
+    assert "empty" in (result.error or "").lower()
+
+
+@pytest.mark.asyncio
 async def test_subagent_worker_timeout_enforcement():
     """Verify SubagentWorker catches asyncio.TimeoutError and returns structured failure."""
     spec = SubagentSpec(

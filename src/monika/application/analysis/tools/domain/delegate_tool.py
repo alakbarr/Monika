@@ -185,7 +185,10 @@ async def handle_delegate_task(
         try:
             worker_res: SubagentResult = await worker.run()
             is_success = worker_res.success
-            output_content = worker_res.content if worker_res.success else (worker_res.error or "Executed with errors.")
+            if worker_res.success:
+                output_content = worker_res.content
+            else:
+                output_content = worker_res.error or worker_res.content or "Executed with errors."
         except Exception as w_exc:
             logger.warning(f"[DelegateTool] SubagentWorker execution failed: {w_exc}")
             is_success = False
@@ -208,12 +211,18 @@ async def handle_delegate_task(
             result_text += f"\nFile Changes / Git Diff:\n{diff_summary.strip()}\n"
 
         result_text += f"\nTask Output:\n{output_content}\n"
-        result_text += f"\nTask Summary:\nTask '{params.task}' addressed successfully under role '{params.role}'."
+        if is_success:
+            result_text += f"\nTask Summary:\nTask '{params.task}' addressed successfully under role '{params.role}'."
+        else:
+            result_text += f"\nTask Summary:\nTask '{params.task}' failed under role '{params.role}'."
 
-        _ACTIVE_SUBAGENTS[subagent_id]["status"] = "completed"
+        _ACTIVE_SUBAGENTS[subagent_id]["status"] = "completed" if is_success else "failed"
         _ACTIVE_SUBAGENTS[subagent_id]["result"] = result_text
 
-        live_writer.emit_event("finish", "Subagent task finished successfully", {"status": "success"})
+        if is_success:
+            live_writer.emit_event("finish", "Subagent task finished successfully", {"status": "success"})
+        else:
+            live_writer.emit_event("error", "Subagent task failed", {"status": "failed"})
         return result_text
 
     except Exception as exc:

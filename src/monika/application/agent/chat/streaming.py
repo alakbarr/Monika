@@ -16,6 +16,99 @@ from typing import Any, Optional
 
 from monika.application.agent.chat.base import _ChatAgentMixinBase, logger
 
+_MCP_MUTATING_TOKENS = frozenset(
+    {
+        "add",
+        "append",
+        "apply",
+        "chmod",
+        "chown",
+        "clear",
+        "commit",
+        "copy",
+        "create",
+        "delete",
+        "drop",
+        "edit",
+        "execute",
+        "grant",
+        "insert",
+        "install",
+        "kill",
+        "merge",
+        "mkdir",
+        "modify",
+        "move",
+        "patch",
+        "post",
+        "publish",
+        "purge",
+        "push",
+        "put",
+        "remove",
+        "rename",
+        "replace",
+        "reset",
+        "restart",
+        "revoke",
+        "run",
+        "save",
+        "send",
+        "set",
+        "start",
+        "stop",
+        "sync",
+        "terminate",
+        "touch",
+        "uninstall",
+        "update",
+        "upload",
+        "write",
+    }
+)
+
+_MCP_READ_ONLY_TOKENS = frozenset(
+    {
+        "browse",
+        "check",
+        "count",
+        "describe",
+        "exists",
+        "fetch",
+        "find",
+        "get",
+        "head",
+        "health",
+        "info",
+        "inspect",
+        "list",
+        "lookup",
+        "ping",
+        "query",
+        "read",
+        "scan",
+        "search",
+        "show",
+        "stat",
+        "status",
+        "tail",
+        "validate",
+        "view",
+    }
+)
+
+
+def is_mutating_mcp_tool(tool_name: str) -> bool:
+    """Classify MCP tools for approval; unknown tools fail closed (require approval)."""
+    if not isinstance(tool_name, str) or not tool_name.startswith("mcp_"):
+        return False
+    tokens = {part for part in tool_name.lower().split("_") if part}
+    if tokens & _MCP_MUTATING_TOKENS:
+        return True
+    if tokens & _MCP_READ_ONLY_TOKENS:
+        return False
+    return True
+
 
 class StreamingMixin(_ChatAgentMixinBase):
     """Mixin managing token streaming, tool callbacks, and live event interception."""
@@ -53,6 +146,37 @@ class StreamingMixin(_ChatAgentMixinBase):
         }
 
         async def _wrapped_exec(tool_name: str, tool_input: dict) -> Any:
+            # Safety Fortress Gate: MCP tools that can mutate external state require approval.
+            if is_mutating_mcp_tool(tool_name):
+                pending = self._create_pending_action(
+                    {
+                        "action_type": "mcp_write",
+                        "params": {"tool_name": tool_name, "args": tool_input or {}},
+                        "description": f"MCP write tool: {tool_name}",
+                    }
+                )
+                if pending is None:
+                    logger.warning(f"[SafetyFortress] MCP tool '{tool_name}' blocked: approval channel unavailable.")
+                    return {
+                        "status": "blocked_by_safety_fortress",
+                        "error": (
+                            f"MCP tool '{tool_name}' requires operator approval, but no approval channel is available."
+                        ),
+                    }
+                self._last_intercepted_pending = pending
+                logger.info(
+                    f"[SafetyFortress] Intercepted MCP write tool '{tool_name}' -> PendingAction #{pending.action_id}"
+                )
+                return {
+                    "status": "pending_operator_approval",
+                    "action_id": pending.action_id,
+                    "action_type": "mcp_write",
+                    "message": (
+                        f"MCP tool '{tool_name}' can mutate external state and requires operator authorization. "
+                        f"Proposal #{pending.action_id} generated for operator confirmation."
+                    ),
+                }
+
             # Safety Fortress Gate: Intercept direct mutating calls from chat LLM
             if tool_name in MUTATING_ACTIONS_MAP:
                 action_type = MUTATING_ACTIONS_MAP[tool_name]
@@ -63,20 +187,29 @@ class StreamingMixin(_ChatAgentMixinBase):
                         "description": f"Mutasi {tool_name} ({action_type})",
                     }
                 )
-                if pending:
-                    self._last_intercepted_pending = pending
-                    logger.info(
-                        f"[SafetyFortress] Intercepted mutating tool '{tool_name}' -> Created PendingAction #{pending.action_id}"
+                if pending is None:
+                    logger.warning(
+                        f"[SafetyFortress] Mutating tool '{tool_name}' blocked: approval channel unavailable."
                     )
                     return {
-                        "status": "pending_operator_approval",
-                        "action_id": pending.action_id,
-                        "action_type": action_type,
-                        "message": (
-                            f"Action '{tool_name}' involves capital mutation and cannot be executed directly. "
-                            f"Proposal #{pending.action_id} has been generated and presented to the operator for confirmation."
+                        "status": "blocked_by_safety_fortress",
+                        "error": (
+                            f"Action '{tool_name}' requires operator approval, but no approval channel is available."
                         ),
                     }
+                self._last_intercepted_pending = pending
+                logger.info(
+                    f"[SafetyFortress] Intercepted mutating tool '{tool_name}' -> Created PendingAction #{pending.action_id}"
+                )
+                return {
+                    "status": "pending_operator_approval",
+                    "action_id": pending.action_id,
+                    "action_type": action_type,
+                    "message": (
+                        f"Action '{tool_name}' involves capital mutation and cannot be executed directly. "
+                        f"Proposal #{pending.action_id} has been generated and presented to the operator for confirmation."
+                    ),
+                }
 
             # Safety Fortress Gate: Intercept mutating terminal execution
             if tool_name == "terminal":
@@ -110,20 +243,30 @@ class StreamingMixin(_ChatAgentMixinBase):
                             "description": f"Eksekusi Shell Command:\n• Command: `{cmd}`",
                         }
                     )
-                    if pending:
-                        self._last_intercepted_pending = pending
-                        logger.info(
-                            f"[SafetyFortress] Intercepted terminal command '{cmd}' -> PendingAction #{pending.action_id}"
+                    if pending is None:
+                        logger.warning(
+                            f"[SafetyFortress] Terminal command '{cmd}' blocked: approval channel unavailable."
                         )
                         return {
-                            "status": "pending_operator_approval",
-                            "action_id": pending.action_id,
-                            "action_type": action_type,
-                            "message": (
-                                f"Terminal command '{cmd}' requires operator authorization. "
-                                f"Proposal #{pending.action_id} generated for operator confirmation."
+                            "status": "blocked_by_safety_fortress",
+                            "error": (
+                                f"Terminal command '{cmd}' requires operator approval, "
+                                "but no approval channel is available."
                             ),
                         }
+                    self._last_intercepted_pending = pending
+                    logger.info(
+                        f"[SafetyFortress] Intercepted terminal command '{cmd}' -> PendingAction #{pending.action_id}"
+                    )
+                    return {
+                        "status": "pending_operator_approval",
+                        "action_id": pending.action_id,
+                        "action_type": action_type,
+                        "message": (
+                            f"Terminal command '{cmd}' requires operator authorization. "
+                            f"Proposal #{pending.action_id} generated for operator confirmation."
+                        ),
+                    }
 
             # Safety Fortress Gate: Intercept interactive computer_use GUI actions
             if tool_name == "computer_use":
@@ -147,20 +290,30 @@ class StreamingMixin(_ChatAgentMixinBase):
                             "description": f"Desktop GUI Interaction:\n{detail}",
                         }
                     )
-                    if pending:
-                        self._last_intercepted_pending = pending
-                        logger.info(
-                            f"[SafetyFortress] Intercepted GUI action '{gui_action}' -> PendingAction #{pending.action_id}"
+                    if pending is None:
+                        logger.warning(
+                            f"[SafetyFortress] GUI action '{gui_action}' blocked: approval channel unavailable."
                         )
                         return {
-                            "status": "pending_operator_approval",
-                            "action_id": pending.action_id,
-                            "action_type": action_type,
-                            "message": (
-                                f"Desktop GUI action '{gui_action}' requires operator authorization. "
-                                f"Proposal #{pending.action_id} generated for operator confirmation."
+                            "status": "blocked_by_safety_fortress",
+                            "error": (
+                                f"Desktop GUI action '{gui_action}' requires operator approval, "
+                                "but no approval channel is available."
                             ),
                         }
+                    self._last_intercepted_pending = pending
+                    logger.info(
+                        f"[SafetyFortress] Intercepted GUI action '{gui_action}' -> PendingAction #{pending.action_id}"
+                    )
+                    return {
+                        "status": "pending_operator_approval",
+                        "action_id": pending.action_id,
+                        "action_type": action_type,
+                        "message": (
+                            f"Desktop GUI action '{gui_action}' requires operator authorization. "
+                            f"Proposal #{pending.action_id} generated for operator confirmation."
+                        ),
+                    }
 
             if listener:
                 try:

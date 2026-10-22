@@ -2164,19 +2164,37 @@ class AgentHarness:
                                 "is_error": True,
                             }
 
-                        # 2b. Verify parameter integrity (Ensure proposal SL matches verified sizing SL)
+                        # 2b. Verify parameter integrity (entry/SL/TP/lot must match verified sizing evidence)
                         prop_sl = None
                         prop_entry = None
+                        prop_tp = None
+                        prop_lot = None
                         try:
                             if "stop_loss" in c_input:
                                 prop_sl = float(c_input["stop_loss"])
+                            if "take_profit" in c_input:
+                                prop_tp = float(c_input["take_profit"])
                             if "entry" in c_input or "entry_price" in c_input:
                                 prop_entry = float(c_input.get("entry") or c_input.get("entry_price"))
+                            entry_cond = c_input.get("entry_condition")
+                            if (
+                                prop_entry is None
+                                and isinstance(entry_cond, dict)
+                                and entry_cond.get("price") is not None
+                            ):
+                                prop_entry = float(entry_cond["price"])
+                            raw_lot = c_input.get("lot_size") or c_input.get("lots") or c_input.get("volume")
+                            if raw_lot is not None:
+                                prop_lot = float(raw_lot)
                         except ValueError, TypeError:
                             pass
 
                         is_intact, integrity_err = self.verification_ledger.verify_proposal_integrity(
-                            target_sym, entry_price=prop_entry, stop_loss=prop_sl
+                            target_sym,
+                            entry_price=prop_entry,
+                            stop_loss=prop_sl,
+                            take_profit=prop_tp,
+                            lot_size=prop_lot,
                         )
                         if not is_intact:
                             logger.warning(

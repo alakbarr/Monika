@@ -151,6 +151,33 @@ class SubagentWorker:
                 out_tok = estimate_tokens(content)
                 tool_calls = 0
 
+            # Provider-level failures must never be reported as successful delegation.
+            failure_reason: Optional[str] = None
+            if isinstance(raw_res, dict):
+                status = str(raw_res.get("status", "")).strip().lower()
+                if raw_res.get("success") is False or raw_res.get("ok") is False:
+                    failure_reason = str(raw_res.get("error") or status or "provider reported failure")
+                elif raw_res.get("error"):
+                    failure_reason = str(raw_res["error"])
+                elif status in {"failed", "error", "rejected", "timeout"}:
+                    failure_reason = status
+            if failure_reason is None and not str(content).strip():
+                failure_reason = "empty response"
+
+            if failure_reason is not None:
+                return SubagentResult(
+                    worker_id=self.spec.worker_id,
+                    role=self.spec.role,
+                    success=False,
+                    content=content,
+                    input_tokens=in_tok,
+                    output_tokens=out_tok,
+                    tool_calls_made=tool_calls,
+                    elapsed_seconds=round(elapsed, 2),
+                    error=failure_reason,
+                    raw_result=raw_res if isinstance(raw_res, dict) else {"reply": content},
+                )
+
             # Distillation contract enforcement
             content_tok = estimate_tokens(content)
             if content_tok > self.spec.max_distilled_tokens:

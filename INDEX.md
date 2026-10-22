@@ -5086,6 +5086,8 @@
     - `was_last_turn_streamed() -> bool` - *Returns True if the most recent turn was successfully rendered via live streaming.*
     - `was_last_turn_streamed(value: bool) -> None`
     - `set_tool_event_listener(listener: Optional[Any])` - *Register a callback for tool events ('start' and 'result').*
+- **Top-Level Functions**:
+  - `is_mutating_mcp_tool(tool_name: str) -> bool`: Classify MCP tools for approval; unknown tools fail closed (require approval).
 
 #### `tiers.py` - *Execution tier runners (lite, medium, deep, research) and model provider adapters.*
 - **Path**: [`src/monika/application/agent/chat/tiers.py`](src/monika/application/agent/chat/tiers.py)

@@ -401,6 +401,10 @@ CALCULATE_POSITION_SIZE = _tool(
         "symbol": {"type": "string", "description": "Trading instrument (e.g. 'EURUSD', 'XAUUSD')"},
         "entry_price": {"type": "number", "description": "Proposed entry price"},
         "stop_loss": {"type": "number", "description": "Proposed stop loss price"},
+        "take_profit": {
+            "type": "number",
+            "description": "Proposed take profit price; required to bind the proposal to verified sizing evidence.",
+        },
         "direction": {"type": "string", "enum": ["buy", "sell"], "description": "Trade direction (optional)"},
         "risk_pct": {"type": "number", "description": "Account risk percentage (default: 1.0%)"},
         "account_equity": {
@@ -408,7 +412,7 @@ CALCULATE_POSITION_SIZE = _tool(
             "description": "Custom account equity / capital in USD (optional, defaults to live broker equity or paper balance)",
         },
     },
-    required=["symbol", "entry_price", "stop_loss"],
+    required=["symbol", "entry_price", "stop_loss", "take_profit"],
 )
 
 
