@@ -25,7 +25,7 @@ class SqliteCheckpointSaver(InMemorySaver):
     def __init__(self, db_path: Optional[str] = None):
         super().__init__()
         if db_path is None:
-            from monika.infrastructure.infra.paths import BASE_DIR
+            from monika.core.paths import BASE_DIR
 
             self.db_path = str(BASE_DIR / ".agent_state" / "checkpoints.sqlite")
         else:

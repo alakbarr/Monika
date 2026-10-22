@@ -6,7 +6,7 @@ import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from monika.domain.execution.order_emulator import ClientOrderEmulator, TrackedPosition
-from monika.application.protocol.event_bus import EventBus, TickPriceEvent
+from monika.core.primitives.event_bus import EventBus, TickPriceEvent
 
 
 @pytest.mark.asyncio

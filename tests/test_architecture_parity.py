@@ -330,7 +330,7 @@ def test_core_foundation_identity_and_parity():
     assert shim_clk.now is canon_clk.now
     assert shim_clk.set_simulated_now is canon_clk.set_simulated_now
 
-    import monika.application.protocol.event_bus as shim_eb
+    import monika.core.primitives.event_bus as shim_eb
     import monika.core.primitives.event_bus as canon_eb
 
     assert shim_eb.EventBus is canon_eb.EventBus
@@ -498,18 +498,18 @@ def test_agent_and_graph_layer_identity_and_parity():
 def test_analysis_core_framework_identity_and_parity():
     """Verify PR-6b analysis core framework shims preserve exact object identity and runtime contracts."""
     # 1. Harness & state
-    import monika.application.analysis.harness.agent_harness as shim_ah
-    import monika.application.analysis.harness.agent_harness as canon_ah
+    import monika.application.agent.harness.agent_harness as shim_ah
+    import monika.application.agent.harness.agent_harness as canon_ah
 
     assert shim_ah.AgentHarness is canon_ah.AgentHarness
 
-    import monika.application.analysis.harness.harness_state as shim_hs
-    import monika.application.analysis.harness.harness_state as canon_hs
+    import monika.application.agent.harness.harness_state as shim_hs
+    import monika.application.agent.harness.harness_state as canon_hs
 
     assert shim_hs.HarnessState is canon_hs.HarnessState
 
-    import monika.application.analysis.harness.structured_output as shim_so
-    import monika.application.analysis.harness.structured_output as canon_so
+    import monika.application.agent.harness.structured_output as shim_so
+    import monika.application.agent.harness.structured_output as canon_so
 
     assert shim_so.invoke_structured_or_freetext is canon_so.invoke_structured_or_freetext
 
@@ -578,13 +578,13 @@ def test_analysis_core_framework_identity_and_parity():
 def test_pr6d_identity_and_parity():
     """Verify PR-6d harness, skills, tools, and execution identity parity."""
     # 1. Harness
-    import monika.application.harness.contract as shim_hc
-    import monika.application.harness.contract as canon_hc
+    import monika.application.plugins.engine.contract as shim_hc
+    import monika.application.plugins.engine.contract as canon_hc
 
     assert shim_hc.TradingPlugin is canon_hc.TradingPlugin
 
-    import monika.application.harness.engine as shim_he
-    import monika.application.harness.engine as canon_he
+    import monika.application.plugins.engine.engine as shim_he
+    import monika.application.plugins.engine.engine as canon_he
 
     assert shim_he.PluginEngine is canon_he.PluginEngine
 
@@ -802,8 +802,8 @@ def test_pr7d_identity_and_parity():
     assert shim_grl.GeminiRateLimiter is canon_grl.GeminiRateLimiter
 
     # 7. Infrastructure Infra
-    import monika.infrastructure.infra.container as shim_ic
-    import monika.infrastructure.infra.container as canon_ic
+    import monika.core.container as shim_ic
+    import monika.core.container as canon_ic
 
     assert shim_ic.ServiceContainer is canon_ic.ServiceContainer
 

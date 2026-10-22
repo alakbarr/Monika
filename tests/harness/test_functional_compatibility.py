@@ -10,16 +10,16 @@ import tempfile
 from pathlib import Path
 from typing import Dict, Any
 
-from monika.application.harness.contract import PluginCategory
-from monika.application.harness.context import PluginContext
-from monika.application.harness.engine import PluginEngine, FunctionalPluginAdapter
-from monika.application.harness.adapters.functional_adapter import (
+from monika.application.plugins.engine.contract import PluginCategory
+from monika.application.plugins.engine.context import PluginContext
+from monika.application.plugins.engine.engine import PluginEngine, FunctionalPluginAdapter
+from monika.application.plugins.engine.adapters.functional_adapter import (
     FunctionalPluginBridge,
     script_constants,
     tools,
 )
-from monika.infrastructure.infra.container import ServiceContainer
-from monika.application.protocol.event_bus import EventBus
+from monika.core.container import ServiceContainer
+from monika.core.primitives.event_bus import EventBus
 from monika.application.analysis.prompt_sections import prompt_section_registry
 
 

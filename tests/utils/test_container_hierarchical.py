@@ -2,7 +2,7 @@
 Unit tests for ServiceContainer hierarchical scoping (extend, isolate, intercept) and Context alias.
 """
 
-from monika.infrastructure.infra.container import ServiceContainer, Context
+from monika.core.container import ServiceContainer, Context
 
 
 def test_service_container_hierarchical_extend():

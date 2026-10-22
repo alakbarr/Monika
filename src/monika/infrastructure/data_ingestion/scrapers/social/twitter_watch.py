@@ -24,7 +24,7 @@ class TwitterWatchScraper(BaseScraper):
         # Gunakan profil sementara untuk memastikan kondisi bersih sebelum injeksi cookie
         super().__init__(headless=headless, profile_name=None, load_mode="eager", no_imgs=True)
 
-        from monika.infrastructure.infra.paths import DATA_DIR
+        from monika.core.paths import DATA_DIR
 
         self.session_dir = DATA_DIR / "sessions"
         self.session_dir.mkdir(parents=True, exist_ok=True)
@@ -70,7 +70,7 @@ class TwitterWatchScraper(BaseScraper):
 
                 async def _alert():
                     try:
-                        from monika.infrastructure.infra.notifier import AgentNotifier
+                        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                         await AgentNotifier().send_warning(
                             "[PERINGATAN] <b>Twitter Scraper Alert</b>\n"

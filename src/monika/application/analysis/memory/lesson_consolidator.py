@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import monika.core.primitives.clock as clock
-from monika.infrastructure.infra.paths import get_skills_dir
+from monika.core.paths import get_skills_dir
 
 logger = logging.getLogger("TradingAgent.LessonConsolidator")
 

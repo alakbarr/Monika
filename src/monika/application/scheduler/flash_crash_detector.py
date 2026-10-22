@@ -454,7 +454,7 @@ class FlashCrashDetector:
 
                     if alerts:
                         try:
-                            from monika.application.protocol.event_bus import CircuitBreakerEvent, get_event_bus
+                            from monika.core.primitives.event_bus import CircuitBreakerEvent, get_event_bus
 
                             bus = get_event_bus()
                             cb_event = CircuitBreakerEvent(

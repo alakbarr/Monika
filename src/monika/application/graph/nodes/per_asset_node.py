@@ -247,7 +247,7 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
         ]
         if unexpected_errors and len(unexpected_errors) >= 2:
             try:
-                from monika.infrastructure.infra.notifier import AgentNotifier
+                from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                 await AgentNotifier().send_warning(
                     f"[PERINGATAN] <b>Analysis Errors</b>\n"
@@ -335,7 +335,7 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
             # Add warning to all actionable trades from this cycle
             if actionable:
                 try:
-                    from monika.infrastructure.infra.notifier import AgentNotifier
+                    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                     await AgentNotifier().send_warning(
                         f"[PERINGATAN] <b>Context Version Split</b>\n{split_warning}\n"

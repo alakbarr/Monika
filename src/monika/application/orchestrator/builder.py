@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatManager
     from monika.infrastructure.brokers.ea_bridge.watchdog import EAWatchdog
     from monika.infrastructure.brokers.mt5_client import MT5Client
-    from monika.infrastructure.infra.notifier import AgentNotifier
+    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
 logger = logging.getLogger("TradingAgent.Main")
 
@@ -99,7 +99,7 @@ class AgentBuilderMixin:
         from monika.application.analysis.stages.fundamental_stage import FundamentalStage
         from monika.application.analysis.stages.per_asset_stage import PerAssetStage
         from monika.application.execution.execution_service import ExecutionService
-        from monika.application.protocol.event_bus import get_event_bus
+        from monika.core.primitives.event_bus import get_event_bus
         from monika.application.scheduler.edge_strategy_runner import EdgeStrategyRunner
         from monika.application.scheduler.graph_cycle_scheduler import GraphCycleScheduler
         from monika.application.scheduler.macro_data_scheduler import MacroDataScheduler
@@ -298,7 +298,7 @@ class AgentBuilderMixin:
             self.telegram_bot._activity_log = self._activity_log
             self.telegram_bot.task_registry = self.task_registry
 
-        from monika.infrastructure.infra.notifier import AgentNotifier
+        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
         self.notifier = AgentNotifier()
 
@@ -369,7 +369,7 @@ class AgentBuilderMixin:
 
         # Wire EventBus subscribers for sub-second reactive protection & live observability
         if self.event_bus:
-            from monika.application.protocol.event_bus import OrderStateChangedEvent, TickPriceEvent
+            from monika.core.primitives.event_bus import OrderStateChangedEvent, TickPriceEvent
 
             if self.flash_crash_detector and hasattr(self.flash_crash_detector, "on_tick"):
                 self.event_bus.subscribe(TickPriceEvent, self.flash_crash_detector.on_tick, priority=10)
@@ -378,7 +378,7 @@ class AgentBuilderMixin:
             if self.trailing_stop_manager and hasattr(self.trailing_stop_manager, "on_tick"):
                 self.event_bus.subscribe(TickPriceEvent, self.trailing_stop_manager.on_tick, priority=5)
 
-            from monika.application.protocol.event_bus import CircuitBreakerEvent, RiskBreachEvent
+            from monika.core.primitives.event_bus import CircuitBreakerEvent, RiskBreachEvent
 
             async def _on_circuit_breaker(evt: CircuitBreakerEvent):
                 logger.warning(
@@ -433,8 +433,8 @@ class AgentBuilderMixin:
 
         # Initialize Universal PluginEngine Harness
         try:
-            from monika.application.harness.engine import PluginEngine
-            from monika.infrastructure.infra.container import get_container
+            from monika.application.plugins.engine.engine import PluginEngine
+            from monika.core.container import get_container
 
             self.container = get_container()
             self.container.register_instance("settings", self.settings)
@@ -449,7 +449,7 @@ class AgentBuilderMixin:
 
             # Initialize RecursiveHarnessService
             try:
-                from monika.application.analysis.harness.service import RecursiveHarnessService
+                from monika.application.analysis.recursive_harness.service import RecursiveHarnessService
                 from monika.application.analysis.prompt_sections import get_prompt_section_registry
 
                 self.harness_service = RecursiveHarnessService()
@@ -481,7 +481,7 @@ class AgentBuilderMixin:
                 event_bus=self.event_bus,
                 task_registry=self.task_registry,
             )
-            from monika.infrastructure.infra.paths import get_repo_root
+            from monika.core.paths import get_repo_root
 
             plugins_dir = os.path.join(get_repo_root(), "src", "monika", "application", "plugins")
             self.plugin_engine.discover_directory(plugins_dir)

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from monika.infrastructure.infra.paths import resolve_config_path
+from monika.core.paths import resolve_config_path
 
 """
 4-Layer Memory System.
@@ -261,7 +261,7 @@ class LayeredMemoryManager:
 
             # 3b. Domain Experience Library lessons
             try:
-                from monika.application.analysis.harness.library import DomainExperienceLibrary
+                from monika.application.analysis.recursive_harness.library import DomainExperienceLibrary
 
                 exp_lib = DomainExperienceLibrary()
                 lessons_text = exp_lib.format_domain_lessons_for_prompt(symbol.lower(), max_lessons=3)

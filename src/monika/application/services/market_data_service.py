@@ -21,7 +21,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.domain.market.instrument_identity import resolve_instrument_identity
-from monika.infrastructure.infra.container import ServiceContainer, get_container
+from monika.core.container import ServiceContainer, get_container
 
 logger = logging.getLogger("TradingAgent.Services.MarketData")
 

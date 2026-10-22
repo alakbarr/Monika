@@ -345,7 +345,7 @@ def test_lesson_consolidator_filters_sound_process_normal_variance():
 # =========================================================================
 @pytest.mark.asyncio
 async def test_notifier_flush_outbox_loop_executes_without_name_error():
-    from monika.infrastructure.infra.notifier import AgentNotifier
+    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
     notifier = AgentNotifier()
     with patch.object(notifier, "flush_outbox", new_callable=AsyncMock) as mock_flush:

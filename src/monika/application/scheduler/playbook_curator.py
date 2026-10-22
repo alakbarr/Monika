@@ -32,7 +32,7 @@ class PlaybookCurator:
 
     def __init__(self, settings: Optional[Dict[str, Any]] = None):
         self.settings = settings or {}
-        from monika.infrastructure.infra.paths import get_skills_dir
+        from monika.core.paths import get_skills_dir
 
         skills_dir = get_skills_dir()
         self.playbooks_dir = skills_dir / "trading" / "playbooks"
@@ -219,8 +219,8 @@ class PlaybookCurator:
 
             # Record adopted playbook in Harness Domain Experience Library
             try:
-                from monika.application.analysis.harness.library import DomainExperienceLibrary
-                from monika.application.analysis.harness.tree import HarnessTree
+                from monika.application.analysis.recursive_harness.library import DomainExperienceLibrary
+                from monika.application.analysis.recursive_harness.tree import HarnessTree
 
                 h_lib = DomainExperienceLibrary()
                 h_tree = HarnessTree.build_baseline_tree()
@@ -275,7 +275,7 @@ class PlaybookCurator:
         Uses RecursiveHarnessService to propose, probe, and compose harness updates.
         """
         try:
-            from monika.application.analysis.harness.service import RecursiveHarnessService
+            from monika.application.analysis.recursive_harness.service import RecursiveHarnessService
 
             svc = RecursiveHarnessService()
             result = svc.run_recursion_cycle(

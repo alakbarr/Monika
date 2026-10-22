@@ -144,29 +144,6 @@ Monika/
 │       │   │   │   ├── declared_figures.py
 │       │   │   │   ├── provenance_tagger.py
 │       │   │   │   └── surgical_redaction.py
-│       │   │   ├── harness/
-│       │   │   │   ├── __init__.py
-│       │   │   │   ├── agent_harness.py
-│       │   │   │   ├── composer.py
-│       │   │   │   ├── context_compressor.py
-│       │   │   │   ├── error_classifier.py
-│       │   │   │   ├── harness_state.py
-│       │   │   │   ├── library.py
-│       │   │   │   ├── message_repair.py
-│       │   │   │   ├── prober.py
-│       │   │   │   ├── proposer.py
-│       │   │   │   ├── repetition_guard.py
-│       │   │   │   ├── selector.py
-│       │   │   │   ├── service.py
-│       │   │   │   ├── stall_guard.py
-│       │   │   │   ├── structured_output.py
-│       │   │   │   ├── surface.py
-│       │   │   │   ├── symbol_segment_planner.py
-│       │   │   │   ├── tool_batch_planner.py
-│       │   │   │   ├── tool_repair.py
-│       │   │   │   ├── trade_stop_gates.py
-│       │   │   │   ├── tree.py
-│       │   │   │   └── verification_evidence_ledger.py
 │       │   │   ├── journal/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── attribution_engine.py
@@ -717,16 +694,6 @@ Monika/
 │       │   │   ├── state.py
 │       │   │   ├── team_compiler.py
 │       │   │   └── workflow.py
-│       │   ├── harness/
-│       │   │   ├── adapters/
-│       │   │   │   ├── __init__.py
-│       │   │   │   └── functional_adapter.py
-│       │   │   ├── __init__.py
-│       │   │   ├── context.py
-│       │   │   ├── contract.py
-│       │   │   ├── engine.py
-│       │   │   ├── installer.py
-│       │   │   └── lifecycle.py
 │       │   ├── orchestrator/
 │       │   │   ├── __init__.py
 │       │   │   ├── agent.py
@@ -797,7 +764,6 @@ Monika/
 │       │   │   ├── context_snapshot.py
 │       │   │   ├── cross_agent_sync.py
 │       │   │   ├── enhanced_cds.py
-│       │   │   ├── event_bus.py
 │       │   │   └── ssvp_coordinator.py
 │       │   ├── scheduler/
 │       │   │   ├── __init__.py
@@ -1729,19 +1695,6 @@ Monika/
 │       │   │   │   ├── dual_checkpointer.py
 │       │   │   │   └── sqlite_checkpointer.py
 │       │   │   └── __init__.py
-│       │   ├── infra/
-│       │   │   ├── __init__.py
-│       │   │   ├── audit_settings_keys.py
-│       │   │   ├── container.py
-│       │   │   ├── db_backup.py
-│       │   │   ├── discord_notifier.py
-│       │   │   ├── env_file_manager.py
-│       │   │   ├── event_loop.py
-│       │   │   ├── log_redactor.py
-│       │   │   ├── notifier.py
-│       │   │   ├── paths.py
-│       │   │   ├── platform_compat.py
-│       │   │   └── worktree_manager.py
 │       │   ├── llm/
 │       │   │   ├── rate_limiting/
 │       │   │   │   ├── __init__.py
@@ -2148,26 +2101,6 @@ Monika/
 │   │   │   └── test_decision_quality.py
 │   │   ├── grounding/
 │   │   │   └── test_extended_grounding.py
-│   │   ├── harness/
-│   │   │   ├── test_advanced_harness_enhancements.py
-│   │   │   ├── test_agent_harness.py
-│   │   │   ├── test_capabilities_and_structured.py
-│   │   │   ├── test_context_compressor.py
-│   │   │   ├── test_critical_harness.py
-│   │   │   ├── test_error_classifier.py
-│   │   │   ├── test_harness_enhancements.py
-│   │   │   ├── test_harness_routes.py
-│   │   │   ├── test_library.py
-│   │   │   ├── test_prompt_cache_architecture.py
-│   │   │   ├── test_prompt_tiers_and_state.py
-│   │   │   ├── test_propose_probe_compose.py
-│   │   │   ├── test_recursive_harness_integration.py
-│   │   │   ├── test_runtime_wiring.py
-│   │   │   ├── test_structured_context_engine.py
-│   │   │   ├── test_surface.py
-│   │   │   ├── test_tool_batch_and_repair.py
-│   │   │   ├── test_trade_stop_and_segment_planner.py
-│   │   │   └── test_tree.py
 │   │   ├── mcp/
 │   │   │   ├── test_mcp.py
 │   │   │   ├── test_mcp_and_integrations.py
@@ -3113,4 +3046,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 270 | **Total Tracked Files**: 2813
+**Total Tracked Directories**: 265 | **Total Tracked Files**: 2751

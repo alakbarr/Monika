@@ -61,7 +61,7 @@ from monika.infrastructure.database.models import (
     SystemConfig,
 )
 from monika.infrastructure.database.safe_ops import safe_commit
-from monika.infrastructure.infra.notifier import AgentNotifier
+from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
 
 from monika.application.execution.service.base import _ExecutionServiceMixinBase
@@ -262,7 +262,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
                             f"{closed_in_db} positions closed outside system — EA dead-man switch may have triggered!"
                         )
                         try:
-                            from monika.infrastructure.infra.notifier import AgentNotifier
+                            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                             await AgentNotifier().send_critical(
                                 f"[DARURAT] <b>EA Dead-Man Switch Suspected</b>\n"
@@ -325,7 +325,7 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
 
         # Notify tanpa pause global
         try:
-            from monika.infrastructure.infra.notifier import AgentNotifier
+            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
             await AgentNotifier().send_warning(
                 f"[PERINGATAN] <b>STOP LOSS HIT</b>\nSymbol: {position.symbol}\nTicket: {position.mt5_ticket}\nPnL: {position.pnl}\n"

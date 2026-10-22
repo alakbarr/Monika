@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from monika.infrastructure.brokers.mt5_client import MT5Client
-from monika.application.protocol.event_bus import EventBus, TickPriceEvent
+from monika.core.primitives.event_bus import EventBus, TickPriceEvent
 
 
 @pytest.fixture

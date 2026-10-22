@@ -5,7 +5,7 @@ Demonstrates external news/data ingestion source plugin without altering core sc
 
 from typing import Any, Dict, Optional
 
-from monika.application.harness.contract import (
+from monika.application.plugins.engine.contract import (
     PluginCategory,
     PluginMetadata,
     PluginOrigin,

@@ -16,7 +16,7 @@ def mock_agent_notifier(monkeypatch):
     mock_notifier.send_warning = AsyncMock()
     mock_notifier.send_critical = AsyncMock()
     mock_notifier.send_info = AsyncMock()
-    monkeypatch.setattr("monika.infrastructure.infra.notifier.AgentNotifier", lambda: mock_notifier)
+    monkeypatch.setattr("monika.infrastructure.notifications.telegram_notifier.AgentNotifier", lambda: mock_notifier)
     yield mock_notifier
 
 

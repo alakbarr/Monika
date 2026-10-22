@@ -265,7 +265,7 @@ async def test_send_proposal_notifications_dispatches_with_markup():
 
     with (
         patch("monika.infrastructure.database.db.get_session") as mock_get_session,
-        patch("monika.infrastructure.infra.notifier.AgentNotifier") as mock_notifier_cls,
+        patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier") as mock_notifier_cls,
     ):
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.return_value = mock_session

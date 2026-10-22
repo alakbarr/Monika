@@ -456,7 +456,7 @@ class CycleScheduler:
             else:
                 msg_lines.append(f"\nConsider closing positions manually before Forex market close (~21:00 UTC).")
             try:
-                from monika.infrastructure.infra.notifier import AgentNotifier
+                from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                 await AgentNotifier().send_warning("\n".join(msg_lines))
             except Exception as e:
@@ -781,7 +781,7 @@ class CycleScheduler:
             except Exception as llm_err:
                 logger.debug(f"LLM weekly edge assessment synthesis fallback to raw: {llm_err}")
 
-            from monika.infrastructure.infra.notifier import AgentNotifier
+            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
             await AgentNotifier().send_markdown(msg)
         except Exception as e:
@@ -1185,7 +1185,7 @@ class CycleScheduler:
                 except Exception as llm_err:
                     logger.debug(f"LLM daily report synthesis fallback to raw: {llm_err}")
 
-                from monika.infrastructure.infra.notifier import AgentNotifier
+                from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                 await AgentNotifier().send_info("\n".join(lines))
         except Exception as e:
@@ -1319,7 +1319,7 @@ class CycleScheduler:
             if hasattr(self, "_risk_gate") and self._risk_gate:
                 self._risk_gate.settings = self.settings
             try:
-                from monika.infrastructure.infra.db_backup import create_backup
+                from monika.infrastructure.database.backup import create_backup
 
                 backup_cfg = self.settings.get("database", {}).get("backup", {})
                 if backup_cfg.get("enabled", False):

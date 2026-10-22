@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.tools.base_handler import ToolHandler
 from monika.application.analysis.tools.registry import register_tool
-from monika.infrastructure.infra.platform_compat import safe_subprocess_run
+from monika.core.platform import safe_subprocess_run
 
 logger = logging.getLogger("TradingAgent.Tools.ExecutionHandlers")
 

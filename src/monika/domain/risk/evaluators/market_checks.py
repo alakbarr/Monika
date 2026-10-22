@@ -44,10 +44,11 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
         if is_backtest:
             return True, "backtest_freshness_ok"
         try:
-            import importlib
+            from monika.domain.risk.ports import get_default_data_freshness_validator
 
-            val_mod = importlib.import_module("monika.core.validation.data_validator")
-            validate_data_freshness = getattr(val_mod, "validate_data_freshness")
+            validate_data_freshness = get_default_data_freshness_validator()
+            if validate_data_freshness is None:
+                return True, "data_freshness_validator_not_configured"
 
             tfs = (
                 self.settings.get("trading", {}).get("timeframes", ["M15", "H1", "H4", "D1"])

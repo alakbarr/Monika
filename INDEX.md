@@ -50,7 +50,6 @@
 - [`src/monika/application/analysis/debate`](#folder-srcmonikaapplicationanalysisdebate)
 - [`src/monika/application/analysis/evaluation`](#folder-srcmonikaapplicationanalysisevaluation)
 - [`src/monika/application/analysis/grounding`](#folder-srcmonikaapplicationanalysisgrounding)
-- [`src/monika/application/analysis/harness`](#folder-srcmonikaapplicationanalysisharness)
 - [`src/monika/application/analysis/journal`](#folder-srcmonikaapplicationanalysisjournal)
 - [`src/monika/application/analysis/mcp`](#folder-srcmonikaapplicationanalysismcp)
 - [`src/monika/application/analysis/mcp/servers`](#folder-srcmonikaapplicationanalysismcpservers)
@@ -92,8 +91,6 @@
 - [`src/monika/application/graph/nodes`](#folder-srcmonikaapplicationgraphnodes)
 - [`src/monika/application/graph/nodes/debate`](#folder-srcmonikaapplicationgraphnodesdebate)
 - [`src/monika/application/graph/nodes/risk`](#folder-srcmonikaapplicationgraphnodesrisk)
-- [`src/monika/application/harness`](#folder-srcmonikaapplicationharness)
-- [`src/monika/application/harness/adapters`](#folder-srcmonikaapplicationharnessadapters)
 - [`src/monika/application/orchestrator`](#folder-srcmonikaapplicationorchestrator)
 - [`src/monika/application/planning`](#folder-srcmonikaapplicationplanning)
 - [`src/monika/application/plugins`](#folder-srcmonikaapplicationplugins)
@@ -133,7 +130,6 @@
 - [`src/monika/infrastructure/database/repositories`](#folder-srcmonikainfrastructuredatabaserepositories)
 - [`src/monika/infrastructure/graph`](#folder-srcmonikainfrastructuregraph)
 - [`src/monika/infrastructure/graph/checkpointers`](#folder-srcmonikainfrastructuregraphcheckpointers)
-- [`src/monika/infrastructure/infra`](#folder-srcmonikainfrastructureinfra)
 - [`src/monika/infrastructure/llm`](#folder-srcmonikainfrastructurellm)
 - [`src/monika/infrastructure/llm/rate_limiting`](#folder-srcmonikainfrastructurellmratelimiting)
 - [`src/monika/infrastructure/mcp`](#folder-srcmonikainfrastructuremcp)
@@ -1188,12 +1184,13 @@
 #### `__init__.py` - *Monika Financial Domain Core.*
 - **Path**: [`src/monika/domain/__init__.py`](src/monika/domain/__init__.py)
 
-#### `models_resolver.py` - *Dynamic model resolver for Domain layer.*
+#### `models_resolver.py` - *Model resolver for Domain layer.*
 - **Path**: [`src/monika/domain/models_resolver.py`](src/monika/domain/models_resolver.py)
 - **Top-Level Functions**:
   - `register_model(name: str, model_cls: Any) -> None`: Register a database model class into the domain registry.
   - `register_models(models_dict: dict[str, Any]) -> None`: Batch register model classes into the domain registry.
-  - `resolve_model(name: str) -> Any`: Resolves a registered database model by class name.
+  - `register_model_provider(provider: Callable[[str], Any]) -> None`: Register a provider callable (from outer layers) to lazily supply model classes.
+  - `resolve_model(name: str) -> Any`: Resolves an explicitly registered database model by class name.
   - `clear_registered_models() -> None`: Clears registered models (for testing).
 
 ### Folder: `src/monika/domain/entities` <a id="folder-srcmonikadomainentities"></a>
@@ -4472,6 +4469,8 @@
     - `calculate_skew_from_quantiles(quantiles: dict[str, Any], current_price: float | None) -> dict[str, Any]`
     - `get_sizing_multiplier(alpha_result: dict[str, Any], direction: str) -> float`
 - **Top-Level Functions**:
+  - `register_data_freshness_validator(validator: Any) -> None`: Register market data freshness validator callable.
+  - `get_default_data_freshness_validator() -> Any`: Returns registered market data freshness validator or None.
   - `register_suspended_symbols_provider(provider: Any) -> None`: Register provider for querying/clearing suspended trading symbols.
   - `get_default_suspended_symbols_provider() -> Any`: Returns registered suspended symbols provider or None.
   - `register_risk_data_provider_factory(factory: Any) -> None`: Register concrete RiskDataProvider factory from infrastructure layer.
@@ -4487,19 +4486,19 @@
   - `register_adaptive_risk_policy_factory(factory: Any) -> None`: Register adaptive risk policy factory from application layer.
   - `get_default_adaptive_risk_policy(settings: dict[str, Any] | None) -> Any`: Returns registered default AdaptiveRiskPolicy instance or None.
   - `register_evidence_store_factory(factory: Any) -> None`: Register evidence store factory from application layer.
-  - `get_default_evidence_store() -> Any`: Returns registered EvidenceStore instance or fallback.
+  - `get_default_evidence_store() -> Any`: Returns registered EvidenceStore instance or None.
   - `register_copula_tail_risk_fitter(fitter: Any) -> None`: Register Archimedean copula tail risk fitting function from application layer.
   - `get_default_copula_tail_risk_fitter() -> Any`: Returns registered fit_clayton_copula or None.
   - `register_strategy_factor_family_resolver(resolver: Any) -> None`: Register strategy factor family resolver from application layer.
   - `get_strategy_factor_family(strategy_id: str | None) -> str`: Resolves factor family for given strategy id via registered resolver.
   - `register_broker_client_factory(factory: Any) -> None`: Register factory providing broker client implementation to domain risk.
-  - `get_default_broker_client(settings: Any | None) -> Any`: Returns registered default broker client or fallback.
+  - `get_default_broker_client(settings: Any | None) -> Any`: Returns registered default broker client or None.
   - `register_event_publisher(publisher: Any) -> None`: Register domain event publisher implementation.
-  - `get_default_event_publisher() -> Any`: Returns registered event publisher or fallback.
+  - `get_default_event_publisher() -> Any`: Returns registered event publisher or None.
   - `register_notifier(notifier: Any) -> None`: Register domain emergency notifier implementation.
-  - `get_default_notifier() -> Any`: Returns registered notifier or fallback.
+  - `get_default_notifier() -> Any`: Returns registered notifier or None.
   - `register_session_factory(factory: Any) -> None`: Register database session factory for domain risk state queries.
-  - `get_default_session_factory() -> Any`: Returns registered database session factory or fallback.
+  - `get_default_session_factory() -> Any`: Returns registered database session factory or None.
 
 #### `position_math.py` - *Pure position-math helpers shared by risk checks and paper accounting.*
 - **Path**: [`src/monika/domain/risk/position_math.py`](src/monika/domain/risk/position_math.py)
@@ -5881,130 +5880,6 @@
 - **Top-Level Functions**:
   - `redacted_release(text: str, unverified_figures: List[Union[float, DeclaredFigure]], placeholder: str) -> str`: Surgically redacts unverified numeric values from output text.
   - `repair_provenance(text: str, ledger: ProvenanceLedger, tolerance: float) -> Tuple[str, int]`: Scans text for figures that have slight rounding drift from the ledger
-
-### Folder: `src/monika/application/analysis/harness` <a id="folder-srcmonikaapplicationanalysisharness"></a>
-
-#### `__init__.py` - *Monika Harness Package (Recursive Agent Harnessing).*
-- **Path**: [`src/monika/application/analysis/harness/__init__.py`](src/monika/application/analysis/harness/__init__.py)
-
-#### `agent_harness.py` - *Backward-compatibility facade for AgentHarness.*
-- **Path**: [`src/monika/application/analysis/harness/agent_harness.py`](src/monika/application/analysis/harness/agent_harness.py)
-
-#### `composer.py` - *Harness Composer for Monika (Task-Level Recursion - Phase 4: Compose).*
-- **Path**: [`src/monika/application/analysis/harness/composer.py`](src/monika/application/analysis/harness/composer.py)
-- **Classes**:
-  - `class CompositionResult`: The result of composing a selected harness into production.
-  - `class HarnessComposer`: Composes selected candidate diffs onto the base harness tree safely.
-    - `__init__(spec: SurfaceSpec)`
-    - `compose(base_tree: HarnessTree, selection: ContrastiveSelection) -> CompositionResult` - *Atomically applies accepted candidate diffs.*
-
-#### `context_compressor.py` - *Backward-compatibility facade for ContextCompressor.*
-- **Path**: [`src/monika/application/analysis/harness/context_compressor.py`](src/monika/application/analysis/harness/context_compressor.py)
-
-#### `error_classifier.py` - *Backward-compatibility facade for error_classifier.*
-- **Path**: [`src/monika/application/analysis/harness/error_classifier.py`](src/monika/application/analysis/harness/error_classifier.py)
-
-#### `harness_state.py` - *Backward-compatibility facade for harness_state.*
-- **Path**: [`src/monika/application/analysis/harness/harness_state.py`](src/monika/application/analysis/harness/harness_state.py)
-
-#### `library.py` - *Domain Experience Library for Monika (Harnessing-Level Recursion).*
-- **Path**: [`src/monika/application/analysis/harness/library.py`](src/monika/application/analysis/harness/library.py)
-- **Classes**:
-  - `class DomainExperienceEntry`: A verified empirical lesson stored in the domain library.
-    - `to_markdown() -> str`
-  - `class DomainExperienceLibrary`: Manages the persistent store of domain-specific harnesses and contrastive experiences.
-    - `__init__(root_dir: Optional[Path | str], spec: SurfaceSpec)`
-    - `record_experience(domain: str, run_id: str, tree: HarnessTree, ...) -> DomainExperienceEntry` - *Stores an adopted harness snapshot and its structured experience markdown.*
-    - `list_domains() -> list[str]` - *Lists all registered domain directories.*
-    - `list_entries(domain: str) -> list[str]` - *Lists all run IDs in a domain.*
-    - `get_latest_harness(domain: str) -> Optional[HarnessTree]` - *Loads the most recently adopted harness tree for this domain.*
-    - `format_domain_lessons_for_prompt(domain: str, max_lessons: int) -> str` - *Extracts recent lessons from this domain into a concise markdown section for prompt injection.*
-- **Top-Level Functions**:
-  - `sanitize_domain_slug(domain: str) -> str`: Normalizes domain identifier (e.g. 'FX / Trending' -> 'FX__TRENDING').
-
-#### `message_repair.py` - *Backward-compatibility facade for message_repair.*
-- **Path**: [`src/monika/application/analysis/harness/message_repair.py`](src/monika/application/analysis/harness/message_repair.py)
-
-#### `prober.py` - *Harness Prober for Monika (Task-Level Recursion - Phase 2: Probe).*
-- **Path**: [`src/monika/application/analysis/harness/prober.py`](src/monika/application/analysis/harness/prober.py)
-- **Classes**:
-  - `class ProbeMetrics`: Quantitative performance and behavioral metrics observed during a probe run.
-    - `composite_score() -> float` - *Calculates composite quality index (higher is better).*
-  - `class ProbeResult`: The outcome of probing a single candidate harness.
-  - `class ScenarioBasedProbeRunner`: Evaluates candidate harness trees using paired scenario analysis.
-    - `__init__(settings: Optional[dict])`
-  - `class HarnessProber`: Evaluates candidate harnesses by executing simulated scenario runs.
-    - `__init__(custom_runner: Optional[ProbeRunner])`
-    - `probe_candidates(base_tree: HarnessTree, candidates: Sequence[CandidateProposal], scenario_data: Mapping[str, Any]) -> Sequence[ProbeResult]` - *Runs probe evaluations across base and all candidate proposals.*
-
-#### `proposer.py` - *Harness Proposer for Monika (Task-Level Recursion - Phase 1: Propose).*
-- **Path**: [`src/monika/application/analysis/harness/proposer.py`](src/monika/application/analysis/harness/proposer.py)
-- **Classes**:
-  - `class CandidateProposal`: A proposed candidate variation of the harness tree.
-  - `class HarnessProposer`: Proposes candidate adjustments to mutable harness components
-    - `__init__(spec: SurfaceSpec)`
-    - `propose_candidates(base_tree: HarnessTree, domain: str, regime_context: Mapping[str, Any], ...) -> Sequence[CandidateProposal]` - *Synthesizes k candidate harness trees from the base tree.*
-
-#### `repetition_guard.py` - *Backward-compatibility facade for repetition_guard.*
-- **Path**: [`src/monika/application/analysis/harness/repetition_guard.py`](src/monika/application/analysis/harness/repetition_guard.py)
-
-#### `selector.py` - *Contrastive Selector for Monika (Task-Level Recursion - Phase 3: Contrastive Selection).*
-- **Path**: [`src/monika/application/analysis/harness/selector.py`](src/monika/application/analysis/harness/selector.py)
-- **Classes**:
-  - `class ContrastiveSelection`: The result of contrastive evaluation across probed candidate harnesses.
-  - `class ContrastiveSelector`: Evaluates candidate probe results contrastively, selects the best performer,
-    - `__init__(min_improvement_margin: float)`
-    - `select(domain: str, probe_results: Sequence[ProbeResult], regime_context: Mapping[str, Any]) -> ContrastiveSelection` - *Anonymizes candidates, selects the winning harness, and formulates causal lessons.*
-
-#### `service.py` - *Recursive Harness Service for Monika.*
-- **Path**: [`src/monika/application/analysis/harness/service.py`](src/monika/application/analysis/harness/service.py)
-- **Classes**:
-  - `class RecursionCycleResult`: The complete result of an autonomous recursive harnessing cycle.
-  - `class RecursiveHarnessService`: Main entry point for recursive agent self-improvement in Monika.
-    - `__init__(library: Optional[DomainExperienceLibrary], proposer: Optional[HarnessProposer], prober: Optional[HarnessProber], ...)`
-    - `run_recursion_cycle(domain: str, base_tree: Optional[HarnessTree], scenario_data: Optional[Mapping[str, Any]], ...) -> RecursionCycleResult` - *Executes a full two-level recursive harnessing cycle for the given market domain.*
-
-#### `stall_guard.py` - *Backward-compatibility facade for StallGuard.*
-- **Path**: [`src/monika/application/analysis/harness/stall_guard.py`](src/monika/application/analysis/harness/stall_guard.py)
-
-#### `structured_output.py` - *Backward-compatibility facade for structured_output.*
-- **Path**: [`src/monika/application/analysis/harness/structured_output.py`](src/monika/application/analysis/harness/structured_output.py)
-
-#### `surface.py` - *Concrete surface specification and invariant validators for Monika.*
-- **Path**: [`src/monika/application/analysis/harness/surface.py`](src/monika/application/analysis/harness/surface.py)
-- **Top-Level Functions**:
-  - `normalize_rel_path(rel_path: str) -> str`: Normalizes relative paths, strictly rejecting directory traversal or absolute escapes.
-  - `is_path_reserved(rel_path: str, spec: SurfaceSpec) -> bool`: Checks if a path matches any reserved immutable system pattern.
-  - `classify_component(rel_path: str, spec: SurfaceSpec) -> ComponentType`: Classifies a file path into one of the 8 Harness components.
-  - `validate_tree_invariants(tree: Mapping[str, str], spec: SurfaceSpec) -> None`: Validates a complete harness tree against surface invariants:
-
-#### `symbol_segment_planner.py` - *Backward-compatibility facade for SymbolSegmentPlanner.*
-- **Path**: [`src/monika/application/analysis/harness/symbol_segment_planner.py`](src/monika/application/analysis/harness/symbol_segment_planner.py)
-
-#### `tool_batch_planner.py` - *Backward-compatibility facade for ToolBatchPlanner.*
-- **Path**: [`src/monika/application/analysis/harness/tool_batch_planner.py`](src/monika/application/analysis/harness/tool_batch_planner.py)
-
-#### `tool_repair.py` - *Backward-compatibility facade for tool_repair.*
-- **Path**: [`src/monika/application/analysis/harness/tool_repair.py`](src/monika/application/analysis/harness/tool_repair.py)
-
-#### `trade_stop_gates.py` - *Backward-compatibility facade for trade_stop_gates.*
-- **Path**: [`src/monika/application/analysis/harness/trade_stop_gates.py`](src/monika/application/analysis/harness/trade_stop_gates.py)
-
-#### `tree.py` - *HarnessTree representation, diffing, validation, and file persistence for Monika.*
-- **Path**: [`src/monika/application/analysis/harness/tree.py`](src/monika/application/analysis/harness/tree.py)
-- **Classes**:
-  - `class HarnessTree`: A validated, immutable-in-memory snapshot of Monika's 8-component harness.
-    - `to_dict() -> dict[str, str]` - *Returns rel_path -> text content.*
-    - `from_dict(data: Mapping[str, str], spec: SurfaceSpec) -> HarnessTree` - *Builds and validates a HarnessTree from a dict of relative paths and contents.*
-    - `diff(other: HarnessTree) -> HarnessDiff` - *Calculates the structured diff between this tree and another.*
-    - `apply_diff(diff: HarnessDiff) -> HarnessTree` - *Applies a validated diff, producing a new validated HarnessTree.*
-    - `text_diff(other: HarnessTree) -> str` - *Generates unified git-style text diff for observability.*
-    - `export_to_directory(target_dir: Path | str) -> None` - *Exports all components to disk under target_dir.*
-    - `load_from_directory(source_dir: Path | str, spec: SurfaceSpec) -> HarnessTree` - *Scans a directory for surface files, assembling a validated HarnessTree.*
-    - `build_baseline_tree(system_prompt: Optional[str], guardrails: Optional[str], memory: Optional[str], ...) -> HarnessTree` - *Constructs a standard baseline tree for Monika with production defaults.*
-
-#### `verification_evidence_ledger.py` - *Backward-compatibility facade for verification_evidence_ledger.*
-- **Path**: [`src/monika/application/analysis/harness/verification_evidence_ledger.py`](src/monika/application/analysis/harness/verification_evidence_ledger.py)
 
 ### Folder: `src/monika/application/analysis/journal` <a id="folder-srcmonikaapplicationanalysisjournal"></a>
 
@@ -9691,34 +9566,6 @@
 - **Top-Level Functions**:
   - `async audit_trade_rejection(session: Any, symbol: str, trade_data: Dict[str, Any], ...) -> None`: Records paper what-if simulation and benchmark trajectory for a suppressed trade.
 
-### Folder: `src/monika/application/harness` <a id="folder-srcmonikaapplicationharness"></a>
-
-#### `__init__.py` - *Backward-compatibility facade for Plugin Microkernel Harness.*
-- **Path**: [`src/monika/application/harness/__init__.py`](src/monika/application/harness/__init__.py)
-
-#### `context.py` - *Backward-compatibility facade for PluginContext.*
-- **Path**: [`src/monika/application/harness/context.py`](src/monika/application/harness/context.py)
-
-#### `contract.py` - *Backward-compatibility facade for plugin contracts.*
-- **Path**: [`src/monika/application/harness/contract.py`](src/monika/application/harness/contract.py)
-
-#### `engine.py` - *Backward-compatibility facade for PluginEngine.*
-- **Path**: [`src/monika/application/harness/engine.py`](src/monika/application/harness/engine.py)
-
-#### `installer.py` - *Backward-compatibility facade for plugin installer.*
-- **Path**: [`src/monika/application/harness/installer.py`](src/monika/application/harness/installer.py)
-
-#### `lifecycle.py` - *Backward-compatibility facade for plugin lifecycle.*
-- **Path**: [`src/monika/application/harness/lifecycle.py`](src/monika/application/harness/lifecycle.py)
-
-### Folder: `src/monika/application/harness/adapters` <a id="folder-srcmonikaapplicationharnessadapters"></a>
-
-#### `__init__.py` - *Backward-compatibility facade for harness adapters.*
-- **Path**: [`src/monika/application/harness/adapters/__init__.py`](src/monika/application/harness/adapters/__init__.py)
-
-#### `functional_adapter.py` - *Backward-compatibility facade for functional_adapter.*
-- **Path**: [`src/monika/application/harness/adapters/functional_adapter.py`](src/monika/application/harness/adapters/functional_adapter.py)
-
 ### Folder: `src/monika/application/orchestrator` <a id="folder-srcmonikaapplicationorchestrator"></a>
 
 #### `__init__.py` - *Application orchestrator subpackage.*
@@ -10151,9 +9998,6 @@
   - `async compute_composite_cds(session: AsyncSession, symbol: str, brief_data: dict, ...) -> tuple[float, dict]`: Compute full 3-dimensional composite CDS for a symbol.
   - `get_cds_thresholds(settings: Optional[dict]) -> dict`: Get CDS thresholds from settings or defaults (synchronous fallback).
   - `async get_cds_thresholds_async(session: AsyncSession, settings: Optional[dict]) -> dict`: Get CDS thresholds, prioritizing dynamic overrides from DB.
-
-#### `event_bus.py` - *Compatibility facade shim for legacy event_bus.py.*
-- **Path**: [`src/monika/application/protocol/event_bus.py`](src/monika/application/protocol/event_bus.py)
 
 #### `ssvp_coordinator.py` - *SSVP Coordinator — Shared State Verification Protocol*
 - **Path**: [`src/monika/application/protocol/ssvp_coordinator.py`](src/monika/application/protocol/ssvp_coordinator.py)
@@ -12149,44 +11993,6 @@
     - `async aput_writes(config: RunnableConfig, writes: Sequence[tuple[str, Any]], task_id: str, ...) -> None`
     - `get_tuple(config: RunnableConfig) -> Optional[Any]`
     - `async aget_tuple(config: RunnableConfig) -> Optional[Any]`
-
-### Folder: `src/monika/infrastructure/infra` <a id="folder-srcmonikainfrastructureinfra"></a>
-
-#### `audit_settings_keys.py` - *Audit queried settings keys in codebase against config/settings.yaml.*
-- **Path**: [`src/monika/infrastructure/infra/audit_settings_keys.py`](src/monika/infrastructure/infra/audit_settings_keys.py)
-- **Top-Level Functions**:
-  - `flatten_dict(d: Dict[str, Any], parent_key: str, sep: str) -> Dict[str, Any]`
-  - `audit_keys() -> None`
-
-#### `container.py` - *Compatibility facade for canonical ServiceContainer.*
-- **Path**: [`src/monika/infrastructure/infra/container.py`](src/monika/infrastructure/infra/container.py)
-
-#### `db_backup.py` - *Backward-compatibility facade for DB backup.*
-- **Path**: [`src/monika/infrastructure/infra/db_backup.py`](src/monika/infrastructure/infra/db_backup.py)
-
-#### `discord_notifier.py` - *Backward-compatibility facade for DiscordNotifier.*
-- **Path**: [`src/monika/infrastructure/infra/discord_notifier.py`](src/monika/infrastructure/infra/discord_notifier.py)
-
-#### `env_file_manager.py` - *Compatibility facade for canonical EnvFileManager.*
-- **Path**: [`src/monika/infrastructure/infra/env_file_manager.py`](src/monika/infrastructure/infra/env_file_manager.py)
-
-#### `event_loop.py` - *Compatibility facade for canonical event loop helpers.*
-- **Path**: [`src/monika/infrastructure/infra/event_loop.py`](src/monika/infrastructure/infra/event_loop.py)
-
-#### `log_redactor.py` - *Compatibility facade for canonical log redactor.*
-- **Path**: [`src/monika/infrastructure/infra/log_redactor.py`](src/monika/infrastructure/infra/log_redactor.py)
-
-#### `notifier.py` - *Backward-compatibility facade for AgentNotifier.*
-- **Path**: [`src/monika/infrastructure/infra/notifier.py`](src/monika/infrastructure/infra/notifier.py)
-
-#### `paths.py` - *Compatibility facade for canonical paths module.*
-- **Path**: [`src/monika/infrastructure/infra/paths.py`](src/monika/infrastructure/infra/paths.py)
-
-#### `platform_compat.py` - *Compatibility facade for canonical platform engine.*
-- **Path**: [`src/monika/infrastructure/infra/platform_compat.py`](src/monika/infrastructure/infra/platform_compat.py)
-
-#### `worktree_manager.py` - *Backward-compatibility facade for WorktreeManager.*
-- **Path**: [`src/monika/infrastructure/infra/worktree_manager.py`](src/monika/infrastructure/infra/worktree_manager.py)
 
 ### Folder: `src/monika/infrastructure/llm` <a id="folder-srcmonikainfrastructurellm"></a>
 

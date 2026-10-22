@@ -15,6 +15,7 @@ import pytest
 from monika.domain.ports import (
     ActivityLogRepositoryPort,
     BrokerPort,
+    EventPublisherPort,
     ExecutionPort,
     LlmPort,
     MarketDataPort,
@@ -37,6 +38,7 @@ from monika.infrastructure.database.repositories import (
     SystemConfigRepository,
     TradeProposalRepository,
 )
+from monika.infrastructure.database.event_store import TradingEventStore
 from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 from monika.infrastructure.providers.base_provider import BaseLLMClient
 
@@ -69,6 +71,11 @@ def test_notifier_port_compliance():
 
     notifier = AgentNotifier()
     assert isinstance(notifier, NotifierPort)
+
+
+def test_event_publisher_port_compliance():
+    """Verify TradingEventStore satisfies EventPublisherPort protocol."""
+    assert issubclass(TradingEventStore, EventPublisherPort)
 
 
 def test_llm_port_compliance():

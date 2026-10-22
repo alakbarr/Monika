@@ -212,7 +212,7 @@ async def _dispatch_cli(args: Any) -> None:
                     break
         else:
             # First-run interceptor for daemon execution
-            from monika.infrastructure.infra.env_file_manager import EnvFileManager
+            from monika.core.config.env_file_manager import EnvFileManager
 
             if not EnvFileManager.is_configured():
                 if sys.stdin and hasattr(sys.stdin, "isatty") and sys.stdin.isatty():
@@ -268,7 +268,7 @@ def run() -> None:
         )
         return
 
-    from monika.infrastructure.infra.event_loop import run_async
+    from monika.core.platform import run_async
 
     try:
         run_async(_dispatch_cli(args))

@@ -101,7 +101,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                         f"Calendar data is {cal_age:.1f}h old with no future coverage — risk gate protection reduced"
                     )
                     try:
-                        from monika.infrastructure.infra.notifier import AgentNotifier
+                        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                         await AgentNotifier().send_warning(
                             f"[PERINGATAN] Economic calendar data is {cal_age:.1f}h old with no upcoming events in DB.\n"
@@ -149,7 +149,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                     session.add(SystemConfig(key="news_auto_tighten", value="1"))
                 await session.commit()
                 try:
-                    from monika.infrastructure.infra.notifier import AgentNotifier
+                    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                     await AgentNotifier().send_warning(
                         f"[PERINGATAN] <b>News Classification Anomaly</b>\nHigh breaking rate detected: {health.get('breaking_rate_pct')}%. Auto-tightening activated."
@@ -312,7 +312,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                     else:
                         session.add(SystemConfig(key=last_gen_key, value=json.dumps(gen_data)))
                     await session.commit()
-                    from monika.infrastructure.infra.notifier import AgentNotifier
+                    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                     await AgentNotifier().send_info(
                         f"[LAPORAN] <b>Performance Notes Regenerated</b>\nReason: {reason}\nUpdated in skills/trading/performance_notes.md and fundamental_performance_notes.md"
@@ -419,7 +419,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         reason = "macro_data_stale" if has_global_macro_error else "all_data_stale"
         logger.error(f"Critical data freshness failure ({reason})! Skipping Stage 2. Errors: {validation['errors']}")
         try:
-            from monika.infrastructure.infra.notifier import AgentNotifier
+            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
             await AgentNotifier().send_critical(
                 f"[DARURAT] <b>CRITICAL: Data Freshness Failure ({reason})!</b>\nStage 2 analysis SKIPPED this cycle.\n"
@@ -461,7 +461,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                     )
                     summary["vix_halt"] = {"triggered": True, "vix": vix_latest.close, "threshold": vix_pause_threshold}
                     try:
-                        from monika.infrastructure.infra.notifier import AgentNotifier
+                        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                         await AgentNotifier().send_warning(
                             f"[PERINGATAN] <b>VIX System Halt</b>\n"

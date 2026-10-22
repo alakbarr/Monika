@@ -499,7 +499,7 @@ class MT5MarketDataMixin(MT5MixinBase):
 
         if event_bus is None:
             try:
-                from monika.application.protocol.event_bus import get_event_bus
+                from monika.core.primitives.event_bus import get_event_bus
 
                 event_bus = get_event_bus()
             except Exception:
@@ -542,7 +542,7 @@ class MT5MarketDataMixin(MT5MixinBase):
         loop: Optional[asyncio.AbstractEventLoop],
     ) -> None:
         """Worker loop executing on a dedicated thread for sub-second tick polling."""
-        from monika.application.protocol.event_bus import TickPriceEvent
+        from monika.core.primitives.event_bus import TickPriceEvent
 
         stop_event = self._tick_poller_stop_event
 

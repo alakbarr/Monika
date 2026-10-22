@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 import pytest
 
-from monika.infrastructure.infra.paths import get_repo_root
+from monika.core.paths import get_repo_root
 
 root_dir = get_repo_root()
 html_path = root_dir / "src" / "monika" / "application" / "benchmark" / "results" / "model_quadrant_analysis.html"

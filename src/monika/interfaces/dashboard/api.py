@@ -300,7 +300,7 @@ async def submit_setup_configuration(request: Request):
     try:
         from monika.core.config.atomic_writer import AtomicConfigWriter
         from monika.core.config.profile_applicator import ProfileApplicator
-        from monika.infrastructure.infra.env_file_manager import EnvFileManager
+        from monika.core.config.env_file_manager import EnvFileManager
 
         env_updates: Dict[str, str] = {}
 

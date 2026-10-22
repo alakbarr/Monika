@@ -276,7 +276,7 @@ class SetupWizard:
         from rich.prompt import Confirm, Prompt
 
         from monika.core.config.atomic_writer import AtomicConfigWriter
-        from monika.infrastructure.infra.env_file_manager import EnvFileManager
+        from monika.core.config.env_file_manager import EnvFileManager
         from monika.interfaces.cli.theme import (
             BRASS,
             MUTED,
@@ -1043,7 +1043,7 @@ class SetupWizard:
 
         # 3. Write .monika_tier marker in root directory
         try:
-            from monika.infrastructure.infra.paths import get_repo_root
+            from monika.core.paths import get_repo_root
 
             tier_marker = os.path.join(str(get_repo_root()), ".monika_tier")
             with open(tier_marker, "w", encoding="utf-8") as f:

@@ -336,7 +336,7 @@ class AlphaDiscoveryScheduler:
             )
             return None
 
-        # Parse metrics (supports both dictionary result from monika.application.harness and mock result objects)
+        # Parse metrics (supports both dictionary result from monika.application.plugins.engine and mock result objects)
         if isinstance(result, dict):
             wfe = float(result.get("overall_wfe", 0.0) or 0.0)
             oos_sharpe = float(result.get("aggregate_oos_sharpe", 0.0) or 0.0)

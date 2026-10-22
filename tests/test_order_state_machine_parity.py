@@ -41,7 +41,7 @@ from monika.infrastructure.brokers.broker_adapter import (
     _get_contract_size,
 )
 from monika.application.execution.execution_service import ExecutionService, ExecutionResult
-from monika.application.protocol.event_bus import get_event_bus, reset_event_bus, OrderStateChangedEvent
+from monika.core.primitives.event_bus import get_event_bus, reset_event_bus, OrderStateChangedEvent
 import monika.core.primitives.clock as clock
 
 

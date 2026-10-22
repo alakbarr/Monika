@@ -60,7 +60,7 @@ from monika.infrastructure.database.models import (
     SystemConfig,
 )
 from monika.infrastructure.database.safe_ops import safe_commit
-from monika.infrastructure.infra.notifier import AgentNotifier
+from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
 
 from monika.application.execution.service.base import _ExecutionServiceMixinBase
@@ -333,7 +333,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
             await session.commit()
 
         try:
-            from monika.infrastructure.infra.notifier import AgentNotifier
+            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
             await AgentNotifier().send_critical(
                 f" <b>CIRCUIT BREAKER ACTIVATED</b>\n"
@@ -564,7 +564,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                         f"Kill switch: {len(agent_positions)} positions STILL OPEN after {max_retries} retries!"
                     )
                     try:
-                        from monika.infrastructure.infra.notifier import AgentNotifier
+                        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                         await AgentNotifier().send_critical(
                             f"[DARURAT] KILL SWITCH INCOMPLETE\n"
@@ -577,7 +577,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
             logger.critical(f"Kill switch complete: {total_closed}/{total_cnt} positions closed")
 
             try:
-                from monika.infrastructure.infra.notifier import AgentNotifier
+                from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                 notifier = AgentNotifier()
                 await notifier.send_critical(

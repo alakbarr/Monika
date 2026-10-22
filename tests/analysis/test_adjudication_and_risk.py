@@ -146,7 +146,7 @@ async def test_risk_gate_node_evaluates_quant_on_wait_trade_and_persists():
             "monika.application.analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit",
             new=AsyncMock(return_value=(True, [])),
         ),
-        patch("monika.infrastructure.infra.notifier.AgentNotifier.send_info", new=AsyncMock()),
+        patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier.send_info", new=AsyncMock()),
     ):
         mock_dm.return_value.is_live_ready.return_value = True
 
@@ -216,7 +216,7 @@ async def test_risk_gate_node_proposal_error_fails_closed():
             "monika.domain.risk.trade_proposal.TradeProposal.from_analysis",
             side_effect=ValueError("Simulated proposal validation crash"),
         ),
-        patch("monika.infrastructure.infra.notifier.AgentNotifier.send_info", new=AsyncMock()),
+        patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier.send_info", new=AsyncMock()),
     ):
         res = await risk_gate_node(state, config)
         # STRICT FAIL-CLOSED: The trade must NOT be approved
@@ -288,7 +288,7 @@ async def test_risk_gate_node_safe_num_uses_math_and_strips_formatting():
             "monika.application.analysis.validators.precommit_gate.TradePreCommitGate.verify_precommit",
             new=AsyncMock(return_value=(True, [])),
         ),
-        patch("monika.infrastructure.infra.notifier.AgentNotifier.send_info", new=AsyncMock()),
+        patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier.send_info", new=AsyncMock()),
     ):
         res = await risk_gate_node(state, config)
         assert len(res["approved_trades"]) == 1

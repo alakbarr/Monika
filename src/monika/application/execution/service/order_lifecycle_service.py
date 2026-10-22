@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Union
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.application.protocol.event_bus import OrderStateChangedEvent, get_event_bus
+from monika.core.primitives.event_bus import OrderStateChangedEvent, get_event_bus
 from monika.domain.entities.order_status import OrderStatus
 from monika.infrastructure.database.event_store import TradingEventStore
 from monika.infrastructure.database.models import Order, OrderEvent

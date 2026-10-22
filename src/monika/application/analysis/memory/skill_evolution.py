@@ -27,7 +27,7 @@ import monika.core.primitives.clock as clock
 from monika.application.analysis.memory.playbook_ledger import PlaybookLedger, get_playbook_async_lock
 from monika.application.analysis.memory.playbook_linter import PlaybookLinter
 from monika.application.skills.loader import invalidate_cache
-from monika.infrastructure.infra.paths import get_skills_dir
+from monika.core.paths import get_skills_dir
 
 logger = logging.getLogger("TradingAgent.SkillEvolution")
 

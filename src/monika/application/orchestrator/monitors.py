@@ -305,7 +305,7 @@ class AgentMonitorsMixin:
                     if consecutive_failures == max_failures_before_alert:
                         if self.mt5_health_checker is not None:
                             self.mt5_health_checker.record_failure()
-                        from monika.infrastructure.infra.notifier import AgentNotifier
+                        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                         await AgentNotifier().send_critical(
                             f"[PLUGIN] <b>MT5 Connection Lost</b>\n"
@@ -326,7 +326,7 @@ class AgentMonitorsMixin:
                         if self.market_data_scheduler:
                             asyncio.create_task(self.market_data_scheduler.sync_now())
                         try:
-                            from monika.infrastructure.infra.notifier import AgentNotifier
+                            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                             await AgentNotifier().send_info(
                                 "[OK] <b>MT5 Reconnected</b> — Market data auto-healing sync dispatched."

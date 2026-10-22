@@ -287,7 +287,7 @@ Formulate strongest_counter_argument, hard_block, and recommend_block FIRST befo
         try:
             import asyncio
 
-            from monika.infrastructure.infra.notifier import AgentNotifier
+            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
             asyncio.create_task(
                 AgentNotifier().send_warning(

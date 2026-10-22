@@ -7,12 +7,12 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from monika.application.analysis.pipeline_plugin import AnalysisPipelinePlugin
-from monika.application.harness.contract import PluginCategory
+from monika.application.plugins.engine.contract import PluginCategory
 from monika.application.plugins.analysis_pipelines.macro_to_asset.macro_to_asset_pipeline import MacroToAssetPipeline
 from monika.application.plugins.analysis_pipelines.technical_scalping.scalping_pipeline import TechnicalScalpingPipeline
-from monika.application.harness.engine import PluginEngine
-from monika.infrastructure.infra.container import ServiceContainer
-from monika.application.protocol.event_bus import EventBus
+from monika.application.plugins.engine.engine import PluginEngine
+from monika.core.container import ServiceContainer
+from monika.core.primitives.event_bus import EventBus
 
 
 @pytest.mark.asyncio

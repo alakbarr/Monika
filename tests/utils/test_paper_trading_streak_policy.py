@@ -277,7 +277,7 @@ async def test_position_synchronizer_bypasses_daily_sl_pause_in_paper():
     mock_pos.mt5_ticket = 12345
     mock_pos.pnl = -50.0
 
-    with patch("monika.infrastructure.infra.notifier.AgentNotifier.send_warning", AsyncMock()):
+    with patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier.send_warning", AsyncMock()):
         await sync._handle_stop_loss_hit(mock_session, mock_pos)
 
     # pause_trading should NOT have been called because pause_system_on_daily_sl_limit is False

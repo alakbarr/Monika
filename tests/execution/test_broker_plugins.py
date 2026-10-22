@@ -13,7 +13,7 @@ from monika.domain.execution.broker_plugin import (
 )
 from monika.application.plugins.brokers.paper_trading.paper_plugin import PaperTradingBrokerPlugin
 from monika.application.plugins.brokers.mt5_local.mt5_plugin import MT5LocalBrokerPlugin
-from monika.application.harness.contract import PluginCategory
+from monika.application.plugins.engine.contract import PluginCategory
 
 
 @pytest.mark.asyncio

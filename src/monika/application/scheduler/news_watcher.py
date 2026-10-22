@@ -305,7 +305,7 @@ class NewsWatcher:
                 f"LLM classification pipeline failed — applying conservative SHOCK-only fallback (no full validation layer available): {e}"
             )
             try:
-                from monika.infrastructure.infra.notifier import AgentNotifier
+                from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                 self._track_task(
                     AgentNotifier().send_warning(
@@ -372,7 +372,7 @@ class NewsWatcher:
             result["reanalysis_triggered"] = True
 
             try:
-                from monika.infrastructure.infra.notifier import AgentNotifier
+                from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                 top_items_text = "\n".join(
                     [f"• [{n.impact}] {n.title} ({n.source or 'News'})" for n in actionable_high_items[:3]]

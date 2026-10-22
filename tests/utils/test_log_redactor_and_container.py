@@ -6,8 +6,8 @@ import pytest
 import asyncio
 import tempfile
 import os
-from monika.infrastructure.infra.log_redactor import redact_sensitive_text
-from monika.infrastructure.infra.container import ServiceContainer
+from monika.core.security.log_redactor import redact_sensitive_text
+from monika.core.container import ServiceContainer
 from monika.infrastructure.llm.context_compaction import spill_tool_output
 from monika.application.plugins.manager.manager import PluginManager, PluginHook
 from monika.infrastructure.api.credential_pool import CredentialPool

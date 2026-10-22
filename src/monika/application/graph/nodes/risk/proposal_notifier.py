@@ -365,7 +365,7 @@ async def send_proposal_notifications(
 
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import AssetAnalysis, FundamentalBrief
-        from monika.infrastructure.infra.notifier import AgentNotifier
+        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
         notifier = AgentNotifier()
         for sym, r in actionable:
@@ -410,7 +410,7 @@ async def send_execution_notification(ana: Any, execution_result: Any) -> None:
 
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import FundamentalBrief
-        from monika.infrastructure.infra.notifier import AgentNotifier
+        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
         notifier = AgentNotifier()
         sym = getattr(ana, "symbol", None) or getattr(execution_result, "symbol", "UNKNOWN")

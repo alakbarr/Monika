@@ -12,7 +12,7 @@ from monika.application.graph.state import merge_lists
 from monika.infrastructure.api.credential_pool import APICredentialPool, CredentialPool as APICredentialPoolAlias
 from monika.infrastructure.llm.credential_pool import LLMCredentialPool, CredentialPool as LLMCredentialPoolAlias
 from monika.infrastructure.providers.pricing_catalog import get_model_pricing, calculate_cost, cost_usd
-from monika.application.analysis.harness.agent_harness import calculate_turn_cost_usd
+from monika.application.agent.harness.agent_harness import calculate_turn_cost_usd
 from monika.infrastructure.data_ingestion.sources.academic_search import ARXIV_API_URL, AcademicSearchClient
 from monika.application.skills.loader import load_skill, _sanitize_skill_name
 

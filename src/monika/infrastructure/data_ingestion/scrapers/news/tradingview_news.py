@@ -50,7 +50,7 @@ class TradingViewNewsScraper(BaseScraper):
             import os
             from pathlib import Path
 
-            from monika.infrastructure.infra.paths import DATA_DIR
+            from monika.core.paths import DATA_DIR
 
             candidate_paths = [
                 str(DATA_DIR / "sessions" / "tv_session.json"),

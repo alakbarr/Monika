@@ -470,7 +470,7 @@ class PostReleaseAnalyzer:
             # Notify via Telegram if actionable
             if actionable:
                 try:
-                    from monika.infrastructure.infra.notifier import get_notifier
+                    from monika.infrastructure.notifications.telegram_notifier import get_notifier
 
                     notifier = get_notifier()
                     trade_summary = ", ".join(f"{s}: {r['decision'].upper()}" for s, r in actionable)

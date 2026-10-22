@@ -145,7 +145,7 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
             return
 
         if data.startswith("plg:"):
-            from monika.application.harness.installer import (
+            from monika.application.plugins.engine.installer import (
                 get_community_catalog,
                 list_all_plugins_status,
                 run_pip_install,

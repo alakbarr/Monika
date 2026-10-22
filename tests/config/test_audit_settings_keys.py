@@ -1,5 +1,5 @@
 import sys
-from monika.infrastructure.infra.audit_settings_keys import audit_keys, flatten_dict
+from monika.core.config.audit_settings_keys import audit_keys, flatten_dict
 
 
 def test_flatten_dict_nested():
@@ -25,7 +25,7 @@ def test_audit_settings_keys_importable_without_scripts_in_syspath(monkeypatch):
     filtered_path = [p for p in sys.path if not p.endswith("scripts")]
     monkeypatch.setattr(sys, "path", filtered_path)
 
-    import monika.infrastructure.infra.audit_settings_keys as mod
+    import monika.core.config.audit_settings_keys as mod
 
     assert hasattr(mod, "flatten_dict")
     assert hasattr(mod, "audit_keys")

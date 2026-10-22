@@ -108,16 +108,13 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
 
         provider_factory = get_default_suspended_symbols_provider()
         if provider_factory is not None:
-            suspended = await provider_factory(self.settings).get_suspended_symbols(session)
-        else:
             try:
-                import importlib
-
-                tracker_mod = importlib.import_module("monika.core.analytics.paper_tracker")
-                tracker_cls = getattr(tracker_mod, "PaperTracker")
-                suspended = await tracker_cls(self.settings).get_suspended_symbols(session)
-            except Exception:
-                suspended = []
+                suspended = await provider_factory(self.settings).get_suspended_symbols(session)
+            except Exception as e:
+                logger.error("Failed to fetch suspended symbols for %s; failing closed: %s", symbol, e)
+                return (False, f"Fail-Closed: Unable to verify suspension status for {symbol} due to tracker error")
+        else:
+            return (False, f"Fail-Closed: Suspended symbols provider not configured for {symbol}")
         if symbol in suspended:
             return (False, f"{symbol} is suspended due to consecutive losses")
 
@@ -350,15 +347,9 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
         try:
             client: Any = getattr(self, "_mt5", None)
             if client is None:
-                try:
-                    import importlib
+                from monika.domain.risk.ports import get_default_broker_client
 
-                    broker_mod = importlib.import_module("monika.infrastructure.brokers.mt5_client")
-                    get_client_fn = getattr(broker_mod, "get_mt5_client", None)
-                    if callable(get_client_fn):
-                        client = get_client_fn()
-                except Exception:
-                    client = None
+                client = get_default_broker_client(self.settings)
             if client is None:
                 if effective_paper:
                     return True, "no_client_spread_skipped"

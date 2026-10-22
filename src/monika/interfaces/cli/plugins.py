@@ -17,8 +17,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from monika.application.harness.contract import PluginCategory, PluginOrigin
-from monika.application.harness.engine import PluginEngine
+from monika.application.plugins.engine.contract import PluginCategory, PluginOrigin
+from monika.application.plugins.engine.engine import PluginEngine
 from monika.core.config.settings import load_all_config
 from monika.interfaces.cli.theme import (
     BRASS,
@@ -214,7 +214,7 @@ def cmd_plugin_enable(args) -> int:
         console.print("[red]Error: Plugin ID is required to enable (e.g. monika plugin enable discord_alert)[/red]")
         return 1
 
-    from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
+    from monika.application.plugins.engine.installer import list_all_plugins_status, toggle_plugin_state
 
     plugins = list_all_plugins_status()
     target = next((p for p in plugins if p["id"] == plugin_id), None)
@@ -236,7 +236,7 @@ def cmd_plugin_disable(args) -> int:
         console.print("[red]Error: Plugin ID is required to disable (e.g. monika plugin disable discord_alert)[/red]")
         return 1
 
-    from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
+    from monika.application.plugins.engine.installer import list_all_plugins_status, toggle_plugin_state
 
     plugins = list_all_plugins_status()
     target = next((p for p in plugins if p["id"] == plugin_id), None)

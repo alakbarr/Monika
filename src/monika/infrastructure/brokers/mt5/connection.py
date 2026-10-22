@@ -269,7 +269,7 @@ class MT5ConnectionMixin(MT5MixinBase):
             if getattr(self, "mt5_fail_count", 0) > 0:
                 self.mt5_fail_count = 0
                 try:
-                    from monika.infrastructure.infra.notifier import AgentNotifier
+                    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                     await AgentNotifier().send_info("[OK] <b>MT5 Reconnected</b>")
                 except Exception:
@@ -306,7 +306,7 @@ class MT5ConnectionMixin(MT5MixinBase):
 
         if self.mt5_fail_count % 6 == 1:
             try:
-                from monika.infrastructure.infra.notifier import AgentNotifier
+                from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                 notifier = AgentNotifier()
                 await notifier.send_critical(

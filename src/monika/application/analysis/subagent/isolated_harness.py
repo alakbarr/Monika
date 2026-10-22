@@ -17,7 +17,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from monika.application.analysis.harness.agent_harness import AgentHarness
+from monika.application.agent.harness.agent_harness import AgentHarness
 
 logger = logging.getLogger("TradingAgent.IsolatedSubagent")
 

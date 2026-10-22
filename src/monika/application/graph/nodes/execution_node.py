@@ -134,7 +134,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                 else:
                     logger.error("MT5 returned zero or null equity. Auto-execute BLOCKED this cycle.")
                     try:
-                        from monika.infrastructure.infra.notifier import AgentNotifier
+                        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                         await AgentNotifier().send_warning(
                             "[PERINGATAN] <b>Auto-Execute BLOCKED</b>\nMT5 could not verify account equity."

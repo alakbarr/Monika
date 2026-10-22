@@ -384,7 +384,7 @@ class ActionsMixin(_TuiMixinBase):
         elif cmd in ("plugin", "plugins"):
             if len(parts) > 1 and parts[1].lower() == "install":
                 if len(parts) > 2:
-                    from monika.application.harness.installer import run_pip_install
+                    from monika.application.plugins.engine.installer import run_pip_install
 
                     pkg = parts[2]
                     activity_log.write(f"[bold cyan]Installing plugin via pip:[/] {pkg}...")
@@ -399,7 +399,7 @@ class ActionsMixin(_TuiMixinBase):
             elif len(parts) > 1 and parts[1].lower() in ("toggle", "on", "off"):
                 if len(parts) > 2:
                     target_id = parts[2].lower()
-                    from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
+                    from monika.application.plugins.engine.installer import list_all_plugins_status, toggle_plugin_state
 
                     plugins = {p["id"]: p for p in list_all_plugins_status()}
                     if target_id in plugins:

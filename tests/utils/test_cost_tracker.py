@@ -193,7 +193,7 @@ class TestCostTracker:
             }
         }
 
-        with patch("monika.infrastructure.infra.notifier.AgentNotifier.send_critical", AsyncMock()):
+        with patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier.send_critical", AsyncMock()):
             status = await CostTracker.check_and_update_budget_status(mock_session, settings)
 
         assert status["is_paused"] is True

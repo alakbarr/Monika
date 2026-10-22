@@ -401,7 +401,7 @@ async def handle_backup_database(
         }
     try:
         from monika.core.config.settings import load_settings
-        from monika.infrastructure.infra.db_backup import create_backup
+        from monika.infrastructure.database.backup import create_backup
 
         settings = load_settings()
         force = bool(args.get("force", True))

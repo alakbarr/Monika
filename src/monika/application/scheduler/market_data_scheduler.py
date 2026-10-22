@@ -103,7 +103,7 @@ class MarketDataScheduler:
                 bus = self.event_bus
                 if bus is None:
                     try:
-                        from monika.application.protocol.event_bus import get_event_bus
+                        from monika.core.primitives.event_bus import get_event_bus
 
                         bus = get_event_bus()
                     except Exception:
@@ -118,7 +118,7 @@ class MarketDataScheduler:
                                 ask = float(quote.get("ask", 0.0) or 0.0)
                                 last = float(quote.get("last", 0.0) or 0.0)
                                 if bid > 0 or ask > 0:
-                                    from monika.application.protocol.event_bus import TickPriceEvent
+                                    from monika.core.primitives.event_bus import TickPriceEvent
 
                                     t_evt = TickPriceEvent(
                                         symbol=sym,

@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from monika.application.protocol.event_bus import (
+from monika.core.primitives.event_bus import (
     EventBus,
     AppEvent,
     TickPriceEvent,

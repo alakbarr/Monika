@@ -300,7 +300,7 @@ async def init_db() -> None:
             from alembic import command
             from alembic.config import Config
 
-            from monika.infrastructure.infra.paths import get_repo_root
+            from monika.core.paths import get_repo_root
 
             alembic_ini = get_repo_root() / "alembic.ini"
             if not alembic_ini.exists():

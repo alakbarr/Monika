@@ -4,18 +4,20 @@
 # ==============================================================================
 
 """
-Dynamic model resolver for Domain layer.
-Provides decoupled access to database model schemas registered by the infrastructure
-layer at application startup, preserving hexagonal domain isolation without static
-or dynamic imports of infrastructure packages.
+Model resolver for Domain layer.
+Provides decoupled access to database model schemas explicitly registered
+by the composition root / infrastructure layer at application startup,
+strictly preserving hexagonal domain isolation without static or dynamic imports
+of infrastructure packages.
 """
 
 from __future__ import annotations
 
-import sys
+from collections.abc import Callable
 from typing import Any
 
 _REGISTERED_MODELS: dict[str, Any] = {}
+_MODEL_PROVIDER: Callable[[str], Any] | None = None
 
 
 def register_model(name: str, model_cls: Any) -> None:
@@ -28,40 +30,38 @@ def register_models(models_dict: dict[str, Any]) -> None:
     _REGISTERED_MODELS.update(models_dict)
 
 
-def _load_infrastructure_model(name: str) -> Any:
-    """Lazy fallback loader for infrastructure models."""
-    try:
-        import importlib
-
-        mod = importlib.import_module("monika.infrastructure.database.models")
-        return getattr(mod, name, None)
-    except Exception:
-        return None
+def register_model_provider(provider: Callable[[str], Any]) -> None:
+    """Register a provider callable (from outer layers) to lazily supply model classes."""
+    global _MODEL_PROVIDER
+    _MODEL_PROVIDER = provider
 
 
 def resolve_model(name: str) -> Any:
     """
-    Resolves a registered database model by class name.
-    Checks explicit registry first, then loaded modules, then lazy fallback.
+    Resolves an explicitly registered database model by class name.
+    Strictly isolated: does not dynamically inspect or import infrastructure packages.
     """
     if name in _REGISTERED_MODELS:
         return _REGISTERED_MODELS[name]
-
-    mod = sys.modules.get("monika.infrastructure.database.models")
-    if mod and hasattr(mod, name):
-        val = getattr(mod, name)
-        _REGISTERED_MODELS[name] = val
-        return val
-
-    val = _load_infrastructure_model(name)
-    if val is not None:
-        _REGISTERED_MODELS[name] = val
-    return val
+    if _MODEL_PROVIDER is not None:
+        val = _MODEL_PROVIDER(name)
+        if val is not None:
+            _REGISTERED_MODELS[name] = val
+            return val
+    return None
 
 
 def clear_registered_models() -> None:
     """Clears registered models (for testing)."""
+    global _MODEL_PROVIDER
     _REGISTERED_MODELS.clear()
+    _MODEL_PROVIDER = None
 
 
-__all__ = ["resolve_model", "register_model", "register_models", "clear_registered_models"]
+__all__ = [
+    "resolve_model",
+    "register_model",
+    "register_models",
+    "register_model_provider",
+    "clear_registered_models",
+]

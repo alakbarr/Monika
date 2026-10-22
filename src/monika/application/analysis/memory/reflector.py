@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import monika.core.primitives.clock as clock
-from monika.infrastructure.infra.paths import resolve_config_path
+from monika.core.paths import resolve_config_path
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.TradeReflector")

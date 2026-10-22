@@ -11,8 +11,8 @@ for CLI, Telegram Bot, and Dashboard.
 import logging
 from typing import Any, Dict, List, Optional
 
-from monika.application.harness.engine import PluginEngine
-from monika.infrastructure.infra.container import ServiceContainer, get_container
+from monika.application.plugins.engine.engine import PluginEngine
+from monika.core.container import ServiceContainer, get_container
 
 logger = logging.getLogger("TradingAgent.Services.SystemStatus")
 

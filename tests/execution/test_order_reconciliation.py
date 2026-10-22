@@ -41,7 +41,7 @@ from monika.infrastructure.database.models import (
 from monika.infrastructure.brokers.broker_adapter import SimulatedBrokerAdapter, MT5LiveAdapter
 from monika.application.execution.execution_service import ExecutionService, ExecutionResult
 from monika.application.scheduler.order_reconciler import OrderReconciler
-from monika.application.protocol.event_bus import get_event_bus, reset_event_bus, OrderStateChangedEvent
+from monika.core.primitives.event_bus import get_event_bus, reset_event_bus, OrderStateChangedEvent
 import monika.core.primitives.clock as clock
 
 
@@ -673,7 +673,7 @@ class TestMainOrchestrationIntegration:
             patch("monika.application.scheduler.alpha_discovery_scheduler.AlphaDiscoveryScheduler"),
             patch("monika.application.scheduler.strategy_synthesis_scheduler.StrategySynthesisScheduler"),
             patch("monika.application.scheduler.playbook_curator.PlaybookCurator"),
-            patch("monika.infrastructure.infra.notifier.AgentNotifier"),
+            patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier"),
         ):
             agent._init_components()
 

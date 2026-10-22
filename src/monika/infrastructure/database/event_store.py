@@ -25,9 +25,11 @@ class TradingEventStore:
         session: AsyncSession,
         event_type: str,
         payload: Dict[str, Any],
-        correlation_id: str,
+        correlation_id: str = "system",
         causation_id: Optional[str] = None,
         actor: str = "system",
+        source: str = "system",
+        **kwargs: Any,
     ) -> str:
         """
         Append immutable event to store.

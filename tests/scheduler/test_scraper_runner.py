@@ -148,7 +148,7 @@ class TestScraperRunner:
         async def mock_warn(msg):
             notified.append(msg)
 
-        with patch("monika.infrastructure.infra.notifier.AgentNotifier") as mock_notifier_cls:
+        with patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier") as mock_notifier_cls:
             mock_notifier = mock_notifier_cls.return_value
             mock_notifier.send_warning = AsyncMock(side_effect=mock_warn)
 
@@ -243,7 +243,10 @@ class TestScraperRunner:
             assert not any("failed (consecutive: 2)" in str(c) for c in mock_err.call_args_list)
 
             # Attempt 3: count=3 == 3 -> should log error
-            with patch("monika.infrastructure.infra.notifier.AgentNotifier.send_warning", new_callable=AsyncMock):
+            with patch(
+                "monika.infrastructure.notifications.telegram_notifier.AgentNotifier.send_warning",
+                new_callable=AsyncMock,
+            ):
                 await runner._run_single("tradingview", fail_fetch)
             assert any("failed (consecutive: 3)" in str(c) for c in mock_err.call_args_list)
 

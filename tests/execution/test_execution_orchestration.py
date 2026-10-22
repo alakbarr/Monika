@@ -11,7 +11,7 @@ from tests.conftest import create_mock_async_session
 
 from monika.core.config.schemas import TradingAgentConfig, PaperTradingConfig
 from monika.application.agent.task_registry import TaskRegistry, TaskDefinition, CORE_TRADING_TASKS
-from monika.application.protocol.event_bus import EventBus, AppEvent, CircuitBreakerEvent
+from monika.core.primitives.event_bus import EventBus, AppEvent, CircuitBreakerEvent
 from monika.application.scheduler.wall_clock import sleep_until_next
 from monika.application.scheduler.order_reconciler import OrderReconciler
 from monika.application.execution.service.position_synchronizer import PositionSynchronizerMixin
@@ -19,7 +19,7 @@ from monika.domain.execution.order_emulator import ClientOrderEmulator, TrackedP
 from monika.infrastructure.database.models import SystemConfig, PriceOHLCV
 from monika.infrastructure.database.safe_ops import safe_db_op, safe_commit
 from monika.infrastructure.api.claude_rate_limiter import ClaudeRateLimiter
-from monika.application.analysis.harness.agent_harness import calculate_turn_cost_usd
+from monika.application.agent.harness.agent_harness import calculate_turn_cost_usd
 from monika.application.analysis.validators.market_snapshot import VerifiedMarketSnapshot
 
 

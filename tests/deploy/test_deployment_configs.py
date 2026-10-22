@@ -11,7 +11,7 @@ import pytest
 
 @pytest.fixture
 def repo_root():
-    from monika.infrastructure.infra.paths import get_repo_root
+    from monika.core.paths import get_repo_root
 
     return get_repo_root()
 

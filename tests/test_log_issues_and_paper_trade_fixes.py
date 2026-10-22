@@ -277,7 +277,7 @@ def test_reevaluation_trigger_auto_fallback_buy_and_wait():
 def test_confluence_factors_microstructure_and_pattern_recognized():
     """Verify microstructure and pattern confluence factors are accepted."""
     from monika.application.analysis.tools.executor import FACTOR_POINT_MAP
-    from monika.application.analysis.harness.tool_repair import coerce_tool_arguments
+    from monika.application.agent.harness.tool_repair import coerce_tool_arguments
 
     assert "microstructure_ok" in FACTOR_POINT_MAP
     assert "historical_pattern_consensus" in FACTOR_POINT_MAP

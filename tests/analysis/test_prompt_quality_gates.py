@@ -4,7 +4,7 @@ Unit tests for prompt quality gates (model-gated discipline and stop-as-truncate
 
 from monika.infrastructure.llm.model_discipline import get_model_discipline
 from monika.infrastructure.llm.prompt_assembler import PromptAssembler
-from monika.application.analysis.harness.agent_harness import AgentHarness
+from monika.application.agent.harness.agent_harness import AgentHarness
 
 
 def test_model_discipline_gating():

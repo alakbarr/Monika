@@ -7,6 +7,37 @@ if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 
 import monika
+import monika.infrastructure.database.models
+from monika.domain.risk.ports import (
+    register_evidence_store_factory,
+    register_notifier,
+    register_session_factory,
+    register_event_publisher,
+)
+from monika.application.analysis.strategies.evidence_store import EvidenceStore
+from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
+from monika.infrastructure.database.event_store import TradingEventStore
+from monika.infrastructure.database.db import get_session
+
+register_evidence_store_factory(lambda: EvidenceStore())
+
+
+def _test_notifier_factory():
+    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
+
+    return AgentNotifier()
+
+
+register_notifier(_test_notifier_factory)
+register_event_publisher(TradingEventStore)
+register_session_factory(get_session)
+
+from monika.domain.risk.ports import register_data_freshness_validator, register_suspended_symbols_provider
+from monika.core.validation.data_validator import validate_data_freshness
+from monika.core.analytics.paper_tracker import PaperTracker
+
+register_data_freshness_validator(validate_data_freshness)
+register_suspended_symbols_provider(lambda settings=None: PaperTracker(settings))
 
 import os
 
@@ -136,7 +167,7 @@ def protect_live_db_from_test_activity_logs(monkeypatch):
     Jika test membutuhkan pengujian save ActivityLog, test tersebut harus menyediakan db_session / mock_session.
     """
     try:
-        from monika.application.analysis.harness.agent_harness import AgentHarness
+        from monika.application.agent.harness.agent_harness import AgentHarness
 
         orig_log = AgentHarness._log_tool_call
 
@@ -197,6 +228,15 @@ def protect_live_telegram_in_tests(monkeypatch, request):
         return
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
     monkeypatch.setenv("TELEGRAM_ADMIN_CHAT_ID", "")
+
+    from monika.domain.risk.ports import register_notifier
+
+    def _isolated_notifier_factory():
+        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
+
+        return AgentNotifier()
+
+    register_notifier(_isolated_notifier_factory)
 
 
 @pytest.fixture(autouse=True)

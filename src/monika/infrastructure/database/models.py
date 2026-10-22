@@ -226,8 +226,9 @@ _proxy_mod.__dict__.update(_current_mod.__dict__)
 sys.modules[__name__] = _proxy_mod
 
 try:
-    from monika.domain.models_resolver import register_model
+    from monika.domain.models_resolver import register_model, register_model_provider
 
+    register_model_provider(lambda name: globals().get(name))
     for _name in __all__:
         if _name in globals():
             register_model(_name, globals()[_name])

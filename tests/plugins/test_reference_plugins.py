@@ -14,7 +14,7 @@ from monika.application.plugins.alerts.discord_alert.discord_alert import dispat
 
 
 def _get_plugins_dir() -> Path:
-    from monika.infrastructure.infra.paths import get_repo_root
+    from monika.core.paths import get_repo_root
 
     candidates = [
         get_repo_root() / "src" / "monika" / "application" / "plugins",
@@ -75,7 +75,7 @@ async def test_trading_plugin_classes_integration():
     from monika.application.plugins.alerts.discord_alert.discord_alert import DiscordAlertPlugin
     from monika.application.plugins.indicators.custom_indicator.custom_indicator import CustomIndicatorPlugin
     from monika.application.plugins.scrapers.example_scraper.example_scraper import ExampleScraperPlugin
-    from monika.application.harness.contract import OrderStateChangedEvent, RiskBreachEvent
+    from monika.application.plugins.engine.contract import OrderStateChangedEvent, RiskBreachEvent
 
     # Discord alert plugin
     alert_p = DiscordAlertPlugin()

@@ -22,7 +22,11 @@ class EventPublisherPort(Protocol):
         session: Any,
         event_type: str,
         payload: dict[str, Any],
-        source: str = "risk_gate",
+        correlation_id: str = "system",
+        causation_id: str | None = None,
+        actor: str = "system",
+        source: str = "system",
+        **kwargs: Any,
     ) -> Any:
         """Emit a domain or system event."""
         ...

@@ -13,7 +13,10 @@ implementations (Clean Architecture Dependency Inversion Principle).
 from __future__ import annotations
 
 from datetime import datetime
+import logging
 from typing import Any, Dict, List, Optional, Protocol, Tuple, runtime_checkable
+
+logger = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -215,6 +218,7 @@ class RiskPortRegistry:
     event_publisher: Any | None = None
     notifier: Any | None = None
     session_factory: Any | None = None
+    data_freshness_validator: Any | None = None
 
     @classmethod
     def reset(cls) -> None:
@@ -233,6 +237,17 @@ class RiskPortRegistry:
         cls.event_publisher = None
         cls.notifier = None
         cls.session_factory = None
+        cls.data_freshness_validator = None
+
+
+def register_data_freshness_validator(validator: Any) -> None:
+    """Register market data freshness validator callable."""
+    RiskPortRegistry.data_freshness_validator = validator
+
+
+def get_default_data_freshness_validator() -> Any:
+    """Returns registered market data freshness validator or None."""
+    return RiskPortRegistry.data_freshness_validator
 
 
 def register_suspended_symbols_provider(provider: Any) -> None:
@@ -371,7 +386,7 @@ async def emit_risk_hook(hook_name: str, **kwargs: Any) -> None:
             if inspect.isawaitable(res):
                 await res
         except Exception:
-            pass
+            logger.exception("Error emitting risk lifecycle hook '%s'", hook_name)
 
 
 def register_adaptive_risk_policy_factory(factory: Any) -> None:
@@ -391,23 +406,11 @@ def register_evidence_store_factory(factory: Any) -> None:
     RiskPortRegistry.evidence_store_factory = factory
 
 
-def _load_fallback_evidence_store() -> Any:
-    """Lazy fallback loader for EvidenceStore when running without full application bootstrap."""
-    try:
-        import importlib
-
-        mod = importlib.import_module("monika.application.analysis.strategies.evidence_store")
-        cls = getattr(mod, "EvidenceStore", None)
-        return cls() if cls else None
-    except Exception:
-        return None
-
-
 def get_default_evidence_store() -> Any:
-    """Returns registered EvidenceStore instance or fallback."""
+    """Returns registered EvidenceStore instance or None."""
     if RiskPortRegistry.evidence_store_factory is not None:
         return RiskPortRegistry.evidence_store_factory()
-    return _load_fallback_evidence_store()
+    return None
 
 
 def register_copula_tail_risk_fitter(fitter: Any) -> None:
@@ -437,22 +440,11 @@ def register_broker_client_factory(factory: Any) -> None:
     RiskPortRegistry.broker_client_factory = factory
 
 
-def _load_fallback_broker_client(settings: Any | None = None) -> Any:
-    try:
-        import importlib
-
-        broker_mod = importlib.import_module("monika.infrastructure.brokers.mt5_client")
-        fn = getattr(broker_mod, "get_mt5_client", None)
-        return fn(settings) if callable(fn) else None
-    except Exception:
-        return None
-
-
 def get_default_broker_client(settings: Any | None = None) -> Any:
-    """Returns registered default broker client or fallback."""
+    """Returns registered default broker client or None."""
     if RiskPortRegistry.broker_client_factory is not None:
         return RiskPortRegistry.broker_client_factory(settings)
-    return _load_fallback_broker_client(settings)
+    return None
 
 
 def register_event_publisher(publisher: Any) -> None:
@@ -460,21 +452,9 @@ def register_event_publisher(publisher: Any) -> None:
     RiskPortRegistry.event_publisher = publisher
 
 
-def _load_fallback_event_publisher() -> Any:
-    try:
-        import importlib
-
-        store_mod = importlib.import_module("monika.infrastructure.database.event_store")
-        return getattr(store_mod, "TradingEventStore", None)
-    except Exception:
-        return None
-
-
 def get_default_event_publisher() -> Any:
-    """Returns registered event publisher or fallback."""
-    if RiskPortRegistry.event_publisher is not None:
-        return RiskPortRegistry.event_publisher
-    return _load_fallback_event_publisher()
+    """Returns registered event publisher or None."""
+    return RiskPortRegistry.event_publisher
 
 
 def register_notifier(notifier: Any) -> None:
@@ -482,22 +462,17 @@ def register_notifier(notifier: Any) -> None:
     RiskPortRegistry.notifier = notifier
 
 
-def _load_fallback_notifier() -> Any:
-    try:
-        import importlib
-
-        mod = importlib.import_module("monika.infrastructure.infra.notifier")
-        cls = getattr(mod, "AgentNotifier", None)
-        return cls() if cls else None
-    except Exception:
-        return None
-
-
 def get_default_notifier() -> Any:
-    """Returns registered notifier or fallback."""
-    if RiskPortRegistry.notifier is not None:
-        return RiskPortRegistry.notifier
-    return _load_fallback_notifier()
+    """Returns registered notifier or None."""
+    notifier = RiskPortRegistry.notifier
+    if notifier is not None:
+        if isinstance(notifier, type) or (callable(notifier) and not hasattr(notifier, "send_critical")):
+            try:
+                return notifier()
+            except Exception:
+                pass
+        return notifier
+    return None
 
 
 def register_session_factory(factory: Any) -> None:
@@ -505,18 +480,6 @@ def register_session_factory(factory: Any) -> None:
     RiskPortRegistry.session_factory = factory
 
 
-def _load_fallback_session_factory() -> Any:
-    try:
-        import importlib
-
-        db_mod = importlib.import_module("monika.infrastructure.database.db")
-        return getattr(db_mod, "get_session", None)
-    except Exception:
-        return None
-
-
 def get_default_session_factory() -> Any:
-    """Returns registered database session factory or fallback."""
-    if RiskPortRegistry.session_factory is not None:
-        return RiskPortRegistry.session_factory
-    return _load_fallback_session_factory()
+    """Returns registered database session factory or None."""
+    return RiskPortRegistry.session_factory

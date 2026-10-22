@@ -36,7 +36,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
-from monika.application.protocol.event_bus import OrderStateChangedEvent, get_event_bus
+from monika.core.primitives.event_bus import OrderStateChangedEvent, get_event_bus
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import (
     AssetAnalysis,

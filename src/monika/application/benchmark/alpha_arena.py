@@ -177,7 +177,7 @@ async def persist_tournament_leaderboard(tournament: AlphaArenaTournament, sessi
     )
 
     try:
-        from monika.infrastructure.infra.paths import get_data_dir
+        from monika.core.paths import get_data_dir
 
         data_dir = get_data_dir()
         data_dir.mkdir(parents=True, exist_ok=True)

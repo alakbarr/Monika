@@ -554,7 +554,16 @@ class RiskGate(
                 if state and state.daily_drawdown_pct is not None:
                     current_dd_pct = float(state.daily_drawdown_pct)
             except Exception:
-                pass
+                logger.error("Failed to fetch risk state for invariant validation", exc_info=True)
+                if session is not None:
+                    return RiskVerdict(
+                        approved=False,
+                        symbol=proposal.symbol,
+                        proposed_lots=proposal.lot_size,
+                        checks_passed=[],
+                        checks_failed=["DB_RISK_STATE_ERROR"],
+                        rejection_reasons=["Fail-Closed: Risk state database query failed during drawdown evaluation"],
+                    )
             inv_ctx = {
                 "proposal": proposal,
                 "max_drawdown_limit": self.max_daily_drawdown_pct,

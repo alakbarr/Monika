@@ -261,7 +261,7 @@ class EntryCondition(BaseModel):
     def coerce_entry_condition(cls, data: Any) -> Any:
         if isinstance(data, str):
             s = data.strip()
-            from monika.application.analysis.harness.tool_repair import _parse_xml_parameters
+            from monika.application.agent.harness.tool_repair import _parse_xml_parameters
 
             xml_dict = _parse_xml_parameters(s)
             if xml_dict:
@@ -319,7 +319,7 @@ class ReevaluationTrigger(BaseModel):
     def coerce_reevaluation_trigger(cls, data: Any) -> Any:
         if isinstance(data, str):
             s = data.strip()
-            from monika.application.analysis.harness.tool_repair import _parse_xml_parameters
+            from monika.application.agent.harness.tool_repair import _parse_xml_parameters
 
             xml_dict = _parse_xml_parameters(s)
             if xml_dict:

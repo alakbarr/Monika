@@ -8,7 +8,7 @@ from monika.application.analysis.tools.tool_executor import ToolExecutor
 class TestReportAndSafeHaven:
     @pytest.mark.asyncio
     @patch("monika.infrastructure.providers.llm_factory.get_client_for_task")
-    @patch("monika.infrastructure.infra.notifier.AgentNotifier.send_markdown")
+    @patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier.send_markdown")
     @patch("monika.infrastructure.database.db.get_session")
     async def test_weekly_edge_assessment_synthesizer(self, mock_get_session, mock_send_markdown, mock_get_client):
         """Test that _send_weekly_edge_assessment invokes report_synthesizer LLM role."""
@@ -77,7 +77,7 @@ class TestReportAndSafeHaven:
 
     @pytest.mark.asyncio
     @patch("monika.infrastructure.providers.llm_factory.get_client_for_task")
-    @patch("monika.infrastructure.infra.notifier.AgentNotifier.send_info")
+    @patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier.send_info")
     @patch("monika.infrastructure.database.db.get_session")
     async def test_daily_report_synthesizer(self, mock_get_session, mock_send_info, mock_get_client):
         """Test that _send_daily_report invokes report_synthesizer LLM role."""

@@ -7,7 +7,7 @@ import asyncio
 import logging
 from typing import Any, Optional
 
-from monika.infrastructure.infra.notifier import AgentNotifier
+from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
 logger = logging.getLogger("TradingAgent.MarginMonitor")
 

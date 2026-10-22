@@ -138,7 +138,7 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
         logger.error(f"Fundamental Stage failed — skipping per-asset stage (failures: {consecutive_failures})")
         if consecutive_failures >= max_failures:
             try:
-                from monika.infrastructure.infra.notifier import AgentNotifier
+                from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                 await AgentNotifier().send_critical(
                     f"[KRITIS] <b>Stage 1 Consecutive Failures: {consecutive_failures}</b>\n"
@@ -295,7 +295,7 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
                                     f"• {pos['symbol']} {pos['direction'].upper()} (ticket {pos['ticket']}): {pos['reason']}"
                                 )
                             alert_lines.append("\nConsider reviewing these positions manually.")
-                            from monika.infrastructure.infra.notifier import AgentNotifier
+                            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                             await AgentNotifier().send_warning("\n".join(alert_lines))
                             logger.warning(f"Fundamental shift detected affecting {len(affected_positions)} positions")

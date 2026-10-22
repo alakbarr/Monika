@@ -214,7 +214,7 @@ class ScraperRunner:
                 )
                 logger.warning(f"Scraper '{name}' consecutive failure threshold reached ({count}). Alerting admin.")
                 try:
-                    from monika.infrastructure.infra.notifier import AgentNotifier
+                    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                     notifier = AgentNotifier()
                     await notifier.send_warning(msg)
@@ -502,7 +502,7 @@ class ScraperRunner:
                 logger.error(f"RSS {name} failed (consecutive: {count}): {err_msg}")
                 if count == self.failure_alert_threshold:
                     try:
-                        from monika.infrastructure.infra.notifier import AgentNotifier
+                        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                         notifier = AgentNotifier()
                         await notifier.send_warning(

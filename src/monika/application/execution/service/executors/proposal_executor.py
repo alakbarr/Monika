@@ -152,7 +152,7 @@ class ProposalOrderMixin(_ExecutionServiceMixinBase):
 
         # Pre-order waterfall hook
         try:
-            from monika.application.harness.engine import get_plugin_engine
+            from monika.application.plugins.engine.engine import get_plugin_engine
 
             engine = get_plugin_engine()
             if engine:
@@ -199,7 +199,7 @@ class ProposalOrderMixin(_ExecutionServiceMixinBase):
 
         # Post-order hook
         try:
-            from monika.application.harness.engine import get_plugin_engine
+            from monika.application.plugins.engine.engine import get_plugin_engine
 
             engine = get_plugin_engine()
             if engine:

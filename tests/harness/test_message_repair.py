@@ -2,7 +2,7 @@
 Unit tests for 4-pass message history alternation and pairing repair.
 """
 
-from monika.application.analysis.harness.message_repair import repair_message_history
+from monika.application.agent.harness.message_repair import repair_message_history
 
 
 def test_merge_consecutive_assistants():

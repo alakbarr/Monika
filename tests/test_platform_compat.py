@@ -6,7 +6,7 @@ from tests.conftest import create_mock_async_session
 import sys
 import pytest
 from pathlib import Path
-from monika.infrastructure.infra.platform_compat import (
+from monika.core.platform import (
     IS_WINDOWS,
     IS_LINUX,
     configure_event_loop,

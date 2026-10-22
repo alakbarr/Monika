@@ -342,7 +342,7 @@ def build_application_container(
 
     container.register_factory("credential_pool", lambda c: CredentialPool.get_instance())
 
-    from monika.application.harness.engine import PluginEngine
+    from monika.application.plugins.engine.engine import PluginEngine
 
     container.register_factory(
         "plugin_engine",
@@ -424,6 +424,30 @@ def build_application_container(
                 await get_plugin_manager().emit(hook_enum, **kw)
 
         register_risk_hook_emitter(_emit_hook)
+
+        from monika.domain.risk.ports import (
+            register_event_publisher,
+            register_notifier,
+            register_session_factory,
+        )
+        from monika.infrastructure.database.event_store import TradingEventStore
+        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
+        from monika.infrastructure.database.db import get_session
+
+        register_event_publisher(TradingEventStore)
+
+        def _notifier_factory():
+            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
+
+            return AgentNotifier()
+
+        register_notifier(_notifier_factory)
+        register_session_factory(get_session)
+
+        from monika.domain.risk.ports import register_data_freshness_validator
+        from monika.core.validation.data_validator import validate_data_freshness
+
+        register_data_freshness_validator(validate_data_freshness)
     except Exception as e:
         logger.warning(f"Error wiring domain risk ports at bootstrap: {e}")
 

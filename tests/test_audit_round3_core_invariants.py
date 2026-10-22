@@ -213,11 +213,11 @@ async def test_f1_1_signal_arbitrator_dynamic_brier_weighting():
 @pytest.mark.asyncio
 async def test_f1_2_notifier_persistent_disk_outbox(tmp_path):
     """Verify that failed Telegram alerts are safely saved to disk and reloaded on start."""
-    from monika.infrastructure.infra.notifier import AgentNotifier
+    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
     test_outbox_file = tmp_path / "notifier_outbox.json"
 
-    with patch("monika.infrastructure.infra.notifier._OUTBOX_FILE", test_outbox_file):
+    with patch("monika.infrastructure.notifications.telegram_notifier._OUTBOX_FILE", test_outbox_file):
         # Reset class state
         AgentNotifier._outbox.clear()
         AgentNotifier._loaded_from_disk = False

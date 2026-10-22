@@ -6,16 +6,16 @@ import asyncio
 import pytest
 from typing import Dict, Any, List
 
-from monika.application.harness.contract import (
+from monika.application.plugins.engine.contract import (
     TradingPlugin,
     PluginMetadata,
     PluginCategory,
     PluginOrigin,
 )
-from monika.application.harness.context import PluginContext
-from monika.application.harness.engine import PluginEngine
-from monika.infrastructure.infra.container import ServiceContainer
-from monika.application.protocol.event_bus import EventBus
+from monika.application.plugins.engine.context import PluginContext
+from monika.application.plugins.engine.engine import PluginEngine
+from monika.core.container import ServiceContainer
+from monika.core.primitives.event_bus import EventBus
 from monika.application.analysis.prompt_sections import prompt_section_registry
 
 

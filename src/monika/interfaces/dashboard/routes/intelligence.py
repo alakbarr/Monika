@@ -710,8 +710,8 @@ async def crystallize_skills_now(request: Request, payload: Optional[Crystallize
 @require_role(Role.VIEWER)
 async def get_harness_tree():
     """Retrieve the current 8-component Monika agent harness tree and invariant telemetry."""
-    from monika.application.analysis.harness.surface import MONIKA_SURFACE
-    from monika.application.analysis.harness.tree import HarnessTree
+    from monika.application.analysis.recursive_harness.surface import MONIKA_SURFACE
+    from monika.application.analysis.recursive_harness.tree import HarnessTree
 
     tree = HarnessTree.build_baseline_tree()
     tree_dict = tree.to_dict()
@@ -739,7 +739,7 @@ async def get_harness_tree():
 @require_role(Role.VIEWER)
 async def get_harness_library():
     """Retrieve all registered domain experience catalogs from the Domain Experience Library."""
-    from monika.application.analysis.harness.library import DomainExperienceLibrary
+    from monika.application.analysis.recursive_harness.library import DomainExperienceLibrary
 
     lib = DomainExperienceLibrary()
     domains = lib.list_domains()
@@ -764,7 +764,7 @@ async def get_harness_library():
 @require_role(Role.OPERATOR)
 async def trigger_harness_cycle(request: Request, payload: Optional[HarnessCycleRequest] = None):
     """Trigger an autonomous recursive harnessing cycle (Propose -> Probe -> Contrastive Select -> Compose)."""
-    from monika.application.analysis.harness.service import RecursiveHarnessService
+    from monika.application.analysis.recursive_harness.service import RecursiveHarnessService
 
     svc = RecursiveHarnessService()
     dom = payload.domain if payload and payload.domain else "METALS__VOLATILITY_EXPANSION"

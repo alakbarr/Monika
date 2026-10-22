@@ -667,7 +667,7 @@ class UnifiedCronEngine:
                     if self._channel_dispatcher:
                         self._channel_dispatcher(job, execution_output)
                     elif job.target_delivery == "telegram":
-                        from monika.infrastructure.infra.notifier import AgentNotifier
+                        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                         notifier = AgentNotifier()
                         header = f"<b>[JADWAL OTOMATIS: {job.name or job.job_id}]</b>\n\n"

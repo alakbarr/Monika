@@ -90,7 +90,7 @@ class RunManifestGenerator:
     def _get_active_skills(cls) -> List[str]:
         skills = []
         try:
-            from monika.infrastructure.infra.paths import get_skills_dir
+            from monika.core.paths import get_skills_dir
 
             skills_dir = get_skills_dir()
             if skills_dir.exists():

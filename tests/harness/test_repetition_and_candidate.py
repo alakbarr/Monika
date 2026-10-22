@@ -1,8 +1,8 @@
 import json
 import pytest
-from monika.application.analysis.harness.repetition_guard import detect_text_repetition
-from monika.application.analysis.harness.trade_stop_gates import TradeStopGate
-from monika.application.analysis.harness.verification_evidence_ledger import VerificationEvidenceLedger
+from monika.application.agent.harness.repetition_guard import detect_text_repetition
+from monika.application.agent.harness.trade_stop_gates import TradeStopGate
+from monika.application.agent.harness.verification_evidence_ledger import VerificationEvidenceLedger
 
 
 def test_repetition_guard_detects_loop():

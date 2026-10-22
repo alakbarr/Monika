@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from monika.infrastructure.infra.paths import resolve_config_path
+from monika.core.paths import resolve_config_path
 
 """
 File: src/monika/application/analysis/memory/frozen_snapshot.py

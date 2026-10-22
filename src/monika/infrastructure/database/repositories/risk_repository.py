@@ -599,11 +599,3 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
             closes = [float(c) for c in reversed(res.scalars().all())]
             result[sym] = closes
         return result
-
-
-# Auto-register concrete repository with domain risk port
-from monika.domain.risk.ports import register_risk_data_provider_factory
-
-register_risk_data_provider_factory(
-    lambda session=None, settings=None: SqlAlchemyRiskRepository(session=session, settings=settings)
-)

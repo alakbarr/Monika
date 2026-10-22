@@ -272,7 +272,7 @@ class PositionGuardian:
                     await session.commit()
 
                     try:
-                        from monika.infrastructure.infra.notifier import AgentNotifier
+                        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                         await AgentNotifier().send_info(
                             f"[TARGET] <b>Tranche Scale-Out: Leg 1 Closed</b>\n"
@@ -341,7 +341,7 @@ class PositionGuardian:
             action_type = "alerted"
 
         try:
-            from monika.infrastructure.infra.notifier import AgentNotifier
+            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
             await AgentNotifier().send_warning(msg)
         except Exception as e:
@@ -477,7 +477,7 @@ class PositionGuardian:
                 lines.append("\nSemua posisi at-risk telah diamankan dari weekend gap.")
 
                 try:
-                    from monika.infrastructure.infra.notifier import AgentNotifier
+                    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                     await AgentNotifier().send_info("\n".join(lines))
                 except Exception as e:
@@ -503,7 +503,7 @@ class PositionGuardian:
                 )
 
                 try:
-                    from monika.infrastructure.infra.notifier import AgentNotifier
+                    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                     await AgentNotifier().send_critical("\n".join(lines))
                 except Exception as e:

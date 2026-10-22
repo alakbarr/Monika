@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 # Ensure scripts directory is in sys.path
-from monika.infrastructure.infra.paths import get_repo_root
+from monika.core.paths import get_repo_root
 
 root_dir = get_repo_root()
 sys.path.insert(0, str(root_dir))

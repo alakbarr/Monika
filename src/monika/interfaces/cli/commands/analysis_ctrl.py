@@ -212,7 +212,7 @@ async def _cmd_stress_test(args: Any) -> None:
 
 async def _cmd_backup(args: Any) -> None:
     """Create database backup snapshot."""
-    from monika.infrastructure.infra.db_backup import create_backup
+    from monika.infrastructure.database.backup import create_backup
 
     cfg = cli_main.load_all_config()
     dest = getattr(args, "dest", None)

@@ -28,7 +28,7 @@ from monika.application.scheduler.cron_nlp_parser import parse_natural_schedule
 
 logger = logging.getLogger("TradingAgent.Scheduler.DetachedCronWorker")
 
-from monika.infrastructure.infra.paths import DATA_DIR
+from monika.core.paths import DATA_DIR
 
 DEFAULT_DELIVERIES_DB_PATH = DATA_DIR / "deliveries.db"
 
@@ -187,7 +187,7 @@ class DetachedCronWorker:
         with conn:
             conn.execute(
                 """
-                UPDATE scheduled_jobs 
+                UPDATE scheduled_jobs
                 SET last_run = ?, next_run = ?
                 WHERE job_id = ?;
             """,

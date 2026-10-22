@@ -159,7 +159,7 @@ def ensure_daemon_running(args: Any, console: Any = None) -> bool:
         return True
 
     try:
-        from monika.infrastructure.infra.env_file_manager import EnvFileManager
+        from monika.core.config.env_file_manager import EnvFileManager
 
         if not EnvFileManager.is_configured():
             return False

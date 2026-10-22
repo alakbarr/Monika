@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from monika.application.harness.contract import PluginCategory, PluginMetadata, PluginOrigin
+from monika.application.plugins.engine.contract import PluginCategory, PluginMetadata, PluginOrigin
 from monika.domain.execution.broker_plugin import (
     AccountInfo,
     BrokerPlugin,

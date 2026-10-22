@@ -193,7 +193,7 @@ async def test_main_db_health_check_sends_telegram_alert():
 
     with (
         patch("monika.infrastructure.database.db.engine", mock_engine),
-        patch("monika.infrastructure.infra.notifier.AgentNotifier", return_value=mock_notifier),
+        patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier", return_value=mock_notifier),
     ):
         # Run 1 iteration of health check
         task = asyncio.create_task(agent._run_db_health_check())

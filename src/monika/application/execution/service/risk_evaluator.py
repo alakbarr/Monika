@@ -35,7 +35,7 @@ from monika.infrastructure.database.models import (
     SystemConfig,
 )
 from monika.infrastructure.database.safe_ops import safe_commit
-from monika.infrastructure.infra.notifier import AgentNotifier
+from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
 
 def get_session():

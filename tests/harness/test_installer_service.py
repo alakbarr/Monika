@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 import pytest
 
-from monika.application.harness.installer import (
+from monika.application.plugins.engine.installer import (
     validate_package_spec,
     get_community_catalog,
     toggle_plugin_state,

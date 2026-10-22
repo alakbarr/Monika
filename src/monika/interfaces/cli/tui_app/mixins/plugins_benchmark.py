@@ -96,7 +96,7 @@ class PluginsBenchmarkMixin(_TuiMixinBase):
     async def refresh_plugins_table(self) -> None:
         """Fetch unified plugin statuses and refresh DataTable."""
         try:
-            from monika.application.harness.installer import list_all_plugins_status
+            from monika.application.plugins.engine.installer import list_all_plugins_status
 
             plugins = list_all_plugins_status()
             table = self.query_one("#plugins_table", DataTable)
@@ -143,7 +143,7 @@ class PluginsBenchmarkMixin(_TuiMixinBase):
                 return
 
             plugin_id = str(row_key.value)
-            from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
+            from monika.application.plugins.engine.installer import list_all_plugins_status, toggle_plugin_state
 
             plugins = {p["id"]: p for p in list_all_plugins_status()}
             if plugin_id in plugins:

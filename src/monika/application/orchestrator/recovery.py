@@ -46,7 +46,7 @@ class AgentRecoveryMixin:
         """Publish a live TickPriceEvent to the centralized EventBus."""
         if not self.event_bus:
             return
-        from monika.application.protocol.event_bus import TickPriceEvent
+        from monika.core.primitives.event_bus import TickPriceEvent
 
         event = TickPriceEvent(
             symbol=symbol.upper(),

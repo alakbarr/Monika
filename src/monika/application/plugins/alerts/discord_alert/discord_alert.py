@@ -11,7 +11,7 @@ from monika.application.plugins.engine.contract import (
     PluginOrigin,
     TradingPlugin,
 )
-from monika.application.protocol.event_bus import (
+from monika.core.primitives.event_bus import (
     OrderStateChangedEvent,
     RiskBreachEvent,
 )

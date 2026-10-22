@@ -189,7 +189,7 @@ class GraphCycleScheduler(CycleScheduler):
 
         # Kirim alert Telegram agar operator tahu state persistence terdegradasi
         try:
-            from monika.infrastructure.infra.notifier import AgentNotifier
+            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
             await AgentNotifier().send_warning(
                 "[PERINGATAN] <b>LangGraph: PostgreSQL Checkpointer Gagal</b>\n\n"
@@ -555,7 +555,7 @@ class GraphCycleScheduler(CycleScheduler):
                             f"EDGE DETECTION: System shows NO statistical edge after {edge_data['total_trades']} trades. Win rate: {edge_data['win_rate']}%"
                         )
                         try:
-                            from monika.infrastructure.infra.notifier import AgentNotifier
+                            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                             await AgentNotifier().send_critical(
                                 f"[DARURAT] <b>EDGE DETECTION ALERT</b>\nNo statistical edge after {edge_data['total_trades']} trades\n"
@@ -582,7 +582,7 @@ class GraphCycleScheduler(CycleScheduler):
                         pattern_summary = await summarize_recent_patterns(session, hours_back=24)
                         if pattern_summary.get("has_critical_patterns"):
                             logger.warning(f"Critical patterns detected in last 24h: {pattern_summary}")
-                            from monika.infrastructure.infra.notifier import AgentNotifier
+                            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                             await AgentNotifier().send_warning(
                                 f"[LAPORAN] <b>Pattern Alert (24h)</b>\n{pattern_summary.get('summary', '')}"
@@ -856,7 +856,7 @@ class GraphCycleScheduler(CycleScheduler):
 
                     calibration = await compute_confidence_calibration(session)
                     if not calibration.get("confidence_is_calibrated") and calibration.get("total_analyzed", 0) >= 30:
-                        from monika.infrastructure.infra.notifier import AgentNotifier
+                        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                         await AgentNotifier().send_warning(
                             f"[PERINGATAN] <b>Confidence Calibration Issue</b>\n"
@@ -1098,7 +1098,7 @@ class GraphCycleScheduler(CycleScheduler):
                         logger.warning(
                             f"5+ consecutive WAIT-only cycles. Possible threshold too high or market regime issue."
                         )
-                        from monika.infrastructure.infra.notifier import AgentNotifier
+                        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                         await AgentNotifier().send_warning(
                             f"[PERINGATAN] <b>No Trades for {consecutive_wait} Cycles</b>\n"
@@ -1226,7 +1226,7 @@ class GraphCycleScheduler(CycleScheduler):
             avg_skip_rate = sum(recent_skip_rates) / len(recent_skip_rates)
             if avg_skip_rate > 0.7:
                 try:
-                    from monika.infrastructure.infra.notifier import AgentNotifier
+                    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                     await AgentNotifier().send_warning(
                         f"[PERINGATAN] HIGH SKIP RATE DETECTED\n"
@@ -1315,7 +1315,7 @@ class GraphCycleScheduler(CycleScheduler):
         Executes autonomous Harness^2 recursion cycle across active asset universe
         during weekend closure to update domain playbooks and guardrails.
         """
-        from monika.application.analysis.harness.service import RecursiveHarnessService
+        from monika.application.analysis.recursive_harness.service import RecursiveHarnessService
 
         svc = RecursiveHarnessService()
         universe = self.settings.get("trading", {}).get(

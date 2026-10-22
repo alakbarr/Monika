@@ -4,7 +4,7 @@ Verifies CWD-invariance and regression prevention against ghost directory nestin
 """
 
 from pathlib import Path
-from monika.infrastructure.infra.paths import (
+from monika.core.paths import (
     CONFIG_DIR,
     DATA_DIR,
     LOGS_DIR,

@@ -4,7 +4,7 @@ Unit tests for context_compressor hardening (deduplication & anti-thrashing circ
 
 import pytest
 import time
-from monika.application.analysis.harness.context_compressor import ContextCompressor
+from monika.application.agent.harness.context_compressor import ContextCompressor
 
 
 def test_tool_result_deduplication():

@@ -15,7 +15,7 @@ from monika.infrastructure.mcp.client import (
 )
 from monika.application.analysis.tools.registry import default_tool_registry
 from monika.application.analysis.tools.unified_registry import unified_tool_registry
-from monika.application.harness.context import PluginContext
+from monika.application.plugins.engine.context import PluginContext
 
 
 @pytest.fixture(autouse=True)

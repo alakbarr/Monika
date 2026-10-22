@@ -4,7 +4,7 @@
 
 import pytest
 from datetime import datetime, timezone
-from monika.application.protocol.event_bus import (
+from monika.core.primitives.event_bus import (
     EventBus,
     PreRiskGateEvent,
     PreOrderEvent,

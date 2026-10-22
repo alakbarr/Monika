@@ -15,7 +15,7 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from monika.application.protocol.event_bus import (
+from monika.core.primitives.event_bus import (
     AppEvent,
     TickPriceEvent,
     BarClosedEvent,
@@ -26,7 +26,7 @@ from monika.application.protocol.event_bus import (
     get_event_bus,
     reset_event_bus,
 )
-from monika.application.analysis.harness.agent_harness import AgentHarness
+from monika.application.agent.harness.agent_harness import AgentHarness
 from monika.infrastructure.providers.base_provider import BaseLLMClient, MockBlock, MockResponse
 from monika.application.scheduler.flash_crash_detector import FlashCrashDetector
 from monika.application.scheduler.trailing_stop_manager import TrailingStopManager

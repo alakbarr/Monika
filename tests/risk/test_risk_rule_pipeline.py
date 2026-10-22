@@ -12,7 +12,7 @@ from monika.domain.risk.risk_rule_plugin import (
     ModularRiskRegistry,
     RiskRuleVerdict,
 )
-from monika.application.harness.contract import PluginMetadata, PluginCategory, PluginOrigin
+from monika.application.plugins.engine.contract import PluginMetadata, PluginCategory, PluginOrigin
 from monika.domain.risk.risk_gate import RiskGate, RiskVerdict
 
 

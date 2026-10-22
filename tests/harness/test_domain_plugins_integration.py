@@ -5,8 +5,8 @@ from tests.conftest import create_mock_async_session
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from monika.application.harness.contract import PluginCategory, PluginMetadata, TradingPlugin
-from monika.application.harness.engine import PluginEngine
+from monika.application.plugins.engine.contract import PluginCategory, PluginMetadata, TradingPlugin
+from monika.application.plugins.engine.engine import PluginEngine
 from monika.application.analysis.strategies.strategy_plugin import StrategyPlugin, wrap_strategy_as_plugin
 from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal
 from monika.application.analysis.strategies.registry import StrategyRegistry

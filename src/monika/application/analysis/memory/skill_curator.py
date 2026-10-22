@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from monika.infrastructure.infra.paths import get_skills_dir
+from monika.core.paths import get_skills_dir
 
 # ==============================================================================
 # File: analysis/memory/skill_curator.py

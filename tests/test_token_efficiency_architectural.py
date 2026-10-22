@@ -95,7 +95,7 @@ def test_adaptive_thinking_caps():
 
 # 5. Initial Bundle Distillation Tests
 def test_distill_initial_bundle_after_turn_1():
-    from monika.application.analysis.harness.context_compressor import ContextCompressor
+    from monika.application.agent.harness.context_compressor import ContextCompressor
 
     messages = [
         {

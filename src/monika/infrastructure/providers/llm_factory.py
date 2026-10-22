@@ -279,7 +279,7 @@ class LLMFactory:
         if standings is None:
             try:
                 import json
-                from monika.infrastructure.infra.paths import get_data_dir
+                from monika.core.paths import get_data_dir
 
                 lb_file = get_data_dir() / "arena_leaderboard.json"
                 if lb_file.exists():
@@ -939,7 +939,7 @@ class FallbackClientWrapper(BaseLLMClient):
                     try:
                         import importlib
 
-                        engine = importlib.import_module("monika.application.harness.engine").get_plugin_engine()
+                        engine = importlib.import_module("monika.application.plugins.engine.engine").get_plugin_engine()
                         if engine:
                             await engine.emit_hook(
                                 "pre_llm_call",
@@ -1051,7 +1051,7 @@ class FallbackClientWrapper(BaseLLMClient):
                     try:
                         import importlib
 
-                        engine = importlib.import_module("monika.application.harness.engine").get_plugin_engine()
+                        engine = importlib.import_module("monika.application.plugins.engine.engine").get_plugin_engine()
                         if engine:
                             await engine.emit_hook(
                                 "post_llm_call",
@@ -1298,7 +1298,7 @@ class FallbackClientWrapper(BaseLLMClient):
 
                         async def _notify_failover_post_facto(role: str, failed_model: str, err_reason: str):
                             try:
-                                from monika.infrastructure.infra.notifier import get_notifier
+                                from monika.infrastructure.notifications.telegram_notifier import get_notifier
 
                                 await get_notifier().send_alert(
                                     f"[PERINGATAN] *HOT PATH Auto-Failover*\n"

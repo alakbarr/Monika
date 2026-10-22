@@ -669,7 +669,7 @@ class BaseLLMClient(LlmPort, ABC):
         if factory is None:
             import importlib
 
-            factory = importlib.import_module("monika.application.analysis.harness.agent_harness").AgentHarness
+            factory = importlib.import_module("monika.application.agent.harness.agent_harness").AgentHarness
         harness = factory(
             llm_client=self,
             settings=self.settings,
@@ -713,7 +713,7 @@ class BaseLLMClient(LlmPort, ABC):
         if factory is None:
             import importlib
 
-            factory = importlib.import_module("monika.application.analysis.harness.agent_harness").AgentHarness
+            factory = importlib.import_module("monika.application.agent.harness.agent_harness").AgentHarness
         harness = factory(
             llm_client=self,
             settings=self.settings,

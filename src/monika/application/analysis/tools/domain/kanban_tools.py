@@ -26,7 +26,7 @@ from monika.application.analysis.tools.unified_registry import unified_tool_regi
 
 logger = logging.getLogger("TradingAgent.Tools.Kanban")
 
-from monika.infrastructure.infra.paths import DATA_DIR
+from monika.core.paths import DATA_DIR
 
 _KANBAN_DIR = DATA_DIR
 _KANBAN_FILE = _KANBAN_DIR / "kanban_board.json"

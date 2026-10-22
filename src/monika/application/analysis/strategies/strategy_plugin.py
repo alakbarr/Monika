@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Type
 
 from monika.application.analysis.strategies.base_strategy import EdgeStrategy
-from monika.application.harness.contract import PluginCategory, PluginMetadata, TradingPlugin
+from monika.application.plugins.engine.contract import PluginCategory, PluginMetadata, TradingPlugin
 
 logger = logging.getLogger("TradingAgent.StrategyPlugin")
 

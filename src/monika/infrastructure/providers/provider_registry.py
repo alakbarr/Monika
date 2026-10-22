@@ -12,7 +12,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional
 
-from monika.application.harness.contract import PluginCategory, PluginMetadata, TradingPlugin
+from monika.application.plugins.engine.contract import PluginCategory, PluginMetadata, TradingPlugin
 
 logger = logging.getLogger("TradingAgent.ProviderRegistry")
 

@@ -5,7 +5,7 @@ Audit queried settings keys in codebase against config/settings.yaml.
 
 from __future__ import annotations
 
-from monika.infrastructure.infra.audit_settings_keys import audit_keys, flatten_dict
+from monika.core.config.audit_settings_keys import audit_keys, flatten_dict
 
 __all__ = ["audit_keys", "flatten_dict"]
 

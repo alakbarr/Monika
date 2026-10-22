@@ -27,7 +27,7 @@ from typing import Any, ContextManager, Dict, Generator, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Database.SessionDbWal")
 
-from monika.infrastructure.infra.paths import DATA_DIR
+from monika.core.paths import DATA_DIR
 
 DEFAULT_SESSION_DB_PATH = DATA_DIR / "session_db.sqlite"
 
@@ -329,7 +329,7 @@ class SessionDbWal:
                     FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
                 );
 
-                CREATE INDEX IF NOT EXISTS idx_session_msg_lookup 
+                CREATE INDEX IF NOT EXISTS idx_session_msg_lookup
                 ON session_messages(session_id, turn_ordinal);
 
                 CREATE TABLE IF NOT EXISTS tool_records (
@@ -344,7 +344,7 @@ class SessionDbWal:
                     created_at REAL NOT NULL
                 );
 
-                CREATE INDEX IF NOT EXISTS idx_tool_lookup 
+                CREATE INDEX IF NOT EXISTS idx_tool_lookup
                 ON tool_records(session_id, turn_ordinal);
             """)
 
@@ -369,7 +369,7 @@ class SessionDbWal:
             conn.execute(
                 """
                 INSERT INTO sessions (
-                    session_id, title, created_at, updated_at, 
+                    session_id, title, created_at, updated_at,
                     parent_session_id, root_session_id, end_reason, metadata_json
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)

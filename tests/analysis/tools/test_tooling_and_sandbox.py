@@ -22,7 +22,7 @@ from monika.application.analysis.tools.domain.code_search_tool import (
 )
 from monika.application.analysis.tools.file_patch_engine import FilePatchEngine
 from monika.application.analysis.tools.environments.pty_query_responder import PtyQueryResponder
-from monika.infrastructure.infra.worktree_manager import WorktreeManager
+from monika.infrastructure.sandboxes.worktree_manager import WorktreeManager
 
 
 # ==============================================================================

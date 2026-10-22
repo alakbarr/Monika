@@ -5,7 +5,7 @@
 import pytest
 from unittest.mock import MagicMock
 from monika.infrastructure.providers.provider_registry import ProviderRegistry, LLMProviderPlugin
-from monika.application.harness.contract import PluginCategory, PluginMetadata
+from monika.application.plugins.engine.contract import PluginCategory, PluginMetadata
 
 
 def test_provider_registry_builtins():

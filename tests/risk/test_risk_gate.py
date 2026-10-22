@@ -259,7 +259,7 @@ class TestRiskGate:
         existing_state.trading_paused = False
         mock_session.execute.return_value.scalar_one_or_none.return_value = existing_state
 
-        with patch("monika.infrastructure.infra.notifier.AgentNotifier") as mock_notifier:
+        with patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier") as mock_notifier:
             mock_notifier.return_value.send_critical = AsyncMock()
             # -100 pnl -> total drawdown = -350 -> 3.5% >= 3.0%
             await gate.update_risk_state(mock_session, -100.0, 10000.0)

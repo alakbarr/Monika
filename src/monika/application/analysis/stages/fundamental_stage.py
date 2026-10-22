@@ -40,7 +40,7 @@ from monika.core.analytics.agent_performance_monitor import (
 from monika.core.analytics.cost_tracker import CostTracker
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import ActivityLog, EconomicCalendar, FundamentalBrief, SystemConfig
-from monika.infrastructure.infra.notifier import AgentNotifier
+from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 from monika.infrastructure.providers.llm_factory import create_client, get_client_for_task
 
 logger = logging.getLogger("TradingAgent.FundamentalStage")

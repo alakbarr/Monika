@@ -414,7 +414,7 @@ class ContextBuilderMixin:
             except (FileNotFoundError, Exception) as skill_err:
                 logger.error(f"CRITICAL: Skill compose failed for {symbol}: {skill_err}")
                 try:
-                    from monika.infrastructure.infra.notifier import AgentNotifier
+                    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                     asyncio.create_task(
                         AgentNotifier().send_critical(

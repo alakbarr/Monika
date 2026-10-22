@@ -21,7 +21,7 @@ from rich.table import Table
 
 from monika.core.config.atomic_writer import AtomicConfigWriter
 from monika.core.config.settings import get_installation_tier, load_settings
-from monika.infrastructure.infra.env_file_manager import EnvFileManager
+from monika.core.config.env_file_manager import EnvFileManager
 from monika.interfaces.cli.subcommands.base import Subcommand
 from monika.interfaces.cli.theme import (
     BRASS,

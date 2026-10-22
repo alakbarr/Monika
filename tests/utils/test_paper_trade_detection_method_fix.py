@@ -45,7 +45,7 @@ def test_alembic_migration_chain():
     import ast
     import os
 
-    from monika.infrastructure.infra.paths import get_repo_root
+    from monika.core.paths import get_repo_root
 
     migration_path = str(
         get_repo_root()

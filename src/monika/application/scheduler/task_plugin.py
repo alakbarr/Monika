@@ -17,7 +17,7 @@ from enum import Enum
 from typing import Any, Callable, Coroutine, Dict, List, Optional
 
 from monika.application.agent.task_registry import TaskDefinition, TaskRegistry
-from monika.application.harness.contract import (
+from monika.application.plugins.engine.contract import (
     PluginCategory,
     PluginMetadata,
     PluginOrigin,
@@ -25,7 +25,7 @@ from monika.application.harness.contract import (
     TaskRegistryProtocol,
     TradingPlugin,
 )
-from monika.infrastructure.infra.container import ServiceContainer
+from monika.core.container import ServiceContainer
 
 logger = logging.getLogger("TradingAgent.Scheduler.TaskPlugin")
 

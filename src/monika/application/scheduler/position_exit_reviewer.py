@@ -231,7 +231,7 @@ class PositionExitReviewer:
                         requested_by="position_exit_reviewer",
                         reason=f"AI review: thesis invalidated after {holding_hours:.1f}h",
                     )
-                    from monika.infrastructure.infra.notifier import AgentNotifier
+                    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                     await AgentNotifier().send_info(
                         f"[AI] <b>Auto-Close: {position.symbol}</b>\nThesis invalidated after {holding_hours:.1f}h\nPnL: {current_pnl_pct:.2f}%\nResult: {('[OK] Closed' if close_result.get('success') else '[GAGAL] Failed: ' + str(close_result.get('error')))}"
@@ -239,7 +239,7 @@ class PositionExitReviewer:
                 except Exception as e:
                     logger.error(f"Auto-close failed for {position.mt5_ticket}: {e}")
             else:
-                from monika.infrastructure.infra.notifier import AgentNotifier
+                from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                 rationale = result.get("rationale", "No rationale provided")[:300]
                 await AgentNotifier().send_warning(

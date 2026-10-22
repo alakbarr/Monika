@@ -386,7 +386,7 @@ class MonikaMcpServer:
 
 def run_mcp_server(settings: Optional[Dict[str, Any]] = None):
     """Entrypoint function to run Monika MCP Server over stdio."""
-    from monika.infrastructure.infra.event_loop import run_async
+    from monika.core.platform import run_async
 
     server = MonikaMcpServer(settings=settings)
     run_async(server.run_stdio())

@@ -5,7 +5,7 @@
 import pytest
 from unittest.mock import patch, AsyncMock
 from pathlib import Path
-from monika.infrastructure.infra.db_backup import create_backup
+from monika.infrastructure.database.backup import create_backup
 
 
 @pytest.mark.asyncio
@@ -44,7 +44,7 @@ async def test_create_backup_success_with_safe_subprocess(monkeypatch, tmp_path)
 
     mock_sql_output = "CREATE TABLE test (id int);"
     with patch(
-        "monika.infrastructure.infra.platform_compat.safe_subprocess_run",
+        "monika.core.platform.safe_subprocess_run",
         new_callable=AsyncMock,
         return_value=(0, mock_sql_output, ""),
     ) as mock_run:
@@ -78,7 +78,7 @@ async def test_create_backup_subprocess_failure(monkeypatch, tmp_path):
         }
     }
     with patch(
-        "monika.infrastructure.infra.platform_compat.safe_subprocess_run",
+        "monika.core.platform.safe_subprocess_run",
         new_callable=AsyncMock,
         return_value=(1, "", "Connection refused"),
     ):
@@ -102,7 +102,7 @@ async def test_create_backup_timeout(monkeypatch, tmp_path):
         }
     }
     with patch(
-        "monika.infrastructure.infra.platform_compat.safe_subprocess_run",
+        "monika.core.platform.safe_subprocess_run",
         new_callable=AsyncMock,
         side_effect=asyncio.TimeoutError("Timed out"),
     ):

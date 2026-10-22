@@ -1,4 +1,4 @@
-from .event_bus import (
+from monika.core.primitives.event_bus import (
     AppEvent,
     BarClosedEvent,
     CircuitBreakerEvent,

@@ -220,7 +220,7 @@ class TelegramAdminCommandsMixin(_TelegramBotMixinBase):
             return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
 
-        from monika.infrastructure.infra.db_backup import create_backup
+        from monika.infrastructure.database.backup import create_backup
 
         res = await create_backup(self.settings, force=True)
         if res.get("success"):
@@ -462,7 +462,7 @@ class TelegramAdminCommandsMixin(_TelegramBotMixinBase):
             return await self._reject_unauthorized(update)
 
         try:
-            from monika.application.harness.installer import list_all_plugins_status
+            from monika.application.plugins.engine.installer import list_all_plugins_status
 
             plugins = list_all_plugins_status()
             if not plugins:
@@ -483,7 +483,7 @@ class TelegramAdminCommandsMixin(_TelegramBotMixinBase):
             return await self._reject_unauthorized(update)
 
         try:
-            from monika.application.harness.installer import get_community_catalog
+            from monika.application.plugins.engine.installer import get_community_catalog
 
             catalog = get_community_catalog()
             lines = ["[MODUL] <b>KATALOG MARKETPLACE PLUG-IN MONIKA</b>\n"]
@@ -517,7 +517,7 @@ class TelegramAdminCommandsMixin(_TelegramBotMixinBase):
             return
 
         pkg = ctx.args[0].strip()
-        from monika.application.harness.installer import run_pip_install, validate_package_spec
+        from monika.application.plugins.engine.installer import run_pip_install, validate_package_spec
 
         valid, err = validate_package_spec(pkg)
         if not valid:
@@ -551,7 +551,7 @@ class TelegramAdminCommandsMixin(_TelegramBotMixinBase):
             return
 
         pkg = ctx.args[0].strip()
-        from monika.application.harness.installer import run_pip_uninstall
+        from monika.application.plugins.engine.installer import run_pip_uninstall
 
         msg = await update.message.reply_text(
             f"[MEMPROSES] <b>Menghapus paket via pip:</b> <code>{pkg}</code>...", parse_mode=ParseMode.HTML
@@ -576,7 +576,7 @@ class TelegramAdminCommandsMixin(_TelegramBotMixinBase):
             return
 
         plugin_id = ctx.args[0].strip()
-        from monika.application.harness.installer import list_all_plugins_status, toggle_plugin_state
+        from monika.application.plugins.engine.installer import list_all_plugins_status, toggle_plugin_state
 
         plugins = {p["id"]: p for p in list_all_plugins_status()}
         if plugin_id in plugins:

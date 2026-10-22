@@ -3,7 +3,7 @@
 import asyncio
 import sys
 import pytest
-from monika.infrastructure.infra.event_loop import get_loop_factory, run_async
+from monika.core.platform import get_loop_factory, run_async
 
 
 def test_get_loop_factory():

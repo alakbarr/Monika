@@ -343,7 +343,7 @@ class TestTimesFMAlphaIntegration:
     @pytest.mark.asyncio
     async def test_event_bus_live_feed_forwarder_wiring(self):
         """Verify EventBus ticks and orders are cleanly forwarded to broadcast_live_event."""
-        from monika.application.protocol.event_bus import (
+        from monika.core.primitives.event_bus import (
             get_event_bus,
             reset_event_bus,
             TickPriceEvent,

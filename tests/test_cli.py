@@ -1085,7 +1085,7 @@ def test_ensure_daemon_running_spawns_process(monkeypatch):
     from monika.interfaces.cli.main import ensure_daemon_running
 
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-    monkeypatch.setattr("monika.infrastructure.infra.env_file_manager.EnvFileManager.is_configured", lambda: True)
+    monkeypatch.setattr("monika.core.config.env_file_manager.EnvFileManager.is_configured", lambda: True)
     mock_is_daemon = MagicMock(side_effect=[False, True, True])
     monkeypatch.setattr("monika.interfaces.cli.main.is_daemon_running", mock_is_daemon)
     monkeypatch.setattr("monika.interfaces.cli.context.is_daemon_running", mock_is_daemon)

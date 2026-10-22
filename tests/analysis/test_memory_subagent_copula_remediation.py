@@ -52,7 +52,7 @@ async def test_isolated_subagent_deepcopy():
     mock_client.generate = AsyncMock(return_value="response")
 
     with patch(
-        "monika.application.analysis.harness.agent_harness.AgentHarness.run_agent_from_messages", new_callable=AsyncMock
+        "monika.application.agent.harness.agent_harness.AgentHarness.run_agent_from_messages", new_callable=AsyncMock
     ) as mock_run:
         # Simulate agent runner mutating its input messages in-place
         async def side_effect(messages, **kwargs):

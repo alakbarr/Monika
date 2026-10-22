@@ -24,7 +24,7 @@ async def run_db_health_check(agent: Any) -> None:
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             try:
-                from monika.infrastructure.infra.notifier import AgentNotifier
+                from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                 await AgentNotifier().send_critical(
                     f"[DARURAT] <b>CRITICAL: Database Health Check Failed!</b>\n"

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from monika.infrastructure.infra.paths import get_skills_dir
+from monika.core.paths import get_skills_dir
 
 """
 Closed-Loop Skill Crystallizer.
@@ -214,8 +214,8 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
 
         # Register in Harness Domain Experience Library (Harnessing-Level Recursion)
         try:
-            from monika.application.analysis.harness.library import DomainExperienceLibrary
-            from monika.application.analysis.harness.tree import HarnessTree
+            from monika.application.analysis.recursive_harness.library import DomainExperienceLibrary
+            from monika.application.analysis.recursive_harness.tree import HarnessTree
 
             h_lib = DomainExperienceLibrary()
             h_tree = HarnessTree.build_baseline_tree()

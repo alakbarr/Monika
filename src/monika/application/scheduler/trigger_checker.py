@@ -198,7 +198,7 @@ class TriggerChecker:
                     # User-level price alert notification dispatch
                     if trigger_cond.get("is_user_alert"):
                         try:
-                            from monika.infrastructure.infra.notifier import AgentNotifier
+                            from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                             p_level = trigger_cond.get("price") or trigger_cond.get("target_price")
                             cond_dir = trigger_cond.get("direction") or trigger_cond.get("condition", "")
@@ -304,7 +304,7 @@ class TriggerChecker:
                                         f"auto_execute=false — sending trade proposal for {symbol} (analysis #{analysis_res.get('analysis_id')}) from trigger re-analysis"
                                     )
                                     try:
-                                        from monika.infrastructure.infra.notifier import AgentNotifier
+                                        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                                         notifier = AgentNotifier()
                                         ana_id = analysis_res.get("analysis_id")
@@ -524,7 +524,7 @@ class TriggerChecker:
 
                     # Send notification (non-blocking, failure won't cause resend)
                     try:
-                        from monika.infrastructure.infra.notifier import AgentNotifier
+                        from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                         await AgentNotifier().send_warning(alert_msg)
                         logger.warning(f"Invalidation alert sent for {pos.symbol} position {pos.id}")

@@ -31,7 +31,7 @@ from monika.application.plugins.engine.contract import (
     TradingPlugin,
 )
 from monika.application.plugins.manager.manager import PluginManager, get_plugin_manager
-from monika.application.protocol.event_bus import (
+from monika.core.primitives.event_bus import (
     BarClosedEvent,
     CircuitBreakerEvent,
     EventBus,

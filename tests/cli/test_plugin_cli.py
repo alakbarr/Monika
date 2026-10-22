@@ -5,7 +5,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from monika.interfaces.cli.plugins import cmd_plugin_list, cmd_plugin_info, handle_plugin_command
-from monika.application.harness.contract import TradingPlugin, PluginMetadata, PluginCategory
+from monika.application.plugins.engine.contract import TradingPlugin, PluginMetadata, PluginCategory
 
 
 def test_cmd_plugin_list(capsys):

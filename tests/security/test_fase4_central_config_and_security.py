@@ -12,7 +12,7 @@ import monika.infrastructure.database.db as db_mod
 from monika.infrastructure.brokers.mt5_client import MT5Client
 from monika.core.security.credential_vault import vault
 from monika.infrastructure.credentials.credential_pool import CredentialPool
-from monika.infrastructure.infra.log_redactor import redact_sensitive_text
+from monika.core.security.log_redactor import redact_sensitive_text
 from monika.interfaces.dashboard.routes.config import _mask_yaml_text
 from monika.interfaces.dashboard.rbac import Role, resolve_role
 

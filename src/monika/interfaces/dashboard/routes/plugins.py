@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from monika.application.harness.installer import (
+from monika.application.plugins.engine.installer import (
     get_community_catalog,
     list_all_plugins_status,
     run_pip_install,
