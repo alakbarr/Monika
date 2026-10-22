@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -31,11 +32,11 @@ class BenchmarkResult(Base):
     model_name: Mapped[str] = mapped_column(String(160), index=True)
     provider: Mapped[str] = mapped_column(String(40))
     context_key: Mapped[str] = mapped_column(String(160))
-    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
-    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
-    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
-    latency_s: Mapped[float] = mapped_column(Float, default=0.0)
-    schema_valid: Mapped[bool] = mapped_column(Boolean, default=False)
+    input_tokens: Mapped[Optional[int]] = mapped_column(Integer, default=0, nullable=True)
+    output_tokens: Mapped[Optional[int]] = mapped_column(Integer, default=0, nullable=True)
+    cost_usd: Mapped[Optional[float]] = mapped_column(Float, default=0.0, nullable=True)
+    latency_s: Mapped[Optional[float]] = mapped_column(Float, default=0.0, nullable=True)
+    schema_valid: Mapped[Optional[bool]] = mapped_column(Boolean, default=False, nullable=True)
     deterministic_score: Mapped[float] = mapped_column(Float, nullable=True)
     judge_scores_json: Mapped[str] = mapped_column(Text, nullable=True)
     judge_overall: Mapped[float] = mapped_column(Float, nullable=True)

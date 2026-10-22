@@ -344,10 +344,10 @@ class DebateTranscript(Base):
     __tablename__ = "debate_transcripts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    cycle_id: Mapped[Optional[str]] = mapped_column(String(64), index=True, nullable=True)
-    symbol: Mapped[str] = mapped_column(String(20), index=True, nullable=False)
+    cycle_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    symbol: Mapped[str] = mapped_column(String(20), nullable=False)
     timeframe: Mapped[Optional[str]] = mapped_column(String(10), default="H1", nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     bull_perspective: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     bear_perspective: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     judge_adjudication: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
@@ -357,7 +357,10 @@ class DebateTranscript(Base):
     risk_multiplier: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     meta: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
-    __table_args__ = (Index("idx_debate_transcript_sym_created", "symbol", "created_at"),)
+    __table_args__ = (
+        Index("idx_debate_transcripts_cycle", "cycle_id"),
+        Index("idx_debate_transcripts_sym_created", "symbol", "created_at"),
+    )
 
 
 __all__ = [
