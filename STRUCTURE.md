@@ -2359,6 +2359,8 @@ Monika/
 │   │   ├── test_universal_cache_telemetry.py
 │   │   └── test_working_scratchpad.py
 │   ├── application/
+│   │   ├── services/
+│   │   │   └── test_general_harness_integration.py
 │   │   ├── test_empirical_promoted_strategies.py
 │   │   ├── test_profitability_structural_fixes.py
 │   │   └── test_signal_arbitrator_refinement.py
@@ -3007,7 +3009,8 @@ Monika/
 │   ├── test_strict_edge.py
 │   ├── update_economic_calendar.py
 │   ├── update_index_toc.py
-│   └── ux_audit_baseline_scan.py
+│   ├── ux_audit_baseline_scan.py
+│   └── weekly_evaluation.py
 │   ├── docker-compose.vps.yml
 │   ├── Dockerfile.mt5-wine
 │   ├── entrypoint_mt5.sh
@@ -3110,4 +3113,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 269 | **Total Tracked Files**: 2811
+**Total Tracked Directories**: 270 | **Total Tracked Files**: 2813

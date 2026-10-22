@@ -27,7 +27,12 @@ logger = logging.getLogger("Monika.Application.GeneralHarnessService")
 
 
 class GeneralHarnessService:
-    """Canonical Application Service managing multi-purpose harness and execution environments."""
+    """Canonical Application Service managing multi-purpose harness and execution environments.
+
+    Durability note (Wave 4): file-tool runtime (read_file / write_file / patch)
+    is fully wired through DEVELOPER_TOOLSET and the unified registry dispatch,
+    with security interceptors and stale-overwrite protection active.
+    """
 
     @classmethod
     async def create_terminal_session(
