@@ -168,6 +168,12 @@ PRICING: dict[str, Price] = {
     "minimax-m3": Price(0.20, 0.02, 1.00),
     "muse-spark-1.3": Price(1.50, 0.15, 7.50),
     "muse-spark-1.2": Price(0.20, 0.02, 1.00),
+    "muse-spark-1.3-contributor": Price(
+        0.10, 0.01, 0.20, "Meta Muse Spark 1.3 Contributor data-sharing rate on OpenRouter"
+    ),
+    "muse-spark-1.2-contributor": Price(
+        0.10, 0.01, 0.20, "Meta Muse Spark 1.2 Contributor data-sharing rate on OpenRouter"
+    ),
 }
 
 _FREE = Price(0.0, 0.0, 0.0, "Free tier / Local execution ($0)")
@@ -252,6 +258,12 @@ OPENROUTER_PRICING_MAP: dict[str, str] = {
     "meta-llama/muse-spark-1.2": "muse-spark-1.2",
     "meta/muse-spark-1.3": "muse-spark-1.3",
     "meta-llama/muse-spark-1.3": "muse-spark-1.3",
+    "meta/muse-spark-1.2-contributor": "muse-spark-1.2-contributor",
+    "meta/muse-spark-1.3-contributor": "muse-spark-1.3-contributor",
+    "muse-spark-1.2-contributor-openrouter": "muse-spark-1.2-contributor",
+    "muse-spark-1.3-contributor-openrouter": "muse-spark-1.3-contributor",
+    "muse-spark-1.2-openrouter": "muse-spark-1.2",
+    "muse-spark-1.3-openrouter": "muse-spark-1.3",
     # System One Models on OpenRouter
     "typesafe/jev-router": "typesafe/jev-router",
     "inception/mercury-2.5": "mercury-decide",
@@ -342,6 +354,8 @@ FREE_TIER_MODELS = {
     "kr/gpt-5.6-luna",
     "oc/muse-spark-1.2-contributor-free",
     "oc/muse-spark-1.3-contributor-free",
+    "muse-spark-1.2-opencode",
+    "muse-spark-1.3-opencode",
     "oc/union-alpha",
     "oc/jev-1.13-free",
     "ocz/deepseek-v4-flash-free",
@@ -403,15 +417,19 @@ def infer_provider_from_model(model_name: str) -> str:
         return "openai"
     if clean.startswith(("ollama", "llama3.2", "local")):
         return "ollama"
-    if clean.startswith("openrouter/"):
+    if clean.startswith("openrouter/") or "openrouter" in clean:
         return "openrouter"
+    if clean.startswith(("opencode/", "opencode:", "opencode_go:", "opencode-go:")) or (
+        "contributor" in clean and not ("openrouter" in clean or clean.startswith("meta/"))
+    ):
+        return "opencode"
     return "unknown"
 
 
 def is_free_tier(model_name: str, provider: str | None = None, is_direct_free_tier: bool | None = None) -> bool:
     """
     Evaluasi apakah pemanggilan model masuk kategori Free Tier ($0).
-    Mendukung Gemini (GEMINI_API_KEYS), Groq Developer Tier, OpenRouter :free & openrouter/free, Ollama, dan 9Router Free Tier.
+    Mendukung Gemini (GEMINI_API_KEYS), Groq Developer Tier, OpenRouter :free & openrouter/free, Ollama, OpenCode, dan 9Router Free Tier.
     """
     if is_direct_free_tier is True:
         return True
@@ -435,7 +453,7 @@ def is_free_tier(model_name: str, provider: str | None = None, is_direct_free_ti
             return True
 
     # 3. Provider Free Tiers
-    if prov in ("groq", "ollama"):
+    if prov in ("groq", "ollama", "opencode", "opencode_go", "opencode-go"):
         return True
     if prov == "gemini" and not clean_name.startswith(("vertex/", "google/")):
         return True

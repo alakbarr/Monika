@@ -355,8 +355,10 @@ class LLMFactory:
             return "typesafe"
 
         # Guess provider
-        if "openrouter" in name or "ox-alpha" in name or name.startswith("stealth/"):
+        if "openrouter" in name or "ox-alpha" in name or name.startswith(("stealth/", "meta/")):
             return "openrouter"
+        if ("contributor" in name or "opencode" in name) and not name.startswith(("oc/", "ocz/")):
+            return "opencode"
         if "glm" in name or "kimi" in name or "minimax" in name or "mimo" in name or "muse" in name:
             return "openrouter"
         if name.startswith("groq"):

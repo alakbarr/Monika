@@ -39,6 +39,11 @@ def test_provider_prefix_resolution_opencode_and_antigravity():
     assert factory._resolve_provider("opencode:gemini-4-argon-contributor") == "opencode"
     assert factory._resolve_provider("opencode:deepseek-v4.1-flash") == "opencode"
     assert factory._resolve_provider("opencode_go:glm-5.3-flash") == "opencode_go"
+    assert factory._resolve_provider("muse-spark-1.2-contributor") == "opencode"
+    assert factory._resolve_provider("muse-spark-1.3-contributor") == "opencode"
+    assert factory._resolve_provider("muse-spark-1.2-contributor-openrouter") == "openrouter"
+    assert factory._resolve_provider("muse-spark-1.3-contributor-openrouter") == "openrouter"
+    assert factory._resolve_provider("meta/muse-spark-1.2-contributor") == "openrouter"
     assert factory._resolve_provider("antigravity:gemini-4-argon") == "antigravity"
     assert factory._resolve_provider("agy:gemini-4-argon") == "agy"
     assert factory._resolve_provider("openrouter:google/gemini-4-argon") == "openrouter"
@@ -60,6 +65,14 @@ def test_model_catalog_alias_mapping():
                     "provider": "openrouter",
                     "model_name": "google/gemini-4-argon",
                 },
+                "muse-spark-1.2-opencode": {
+                    "provider": "opencode",
+                    "model_name": "muse-spark-1.2-contributor",
+                },
+                "muse-spark-1.2-contributor-openrouter": {
+                    "provider": "openrouter",
+                    "model_name": "meta/muse-spark-1.2-contributor",
+                },
             },
             "task_roles": {},
         }
@@ -77,6 +90,17 @@ def test_model_catalog_alias_mapping():
     client_or = factory._create_client_instance("gemini-4-argon-openrouter", role_config)
     assert client_or is not None
     assert client_or.model == "google/gemini-4-argon"
+
+    # Test Muse Spark OpenCode alias mapping
+    client_muse_oc = factory._create_client_instance("muse-spark-1.2-opencode", role_config)
+    assert isinstance(client_muse_oc, OpenCodeProvider)
+    assert client_muse_oc.model == "muse-spark-1.2-contributor"
+    assert client_muse_oc.provider_name == "opencode"
+
+    # Test Muse Spark OpenRouter Contributor alias mapping
+    client_muse_or = factory._create_client_instance("muse-spark-1.2-contributor-openrouter", role_config)
+    assert client_muse_or is not None
+    assert client_muse_or.model == "meta/muse-spark-1.2-contributor"
 
 
 def test_provider_registry_antigravity_direct_oauth_fallback():

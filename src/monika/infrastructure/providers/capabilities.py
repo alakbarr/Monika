@@ -490,6 +490,27 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         context_window=128000,
         supports_native_thinking=True,
     ),
+    "muse-spark-1.3-contributor": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "muse-spark-1.2": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "muse-spark-1.2-contributor": ModelCapabilities(
+        supports_caching=False,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
     "muse-wonder": ModelCapabilities(
         supports_caching=False,
         supports_structured_output=True,

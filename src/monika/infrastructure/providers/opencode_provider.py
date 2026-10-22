@@ -95,10 +95,20 @@ class OpenCodeProvider(OpenAIProvider):
     def _apply_reasoning_params(self, kwargs: dict) -> None:
         """
         Apply reasoning parameters if a reasoning/thinking model is targeted
-        (e.g., DeepSeek R1, Kimi, GLM).
+        (e.g., DeepSeek R1, Kimi, GLM, Muse Spark).
+        Pops temperature to prevent HTTP 400 rejection on reasoning endpoints.
         """
         if self.thinking_level and self.thinking_level != "none":
-            # Pass reasoning_effort or extra_body depending on model family
-            kwargs["reasoning_effort"] = self.thinking_level
+            kwargs.pop("temperature", None)
+            lvl = str(self.thinking_level).lower()
+            effort_map = {
+                "low": "low",
+                "medium": "medium",
+                "high": "high",
+                "xhigh": "high",
+                "extended": "high",
+                "max": "high",
+            }
+            kwargs["reasoning_effort"] = effort_map.get(lvl, "medium")
             extra_body = kwargs.setdefault("extra_body", {})
             extra_body["thinking"] = True

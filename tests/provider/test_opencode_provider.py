@@ -52,6 +52,32 @@ def test_opencode_provider_apply_reasoning_params():
     assert kwargs.get("extra_body") == {"thinking": True}
 
 
+def test_opencode_provider_muse_spark_reasoning_pops_temperature():
+    provider = OpenCodeProvider(
+        model="muse-spark-1.2-contributor",
+        api_key="oc_sk_test",
+        thinking_level="high",
+    )
+    kwargs = {"temperature": 0.0, "max_tokens": 4096}
+    provider._apply_reasoning_params(kwargs)
+    assert "temperature" not in kwargs
+    assert kwargs.get("reasoning_effort") == "high"
+    assert kwargs.get("extra_body") == {"thinking": True}
+
+
+def test_opencode_provider_effort_mapping_max_to_high():
+    provider = OpenCodeProvider(
+        model="muse-spark-1.3-contributor",
+        api_key="oc_sk_test",
+        thinking_level="max",
+    )
+    kwargs = {"temperature": 0.2}
+    provider._apply_reasoning_params(kwargs)
+    assert "temperature" not in kwargs
+    assert kwargs.get("reasoning_effort") == "high"
+    assert kwargs.get("extra_body") == {"thinking": True}
+
+
 def test_opencode_registered_in_provider_registry():
     assert ProviderRegistry.get("opencode") is not None
     assert ProviderRegistry.get("opencode_go") is not None
