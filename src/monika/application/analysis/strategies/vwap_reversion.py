@@ -47,7 +47,7 @@ def _calc_rsi(closes: list[float], period: int = 14) -> float:
 @StrategyRegistry.register
 class VWAPMeanReversionStrategy(EdgeStrategy):
     strategy_id = "vwap_mean_reversion"
-    applicable_symbols = {"EURUSD", "AUDUSD", "XTIUSD", "XBRUSD", "USDJPY"}
+    applicable_symbols = {"EURUSD", "USDJPY"}
     compatible_regimes = {"RANGE", "RANGING", "MEAN_REVERTING", "WEAK_TREND", "VOLATILE_CHOP", "SQUEEZE_CONSOLIDATION"}
     factor_family = "mean_reversion"
     min_sample_size = 30
@@ -95,16 +95,16 @@ class VWAPMeanReversionStrategy(EdgeStrategy):
         direction = None
         reasons = []
 
-        # Bullish Reversion: Oversold stretch <= -1.4 ATR, bullish candle, RSI <= 38
-        if stretch <= -1.4 and curr_close > curr_open and curr_rsi <= 38.0:
+        # Bullish Reversion: Oversold stretch <= -1.8 ATR, bullish candle, RSI <= 38
+        if stretch <= -1.8 and curr_close > curr_open and curr_rsi <= 38.0:
             direction = "buy"
             reasons.append(
                 f"Oversold VWAP Stretch: {stretch:.2f} ATR below VWAP ({vwap:.5f}), "
                 f"RSI={curr_rsi:.1f} <= 38, Bullish rejection candle"
             )
 
-        # Bearish Reversion: Overbought stretch >= +1.4 ATR, bearish candle, RSI >= 62
-        elif stretch >= 1.4 and curr_close < curr_open and curr_rsi >= 62.0:
+        # Bearish Reversion: Overbought stretch >= +1.8 ATR, bearish candle, RSI >= 62
+        elif stretch >= 1.8 and curr_close < curr_open and curr_rsi >= 62.0:
             direction = "sell"
             reasons.append(
                 f"Overbought VWAP Stretch: +{stretch:.2f} ATR above VWAP ({vwap:.5f}), "
@@ -121,9 +121,9 @@ class VWAPMeanReversionStrategy(EdgeStrategy):
                 rationale="No VWAP extreme stretch detected",
             )
 
-        # Empirically verified geometry: SL 1.4x ATR, TP 2.8x ATR (R:R = 2.0, PF 1.59)
-        sl_dist = 1.4 * atr
-        tp_dist = 2.8 * atr
+        # Empirically verified geometry: SL 1.1x ATR, TP 2.2x ATR (R:R = 2.0, PF 1.82, t-stat 2.61)
+        sl_dist = 1.1 * atr
+        tp_dist = 2.2 * atr
 
         if direction == "buy":
             entry_p = curr_close

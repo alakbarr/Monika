@@ -2449,7 +2449,8 @@ Monika/
 │   │   ├── execution/
 │   │   │   └── test_bracket_optimizer.py
 │   │   ├── test_bracket_optimizer_buffers.py
-│   │   └── test_macro_regime_classifier.py
+│   │   ├── test_macro_regime_classifier.py
+│   │   └── test_risk_gate_macro_regime.py
 │   ├── evals/
 │   │   ├── __init__.py
 │   │   ├── test_eval_metrics_and_ab_runner.py
@@ -3081,4 +3082,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2784
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2785
