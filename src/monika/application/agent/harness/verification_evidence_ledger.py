@@ -1,7 +1,8 @@
 """
 Verification Evidence Ledger for Trading Agent Harness.
 Tracks and records verifiable empirical evidence (risk gate checks, position sizing,
-spread verification) executed during an agent's multi-turn reasoning cycle.
+spread verification, and generalized execution proof) executed during an agent's
+multi-turn reasoning cycle.
 """
 
 import logging
@@ -24,10 +25,25 @@ class VerificationRecord:
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+@dataclass
+class GeneralizedEvidenceRecord:
+    """
+    Generalized empirical proof record for both trading and non-trading tasks
+    (e.g., file mutations, test runs, syntax verification, data citations).
+    """
+
+    category: str  # "financial_risk", "file_mutation", "test_execution", "code_syntax", "data_grounding"
+    target: str  # e.g., "EURUSD", "src/monika/core/risk.py", "pytest tests/domain"
+    status: str  # "passed", "failed", "warning"
+    details: Dict[str, Any]
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class VerificationEvidenceLedger:
     """
-    In-memory ledger tracking verified mathematical and risk actions during an agent turn/cycle.
-    Enforces that trade proposals cannot be emitted without empirical proof from verification tools.
+    In-memory ledger tracking verified mathematical, risk, and execution actions
+    during an agent turn/cycle. Enforces that trade proposals and critical conclusions
+    cannot be emitted without empirical proof from verification tools.
     """
 
     VERIFICATION_TOOLS: Set[str] = {
@@ -39,15 +55,60 @@ class VerificationEvidenceLedger:
         "verify_provenance_citations",
     }
 
+    GENERAL_VERIFICATION_TOOLS: Set[str] = {
+        "run_test",
+        "run_command",
+        "git_status",
+        "read_file",
+        "inspect_code",
+        "write_file",
+        "edit_file",
+        "calculate_position_size",
+        "validate_risk_limits",
+        "check_risk_gate",
+        "verify_provenance_citations",
+    }
+
     def __init__(self):
         self.records: List[VerificationRecord] = []
+        self.general_records: List[GeneralizedEvidenceRecord] = []
 
     def reset_turn(self) -> None:
         """Reset records for a fresh turn/cycle."""
         self.records.clear()
+        self.general_records.clear()
 
     def record_tool_execution(self, tool_name: str, tool_input: dict, result: dict) -> Optional[VerificationRecord]:
         """Record evidence from a tool execution if it is a verification tool."""
+        # 1. Generalized evidence recording for broad auditability
+        if tool_name in self.GENERAL_VERIFICATION_TOOLS:
+            category = "financial_risk" if tool_name in self.VERIFICATION_TOOLS else "execution"
+            target_val = ""
+            if isinstance(tool_input, dict):
+                target_val = str(
+                    tool_input.get("symbol")
+                    or tool_input.get("path")
+                    or tool_input.get("target")
+                    or tool_input.get("command")
+                    or ""
+                )
+            status_val = "passed"
+            if isinstance(result, dict):
+                if result.get("status") in ("failed", "rejected", "error"):
+                    status_val = "failed"
+                elif result.get("approved") is False or result.get("success") is False:
+                    status_val = "failed"
+                elif "error" in result and not result.get("success", True):
+                    status_val = "failed"
+
+            self.record_general_evidence(
+                category=category,
+                target=target_val,
+                status=status_val,
+                details=result if isinstance(result, dict) else {"raw": str(result)},
+            )
+
+        # 2. Financial verification path
         if tool_name not in self.VERIFICATION_TOOLS:
             return None
 
@@ -98,6 +159,51 @@ class VerificationEvidenceLedger:
         self.records.append(record)
         logger.debug(f"[VerificationLedger] Recorded {tool_name} for symbol {symbol}: {status} (SL={sl}, TP={tp})")
         return record
+
+    def record_general_evidence(
+        self, category: str, target: str, status: str, details: Dict[str, Any]
+    ) -> GeneralizedEvidenceRecord:
+        """
+        Explicitly records a verified empirical event for general-purpose tasks.
+        (e.g., verifying a file was created on disk, a test suite passed, syntax verified).
+        """
+        record = GeneralizedEvidenceRecord(
+            category=category,
+            target=target,
+            status=status,
+            details=details,
+        )
+        self.general_records.append(record)
+        logger.debug(f"[VerificationLedger] Recorded general evidence [{category}] on '{target}': {status}")
+        return record
+
+    def has_general_evidence(
+        self, category: Optional[str] = None, target: Optional[str] = None, required_status: str = "passed"
+    ) -> bool:
+        """Verifies whether empirical evidence exists meeting category, target, and status requirements."""
+        clean_target = target.strip().lower() if target else None
+        for r in self.general_records:
+            if category and r.category != category:
+                continue
+            if clean_target and r.target.strip().lower() != clean_target:
+                continue
+            if r.status == required_status:
+                return True
+        return False
+
+    def get_general_records(
+        self, category: Optional[str] = None, target: Optional[str] = None
+    ) -> List[GeneralizedEvidenceRecord]:
+        """Returns matching general evidence records."""
+        clean_target = target.strip().lower() if target else None
+        results = []
+        for r in self.general_records:
+            if category and r.category != category:
+                continue
+            if clean_target and r.target.strip().lower() != clean_target:
+                continue
+            results.append(r)
+        return results
 
     def has_passed_evidence(self, symbol: Optional[str] = None) -> bool:
         """Check if passing verification evidence exists (optionally for a specific symbol)."""

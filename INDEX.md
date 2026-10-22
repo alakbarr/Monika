@@ -5199,6 +5199,8 @@
   - `repair_tool_arguments(args: Any) -> Dict[str, Any]`: Repair corrupted JSON arguments (trailing commas, python constants, single quotes, XML tags).
   - `coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]) -> Dict[str, Any]`: Coerce stringified primitives, arrays, objects, and enums in tool arguments to match expected JSON schema types.
   - `deep_repair_tool_arguments(tool_name: str, args: Dict[str, Any], schema: Dict[str, Any], ...) -> bool`: Attempt intelligent, self-healing repair of tool arguments when jsonschema.validate() fails.
+  - `canonicalize_tool_arguments(value: Any) -> Any`: Recursively sorts dictionary keys and formats nested collections so identical
+  - `compute_canonical_tool_signature(tool_name: str, tool_args: Any) -> str`: Computes a deterministic MD5 hash signature for a tool name and argument payload.
 
 #### `trade_stop_gates.py` - *Trade Stop Gates for Trading Agent Harness.*
 - **Path**: [`src/monika/application/agent/harness/trade_stop_gates.py`](src/monika/application/agent/harness/trade_stop_gates.py)
@@ -5211,10 +5213,14 @@
 - **Path**: [`src/monika/application/agent/harness/verification_evidence_ledger.py`](src/monika/application/agent/harness/verification_evidence_ledger.py)
 - **Classes**:
   - `class VerificationRecord`
-  - `class VerificationEvidenceLedger`: In-memory ledger tracking verified mathematical and risk actions during an agent turn/cycle.
+  - `class GeneralizedEvidenceRecord`: Generalized empirical proof record for both trading and non-trading tasks
+  - `class VerificationEvidenceLedger`: In-memory ledger tracking verified mathematical, risk, and execution actions
     - `__init__()`
     - `reset_turn() -> None` - *Reset records for a fresh turn/cycle.*
     - `record_tool_execution(tool_name: str, tool_input: dict, result: dict) -> Optional[VerificationRecord]` - *Record evidence from a tool execution if it is a verification tool.*
+    - `record_general_evidence(category: str, target: str, status: str, ...) -> GeneralizedEvidenceRecord` - *Explicitly records a verified empirical event for general-purpose tasks.*
+    - `has_general_evidence(category: Optional[str], target: Optional[str], required_status: str) -> bool` - *Verifies whether empirical evidence exists meeting category, target, and status requirements.*
+    - `get_general_records(category: Optional[str], target: Optional[str]) -> List[GeneralizedEvidenceRecord]` - *Returns matching general evidence records.*
     - `has_passed_evidence(symbol: Optional[str]) -> bool` - *Check if passing verification evidence exists (optionally for a specific symbol).*
     - `verify_proposal_integrity(symbol: Optional[str], entry_price: Optional[float], stop_loss: Optional[float]) -> tuple[bool, str]` - *Verifies that trade proposal parameters match verified risk calculation evidence.*
     - `get_passed_records(symbol: Optional[str]) -> List[VerificationRecord]` - *Return list of passed records for a symbol.*
@@ -12744,7 +12750,7 @@
     - `input()`
     - `id()`
   - `class MockResponse`: Response wrapper yang kompatibel dengan format Anthropic.
-    - `__init__(content, stop_reason, input_tokens, ...)`
+    - `__init__(content, stop_reason, input_tokens: int, ...)`
   - `class BaseLLMClient(LlmPort, ABC)`: Abstract base — setiap provider WAJIB implement SEMUA method ini.
     - `__init__(model: str, max_tokens: int, max_tool_turns: int, ...)`
     - `provider_name() -> str` - *Name of the underlying LLM provider (e.g. gemini, anthropic, openai).*

@@ -2,6 +2,7 @@
 # File: analysis/harness/tool_repair.py
 # ==============================================================================
 
+import hashlib
 import json
 import logging
 import re
@@ -798,3 +799,44 @@ def deep_repair_tool_arguments(
         return True
     except Exception:
         return False
+
+
+def canonicalize_tool_arguments(value: Any) -> Any:
+    """
+    Recursively sorts dictionary keys and formats nested collections so identical
+    arguments with divergent key order produce identical canonical structures.
+    Prevents anti-oscillation and loop-detection bypasses.
+    """
+    if isinstance(value, dict):
+        return {str(k): canonicalize_tool_arguments(v) for k, v in sorted(value.items(), key=lambda item: str(item[0]))}
+    elif isinstance(value, list):
+        return [canonicalize_tool_arguments(item) for item in value]
+    elif isinstance(value, (set, frozenset)):
+        return sorted([canonicalize_tool_arguments(item) for item in value], key=str)
+    return value
+
+
+def compute_canonical_tool_signature(tool_name: str, tool_args: Any) -> str:
+    """
+    Computes a deterministic MD5 hash signature for a tool name and argument payload.
+    Tolerates stringified JSON, raw dictionaries, and nested structures with differing key orders.
+    """
+    clean_name = str(tool_name or "").strip().lower()
+    parsed_args = tool_args
+
+    if isinstance(tool_args, str):
+        trimmed = tool_args.strip()
+        if (trimmed.startswith("{") and trimmed.endswith("}")) or (trimmed.startswith("[") and trimmed.endswith("]")):
+            try:
+                parsed_args = json.loads(trimmed)
+            except Exception:
+                parsed_args = trimmed
+
+    canonical = canonicalize_tool_arguments(parsed_args)
+    try:
+        serialized = json.dumps(canonical, sort_keys=True, separators=(",", ":"), default=str)
+    except Exception:
+        serialized = str(canonical)
+
+    digest = hashlib.md5(serialized.encode("utf-8")).hexdigest()
+    return f"{clean_name}:{digest}"

@@ -33,6 +33,7 @@ from monika.application.agent.empty_response_guard import EmptyResponseGuard
 from monika.application.agent.harness.tool_batch_planner import ToolBatchPlanner
 from monika.application.agent.harness.tool_repair import (
     coerce_tool_arguments,
+    compute_canonical_tool_signature,
     deep_repair_tool_arguments,
     repair_tool_arguments,
     repair_tool_name,
@@ -147,6 +148,12 @@ class AgentHarness:
         from monika.application.agent.harness.verification_evidence_ledger import VerificationEvidenceLedger
 
         self.verification_ledger = VerificationEvidenceLedger()
+        from monika.application.agent.harness.physical_deliverable_gate import PhysicalDeliverableGate
+
+        self.physical_deliverable_gate = PhysicalDeliverableGate()
+        from monika.application.agent.harness.general_tool_pruner import GeneralToolPruner
+
+        self.general_tool_pruner = GeneralToolPruner()
 
         # Dual-Queue Steering Engine (Immediate Steering + Follow-Up Processing)
         self._steering_queue: deque = deque()
@@ -320,19 +327,28 @@ class AgentHarness:
                 t_id = b.get("tool_call_id") or b.get("tool_use_id")
             if not t_id:
                 t_id = f"truncated_{i}"
-            t_name = b.get("name") if isinstance(b, dict) else getattr(b, "name", "tool")
+
+            t_name = b.get("name") if isinstance(b, dict) else getattr(b, "name", None)
+            if not t_name and isinstance(b, dict) and "function" in b:
+                fn = b["function"]
+                t_name = fn.get("name") if isinstance(fn, dict) else getattr(fn, "name", "tool")
+            elif not t_name and hasattr(b, "function"):
+                fn = getattr(b, "function")
+                t_name = getattr(fn, "name", "tool")
+            t_name = str(t_name or "tool")
+
             results.append(
                 {
                     "type": "tool_result",
                     "tool_use_id": str(t_id),
-                    "name": str(t_name),
+                    "name": t_name,
                     "content": json.dumps(
                         {
                             "status": "refused_truncated_response",
                             "error": (
                                 "[SYSTEM ERROR] Your previous response was truncated by the output token limit. "
                                 "Tool call arguments are likely incomplete/corrupted and were NOT executed. "
-                                "Reduce your reasoning length and re-issue the tool call with fewer tools or shorter arguments. "
+                                "Reduce your reasoning length and re-issue the tool call with complete arguments. "
                                 "Do NOT repeat the same call verbatim."
                             ),
                         }
@@ -648,17 +664,13 @@ class AgentHarness:
     def compute_tool_signature(tool_name: str, tool_input: Any) -> str:
         """
         Generate deterministic hash signature for tool name and argument payload.
+        Uses recursive canonicalization to ensure identical signatures across varying key orders.
         Used to detect oscillation loops and redundant tool calls.
         """
         try:
-            if isinstance(tool_input, dict):
-                sig_args = json.dumps(tool_input, sort_keys=True, default=str)
-            else:
-                sig_args = str(tool_input)
+            return compute_canonical_tool_signature(tool_name, tool_input)
         except Exception:
-            sig_args = str(tool_input)
-
-        return f"{tool_name}:{hashlib.md5(sig_args.encode('utf-8')).hexdigest()}"
+            return f"{tool_name}:{hashlib.md5(str(tool_input).encode('utf-8')).hexdigest()}"
 
     # --------------------------------------------------------------------------
     # State Preservation Context Truncation
@@ -1526,7 +1538,10 @@ class AgentHarness:
                 tool_use_blocks_check = [
                     b
                     for b in assistant_content
-                    if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None)) == "tool_use"
+                    if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None))
+                    in ("tool_use", "tool_call", "function")
+                    or (isinstance(b, dict) and ("function" in b or "tool_call_id" in b))
+                    or hasattr(b, "function")
                 ]
                 if tool_use_blocks_check:
                     logger.warning(
@@ -1645,6 +1660,21 @@ class AgentHarness:
                     if turns < effective_max_turns:
                         logger.info(f"[{stage_name}][AgentHarness] Modular Stop Gate intercepted: {modular_nudge}")
                         current_messages.append({"role": "user", "content": modular_nudge})
+                        continue
+
+                # ── Physical Deliverable Gate (Anti-Hallucination & File Integrity Audit) ──
+                deliverable_verdict = self.physical_deliverable_gate.audit_claimed_completion(
+                    final_text,
+                    touched_files=turn_state.stop_gate_context.mutated_files,
+                    ledger=self.verification_ledger,
+                )
+                if not deliverable_verdict.is_valid and deliverable_verdict.message:
+                    if turns < effective_max_turns:
+                        logger.info(
+                            f"[{stage_name}][AgentHarness] Physical deliverable stop gate intercepted: "
+                            f"{deliverable_verdict.message}"
+                        )
+                        current_messages.append({"role": "user", "content": deliverable_verdict.message})
                         continue
 
                 logger.info(
@@ -2166,7 +2196,45 @@ class AgentHarness:
                     tool_res_content = json.dumps(res_obj, default=str) if not isinstance(res_obj, str) else res_obj
 
                 tool_res_content = self.compactor.micro_prune(tool_res_content, tool_name=c_name)
-                tool_res_content = truncate_text_middle(tool_res_content, max_chars=16000)
+
+                # ── Zero-Cost Lossless Structural Tool Output Pruning ──
+                general_prune_tools = frozenset(
+                    {
+                        "run_command",
+                        "run_terminal_command",
+                        "execute_code",
+                        "bash",
+                        "terminal",
+                        "read_file",
+                        "search_files",
+                        "grep",
+                        "git_status",
+                        "git_diff",
+                        "git_log",
+                        "web_search",
+                        "scrape_url",
+                        "read_url",
+                    }
+                )
+                general_max_chars = int(self.settings.get("general_tool_max_chars", 2500))
+                if c_name in general_prune_tools and len(tool_res_content) > general_max_chars:
+                    if isinstance(res_obj, (dict, list)):
+                        tool_res_content = self.general_tool_pruner.prune_json(
+                            res_obj, max_chars=general_max_chars, tool_name=c_name
+                        )
+                    else:
+                        tool_res_content = self.general_tool_pruner.prune_text(
+                            tool_res_content, max_chars=general_max_chars, tool_name=c_name
+                        )
+                elif len(tool_res_content) > 16000:
+                    if isinstance(res_obj, (dict, list)):
+                        tool_res_content = self.general_tool_pruner.prune_json(
+                            res_obj, max_chars=16000, tool_name=c_name
+                        )
+                    else:
+                        tool_res_content = self.general_tool_pruner.prune_text(
+                            tool_res_content, max_chars=16000, tool_name=c_name
+                        )
 
                 # ── Generation-Tracked Data Fetch Deduplication ──
                 dedup_notice = self.data_dedup.check_and_record(c_name, c_input, tool_res_content)
