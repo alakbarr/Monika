@@ -9147,7 +9147,7 @@
   - `class AggregateMetrics`
   - `class ABReport`
 - **Top-Level Functions**:
-  - `compute_brier_score(decisions: List[DecisionEvaluation]) -> float`: Computes Brier Score: (1/N) * sum((forecast - outcome)^2).
+  - `compute_brier_score(decisions: List[DecisionEvaluation]) -> float`: Computes Brier Score over directional (BUY/SELL) decisions only.
   - `aggregate_eval_metrics(decisions: List[DecisionEvaluation]) -> AggregateMetrics`: Aggregates per-scenario evaluations into a cohesive metrics summary.
   - `compare_ab_evaluations(baseline_results: List[DecisionEvaluation], candidate_results: List[DecisionEvaluation], name: str) -> ABReport`: Compares baseline vs candidate runs and computes relative performance deltas.
 
@@ -9159,6 +9159,22 @@
     - `load_fixtures() -> List[Dict[str, Any]]` - *Loads all golden scenario fixtures from the fixtures directory.*
     - `evaluate_single_decision(fixture: Dict[str, Any], decision_data: Dict[str, Any]) -> DecisionEvaluation` - *Evaluates a single decision against a scenario fixture using all validation layers:*
     - `run_ab_benchmark(baseline_decisions: Dict[str, Dict[str, Any]], candidate_decisions: Dict[str, Dict[str, Any]], experiment_name: str) -> ABReport` - *Executes an A/B evaluation between baseline and candidate decision sets*
+
+#### `harness_audit.py` - *Hermetic Agent-Harness Audit Suite.*
+- **Path**: [`src/monika/application/evals/harness_audit.py`](src/monika/application/evals/harness_audit.py)
+- **Classes**:
+  - `class AuditResult`: Outcome of one harness invariant probe.
+  - `class AuditReport`: Aggregated audit output suitable for CI artifacts and dashboards.
+    - `passed() -> int`
+    - `failed() -> int`
+    - `all_passed() -> bool`
+    - `to_dict() -> Dict[str, Any]`
+- **Top-Level Functions**:
+  - `count_macro_duplicate_headers(text: str) -> Dict[str, int]`: Counts macro skill headers that must appear at most once in a prompt.
+  - `has_macro_duplication(text: str) -> bool`: True when a macro playbook is injected more than once in the same prompt.
+  - `async run_harness_audit() -> AuditReport`: Runs every invariant probe and returns a deterministic, serializable report.
+  - `report_to_json(report: AuditReport) -> str`: Serializes an audit report for CI artifacts without leaking non-JSON values.
+  - `run_harness_audit_sync() -> AuditReport`: Convenience entry point for CLI scripts and synchronous callers.
 
 #### `hostile_market_probe.py` - *Hostile Market Feed Wire Probes & Adversarial Stress Testing Battery.*
 - **Path**: [`src/monika/application/evals/hostile_market_probe.py`](src/monika/application/evals/hostile_market_probe.py)
@@ -13235,6 +13251,11 @@
 - **Classes**:
   - `class SystemDoctor(CoreSystemDoctor)`: CLI specialization of SystemDoctor that renders rich terminal reports.
     - `render_report() -> int` - *Render rich console report. Returns exit code (0 if OK/WARN, 1 if any FAIL).*
+
+#### `harness_audit.py` - *Standalone CLI entry point for the hermetic agent-harness audit suite.*
+- **Path**: [`src/monika/interfaces/cli/harness_audit.py`](src/monika/interfaces/cli/harness_audit.py)
+- **Top-Level Functions**:
+  - `main(argv: list[str] | None) -> int`
 
 #### `main.py` - *Monika Algorithmic Trading Platform - Unified CLI Interface & Dispatcher.*
 - **Path**: [`src/monika/interfaces/cli/main.py`](src/monika/interfaces/cli/main.py)

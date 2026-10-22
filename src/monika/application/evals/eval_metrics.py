@@ -41,6 +41,8 @@ class AggregateMetrics:
     total_tokens: int
     total_cost_usd: float
     avg_latency_ms: float
+    brier_scored_count: int = 0
+    abstention_count: int = 0
 
 
 @dataclass
@@ -60,28 +62,24 @@ class ABReport:
 
 def compute_brier_score(decisions: List[DecisionEvaluation]) -> float:
     """
-    Computes Brier Score: (1/N) * sum((forecast - outcome)^2).
+    Computes Brier Score over directional (BUY/SELL) decisions only.
     Lower is better (0.0 = perfect calibration, 1.0 = completely wrong).
-    For active trade setups (BUY/SELL), outcome = 1.0 if valid & oracle passed.
-    For defensive setups (WAIT/AVOID), outcome = 0.0 (rewarding low confidence in non-trading postures).
+    Abstentions carry no directional probability, so scoring them against an
+    execution outcome rewards low-confidence WAIT output. AggregateMetrics reports
+    the scored/abstention counts so a zero-trade sample cannot masquerade as skill.
     """
-    if not decisions:
+    active = [d for d in decisions if (getattr(d, "decision", None) or "").upper() in ("BUY", "SELL")]
+    if not active:
         return 0.0
 
     total_sq_err = 0.0
-    for d in decisions:
+    for d in active:
         conf = (d.confluence_score / 100.0) if d.confluence_score is not None else 0.5
         conf = max(0.0, min(1.0, conf))
-        decision_str = (getattr(d, "decision", None) or "").upper()
-        is_active_trade = decision_str in ("BUY", "SELL")
-        if is_active_trade:
-            outcome = 1.0 if d.is_valid_direction and d.oracle_passed else 0.0
-        else:
-            # Defensive/Cash posture: active execution outcome is 0.0
-            outcome = 0.0
+        outcome = 1.0 if d.is_valid_direction and d.oracle_passed else 0.0
         total_sq_err += (conf - outcome) ** 2
 
-    return round(total_sq_err / len(decisions), 4)
+    return round(total_sq_err / len(active), 4)
 
 
 def aggregate_eval_metrics(decisions: List[DecisionEvaluation]) -> AggregateMetrics:
@@ -111,6 +109,7 @@ def aggregate_eval_metrics(decisions: List[DecisionEvaluation]) -> AggregateMetr
     avg_rr = round(sum(rr_list) / len(rr_list), 2) if rr_list else 0.0
 
     brier = compute_brier_score(decisions)
+    active_decisions = sum(1 for d in decisions if (d.decision or "").upper() in ("BUY", "SELL"))
     tot_tokens = sum(d.input_tokens + d.output_tokens for d in decisions)
     tot_cost = round(sum(d.cost_usd for d in decisions), 6)
     avg_lat = round(sum(d.latency_ms for d in decisions) / n, 1)
@@ -126,6 +125,8 @@ def aggregate_eval_metrics(decisions: List[DecisionEvaluation]) -> AggregateMetr
         total_tokens=tot_tokens,
         total_cost_usd=tot_cost,
         avg_latency_ms=avg_lat,
+        brier_scored_count=active_decisions,
+        abstention_count=n - active_decisions,
     )
 
 

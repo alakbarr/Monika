@@ -113,9 +113,9 @@ class ABEvalRunner:
         )
         oracle_passed = len(oracle_violations) == 0
 
-        # Grounding check (if InHarnessGroundingValidator is available)
-        grounding_passed = True
-        grounding_errors = []
+        # Grounding check: fail closed when the validator cannot run.
+        grounding_passed = False
+        grounding_errors = ["grounding_validator_unavailable"]
         try:
             from monika.application.analysis.validators.in_harness_grounding import InHarnessGroundingValidator
             from monika.application.evals.simulation_clock import get_pip_unit
@@ -140,7 +140,7 @@ class ABEvalRunner:
             grounding_passed = is_g
             grounding_errors = g_errs
         except Exception as e:
-            logger.debug(f"Grounding validator exception during eval: {e}")
+            logger.warning(f"Grounding validator unavailable during eval; marking decision ungrounded: {e}")
 
         # Planned R:R computation
         planned_rr = None

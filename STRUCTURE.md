@@ -640,6 +640,7 @@ Monika/
 │       │   │   ├── __init__.py
 │       │   │   ├── eval_metrics.py
 │       │   │   ├── eval_runner.py
+│       │   │   ├── harness_audit.py
 │       │   │   ├── hostile_market_probe.py
 │       │   │   ├── llm_replay.py
 │       │   │   ├── runner.py
@@ -1895,6 +1896,7 @@ Monika/
 │       │   │   ├── busy_input.py
 │       │   │   ├── context.py
 │       │   │   ├── doctor.py
+│       │   │   ├── harness_audit.py
 │       │   │   ├── main.py
 │       │   │   ├── onboarding_trader.py
 │       │   │   ├── platform_compat.py
@@ -2467,7 +2469,9 @@ Monika/
 │   ├── evals/
 │   │   ├── __init__.py
 │   │   ├── test_eval_metrics_and_ab_runner.py
+│   │   ├── test_eval_reliability.py
 │   │   ├── test_evals_and_observability.py
+│   │   ├── test_harness_audit.py
 │   │   ├── test_llm_replay.py
 │   │   ├── test_offline_evals.py
 │   │   ├── test_offline_oracles.py
@@ -3095,4 +3099,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2798
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2802
