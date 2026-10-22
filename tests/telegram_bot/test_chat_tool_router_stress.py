@@ -268,13 +268,15 @@ def test_mixed_macro_and_portfolio(router):
 
 
 def test_multi_domain_complex_fallback(router):
-    """3 or more domains simultaneously should trigger full tool fallback."""
+    """3 or more domains simultaneously should use a bounded union, not the full catalog."""
     query = (
         "Berapa saldo PnL saya (portfolio), bagaimana berita FOMC suku bunga (macro), "
         "cek chart EURUSD RSI (technical), dan bagaimana status server token (system)?"
     )
     tools = router.route_tools_for_query(query)
-    assert len(tools) == len(OPERATOR_INTERACTIVE_TOOLS), "Multi-domain query (>=3) must fall back to full toolset"
+    tool_names = {t["name"] for t in tools}
+    assert 1 < len(tools) < len(OPERATOR_INTERACTIVE_TOOLS), "Multi-domain query must not return the full catalog"
+    assert {"get_account_info", "get_fedwatch_probabilities", "get_chart", "get_system_health"} <= tool_names
 
 
 @pytest.mark.parametrize(

@@ -49,7 +49,20 @@ def test_multi_domain_fallback(router):
     tools = router.route_tools_for_query(
         "Berapa saldo PnL saya, bagaimana berita FOMC dan kalender ekonomi, tolong cek chart EURUSD rsi, dan berapa biaya token server?"
     )
-    assert len(tools) == len(OPERATOR_INTERACTIVE_TOOLS)
+    tool_names = {t["name"] for t in tools}
+    assert 1 < len(tools) < len(OPERATOR_INTERACTIVE_TOOLS)
+    assert "get_account_info" in tool_names
+    assert "get_fedwatch_probabilities" in tool_names
+    assert "get_chart" in tool_names
+    assert "get_token_usage_and_costs" in tool_names
+
+
+def test_coding_intent_routes_to_file_tools(router):
+    tools = router.route_tools_for_query("fix the failing pytest test in src/monika/domain/risk/risk_gate.py")
+    tool_names = {t["name"] for t in tools}
+    assert {"read_file", "write_file", "patch"} <= tool_names
+    assert "terminal" in tool_names
+    assert "restart_mt5_service" not in tool_names
 
 
 def test_macro_intent_routes_fedwatch_and_yields(router):

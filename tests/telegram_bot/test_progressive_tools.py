@@ -34,10 +34,11 @@ def test_chat_tool_router_progressive_loading():
     assert "propose_action" in tool_names_ambiguous
     assert "get_market_session" in tool_names_ambiguous
 
-    # 5. Kueri kompleks multi-domain (>= 3 domain) -> Fallback ke full tools
+    # 5. Kueri kompleks multi-domain (>= 3 domain) -> bounded union, bukan full catalog
     complex_query = (
         "Cek balance portofolio saya, bagaimana teknikal chart EURUSD dan RSI-nya, "
         "serta bagaimana berita makro CPI dan sentimen VIX hari ini?"
     )
     tools_complex = router.route_tools_for_query(complex_query)
-    assert len(tools_complex) == total_tools_count
+    assert 1 < len(tools_complex) < total_tools_count
+    assert {"get_account_info", "get_chart", "get_fedwatch_probabilities"} <= {t["name"] for t in tools_complex}

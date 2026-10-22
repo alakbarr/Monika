@@ -7476,6 +7476,9 @@
   - `minify_tool_definitions(tools: list[dict]) -> list[dict]`: Minimal Tool Schemas: Strips superfluous narrative prose while preserving
   - `make_strict_tool_definitions(tools: list[dict]) -> list[dict]`: DeepSeek / OpenAI strict schema compliance:
 
+#### `files.py` - *Filesystem tool schemas for general-purpose coding and workspace tasks.*
+- **Path**: [`src/monika/application/analysis/tools/definitions/files.py`](src/monika/application/analysis/tools/definitions/files.py)
+
 #### `groups.py` - *Tool collections and stage groupings for AI Trading Agent pipelines.*
 - **Path**: [`src/monika/application/analysis/tools/definitions/groups.py`](src/monika/application/analysis/tools/definitions/groups.py)
 

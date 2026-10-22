@@ -276,6 +276,7 @@ class ActionStateMixin(_ChatAgentMixinBase):
             "execute_terminal_command",
             "desktop_gui_action",
             "mcp_write",
+            "file_write",
             "partial_close_and_breakeven",
         ):
             logger.warning(f"Unknown proposed action type: {action_type}")
@@ -295,6 +296,9 @@ class ActionStateMixin(_ChatAgentMixinBase):
             )
         elif action_type == "mcp_write" and not getattr(self, "is_admin", False):
             logger.warning("[ChatAgent] MCP write proposal rejected: admin access is required.")
+            return None
+        elif action_type == "file_write" and not getattr(self, "is_admin", False):
+            logger.warning("[ChatAgent] File write proposal rejected: admin access is required.")
             return None
         elif action_type == "close_all_positions":
             flt = params.get("filter", "all")
@@ -330,6 +334,11 @@ class ActionStateMixin(_ChatAgentMixinBase):
             tool_name = params.get("tool_name", "unknown")
             tool_args = params.get("args", {})
             description = f"MCP Write Tool:\n• Tool: {tool_name}\n• Args: {json.dumps(tool_args)}"
+        elif action_type == "file_write":
+            tool_name = params.get("tool_name", "unknown")
+            tool_args = params.get("args", {})
+            file_path = tool_args.get("path", "unknown") if isinstance(tool_args, dict) else "unknown"
+            description = f"File Write Tool:\n• Tool: {tool_name}\n• Path: {file_path}"
         elif action_type == "partial_close_and_breakeven":
             tck = params.get("ticket")
             vol = params.get("volume") or params.get("lots")

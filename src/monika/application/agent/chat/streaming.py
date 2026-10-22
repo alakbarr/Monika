@@ -97,6 +97,8 @@ _MCP_READ_ONLY_TOKENS = frozenset(
     }
 )
 
+_FILE_WRITE_TOOLS = frozenset({"write_file", "patch"})
+
 
 def is_mutating_mcp_tool(tool_name: str) -> bool:
     """Classify MCP tools for approval; unknown tools fail closed (require approval)."""
@@ -173,6 +175,40 @@ class StreamingMixin(_ChatAgentMixinBase):
                     "action_type": "mcp_write",
                     "message": (
                         f"MCP tool '{tool_name}' can mutate external state and requires operator authorization. "
+                        f"Proposal #{pending.action_id} generated for operator confirmation."
+                    ),
+                }
+
+            # Safety Fortress Gate: Local file writes mutate the workspace and require approval.
+            if tool_name in _FILE_WRITE_TOOLS:
+                pending = self._create_pending_action(
+                    {
+                        "action_type": "file_write",
+                        "params": {"tool_name": tool_name, "args": tool_input or {}},
+                        "description": f"File write tool: {tool_name}",
+                    }
+                )
+                if pending is None:
+                    logger.warning(
+                        f"[SafetyFortress] File write tool '{tool_name}' blocked: approval channel unavailable."
+                    )
+                    return {
+                        "status": "blocked_by_safety_fortress",
+                        "error": (
+                            f"File write tool '{tool_name}' requires operator approval, "
+                            "but no approval channel is available."
+                        ),
+                    }
+                self._last_intercepted_pending = pending
+                logger.info(
+                    f"[SafetyFortress] Intercepted file write tool '{tool_name}' -> PendingAction #{pending.action_id}"
+                )
+                return {
+                    "status": "pending_operator_approval",
+                    "action_id": pending.action_id,
+                    "action_type": "file_write",
+                    "message": (
+                        f"File write tool '{tool_name}' requires operator authorization. "
                         f"Proposal #{pending.action_id} generated for operator confirmation."
                     ),
                 }

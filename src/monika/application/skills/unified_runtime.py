@@ -28,6 +28,9 @@ class UnifiedSkillsRuntime:
     and dynamically loading modular skills with progressive disclosure.
     """
 
+    # Core trading skills must stay visible even when the compact index is capped.
+    _CORE_SKILL_NAMES = ("risk-management-principles", "smc-ict-playbook")
+
     def __init__(self, search_directories: Optional[List[str]] = None):
         self.hub = SkillsHub(search_directories=search_directories)
 
@@ -41,15 +44,28 @@ class UnifiedSkillsRuntime:
         Used at system prompt initialization with minimal token consumption.
         """
         all_skills = self.hub.list_skills()
+
+        by_name: Dict[str, Any] = {}
+        for s in all_skills:
+            name = s.get("name") if isinstance(s, dict) else getattr(s, "name", None)
+            if name and isinstance(name, str):
+                by_name[name] = s
+
+        ordered_skills: List[Any] = [by_name[name] for name in self._CORE_SKILL_NAMES if name in by_name]
+        ordered_skills.extend(
+            s
+            for s in all_skills
+            if (s.get("name") if isinstance(s, dict) else getattr(s, "name", None)) not in self._CORE_SKILL_NAMES
+        )
         if max_skills is not None:
-            all_skills = all_skills[:max_skills]
+            ordered_skills = ordered_skills[:max_skills]
 
         lines = [
             "### Available Specialization Skills (Tier 1 Index):",
             "To activate a skill, request it by name or execute relevant domain tasks.",
         ]
 
-        for s in all_skills:
+        for s in ordered_skills:
             name = s.get("name") if isinstance(s, dict) else s.name
             cat = s.get("category") if isinstance(s, dict) else s.category
             desc = s.get("description") if isinstance(s, dict) else s.description

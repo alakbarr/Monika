@@ -69,14 +69,15 @@ class TestInjectMacroPlaybooksIdempotency:
             t = agent._inject_macro_playbooks(t)
             assert isinstance(t, tuple)
             assert len(t) == 2
-            event_count = t[0].count("## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK")
-            market_count = t[0].count("## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK")
-            assert event_count == 1, f"Cycle {cycle}: Expected 1 Event Playbook header in static, got {event_count}"
-            assert market_count == 1, f"Cycle {cycle}: Expected 1 Market Dynamics header in static, got {market_count}"
-            assert t[1] == "Dynamic Tail: Balance=5000, Drawdown=0.0", "Dynamic snapshot was mutated!"
+            assert t[0] == "Static Base Prompt Anchor", "Static prefix was mutated!"
+            event_count = t[1].count("## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK")
+            market_count = t[1].count("## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK")
+            assert event_count == 1, f"Cycle {cycle}: Expected 1 Event Playbook header in dynamic, got {event_count}"
+            assert market_count == 1, f"Cycle {cycle}: Expected 1 Market Dynamics header in dynamic, got {market_count}"
+            assert t[1].startswith("Dynamic Tail: Balance=5000, Drawdown=0.0"), "Dynamic snapshot prefix was lost!"
 
         first_injected = agent._inject_macro_playbooks(base_tuple)
-        assert len(t[0]) == len(first_injected[0]), "Static prompt length expanded during repeated injections!"
+        assert len(t[1]) == len(first_injected[1]), "Dynamic prompt length expanded during repeated injections!"
 
     def test_idempotency_under_asymmetric_skill_load_failure(self):
         """
@@ -138,17 +139,17 @@ class TestPromptTypePolymorphism:
         tup_out = agent._inject_macro_playbooks(tup_in)
         assert isinstance(tup_out, tuple)
         assert len(tup_out) == 2
-        assert "Static prefix." in tup_out[0]
-        assert "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in tup_out[0]
-        assert tup_out[1] == "Dynamic snapshot."
+        assert tup_out[0] == "Static prefix."
+        assert "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in tup_out[1]
+        assert tup_out[1].startswith("Dynamic snapshot.")
 
         # 3. Tuple with empty dynamic tail
         tup_empty = ("Static prefix.", "")
         tup_empty_out = agent._inject_macro_playbooks(tup_empty)
         assert isinstance(tup_empty_out, tuple)
         assert len(tup_empty_out) == 2
-        assert "Static prefix." in tup_empty_out[0]
-        assert tup_empty_out[1] == ""
+        assert tup_empty_out[0] == "Static prefix."
+        assert "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in tup_empty_out[1]
 
     @pytest.mark.asyncio
     async def test_run_tier_deep_research_with_tuple_and_string_prompts(self):

@@ -53,6 +53,27 @@ class ChatToolRouter:
         re.IGNORECASE,
     )
 
+    CODING_PATTERNS = re.compile(
+        r"\b(pytest|unittest|unit\s*test|integration\s*test|failing\s*test|test\s*suite|test\s*case|"
+        r"traceback|stack\s*trace|refactor|codebase|repository|repo|bugfix|bug\s*fix|bug|"
+        r"ruff|pyright|mypy|lint|merge\s*conflict|pull\s*request|"
+        r"python\s*(?:script|file|module|test)|"
+        r"git\s+(?:status|diff|log|show|commit|add|checkout|branch|stash)|"
+        r"perbaiki\s+(?:kode|code|test|pytest|error|bug|file)|"
+        r"benerin\s+(?:kode|code|test|pytest|error|bug|file))\b"
+        r"|(?:^|[\s(/])(?:src|tests|scripts)/|\.py\b",
+        re.IGNORECASE,
+    )
+
+    CODING_TOOL_NAMES = (
+        "read_file",
+        "write_file",
+        "patch",
+        "search_tools",
+        "terminal",
+        "read_system_logs",
+    )
+
     GREETING_PATTERNS = re.compile(
         r"^(halo|hai|hi|hello|hey|selamat\s+(pagi|siang|sore|malam)|assalamualaikum|tes|test|ping|p|siapa\s+kamu|terima\s*kasih|makasih|thanks|thank\s*you)\b",
         re.IGNORECASE,
@@ -642,6 +663,7 @@ class ChatToolRouter:
                 or bool(self.WORKSPACE_PATTERNS.search(q_clean))
                 or bool(self.INTEL_PATTERNS.search(q_clean))
                 or bool(self.SKILL_PATTERNS.search(q_clean))
+                or bool(self.CODING_PATTERNS.search(q_clean))
             )
             if not has_functional_intent:
                 logger.info("ChatToolRouter: Selected ZERO-TOOL mode for conversational query")
@@ -664,6 +686,13 @@ class ChatToolRouter:
             selected = self._get_tools_by_names(skill_tool_names)
             logger.info(f"ChatToolRouter: Selected SKILL intent ({len(selected)} tools)")
             return self._finalize_selected(selected)
+
+        # 4b. General-purpose coding, debugging, and test intent
+        if self.CODING_PATTERNS.search(q_clean):
+            selected = self._get_tools_by_names(list(self.CODING_TOOL_NAMES))
+            if selected:
+                logger.info(f"ChatToolRouter: Selected CODING intent ({len(selected)} tools)")
+                return self._finalize_selected(selected)
 
         # 5. Workspace & Second-Brain Intent (Obsidian, Excel, Notion, Files)
         if self.WORKSPACE_PATTERNS.search(q_clean):
@@ -955,12 +984,14 @@ class ChatToolRouter:
             [has_sentiment, has_report, has_portfolio, has_macro, has_tech, has_system, has_database, has_workspace]
         )
 
-        # 10. Jika pertanyaan mencakup >=3 domain sekaligus, gunakan fallback full tools (fail-safe)
+        # 10. Multi-domain queries deliberately continue into the bounded domain
+        # union below. Returning the full catalog would burn the context budget
+        # and reintroduce MT5/system tools into unrelated tasks.
         if domain_count >= 3:
             logger.info(
-                f"ChatToolRouter: Multi-domain complex query detected ({domain_count} domains). Using full toolset."
+                f"ChatToolRouter: Multi-domain complex query detected ({domain_count} domains). "
+                "Using bounded domain union."
             )
-            return self.all_tools
 
         # 11. Semantic Vector Search across all tools
         semantic_tool_names = self._semantic_vector_search(q_clean, top_k=8, min_score=0.10)

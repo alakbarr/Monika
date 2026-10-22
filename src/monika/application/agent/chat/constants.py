@@ -13,7 +13,7 @@ import re
 # Telegram message character limit
 TELEGRAM_MAX_CHARS = 4096
 HISTORY_WINDOW = 50  # Max conversation turns to include in context
-MAX_HISTORY_CHARS = 8000  # Max total characters from history
+MAX_HISTORY_CHARS = 32000  # ~8k tokens at ~4 characters/token
 SESSION_TIMEOUT_HOURS = 24  # Jeda >24 jam memutus rantai riwayat sesi lama
 
 

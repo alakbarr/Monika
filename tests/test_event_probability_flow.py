@@ -239,9 +239,10 @@ class TestInjectMacroPlaybooks:
             assert len(injected_tuple) == 2
 
             static_out, dynamic_out = injected_tuple
-            assert "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in static_out
-            assert "## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK" in static_out
-            assert dynamic_out == dynamic_snapshot
+            assert static_out == static_prefix
+            assert "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in dynamic_out
+            assert "## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK" in dynamic_out
+            assert dynamic_out.startswith(dynamic_snapshot)
 
     def test_inject_macro_playbooks_idempotent(self):
         with patch("monika.interfaces.telegram.chat_agent.get_client_for_task"):

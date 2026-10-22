@@ -325,6 +325,7 @@ Monika/
 │       │   │   │   ├── definitions/
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   ├── base.py
+│       │   │   │   │   ├── files.py
 │       │   │   │   │   ├── groups.py
 │       │   │   │   │   ├── intelligence.py
 │       │   │   │   │   ├── macro.py
@@ -3101,4 +3102,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2804
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2805

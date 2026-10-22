@@ -79,58 +79,63 @@ class PromptBuilderMixin(_ChatAgentMixinBase):
         )
         return bool(re.search(macro_event_patterns, msg_lower) and re.search(macro_intent_patterns, msg_lower))
 
+    _MACRO_PLAYBOOK_HEADERS = (
+        ("event_probability_playbook", "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK"),
+        ("central_banks_framework", "## AUTHORITATIVE CENTRAL BANKS FRAMEWORK"),
+        ("market_dynamics_framework", "## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK"),
+    )
+    _PROMPT_SKILL_EXCLUSIONS = frozenset(
+        {
+            "event-probability-playbook",
+            "central-banks-framework",
+            "market-dynamics-framework",
+            "telegram-persona",
+            "intent-resolution",
+            "prompt-intent-disambiguation",
+        }
+    )
+    _INJECTION_MARKER = "<!-- MONIKA_DYNAMIC_SKILLS_INJECTED -->"
+
     def _inject_macro_playbooks(
         self, system_prompt: Union[str, tuple[str, str]], user_query: str = ""
     ) -> Union[str, tuple[str, str]]:
-        """Inject macro playbooks and dynamic matched skills into system prompt."""
+        """Inject macro playbooks and matched skills without mutating a static prefix."""
         from monika.application.skills.loader import load_skill
 
         playbook_sections: list[str] = []
+        loaded_skills: set[str] = set()
 
-        # 1. Macro playbooks for macro-relevant queries
+        # 1. Macro playbooks for macro-relevant queries.
         if not user_query or self._is_macro_event_query(user_query):
-            try:
-                event_playbook = load_skill("event_probability_playbook")
-                if event_playbook:
-                    playbook_sections.append(f"## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK\n{event_playbook}")
-            except Exception as e:
-                logger.warning(f"[ChatAgent] Failed to load event_probability_playbook: {e}")
+            for raw_name, header in self._MACRO_PLAYBOOK_HEADERS:
+                loaded_skills.add(raw_name.replace("_", "-"))
+                try:
+                    content = load_skill(raw_name)
+                    if content:
+                        playbook_sections.append(f"{header}\n{content}")
+                except Exception as e:
+                    logger.warning(f"[ChatAgent] Failed to load {raw_name}: {e}")
 
-            try:
-                cb_framework = load_skill("central_banks_framework")
-                if cb_framework:
-                    playbook_sections.append(f"## AUTHORITATIVE CENTRAL BANKS FRAMEWORK\n{cb_framework}")
-            except Exception as e:
-                logger.warning(f"[ChatAgent] Failed to load central_banks_framework: {e}")
-
-            try:
-                market_dynamics = load_skill("market_dynamics_framework")
-                if market_dynamics:
-                    playbook_sections.append(f"## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK\n{market_dynamics}")
-            except Exception as e:
-                logger.warning(f"[ChatAgent] Failed to load market_dynamics_framework: {e}")
-
-        # 2. Dynamic skill matching for domain-specific user requests (up to 3 skills)
+        # 2. Dynamic skill matching for domain-specific requests (up to 3 skills).
         if user_query:
             try:
                 from monika.application.skills.unified_runtime import get_skills_runtime
 
                 runtime = get_skills_runtime()
                 matched = runtime.match_skills_for_prompt(user_query)
-                for s_name in matched[:3]:
-                    if s_name in (
-                        "event_probability_playbook",
-                        "central_banks_framework",
-                        "market_dynamics_framework",
-                        "telegram_persona",
-                        "intent-resolution",
-                        "prompt-intent-disambiguation",
-                    ):
+                activated = 0
+                for s_name in matched:
+                    if activated >= 3:
+                        break
+                    canonical = str(s_name).strip().lower().replace("_", "-")
+                    if not canonical or canonical in loaded_skills or canonical in self._PROMPT_SKILL_EXCLUSIONS:
                         continue
+                    loaded_skills.add(canonical)
                     try:
                         instr = runtime.load_skill_instructions(s_name)
                         if instr:
-                            playbook_sections.append(f"## ACTIVATED SPECIALIZATION SKILL: {s_name.upper()}\n{instr}")
+                            playbook_sections.append(f"## ACTIVATED SPECIALIZATION SKILL: {canonical.upper()}\n{instr}")
+                            activated += 1
                     except Exception as s_err:
                         logger.debug(f"[ChatAgent] Could not load matched skill '{s_name}': {s_err}")
             except Exception as match_err:
@@ -139,15 +144,19 @@ class PromptBuilderMixin(_ChatAgentMixinBase):
         if not playbook_sections:
             return system_prompt
 
-        injected_block = "\n\n---\n\n" + "\n\n---\n\n".join(playbook_sections)
+        injected_block = f"\n\n---\n\n{self._INJECTION_MARKER}\n\n" + "\n\n---\n\n".join(playbook_sections)
+
+        def _already_injected(text: str) -> bool:
+            return self._INJECTION_MARKER in text or "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in text
 
         if isinstance(system_prompt, tuple):
             static_prompt, dynamic_snapshot = system_prompt
-            if "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in static_prompt:
+            if _already_injected(static_prompt) or _already_injected(dynamic_snapshot or ""):
                 return system_prompt
-            return (f"{static_prompt}{injected_block}", dynamic_snapshot)
+            dynamic_tail = f"{dynamic_snapshot}{injected_block}" if dynamic_snapshot else injected_block
+            return (static_prompt, dynamic_tail)
 
-        if "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in system_prompt:
+        if _already_injected(system_prompt):
             return system_prompt
         return f"{system_prompt}{injected_block}"
 

@@ -155,6 +155,8 @@ async def test_is_macro_event_query_and_inject_macro_playbooks():
         assert base_prompt in injected_str
         assert "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in injected_str
         assert "## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK" in injected_str
+        assert "ACTIVATED SPECIALIZATION SKILL: EVENT-PROBABILITY-PLAYBOOK" not in injected_str
+        assert "ACTIVATED SPECIALIZATION SKILL: CENTRAL-BANKS-FRAMEWORK" not in injected_str
         # Verify content from R1 playbook is present
         assert "PROTOKOL THINKING FLOW 5 TAHAP" in injected_str or "THINKING FLOW" in injected_str.upper()
 
@@ -167,14 +169,15 @@ async def test_is_macro_event_query_and_inject_macro_playbooks():
         injected_tuple = agent._inject_macro_playbooks(tuple_prompt)
         assert isinstance(injected_tuple, tuple)
         assert len(injected_tuple) == 2
-        assert "Static Anchor Prompt" in injected_tuple[0]
-        assert "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in injected_tuple[0]
-        assert "## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK" in injected_tuple[0]
-        assert injected_tuple[1] == "Dynamic Session Data: Balance=1000"
+        assert injected_tuple[0] == "Static Anchor Prompt"
+        assert "## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK" in injected_tuple[1]
+        assert "## AUTHORITATIVE MARKET DYNAMICS FRAMEWORK" in injected_tuple[1]
+        assert injected_tuple[1].startswith("Dynamic Session Data: Balance=1000")
 
         # Idempotency check for tuple
         double_injected_tuple = agent._inject_macro_playbooks(injected_tuple)
-        assert double_injected_tuple[0].count("## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK") == 1
+        assert double_injected_tuple[0] == "Static Anchor Prompt"
+        assert double_injected_tuple[1].count("## AUTHORITATIVE EVENT PROBABILITY PLAYBOOK") == 1
 
 
 @pytest.mark.asyncio

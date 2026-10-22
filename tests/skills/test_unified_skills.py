@@ -44,6 +44,19 @@ def test_two_tier_progressive_disclosure():
     assert "Hyperliquid" in instructions
 
 
+def test_compact_index_pins_core_trading_skills():
+    runtime = get_skills_runtime()
+    runtime.reload()
+
+    index_md = runtime.get_compact_prompt_index(max_skills=15)
+    assert "risk-management-principles" in index_md
+    assert "smc-ict-playbook" in index_md
+
+    skill_lines = [line for line in index_md.splitlines() if line.startswith("- **")]
+    assert skill_lines[0].startswith("- **risk-management-principles")
+    assert skill_lines[1].startswith("- **smc-ict-playbook")
+
+
 def test_skill_intent_matching():
     runtime = get_skills_runtime()
 

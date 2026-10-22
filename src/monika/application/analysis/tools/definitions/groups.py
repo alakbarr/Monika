@@ -15,6 +15,7 @@ from monika.application.analysis.tools.definitions.smc import *
 from monika.application.analysis.tools.definitions.trading import *
 from monika.application.analysis.tools.definitions.intelligence import *
 from monika.application.analysis.tools.definitions.system import *
+from monika.application.analysis.tools.definitions.files import *
 
 MACRO_ANALYSIS_TOOLS: list[dict] = [
     GET_ECONOMIC_CALENDAR,
@@ -244,6 +245,11 @@ OPERATOR_INTERACTIVE_TOOLS: list[dict] = [
     # === EKSEKUSI ===
     PROPOSE_ACTION,
 ]
+
+
+for file_tool in FILE_TOOLS:
+    if file_tool not in OPERATOR_INTERACTIVE_TOOLS:
+        OPERATOR_INTERACTIVE_TOOLS.append(file_tool)
 
 
 OPERATOR_INTERACTIVE_TOOLS.append(CALCULATE_MARGIN)

@@ -52,6 +52,7 @@ DEVELOPER_TOOLSET: Set[str] = {
     # File Operations
     "read_file",
     "write_file",
+    "patch",
     "patch_file",
     "list_directory",
     "search_files",
