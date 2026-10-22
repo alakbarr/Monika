@@ -150,6 +150,8 @@ AGENTS.md
 # Internal Design & Developer Notes
 history_chat.md
 audit_prompt*.md
+20_fase_audit.md
+prompt_audit_20_fase.md
 bug_bounty_instruction.md
 central-banks-mandat-and-data.md
 Graph Engineering.md
