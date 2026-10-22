@@ -15,6 +15,8 @@ from monika.application.agent.chat.pending_actions import PendingAction
 from typing import Any, Optional
 
 from monika.application.agent.chat.base import _ChatAgentMixinBase, logger
+from monika.application.planning.session_plan import SessionPlan
+from monika.application.analysis.memory.working_scratchpad import WorkingScratchpad
 
 _MCP_MUTATING_TOKENS = frozenset(
     {
@@ -449,6 +451,22 @@ class StreamingMixin(_ChatAgentMixinBase):
                     preference = "tier_deep"
                 else:
                     preference = "tier_lite"
+
+            # Integrate session-scoped planning (Wave 3) — fully wired
+            session_plan = SessionPlan.get_or_create(session_id or "default")
+            plan_summary = session_plan.summary_text()
+            if plan_summary and len(plan_summary) > 20:
+                clean_message = f"[SESSION PLAN]\n{plan_summary}\n---\n{clean_message}"
+            # Link session plan to working scratchpad for cross-reference
+            scratch_symbol = (session_id or "default").strip().upper().replace("/", "") if session_id else "SESSION"
+            scratch_symbol = scratch_symbol[:20]
+            scratch_state = WorkingScratchpad.get_or_create(scratch_symbol)
+            scratch_state["session_plan_ref"] = session_plan.session_id
+            scratch_state["session_plan_goal"] = session_plan.get_plan().get("goal", "")
+            WorkingScratchpad.update_scratchpad(
+                scratch_symbol,
+                {"notes": f"SessionPlan goal={session_plan.get_plan().get('goal', 'N/A')}"},
+            )
 
             selected_tools = self._tool_router.route_tools_for_query(clean_message)
             needs_tools = bool(selected_tools) or bool(

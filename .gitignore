@@ -120,6 +120,7 @@ scripts/*
 !scripts/benchmark_news_classification_openrouter.py
 !scripts/audit_token_usage.py
 !scripts/check_scrapers/
+!scripts/weekly_evaluation.py
 !scripts/migrate_runtime_home.py
 !scripts/migrate_sqlite_to_canonical.py
 !scripts/audit_settings_keys.py

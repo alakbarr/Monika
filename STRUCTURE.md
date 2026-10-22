@@ -2596,6 +2596,7 @@ Monika/
 │   │   ├── test_memory_budget.py
 │   │   └── test_microstructure_perf.py
 │   ├── planning/
+│   │   ├── test_session_integration.py
 │   │   └── test_session_plan.py
 │   ├── plugins/
 │   │   ├── test_plugin_lifecycle.py
@@ -3109,4 +3110,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 269 | **Total Tracked Files**: 2810
+**Total Tracked Directories**: 269 | **Total Tracked Files**: 2811
