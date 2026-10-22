@@ -84,6 +84,25 @@ HARDLINE_BLOCKLIST_PATTERNS = [
         r"\b(?:irm|Invoke-RestMethod|iwr|Invoke-WebRequest)\b.*\|\s*(?:iex|Invoke-Expression)\b",
         re.IGNORECASE,
     ),
+    # .NET Reflection secret access & destructive write
+    re.compile(
+        r"\[System\.IO\.File\]::(?:ReadAllText|ReadAllBytes|ReadAllLines|ReadLines|WriteAllText|WriteAllBytes|Delete|OpenText)\b[^\n]*(?:/etc/shadow|/etc/passwd|\.ssh/id_|\.env(?!\.example)|\.pem|\.key|id_rsa|id_ed25519|credentials[^\s]*\.json)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:Clear-Content|Set-Content)\s+.*(?:/etc/shadow|/etc/passwd|\.ssh/id_|\.env(?!\.example)|\.pem|\.key|id_rsa|id_ed25519|credentials[^\s]*\.json)",
+        re.IGNORECASE,
+    ),
+    # Advanced wipe / secure deletion
+    re.compile(
+        r"\b(?:shred|srm|wipe)\s+.*(?:/etc/shadow|/etc/passwd|\.ssh/id_|\.env(?!\.example)|\.pem|\.key|id_rsa|id_ed25519|credentials[^\s]*\.json|/|\\|\*)",
+        re.IGNORECASE,
+    ),
+    # Pipeline destructive deletion
+    re.compile(
+        r"\|\s*(?:Remove-Item|ri|del|erase|rmdir|rd)\b.*(?:-[a-zA-Z]*f|-force)",
+        re.IGNORECASE,
+    ),
 ]
 
 # Sensitive file and directory names that agent is forbidden from writing or deleting
@@ -117,6 +136,7 @@ def deobfuscate_command(cmd_line: str) -> str:
     De-obfuscates command line strings to defeat evasion techniques such as:
     - Intra-token quote concatenation (e.g. c'a't /e"t"c/p'a'sswd)
     - PowerShell backtick masking (e.g. c`a`t)
+    - CMD caret escaping (e.g. r^m^d^i^r -> rmdir, t^y^p^e -> type)
     - Hex escaped strings (e.g. \\x63\\x61\\x74)
     - Substring concatenation expressions
     """
@@ -128,11 +148,14 @@ def deobfuscate_command(cmd_line: str) -> str:
     # 1. Remove PowerShell backtick evasion (e.g. `c`a`t -> cat)
     result = re.sub(r"`([a-zA-Z0-9_\-\.\/])", r"\1", result)
 
-    # 2. De-obfuscate intra-token quotes (e.g. c'a't -> cat, /e"t"c -> /etc, r""m -> rm)
+    # 2. Remove Windows CMD caret evasion (e.g. r^m^d^i^r -> rmdir, t^y^p^e -> type, c^a^t -> cat)
+    result = re.sub(r"\^([a-zA-Z0-9_\-\.\/\\:$\"'])", r"\1", result)
+
+    # 3. De-obfuscate intra-token quotes (e.g. c'a't -> cat, /e"t"c -> /etc, r""m -> rm)
     result = re.sub(r"(?<=[a-zA-Z0-9_\-\.\/\$])['\"]+(?=[a-zA-Z0-9_\-\.\/\$])", "", result)
     result = re.sub(r"(^|\s)['\"]([a-zA-Z0-9_\-\.\/]+)['\"](?=\s|$)", lambda m: (m.group(1) or "") + m.group(2), result)
 
-    # 3. Decode hex escape sequences (\x41 -> A)
+    # 4. Decode hex escape sequences (\x41 -> A)
     def _decode_hex(match: re.Match) -> str:
         try:
             return bytes.fromhex(match.group(1)).decode("latin1")
@@ -141,10 +164,32 @@ def deobfuscate_command(cmd_line: str) -> str:
 
     result = re.sub(r"\\x([0-9a-fA-F]{2})", _decode_hex, result)
 
-    # 4. Remove quote concatenations (e.g. 'c'+'a'+'t' -> cat)
+    # 5. Remove quote concatenations (e.g. 'c'+'a'+'t' -> cat)
     result = re.sub(r"['\"]\s*\+\s*['\"]", "", result)
 
     return result.strip()
+
+
+def extract_powershell_encoded_command(cmd_line: str) -> str | None:
+    """Extract and base64-decode PowerShell -EncodedCommand / -enc payload."""
+    match = re.search(
+        r"(?:powershell|pwsh)(?:\.exe)?(?:\s+-[A-Za-z0-9]+)*\s+-(?:e|enc|encodedcommand)\s+([A-Za-z0-9+/=]+)",
+        cmd_line,
+        re.IGNORECASE,
+    )
+    if match:
+        raw_b64 = match.group(1).strip()
+        import base64
+
+        try:
+            decoded_bytes = base64.b64decode(raw_b64)
+            try:
+                return decoded_bytes.decode("utf-16le")
+            except UnicodeDecodeError:
+                return decoded_bytes.decode("utf-8", errors="replace")
+        except Exception:
+            return raw_b64
+    return None
 
 
 def unwrap_command_quotes(cmd_line: str) -> str:
@@ -167,7 +212,7 @@ def unwrap_command_quotes(cmd_line: str) -> str:
 def is_hardline_blocked_command(cmd_line: str) -> tuple[bool, str]:
     """
     Evaluate command line string against hardline blocklist.
-    Checks raw command, unwrapped command, and de-obfuscated representations.
+    Checks raw command, unwrapped command, decoded encoded command, and de-obfuscated representations.
     Returns (is_blocked: bool, reason: str).
     """
     if not cmd_line or not cmd_line.strip():
@@ -178,6 +223,10 @@ def is_hardline_blocked_command(cmd_line: str) -> tuple[bool, str]:
     deobfuscated_unwrapped = deobfuscate_command(unwrapped)
 
     candidates = [cmd_line, unwrapped, deobfuscated, deobfuscated_unwrapped]
+
+    encoded_payload = extract_powershell_encoded_command(cmd_line)
+    if encoded_payload:
+        candidates.extend([encoded_payload, deobfuscate_command(encoded_payload)])
 
     for pattern in HARDLINE_BLOCKLIST_PATTERNS:
         for candidate in candidates:

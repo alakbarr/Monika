@@ -15,15 +15,15 @@ Enforces exclusive leaseholder rights with automatic heartbeat renewal and stale
 from __future__ import annotations
 
 import asyncio
-import logging
-import time
-import uuid
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
-from collections.abc import AsyncIterator, Callable
+import logging
+import time
+from typing import Any
+import uuid
 
-logger = logging.getLogger("TradingAgent.Utils.StreamingLease")
+logger = logging.getLogger(__name__)
 
 
 class LeaseAcquisitionTimeoutError(TimeoutError):
@@ -64,6 +64,21 @@ class StreamWriterLeaseCoordinator:
                 self._locks[surface_id] = asyncio.Lock()
             return self._locks[surface_id]
 
+    async def _evict_stale_lease_if_needed(self, surface_id: str) -> None:
+        async with self._master_lock:
+            existing = self._active_leases.get(surface_id)
+            if existing and time.time() >= existing.expires_at:
+                logger.warning(
+                    f"[StreamLease] Evicting stale lease {existing.lease_id[:8]} for surface '{surface_id}' (expired at {existing.expires_at:.1f})."
+                )
+                self._active_leases.pop(surface_id, None)
+                lock = self._locks.get(surface_id)
+                if lock and lock.locked():
+                    try:
+                        lock.release()
+                    except RuntimeError:
+                        self._locks[surface_id] = asyncio.Lock()
+
     @asynccontextmanager
     async def acquire_lease(
         self,
@@ -76,6 +91,7 @@ class StreamWriterLeaseCoordinator:
         Acquires an exclusive single-writer stream lease for a designated surface ID.
         """
         duration = duration_sec or self.default_duration_sec
+        await self._evict_stale_lease_if_needed(surface_id)
         surface_lock = await self._get_surface_lock(surface_id)
 
         try:

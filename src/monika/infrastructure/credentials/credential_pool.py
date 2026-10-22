@@ -7,6 +7,7 @@ cost tracking, model-level cooldowns, and seamless integration with FailoverReas
 import asyncio
 import logging
 import os
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -15,7 +16,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from monika.infrastructure.credentials.error_taxonomy import FailoverReason
 
-logger = logging.getLogger("TradingAgent.Provider.CredentialPool")
+logger = logging.getLogger(__name__)
 
 
 class CredentialStatus(str, Enum):
@@ -259,6 +260,7 @@ class CredentialPool:
         self.rotation_strategy = rotation_strategy  # "least_used" | "round_robin" | "fill_first" | "random"
         self._pools: Dict[str, List[KeyHealth]] = {}
         self._lock = asyncio.Lock()
+        self._sync_lock = threading.Lock()
         self._recently_exhausted: Dict[str, float] = {}  # No-recovery guard: key -> cooldown_time
         self._round_robin_idx: Dict[str, int] = {}
         if auto_init_env:
@@ -345,43 +347,44 @@ class CredentialPool:
         if not keys:
             return None
 
-        # Clean expired no-recovery guard entries
-        now = time.time()
-        self._recently_exhausted = {k: exp for k, exp in self._recently_exhausted.items() if exp > now}
+        with self._sync_lock:
+            # Clean expired no-recovery guard entries
+            now = time.time()
+            self._recently_exhausted = {k: exp for k, exp in list(self._recently_exhausted.items()) if exp > now}
 
-        # Filter available keys (active & not in cooldown), prioritizing keys not in no-recovery window
-        eligible = [k for k in keys if k.is_model_available(model) and k.key not in self._recently_exhausted]
-        if not eligible:
-            eligible = [k for k in keys if k.is_model_available(model)]
+            # Filter available keys (active & not in cooldown), prioritizing keys not in no-recovery window
+            eligible = [k for k in keys if k.is_model_available(model) and k.key not in self._recently_exhausted]
+            if not eligible:
+                eligible = [k for k in keys if k.is_model_available(model)]
 
-        if not eligible:
-            cooldown_keys = [k for k in keys if k.is_active]
-            if cooldown_keys:
-                earliest = min(cooldown_keys, key=lambda x: x.cooldown_until)
-                rem = max(0.0, earliest.cooldown_until - time.time())
-                logger.warning(
-                    f"[CredentialPool] All keys for '{prov}' (model={model}) in cooldown. "
-                    f"Earliest ready in {rem:.1f}s. "
-                    f"{'Hot-path active: returning None for instant failover.' if is_hot_path else ''}"
-                )
-            return None
+            if not eligible:
+                cooldown_keys = [k for k in keys if k.is_active]
+                if cooldown_keys:
+                    earliest = min(cooldown_keys, key=lambda x: x.cooldown_until)
+                    rem = max(0.0, earliest.cooldown_until - time.time())
+                    logger.warning(
+                        f"[CredentialPool] All keys for '{prov}' (model={model}) in cooldown. "
+                        f"Earliest ready in {rem:.1f}s. "
+                        f"{'Hot-path active: returning None for instant failover.' if is_hot_path else ''}"
+                    )
+                return None
 
-        # Selection according to rotation_strategy
-        if self.rotation_strategy == "fill_first":
-            selected = eligible[0]
-        elif self.rotation_strategy == "round_robin":
-            idx = self._round_robin_idx.get(prov, 0) % len(eligible)
-            selected = eligible[idx]
-            self._round_robin_idx[prov] = (idx + 1) % len(eligible)
-        elif self.rotation_strategy == "random":
-            import random
+            # Selection according to rotation_strategy
+            if self.rotation_strategy == "fill_first":
+                selected = eligible[0]
+            elif self.rotation_strategy == "round_robin":
+                idx = self._round_robin_idx.get(prov, 0) % len(eligible)
+                selected = eligible[idx]
+                self._round_robin_idx[prov] = (idx + 1) % len(eligible)
+            elif self.rotation_strategy == "random":
+                import random
 
-            selected = random.choice(eligible)
-        else:  # "least_used"
-            selected = min(eligible, key=lambda x: x.last_used)
+                selected = random.choice(eligible)
+            else:  # "least_used"
+                selected = min(eligible, key=lambda x: x.last_used)
 
-        selected.last_used = time.time()
-        return selected.key
+            selected.last_used = time.time()
+            return selected.key
 
     async def get_active_key(
         self,
@@ -614,8 +617,12 @@ class LLMCredentialPool:
                     return state.key
 
             earliest = min(self._states, key=lambda s: s.cooldown_until)
-            logger.warning(f"[{self.provider}] All {n} credentials in cooldown. Using earliest.")
-            return earliest.key
+            rem = max(0.0, earliest.cooldown_until - time.time())
+            logger.warning(
+                f"[{self.provider}] All {n} credentials in cooldown. "
+                f"Earliest ready in {rem:.1f}s. Fail-closed: returning None."
+            )
+            return None
 
     async def report_rate_limited(self, key: str, cooldown_seconds: float = 60.0) -> None:
         async with self._lock:

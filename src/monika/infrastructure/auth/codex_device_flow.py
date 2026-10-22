@@ -16,12 +16,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
+import urllib.error
 import urllib.parse
 import urllib.request
-import urllib.error
 
 from monika.infrastructure.auth.oauth_store import (
     get_oauth_tokens,
@@ -29,7 +30,8 @@ from monika.infrastructure.auth.oauth_store import (
     save_oauth_tokens,
 )
 
-logger = logging.getLogger("TradingAgent.Auth.CodexOAuth")
+logger = logging.getLogger(__name__)
+_codex_refresh_lock = threading.Lock()
 
 CODEX_OAUTH_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 CODEX_OAUTH_ISSUER = "https://auth.openai.com"
@@ -42,7 +44,7 @@ def get_codex_cli_auth_path() -> Path:
     return Path.home() / ".codex" / "auth.json"
 
 
-def read_codex_cli_credentials() -> Optional[Dict[str, Any]]:
+def read_codex_cli_credentials() -> dict[str, Any] | None:
     """Read tokens from OpenAI Codex CLI if available."""
     raw_path = get_codex_cli_auth_path()
     auth_file = Path(raw_path) if not isinstance(raw_path, Path) else raw_path
@@ -53,13 +55,13 @@ def read_codex_cli_credentials() -> Optional[Dict[str, Any]]:
         if not isinstance(data, dict):
             return None
         raw_tokens = data.get("tokens")
-        tokens_block: Dict[str, Any] = raw_tokens if isinstance(raw_tokens, dict) else data
+        tokens_block: dict[str, Any] = raw_tokens if isinstance(raw_tokens, dict) else data
         access_token = str(tokens_block.get("access_token", "")).strip()
         refresh_token = str(tokens_block.get("refresh_token", "")).strip()
         account_id = str(tokens_block.get("account_id", "")).strip() or None
         if not access_token or not refresh_token:
             return None
-        res: Dict[str, Any] = {
+        res: dict[str, Any] = {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "source": "codex_cli_file",
@@ -72,7 +74,7 @@ def read_codex_cli_credentials() -> Optional[Dict[str, Any]]:
         return None
 
 
-def request_codex_device_code() -> Dict[str, Any]:
+def request_codex_device_code() -> dict[str, Any]:
     """Step 1: Request user code and device auth ID from OpenAI."""
     url = f"{CODEX_OAUTH_ISSUER}/api/accounts/deviceauth/usercode"
     payload = json.dumps({"client_id": CODEX_OAUTH_CLIENT_ID}).encode("utf-8")
@@ -90,7 +92,7 @@ def request_codex_device_code() -> Dict[str, Any]:
 
 def poll_codex_authorization(
     device_auth_id: str, user_code: str, poll_interval: int = 5, timeout: int = 600
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Step 2: Poll OpenAI until user authorizes the device in the browser."""
     url = f"{CODEX_OAUTH_ISSUER}/api/accounts/deviceauth/token"
     payload = json.dumps({"device_auth_id": device_auth_id, "user_code": user_code}).encode("utf-8")
@@ -121,7 +123,7 @@ def poll_codex_authorization(
     raise TimeoutError("Codex device code authorization timed out.")
 
 
-def exchange_codex_code(code_resp: Dict[str, Any]) -> Dict[str, Any]:
+def exchange_codex_code(code_resp: dict[str, Any]) -> dict[str, Any]:
     """Step 3: Swap authorization code for OAuth tokens."""
     authorization_code = code_resp.get("authorization_code")
     code_verifier = code_resp.get("code_verifier")
@@ -161,7 +163,7 @@ def exchange_codex_code(code_resp: Dict[str, Any]) -> Dict[str, Any]:
         return token_record
 
 
-def refresh_codex_token(refresh_token: str | Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def refresh_codex_token(refresh_token: str | dict[str, Any]) -> dict[str, Any] | None:
     """Exchange refresh token for fresh Codex access token."""
     token_str = (
         refresh_token.get("refresh_token", "") if isinstance(refresh_token, dict) else str(refresh_token)
@@ -169,42 +171,47 @@ def refresh_codex_token(refresh_token: str | Dict[str, Any]) -> Optional[Dict[st
     if not token_str:
         return None
 
-    form_data = urllib.parse.urlencode(
-        {
-            "grant_type": "refresh_token",
-            "client_id": CODEX_OAUTH_CLIENT_ID,
-            "refresh_token": token_str,
-        }
-    ).encode("utf-8")
+    with _codex_refresh_lock:
+        current_store = get_oauth_tokens("codex")
+        if current_store and not is_token_expiring(current_store, skew_seconds=180):
+            return current_store
 
-    req = urllib.request.Request(
-        CODEX_OAUTH_TOKEN_URL,
-        data=form_data,
-        headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            tokens = json.loads(resp.read().decode("utf-8"))
-            if isinstance(tokens, dict) and tokens.get("access_token"):
-                expires_in = tokens.get("expires_in", 86400)
-                token_record = {
-                    "access_token": tokens["access_token"].strip(),
-                    "refresh_token": str(tokens.get("refresh_token") or token_str).strip(),
-                    "expires_at": time.time() + float(expires_in),
-                    "token_type": tokens.get("token_type", "Bearer"),
-                    "source": "codex_refresh",
-                }
-                save_oauth_tokens("codex", token_record)
-                logger.info("Successfully refreshed OpenAI Codex access token.")
-                return token_record
-    except Exception as exc:
-        logger.warning("Codex token refresh failed: %s", exc)
+        form_data = urllib.parse.urlencode(
+            {
+                "grant_type": "refresh_token",
+                "client_id": CODEX_OAUTH_CLIENT_ID,
+                "refresh_token": token_str,
+            }
+        ).encode("utf-8")
 
-    return None
+        req = urllib.request.Request(
+            CODEX_OAUTH_TOKEN_URL,
+            data=form_data,
+            headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                tokens = json.loads(resp.read().decode("utf-8"))
+                if isinstance(tokens, dict) and tokens.get("access_token"):
+                    expires_in = tokens.get("expires_in", 86400)
+                    token_record = {
+                        "access_token": tokens["access_token"].strip(),
+                        "refresh_token": str(tokens.get("refresh_token") or token_str).strip(),
+                        "expires_at": time.time() + float(expires_in),
+                        "token_type": tokens.get("token_type", "Bearer"),
+                        "source": "codex_refresh",
+                    }
+                    save_oauth_tokens("codex", token_record)
+                    logger.info("Successfully refreshed OpenAI Codex access token.")
+                    return token_record
+        except Exception as exc:
+            logger.warning("Codex token refresh failed: %s", exc)
+
+        return None
 
 
-def resolve_codex_access_token() -> Optional[str]:
+def resolve_codex_access_token() -> str | None:
     """Resolve active access token for OpenAI Codex."""
     token_record = get_oauth_tokens("codex")
     if not token_record or not token_record.get("access_token"):
@@ -223,5 +230,8 @@ def resolve_codex_access_token() -> Optional[str]:
             refreshed = refresh_codex_token(refresh_token)
             if refreshed and refreshed.get("access_token"):
                 return refreshed["access_token"]
+        if is_token_expiring(token_record, skew_seconds=0):
+            logger.warning("Codex access token is expired and refresh failed; failing closed.")
+            return None
 
     return token_record.get("access_token") or None

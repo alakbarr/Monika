@@ -18,30 +18,31 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
-from monika.application.analysis.tools.kernel.env_sanitizer import get_sanitized_environment
+from monika.core.security.env_sanitizer import get_sanitized_environment
 from monika.core.security.terminal_guard import assert_safe_read_path, assert_safe_write_path
 from monika.infrastructure.sandboxes.base import BaseTerminalBackend
 
-logger = logging.getLogger("TradingAgent.Execution.LocalBackend")
+logger = logging.getLogger(__name__)
 
 _IS_WINDOWS = sys.platform == "win32"
+MAX_OUTPUT_CHARS = 2_000_000
 
 
 class LocalTerminalBackend(BaseTerminalBackend):
     """Local OS execution backend."""
 
-    def __init__(self, default_cwd: Optional[str] = None):
+    def __init__(self, default_cwd: str | None = None):
         self.default_cwd = default_cwd or os.getcwd()
 
     def execute(
         self,
         cmd: str,
-        cwd: Optional[str] = None,
+        cwd: str | None = None,
         timeout: float = 60.0,
-        env: Optional[Dict[str, str]] = None,
-    ) -> Tuple[str, str, int]:
+        env: dict[str, str] | None = None,
+    ) -> tuple[str, str, int]:
         from monika.core.security.terminal_guard import is_hardline_blocked_command
 
         is_blocked, reason = is_hardline_blocked_command(cmd)
@@ -61,7 +62,7 @@ class LocalTerminalBackend(BaseTerminalBackend):
         else:
             preexec_fn = getattr(os, "setsid", None)
 
-        proc: Optional[subprocess.Popen[str]] = None
+        proc: subprocess.Popen[str] | None = None
         try:
             proc = subprocess.Popen(
                 cmd,
@@ -77,6 +78,10 @@ class LocalTerminalBackend(BaseTerminalBackend):
                 errors="replace",
             )
             stdout, stderr = proc.communicate(timeout=timeout)
+            if len(stdout) > MAX_OUTPUT_CHARS:
+                stdout = stdout[:MAX_OUTPUT_CHARS] + "\n... [TRUNCATED DUE TO SIZE LIMIT]"
+            if len(stderr) > MAX_OUTPUT_CHARS:
+                stderr = stderr[:MAX_OUTPUT_CHARS] + "\n... [TRUNCATED DUE TO SIZE LIMIT]"
             return stdout, stderr, proc.returncode
         except subprocess.TimeoutExpired:
             logger.warning(f"[LocalBackend] Command timed out after {timeout}s: {cmd[:60]}")

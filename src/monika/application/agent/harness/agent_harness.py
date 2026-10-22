@@ -2408,9 +2408,9 @@ class AgentHarness:
                 )
                 if c_name in untrusted_tools:
                     try:
-                        from monika.core.security.threat_scanner import sanitize_or_block
+                        from monika.core.security.prompt_injection_scanner import PromptInjectionScanner
 
-                        tool_res_content = sanitize_or_block(tool_res_content, source=c_name)
+                        tool_res_content = PromptInjectionScanner.sanitize_or_block(tool_res_content, source=c_name)
                     except Exception:
                         pass
                     tool_res_content = (

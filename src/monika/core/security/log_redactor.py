@@ -38,10 +38,15 @@ REDACTION_PATTERNS: List[Tuple[re.Pattern, str]] = [
     (re.compile(r"(?i)\bBearer\s+[a-zA-Z0-9_\-\.]{20,}\b"), "Bearer [REDACTED_BEARER_TOKEN]"),
     # Database URI password: postgresql://user:password@host
     (re.compile(r"(://[^:\s]+):([^@\s]+)@"), r"\1:[REDACTED_PASSWORD]@"),
-    # Generic credential assignment in text/JSON
+    # PEM Private Keys
+    (
+        re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----"),
+        "[REDACTED_PRIVATE_KEY]",
+    ),
+    # Generic credential assignment in text/JSON/YAML (quoted or unquoted, skipping already-redacted tags)
     (
         re.compile(
-            r"""(?i)(["']?(?:password|passwd|secret|api_key|token|access_token|client_secret)["']?\s*[:=]\s*["'])([^"'\r\n]+)(["'])"""
+            r"""(?i)(["']?(?:password|passwd|secret|api_key|token|access_token|client_secret)["']?\s*[:=]\s*["']?)(?!\[REDACTED)([^"'\r\n\s,}]+)(["']?)"""
         ),
         r"\1[REDACTED]\3",
     ),

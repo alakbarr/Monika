@@ -14,11 +14,11 @@ import base64
 import json
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 from monika.core.security.credential_vault import vault
 
-logger = logging.getLogger("TradingAgent.Auth.OAuthStore")
+logger = logging.getLogger(__name__)
 
 
 def _provider_key(provider: str) -> str:
@@ -57,7 +57,7 @@ def save_oauth_tokens(provider: str, token_data: dict[str, Any]) -> bool:
     key = _provider_key(provider)
     try:
         payload = json.dumps(token_data)
-        success = vault.set_secret(key, payload)
+        success = vault.set_secret(key, payload, persist_to_os=True)
         if success:
             logger.info("Successfully persisted OAuth credentials for %s", provider)
             email = token_data.get("email")
@@ -78,14 +78,14 @@ def save_oauth_tokens(provider: str, token_data: dict[str, Any]) -> bool:
                 if not updated:
                     new_accounts.append(dict(token_data))
                 p_key = _accounts_key(provider)
-                vault.set_secret(p_key, json.dumps(new_accounts))
+                vault.set_secret(p_key, json.dumps(new_accounts), persist_to_os=True)
         return success
     except Exception as exc:
         logger.error("Failed to store OAuth credentials for %s: %s", provider, exc)
         return False
 
 
-def get_oauth_tokens(provider: str) -> Optional[dict[str, Any]]:
+def get_oauth_tokens(provider: str) -> dict[str, Any] | None:
     """Retrieve and decrypt OAuth tokens for a specific provider from CredentialVault."""
     if not provider:
         return None
@@ -117,7 +117,7 @@ def _accounts_key(provider: str) -> str:
 def save_oauth_account(
     provider: str,
     account_data: dict[str, Any],
-    account_id: Optional[str] = None,
+    account_id: str | None = None,
 ) -> bool:
     """
     Save or update an account record within a provider's multi-account OAuth pool.
@@ -151,7 +151,7 @@ def save_oauth_account(
     key = _accounts_key(provider)
     try:
         payload = json.dumps(new_accounts)
-        success = vault.set_secret(key, payload)
+        success = vault.set_secret(key, payload, persist_to_os=True)
         if success:
             logger.info("Successfully persisted OAuth account pool for %s (%d accounts)", provider, len(new_accounts))
             # Also keep single token synced with paid or first account
@@ -205,7 +205,7 @@ def delete_oauth_account(provider: str, identifier: str) -> bool:
     try:
         if filtered:
             payload = json.dumps(filtered)
-            vault.set_secret(key, payload)
+            vault.set_secret(key, payload, persist_to_os=True)
             paid_acc = next((a for a in filtered if a.get("tier") == "paid"), filtered[0])
             save_oauth_tokens(provider, paid_acc)
         else:
@@ -232,7 +232,7 @@ def list_authenticated_providers() -> list[str]:
     return [p for p in known if get_oauth_tokens(p) is not None or get_oauth_accounts(p)]
 
 
-def get_token_expiry_timestamp(token_data: dict[str, Any]) -> Optional[float]:
+def get_token_expiry_timestamp(token_data: dict[str, Any]) -> float | None:
     """
     Extract the expiration UNIX timestamp from token_data:
     1. Direct 'expires_at' field (seconds or milliseconds).

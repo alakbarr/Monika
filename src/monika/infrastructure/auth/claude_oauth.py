@@ -20,9 +20,10 @@ import os
 import platform
 import secrets
 import subprocess
+import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 import urllib.parse
 import urllib.request
 
@@ -32,7 +33,8 @@ from monika.infrastructure.auth.oauth_store import (
     save_oauth_tokens,
 )
 
-logger = logging.getLogger("TradingAgent.Auth.ClaudeOAuth")
+logger = logging.getLogger(__name__)
+_claude_refresh_lock = threading.Lock()
 
 CLAUDE_OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 CLAUDE_OAUTH_TOKEN_URLS = [
@@ -52,7 +54,7 @@ def get_claude_credentials_path() -> Path:
     return root / ".credentials.json"
 
 
-def read_claude_code_credentials_file() -> Optional[Dict[str, Any]]:
+def read_claude_code_credentials_file() -> dict[str, Any] | None:
     """Read credentials written by Claude Code CLI (~/.claude/.credentials.json)."""
     creds_path = get_claude_credentials_path()
     if not creds_path.exists():
@@ -78,7 +80,7 @@ def read_claude_code_credentials_file() -> Optional[Dict[str, Any]]:
         return None
 
 
-def read_claude_code_keychain() -> Optional[Dict[str, Any]]:
+def read_claude_code_keychain() -> dict[str, Any] | None:
     """Read macOS Keychain entry for Claude Code credentials if on Darwin."""
     if platform.system() != "Darwin":
         return None
@@ -109,12 +111,12 @@ def read_claude_code_keychain() -> Optional[Dict[str, Any]]:
         return None
 
 
-def read_claude_code_credentials() -> Optional[Dict[str, Any]]:
+def read_claude_code_credentials() -> dict[str, Any] | None:
     """Read Claude Code credentials from file or Keychain."""
     return read_claude_code_credentials_file() or read_claude_code_keychain()
 
 
-def refresh_claude_token(refresh_token: str | Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def refresh_claude_token(refresh_token: str | dict[str, Any]) -> dict[str, Any] | None:
     """Exchange a refresh token for a fresh access token with Anthropic OAuth endpoint."""
     token_str = (
         refresh_token.get("refresh_token", "") if isinstance(refresh_token, dict) else str(refresh_token)
@@ -122,55 +124,61 @@ def refresh_claude_token(refresh_token: str | Dict[str, Any]) -> Optional[Dict[s
     if not token_str:
         return None
 
-    payload = json.dumps(
-        {
-            "client_id": CLAUDE_OAUTH_CLIENT_ID,
-            "grant_type": "refresh_token",
-            "refresh_token": token_str,
-        }
-    ).encode("utf-8")
+    with _claude_refresh_lock:
+        # Re-check if another thread already refreshed while waiting for the lock
+        current_store = get_oauth_tokens("anthropic")
+        if current_store and not is_token_expiring(current_store, skew_seconds=180):
+            return current_store
 
-    for url in CLAUDE_OAUTH_TOKEN_URLS:
-        try:
-            req = urllib.request.Request(
-                url,
-                data=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "User-Agent": CLAUDE_OAUTH_TOKEN_USER_AGENT,
-                    "Accept": "application/json",
-                },
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                if isinstance(data, dict) and data.get("access_token"):
-                    expires_in = data.get("expires_in", 3600)
-                    token_record = {
-                        "access_token": data["access_token"].strip(),
-                        "refresh_token": str(data.get("refresh_token") or token_str).strip(),
-                        "expires_at": time.time() + float(expires_in),
-                        "token_type": data.get("token_type", "Bearer"),
-                        "source": "anthropic_refresh",
-                    }
-                    save_oauth_tokens("anthropic", token_record)
-                    logger.info("Successfully refreshed Claude OAuth access token.")
-                    return token_record
-        except Exception as exc:
-            logger.debug("Claude token refresh attempt at %s failed: %s", url, exc)
-            continue
+        payload = json.dumps(
+            {
+                "client_id": CLAUDE_OAUTH_CLIENT_ID,
+                "grant_type": "refresh_token",
+                "refresh_token": token_str,
+            }
+        ).encode("utf-8")
 
-    logger.warning("All Claude token refresh attempts failed.")
-    return None
+        for url in CLAUDE_OAUTH_TOKEN_URLS:
+            try:
+                req = urllib.request.Request(
+                    url,
+                    data=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "User-Agent": CLAUDE_OAUTH_TOKEN_USER_AGENT,
+                        "Accept": "application/json",
+                    },
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    if isinstance(data, dict) and data.get("access_token"):
+                        expires_in = data.get("expires_in", 3600)
+                        token_record = {
+                            "access_token": data["access_token"].strip(),
+                            "refresh_token": str(data.get("refresh_token") or token_str).strip(),
+                            "expires_at": time.time() + float(expires_in),
+                            "token_type": data.get("token_type", "Bearer"),
+                            "source": "anthropic_refresh",
+                        }
+                        save_oauth_tokens("anthropic", token_record)
+                        logger.info("Successfully refreshed Claude OAuth access token.")
+                        return token_record
+            except Exception as exc:
+                logger.debug("Claude token refresh attempt at %s failed: %s", url, exc)
+                continue
+
+        logger.warning("All Claude token refresh attempts failed.")
+        return None
 
 
-def resolve_claude_access_token() -> Optional[str]:
+def resolve_claude_access_token() -> str | None:
     """
     Resolve active and valid Claude access token:
     1. Checks Monika's internal OAuth store.
     2. If expiring or absent, checks Claude Code CLI credentials.
     3. Triggers refresh if token is expired but refresh_token exists.
-    4. Returns active access token string or None.
+    4. Returns active access token string or None (fail-closed).
     """
     token_record = get_oauth_tokens("anthropic")
 
@@ -192,6 +200,10 @@ def resolve_claude_access_token() -> Optional[str]:
             refreshed = refresh_claude_token(refresh_token)
             if refreshed and refreshed.get("access_token"):
                 return refreshed["access_token"]
+        # Fail-closed: if the token is genuinely expired and cannot be refreshed, do not use it
+        if is_token_expiring(token_record, skew_seconds=0):
+            logger.warning("Claude access token is expired and refresh failed; failing closed.")
+            return None
 
     return token_record.get("access_token") or None
 
@@ -218,7 +230,7 @@ def get_claude_authorization_url(code_challenge: str, state: str) -> str:
     return f"https://console.anthropic.com/oauth/authorize?{urllib.parse.urlencode(params)}"
 
 
-def exchange_code_for_token(code: str, code_verifier: str) -> Optional[Dict[str, Any]]:
+def exchange_code_for_token(code: str, code_verifier: str) -> dict[str, Any] | None:
     """Exchange authorization code for token pair."""
     payload = json.dumps(
         {

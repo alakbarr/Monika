@@ -8,7 +8,6 @@ Telegram, WebSocket UI, or logs.
 """
 
 import re
-from typing import List, Optional, Set
 
 from monika.core.streaming.sanitizer import ASCII_EMOTICON_PATTERN, EMOJI_PATTERN
 
@@ -21,6 +20,8 @@ SECRET_PATTERNS = [
     ),
     (re.compile(r"bot\d{8,12}:[A-Za-z0-9_-]{35,}", re.IGNORECASE), "[REDACTED_TELEGRAM_TOKEN]"),
     (re.compile(r"sk-[A-Za-z0-9_\-]{20,}", re.IGNORECASE), "[REDACTED_API_KEY]"),
+    (re.compile(r"gsk_[A-Za-z0-9_-]{20,}", re.IGNORECASE), "[REDACTED_GROQ_KEY]"),
+    (re.compile(r"AIza[0-9A-Za-z\-_]{35}", re.IGNORECASE), "[REDACTED_GEMINI_KEY]"),
 ]
 
 STRIP_TAG_PAIRS = [
@@ -110,10 +111,14 @@ class StatefulStreamScrubber:
                     self._in_think = False
                 else:
                     # Still inside thinking block; save thinking and check boundary
-                    if "</" in self._buffer:
-                        idx = self._buffer.rfind("</")
-                        self._accumulated_thinking.append(self._buffer[:idx])
-                        self._buffer = self._buffer[idx:]
+                    if "<" in self._buffer:
+                        idx = self._buffer.rfind("<")
+                        if len(self._buffer) - idx < 50:
+                            self._accumulated_thinking.append(self._buffer[:idx])
+                            self._buffer = self._buffer[idx:]
+                        else:
+                            self._accumulated_thinking.append(self._buffer)
+                            self._buffer = ""
                     else:
                         self._accumulated_thinking.append(self._buffer)
                         self._buffer = ""
@@ -127,9 +132,12 @@ class StatefulStreamScrubber:
                     self._buffer = self._buffer[close_match.end() :]
                     self._in_internal_tag = None
                 else:
-                    if "</" in self._buffer:
-                        idx = self._buffer.rfind("</")
-                        self._buffer = self._buffer[idx:]
+                    if "<" in self._buffer:
+                        idx = self._buffer.rfind("<")
+                        if len(self._buffer) - idx < 50:
+                            self._buffer = self._buffer[idx:]
+                        else:
+                            self._buffer = ""
                     else:
                         self._buffer = ""
                     break
@@ -187,7 +195,7 @@ class StatefulStreamScrubber:
             candidate = self._trailing_token_buf + emitted
             redacted = self._apply_redactions(candidate)
             incomplete_pattern = re.compile(
-                r"(?:sk-[A-Za-z0-9_-]{1,25}|bot\d{1,12}(?::[A-Za-z0-9_-]{0,34})?|(?:api[_-]?key|token|secret|password|bearer)\s*[:=]\s*['\"]?[A-Za-z0-9_.-]{1,12})$",
+                r"(?:sk-[A-Za-z0-9_-]{1,25}|gsk_[A-Za-z0-9_-]{1,25}|AIza[0-9A-Za-z\-_]{0,34}|bot\d{1,12}(?::[A-Za-z0-9_-]{0,34})?|(?:api[_-]?key|token|secret|password|bearer)\s*[:=]\s*['\"]?[A-Za-z0-9_.-]{1,12})$",
                 re.IGNORECASE,
             )
             m = incomplete_pattern.search(redacted)

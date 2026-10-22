@@ -25,12 +25,12 @@ import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from monika.application.analysis.tools.environments.pty_query_responder import PtyQueryResponder
+from monika.infrastructure.sandboxes.pty_query_responder import PtyQueryResponder
 
 if TYPE_CHECKING:
     from monika.infrastructure.mcp.client import _PopenStdioProcess
 
-logger = logging.getLogger("Monika.Infrastructure.Sandboxes.PtyBridge")
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -122,7 +122,8 @@ class PtySession:
 
         # Check for Enter/Return execution trigger
         if "\r" in data or "\n" in data:
-            candidate_line = (self._input_line_buffer + data).strip()
+            full_line = self._input_line_buffer + data
+            candidate_line = full_line.strip()
             self._input_line_buffer = ""
 
             from monika.core.security.terminal_guard import is_hardline_blocked_command
@@ -148,16 +149,27 @@ class PtySession:
                 self._output_buffer.append(alert_banner)
                 asyncio.create_task(self._log_security_violation(candidate_line, reason))
                 return
-        else:
-            self._input_line_buffer += data
-            if len(self._input_line_buffer) > 4096:
-                self._input_line_buffer = self._input_line_buffer[-4096:]
 
-        try:
-            self.process.stdin.write(data.encode("utf-8"))
-            await self.process.stdin.drain()
-        except Exception as e:
-            logger.debug(f"[PtySession] Stdin write error: {e}")
+            try:
+                self.process.stdin.write(full_line.encode("utf-8"))
+                await self.process.stdin.drain()
+            except Exception as e:
+                logger.debug(f"[PtySession] Stdin write error: {e}")
+            return
+
+        # Special control characters: forward immediately
+        if data in ("\x03", "\x04") or data.startswith("\x1b"):
+            try:
+                self.process.stdin.write(data.encode("utf-8"))
+                await self.process.stdin.drain()
+            except Exception as e:
+                logger.debug(f"[PtySession] Stdin control write error: {e}")
+            return
+
+        # Regular character typing: accumulate in buffer until Enter to prevent bypasses
+        self._input_line_buffer += data
+        if len(self._input_line_buffer) > 4096:
+            self._input_line_buffer = self._input_line_buffer[-4096:]
 
     async def close_process(self) -> None:
         """Terminate underlying subprocess cleanly."""

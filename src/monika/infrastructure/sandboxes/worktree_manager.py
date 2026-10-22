@@ -17,13 +17,13 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 import shutil
 import subprocess
 import tempfile
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
-logger = logging.getLogger("TradingAgent.Utils.WorktreeManager")
+logger = logging.getLogger(__name__)
 
 
 class WorktreeManager:
@@ -31,10 +31,10 @@ class WorktreeManager:
     Manages isolated Git worktrees for agent task sandboxing.
     """
 
-    def __init__(self, repo_path: Optional[Union[str, Path]] = None):
+    def __init__(self, repo_path: str | Path | None = None):
         self.repo_path = Path(repo_path or Path.cwd()).resolve()
 
-    def _run_git(self, args: List[str]) -> Tuple[int, str, str]:
+    def _run_git(self, args: list[str]) -> tuple[int, str, str]:
         """Runs a git command within the target repository."""
         cmd = ["git"] + args
         try:
@@ -54,14 +54,14 @@ class WorktreeManager:
         code, out, _ = self._run_git(["rev-parse", "--is-inside-work-tree"])
         return code == 0 and out == "true"
 
-    def list_worktrees(self) -> List[Dict[str, Any]]:
+    def list_worktrees(self) -> list[dict[str, Any]]:
         """Lists active git worktrees."""
         code, out, _ = self._run_git(["worktree", "list", "--porcelain"])
         if code != 0:
             return []
 
         worktrees = []
-        current: Dict[str, Any] = {}
+        current: dict[str, Any] = {}
         for line in out.splitlines():
             line = line.strip()
             if not line:
@@ -87,7 +87,7 @@ class WorktreeManager:
     def create_worktree(
         self,
         branch_or_commit: str = "HEAD",
-        worktree_path: Optional[Union[str, Path]] = None,
+        worktree_path: str | Path | None = None,
         detach: bool = True,
     ) -> Path:
         """
@@ -100,6 +100,8 @@ class WorktreeManager:
             target_dir = Path(tempfile.mkdtemp(prefix="monika_worktree_"))
         else:
             target_dir = Path(worktree_path).resolve()
+            if target_dir == self.repo_path or target_dir.parent == target_dir:
+                raise ValueError(f"Invalid worktree path: cannot be repository root or system root: {target_dir}")
             target_dir.parent.mkdir(parents=True, exist_ok=True)
 
         args = ["worktree", "add"]
@@ -116,9 +118,29 @@ class WorktreeManager:
         logger.info(f"[WorktreeManager] Created worktree at '{target_dir}' from '{branch_or_commit}'.")
         return target_dir
 
-    def remove_worktree(self, worktree_path: Union[str, Path], force: bool = True) -> bool:
-        """Removes a worktree and cleans up disk directory."""
+    def remove_worktree(self, worktree_path: str | Path, force: bool = True) -> bool:
+        """Removes a worktree and cleans up disk directory with safety checks."""
         target = Path(worktree_path).resolve()
+        # Security Guard: never delete repo root, system root, or anything outside sandboxed worktrees
+        if target == self.repo_path or target.parent == target:
+            raise ValueError(f"Refusing to delete repository root or drive root: {target}")
+
+        temp_dir = Path(tempfile.gettempdir()).resolve()
+        is_in_temp = temp_dir in target.parents
+        is_in_worktrees = (self.repo_path / ".worktrees").resolve() in target.parents
+
+        active_worktrees = self.list_worktrees()
+        is_known_worktree = any(Path(w.get("path", "")).resolve() == target for w in active_worktrees if w.get("path"))
+
+        # Main worktree check: the first worktree in `worktree list` is always the main worktree
+        if active_worktrees and Path(active_worktrees[0].get("path", "")).resolve() == target:
+            raise ValueError(f"Refusing to remove main worktree: {target}")
+
+        if not (is_in_temp or is_in_worktrees or is_known_worktree):
+            raise ValueError(
+                f"Refusing to remove worktree at '{target}': not an active worktree or inside allowed temporary sandbox."
+            )
+
         args = ["worktree", "remove"]
         if force:
             args.append("--force")
@@ -128,7 +150,7 @@ class WorktreeManager:
         if code != 0:
             logger.warning(f"[WorktreeManager] Git worktree remove error: {err}. Attempting manual prune.")
 
-        if target.exists():
+        if target.exists() and (is_in_temp or is_in_worktrees or is_known_worktree):
             shutil.rmtree(target, ignore_errors=True)
 
         self.prune()

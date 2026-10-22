@@ -4,12 +4,19 @@ Provides credential vault, sensitive data masking, and egress security controls.
 """
 
 from monika.core.security import (
+    env_sanitizer,
     log_redactor,
     nt_guard,
     prompt_injection_scanner,
     ssrf_guard,
     supply_chain_quarantine,
     terminal_guard,
+)
+from monika.core.security.env_sanitizer import (
+    SAFE_SYSTEM_KEYS,
+    SENSITIVE_PATTERNS,
+    get_sanitized_environment,
+    sanitize_environment,
 )
 from monika.core.security.credential_vault import (
     CredentialVault,
@@ -65,6 +72,11 @@ __all__ = [
     "nt_guard",
     "supply_chain_quarantine",
     "log_redactor",
+    "env_sanitizer",
+    "get_sanitized_environment",
+    "sanitize_environment",
+    "SENSITIVE_PATTERNS",
+    "SAFE_SYSTEM_KEYS",
     "assert_safe_read_path",
     "assert_safe_write_path",
     "assert_safe_nt_path",

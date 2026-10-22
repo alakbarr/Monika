@@ -759,6 +759,7 @@
 #### `credential_vault.py` - *Secure Credential Vault & Sensitive Output Masking for Monika Trading Agent.*
 - **Path**: [`src/monika/core/security/credential_vault.py`](src/monika/core/security/credential_vault.py)
 - **Classes**:
+  - `class VaultDecryptionError(Exception)`: Raised when vault ciphertext cannot be decrypted or authenticated.
   - `class CredentialVault`: Centralized credential vault managing access to sensitive tokens, keys, and passwords.
     - `__init__(target_prefix: str | None)`
     - `get_secret(key: str, default: str | None) -> str | None` - *Retrieve a secret by key.*
@@ -843,6 +844,7 @@
   - `class CommandSecurityViolationError(SecurityViolationError)`: Raised when command execution violates terminal security policy.
 - **Top-Level Functions**:
   - `deobfuscate_command(cmd_line: str) -> str`: De-obfuscates command line strings to defeat evasion techniques such as:
+  - `extract_powershell_encoded_command(cmd_line: str) -> str | None`: Extract and base64-decode PowerShell -EncodedCommand / -enc payload.
   - `unwrap_command_quotes(cmd_line: str) -> str`: Unwrap nested quotes and execution wrappers (e.g. sh -c '...', bash -c '...', powershell -Command '...')
   - `is_hardline_blocked_command(cmd_line: str) -> tuple[bool, str]`: Evaluate command line string against hardline blocklist.
   - `assert_safe_write_path(target_path: str, safe_root: str | None) -> str`: Ensure the target write path is inside MONIKA_WRITE_SAFE_ROOT and does not target
@@ -7728,13 +7730,8 @@
     - `async run_python_code(code: str, timeout_seconds: float) -> ExecutionOutcome` - *Runs arbitrary or sandboxed Python code.*
     - `cleanup() -> None` - *Release underlying resources or containers.*
 
-#### `pty_query_responder.py` - *PTY Escape Query Responder & Terminal Protocol Synthesizer.*
+#### `pty_query_responder.py` - *Backward compatibility facade for PTY Escape Query Responder.*
 - **Path**: [`src/monika/application/analysis/tools/environments/pty_query_responder.py`](src/monika/application/analysis/tools/environments/pty_query_responder.py)
-- **Classes**:
-  - `class PtyQueryResponder`: Stream filter and automatic responder for ANSI/VT terminal interrogation queries.
-    - `__init__()`
-    - `process_output(data: Union[bytes, str]) -> List[bytes]` - *Inspects output bytes from subprocess stdout/pty.*
-    - `filter_and_respond(data: bytes) -> Tuple[bytes, List[bytes]]` - *Processes stream output, returning (clean_data, stdin_responses).*
 
 #### `tier1_inprocess.py` - *Tier 1: In-Process High-Throughput Quant Sandbox Environment.*
 - **Path**: [`src/monika/application/analysis/tools/environments/tier1_inprocess.py`](src/monika/application/analysis/tools/environments/tier1_inprocess.py)
@@ -8478,10 +8475,8 @@
   - `generate_monika_tools_client_code(port: int, token: str, allowed_tools: Set[str] | FrozenSet[str]) -> str`: Generate client stub script to be injected into the execution sandbox environment.
   - `render_tools_sdk_py(tool_schemas: List[Dict[str, Any]]) -> str`: Generate clean Python TypedDict and Tools(Protocol) type stub documentation
 
-#### `env_sanitizer.py` - *Strict environment variable scrubbing for programmatic tool execution and subprocesses.*
+#### `env_sanitizer.py` - *Backward compatibility facade for Subprocess Environment Sanitizer.*
 - **Path**: [`src/monika/application/analysis/tools/kernel/env_sanitizer.py`](src/monika/application/analysis/tools/kernel/env_sanitizer.py)
-- **Top-Level Functions**:
-  - `get_sanitized_environment(base_env: Optional[Dict[str, str]]) -> Dict[str, str]`: Produce a scrubbed environment dictionary for child process execution.
 
 #### `output_spiller.py` - *Intelligent output bounding and disk spilling for oversized tool observations.*
 - **Path**: [`src/monika/application/analysis/tools/kernel/output_spiller.py`](src/monika/application/analysis/tools/kernel/output_spiller.py)
@@ -10659,50 +10654,50 @@
   - `is_antigravity_installed() -> bool`: Check if Antigravity CLI data directory exists.
   - `generate_antigravity_pkce() -> tuple[str, str]`: Generate PKCE code_verifier and code_challenge (S256).
   - `get_antigravity_authorization_url(code_challenge: str, state: str, redirect_uri: str) -> str`: Build official Google OAuth 2.0 authorization URL for browser login.
-  - `exchange_antigravity_code(code: str, code_verifier: str, redirect_uri: str, ...) -> Optional[Dict[str, Any]]`: Exchange authorization code for access and refresh tokens at Google OAuth endpoint.
-  - `refresh_antigravity_token(refresh_token: str | Dict[str, Any], timeout: float) -> Optional[Dict[str, Any]]`: Exchange refresh token for fresh Antigravity access token.
-  - `mark_antigravity_account_cooldown(identifier: Optional[str], cooldown_seconds: float) -> None`: Mark an account (email or token) on cooldown after rate limit (HTTP 429) or transient error.
+  - `exchange_antigravity_code(code: str, code_verifier: str, redirect_uri: str, ...) -> dict[str, Any] | None`: Exchange authorization code for access and refresh tokens at Google OAuth endpoint.
+  - `refresh_antigravity_token(refresh_token: str | dict[str, Any], timeout: float) -> dict[str, Any] | None`: Exchange refresh token for fresh Antigravity access token.
+  - `mark_antigravity_account_cooldown(identifier: str | None, cooldown_seconds: float) -> None`: Mark an account (email or token) on cooldown after rate limit (HTTP 429) or transient error.
   - `get_antigravity_pool_summary() -> dict[str, Any]`: Return summary statistics of active Antigravity account pool.
-  - `resolve_antigravity_access_token(tier: Optional[str], model: Optional[str]) -> Optional[str]`: Retrieve and automatically refresh active Google Antigravity access token from account pool.
-  - `check_antigravity_bridge_health(proxy_url: Optional[str], timeout: float) -> Dict[str, Any]`: Probe the local Antigravity proxy server to verify it is responsive and authenticated.
+  - `resolve_antigravity_access_token(tier: str | None, model: str | None) -> str | None`: Retrieve and automatically refresh active Google Antigravity access token from account pool.
+  - `check_antigravity_bridge_health(proxy_url: str | None, timeout: float) -> dict[str, Any]`: Probe the local Antigravity proxy server to verify it is responsive and authenticated.
 
 #### `claude_oauth.py` - *Claude (Anthropic) OAuth Integration & Credential Resolver.*
 - **Path**: [`src/monika/infrastructure/auth/claude_oauth.py`](src/monika/infrastructure/auth/claude_oauth.py)
 - **Top-Level Functions**:
   - `get_claude_credentials_path() -> Path`: Return the path to Claude Code CLI credentials file.
-  - `read_claude_code_credentials_file() -> Optional[Dict[str, Any]]`: Read credentials written by Claude Code CLI (~/.claude/.credentials.json).
-  - `read_claude_code_keychain() -> Optional[Dict[str, Any]]`: Read macOS Keychain entry for Claude Code credentials if on Darwin.
-  - `read_claude_code_credentials() -> Optional[Dict[str, Any]]`: Read Claude Code credentials from file or Keychain.
-  - `refresh_claude_token(refresh_token: str | Dict[str, Any]) -> Optional[Dict[str, Any]]`: Exchange a refresh token for a fresh access token with Anthropic OAuth endpoint.
-  - `resolve_claude_access_token() -> Optional[str]`: Resolve active and valid Claude access token:
+  - `read_claude_code_credentials_file() -> dict[str, Any] | None`: Read credentials written by Claude Code CLI (~/.claude/.credentials.json).
+  - `read_claude_code_keychain() -> dict[str, Any] | None`: Read macOS Keychain entry for Claude Code credentials if on Darwin.
+  - `read_claude_code_credentials() -> dict[str, Any] | None`: Read Claude Code credentials from file or Keychain.
+  - `refresh_claude_token(refresh_token: str | dict[str, Any]) -> dict[str, Any] | None`: Exchange a refresh token for a fresh access token with Anthropic OAuth endpoint.
+  - `resolve_claude_access_token() -> str | None`: Resolve active and valid Claude access token:
   - `generate_pkce_pair() -> tuple[str, str]`: Generate PKCE (code_verifier, code_challenge) using S256.
   - `get_claude_authorization_url(code_challenge: str, state: str) -> str`: Build Anthropic OAuth authorization URL for browser login.
-  - `exchange_code_for_token(code: str, code_verifier: str) -> Optional[Dict[str, Any]]`: Exchange authorization code for token pair.
+  - `exchange_code_for_token(code: str, code_verifier: str) -> dict[str, Any] | None`: Exchange authorization code for token pair.
 
 #### `codex_device_flow.py` - *OpenAI Codex Device Code OAuth Integration for ChatGPT Subscription.*
 - **Path**: [`src/monika/infrastructure/auth/codex_device_flow.py`](src/monika/infrastructure/auth/codex_device_flow.py)
 - **Top-Level Functions**:
   - `get_codex_cli_auth_path() -> Path`: Return path to ~/.codex/auth.json.
-  - `read_codex_cli_credentials() -> Optional[Dict[str, Any]]`: Read tokens from OpenAI Codex CLI if available.
-  - `request_codex_device_code() -> Dict[str, Any]`: Step 1: Request user code and device auth ID from OpenAI.
-  - `poll_codex_authorization(device_auth_id: str, user_code: str, poll_interval: int, ...) -> Dict[str, Any]`: Step 2: Poll OpenAI until user authorizes the device in the browser.
-  - `exchange_codex_code(code_resp: Dict[str, Any]) -> Dict[str, Any]`: Step 3: Swap authorization code for OAuth tokens.
-  - `refresh_codex_token(refresh_token: str | Dict[str, Any]) -> Optional[Dict[str, Any]]`: Exchange refresh token for fresh Codex access token.
-  - `resolve_codex_access_token() -> Optional[str]`: Resolve active access token for OpenAI Codex.
+  - `read_codex_cli_credentials() -> dict[str, Any] | None`: Read tokens from OpenAI Codex CLI if available.
+  - `request_codex_device_code() -> dict[str, Any]`: Step 1: Request user code and device auth ID from OpenAI.
+  - `poll_codex_authorization(device_auth_id: str, user_code: str, poll_interval: int, ...) -> dict[str, Any]`: Step 2: Poll OpenAI until user authorizes the device in the browser.
+  - `exchange_codex_code(code_resp: dict[str, Any]) -> dict[str, Any]`: Step 3: Swap authorization code for OAuth tokens.
+  - `refresh_codex_token(refresh_token: str | dict[str, Any]) -> dict[str, Any] | None`: Exchange refresh token for fresh Codex access token.
+  - `resolve_codex_access_token() -> str | None`: Resolve active access token for OpenAI Codex.
 
 #### `oauth_store.py` - *Secure OAuth Token Store for Monika Trading Agent.*
 - **Path**: [`src/monika/infrastructure/auth/oauth_store.py`](src/monika/infrastructure/auth/oauth_store.py)
 - **Top-Level Functions**:
   - `decode_jwt_claims(jwt_token: str) -> dict[str, Any]`: Safely decode unverified claims from a JWT payload without external dependencies.
   - `save_oauth_tokens(provider: str, token_data: dict[str, Any]) -> bool`: Encrypt and store OAuth tokens for a specific provider in CredentialVault.
-  - `get_oauth_tokens(provider: str) -> Optional[dict[str, Any]]`: Retrieve and decrypt OAuth tokens for a specific provider from CredentialVault.
+  - `get_oauth_tokens(provider: str) -> dict[str, Any] | None`: Retrieve and decrypt OAuth tokens for a specific provider from CredentialVault.
   - `delete_oauth_tokens(provider: str) -> bool`: Delete OAuth tokens for a specific provider from CredentialVault.
-  - `save_oauth_account(provider: str, account_data: dict[str, Any], account_id: Optional[str]) -> bool`: Save or update an account record within a provider's multi-account OAuth pool.
+  - `save_oauth_account(provider: str, account_data: dict[str, Any], account_id: str | None) -> bool`: Save or update an account record within a provider's multi-account OAuth pool.
   - `get_oauth_accounts(provider: str) -> list[dict[str, Any]]`: Retrieve all accounts registered in a provider's OAuth pool.
   - `delete_oauth_account(provider: str, identifier: str) -> bool`: Remove a specific account by email, account_id, or 1-based slot index.
   - `clear_oauth_accounts(provider: str) -> bool`: Clear all accounts from the provider pool.
   - `list_authenticated_providers() -> list[str]`: Return list of provider names that currently have active tokens stored in vault.
-  - `get_token_expiry_timestamp(token_data: dict[str, Any]) -> Optional[float]`: Extract the expiration UNIX timestamp from token_data:
+  - `get_token_expiry_timestamp(token_data: dict[str, Any]) -> float | None`: Extract the expiration UNIX timestamp from token_data:
   - `is_token_expiring(token_data: dict[str, Any], skew_seconds: int) -> bool`: Check if the token is already expired or expiring within `skew_seconds`.
 
 ### Folder: `src/monika/infrastructure/brokers` <a id="folder-srcmonikainfrastructurebrokers"></a>
@@ -13051,8 +13046,8 @@
 - **Path**: [`src/monika/infrastructure/sandboxes/local_backend.py`](src/monika/infrastructure/sandboxes/local_backend.py)
 - **Classes**:
   - `class LocalTerminalBackend(BaseTerminalBackend)`: Local OS execution backend.
-    - `__init__(default_cwd: Optional[str])`
-    - `execute(cmd: str, cwd: Optional[str], timeout: float, ...) -> Tuple[str, str, int]`
+    - `__init__(default_cwd: str | None)`
+    - `execute(cmd: str, cwd: str | None, timeout: float, ...) -> tuple[str, str, int]`
     - `read_file(path: str, offset: int, limit: int) -> str`
     - `write_file(path: str, content: str, append: bool) -> bool`
     - `is_alive() -> bool`
@@ -13083,11 +13078,11 @@
 - **Path**: [`src/monika/infrastructure/sandboxes/worktree_manager.py`](src/monika/infrastructure/sandboxes/worktree_manager.py)
 - **Classes**:
   - `class WorktreeManager`: Manages isolated Git worktrees for agent task sandboxing.
-    - `__init__(repo_path: Optional[Union[str, Path]])`
+    - `__init__(repo_path: str | Path | None)`
     - `is_git_repo() -> bool`
-    - `list_worktrees() -> List[Dict[str, Any]]` - *Lists active git worktrees.*
-    - `create_worktree(branch_or_commit: str, worktree_path: Optional[Union[str, Path]], detach: bool) -> Path` - *Creates a new git worktree. If worktree_path is omitted, creates a temporary directory.*
-    - `remove_worktree(worktree_path: Union[str, Path], force: bool) -> bool` - *Removes a worktree and cleans up disk directory.*
+    - `list_worktrees() -> list[dict[str, Any]]` - *Lists active git worktrees.*
+    - `create_worktree(branch_or_commit: str, worktree_path: str | Path | None, detach: bool) -> Path` - *Creates a new git worktree. If worktree_path is omitted, creates a temporary directory.*
+    - `remove_worktree(worktree_path: str | Path, force: bool) -> bool` - *Removes a worktree and cleans up disk directory with safety checks.*
     - `prune() -> None` - *Prunes stale git worktree metadata.*
 
 ### Folder: `src/monika/infrastructure/storage` <a id="folder-srcmonikainfrastructurestorage"></a>

@@ -1200,9 +1200,9 @@ class FallbackClientWrapper(BaseLLMClient):
                     # Strategy 2: In-Flight Key Rotation from APICredentialPool
                     if is_rate_or_auth:
                         try:
-                            from monika.infrastructure.api.credential_pool import APICredentialPool
+                            from monika.infrastructure.credentials.credential_pool import CredentialPool
 
-                            cred_pool = APICredentialPool()
+                            cred_pool = CredentialPool.get_instance()
                             curr_key = getattr(client, "api_key", None) or getattr(client, "_api_key", None)
                             if curr_key:
                                 cred_pool.report_rate_limit(provider, curr_key, model=model)

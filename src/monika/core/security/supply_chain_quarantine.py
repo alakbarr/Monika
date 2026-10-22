@@ -156,34 +156,47 @@ class SupplyChainQuarantine:
                 try:
                     rel_dt = datetime.fromisoformat(release_date.replace("Z", "+00:00"))
                 except ValueError:
-                    rel_dt = None
-            else:
-                rel_dt = release_date
-
-            if rel_dt is not None:
-                if rel_dt.tzinfo is None:
-                    rel_dt = rel_dt.replace(tzinfo=UTC)
-                from monika.core.primitives import clock
-
-                now_dt = clock.now()
-                age_delta = now_dt - rel_dt
-                age_days = max(0.0, age_delta.total_seconds() / 86400.0)
-
-                if age_days < self.quarantine_days:
-                    quarantine_remaining = self.quarantine_days - age_days
-                    reason = (
-                        f"Package '{package_name}=={version}' was released {age_days:.1f} days ago. "
-                        f"Subject to {self.quarantine_days}-day quarantine ({quarantine_remaining:.1f} days remaining)."
-                    )
                     return QuarantineVerdict(
                         package_name=package_name,
                         version=version,
                         allowed=False,
                         status="QUARANTINED",
-                        reason=reason,
-                        release_age_days=age_days,
-                        details={"quarantine_remaining_days": quarantine_remaining},
+                        reason=f"Package '{package_name}=={version}' has unparseable release date '{release_date}'. Blocked by fail-closed policy.",
                     )
+            elif isinstance(release_date, datetime):
+                rel_dt = release_date
+            else:
+                return QuarantineVerdict(
+                    package_name=package_name,
+                    version=version,
+                    allowed=False,
+                    status="QUARANTINED",
+                    reason=f"Package '{package_name}=={version}' has invalid release date type. Blocked by fail-closed policy.",
+                )
+
+            if rel_dt.tzinfo is None:
+                rel_dt = rel_dt.replace(tzinfo=UTC)
+            from monika.core.primitives import clock
+
+            now_dt = clock.now()
+            age_delta = now_dt - rel_dt
+            age_days = max(0.0, age_delta.total_seconds() / 86400.0)
+
+            if age_days < self.quarantine_days:
+                quarantine_remaining = self.quarantine_days - age_days
+                reason = (
+                    f"Package '{package_name}=={version}' was released {age_days:.1f} days ago. "
+                    f"Subject to {self.quarantine_days}-day quarantine ({quarantine_remaining:.1f} days remaining)."
+                )
+                return QuarantineVerdict(
+                    package_name=package_name,
+                    version=version,
+                    allowed=False,
+                    status="QUARANTINED",
+                    reason=reason,
+                    release_age_days=age_days,
+                    details={"quarantine_remaining_days": quarantine_remaining},
+                )
 
         return QuarantineVerdict(
             package_name=package_name,

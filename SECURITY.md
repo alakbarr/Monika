@@ -47,10 +47,16 @@ Monika is architected around non-negotiable security principles:
 - **Sanitized Logging**: The logging system and telemetry exporters automatically filter API tokens, authorization headers, and passwords from logs and console outputs.
 - **Role-Based Access Control (RBAC)**: All mutating endpoints on the Dashboard API require proper authentication and role clearance (`OPERATOR` or `ADMIN`).
 
-### 3. Programmatic Tool Execution (PTC) Sandboxing
-- Dynamic Python analysis code executed by the agent harness is restricted to a sanitized environment.
-- System environment variables (such as broker passwords and LLM credentials) are stripped from child processes spawned by PTC tools.
-- Private network IP ranges (`127.0.0.1`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`) are blocked from external web reader requests to prevent Server-Side Request Forgery (SSRF).
+### 3. Execution Sandboxing & Host Protection
+- **TerminalGuard**: Prohibits destructive shell commands, fork bombs, disk wipers, and arbitrary process termination. Inspects de-obfuscated commands by recursively removing CMD carets (`^`), decoding PowerShell Base64 EncodedCommands (`-enc`), and blocking raw reflection/pipeline file deletion.
+- **NTGuard**: Enforces strict filesystem containment on Windows and POSIX. Neutralizes UNC network paths, strips quotes, blocks path traversal attempts (`..`), and rejects legacy DOS reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1-9`, `LPT1-9`).
+- **Worktree Sandboxing**: Git worktree manipulation via `WorktreeManager` is constrained strictly to isolated temporary sandboxes (`.worktrees/` or OS temp). The main repository root and host roots are cryptographically and deterministically protected against accidental or malicious deletion.
+- **Supply Chain Quarantine**: All dynamic or scheduled dependency installations pass through `SupplyChainQuarantine`. Enforces mandatory age thresholds and fails closed (`allowed=False`) on unparseable metadata or anomalous release dates.
+- **Private Network SSRF Guard**: Private network IP ranges (`127.0.0.1`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `::1`, and IPv4-mapped IPv6) are strictly blocked from external web reader requests to prevent Server-Side Request Forgery.
+
+### 4. Streaming Scrubber & Credential Vault Protection
+- **Stateful Stream Scrubber**: Real-time streaming chunks dispatched to WebSockets, Telegram, or logs are scrubbed across delta boundaries. Strips internal `<think>` reasoning tags even when split across TCP packets, and redacts API tokens (OpenAI, Anthropic, Gemini, Groq, Tavily, Telegram bot tokens) before emission.
+- **Fail-Closed Vault Security**: Credential stores fail closed (`VaultDecryptionError`) on corrupt stores or invalid encryption keys, preventing silent secret loss. File persistence uses atomic rename patterns (`.tmp` -> `vault.enc`), and secret masking never leaks key prefixes or suffixes.
 
 ---
 

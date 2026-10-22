@@ -43,6 +43,12 @@ SECRET_PATTERNS = [
 ]
 
 
+class VaultDecryptionError(Exception):
+    """Raised when vault ciphertext cannot be decrypted or authenticated."""
+
+    pass
+
+
 class _WindowsCredManager:
     """Internal ctypes wrapper for advapi32 Windows Credential Manager."""
 
@@ -299,24 +305,34 @@ class _EncryptedFileVault:
             return {}
         try:
             cipher = self.vault_path.read_bytes()
+            if not cipher:
+                return {}
             decrypted = self._decrypt(cipher)
-            if decrypted:
+            if decrypted is not None:
                 return json.loads(decrypted)
+            raise VaultDecryptionError(
+                f"Failed to decrypt vault file '{self.vault_path}': key mismatch or data corrupted."
+            )
+        except VaultDecryptionError:
+            raise
         except Exception as e:
-            logger.debug(f"Failed to read vault file: {e}")
-        return {}
+            logger.error(f"Failed to read vault file: {e}")
+            raise VaultDecryptionError(f"Failed to read vault file '{self.vault_path}': {e}") from e
 
     def save_store(self, data: dict[str, str]) -> bool:
         self._ensure_initialized()
         try:
             payload = json.dumps(data)
             encrypted = self._encrypt(payload)
-            self.vault_path.write_bytes(encrypted)
+            # Atomic file write using temp file and os.replace
+            tmp_path = self.vault_path.with_suffix(".tmp")
+            tmp_path.write_bytes(encrypted)
             if sys.platform != "win32":
                 try:
-                    os.chmod(self.vault_path, 0o600)
+                    os.chmod(tmp_path, 0o600)
                 except Exception:
                     pass
+            os.replace(tmp_path, self.vault_path)
             return True
         except Exception as e:
             logger.error(f"Failed to save vault file: {e}")
@@ -461,11 +477,7 @@ class CredentialVault:
         all_secrets = sorted(set(self._registered_secrets) | set(_VAULT_REDACTION_VALUES), key=len, reverse=True)
         for secret in all_secrets:
             if secret in masked:
-                if len(secret) > 8:
-                    replacement = f"{secret[:2]}***[REDACTED]***{secret[-2:]}"
-                else:
-                    replacement = "***[REDACTED]***"
-                masked = masked.replace(secret, replacement)
+                masked = masked.replace(secret, "***[REDACTED]***")
 
         # 2. Mask known regex key patterns
         for pattern in SECRET_PATTERNS:
@@ -477,8 +489,6 @@ class CredentialVault:
                 if len(m.groups()) >= 2:
                     k = m.group(1)
                     return f"{k}=***[REDACTED]***"
-                if len(full_m) > 8:
-                    return f"{full_m[:4]}***[REDACTED]***{full_m[-4:]}"
                 return "***[REDACTED]***"
 
             masked = pattern.sub(_replace_match, masked)
