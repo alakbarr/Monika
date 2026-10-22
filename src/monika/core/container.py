@@ -45,21 +45,26 @@ class ServiceContainer:
 
     def get(self, name: str, default: Any = None) -> Any:
         """Resolve a service by name, walking parent chain if not present locally."""
+        factory = None
         with self._lock:
             if name in self._services:
                 return self._services[name]
             if name in self._factories:
-                instance = self._factories[name](self)
+                factory = self._factories[name]
+        if factory is not None:
+            instance = factory(self)
+            with self._lock:
                 self._services[name] = instance
-                return instance
+            return instance
         if self._parent is not None:
             return self._parent.get(name, default)
         return default
 
     def has(self, name: str) -> bool:
         """Check if service is registered in local container or any parent."""
-        if name in self._services or name in self._factories:
-            return True
+        with self._lock:
+            if name in self._services or name in self._factories:
+                return True
         if self._parent is not None:
             return self._parent.has(name)
         return False
@@ -109,16 +114,20 @@ class ServiceContainer:
         return self.get("plugin_manager")
 
     _instance: Optional["ServiceContainer"] = None
+    _instance_lock: threading.Lock = threading.Lock()
 
     @classmethod
     def get_instance(cls) -> "ServiceContainer":
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._instance_lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
 
     @classmethod
     def reset(cls) -> None:
-        cls._instance = None
+        with cls._instance_lock:
+            cls._instance = None
 
 
 # Backward compatibility alias for ServiceContainer

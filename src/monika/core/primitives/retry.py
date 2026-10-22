@@ -43,7 +43,7 @@ def retryable(
     retryable_exceptions: Union[type[BaseException], tuple[type[BaseException], ...]] = (Exception,),
     logger_instance: logging.Logger | None = None,
     on_retry_callback: Callable[[BaseException, int, float], None] | None = None,
-) -> Callable[[F], F]:
+) -> Callable[[Any], Any]:
     """
     Decorator for retrying functions on transient failures with exponential backoff.
 
@@ -59,7 +59,7 @@ def retryable(
     """
     log = logger_instance or logger
 
-    def decorator(func: F) -> F:
+    def decorator(func: Any) -> Any:
         if inspect.iscoroutinefunction(func):
 
             @functools.wraps(func)
@@ -69,6 +69,8 @@ def retryable(
                     try:
                         return await func(*args, **kwargs)
                     except retryable_exceptions as exc:
+                        if isinstance(exc, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)):
+                            raise
                         last_exc = exc
                         if attempt >= max_retries:
                             log.error(
@@ -88,7 +90,7 @@ def retryable(
                 if last_exc is not None:
                     raise last_exc
 
-            return async_wrapper  # type: ignore[return-value]
+            return async_wrapper
         else:
 
             @functools.wraps(func)
@@ -98,6 +100,8 @@ def retryable(
                     try:
                         return func(*args, **kwargs)
                     except retryable_exceptions as exc:
+                        if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                            raise
                         last_exc = exc
                         if attempt >= max_retries:
                             log.error(
@@ -117,6 +121,6 @@ def retryable(
                 if last_exc is not None:
                     raise last_exc
 
-            return sync_wrapper  # type: ignore[return-value]
+            return sync_wrapper
 
     return decorator

@@ -17,17 +17,13 @@ def now() -> datetime:
     """
     sim = _simulated_now.get()
     if sim is not None:
-        if sim.tzinfo is None:
-            return sim.replace(tzinfo=UTC)
-        return sim
+        return ensure_utc(sim) or datetime.now(UTC)
     return datetime.now(UTC)
 
 
 def set_simulated_now(dt: datetime | None) -> None:
     """Sets the simulated datetime globally in the current context."""
-    if dt is not None and dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
-    _simulated_now.set(dt)
+    _simulated_now.set(ensure_utc(dt))
 
 
 def get_simulated_now() -> datetime | None:
@@ -64,9 +60,7 @@ def frozen_time(dt: datetime | None):
     """
     Synchronous context manager to freeze simulated time deterministically per task/thread.
     """
-    if dt is not None and dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
-    token = _simulated_now.set(dt)
+    token = _simulated_now.set(ensure_utc(dt))
     try:
         yield
     finally:
@@ -78,10 +72,36 @@ async def async_frozen_time(dt: datetime | None):
     """
     Asynchronous context manager to freeze simulated time deterministically per coroutine.
     """
-    if dt is not None and dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
-    token = _simulated_now.set(dt)
+    token = _simulated_now.set(ensure_utc(dt))
     try:
         yield
     finally:
         _simulated_now.reset(token)
+
+
+class _Clock:
+    """Namespace object providing access to clock methods."""
+
+    now = staticmethod(now)
+    ensure_utc = staticmethod(ensure_utc)
+    set_simulated_now = staticmethod(set_simulated_now)
+    get_simulated_now = staticmethod(get_simulated_now)
+    is_simulated = staticmethod(is_simulated)
+    utc_now_iso = staticmethod(utc_now_iso)
+    frozen_time = staticmethod(frozen_time)
+    async_frozen_time = staticmethod(async_frozen_time)
+
+
+clock = _Clock()
+
+__all__ = [
+    "now",
+    "set_simulated_now",
+    "get_simulated_now",
+    "is_simulated",
+    "utc_now_iso",
+    "ensure_utc",
+    "frozen_time",
+    "async_frozen_time",
+    "clock",
+]

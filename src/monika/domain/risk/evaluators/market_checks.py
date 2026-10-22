@@ -48,7 +48,7 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
 
             validate_data_freshness = get_default_data_freshness_validator()
             if validate_data_freshness is None:
-                return True, "data_freshness_validator_not_configured"
+                return False, "data_freshness_validator_not_configured"
 
             tfs = (
                 self.settings.get("trading", {}).get("timeframes", ["M15", "H1", "H4", "D1"])
@@ -56,7 +56,7 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
                 else ["M15", "H1", "H4", "D1"]
             )
             freshness = await validate_data_freshness(session, [symbol], tfs)
-            if not freshness.get("ready", True):
+            if not freshness.get("ready", False):
                 errors = "; ".join(freshness.get("errors", []))
                 return False, f"Stale market data: {errors}"
             return True, "data_freshness_ok"

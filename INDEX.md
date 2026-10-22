@@ -57,6 +57,7 @@
 - [`src/monika/application/analysis/prefetch`](#folder-srcmonikaapplicationanalysisprefetch)
 - [`src/monika/application/analysis/prefetch/news_digest`](#folder-srcmonikaapplicationanalysisprefetchnewsdigest)
 - [`src/monika/application/analysis/prompt`](#folder-srcmonikaapplicationanalysisprompt)
+- [`src/monika/application/analysis/recursive_harness`](#folder-srcmonikaapplicationanalysisrecursiveharness)
 - [`src/monika/application/analysis/research`](#folder-srcmonikaapplicationanalysisresearch)
 - [`src/monika/application/analysis/schemas`](#folder-srcmonikaapplicationanalysisschemas)
 - [`src/monika/application/analysis/stages`](#folder-srcmonikaapplicationanalysisstages)
@@ -442,6 +443,12 @@
     - `write(path: Union[str, Path], data: dict[str, Any]) -> Path` - *Atomically writes full data dict to YAML path using temporary file and atomic replace.*
     - `update_in_place(path: Union[str, Path], update_dict: dict[str, Any]) -> Path` - *Selectively merges update_dict into an existing YAML file while strictly preserving*
 
+#### `audit_settings_keys.py` - *Audit queried settings keys in codebase against config/settings.yaml.*
+- **Path**: [`src/monika/core/config/audit_settings_keys.py`](src/monika/core/config/audit_settings_keys.py)
+- **Top-Level Functions**:
+  - `flatten_dict(d: Dict[str, Any], parent_key: str, sep: str) -> Dict[str, Any]`
+  - `audit_keys() -> None`
+
 #### `config_manager.py` - *File: config/config_manager.py*
 - **Path**: [`src/monika/core/config/config_manager.py`](src/monika/core/config/config_manager.py)
 - **Classes**:
@@ -456,11 +463,8 @@
     - `stop_watcher() -> None` - *Stops background file watcher.*
     - `stop() -> None` - *Standard lifecycle stop alias.*
 
-#### `config_migrations.py` - *Configuration Version Migrations.*
+#### `config_migrations.py` - *Configuration Version Migrations Backward Compatibility Facade.*
 - **Path**: [`src/monika/core/config/config_migrations.py`](src/monika/core/config/config_migrations.py)
-- **Top-Level Functions**:
-  - `migrate_settings(raw_settings: dict[str, Any]) -> tuple[dict[str, Any], list[str]]`: Applies schema migrations to in-memory settings dictionary.
-  - `check_and_migrate_file(config_path: str) -> bool`: Checks config file on disk and applies migrations if version is behind.
 
 #### `env_file_manager.py` - *Atomic .env file manager.*
 - **Path**: [`src/monika/core/config/env_file_manager.py`](src/monika/core/config/env_file_manager.py)
@@ -491,6 +495,7 @@
   - `register_migration(version: int)`: Decorator to register a migration function for a specific target version.
   - `get_config_version(config: dict[str, Any]) -> int`: Returns the integer schema version of the config dictionary.
   - `require_parseable_config(path: Union[str, Path]) -> None`: Fail-closed validation: verify that the configuration file exists and has valid YAML syntax
+  - `migrate_settings(raw_settings: dict[str, Any]) -> tuple[dict[str, Any], list[str]]`: Applies schema migrations to in-memory settings dictionary.
   - `migrate_config(config: dict[str, Any]) -> tuple[dict[str, Any], bool]`: Evaluates config schema version and applies sequential migrations up to CURRENT_CONFIG_VERSION.
 
 #### `profile_applicator.py` - *Profile Applicator for Monika LLM Task Roles.*
@@ -709,7 +714,7 @@
 #### `retry.py` - *Retry decorator with exponential backoff and jitter for transient failures.*
 - **Path**: [`src/monika/core/primitives/retry.py`](src/monika/core/primitives/retry.py)
 - **Top-Level Functions**:
-  - `retryable(max_retries: int, base_delay: float, max_delay: float, ...) -> Callable[[F], F]`: Decorator for retrying functions on transient failures with exponential backoff.
+  - `retryable(max_retries: int, base_delay: float, max_delay: float, ...) -> Callable[[Any], Any]`: Decorator for retrying functions on transient failures with exponential backoff.
 
 #### `turn_marker.py` - *File: utils/turn_marker.py*
 - **Path**: [`src/monika/core/primitives/turn_marker.py`](src/monika/core/primitives/turn_marker.py)
@@ -1154,8 +1159,8 @@
 - **Path**: [`src/monika/core/validation/data_temporal_validator.py`](src/monika/core/validation/data_temporal_validator.py)
 - **Classes**:
   - `class DataTemporalValidator`: Validates temporal consistency across data sources.
-    - `async check_data_freshness_chain(session: AsyncSession, symbol: str) -> dict` - *Check apakah semua data yang digunakan dalam analysis chain*
-    - `async validate_and_warn(session: AsyncSession, symbol: str) -> str` - *Convenience method: run check and return warning string for bundle injection.*
+    - `async check_data_freshness_chain(session: AsyncSession, symbol: str, as_of: datetime | None) -> dict` - *Check apakah semua data yang digunakan dalam analysis chain*
+    - `async validate_and_warn(session: AsyncSession, symbol: str, as_of: datetime | None) -> str` - *Convenience method: run check and return warning string for bundle injection.*
 
 #### `data_validator.py` - *Validator Data — Cek kebaruan (freshness) data di DB sebelum analisis.*
 - **Path**: [`src/monika/core/validation/data_validator.py`](src/monika/core/validation/data_validator.py)
@@ -6495,6 +6500,91 @@
     - `render_prompt_contract() -> str` - *Render canonical risk contract section for injection into Stage 2 prompt.*
 - **Top-Level Functions**:
   - `build_risk_contract(symbol: str, settings: Optional[Dict[str, Any]], system_config_multipliers: Optional[Dict[str, float]]) -> RiskContract`: Build unified RiskContract respecting symbol-specific settings and DB SystemConfig.
+
+### Folder: `src/monika/application/analysis/recursive_harness` <a id="folder-srcmonikaapplicationanalysisrecursiveharness"></a>
+
+#### `__init__.py` - *Monika Harness Package (Recursive Agent Harnessing).*
+- **Path**: [`src/monika/application/analysis/recursive_harness/__init__.py`](src/monika/application/analysis/recursive_harness/__init__.py)
+
+#### `composer.py` - *Harness Composer for Monika (Task-Level Recursion - Phase 4: Compose).*
+- **Path**: [`src/monika/application/analysis/recursive_harness/composer.py`](src/monika/application/analysis/recursive_harness/composer.py)
+- **Classes**:
+  - `class CompositionResult`: The result of composing a selected harness into production.
+  - `class HarnessComposer`: Composes selected candidate diffs onto the base harness tree safely.
+    - `__init__(spec: SurfaceSpec)`
+    - `compose(base_tree: HarnessTree, selection: ContrastiveSelection) -> CompositionResult` - *Atomically applies accepted candidate diffs.*
+
+#### `library.py` - *Domain Experience Library for Monika (Harnessing-Level Recursion).*
+- **Path**: [`src/monika/application/analysis/recursive_harness/library.py`](src/monika/application/analysis/recursive_harness/library.py)
+- **Classes**:
+  - `class DomainExperienceEntry`: A verified empirical lesson stored in the domain library.
+    - `to_markdown() -> str`
+  - `class DomainExperienceLibrary`: Manages the persistent store of domain-specific harnesses and contrastive experiences.
+    - `__init__(root_dir: Optional[Path | str], spec: SurfaceSpec)`
+    - `record_experience(domain: str, run_id: str, tree: HarnessTree, ...) -> DomainExperienceEntry` - *Stores an adopted harness snapshot and its structured experience markdown.*
+    - `list_domains() -> list[str]` - *Lists all registered domain directories.*
+    - `list_entries(domain: str) -> list[str]` - *Lists all run IDs in a domain.*
+    - `get_latest_harness(domain: str) -> Optional[HarnessTree]` - *Loads the most recently adopted harness tree for this domain.*
+    - `format_domain_lessons_for_prompt(domain: str, max_lessons: int) -> str` - *Extracts recent lessons from this domain into a concise markdown section for prompt injection.*
+- **Top-Level Functions**:
+  - `sanitize_domain_slug(domain: str) -> str`: Normalizes domain identifier (e.g. 'FX / Trending' -> 'FX__TRENDING').
+
+#### `prober.py` - *Harness Prober for Monika (Task-Level Recursion - Phase 2: Probe).*
+- **Path**: [`src/monika/application/analysis/recursive_harness/prober.py`](src/monika/application/analysis/recursive_harness/prober.py)
+- **Classes**:
+  - `class ProbeMetrics`: Quantitative performance and behavioral metrics observed during a probe run.
+    - `composite_score() -> float` - *Calculates composite quality index (higher is better).*
+  - `class ProbeResult`: The outcome of probing a single candidate harness.
+  - `class ScenarioBasedProbeRunner`: Evaluates candidate harness trees using paired scenario analysis.
+    - `__init__(settings: Optional[dict])`
+  - `class HarnessProber`: Evaluates candidate harnesses by executing simulated scenario runs.
+    - `__init__(custom_runner: Optional[ProbeRunner])`
+    - `probe_candidates(base_tree: HarnessTree, candidates: Sequence[CandidateProposal], scenario_data: Mapping[str, Any]) -> Sequence[ProbeResult]` - *Runs probe evaluations across base and all candidate proposals.*
+
+#### `proposer.py` - *Harness Proposer for Monika (Task-Level Recursion - Phase 1: Propose).*
+- **Path**: [`src/monika/application/analysis/recursive_harness/proposer.py`](src/monika/application/analysis/recursive_harness/proposer.py)
+- **Classes**:
+  - `class CandidateProposal`: A proposed candidate variation of the harness tree.
+  - `class HarnessProposer`: Proposes candidate adjustments to mutable harness components
+    - `__init__(spec: SurfaceSpec)`
+    - `propose_candidates(base_tree: HarnessTree, domain: str, regime_context: Mapping[str, Any], ...) -> Sequence[CandidateProposal]` - *Synthesizes k candidate harness trees from the base tree.*
+
+#### `selector.py` - *Contrastive Selector for Monika (Task-Level Recursion - Phase 3: Contrastive Selection).*
+- **Path**: [`src/monika/application/analysis/recursive_harness/selector.py`](src/monika/application/analysis/recursive_harness/selector.py)
+- **Classes**:
+  - `class ContrastiveSelection`: The result of contrastive evaluation across probed candidate harnesses.
+  - `class ContrastiveSelector`: Evaluates candidate probe results contrastively, selects the best performer,
+    - `__init__(min_improvement_margin: float)`
+    - `select(domain: str, probe_results: Sequence[ProbeResult], regime_context: Mapping[str, Any]) -> ContrastiveSelection` - *Anonymizes candidates, selects the winning harness, and formulates causal lessons.*
+
+#### `service.py` - *Recursive Harness Service for Monika.*
+- **Path**: [`src/monika/application/analysis/recursive_harness/service.py`](src/monika/application/analysis/recursive_harness/service.py)
+- **Classes**:
+  - `class RecursionCycleResult`: The complete result of an autonomous recursive harnessing cycle.
+  - `class RecursiveHarnessService`: Main entry point for recursive agent self-improvement in Monika.
+    - `__init__(library: Optional[DomainExperienceLibrary], proposer: Optional[HarnessProposer], prober: Optional[HarnessProber], ...)`
+    - `run_recursion_cycle(domain: str, base_tree: Optional[HarnessTree], scenario_data: Optional[Mapping[str, Any]], ...) -> RecursionCycleResult` - *Executes a full two-level recursive harnessing cycle for the given market domain.*
+
+#### `surface.py` - *Concrete surface specification and invariant validators for Monika.*
+- **Path**: [`src/monika/application/analysis/recursive_harness/surface.py`](src/monika/application/analysis/recursive_harness/surface.py)
+- **Top-Level Functions**:
+  - `normalize_rel_path(rel_path: str) -> str`: Normalizes relative paths, strictly rejecting directory traversal or absolute escapes.
+  - `is_path_reserved(rel_path: str, spec: SurfaceSpec) -> bool`: Checks if a path matches any reserved immutable system pattern.
+  - `classify_component(rel_path: str, spec: SurfaceSpec) -> ComponentType`: Classifies a file path into one of the 8 Harness components.
+  - `validate_tree_invariants(tree: Mapping[str, str], spec: SurfaceSpec) -> None`: Validates a complete harness tree against surface invariants:
+
+#### `tree.py` - *HarnessTree representation, diffing, validation, and file persistence for Monika.*
+- **Path**: [`src/monika/application/analysis/recursive_harness/tree.py`](src/monika/application/analysis/recursive_harness/tree.py)
+- **Classes**:
+  - `class HarnessTree`: A validated, immutable-in-memory snapshot of Monika's 8-component harness.
+    - `to_dict() -> dict[str, str]` - *Returns rel_path -> text content.*
+    - `from_dict(data: Mapping[str, str], spec: SurfaceSpec) -> HarnessTree` - *Builds and validates a HarnessTree from a dict of relative paths and contents.*
+    - `diff(other: HarnessTree) -> HarnessDiff` - *Calculates the structured diff between this tree and another.*
+    - `apply_diff(diff: HarnessDiff) -> HarnessTree` - *Applies a validated diff, producing a new validated HarnessTree.*
+    - `text_diff(other: HarnessTree) -> str` - *Generates unified git-style text diff for observability.*
+    - `export_to_directory(target_dir: Path | str) -> None` - *Exports all components to disk under target_dir.*
+    - `load_from_directory(source_dir: Path | str, spec: SurfaceSpec) -> HarnessTree` - *Scans a directory for surface files, assembling a validated HarnessTree.*
+    - `build_baseline_tree(system_prompt: Optional[str], guardrails: Optional[str], memory: Optional[str], ...) -> HarnessTree` - *Constructs a standard baseline tree for Monika with production defaults.*
 
 ### Folder: `src/monika/application/analysis/research` <a id="folder-srcmonikaapplicationanalysisresearch"></a>
 

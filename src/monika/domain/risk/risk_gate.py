@@ -168,14 +168,19 @@ class RiskGate(
         flash_crash_detector: Optional FlashCrashDetector instance.
         data_provider: Optional RiskDataProviderProtocol instance for decoupled persistence.
         """
-        risk_cfg = settings.get("trading", {}).get("risk", {})
+        risk_cfg = (
+            settings.get("trading", {}).get("risk") or settings.get("risk", {}) if isinstance(settings, dict) else {}
+        )
         self.settings = settings
         self.max_daily_drawdown_pct: float = risk_cfg.get("max_daily_drawdown_percent", 4.0)
         self.max_concurrent: int = risk_cfg.get("max_concurrent_positions", 5)
         self.correlation_limit: int = risk_cfg.get("correlation_limit", 3)
         self.news_window_minutes: int = risk_cfg.get("news_window_minutes", 15)
         self.max_risk_pct: float = float(
-            risk_cfg.get("max_risk_per_trade_percent") or risk_cfg.get("risk_per_trade_pct") or 1.0
+            risk_cfg.get("risk_percent_per_trade")
+            or risk_cfg.get("max_risk_per_trade_percent")
+            or risk_cfg.get("risk_per_trade_pct")
+            or 1.0
         )
         self._mt5 = mt5_client
         self.flash_crash_detector = flash_crash_detector
@@ -458,6 +463,8 @@ class RiskGate(
                 rejections.extend(mod_reasons)
             except Exception as e:
                 logger.error(f"Modular risk registry evaluation failed: {e}")
+                checks_failed.append("modular_risk_registry")
+                rejections.append(f"[modular_risk_registry] Evaluation crashed: {e}")
 
         approved = len(checks_failed) == 0
 

@@ -14,9 +14,11 @@ import asyncio
 import inspect
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional, Set, Type, TypeVar, Union
 from collections.abc import Callable, Coroutine
+
+from monika.core.primitives.clock import clock
 
 logger = logging.getLogger("TradingAgent.EventBus")
 
@@ -32,7 +34,7 @@ E = TypeVar("E", bound="AppEvent")
 class AppEvent:
     """Base class for all application domain events."""
 
-    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    timestamp: datetime = field(default_factory=clock.now)
 
 
 @dataclass(frozen=True)
@@ -523,7 +525,6 @@ class EventBus:
                 try:
                     await self.publish(event)
                 except asyncio.CancelledError:
-                    queue.task_done()
                     raise
                 except Exception as e:
                     logger.error(f"[EventBus] Worker error in '{queue_name}': {e}")

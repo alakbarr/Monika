@@ -24,6 +24,7 @@ class ConfigReloader:
         self.notifier = notifier
         self.check_interval_seconds = check_interval_seconds
         self.subscribers = list(subscribers or [])
+        self._background_tasks: set[asyncio.Task[Any]] = set()
         self.last_mtime: float | None = None
         if os.path.exists(self.config_path):
             try:
@@ -98,7 +99,9 @@ class ConfigReloader:
                 logger.info(f"[HotReload] Reloaded configuration from {self.config_path}")
                 if self.notifier and hasattr(self.notifier, "send_info"):
                     try:
-                        asyncio.create_task(self.notifier.send_info("Configuration hot-reloaded."))
+                        task = asyncio.create_task(self.notifier.send_info("Configuration hot-reloaded."))
+                        self._background_tasks.add(task)
+                        task.add_done_callback(self._background_tasks.discard)
                     except Exception:
                         pass
                 return True
@@ -110,7 +113,7 @@ class ConfigReloader:
         """Continuous background task watching config file."""
         while shutdown_event is None or not shutdown_event.is_set():
             try:
-                self.check_and_reload()
+                await asyncio.to_thread(self.check_and_reload)
             except Exception as e:
                 logger.debug(f"[HotReload] Watcher cycle error: {e}")
 

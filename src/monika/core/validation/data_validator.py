@@ -108,12 +108,13 @@ async def validate_data_freshness(
         is_crypto = is_crypto_symbol(symbol)
         for tf in timeframes:
             tf_max_age = ohlcv_thresholds.get(tf, DEFAULT_OHLCV_AGE.get(tf, 8.0))
+            ts_col = func.coalesce(PriceOHLCV.canonical_timestamp, PriceOHLCV.timestamp)
             latest = (
                 await session.execute(
-                    select(PriceOHLCV.timestamp)
+                    select(ts_col)
                     .where(PriceOHLCV.symbol == symbol)
                     .where(PriceOHLCV.timeframe == tf)
-                    .order_by(PriceOHLCV.timestamp.desc())
+                    .order_by(ts_col.desc())
                     .limit(1)
                 )
             ).scalar_one_or_none()
@@ -347,10 +348,25 @@ async def validate_data_freshness(
 
 def is_spread_acceptable(symbol: str, bid: float, ask: float) -> bool:
     """Memeriksa apakah spread dalam batas aman (maks 5x spread normal)."""
-    if bid <= 0.0 or ask <= 0.0:
-        logger.warning(f"SPREAD CIRCUIT BREAKER: Invalid prices for {symbol} (bid={bid}, ask={ask}). Trading blocked.")
+    if bid is None or ask is None:
+        logger.warning(f"SPREAD CIRCUIT BREAKER: Missing prices for {symbol} (bid={bid}, ask={ask}). Trading blocked.")
         return False
-    spread = abs(ask - bid)
+    try:
+        b, a = float(bid), float(ask)
+    except TypeError, ValueError:
+        logger.warning(
+            f"SPREAD CIRCUIT BREAKER: Non-numeric prices for {symbol} (bid={bid}, ask={ask}). Trading blocked."
+        )
+        return False
+
+    import math
+
+    if not (math.isfinite(b) and math.isfinite(a)) or b <= 0.0 or a <= 0.0 or a < b:
+        logger.warning(
+            f"SPREAD CIRCUIT BREAKER: Non-finite, non-positive, or inverted prices for {symbol} (bid={bid}, ask={ask}). Trading blocked."
+        )
+        return False
+    spread = a - b
     sym = (symbol or "").strip().upper()
 
     typical_spreads = {

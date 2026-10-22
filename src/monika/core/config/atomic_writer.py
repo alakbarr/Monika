@@ -40,6 +40,20 @@ class AtomicConfigWriter:
 
     DEFAULT_MAX_BACKUPS = 10
 
+    @staticmethod
+    def _atomic_replace(src: str, dst: str, max_retries: int = 5, initial_delay: float = 0.02) -> None:
+        """Atomically replaces src with dst, with exponential backoff for Windows file locking."""
+        import time
+
+        for attempt in range(max_retries):
+            try:
+                os.replace(src, dst)
+                return
+            except OSError:
+                if attempt == max_retries - 1:
+                    raise
+                time.sleep(initial_delay * (2**attempt))
+
     def __init__(self, config_path: str = "config/settings.yaml"):
         self.config_path = config_path
 
@@ -202,7 +216,7 @@ class AtomicConfigWriter:
                 tf.flush()
                 os.fsync(tf.fileno())
 
-            os.replace(temp_name, str(target))
+            cls._atomic_replace(temp_name, str(target))
             ruamel_success = True
         except Exception as r_err:
             logger.debug(f"ruamel.yaml atomic write failed ({r_err}), falling back to yaml.dump")
@@ -220,7 +234,7 @@ class AtomicConfigWriter:
                     yaml.dump(data, tf, default_flow_style=False, sort_keys=False, allow_unicode=True)
                     tf.flush()
                     os.fsync(tf.fileno())
-                os.replace(fallback_temp, str(target))
+                cls._atomic_replace(fallback_temp, str(target))
             finally:
                 if fallback_temp and os.path.exists(fallback_temp):
                     try:
@@ -281,7 +295,7 @@ class AtomicConfigWriter:
                 ryaml.dump(doc, tf)
                 tf.flush()
                 os.fsync(tf.fileno())
-            os.replace(temp_name, str(target))
+            cls._atomic_replace(temp_name, str(target))
         finally:
             if temp_name and os.path.exists(temp_name):
                 try:

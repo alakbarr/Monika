@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 import subprocess
 import uuid
@@ -20,6 +21,8 @@ from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger("TradingAgent.Utils.Worktree")
+
+SUBAGENT_ID_REGEX = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
 
 class SubagentWorktree:
@@ -35,11 +38,22 @@ class SubagentWorktree:
         use_git: bool = True,
         auto_cleanup: bool = True,
     ):
-        self.subagent_id = subagent_id or f"sub_{uuid.uuid4().hex[:8]}"
+        if subagent_id is not None:
+            if not SUBAGENT_ID_REGEX.match(subagent_id):
+                raise ValueError(f"Invalid subagent_id: {subagent_id!r}. Must match regex {SUBAGENT_ID_REGEX.pattern}")
+            self.subagent_id = subagent_id
+        else:
+            self.subagent_id = f"sub_{uuid.uuid4().hex[:8]}"
+
         self.base_dir = Path(base_dir or Path.cwd()).resolve()
         self.use_git = use_git
         self.auto_cleanup = auto_cleanup
-        self.worktree_dir = self.base_dir / ".worktrees" / f"subagent-{self.subagent_id}"
+
+        worktree_root = (self.base_dir / ".worktrees").resolve()
+        self.worktree_dir = (worktree_root / f"subagent-{self.subagent_id}").resolve()
+        if not self.worktree_dir.is_relative_to(worktree_root):
+            raise ValueError(f"Worktree directory {self.worktree_dir} is outside {worktree_root}")
+
         self.branch_name = f"subagent/{self.subagent_id}"
         self._is_git_worktree = False
         self._created = False
@@ -52,6 +66,7 @@ class SubagentWorktree:
                 cwd=str(self.base_dir),
                 capture_output=True,
                 text=True,
+                timeout=30.0,
                 check=False,
             )
             return res.returncode == 0 and "true" in res.stdout.strip().lower()
@@ -74,6 +89,7 @@ class SubagentWorktree:
                     cwd=str(self.base_dir),
                     capture_output=True,
                     text=True,
+                    timeout=30.0,
                     check=False,
                 )
                 if proc.returncode == 0:
@@ -107,6 +123,7 @@ class SubagentWorktree:
                 cwd=str(self.worktree_dir),
                 capture_output=True,
                 text=True,
+                timeout=30.0,
                 check=False,
             )
             return res.stdout if res.returncode == 0 else ""
@@ -126,6 +143,7 @@ class SubagentWorktree:
                     cwd=str(self.base_dir),
                     capture_output=True,
                     text=True,
+                    timeout=30.0,
                     check=False,
                 )
                 # Delete temporary branch
@@ -134,6 +152,7 @@ class SubagentWorktree:
                     cwd=str(self.base_dir),
                     capture_output=True,
                     text=True,
+                    timeout=30.0,
                     check=False,
                 )
                 logger.info(f"[SubagentWorktree] Pruned git worktree and branch {self.branch_name}")

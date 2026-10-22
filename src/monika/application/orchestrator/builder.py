@@ -93,9 +93,20 @@ class AgentBuilderMixin:
 
     def _init_components(self) -> None:
         """Instantiate all components with their dependencies."""
-        from monika.application.agent.task_registry import TaskRegistry
+        if not hasattr(self, "container") or self.container is None:
+            from monika.application.bootstrap import bootstrap_application
 
-        self.task_registry = TaskRegistry(self.shutdown_event)
+            self.container = bootstrap_application(settings=self.settings)
+
+        container = self.container
+        assert container is not None
+
+        if not container.has("shutdown_event"):
+            container.register_instance("shutdown_event", self.shutdown_event)
+        if hasattr(self, "_recovery_complete") and not container.has("recovery_complete_event"):
+            container.register_instance("recovery_complete_event", self._recovery_complete)
+
+        from monika.application.agent.task_registry import TaskRegistry
         from monika.application.analysis.stages.fundamental_stage import FundamentalStage
         from monika.application.analysis.stages.per_asset_stage import PerAssetStage
         from monika.application.execution.execution_service import ExecutionService
@@ -111,8 +122,23 @@ class AgentBuilderMixin:
         from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatManager
         from monika.infrastructure.brokers.mt5_client import MT5Client
 
-        self.event_bus = get_event_bus()
-        self.mt5_client = MT5Client(settings=self.settings)
+        if not container.has("task_registry"):
+            self.task_registry = TaskRegistry(self.shutdown_event)
+            container.register_instance("task_registry", self.task_registry)
+        else:
+            self.task_registry = container.get("task_registry")
+
+        if not container.has("event_bus"):
+            self.event_bus = get_event_bus()
+            container.register_instance("event_bus", self.event_bus)
+        else:
+            self.event_bus = container.get("event_bus")
+
+        if not container.has("mt5_client"):
+            self.mt5_client = MT5Client(settings=self.settings)
+            container.register_instance("mt5_client", self.mt5_client)
+        else:
+            self.mt5_client = container.get("mt5_client")
         from monika.application.execution.health_check import FlakeTolerantHealthChecker
 
         self.mt5_health_checker = FlakeTolerantHealthChecker(self.mt5_client, ttl_seconds=30.0, grace_seconds=60.0)
@@ -144,12 +170,16 @@ class AgentBuilderMixin:
             broker_adapter = MT5RemoteGatewayAdapter(gateway_url=gateway_url, api_token=api_token)
             logger.info(f"ExecutionService configured with MT5RemoteGatewayAdapter ({gateway_url})")
 
-        self.execution_service = ExecutionService(
-            self.settings,
-            mt5_client=self.mt5_client,
-            dry_run=self.dry_run,
-            broker_adapter=broker_adapter,
-        )
+        if not container.has("execution_service"):
+            self.execution_service = ExecutionService(
+                self.settings,
+                mt5_client=self.mt5_client,
+                dry_run=self.dry_run,
+                broker_adapter=broker_adapter,
+            )
+            container.register_instance("execution_service", self.execution_service)
+        else:
+            self.execution_service = container.get("execution_service")
         mt5_common = self.settings.get("execution", {}).get("mt5_common_dir", "")
         self.heartbeat_mgr = HeartbeatManager(mt5_common_path=mt5_common)
         self.ea_watchdog = self.heartbeat_mgr.get_watchdog()
@@ -309,10 +339,11 @@ class AgentBuilderMixin:
             execution_service=self.execution_service,
             notifier=self.notifier,
         )
-        if hasattr(self.execution_service, "gate") and self.execution_service.gate:
-            self.execution_service.gate.flash_crash_detector = self.flash_crash_detector
-        if hasattr(self.execution_service, "risk_gate") and self.execution_service.risk_gate:
-            self.execution_service.risk_gate.flash_crash_detector = self.flash_crash_detector
+        if self.execution_service is not None:
+            if hasattr(self.execution_service, "gate") and getattr(self.execution_service, "gate", None):
+                self.execution_service.gate.flash_crash_detector = self.flash_crash_detector
+            if hasattr(self.execution_service, "risk_gate") and getattr(self.execution_service, "risk_gate", None):
+                self.execution_service.risk_gate.flash_crash_detector = self.flash_crash_detector
 
         # Hot-Reload Risk Parameters (M-4)
         from monika.core.config.hot_reload import RiskParameterReloader
@@ -434,18 +465,9 @@ class AgentBuilderMixin:
         # Initialize Universal PluginEngine Harness
         try:
             from monika.application.plugins.engine.engine import PluginEngine
-            from monika.core.container import get_container
 
-            self.container = get_container()
-            self.container.register_instance("settings", self.settings)
-            if self.event_bus:
-                self.container.register_instance("event_bus", self.event_bus)
-            if self.task_registry:
-                self.container.register_instance("task_registry", self.task_registry)
-            if self.mt5_client:
-                self.container.register_instance("mt5_client", self.mt5_client)
-            if self.execution_service:
-                self.container.register_instance("execution_service", self.execution_service)
+            if not container.has("settings"):
+                container.register_instance("settings", self.settings)
 
             # Initialize RecursiveHarnessService
             try:
@@ -453,7 +475,7 @@ class AgentBuilderMixin:
                 from monika.application.analysis.prompt_sections import get_prompt_section_registry
 
                 self.harness_service = RecursiveHarnessService()
-                self.container.register_instance("harness_service", self.harness_service)
+                container.register_instance("harness_service", self.harness_service)
 
                 psr = get_prompt_section_registry()
 
@@ -477,7 +499,7 @@ class AgentBuilderMixin:
                 logger.debug(f"[Builder] Harness wiring notice: {h_err}")
 
             self.plugin_engine = PluginEngine(
-                container=self.container,
+                container=container,
                 event_bus=self.event_bus,
                 task_registry=self.task_registry,
             )

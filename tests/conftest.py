@@ -161,6 +161,17 @@ def test_timeout_watchdog(request):
 
 
 @pytest.fixture(autouse=True)
+def isolate_risk_port_registry():
+    """Preserve and restore RiskPortRegistry baseline state to prevent cross-test pollution."""
+    from monika.domain.risk.ports import RiskPortRegistry
+
+    snapshot = {k: getattr(RiskPortRegistry, k) for k in dir(RiskPortRegistry) if not k.startswith("_")}
+    yield
+    for k, v in snapshot.items():
+        setattr(RiskPortRegistry, k, v)
+
+
+@pytest.fixture(autouse=True)
 def protect_live_db_from_test_activity_logs(monkeypatch):
     """
     Mencegah seluruh unit test memanggil database live untuk ActivityLog saat session=None.

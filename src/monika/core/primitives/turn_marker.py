@@ -87,6 +87,8 @@ class TurnMarkerManager:
                 logger.warning(f"Discarding turn marker after {marker.attempts} failed crash recoveries.")
                 self.clear()
                 return None
+            marker.attempts += 1
+            self.record_start(marker)
             return marker
         except Exception as e:
             logger.error(f"Error reading turn marker: {e}")

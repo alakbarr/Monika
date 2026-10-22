@@ -38,8 +38,12 @@ class EnvFileManager:
         """
         from monika.core.config.security import validate_env_mutation
 
-        for key in updates.keys():
+        for key, val in updates.items():
             validate_env_mutation(key)
+            if not isinstance(val, str):
+                val = str(val)
+            if "\n" in val or "\r" in val:
+                raise ValueError(f"Environment variable value for '{key}' cannot contain literal newline characters.")
 
         target_path = env_path or cls.get_default_env_path()
         target_dir = os.path.dirname(os.path.abspath(target_path))
@@ -91,7 +95,16 @@ class EnvFileManager:
             fd, tmp_path = tempfile.mkstemp(dir=target_dir, prefix=".env_tmp_", text=True)
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 f.writelines(new_lines)
-            os.replace(tmp_path, target_path)
+            import time
+
+            for attempt in range(5):
+                try:
+                    os.replace(tmp_path, target_path)
+                    break
+                except OSError:
+                    if attempt == 4:
+                        raise
+                    time.sleep(0.02 * (2**attempt))
             logger.info(f"Successfully updated {len(updates)} key(s) in {target_path}")
             return True
         except Exception as e:

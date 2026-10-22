@@ -225,6 +225,16 @@ Monika/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── prompt_assembler.py
 │       │   │   │   └── risk_contract.py
+│       │   │   ├── recursive_harness/
+│       │   │   │   ├── __init__.py
+│       │   │   │   ├── composer.py
+│       │   │   │   ├── library.py
+│       │   │   │   ├── prober.py
+│       │   │   │   ├── proposer.py
+│       │   │   │   ├── selector.py
+│       │   │   │   ├── service.py
+│       │   │   │   ├── surface.py
+│       │   │   │   └── tree.py
 │       │   │   ├── research/
 │       │   │   │   ├── __init__.py
 │       │   │   │   └── macro_playbook_runner.py
@@ -845,6 +855,7 @@ Monika/
 │       │   ├── config/
 │       │   │   ├── __init__.py
 │       │   │   ├── atomic_writer.py
+│       │   │   ├── audit_settings_keys.py
 │       │   │   ├── config_manager.py
 │       │   │   ├── config_migrations.py
 │       │   │   ├── env_file_manager.py
@@ -2127,6 +2138,26 @@ Monika/
 │   │   │   ├── test_providers_and_cost_engine.py
 │   │   │   ├── test_structured_fallback.py
 │   │   │   └── test_typesafe_provider.py
+│   │   ├── recursive_harness/
+│   │   │   ├── test_advanced_harness_enhancements.py
+│   │   │   ├── test_agent_harness.py
+│   │   │   ├── test_capabilities_and_structured.py
+│   │   │   ├── test_context_compressor.py
+│   │   │   ├── test_critical_harness.py
+│   │   │   ├── test_error_classifier.py
+│   │   │   ├── test_harness_enhancements.py
+│   │   │   ├── test_harness_routes.py
+│   │   │   ├── test_library.py
+│   │   │   ├── test_prompt_cache_architecture.py
+│   │   │   ├── test_prompt_tiers_and_state.py
+│   │   │   ├── test_propose_probe_compose.py
+│   │   │   ├── test_recursive_harness_integration.py
+│   │   │   ├── test_runtime_wiring.py
+│   │   │   ├── test_structured_context_engine.py
+│   │   │   ├── test_surface.py
+│   │   │   ├── test_tool_batch_and_repair.py
+│   │   │   ├── test_trade_stop_and_segment_planner.py
+│   │   │   └── test_tree.py
 │   │   ├── strategies/
 │   │   │   ├── test_evidence_significance.py
 │   │   │   ├── test_evidence_store_aging.py
@@ -3046,4 +3077,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 265 | **Total Tracked Files**: 2751
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2780

@@ -5,10 +5,12 @@ timestamp antar data sources dalam analysis chain.
 """
 
 import logging
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from monika.core.primitives.clock import clock, ensure_utc
 
 logger = logging.getLogger("TradingAgent.DataTemporalValidator")
 
@@ -21,7 +23,7 @@ class DataTemporalValidator:
     """
 
     @staticmethod
-    async def check_data_freshness_chain(session: AsyncSession, symbol: str) -> dict:
+    async def check_data_freshness_chain(session: AsyncSession, symbol: str, as_of: datetime | None = None) -> dict:
         """
         Check apakah semua data yang digunakan dalam analysis chain
         memiliki temporal consistency.
@@ -30,18 +32,20 @@ class DataTemporalValidator:
         """
         from monika.infrastructure.database.models import COTReport, FundamentalBrief, PriceOHLCV, VIXData
 
-        now = datetime.now(UTC)
+        now = ensure_utc(as_of) or clock.now()
         gaps = []
         timestamps = {}
 
         # OHLCV H4
         try:
+            ts_col = func.coalesce(PriceOHLCV.canonical_timestamp, PriceOHLCV.timestamp)
             h4_ts = (
                 await session.execute(
-                    select(PriceOHLCV.timestamp)
+                    select(ts_col)
                     .where(PriceOHLCV.symbol == symbol)
                     .where(PriceOHLCV.timeframe == "H4")
-                    .order_by(PriceOHLCV.timestamp.desc())
+                    .where(ts_col <= now)
+                    .order_by(ts_col.desc())
                     .limit(1)
                 )
             ).scalar_one_or_none()
@@ -57,8 +61,14 @@ class DataTemporalValidator:
 
         # COT Report
         try:
+            cot_date = now.date()
             cot_ts = (
-                await session.execute(select(COTReport.report_date).order_by(COTReport.report_date.desc()).limit(1))
+                await session.execute(
+                    select(COTReport.report_date)
+                    .where(COTReport.report_date <= cot_date)
+                    .order_by(COTReport.report_date.desc())
+                    .limit(1)
+                )
             ).scalar_one_or_none()
             timestamps["cot"] = cot_ts
         except Exception as e:
@@ -74,7 +84,10 @@ class DataTemporalValidator:
         try:
             brief_ts = (
                 await session.execute(
-                    select(FundamentalBrief.generated_at).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                    select(FundamentalBrief.generated_at)
+                    .where(FundamentalBrief.generated_at <= now)
+                    .order_by(FundamentalBrief.generated_at.desc())
+                    .limit(1)
                 )
             ).scalar_one_or_none()
             timestamps["fundamental_brief"] = brief_ts
@@ -89,8 +102,11 @@ class DataTemporalValidator:
 
         # VIX
         try:
+            vix_date = now.date()
             vix_ts = (
-                await session.execute(select(VIXData.date).order_by(VIXData.date.desc()).limit(1))
+                await session.execute(
+                    select(VIXData.date).where(VIXData.date <= vix_date).order_by(VIXData.date.desc()).limit(1)
+                )
             ).scalar_one_or_none()
             timestamps["vix"] = vix_ts
         except Exception as e:
@@ -170,13 +186,13 @@ class DataTemporalValidator:
         }
 
     @staticmethod
-    async def validate_and_warn(session: AsyncSession, symbol: str) -> str:
+    async def validate_and_warn(session: AsyncSession, symbol: str, as_of: datetime | None = None) -> str:
         """
         Convenience method: run check and return warning string for bundle injection.
         Returns empty string if coherent, warning text if gaps found.
         """
         try:
-            result = await DataTemporalValidator.check_data_freshness_chain(session, symbol)
+            result = await DataTemporalValidator.check_data_freshness_chain(session, symbol, as_of=as_of)
             if not result["coherent"]:
                 warning_lines = ["[PERINGATAN] TEMPORAL DATA COHERENCE WARNINGS:"]
                 for gap in result["gaps"]:
