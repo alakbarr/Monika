@@ -104,6 +104,7 @@ def test_playbook_lifecycle_promotion_and_rollback(temp_playbooks_dir):
     assert meta.status == PlaybookStatus.CANDIDATE
 
     # Record 5 winning trades to trigger promotion
+    res = {}
     for _ in range(5):
         res = lifecycle.record_trade_outcome(name, won=True, pnl=150.0, r_multiple=2.0)
 
@@ -111,6 +112,7 @@ def test_playbook_lifecycle_promotion_and_rollback(temp_playbooks_dir):
     assert lifecycle.get_status(name) == PlaybookStatus.ACTIVE
 
     # Now record 3 consecutive losses to trigger demotion and auto-rollback
+    res = {}
     for i in range(3):
         res = lifecycle.record_trade_outcome(name, won=False, pnl=-100.0, r_multiple=-1.0)
 

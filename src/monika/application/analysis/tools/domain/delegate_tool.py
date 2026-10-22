@@ -37,22 +37,28 @@ class DelegateTaskInput(BaseModel):
 
     task: str = Field(..., description="The detailed instruction and objective for the subagent.")
     role: str = Field(
-        "general_assistant",
+        default="general_assistant",
         description="Specialized role of the subagent (e.g. 'quant_researcher', 'code_auditor', 'test_engineer', 'macro_analyst').",
     )
-    action: str = Field("spawn", description="Action to perform: 'spawn', 'status', 'steer', 'cancel', or 'list'.")
-    subagent_id: Optional[str] = Field(
-        None, description="Target subagent ID when action is 'status', 'steer', or 'cancel'."
+    action: str = Field(
+        default="spawn", description="Action to perform: 'spawn', 'status', 'steer', 'cancel', or 'list'."
     )
-    steer_message: Optional[str] = Field(None, description="Guidance or mid-flight instruction when action is 'steer'.")
+    subagent_id: Optional[str] = Field(
+        default=None, description="Target subagent ID when action is 'status', 'steer', or 'cancel'."
+    )
+    steer_message: Optional[str] = Field(
+        default=None, description="Guidance or mid-flight instruction when action is 'steer'."
+    )
     context: Optional[str] = Field(
-        None, description="Additional context, documents, or data payloads necessary for the subagent."
+        default=None, description="Additional context, documents, or data payloads necessary for the subagent."
     )
     isolated_worktree: bool = Field(
-        True, description="Whether to isolate file operations within a dedicated git worktree."
+        default=True, description="Whether to isolate file operations within a dedicated git worktree."
     )
-    timeout_seconds: float = Field(120.0, ge=10.0, le=600.0, description="Execution timeout in seconds (default 120s).")
-    session_id: Optional[str] = Field(None, description="Parent session ID to correlate subagent lineage.")
+    timeout_seconds: float = Field(
+        default=120.0, ge=10.0, le=600.0, description="Execution timeout in seconds (default 120s)."
+    )
+    session_id: Optional[str] = Field(default=None, description="Parent session ID to correlate subagent lineage.")
 
 
 @unified_tool_registry.register(

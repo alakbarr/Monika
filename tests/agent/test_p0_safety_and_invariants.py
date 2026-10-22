@@ -125,7 +125,7 @@ async def test_action_state_persisted_claim_race_safety():
     # Mock _claim_persisted_pending_action: first caller wins, second caller loses
     claim_calls = 0
 
-    async def mock_claim(act_id):
+    async def mock_claim(action_id):
         nonlocal claim_calls
         claim_calls += 1
         return claim_calls == 1  # only first claim succeeds

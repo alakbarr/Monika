@@ -25,8 +25,10 @@ Monika/
 │       │   │   │   ├── agent_harness.py
 │       │   │   │   ├── context_compressor.py
 │       │   │   │   ├── error_classifier.py
+│       │   │   │   ├── general_tool_pruner.py
 │       │   │   │   ├── harness_state.py
 │       │   │   │   ├── message_repair.py
+│       │   │   │   ├── physical_deliverable_gate.py
 │       │   │   │   ├── repetition_guard.py
 │       │   │   │   ├── stall_guard.py
 │       │   │   │   ├── structured_output.py
@@ -1761,6 +1763,7 @@ Monika/
 │       │   │   ├── data_dedup.py
 │       │   │   ├── deferred_dispatcher.py
 │       │   │   ├── embedding.py
+│       │   │   ├── instruction_budgeter.py
 │       │   │   ├── llmlingua_compressor.py
 │       │   │   ├── memory_compressor.py
 │       │   │   ├── model_capabilities.py
@@ -2142,6 +2145,7 @@ Monika/
 │   │   │   ├── test_context_compressor.py
 │   │   │   ├── test_critical_harness.py
 │   │   │   ├── test_error_classifier.py
+│   │   │   ├── test_harness_enhancements.py
 │   │   │   ├── test_harness_routes.py
 │   │   │   ├── test_library.py
 │   │   │   ├── test_prompt_cache_architecture.py
@@ -3089,4 +3093,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2792
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2796

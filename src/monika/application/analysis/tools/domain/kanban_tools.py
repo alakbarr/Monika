@@ -39,14 +39,14 @@ class KanbanBoardInput(BaseModel):
 
     action: str = Field(..., description="Action to perform: 'list', 'add', 'move', or 'delete'.")
     task_id: Optional[str] = Field(
-        None, description="Unique identifier of the task (required for 'move' and 'delete')."
+        default=None, description="Unique identifier of the task (required for 'move' and 'delete')."
     )
-    title: Optional[str] = Field(None, description="Short summary or title of the task (required for 'add').")
+    title: Optional[str] = Field(default=None, description="Short summary or title of the task (required for 'add').")
     column: Optional[str] = Field(
-        "backlog", description="Column target: 'backlog', 'in_progress', 'review', or 'done'."
+        default="backlog", description="Column target: 'backlog', 'in_progress', 'review', or 'done'."
     )
-    priority: Optional[str] = Field("medium", description="Priority: 'low', 'medium', 'high', or 'urgent'.")
-    notes: Optional[str] = Field(None, description="Detailed description, checklist, or findings.")
+    priority: Optional[str] = Field(default="medium", description="Priority: 'low', 'medium', 'high', or 'urgent'.")
+    notes: Optional[str] = Field(default=None, description="Detailed description, checklist, or findings.")
 
 
 def _load_board() -> Dict[str, List[Dict[str, Any]]]:

@@ -3,7 +3,7 @@
 # ==============================================================================
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Union
 
 
 @dataclass
@@ -24,7 +24,7 @@ class ScrapedNews:
     title: str
     url: str
     source: str
-    timestamp: str
+    timestamp: Optional[str] = None
     summary: Optional[str] = None
     impact: Optional[str] = None
     sentiment: Optional[str] = None
@@ -56,6 +56,6 @@ class FedProbability:
 @dataclass
 class FedMeeting:
     meeting_date: str
-    current_rate_ref: float
+    current_rate_ref: Union[float, str]
     probabilities: List[FedProbability]
     most_likely: str

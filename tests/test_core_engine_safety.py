@@ -361,8 +361,8 @@ class TestDeterministicTriggerEngine:
         assert res.executed is False
 
     @pytest.mark.asyncio
-    async def test_execution_service_preplanned_order_pips_slippage_rejection(self):
-        """Verify preplanned order is blocked if price drift exceeds pips slippage limit even when percentage slippage is acceptable."""
+    async def test_execution_service_preplanned_order_settings_pips_slippage_rejection(self):
+        """Verify preplanned order is blocked if price drift exceeds settings pips slippage limit even when percentage slippage is acceptable."""
         mock_mt5 = AsyncMock()
         # 2015.10 vs 2015.00 entry -> 0.10 / 2015.0 = 0.005% (passes default 0.5% pct limit)
         # but 0.10 / 0.01 = 10.0 pips (exceeds 5.0 pips limit)

@@ -56,7 +56,7 @@ def test_code_execution_rpc_lifecycle_and_auth():
         assert port > 0
 
         # Helper to send RPC
-        def send_rpc(payload: dict) -> dict:
+        def send_rpc(payload: dict) -> str:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect(("127.0.0.1", port))
             s.sendall((json.dumps(payload) + "\n").encode("utf-8"))

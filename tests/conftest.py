@@ -394,7 +394,7 @@ def reset_executed_analysis_ids():
     """Ensure in-memory executed analysis cache is cleanly reset between test runs."""
     yield
     try:
-        from monika.application.execution.service.execution_service import _EXECUTED_ANALYSIS_IDS
+        from monika.application.execution.execution_service import _EXECUTED_ANALYSIS_IDS
 
         _EXECUTED_ANALYSIS_IDS.clear()
     except Exception:

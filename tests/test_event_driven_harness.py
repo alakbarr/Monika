@@ -720,9 +720,11 @@ class TestSchedulerEventBusIntegration:
         """Verify TradingAgent sets up EventBus subscriptions and broadcasts live ticks."""
         settings = {
             "trading": {
-                "risk": {"flash_crash": {"enabled": True}},
+                "risk": {
+                    "flash_crash": {"enabled": True},
+                    "trailing_stop": {"enabled": True},
+                },
                 "position_guardian": {"enabled": True},
-                "risk": {"trailing_stop": {"enabled": True}},
                 "asset_universe": ["XAUUSD"],
             },
             "execution": {"mt5_common_dir": ""},

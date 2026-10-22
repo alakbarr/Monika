@@ -5131,6 +5131,14 @@
 #### `error_classifier.py` - *Structured error classification and recovery strategy assignment (Phase 3).*
 - **Path**: [`src/monika/application/agent/harness/error_classifier.py`](src/monika/application/agent/harness/error_classifier.py)
 
+#### `general_tool_pruner.py` - *Model-Free Deterministic Tool Result Pruner.*
+- **Path**: [`src/monika/application/agent/harness/general_tool_pruner.py`](src/monika/application/agent/harness/general_tool_pruner.py)
+- **Classes**:
+  - `class GeneralToolPruner`: Deterministic Zero-Cost Tool Output Pruner.
+    - `safe_unicode_slice(text: str, start: Optional[int], end: Optional[int]) -> str` - *Slices string safely without splitting surrogate pairs or multibyte characters.*
+    - `prune_text(text: str, max_chars: int, tool_name: str, ...) -> str` - *Prunes arbitrary plain-text output (e.g. bash stdout/stderr, file reads, logs)*
+    - `prune_json(data: Union[Dict[str, Any], List[Any], str], max_chars: int, tool_name: str) -> str` - *Prunes JSON structures. If the payload is JSON-serializable and exceeds max_chars,*
+
 #### `harness_state.py` - *Typed state machine and phase models for autonomous agent harness loop.*
 - **Path**: [`src/monika/application/agent/harness/harness_state.py`](src/monika/application/agent/harness/harness_state.py)
 - **Classes**:
@@ -5156,6 +5164,17 @@
 - **Top-Level Functions**:
   - `repair_message_history(messages: List[Dict[str, Any]], close_unanswered: bool, executed_call_ids: Optional[Set[str]]) -> List[Dict[str, Any]]`: Enforces strict role alternation and tool-result pairing integrity across message sequences.
   - `transform_messages_for_target_model(messages: List[Dict[str, Any]], target_provider: str, target_model: str) -> List[Dict[str, Any]]`: Transforms assistant reasoning and signature blocks when failing over across providers/models.
+
+#### `physical_deliverable_gate.py` - *Physical Deliverables & State Verification Gate.*
+- **Path**: [`src/monika/application/agent/harness/physical_deliverable_gate.py`](src/monika/application/agent/harness/physical_deliverable_gate.py)
+- **Classes**:
+  - `class DeliverableVerdict`
+  - `class PhysicalDeliverableGate`: Physical Ground-Truth Probing Gate for Agent Harness Deliverables.
+    - `__init__(workspace_root: Optional[str])`
+    - `resolve_path(path_str: str) -> Path` - *Resolves path safely against workspace root.*
+    - `verify_file_deliverable(path_str: str, min_bytes: int) -> DeliverableVerdict` - *Probes a single file deliverable for existence and minimum size.*
+    - `verify_deliverables_batch(paths: List[str], min_bytes: int) -> DeliverableVerdict` - *Probes multiple deliverables, collecting verified and missing paths.*
+    - `audit_claimed_completion(response_text: str, touched_files: Optional[List[str]], ledger: Optional[Any]) -> DeliverableVerdict` - *Audits model response text for claimed file operations.*
 
 #### `repetition_guard.py` - *Monitors assistant text generation for degenerate repetition loops.*
 - **Path**: [`src/monika/application/agent/harness/repetition_guard.py`](src/monika/application/agent/harness/repetition_guard.py)
@@ -12259,6 +12278,15 @@
 - **Path**: [`src/monika/infrastructure/llm/embedding.py`](src/monika/infrastructure/llm/embedding.py)
 - **Top-Level Functions**:
   - `async generate_gemini_embedding(text: str, model: Optional[str], settings: Optional[dict], ...) -> Optional[List[float]]`: Generate dense vector embedding using Gemini Embedding API (Gemini Embedding 2).
+
+#### `instruction_budgeter.py` - *Instruction File Byte-Budgeting & UTF-8 Slicing Engine.*
+- **Path**: [`src/monika/infrastructure/llm/instruction_budgeter.py`](src/monika/infrastructure/llm/instruction_budgeter.py)
+- **Classes**:
+  - `class BudgetedInstructionFile`
+  - `class InstructionBudgeter`: Enforces deterministic byte budgets on instruction and context files.
+    - `truncate_to_byte_budget_utf8(text: str, max_bytes: int) -> Tuple[str, bool]` - *Safely truncates string to fit within max_bytes without splitting UTF-8 multibyte characters.*
+    - `budget_instruction_files(files: List[Dict[str, str]], max_bytes: int) -> List[BudgetedInstructionFile]` - *Budgets a list of instruction files (ordered from broadest ancestor to most specific child).*
+    - `render_budgeted_instructions(files: List[Dict[str, str]], max_bytes: int) -> str` - *Renders budgeted instruction files into structured XML blocks.*
 
 #### `llmlingua_compressor.py` - *Adaptive LLMLingua-2 Prompt Compressor for Monika Trading Agent.*
 - **Path**: [`src/monika/infrastructure/llm/llmlingua_compressor.py`](src/monika/infrastructure/llm/llmlingua_compressor.py)

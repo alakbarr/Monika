@@ -253,7 +253,7 @@ class SpecialistAdjudication(BaseModel):
 
 class EntryCondition(BaseModel):
     type: Literal["market", "limit", "trigger"]
-    price: Optional[float] = Field(None, description="Specific price level (null for 'market').")
+    price: Optional[float] = Field(default=None, description="Specific price level (null for 'market').")
     detail: str = Field(..., description="Detailed entry condition description.")
 
     @model_validator(mode="before")

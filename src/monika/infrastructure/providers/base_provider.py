@@ -348,15 +348,15 @@ class MockResponse:
 
     def __init__(
         self,
-        content,
-        stop_reason,
-        input_tokens,
-        output_tokens,
+        content=None,
+        stop_reason="end_turn",
+        input_tokens: int = 0,
+        output_tokens: int = 0,
         thinking_tokens: int = 0,
         cached_tokens: int = 0,
         cache_creation_tokens: int = 0,
     ):
-        self.content = content
+        self.content = content if content is not None else []
         self.stop_reason = stop_reason
         self.input_tokens = input_tokens
         self.output_tokens = output_tokens
