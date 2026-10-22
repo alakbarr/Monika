@@ -5,10 +5,11 @@
 import asyncio
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from monika.core.primitives.worktree import SubagentWorktree
 from monika.core.telemetry.delegation_live_log import LiveTranscriptWriter
+from monika.application.analysis.subagent_spawner import SubagentResult
 from monika.application.analysis.tools.domain.delegate_tool import handle_delegate_task, DelegateTaskInput
 from monika.application.agent.moa_loop import (
     MoARuntime,
@@ -48,14 +49,26 @@ def test_live_transcript_writer(tmp_path: Path):
 
 @pytest.mark.asyncio
 async def test_delegate_tool_execution(tmp_path: Path):
-    """Test the first-class delegate_task LLM tool."""
+    """The delegate tool formats a successful worker result without a live provider."""
     params = DelegateTaskInput(
         task="Audit EURUSD trendline breakout on 1H timeframe",
         role="quant_analyst",
         context="RSI is 64, MACD bullish crossover",
         isolated_worktree=False,
     )
-    result = await handle_delegate_task(params)
+
+    with patch(
+        "monika.application.analysis.subagent_spawner.SubagentWorker.run",
+        new_callable=AsyncMock,
+    ) as run_mock:
+        run_mock.return_value = SubagentResult(
+            worker_id="sub_test",
+            role="quant_analyst",
+            success=True,
+            content="Breakout confirmed above 1.0850.",
+        )
+        result = await handle_delegate_task(params)
+
     assert "[SUBAGENT EXECUTION COMPLETE]" in result
     assert "Role: quant_analyst" in result
     assert "Status: Success" in result
