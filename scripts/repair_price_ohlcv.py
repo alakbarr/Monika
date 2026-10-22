@@ -237,16 +237,10 @@ async def verify_duplicate_rate() -> bool:
 
 async def fetch_clean_from_mt5(symbols: List[str]) -> None:
     """Fetch clean bars from MT5 for the specified symbols across major timeframes."""
-    from monika.infrastructure.brokers.mt5.market_data import MT5MarketDataMixin
-    from monika.infrastructure.brokers.mt5.connection import MT5ConnectionMixin
-
-    class MT5MarketDataClient(MT5ConnectionMixin, MT5MarketDataMixin):
-        def __init__(self, settings):
-            self.settings = settings
-            self._broker_utc_offset_seconds = None
+    from monika.infrastructure.brokers.mt5.client import MT5Client
 
     settings = load_settings()
-    client = MT5MarketDataClient(settings)
+    client = MT5Client(settings)
     connected = await client.ensure_connected()
     if not connected:
         logger.error("Failed to connect to MT5 terminal for historical resync.")

@@ -471,9 +471,15 @@ async def test_agent_harness_outer_follow_up_queue_turn_extension():
 
 
 @pytest.mark.asyncio
-async def test_agent_harness_populates_stop_gate_context():
+async def test_agent_harness_populates_stop_gate_context(tmp_path):
     """Tool execution updates turn_state.stop_gate_context (mutated_files and verification_commands_run)."""
     from monika.application.agent.harness.agent_harness import AgentHarness
+    from monika.application.agent.harness.physical_deliverable_gate import PhysicalDeliverableGate
+
+    # Ensure hermetic workspace file exists so deliverable gate passes
+    fix_file = tmp_path / "src" / "fix.py"
+    fix_file.parent.mkdir(parents=True, exist_ok=True)
+    fix_file.write_text("# hermetic deliverable test", encoding="utf-8")
 
     mock_client = MagicMock()
     mock_client.provider = "openai"
@@ -495,6 +501,7 @@ async def test_agent_harness_populates_stop_gate_context():
     mock_executor.execute = AsyncMock(side_effect=[{"status": "patched"}, {"status": "all_passed"}])
 
     harness = AgentHarness(mock_client, max_tool_turns=4)
+    harness.physical_deliverable_gate = PhysicalDeliverableGate(workspace_root=str(tmp_path))
 
     result = await harness.run_agent_from_messages(
         session=None,

@@ -326,6 +326,10 @@ class Position(Base):
     def exit_reason(self) -> str:
         return str(self._mt5_close_reason) if self._mt5_close_reason is not None else "closed"
 
+    @exit_reason.setter
+    def exit_reason(self, val: Any) -> None:
+        self._mt5_close_reason = val
+
     @property
     def pnl_pct(self) -> float:
         notional = max(1.0, (self.entry_price or 1.0) * (self.volume or 0.01) * 100_000.0)

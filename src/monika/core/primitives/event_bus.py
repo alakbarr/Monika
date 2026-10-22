@@ -168,9 +168,12 @@ class EventBus:
     def subscribe(
         self,
         event_type: type[E],
-        handler: Callable[[E], Union[Coroutine[Any, Any, None], Any]],
+        handler: Union[
+            Callable[[E], Union[Coroutine[Any, Any, None], Any]],
+            Callable[[E, Any], Union[Coroutine[Any, Any, Any], Any]],
+        ],
         priority: int = 0,
-    ) -> Callable[[E], Union[Coroutine[Any, Any, None], Any]]:
+    ) -> Any:
         """
         Register a subscriber for a specific event type or base class.
 

@@ -62,14 +62,39 @@ class BasePlugin:
 
 
 def _filter_kwargs_for_handler(handler: Callable, kwargs: Dict[str, Any]) -> Dict[str, Any]:
-    """Inspect handler signature and pass only matching keyword arguments if no **kwargs."""
+    """Inspect handler signature and pass matching keyword arguments with alias normalization."""
     try:
         sig = inspect.signature(handler)
         has_varkw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+
+        # Build alias-normalized dictionary from kwargs
+        expanded = dict(kwargs)
+        tool_args_val = kwargs.get("tool_args") or kwargs.get("args") or kwargs.get("arguments") or {}
+        if "tool_args" not in expanded and tool_args_val is not None:
+            expanded["tool_args"] = tool_args_val
+        if "args" not in expanded and tool_args_val is not None:
+            expanded["args"] = tool_args_val
+        if "arguments" not in expanded and tool_args_val is not None:
+            expanded["arguments"] = tool_args_val
+
+        result_val = kwargs.get("tool_result", kwargs.get("result"))
+        if "tool_result" not in expanded and result_val is not None:
+            expanded["tool_result"] = result_val
+        if "result" not in expanded and result_val is not None:
+            expanded["result"] = result_val
+
         if has_varkw:
-            return kwargs
+            return expanded
+
         param_names = set(sig.parameters.keys())
-        return {k: v for k, v in kwargs.items() if k in param_names}
+        filtered = {k: v for k, v in expanded.items() if k in param_names}
+
+        # Safety fallback: if handler requires tool_args/args/arguments and none was provided, supply empty dict
+        for p_name in ("tool_args", "args", "arguments"):
+            if p_name in param_names and p_name not in filtered:
+                filtered[p_name] = {}
+
+        return filtered
     except Exception:
         return kwargs
 
