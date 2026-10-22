@@ -27,6 +27,8 @@ SCRATCHPAD_TAGS = [
     (r"<REASONING_SCRATCHPAD>", r"</REASONING_SCRATCHPAD>"),
     (r"<think>", r"</think>"),
     (r"<thought>", r"</thought>"),
+    (r"<cognitive_anatomy>", r"</cognitive_anatomy>"),
+    (r"<cognitive-anatomy>", r"</cognitive-anatomy>"),
 ]
 
 

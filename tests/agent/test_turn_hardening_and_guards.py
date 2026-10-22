@@ -181,6 +181,35 @@ def test_scratchpad_guard_close_dangling():
     assert not has_incomplete_scratchpad(fixed)
 
 
+def test_scratchpad_guard_cognitive_anatomy_lifecycle():
+    # 1. Incomplete tag detection
+    truncated = "Summary:\n<cognitive_anatomy>\n[ROLE]: Senior Macro Strategist\n[TASK]: Rate cut preview"
+    assert has_incomplete_scratchpad(truncated) is True
+
+    # 2. Synthetic closing of dangling tag
+    fixed = close_dangling_scratchpad(truncated)
+    assert "</cognitive_anatomy>" in fixed
+    assert not has_incomplete_scratchpad(fixed)
+
+    # 3. Clean extraction of reasoning vs visible content
+    full = (
+        "Overview:\n"
+        "<cognitive_anatomy>\n"
+        "[ROLE]: SMC Specialist\n"
+        "[REASONING]: Orderblock test at 1.0850\n"
+        "[STOP CONDITIONS]: Invalidation at 1.0820\n"
+        "</cognitive_anatomy>\n"
+        "Execution bias: BULLISH EURUSD."
+    )
+    reasoning, visible, is_inc = extract_reasoning_and_content(full)
+    assert is_inc is False
+    assert "[ROLE]: SMC Specialist" in (reasoning or "")
+    assert "[STOP CONDITIONS]: Invalidation at 1.0820" in (reasoning or "")
+    assert "<cognitive_anatomy>" not in visible
+    assert "</cognitive_anatomy>" not in visible
+    assert "Execution bias: BULLISH EURUSD." in visible
+
+
 # ==============================================================================
 # 4. ESTOP Sentinel Tests
 # ==============================================================================

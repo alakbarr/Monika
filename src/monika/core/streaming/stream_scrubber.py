@@ -26,6 +26,10 @@ SECRET_PATTERNS = [
 STRIP_TAG_PAIRS = [
     ("think", "think"),
     ("thought", "thought"),
+    ("cognitive_anatomy", "cognitive_anatomy"),
+    ("cognitive-anatomy", "cognitive-anatomy"),
+    ("REASONING_SCRATCHPAD", "REASONING_SCRATCHPAD"),
+    ("reasoning_scratchpad", "reasoning_scratchpad"),
     ("memory-context", "memory-context"),
     ("market-memory-context", "market-memory-context"),
     ("untrusted_external_content", "untrusted_external_content"),
@@ -59,7 +63,16 @@ class StatefulStreamScrubber:
         # Build set of monitored tags
         self._target_tags: set[str] = set()
         if self.strip_thinking:
-            self._target_tags.update(["think", "thought"])
+            self._target_tags.update(
+                [
+                    "think",
+                    "thought",
+                    "cognitive_anatomy",
+                    "cognitive-anatomy",
+                    "reasoning_scratchpad",
+                    "reasoning-scratchpad",
+                ]
+            )
         if self.strip_internal_tags:
             self._target_tags.update(
                 ["memory-context", "market-memory-context", "untrusted_external_content", "volatile_overlay"]
@@ -84,8 +97,12 @@ class StatefulStreamScrubber:
 
         while self._buffer:
             if self._in_think:
-                # Look for closing </think> or </thought>
-                close_match = re.search(r"</\s*(?:think|thought)\s*>", self._buffer, re.IGNORECASE)
+                # Look for closing </think>, </thought>, </cognitive_anatomy>, or </reasoning_scratchpad>
+                close_match = re.search(
+                    r"</\s*(?:think|thought|cognitive[_-]anatomy|reasoning[_-]scratchpad)\s*>",
+                    self._buffer,
+                    re.IGNORECASE,
+                )
                 if close_match:
                     # Capture thinking content before close
                     self._accumulated_thinking.append(self._buffer[: close_match.start()])
@@ -129,7 +146,14 @@ class StatefulStreamScrubber:
                             output_chunks.append(prior_text)
 
                         self._buffer = self._buffer[match.end() :]
-                        if tag_candidate in ("think", "thought"):
+                        if tag_candidate in (
+                            "think",
+                            "thought",
+                            "cognitive_anatomy",
+                            "cognitive-anatomy",
+                            "reasoning_scratchpad",
+                            "reasoning-scratchpad",
+                        ):
                             self._in_think = True
                         else:
                             self._in_internal_tag = tag_candidate

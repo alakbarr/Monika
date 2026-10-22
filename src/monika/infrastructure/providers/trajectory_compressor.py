@@ -24,7 +24,10 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger("TradingAgent.Providers.TrajectoryCompressor")
 
-_THINK_TAG_REGEX = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+_THINK_TAG_REGEX = re.compile(
+    r"<(?:think|thought|cognitive[_-]anatomy|REASONING_SCRATCHPAD)>.*?</(?:think|thought|cognitive[_-]anatomy|REASONING_SCRATCHPAD)>",
+    re.DOTALL | re.IGNORECASE,
+)
 
 
 class TrajectoryCompressor:

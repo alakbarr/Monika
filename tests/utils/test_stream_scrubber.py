@@ -78,3 +78,41 @@ def test_scrubber_emoji_and_emoticon_stripping():
     emitted = "".join(scrubber.process_delta(c) for c in chunks) + scrubber.flush()
     assert ":)" not in emitted
     assert emitted == "Signal: BUY EURUSD target hit profit confirmed."
+
+
+def test_scrubber_cognitive_anatomy_block():
+    scrubber = StatefulStreamScrubber()
+    chunks = [
+        "Executive Summary:\n",
+        "<cognitive_anatomy>\n",
+        "[ROLE]: Senior Macro Strategist\n",
+        "[TASK]: Analyze XAUUSD breakout potential\n",
+        "[CONTEXT]: NY session open, DXY falling\n",
+        "[REASONING]: Step 1 check H4 order block at 2650\n",
+        "[STOP CONDITIONS]: Invalidation at 2642\n",
+        "[OUTPUT TARGET]: Clean institutional brief\n",
+        "</cognitive_anatomy>\n",
+        "Gold is testing key resistance at 2665 with bullish momentum.",
+    ]
+    emitted = "".join(scrubber.process_delta(c) for c in chunks) + scrubber.flush()
+    assert "<cognitive_anatomy>" not in emitted
+    assert "</cognitive_anatomy>" not in emitted
+    assert "[ROLE]: Senior Macro Strategist" not in emitted
+    assert "Gold is testing key resistance at 2665 with bullish momentum." in emitted
+    assert "[ROLE]: Senior Macro Strategist" in scrubber.accumulated_thinking
+    assert "[STOP CONDITIONS]: Invalidation at 2642" in scrubber.accumulated_thinking
+
+
+def test_scrubber_reasoning_scratchpad_block():
+    scrubber = StatefulStreamScrubber()
+    chunks = [
+        "Plan:\n",
+        "<REASONING_SCRATCHPAD>Deliberating internal risk bounds</REASONING_SCRATCHPAD>",
+        "Risk allocation capped at 1.0%.",
+    ]
+    emitted = "".join(scrubber.process_delta(c) for c in chunks) + scrubber.flush()
+    assert "<REASONING_SCRATCHPAD>" not in emitted
+    assert "</REASONING_SCRATCHPAD>" not in emitted
+    assert "Deliberating internal risk bounds" not in emitted
+    assert "Risk allocation capped at 1.0%." in emitted
+    assert "Deliberating internal risk bounds" in scrubber.accumulated_thinking

@@ -165,3 +165,34 @@ def test_trajectory_compressor_boundary_snapping():
 
     # Tail anchors preserved intact
     assert compressed[-1]["content"] == "Recent answer 2"
+
+
+def test_trajectory_compressor_strips_cognitive_anatomy():
+    compressor = TrajectoryCompressor(max_tool_output_chars=50, preserve_recent_turns=1)
+
+    messages = [
+        {"role": "system", "content": "You are Monika institutional agent."},
+        {"role": "user", "content": "Analyze Gold."},
+        {
+            "role": "assistant",
+            "content": (
+                "<cognitive_anatomy>\n"
+                "[ROLE]: Senior Macro Strategist\n"
+                "[STOP CONDITIONS]: Invalidation at 2640\n"
+                "</cognitive_anatomy>\n"
+                "Gold shows institutional accumulation."
+            ),
+        },
+        {"role": "user", "content": "What about EURUSD?"},
+        {"role": "assistant", "content": "EURUSD is neutral."},
+        {"role": "user", "content": "Recent question"},
+        {"role": "assistant", "content": "Recent answer"},
+    ]
+
+    compressed = compressor.compress_trajectory(messages)
+    # Ensure intermediate message stripped cognitive_anatomy completely
+    intermediate_assistant = [m for m in compressed if "institutional accumulation" in m.get("content", "")][0]
+    assert "<cognitive_anatomy>" not in intermediate_assistant["content"]
+    assert "</cognitive_anatomy>" not in intermediate_assistant["content"]
+    assert "[ROLE]: Senior Macro Strategist" not in intermediate_assistant["content"]
+    assert "Gold shows institutional accumulation." in intermediate_assistant["content"]
