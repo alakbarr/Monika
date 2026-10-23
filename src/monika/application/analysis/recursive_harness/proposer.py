@@ -97,7 +97,20 @@ class HarnessProposer:
                     f"\n- Specific Guard for [{domain}]: Demand minimum 2-candle absorption "
                     f"confirmation on M15 before formulating directional bias.\n"
                 )
-                cand2_dict["guardrails.md"] = base_guardrails.strip() + regime_note
+                regime_tag = f"<!-- REGIME_GUARD: {domain} -->"
+                regime_note = (
+                    f"\n{regime_tag}\n- Specific Guard for [{domain}]: Demand minimum 2-candle absorption "
+                    f"confirmation on M15 before formulating directional bias.\n<!-- /REGIME_GUARD: {domain} -->\n"
+                )
+                if regime_tag in base_guardrails:
+                    import re
+
+                    pattern = re.compile(
+                        rf"{re.escape(regime_tag)}.*?<!-- /REGIME_GUARD: {re.escape(domain)} -->\n?", re.DOTALL
+                    )
+                    cand2_dict["guardrails.md"] = pattern.sub(regime_note, base_guardrails)
+                else:
+                    cand2_dict["guardrails.md"] = base_guardrails.strip() + regime_note
                 cand2_tree = HarnessTree.from_dict(cand2_dict, self.spec)
                 diff2 = base_tree.diff(cand2_tree)
                 proposals.append(

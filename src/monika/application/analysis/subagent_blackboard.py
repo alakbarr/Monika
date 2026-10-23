@@ -14,10 +14,12 @@ Prevents prompt ballooning by allowing subagents to query specific typed slots
 instead of dumping massive raw unparsed text histories into subsequent turns.
 """
 
+import collections
+import copy
 import json
 import logging
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Deque, Dict, List, Optional
 
 from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
 
@@ -38,23 +40,25 @@ class SubagentBlackboard:
             "bear_dissent": {},
             "adjudication_consensus": {},
         }
-        self._history_log: List[Dict[str, Any]] = []
+        self._history_log: Deque[Dict[str, Any]] = collections.deque(maxlen=100)
         self._lock = threading.RLock()
 
     def set_slot(self, slot_name: str, data: Any) -> None:
         """Sets data for a specific blackboard slot."""
         with self._lock:
             if slot_name in self.slots:
-                self.slots[slot_name] = data
-                self._history_log.append({"slot": slot_name, "data": data})
+                safe_data = copy.deepcopy(data)
+                self.slots[slot_name] = safe_data
+                self._history_log.append({"slot": slot_name, "data": safe_data})
                 logger.debug(f"[{self.symbol}] Blackboard: slot '{slot_name}' updated.")
             else:
                 logger.warning(f"[{self.symbol}] Blackboard: unknown slot '{slot_name}' rejected.")
 
     def get_slot(self, slot_name: str, default: Any = None) -> Any:
-        """Retrieves data from a specific blackboard slot."""
+        """Retrieves data from a specific blackboard slot with defensive isolation."""
         with self._lock:
-            return self.slots.get(slot_name, default)
+            val = self.slots.get(slot_name, default)
+            return copy.deepcopy(val) if val is not None else default
 
     def export_distilled_context(self, max_tokens: int = 1200) -> str:
         """

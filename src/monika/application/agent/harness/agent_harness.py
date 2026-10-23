@@ -260,11 +260,9 @@ class AgentHarness:
         target = client if client is not None else self.llm_client
         if target is None:
             return "unknown"
-        p = getattr(target, "provider", None)
-        if p is None or type(p).__name__.startswith("MagicMock"):
-            p = getattr(target, "provider_name", None)
-        if p is not None and not type(p).__name__.startswith("MagicMock"):
-            return str(p)
+        p = getattr(target, "provider", None) or getattr(target, "provider_name", None)
+        if isinstance(p, str) and p:
+            return p
         cls_name = getattr(target, "__class__", type(target)).__name__.lower()
         for prov in ("anthropic", "gemini", "openai", "ollama", "groq"):
             if prov in cls_name:
@@ -564,15 +562,11 @@ class AgentHarness:
                 reasoning_content = getattr(msg, "reasoning_content", getattr(msg, "reasoning", None))
 
             def _clean_val(v: Any) -> Any:
-                if v is None:
-                    return None
-                if type(v).__name__.startswith("MagicMock") or "Mock" in type(v).__name__:
+                if v is None or not isinstance(v, (str, int, float, bool, list, dict)):
                     return None
                 return v
 
-            if reasoning_content is not None and (
-                type(reasoning_content).__name__.startswith("MagicMock") or "Mock" in type(reasoning_content).__name__
-            ):
+            if reasoning_content is not None and not isinstance(reasoning_content, (str, dict, list)):
                 reasoning_content = None
 
             extra: dict[str, Any] = {}
@@ -1857,11 +1851,7 @@ class AgentHarness:
                 # ── M5: Tool Schema Validation ──
                 tool_schema_fn = getattr(executor, "get_tool_schema", None)
                 tool_schema = None
-                if (
-                    callable(tool_schema_fn)
-                    and not inspect.iscoroutinefunction(tool_schema_fn)
-                    and type(tool_schema_fn).__name__ != "AsyncMock"
-                ):
+                if callable(tool_schema_fn) and not inspect.iscoroutinefunction(tool_schema_fn):
                     res = tool_schema_fn(t_name)
                     if isinstance(res, dict):
                         tool_schema = res
@@ -2240,7 +2230,19 @@ class AgentHarness:
                 called_tools.add(c_name)
 
                 # Read-only tool check via ReadOnlyReplayCache
-                is_read_tool = c_name.startswith(("get_", "fetch_", "calc_", "calculate_"))
+                # Financial Invariant: Real-time price quotes, order books, and account positions MUST NOT be cached.
+                REALTIME_FINANCIAL_TOOLS = {
+                    "get_market_quote",
+                    "get_open_positions",
+                    "get_account_info",
+                    "get_ticks",
+                    "get_rate",
+                    "get_tick",
+                }
+                is_read_tool = (
+                    c_name.startswith(("get_", "fetch_", "calc_", "calculate_"))
+                    and c_name not in REALTIME_FINANCIAL_TOOLS
+                )
                 res_obj = None
                 if is_read_tool:
                     cached_val = self.replay_cache.get(c_name, c_input)
@@ -2414,8 +2416,9 @@ class AgentHarness:
                         from monika.core.security.prompt_injection_scanner import PromptInjectionScanner
 
                         tool_res_content = PromptInjectionScanner.sanitize_or_block(tool_res_content, source=c_name)
-                    except Exception:
-                        pass
+                    except Exception as ex:
+                        logger.warning(f"Prompt injection scanner failed for '{c_name}': {ex}. Quarantining content.")
+                        tool_res_content = f"[SECURITY WARNING: External content from '{c_name}' quarantined due to safety scanner exception]"
                     tool_res_content = (
                         f'<untrusted_external_content source="{c_name}">\n'
                         f"{tool_res_content}\n"

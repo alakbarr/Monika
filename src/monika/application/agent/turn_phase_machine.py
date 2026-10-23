@@ -171,69 +171,82 @@ class TurnPhaseMachine:
         """
         logger.info(f"[TurnPhaseMachine] Starting async turn {state.turn_id} for session {state.session_id}")
 
-        while self.budget.can_proceed():
-            state.iteration = self.budget.consume()
-            logger.debug(f"[TurnPhaseMachine] Iteration {state.iteration}/{self.budget.max_iterations}")
+        try:
+            while self.budget.can_proceed():
+                state.iteration = self.budget.consume()
+                logger.debug(f"[TurnPhaseMachine] Iteration {state.iteration}/{self.budget.max_iterations}")
 
-            # 1. Prepare Iteration
-            verdict = await self._run_phase_async(TurnPhase.PREPARE, self._prepare_handler, state)
-            if verdict == TurnVerdict.BREAK:
-                break
-            elif verdict == TurnVerdict.RETURN:
-                return state
-
-            # 2. Assemble Request
-            verdict = await self._run_phase_async(TurnPhase.ASSEMBLE, self._assemble_handler, state)
-            if verdict == TurnVerdict.BREAK:
-                break
-            elif verdict == TurnVerdict.RETURN:
-                return state
-
-            # 3. Preflight Gate
-            verdict = await self._run_phase_async(TurnPhase.PREFLIGHT, self._preflight_handler, state)
-            if verdict == TurnVerdict.BREAK:
-                break
-            elif verdict == TurnVerdict.RETURN:
-                return state
-
-            # 4. API Call
-            verdict = await self._run_phase_async(TurnPhase.API_CALL, self._api_call_handler, state)
-            if verdict == TurnVerdict.BREAK:
-                break
-            elif verdict == TurnVerdict.RETURN:
-                return state
-            elif verdict == TurnVerdict.RETRY_PHASE:
-                continue
-
-            # 5. Normalize Response
-            verdict = await self._run_phase_async(TurnPhase.NORMALIZE, self._normalize_handler, state)
-            if verdict == TurnVerdict.BREAK:
-                break
-            elif verdict == TurnVerdict.RETURN:
-                return state
-
-            # 6. Tool Round or Terminal Response
-            if state.extracted_tool_calls:
-                verdict = await self._run_phase_async(TurnPhase.TOOL_ROUND, self._tool_round_handler, state)
+                # 1. Prepare Iteration
+                verdict = await self._run_phase_async(TurnPhase.PREPARE, self._prepare_handler, state)
                 if verdict == TurnVerdict.BREAK:
                     break
                 elif verdict == TurnVerdict.RETURN:
                     return state
-            else:
-                # Evaluate stop gates before finalizing text response
-                can_stop, nudge = apply_stop_gates(state.extracted_text or "", state.stop_gate_context)
-                if not can_stop and nudge:
-                    logger.warning(f"[TurnPhaseMachine] Stop gate prevented exit: {nudge}")
-                    # Inject nudge as user/system correction and proceed to next iteration
-                    state.messages.append({"role": "user", "content": f"[SYSTEM SAFETY DIRECTIVE]: {nudge}"})
+                elif verdict == TurnVerdict.RETRY_PHASE:
                     continue
 
-                state.has_final_response = True
-                break
+                # 2. Assemble Request
+                verdict = await self._run_phase_async(TurnPhase.ASSEMBLE, self._assemble_handler, state)
+                if verdict == TurnVerdict.BREAK:
+                    break
+                elif verdict == TurnVerdict.RETURN:
+                    return state
+                elif verdict == TurnVerdict.RETRY_PHASE:
+                    continue
 
-        # 7. Finalize Turn
-        await self._run_phase_async(TurnPhase.FINALIZE, self._finalize_handler, state)
-        logger.info(f"[TurnPhaseMachine] Completed async turn {state.turn_id} in {time.time() - state.start_time:.3f}s")
+                # 3. Preflight Gate
+                verdict = await self._run_phase_async(TurnPhase.PREFLIGHT, self._preflight_handler, state)
+                if verdict == TurnVerdict.BREAK:
+                    break
+                elif verdict == TurnVerdict.RETURN:
+                    return state
+                elif verdict == TurnVerdict.RETRY_PHASE:
+                    continue
+
+                # 4. API Call
+                verdict = await self._run_phase_async(TurnPhase.API_CALL, self._api_call_handler, state)
+                if verdict == TurnVerdict.BREAK:
+                    break
+                elif verdict == TurnVerdict.RETURN:
+                    return state
+                elif verdict == TurnVerdict.RETRY_PHASE:
+                    continue
+
+                # 5. Normalize Response
+                verdict = await self._run_phase_async(TurnPhase.NORMALIZE, self._normalize_handler, state)
+                if verdict == TurnVerdict.BREAK:
+                    break
+                elif verdict == TurnVerdict.RETURN:
+                    return state
+                elif verdict == TurnVerdict.RETRY_PHASE:
+                    continue
+
+                # 6. Tool Round or Terminal Response
+                if state.extracted_tool_calls:
+                    verdict = await self._run_phase_async(TurnPhase.TOOL_ROUND, self._tool_round_handler, state)
+                    if verdict == TurnVerdict.BREAK:
+                        break
+                    elif verdict == TurnVerdict.RETURN:
+                        return state
+                    elif verdict == TurnVerdict.RETRY_PHASE:
+                        continue
+                else:
+                    # Evaluate stop gates before finalizing text response
+                    can_stop, nudge = apply_stop_gates(state.extracted_text or "", state.stop_gate_context)
+                    if not can_stop and nudge:
+                        logger.warning(f"[TurnPhaseMachine] Stop gate prevented exit: {nudge}")
+                        # Inject nudge as user/system correction and proceed to next iteration
+                        state.messages.append({"role": "user", "content": f"[SYSTEM SAFETY DIRECTIVE]: {nudge}"})
+                        continue
+
+                    state.has_final_response = True
+                    break
+        finally:
+            # 7. Finalize Turn - Guaranteed execution for telemetry and resource unwinding
+            await self._run_phase_async(TurnPhase.FINALIZE, self._finalize_handler, state)
+            logger.info(
+                f"[TurnPhaseMachine] Completed async turn {state.turn_id} in {time.time() - state.start_time:.3f}s"
+            )
         return state
 
     def run_turn(self, state: TurnState) -> TurnState:

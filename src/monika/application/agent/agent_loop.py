@@ -63,6 +63,11 @@ class SystemAgentLoop:
         Returns:
             Dict berisi detail keputusan, parameter trading, tesis debat, dan ringkasan teks.
         """
+        from monika.application.agent.estop import is_estop_active
+
+        if is_estop_active():
+            raise RuntimeError("Emergency Stop (ESTOP) is active. Ad-hoc analysis execution blocked.")
+
         import re
 
         raw_tokens: List[str] = []
@@ -192,7 +197,8 @@ class SystemAgentLoop:
                 except Exception:
                     pass
 
-            final_state = await graph.ainvoke(initial_state, config=config)
+            async with asyncio.timeout(300.0):
+                final_state = await graph.ainvoke(initial_state, config=config)
 
             # Ekstrak hasil per aset
             asset_analyses = final_state.get("asset_analyses", {})

@@ -29,6 +29,25 @@ from monika.application.agent.moa_trace import save_moa_turn, slot_metrics
 
 logger = logging.getLogger(__name__)
 
+
+class MoAError(Exception):
+    """Base exception for Mixture of Agents errors."""
+
+    pass
+
+
+class MoAConsensusFailureError(MoAError):
+    """Raised when insufficient reference advisors reach consensus."""
+
+    pass
+
+
+class MoAAggregatorFailureError(MoAError):
+    """Raised when the aggregator model fails during master synthesis."""
+
+    pass
+
+
 # Advisory prompt framing to prevent proposers from hallucinating tool execution
 MOA_ADVISORY_SYSTEM_PROMPT = (
     "You are an expert reference advisor in a Mixture of Agents (MoA) council. "
@@ -150,6 +169,45 @@ MOA_PRESETS: Dict[str, Dict[str, Any]] = {
             "temperature": 0.1,
         },
     },
+    "institutional_quant_moa": {
+        "description": "Institutional-grade multi-agent reasoning council with frontier 2026 models",
+        "proposers": [
+            {
+                "label": "DeepSeek-V4.1-Flash",
+                "model": "deepseek-v4.1-flash",
+                "provider": "deepseek",
+                "temperature": 0.2,
+                "role_focus": "Algorithmic logic, quantitative risk, volatility distribution",
+            },
+            {
+                "label": "Gemini-4-Argon",
+                "model": "gemini-4-argon",
+                "provider": "google",
+                "temperature": 0.2,
+                "role_focus": "Global macro cross-asset trends, sentiment dynamics",
+            },
+            {
+                "label": "Gemini-3.5-Flash-Lite",
+                "model": "gemini-3.5-flash-lite",
+                "provider": "google",
+                "temperature": 0.2,
+                "role_focus": "Microstructure & order book imbalance",
+            },
+            {
+                "label": "GPT-6-Astra",
+                "model": "gpt-6-astra",
+                "provider": "openai",
+                "temperature": 0.2,
+                "role_focus": "Structural liquidity and execution routing",
+            },
+        ],
+        "aggregator": {
+            "label": "Claude-Sonnet-5.5",
+            "model": "claude-sonnet-5.5",
+            "provider": "anthropic",
+            "temperature": 0.2,
+        },
+    },
 }
 
 
@@ -212,6 +270,7 @@ class MoARuntime:
         default_timeout: float = 30.0,
         trace_dir: Optional[str] = None,
         settings: Optional[Dict[str, Any]] = None,
+        strict_fail_closed: bool = False,
     ):
         """
         Args:
@@ -221,12 +280,15 @@ class MoARuntime:
             default_timeout: Timeout per LLM call in seconds.
             trace_dir: Optional directory for JSONL trace logging.
             settings: Optional configuration settings mapping for dynamic model resolution.
+            strict_fail_closed: If True, raises MoAConsensusFailureError/MoAAggregatorFailureError
+                                instead of degraded fallback.
         """
         self.llm_caller = llm_caller or self._default_llm_caller
         self.default_preset = default_preset
         self.default_timeout = default_timeout
         self.trace_dir = trace_dir
         self.settings = settings or {}
+        self.strict_fail_closed = strict_fail_closed
 
     def _resolve_preset(self, preset_key: str) -> Dict[str, Any]:
         """Resolves preset definition, allowing dynamic overrides from settings.yaml."""
@@ -317,6 +379,7 @@ class MoARuntime:
         preset_name: Optional[str] = None,
         session_id: Optional[str] = None,
         timeout: Optional[float] = None,
+        strict_fail_closed: Optional[bool] = None,
     ) -> MoAResult:
         """
         Synchronous MoA turn execution. Fans out proposers in parallel, then synthesizes via aggregator.
@@ -328,6 +391,7 @@ class MoARuntime:
         aggregator = preset.get("aggregator", {})
         timeout_sec = timeout or self.default_timeout
         history_msgs = list(history or [])
+        is_strict = self.strict_fail_closed if strict_fail_closed is None else strict_fail_closed
 
         # 1. Parallel Proposers Fan-out
         proposer_outputs: List[Tuple[str, str, Dict[str, Any]]] = []
@@ -369,6 +433,8 @@ class MoARuntime:
         agg_start = time.monotonic()
 
         if is_all_failed:
+            if is_strict:
+                raise MoAConsensusFailureError("MoA consensus failure: all reference advisor models failed.")
             logger.warning("MoA: All reference models failed. Aggregator running in standalone degraded mode.")
             synth_user_msg = (
                 f"[All reference models failed]\n"
@@ -422,6 +488,8 @@ class MoARuntime:
                 latency_ms=agg_latency,
                 is_failed=True,
             )
+            if is_strict:
+                raise MoAAggregatorFailureError(f"MoA aggregator '{agg_label}' failed: {exc}") from exc
 
         total_latency_ms = (time.monotonic() - start_total) * 1000
         proposer_metrics = [m for _, _, m in proposer_outputs]
@@ -506,6 +574,9 @@ class MoAChatCompletions:
             session_id=session_id,
             timeout=timeout,
         )
+
+        if res.aggregator_metrics.get("is_failed"):
+            raise MoAAggregatorFailureError(f"MoA chat completion failed: {res.synthesis}")
 
         total_tokens = sum(
             p.get("usage", {}).get("total_tokens", 0) for p in res.proposer_metrics

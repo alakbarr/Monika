@@ -147,6 +147,8 @@ class StreamingMixin(_ChatAgentMixinBase):
             "cancel_order": "cancel_order",
             "close_paper_trade": "close_paper_trade",
             "modify_paper_sl_tp": "modify_paper_sl_tp",
+            "update_config_parameter": "update_config",
+            "restart_mt5_service": "restart_service",
         }
 
         async def _wrapped_exec(tool_name: str, tool_input: dict) -> Any:
@@ -252,6 +254,7 @@ class StreamingMixin(_ChatAgentMixinBase):
             # Safety Fortress Gate: Intercept mutating terminal execution
             if tool_name == "terminal":
                 cmd = str((tool_input or {}).get("command", "")).strip()
+                cmd_lower = cmd.lower()
                 read_only_starters = (
                     "git status",
                     "git log",
@@ -262,16 +265,17 @@ class StreamingMixin(_ChatAgentMixinBase):
                     "dir",
                     "ls",
                     "ps",
-                    "cat",
-                    "head",
-                    "tail",
                     "whoami",
                     "date",
                     "hostname",
-                    "echo",
                 )
-                is_read_only = any(cmd.lower().startswith(starter) for starter in read_only_starters)
-                destructive_chars = [";", "&", "|", ">"]
+                has_secret_ref = any(
+                    s in cmd_lower for s in (".env", "secret", "credentials", "id_rsa", ".key", ".pem")
+                )
+                is_read_only = (
+                    any(cmd_lower.startswith(starter) for starter in read_only_starters) and not has_secret_ref
+                )
+                destructive_chars = (";", "&", "|", ">", "<", "`", "$", "\n", "\r")
                 if not (is_read_only and not any(ch in cmd for ch in destructive_chars)):
                     action_type = "execute_terminal_command"
                     pending = self._create_pending_action(
@@ -502,21 +506,26 @@ class StreamingMixin(_ChatAgentMixinBase):
                 generator = await self._run_with_gemini(system_prompt, history, clean_message, stream=True)
 
             buffer = []
-            if isinstance(generator, dict):
-                reply = str(generator.get("reply", ""))
-                buffer.append(reply)
-                if token_callback and reply:
-                    res = token_callback(reply)
-                    if asyncio.iscoroutine(res):
-                        await res
-            else:
-                async for delta in generator:
-                    text_chunk = delta if isinstance(delta, str) else getattr(delta, "text", str(delta))
-                    buffer.append(text_chunk)
-                    if token_callback:
-                        res = token_callback(text_chunk)
-                        if asyncio.iscoroutine(res):
-                            await res
+            try:
+                async with asyncio.timeout(120.0):
+                    if isinstance(generator, dict):
+                        reply = str(generator.get("reply", ""))
+                        buffer.append(reply)
+                        if token_callback and reply:
+                            res = token_callback(reply)
+                            if asyncio.iscoroutine(res):
+                                await res
+                    else:
+                        async for delta in generator:
+                            text_chunk = delta if isinstance(delta, str) else getattr(delta, "text", str(delta))
+                            buffer.append(text_chunk)
+                            if token_callback:
+                                res = token_callback(text_chunk)
+                                if asyncio.iscoroutine(res):
+                                    await res
+            except TimeoutError:
+                logger.error("[ChatAgent] Token stream timed out after 120s.")
+                buffer.append("\n\n[GAGAL] Token streaming terputus karena batas waktu (timeout 120s).")
 
             final_text = "".join(buffer)
             if not final_text.strip():

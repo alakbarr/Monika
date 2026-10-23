@@ -679,11 +679,9 @@ def deep_repair_tool_arguments(
             if missing_prop not in repaired_fields:
                 repaired_fields.append(missing_prop)
         elif missing_prop == "checklist":
-            if strict_validation:
-                return False
-            args["checklist"] = {"bias_vs_narrative_match": True, "contradiction_existed": False}
-            if missing_prop not in repaired_fields:
-                repaired_fields.append(missing_prop)
+            # Safety Invariant: Trade validation checklist must never be artificially fabricated.
+            # Reject to force the model to provide genuine contradiction assessment.
+            return False
         elif missing_prop == "reevaluation_trigger":
             args["reevaluation_trigger"] = {
                 "type": "time",

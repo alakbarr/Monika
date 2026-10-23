@@ -40,8 +40,20 @@ def _is_valid_price(value: Any) -> bool:
     return math.isfinite(parsed) and parsed > 0.0
 
 
-def _within_price_tolerance(verified: float, proposal: float, tolerance: float = 0.015) -> bool:
-    """Compare prices with the broker-rounding tolerance used by the ledger."""
+def _within_price_tolerance(
+    verified: float, proposal: float, symbol: Optional[str] = None, tolerance: Optional[float] = None
+) -> bool:
+    """Compare prices with asset-specific tolerance.
+    Forex (6-char standard pair): 0.0005 (0.05%, ~5 pips on EURUSD).
+    Crypto/Commodities/Indices: 0.005 (0.5%).
+    Default fallback: 0.005.
+    """
+    if tolerance is None:
+        sym = (symbol or "").upper().replace("/", "").replace("_", "").strip()
+        if len(sym) == 6 and sym.isalpha() and not any(sym.startswith(c) for c in ("BTC", "ETH", "SOL", "XAU", "XAG")):
+            tolerance = 0.0005
+        else:
+            tolerance = 0.005
     verified_f = float(verified)
     proposal_f = float(proposal)
     denom = abs(verified_f) or 1.0
@@ -235,6 +247,8 @@ class VerificationEvidenceLedger:
             evidence_hash=ev_hash,
         )
         self.general_records.append(record)
+        if len(self.general_records) > 200:
+            self.general_records = self.general_records[-150:]
         logger.debug(
             f"[VerificationLedger] Recorded general evidence [{category}] on '{target}': {status} (Hash={ev_hash})"
         )
@@ -346,12 +360,12 @@ class VerificationEvidenceLedger:
             hash_matched = prop_hash == latest.evidence_hash
 
         # 2. Field-by-field tolerance check (allows minor broker rounding, rejects stale levels).
-        if not _within_price_tolerance(verified_sl, float(stop_loss)):
+        if not _within_price_tolerance(verified_sl, float(stop_loss), symbol=clean_sym):
             return False, (
                 f"Stop loss in proposal ({stop_loss}) deviates significantly from verified level ({verified_sl}). "
                 f"Prior position sizing calculation is stale. Recalculate position size with new stop loss."
             )
-        if not _within_price_tolerance(verified_tp, float(take_profit)):
+        if not _within_price_tolerance(verified_tp, float(take_profit), symbol=clean_sym):
             return False, (
                 f"Take profit in proposal ({take_profit}) deviates significantly from verified level "
                 f"({verified_tp}). Recalculate position size with the new take profit."
@@ -360,7 +374,7 @@ class VerificationEvidenceLedger:
         if entry_price is not None:
             if verified_entry is None or not _is_valid_price(verified_entry):
                 return False, "Verified sizing evidence has no valid entry_price; recalculate position size."
-            if not _within_price_tolerance(verified_entry, float(entry_price)):
+            if not _within_price_tolerance(verified_entry, float(entry_price), symbol=clean_sym):
                 return False, (
                     f"Entry price in proposal ({entry_price}) deviates significantly from verified level "
                     f"({verified_entry}). Recalculate position size with the new entry."

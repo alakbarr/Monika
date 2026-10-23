@@ -1326,7 +1326,8 @@ class GraphCycleScheduler(CycleScheduler):
         for sym in universe:
             domain = f"{sym.strip().upper()}__TRENDING"
             try:
-                res = svc.run_recursion_cycle(
+                res = await asyncio.to_thread(
+                    svc.run_recursion_cycle,
                     domain=domain,
                     scenario_data={"domain": domain, "mode": "weekend_cadence"},
                     k_candidates=2,
@@ -1338,7 +1339,7 @@ class GraphCycleScheduler(CycleScheduler):
                     "modified": res.composition.was_modified,
                 }
             except Exception as e:
-                logger.debug(f"[GraphCycleScheduler] Weekend recursion notice for {sym}: {e}")
+                logger.warning(f"[GraphCycleScheduler] Weekend recursion notice for {sym}: {e}")
 
         logger.info(f"[GraphCycleScheduler] Weekend harness recursion completed for {len(results)} assets.")
         return results

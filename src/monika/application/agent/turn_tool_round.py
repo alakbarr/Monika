@@ -266,7 +266,8 @@ class TurnToolRoundCoordinator:
         async def _exec_single(call: ToolCallSpec) -> Dict[str, Any]:
             try:
                 logger.info(f"[TurnToolRound] Executing tool: {call.name} (call_id={call.id})")
-                res = await tool_executor_fn(call.name, call.arguments)
+                async with asyncio.timeout(60.0):
+                    res = await tool_executor_fn(call.name, call.arguments)
                 content_str = res if isinstance(res, str) else json.dumps(res, default=str)
                 return {
                     "role": "tool",
@@ -291,8 +292,22 @@ class TurnToolRoundCoordinator:
             read_results = await asyncio.gather(*[_exec_single(c) for c in read_calls])
             tool_results.extend(read_results)
 
-        # 3b. Strict serial execution for mutation tools
+        # 3b. Strict serial execution for mutation tools with active ESTOP check per iteration
         for mut_call in mutation_calls:
+            if is_estop_active():
+                logger.critical(
+                    f"[TurnToolRound] Emergency Stop (ESTOP) triggered mid-batch. Halting execution of '{mut_call.name}'."
+                )
+                tool_results.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": mut_call.id,
+                        "name": mut_call.name,
+                        "content": json.dumps({"error": "Emergency Stop (ESTOP) active. Mutation blocked."}),
+                        "is_error": True,
+                    }
+                )
+                break
             mut_result = await _exec_single(mut_call)
             tool_results.append(mut_result)
 

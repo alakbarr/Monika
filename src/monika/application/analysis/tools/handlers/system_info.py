@@ -355,6 +355,11 @@ async def handle_restart_mt5_service(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Safely cycle MT5 terminal connection and poller threads."""
+    if executor is not None and getattr(executor, "is_admin", True) is False:
+        return {
+            "status": "REJECTED",
+            "error": "Akses Ditolak: Hanya Admin yang berwenang me-restart layanan broker MT5.",
+        }
     try:
         import asyncio
 
@@ -382,6 +387,11 @@ async def handle_update_config_parameter(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     """Safely update configuration parameter via AtomicConfigWriter."""
+    if executor is not None and getattr(executor, "is_admin", True) is False:
+        return {
+            "status": "REJECTED",
+            "error": "Akses Ditolak: Hanya Admin yang berwenang memodifikasi konfigurasi sistem.",
+        }
     key = args.get("key") or args.get("parameter") or args.get("dot_key")
     val = args.get("value")
     reason = args.get("reason", "Updated via chat tool")

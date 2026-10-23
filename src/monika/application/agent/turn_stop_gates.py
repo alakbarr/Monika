@@ -65,26 +65,38 @@ class TradingRiskStopGate:
                     entry = act.get("entry_price") or act.get("price")
                     sl = act.get("sl") or act.get("stop_loss")
                     tp = act.get("tp") or act.get("take_profit")
-                    if entry is not None and sl is not None:
-                        try:
-                            e_val, sl_val = float(entry), float(sl)
-                            if abs(e_val - sl_val) <= 1e-6:
-                                return False, (
-                                    f"Financial Safety Invariant: Proposed action on {act.get('symbol')} "
-                                    "has invalid SL distance (0 or equal to entry price)."
-                                )
-                            if act.get("action") == "buy" and sl_val >= e_val:
-                                return False, (
-                                    f"Financial Safety Invariant: BUY proposal on {act.get('symbol')} "
-                                    f"has SL ({sl_val}) above or at entry ({e_val})."
-                                )
-                            if act.get("action") == "sell" and sl_val <= e_val:
-                                return False, (
-                                    f"Financial Safety Invariant: SELL proposal on {act.get('symbol')} "
-                                    f"has SL ({sl_val}) below or at entry ({e_val})."
-                                )
-                        except ValueError, TypeError:
-                            pass
+                    if entry is None or sl is None:
+                        return False, (
+                            f"Financial Safety Invariant: Action on {act.get('symbol')} "
+                            "missing required entry price or Stop Loss."
+                        )
+                    try:
+                        e_val, sl_val = float(entry), float(sl)
+                    except ValueError, TypeError:
+                        return False, (
+                            f"Financial Safety Invariant: Action on {act.get('symbol')} "
+                            "has unparseable price/SL values."
+                        )
+                    if e_val <= 0 or sl_val <= 0:
+                        return False, (
+                            f"Financial Safety Invariant: Proposed action on {act.get('symbol')} "
+                            "has non-positive entry or Stop Loss value."
+                        )
+                    if abs(e_val - sl_val) <= 1e-6:
+                        return False, (
+                            f"Financial Safety Invariant: Proposed action on {act.get('symbol')} "
+                            "has invalid SL distance (0 or equal to entry price)."
+                        )
+                    if act.get("action") == "buy" and sl_val >= e_val:
+                        return False, (
+                            f"Financial Safety Invariant: BUY proposal on {act.get('symbol')} "
+                            f"has SL ({sl_val}) above or at entry ({e_val})."
+                        )
+                    if act.get("action") == "sell" and sl_val <= e_val:
+                        return False, (
+                            f"Financial Safety Invariant: SELL proposal on {act.get('symbol')} "
+                            f"has SL ({sl_val}) below or at entry ({e_val})."
+                        )
 
         return True, None
 

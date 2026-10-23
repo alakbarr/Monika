@@ -101,6 +101,52 @@ async def test_chat_agent_auto_execute_when_session_approved(mock_get_session, m
     mock_client.model_name = "gemini-3.1-flash-lite"
     mock_client.run_chat_loop = AsyncMock(
         return_value={
+            "reply": "Saving market intelligence setup for BTCUSD.",
+            "proposed_action": {
+                "action_type": "save_market_intelligence",
+                "params": {"symbol": "BTCUSD", "title": "Bullish momentum"},
+                "description": "Save intel BTCUSD",
+            },
+            "input_tokens": 80,
+            "output_tokens": 40,
+        }
+    )
+
+    agent = ChatAgent(settings={}, user_id=123)
+    agent.add_session_approval("BTCUSD")
+
+    agent._save_message = AsyncMock()
+    agent._load_history = AsyncMock(return_value=[])
+    agent._build_system_prompt = AsyncMock(return_value="System prompt")
+    agent._execute_action = AsyncMock(return_value="Intel Saved id=12")
+
+    reply, pending = await agent.handle("Simpan intel BTC dong")
+
+    # Non-capital action auto-executes under active session approval
+    assert pending is None
+    assert "Auto-Executed (Session Approval Active for BTCUSD)" in reply
+    assert "Intel Saved id=12" in reply
+    agent._execute_action.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("monika.interfaces.telegram.chat_agent.get_client_for_task")
+@patch("monika.interfaces.telegram.chat_agent.get_session")
+async def test_chat_agent_capital_order_refuses_auto_execute_even_if_session_approved(
+    mock_get_session, mock_get_client
+):
+    """AGENTS.md Directive §1 Safety & Institutional Mandate: Capital orders NEVER auto-execute."""
+    mock_session = create_mock_async_session()
+    mock_session.add = MagicMock()
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__.return_value = mock_session
+    mock_get_session.return_value = mock_ctx
+
+    mock_client = mock_get_client.return_value
+    mock_client.model = "gemini-3.1-flash-lite"
+    mock_client.model_name = "gemini-3.1-flash-lite"
+    mock_client.run_chat_loop = AsyncMock(
+        return_value={
             "reply": "Executing buy setup for BTCUSD.",
             "proposed_action": {
                 "action_type": "place_order",
@@ -122,8 +168,8 @@ async def test_chat_agent_auto_execute_when_session_approved(mock_get_session, m
 
     reply, pending = await agent.handle("Beli BTC dong")
 
-    # When session is approved, pending should be None (auto-executed)
-    assert pending is None
-    assert "Auto-Executed (Session Approval Active for BTCUSD)" in reply
-    assert "Order Placed ticket=77777" in reply
-    agent._execute_action.assert_called_once()
+    # Capital order MUST produce an explicit pending action, NEVER auto-executed
+    assert pending is not None
+    assert pending.action_type == "place_order"
+    assert "Auto-Executed" not in reply
+    agent._execute_action.assert_not_called()

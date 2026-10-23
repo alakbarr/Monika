@@ -10,6 +10,8 @@ active analysis turn's steering queue without restarting the analysis cycle.
 import asyncio
 import logging
 import threading
+import weakref
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
@@ -30,7 +32,24 @@ class SymbolLease:
         self.holder_id = holder_id
         self.acquired_at = datetime.now(timezone.utc)
         self.expires_at = self.acquired_at + timedelta(seconds=ttl_seconds)
-        self.active_harness = active_harness
+        self.set_active_harness(active_harness)
+
+    def set_active_harness(self, active_harness: Optional[Any]) -> None:
+        if active_harness is not None:
+            try:
+                self._active_harness_ref = weakref.ref(active_harness)
+            except TypeError:
+                self._active_harness_ref = lambda: active_harness
+        else:
+            self._active_harness_ref = lambda: None
+
+    @property
+    def active_harness(self) -> Optional[Any]:
+        return self._active_harness_ref()
+
+    @active_harness.setter
+    def active_harness(self, value: Optional[Any]) -> None:
+        self.set_active_harness(value)
 
     @property
     def is_expired(self) -> bool:
@@ -65,11 +84,42 @@ class SymbolTurnLeaseManager:
     def __init__(self):
         self._leases: Dict[str, SymbolLease] = {}
         self._lock: Optional[asyncio.Lock] = None
+        self._lock_loop: Optional[asyncio.AbstractEventLoop] = None
 
     def _get_lock(self) -> asyncio.Lock:
-        if self._lock is None:
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+
+        if self._lock is None or self._lock_loop != current_loop:
             self._lock = asyncio.Lock()
+            self._lock_loop = current_loop
         return self._lock
+
+    @asynccontextmanager
+    async def hold_lease(
+        self,
+        symbol: str,
+        holder_id: str,
+        ttl_seconds: float = 300.0,
+        active_harness: Optional[Any] = None,
+    ):
+        """
+        Async context manager for acquiring and reliably releasing a symbol lease.
+        Guarantees release in finally block to prevent lockouts on turn crash.
+        """
+        acquired = await self.acquire_lease(
+            symbol=symbol,
+            holder_id=holder_id,
+            ttl_seconds=ttl_seconds,
+            active_harness=active_harness,
+        )
+        try:
+            yield acquired
+        finally:
+            if acquired:
+                await self.release_lease(symbol, holder_id)
 
     def _prune_expired_locked(self) -> None:
         now = datetime.now(timezone.utc)

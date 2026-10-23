@@ -39,9 +39,7 @@ class ToolBatchPlanner:
             return True
         canonical = tool_name
 
-        reg = self.registry
-        if hasattr(reg, "_mock_return_value") or hasattr(reg, "assert_called"):
-            reg = default_tool_registry
+        reg = self.registry or default_tool_registry
 
         try:
             if hasattr(reg, "resolve_name") and callable(reg.resolve_name):

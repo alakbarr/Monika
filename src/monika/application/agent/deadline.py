@@ -85,8 +85,9 @@ def run_bounded_sync(
         if backend is not None:
             try:
                 backend.mark_suspect(f"Sync call timed out after {timeout_seconds:.1f}s")
-            except Exception:
-                pass
+                backend.retire_socket_safe()
+            except Exception as e:
+                logger.warning(f"[Deadline] Failed to retire suspect backend on sync timeout: {e}")
         raise TimeoutError(f"Synchronous execution timed out after {timeout_seconds:.1f}s")
 
     if error:

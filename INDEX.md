@@ -4824,6 +4824,9 @@
 #### `moa_loop.py` - *Mixture-of-Agents (MoA) Runtime & Modern Reasoning Orchestrator.*
 - **Path**: [`src/monika/application/agent/moa_loop.py`](src/monika/application/agent/moa_loop.py)
 - **Classes**:
+  - `class MoAError(Exception)`: Base exception for Mixture of Agents errors.
+  - `class MoAConsensusFailureError(MoAError)`: Raised when insufficient reference advisors reach consensus.
+  - `class MoAAggregatorFailureError(MoAError)`: Raised when the aggregator model fails during master synthesis.
   - `class MoAResult`: Final outcome of an MoA deliberation cycle.
   - `class MoARuntime`: Orchestrates Mixture-of-Agents parallel generation, aggregation, and failovers.
     - `__init__(llm_caller: Optional[Callable[[Dict[str, Any], List[Dict[str, Any]]], str]], default_preset: str, default_timeout: float, ...)` - *Args:*
@@ -4962,12 +4965,16 @@
 - **Classes**:
   - `class SymbolLease`: Represents a durable time-bounded analysis lease on a trading symbol.
     - `__init__(symbol: str, holder_id: str, ttl_seconds: float, ...)`
+    - `set_active_harness(active_harness: Optional[Any]) -> None`
+    - `active_harness() -> Optional[Any]`
+    - `active_harness(value: Optional[Any]) -> None`
     - `is_expired() -> bool`
     - `extend(additional_seconds: float) -> None` - *Extend lease expiration to accommodate prolonged ReAct reasoning.*
   - `class SymbolTurnLeaseManager`: Coordinates per-symbol execution leases and manages dynamic event coalescence.
     - `get_instance() -> 'SymbolTurnLeaseManager'`
     - `reset() -> None`
     - `__init__()`
+    - `async hold_lease(symbol: str, holder_id: str, ttl_seconds: float, ...)` - *Async context manager for acquiring and reliably releasing a symbol lease.*
     - `async acquire_lease(symbol: str, holder_id: str, ttl_seconds: float, ...) -> bool` - *Attempt to acquire an exclusive analysis lease for a symbol.*
     - `async attach_harness_for_symbol(symbol: str, harness: Any) -> bool` - *Attach active harness to existing unexpired lease for symbol.*
     - `async attach_harness(symbol: str, holder_id: str, harness: Any) -> bool` - *Attach active harness to an existing unexpired lease.*
@@ -5423,7 +5430,7 @@
   - `class SubagentBlackboard`: Typed working memory blackboard shared across specialist turns.
     - `__init__(symbol: str)`
     - `set_slot(slot_name: str, data: Any) -> None` - *Sets data for a specific blackboard slot.*
-    - `get_slot(slot_name: str, default: Any) -> Any` - *Retrieves data from a specific blackboard slot.*
+    - `get_slot(slot_name: str, default: Any) -> Any` - *Retrieves data from a specific blackboard slot with defensive isolation.*
     - `export_distilled_context(max_tokens: int) -> str` - *Exports a high-density, structured summary of the blackboard state for LLM injection.*
 
 #### `subagent_spawner.py` - *Dynamic Subagent Spawner Pool (Autonomous High-Concurrency Architecture).*

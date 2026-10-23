@@ -256,7 +256,7 @@ class ChatAgent(
             self._interrupt_message = None
             logger.info(f"[ChatAgent] Turn interrupted for user {self.user_id}: {interrupt_note}")
             await self._close_durable_failed_turn(session_id=session_id, reason=interrupt_note)
-            return f"[PERINGATAN] {interrupt_note}", None
+            raise
         except Exception as unhandled_exc:
             from monika.application.agent.error_classifier import classify_api_error
 
@@ -630,18 +630,38 @@ class ChatAgent(
 
         if pending:
             action_sym = str(pending.params.get("symbol") or "")
-            # AGENTS.md Directive §1 Safety: OS/system commands and DB mutations NEVER auto-execute under session approval.
-            DANGEROUS_SYSTEM_ACTIONS = {
+            # AGENTS.md Directive §1 Safety & Institutional Mandate:
+            # Capital trade orders, system/OS mutations, and configurations NEVER auto-execute
+            # under session approval. Every order mutation requires explicit single-use confirmation card.
+            CAPITAL_AND_DANGEROUS_ACTIONS = {
+                "place_order",
+                "close_position",
+                "close_positions_batch",
+                "close_all_positions",
+                "modify_sl_tp",
+                "bulk_breakeven",
+                "set_trailing_stop",
+                "cancel_order",
+                "cancel_stale_pending_orders",
+                "close_paper_trade",
+                "modify_paper_sl_tp",
+                "partial_close_and_breakeven",
+                "pause_trading",
+                "resume_trading",
                 "execute_terminal_command",
                 "desktop_gui_action",
                 "db_mutation",
                 "mcp_write",
                 "file_write",
+                "update_config",
+                "update_config_parameter",
+                "restart_service",
+                "restart_mt5_service",
             }
             can_auto_execute = (
                 bool(action_sym)
                 and self.is_symbol_session_approved(action_sym)
-                and pending.action_type not in DANGEROUS_SYSTEM_ACTIONS
+                and pending.action_type not in CAPITAL_AND_DANGEROUS_ACTIONS
             )
             if can_auto_execute:
                 logger.info(f"[ChatAgent] Auto-executing session-approved action #{pending.action_id} for {action_sym}")

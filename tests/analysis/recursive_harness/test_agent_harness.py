@@ -374,7 +374,11 @@ async def test_harness_prompt_cache_hardening_with_tiered_prompt(mock_session, d
     # For anthropic, assemble returns structured list of cache blocks
     called_sys = dummy_client.mock_run_tool_agent.call_args[0][2]
     assert isinstance(called_sys, list)
-    assert len(called_sys) == 3
+    assert len(called_sys) == 2
+    assert called_sys[1]["text"] == "Skills Catalog"
+    called_msgs = dummy_client.mock_run_tool_agent.call_args[0][0]
+    assert "<volatile_overlay>" in called_msgs[0]["content"]
+    assert "Volatile Snapshot" in called_msgs[0]["content"]
     assert called_sys[0]["text"] == "Stable Rules"
     assert called_sys[0]["cache_control"] == {"type": "ephemeral"}
 

@@ -134,8 +134,8 @@ class AuxiliaryModelRouter:
                 s = {}
         llm = (s or {}).get("llm", {})
         task_roles = llm.get("task_roles", {})
-        def_prov = llm.get("default_provider", "openrouter")
-        def_model = llm.get("default_model", "gpt-6.1-sol-medium")
+        def_prov = llm.get("default_provider", "gemini")
+        def_model = llm.get("default_model", "gemini-3.5-flash-lite")
 
         def _resolve(role_name: str) -> Tuple[str, str]:
             r = task_roles.get(role_name, {})
@@ -171,11 +171,11 @@ class AuxiliaryModelRouter:
         provider, model = self._task_role_mapping.get(
             task,
             (
-                self.settings.get("llm", {}).get("default_provider", "openrouter"),
-                self.settings.get("llm", {}).get("default_model", "gpt-6.1-sol-medium"),
+                self.settings.get("llm", {}).get("default_provider", "gemini"),
+                self.settings.get("llm", {}).get("default_model", "gemini-3.5-flash-lite"),
             )
             if self.settings
-            else ("openrouter", "gpt-6.1-sol-medium"),
+            else ("gemini", "gemini-3.5-flash-lite"),
         )
         dispatch_caller = caller or self._default_caller
         if dispatch_caller is None:

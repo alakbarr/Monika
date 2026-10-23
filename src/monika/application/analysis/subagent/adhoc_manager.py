@@ -7,12 +7,13 @@ telemetry for consumption by Trading Committee nodes.
 """
 
 import asyncio
+import json
 import logging
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
-from monika.application.analysis.subagent.isolated_harness import IsolatedSubagentRunner
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.AdHocSubagentManager")
@@ -42,9 +43,8 @@ class AdHocSubagentManager:
     def __init__(self, settings: Optional[dict] = None, max_concurrency: int = 3):
         self.settings = settings or {}
         self.semaphore = asyncio.Semaphore(max_concurrency)
-        self.runner = IsolatedSubagentRunner(self.settings)
         self._verdicts: Dict[str, AdHocInvestigationVerdict] = {}
-        self._active_tasks: Dict[str, asyncio.Task] = {}
+        self._active_tasks: Set[asyncio.Task] = set()
 
     def get_latest_verdict(self, symbol: str, max_age_seconds: int = 1800) -> Optional[AdHocInvestigationVerdict]:
         """Returns the most recent investigation verdict for symbol if within freshness threshold."""
@@ -75,8 +75,8 @@ class AdHocSubagentManager:
             self.run_investigation(clean_sym, topic, context or {}, timeout=timeout),
             name=f"adhoc_investigation_{clean_sym}",
         )
-        self._active_tasks[clean_sym] = task
-        task.add_done_callback(lambda t: self._active_tasks.pop(clean_sym, None))
+        self._active_tasks.add(task)
+        task.add_done_callback(self._active_tasks.discard)
         return task
 
     async def run_investigation(
@@ -122,25 +122,21 @@ class AdHocSubagentManager:
                 "}"
             )
 
+            context_str = json.dumps(context, default=str)[:3000]
             user_prompt = (
                 f"Asset: {clean_sym}\n"
                 f"Investigation Topic: {topic}\n"
-                f"Context Data: {context}\n"
+                f"Context Data: {context_str}\n"
                 "Analyze the situation and output your JSON assessment."
             )
 
             try:
-                raw_result = await asyncio.wait_for(
-                    llm_client.generate(
+                async with asyncio.timeout(timeout):
+                    raw_result = await llm_client.generate(
                         prompt=user_prompt,
                         system=system_prompt,
                         temperature=0.1,
-                    ),
-                    timeout=timeout,
-                )
-
-                import json
-                import re
+                    )
 
                 text = getattr(raw_result, "content", "") or str(raw_result)
                 match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)

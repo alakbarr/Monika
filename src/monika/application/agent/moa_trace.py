@@ -19,10 +19,12 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from monika.core.paths import get_data_dir
+
 logger = logging.getLogger(__name__)
 
 # Default directory for MoA trace logs
-DEFAULT_MOA_TRACE_DIR = Path("moa-traces")
+DEFAULT_MOA_TRACE_DIR = get_data_dir() / "traces" / "moa"
 
 
 def _sanitize_session_id(session_id: Optional[str]) -> str:
