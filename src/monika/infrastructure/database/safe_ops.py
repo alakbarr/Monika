@@ -75,53 +75,33 @@ async def safe_db_op(
         return default
 
 
-async def safe_commit(session: AsyncSession, label: str = "commit", max_retries: int = 3) -> bool:
-    """Commit an active transaction with automatic rollback on failure.
+async def safe_commit(session: AsyncSession, label: str = "commit", max_retries: int = 1) -> bool:
+    """Commit an active transaction with guaranteed automatic rollback on failure.
 
-    Prevents PendingRollbackError cascades by retrying transient SQLite lock
-    contention and guaranteeing clean rollback and expunge on failure.
+    Guarantees clean rollback and expunge on failure, preventing PendingRollbackError cascades.
+    Note: In SQLAlchemy 2.0, once commit fails, the transaction is invalidated and must be rolled back.
 
     Returns:
         True if commit succeeded, False if failed and rolled back.
     """
-    for attempt in range(max_retries):
-        try:
-            await session.commit()
-            return True
-        except asyncio.CancelledError:
-            try:
-                await asyncio.shield(session.rollback())
-                await _safe_expunge_all(session)
-            except Exception:
-                pass
-            raise
-        except Exception as e:
-            err_str = str(e).lower()
-            is_locked = "locked" in err_str or "busy" in err_str
-            if is_locked and attempt < max_retries - 1:
-                # If flush already invalidated the transaction, break out to clean rollback
-                if not getattr(session, "is_active", True):
-                    break
-                logger.warning(
-                    f"safe_commit [{label}] lock collision (attempt {attempt + 1}/{max_retries}): {e}. Retrying..."
-                )
-                await asyncio.sleep(0.05 * (2**attempt))
-                continue
-
-            logger.warning(f"safe_commit [{label}] failed: {e}. Rolling back transaction.")
-            try:
-                await asyncio.shield(session.rollback())
-                await _safe_expunge_all(session)
-            except Exception as rb_err:
-                logger.error(f"safe_commit [{label}] rollback failed: {rb_err}")
-            return False
-
     try:
-        await asyncio.shield(session.rollback())
-        await _safe_expunge_all(session)
-    except Exception as rb_err:
-        logger.error(f"safe_commit [{label}] rollback failed: {rb_err}")
-    return False
+        await session.commit()
+        return True
+    except asyncio.CancelledError:
+        try:
+            await asyncio.shield(session.rollback())
+            await _safe_expunge_all(session)
+        except Exception:
+            pass
+        raise
+    except Exception as e:
+        logger.warning(f"safe_commit [{label}] failed: {e}. Rolling back transaction cleanly.")
+        try:
+            await asyncio.shield(session.rollback())
+            await _safe_expunge_all(session)
+        except Exception as rb_err:
+            logger.error(f"safe_commit [{label}] rollback failed: {rb_err}")
+        return False
 
 
 async def safe_upsert(

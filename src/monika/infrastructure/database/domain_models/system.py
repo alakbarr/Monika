@@ -250,7 +250,9 @@ class AgentSessionMessage(Base):
     __tablename__ = "agent_session_messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    session_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    session_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("agent_sessions.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     role: Mapped[str] = mapped_column(String(16), nullable=False)  # user, assistant, system, tool
     content: Mapped[str] = mapped_column(Text, nullable=False)
     active: Mapped[int] = mapped_column(Integer, default=1, index=True)

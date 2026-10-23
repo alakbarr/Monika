@@ -59,8 +59,8 @@ class DecisionReflection(Base):
         Integer, ForeignKey("asset_analysis.id", ondelete="SET NULL"), nullable=True, index=True
     )
     position_id: Mapped[Optional[int]] = mapped_column(
-        Integer, nullable=True
-    )  # Foreign key not strictly enforced here to avoid circular dep issues in legacy code
+        Integer, ForeignKey("positions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     decision: Mapped[str] = mapped_column(String(10))  # buy, sell
     confidence: Mapped[float] = mapped_column(Float)

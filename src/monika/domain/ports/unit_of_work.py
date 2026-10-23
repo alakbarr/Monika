@@ -17,6 +17,8 @@ from typing import Any, Optional, Protocol, runtime_checkable
 from monika.domain.ports.repository import (
     ActivityLogRepositoryPort,
     AnalysisRepositoryPort,
+    MarketDataRepositoryPort,
+    PaperTradeRepositoryPort,
     PositionRepositoryPort,
     RiskRepositoryPort,
     SystemConfigRepositoryPort,
@@ -74,4 +76,19 @@ class UnitOfWorkPort(Protocol):
     @property
     def risk(self) -> RiskRepositoryPort:
         """Risk and market data persistence repository."""
+        ...
+
+    @property
+    def analyses(self) -> AnalysisRepositoryPort:
+        """Asset analysis and fundamental brief repository."""
+        ...
+
+    @property
+    def paper_trades(self) -> PaperTradeRepositoryPort:
+        """Simulated paper trade records repository."""
+        ...
+
+    @property
+    def market_data(self) -> MarketDataRepositoryPort:
+        """Market data, OHLCV bars, and rate indicators repository."""
         ...

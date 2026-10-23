@@ -781,6 +781,11 @@
   - `create_opaque_handle(key: str) -> str`: Create a model-blind opaque handle.
   - `resolve_opaque_handle(handle: str) -> str | None`: Resolve opaque handle to plaintext secret.
 
+#### `env_sanitizer.py` - *Strict environment variable scrubbing for programmatic tool execution and subprocesses.*
+- **Path**: [`src/monika/core/security/env_sanitizer.py`](src/monika/core/security/env_sanitizer.py)
+- **Top-Level Functions**:
+  - `get_sanitized_environment(base_env: Optional[Dict[str, str]]) -> Dict[str, str]`: Produce a scrubbed environment dictionary for child process execution.
+
 #### `log_redactor.py` - *Log Redaction Utility (H7).*
 - **Path**: [`src/monika/core/security/log_redactor.py`](src/monika/core/security/log_redactor.py)
 - **Classes**:
@@ -4290,6 +4295,17 @@
   - `class RiskRepositoryPort(RiskDataProviderProtocol, Protocol)`: Pure domain protocol for Risk state and metric persistence.
   - `class AnalysisRepositoryPort(Protocol)`: Pure domain protocol for Analysis and deduplication queries.
     - `async get_recent_executed_analysis_ids(limit: int) -> Sequence[int]` - *Fetch recent executed asset analysis IDs.*
+    - `async get_by_id(analysis_id: int) -> Optional[Any]` - *Fetch an analysis record by ID.*
+  - `class PaperTradeRepositoryPort(Protocol)`: Pure domain protocol for PaperTradeRecord persistence.
+    - `async get_open_records(symbol: Optional[str]) -> Sequence[Any]` - *Fetch active open paper trade records.*
+    - `async get_by_id(record_id: int) -> Optional[Any]` - *Fetch a paper trade record by primary key ID.*
+    - `async create_record(symbol: str, direction: str, entry_price: float, ...) -> Any` - *Create and persist a new simulated paper trade record.*
+    - `async close_record(record_id: int, exit_price: float, pnl_pct: float, ...) -> Optional[Any]` - *Close an existing paper trade record.*
+  - `class MarketDataRepositoryPort(Protocol)`: Pure domain protocol for historical price bars and macroeconomic rates.
+    - `async get_recent_bars(symbol: str, timeframe: str, limit: int) -> Sequence[Any]` - *Fetch historical OHLCV price bars.*
+    - `async get_latest_vix() -> Optional[float]` - *Fetch latest available VIX index level.*
+    - `async get_latest_dxy() -> Optional[float]` - *Fetch latest available DXY index close.*
+    - `async get_latest_yield(tenor: str) -> Optional[float]` - *Fetch latest treasury yield percent.*
 
 #### `unit_of_work.py` - *Domain Unit of Work Port.*
 - **Path**: [`src/monika/domain/ports/unit_of_work.py`](src/monika/domain/ports/unit_of_work.py)
@@ -4302,6 +4318,9 @@
     - `system_config() -> SystemConfigRepositoryPort` - *System configurations and safety flags repository.*
     - `activity_logs() -> ActivityLogRepositoryPort` - *Audit trail and activity log repository.*
     - `risk() -> RiskRepositoryPort` - *Risk and market data persistence repository.*
+    - `analyses() -> AnalysisRepositoryPort` - *Asset analysis and fundamental brief repository.*
+    - `paper_trades() -> PaperTradeRepositoryPort` - *Simulated paper trade records repository.*
+    - `market_data() -> MarketDataRepositoryPort` - *Market data, OHLCV bars, and rate indicators repository.*
 
 ### Folder: `src/monika/domain/risk` <a id="folder-srcmonikadomainrisk"></a>
 
@@ -11593,11 +11612,6 @@
   - `async batch_save_tweets(session, tweets: List[ScrapedTweet]) -> int`: Konversi dan simpan tweet secara batch sebagai berita, lewati duplikat.
   - `async batch_save_fedwatch(session, meetings: List[FedMeeting]) -> int`: Konversi dan simpan data probabilitas FedWatch secara batch.
 
-#### `async_db.py` - *Async Database Session Re-export module.*
-- **Path**: [`src/monika/infrastructure/database/async_db.py`](src/monika/infrastructure/database/async_db.py)
-- **Top-Level Functions**:
-  - `get_engine()`: Return the global async SQLAlchemy engine.
-
 #### `backup.py` - *Utilitas Backup Database — Membuat dump PostgreSQL berkala.*
 - **Path**: [`src/monika/infrastructure/database/backup.py`](src/monika/infrastructure/database/backup.py)
 - **Top-Level Functions**:
@@ -11666,7 +11680,7 @@
 - **Path**: [`src/monika/infrastructure/database/safe_ops.py`](src/monika/infrastructure/database/safe_ops.py)
 - **Top-Level Functions**:
   - `async safe_db_op(session: AsyncSession, operation: Callable) -> Any`: Execute a DB operation with automatic rollback on failure.
-  - `async safe_commit(session: AsyncSession, label: str, max_retries: int) -> bool`: Commit an active transaction with automatic rollback on failure.
+  - `async safe_commit(session: AsyncSession, label: str, max_retries: int) -> bool`: Commit an active transaction with guaranteed automatic rollback on failure.
   - `async safe_upsert(session: AsyncSession, model: type, values: Dict[str, Any], ...) -> None`: Execute an upsert statement compatible with PostgreSQL and SQLite.
 
 #### `session_db_wal.py` - *High-Performance SQLite WAL Session Database with Bounded Read Pool & Lock Guards.*
@@ -12038,6 +12052,10 @@
     - `system_config() -> SystemConfigRepositoryPort` - *System configurations and safety flags repository.*
     - `activity_logs() -> ActivityLogRepositoryPort` - *Audit trail and activity log repository.*
     - `risk() -> RiskRepositoryPort` - *Risk and market data persistence repository.*
+    - `analyses() -> AnalysisRepositoryPort` - *Asset analysis and fundamental brief repository.*
+    - `paper_trades() -> PaperTradeRepositoryPort` - *Simulated paper trade records repository.*
+    - `market_data() -> MarketDataRepositoryPort` - *Market data, OHLCV bars, and rate indicators repository.*
+    - `async nested()` - *Savepoint / nested transaction context manager.*
     - `async commit() -> None` - *Commit all pending database changes within this unit of work.*
     - `async rollback() -> None` - *Rollback all pending database changes within this unit of work.*
 
@@ -13073,6 +13091,14 @@
     - `async reap_stale_sessions(max_idle_sec: Optional[float]) -> int` - *Evicts sessions exceeding idle timeout.*
 - **Top-Level Functions**:
   - `get_pty_bridge_manager() -> PtyBridgeManager`: Return process singleton PtyBridgeManager.
+
+#### `pty_query_responder.py` - *PTY Escape Query Responder & Terminal Protocol Synthesizer.*
+- **Path**: [`src/monika/infrastructure/sandboxes/pty_query_responder.py`](src/monika/infrastructure/sandboxes/pty_query_responder.py)
+- **Classes**:
+  - `class PtyQueryResponder`: Stream filter and automatic responder for ANSI/VT terminal interrogation queries.
+    - `__init__()`
+    - `process_output(data: Union[bytes, str]) -> List[bytes]` - *Inspects output bytes from subprocess stdout/pty.*
+    - `filter_and_respond(data: bytes) -> Tuple[bytes, List[bytes]]` - *Processes stream output, returning (clean_data, stdin_responses).*
 
 #### `worktree_manager.py` - *Git Worktree Isolation & Sandboxed Branch Management.*
 - **Path**: [`src/monika/infrastructure/sandboxes/worktree_manager.py`](src/monika/infrastructure/sandboxes/worktree_manager.py)

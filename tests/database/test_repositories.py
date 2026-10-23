@@ -189,3 +189,148 @@ async def test_unit_of_work_and_ports_compliance(async_session: AsyncSession):
     # Verify persisted
     assert await uow.positions.count_open_positions() == 1
     assert await uow.system_config.get("uow_test_key") == "verified"
+
+
+@pytest.mark.asyncio
+async def test_paper_trade_repository_lifecycle(async_session: AsyncSession):
+    from monika.infrastructure.database.repositories.paper_trade_repository import SqlAlchemyPaperTradeRepository
+
+    repo = SqlAlchemyPaperTradeRepository(async_session)
+
+    # Initial open records
+    assert len(await repo.get_open_records()) == 0
+
+    # Create paper trade
+    record = await repo.create_record(
+        symbol="EURUSD",
+        direction="BUY",
+        entry_price=1.0850,
+        stop_loss=1.0800,
+        take_profit=1.0950,
+        risk_pct=1.0,
+    )
+    assert record.id is not None
+    assert record.status == "open"
+
+    # Fetch open
+    open_recs = await repo.get_open_records("EURUSD")
+    assert len(open_recs) == 1
+    assert open_recs[0].id == record.id
+
+    # Close paper trade
+    closed = await repo.close_record(record.id, exit_price=1.0900, pnl_pct=0.46)
+    assert closed is not None
+    assert closed.status == "closed"
+    assert closed.pnl_pct == 0.46
+    assert len(await repo.get_open_records()) == 0
+
+
+@pytest.mark.asyncio
+async def test_asset_analysis_repository_lifecycle(async_session: AsyncSession):
+    from monika.infrastructure.database.domain_models.analysis import AssetAnalysis
+    from monika.infrastructure.database.repositories.asset_analysis_repository import SqlAlchemyAssetAnalysisRepository
+
+    repo = SqlAlchemyAssetAnalysisRepository(async_session)
+
+    # Insert test analysis
+    analysis = AssetAnalysis(
+        symbol="GBPUSD",
+        confidence=0.85,
+        confluence_score=85,
+        decision="EXECUTE",
+    )
+    async_session.add(analysis)
+    await async_session.flush()
+
+    fetched = await repo.get_by_id(analysis.id)
+    assert fetched is not None
+    assert fetched.symbol == "GBPUSD"
+    assert fetched.confidence == 0.85
+
+    latest = await repo.get_latest_by_symbol("GBPUSD")
+    assert latest is not None
+    assert latest.id == analysis.id
+
+
+@pytest.mark.asyncio
+async def test_market_data_repository_lifecycle(async_session: AsyncSession):
+    from datetime import UTC, datetime
+    from monika.infrastructure.database.domain_models.market import PriceOHLCV, VIXData, TreasuryYield
+    from monika.infrastructure.database.repositories.market_data_repository import SqlAlchemyMarketDataRepository
+
+    repo = SqlAlchemyMarketDataRepository(async_session)
+
+    now = datetime.now(UTC)
+    async_session.add(
+        PriceOHLCV(
+            symbol="EURUSD", timeframe="H1", timestamp=now, open=1.08, high=1.09, low=1.07, close=1.085, volume=100.0
+        )
+    )
+    async_session.add(VIXData(date=now, close=15.2))
+    async_session.add(TreasuryYield(date=now, tenor="10Y", yield_percent=4.25))
+    await async_session.flush()
+
+    bars = await repo.get_recent_bars("EURUSD", "H1", limit=10)
+    assert len(bars) == 1
+    assert bars[0].close == 1.085
+
+    vix = await repo.get_latest_vix()
+    assert vix == 15.2
+
+    y10 = await repo.get_latest_yield("10Y")
+    assert y10 == 4.25
+
+
+@pytest.mark.asyncio
+async def test_unit_of_work_reentrancy_and_nested_savepoint(async_session: AsyncSession):
+    from monika.infrastructure.database.repositories import SqlAlchemyUnitOfWork
+
+    uow = SqlAlchemyUnitOfWork(session=async_session)
+
+    # First entry
+    async with uow:
+        pos1 = await uow.positions.create_position(
+            symbol="AUDUSD", direction="BUY", volume=0.1, entry_price=0.6500, mt5_ticket=3001
+        )
+        assert pos1.mt5_ticket == 3001
+
+        # Test nested savepoint rollback
+        try:
+            async with uow.nested():
+                await uow.positions.create_position(
+                    symbol="NZDUSD", direction="BUY", volume=0.1, entry_price=0.6000, mt5_ticket=3002
+                )
+                raise ValueError("Force rollback of inner nested savepoint")
+        except ValueError:
+            pass
+
+        await uow.commit()
+
+    # Outer position 3001 must exist, inner 3002 must have been rolled back
+    assert await uow.positions.get_by_ticket(3001) is not None
+    assert await uow.positions.get_by_ticket(3002) is None
+
+
+@pytest.mark.asyncio
+async def test_position_paper_vs_live_no_collision(async_session: AsyncSession):
+    from monika.infrastructure.database.repositories import PositionRepository
+
+    repo = PositionRepository(async_session)
+
+    # 1. Create open live position on EURUSD
+    live_pos = await repo.create_position(
+        symbol="EURUSD", direction="BUY", volume=1.0, entry_price=1.0850, mt5_ticket=5001, is_paper=False
+    )
+    assert live_pos.is_paper is False
+
+    # 2. Create open paper position on EURUSD (must succeed without IntegrityError!)
+    paper_pos = await repo.create_position(
+        symbol="EURUSD", direction="BUY", volume=0.5, entry_price=1.0850, mt5_ticket=5002, is_paper=True
+    )
+    assert paper_pos.is_paper is True
+
+    # Both open positions must exist simultaneously
+    open_live = await repo.get_open_positions(symbol="EURUSD", is_paper=False)
+    open_paper = await repo.get_open_positions(symbol="EURUSD", is_paper=True)
+    assert len(open_live) == 1
+    assert len(open_paper) == 1

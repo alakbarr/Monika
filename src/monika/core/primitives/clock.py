@@ -82,14 +82,37 @@ async def async_frozen_time(dt: datetime | None):
 class _Clock:
     """Namespace object providing access to clock methods."""
 
-    now = staticmethod(now)
-    ensure_utc = staticmethod(ensure_utc)
-    set_simulated_now = staticmethod(set_simulated_now)
-    get_simulated_now = staticmethod(get_simulated_now)
-    is_simulated = staticmethod(is_simulated)
-    utc_now_iso = staticmethod(utc_now_iso)
-    frozen_time = staticmethod(frozen_time)
-    async_frozen_time = staticmethod(async_frozen_time)
+    @staticmethod
+    def now() -> datetime:
+        return now()
+
+    @staticmethod
+    def ensure_utc(dt: datetime | None) -> datetime | None:
+        return ensure_utc(dt)
+
+    @staticmethod
+    def set_simulated_now(dt: datetime | None) -> None:
+        return set_simulated_now(dt)
+
+    @staticmethod
+    def get_simulated_now() -> datetime | None:
+        return get_simulated_now()
+
+    @staticmethod
+    def is_simulated() -> bool:
+        return is_simulated()
+
+    @staticmethod
+    def utc_now_iso() -> str:
+        return utc_now_iso()
+
+    @staticmethod
+    def frozen_time(dt: datetime | None):
+        return frozen_time(dt)
+
+    @staticmethod
+    def async_frozen_time(dt: datetime | None):
+        return async_frozen_time(dt)
 
 
 clock = _Clock()

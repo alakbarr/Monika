@@ -57,7 +57,7 @@ def include_object(object, name, type_, reflected, compare_to):
             "checkpoint_writes",
             "checkpoint_migrations",
             "price_ohlcv_partitioned",
-        } or name.startswith("price_ohlcv_"):
+        } or (name.startswith("price_ohlcv_") and name != "price_ohlcv_rejected"):
             return False
     return True
 

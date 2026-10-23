@@ -36,14 +36,9 @@ class TopicManager:
         if session_factory is not None:
             self._session_factory = session_factory
         else:
-            try:
-                from monika.infrastructure.database.async_db import AsyncSessionLocal
+            from monika.infrastructure.database.db import AsyncSessionLocal
 
-                self._session_factory = AsyncSessionLocal
-            except ImportError:
-                from monika.infrastructure.database.db import AsyncSessionLocal
-
-                self._session_factory = AsyncSessionLocal
+            self._session_factory = AsyncSessionLocal
 
     async def get_session_for_topic(self, chat_id: int, topic_id: Optional[int]) -> Optional[str]:
         """Look up existing session ID for this topic."""

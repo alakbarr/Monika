@@ -76,7 +76,8 @@ async def create_backup(settings: dict, force: bool = False) -> Dict[str, Any]:
                         pass
 
         try:
-            await asyncio.to_thread(_do_sqlite_backup)
+            async with asyncio.timeout(60.0):
+                await asyncio.to_thread(_do_sqlite_backup)
             file_size_mb = backup_file.stat().st_size / (1024 * 1024)
             logger.info(f"SQLite DB backup created: {backup_file} ({file_size_mb:.2f} MB)")
 

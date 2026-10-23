@@ -225,12 +225,8 @@ class TechnicalIndicatorCalculator:
                     if hasattr(self.session, "rollback"):
                         try:
                             await self.session.rollback()
-                            import importlib
-
-                            safe_ops = importlib.import_module("monika.infrastructure.database.safe_ops")
-                            _safe_expunge_all = getattr(safe_ops, "_safe_expunge_all", None)
-                            if _safe_expunge_all:
-                                await _safe_expunge_all(self.session)
+                            if hasattr(self.session, "expunge_all"):
+                                self.session.expunge_all()
                         except Exception:
                             pass
                     results[key] = 0

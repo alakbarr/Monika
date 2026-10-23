@@ -120,7 +120,7 @@ MODULE_MAPPING: dict[str, str] = {
     "config.settings": "monika.core.config.settings",
     "config": "monika.core.config",
     "database.adapters": "monika.infrastructure.database.adapters",
-    "database.async_db": "monika.infrastructure.database.async_db",
+    "database.async_db": "monika.infrastructure.database.db",
     "database.cleanup": "monika.infrastructure.database.cleanup",
     "database.db": "monika.infrastructure.database.db",
     "database.event_store": "monika.infrastructure.database.event_store",

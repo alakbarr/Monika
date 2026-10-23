@@ -188,13 +188,10 @@ INSTRUCTIONS:
     async def _get_chronicle_text(self, session: Any, match_dt: datetime) -> str:
         """Pulls recorded chronicle headlines near match date."""
         try:
-            import importlib
+            from sqlalchemy import desc, select
+            from monika.domain.models_resolver import resolve_model
 
-            sa = importlib.import_module("sqlalchemy")
-            select = sa.select
-            desc = sa.desc
-            db_models = importlib.import_module("monika.infrastructure.database.models")
-            MarketChronicle = getattr(db_models, "MarketChronicle", None)
+            MarketChronicle = resolve_model("MarketChronicle")
             if not MarketChronicle:
                 return ""
 
@@ -251,15 +248,9 @@ INSTRUCTIONS:
 
             if joined:
                 # Save permanently so this date is never queried again
-                MarketChronicle: Any = None
-                try:
-                    import importlib
+                from monika.domain.models_resolver import resolve_model
 
-                    db_models = importlib.import_module("monika.infrastructure.database.models")
-                    MarketChronicle = getattr(db_models, "MarketChronicle", None)
-                except Exception:
-                    pass
-
+                MarketChronicle = resolve_model("MarketChronicle")
                 if MarketChronicle:
                     entry = MarketChronicle(
                         event_date=match_dt,

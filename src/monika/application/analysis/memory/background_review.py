@@ -143,7 +143,7 @@ class BackgroundReviewEngine:
                     if len(sig_params) == 1:
                         reflection = await self.reflector.reflect_on_trade(outcome)
                     elif reflection_id:
-                        from monika.infrastructure.database.async_db import get_session
+                        from monika.infrastructure.database.db import get_session
 
                         async with get_session() as session:
                             reflection = await self.reflector.reflect_on_trade(session, int(reflection_id))
@@ -159,7 +159,7 @@ class BackgroundReviewEngine:
             try:
                 if hasattr(self.crystallizer, "evaluate_and_crystallize"):
                     # If DB session provider is present
-                    from monika.infrastructure.database.async_db import get_session
+                    from monika.infrastructure.database.db import get_session
 
                     async with get_session() as session:
                         await self.crystallizer.evaluate_and_crystallize(session, symbol=symbol)

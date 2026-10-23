@@ -78,8 +78,8 @@ def test_alembic_migration_chain_continuity():
 
     assert len(visited) == len(nodes), f"Broken chain! Total nodes: {len(nodes)}, Visited in sequence: {len(visited)}"
     assert visited[0] == "t1a2b3c4d5e6", f"Expected root revision to be t1a2b3c4d5e6, got {visited[0]}"
-    assert visited[-1] == "0011_sync_indexes_constraints", (
-        f"Expected head revision to be 0011_sync_indexes_constraints, got {visited[-1]}"
+    assert visited[-1] == "0012_sync_indexes_and_constraints", (
+        f"Expected head revision to be 0012_sync_indexes_and_constraints, got {visited[-1]}"
     )
 
 
@@ -224,6 +224,9 @@ def test_schema_completeness_all_models():
                     return [{"name": c} for c in tables.get(t_name, {})]
 
                 def get_indexes(self, t_name):
+                    return []
+
+                def get_foreign_keys(self, t_name):
                     return []
 
             return MockInsp()

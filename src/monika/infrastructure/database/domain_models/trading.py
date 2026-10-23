@@ -141,6 +141,16 @@ class Order(Base):
     analysis = relationship("AssetAnalysis", backref="orders", lazy="raise")
     events = relationship("OrderEvent", back_populates="order", cascade="all, delete-orphan", lazy="selectin")
 
+    __table_args__ = (
+        Index(
+            "uq_orders_symbol_active",
+            "symbol",
+            unique=True,
+            postgresql_where=text("status IN ('pending_submit', 'intent_committed', 'submitted', 'accepted')"),
+            sqlite_where=text("status IN ('pending_submit', 'intent_committed', 'submitted', 'accepted')"),
+        ),
+    )
+
     def __init__(self, **kwargs):
         if "id" not in kwargs or kwargs["id"] is None:
             kwargs["id"] = str(uuid.uuid4())
@@ -352,6 +362,7 @@ class Position(Base):
         Index(
             "uq_position_symbol_open",
             "symbol",
+            "is_paper",
             unique=True,
             postgresql_where=text("status = 'open' AND pair_group_id IS NULL"),
             sqlite_where=text("status = 'open' AND pair_group_id IS NULL"),

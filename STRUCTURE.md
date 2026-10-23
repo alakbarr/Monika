@@ -888,6 +888,7 @@ Monika/
 │       │   ├── security/
 │       │   │   ├── __init__.py
 │       │   │   ├── credential_vault.py
+│       │   │   ├── env_sanitizer.py
 │       │   │   ├── log_redactor.py
 │       │   │   ├── nt_guard.py
 │       │   │   ├── prompt_injection_scanner.py
@@ -1689,7 +1690,6 @@ Monika/
 │       │   │   │   └── unit_of_work.py
 │       │   │   ├── __init__.py
 │       │   │   ├── adapters.py
-│       │   │   ├── async_db.py
 │       │   │   ├── backup.py
 │       │   │   ├── cleanup.py
 │       │   │   ├── db.py
@@ -1806,6 +1806,7 @@ Monika/
 │       │   │   ├── docker_backend.py
 │       │   │   ├── local_backend.py
 │       │   │   ├── pty_bridge.py
+│       │   │   ├── pty_query_responder.py
 │       │   │   └── worktree_manager.py
 │       │   ├── storage/
 │       │   │   ├── __init__.py
@@ -2679,6 +2680,7 @@ Monika/
 │   │   └── test_scraper_models.py
 │   ├── security/
 │   │   ├── test_credential_vault.py
+│   │   ├── test_fase3_security_hardening.py
 │   │   ├── test_fase4_central_config_and_security.py
 │   │   ├── test_security_guards.py
 │   │   └── test_supply_chain_and_win32.py
@@ -3078,4 +3080,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2781
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2783

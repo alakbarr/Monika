@@ -208,17 +208,32 @@ def get_engine():
                             break
 
                 verify_safe_database_url(db_url)
-                engine_kwargs: dict[str, Any] = {"echo": False}
+                cfg_db: dict[str, Any] = {}
+                try:
+                    from monika.core.config.settings import load_settings
+
+                    cfg_db = load_settings().get("database") or {}
+                except Exception:
+                    pass
+
+                pool_size = int(cfg_db.get("pool_size", 25 if "postgresql" in db_url else 10))
+                max_overflow = int(cfg_db.get("max_overflow", 35 if "postgresql" in db_url else 20))
+                pool_timeout = float(cfg_db.get("pool_timeout", 60.0))
+                echo = bool(cfg_db.get("echo", False))
+
+                engine_kwargs: dict[str, Any] = {"echo": echo}
                 if "postgresql" in db_url:
                     engine_kwargs.update(
                         {
-                            "pool_size": 25,
-                            "max_overflow": 35,
-                            "pool_timeout": 60.0,
+                            "pool_size": pool_size,
+                            "max_overflow": max_overflow,
+                            "pool_timeout": pool_timeout,
                             "pool_pre_ping": True,
                             "pool_recycle": 1800,
                             "connect_args": {
                                 "timeout": 30.0,
+                                "command_timeout": 60.0,
+                                "server_settings": {"statement_timeout": "60000"},
                             },
                         }
                     )
@@ -237,9 +252,9 @@ def get_engine():
                     else:
                         engine_kwargs.update(
                             {
-                                "pool_size": 10,
-                                "max_overflow": 20,
-                                "pool_timeout": 60.0,
+                                "pool_size": pool_size,
+                                "max_overflow": max_overflow,
+                                "pool_timeout": pool_timeout,
                                 "pool_pre_ping": True,
                                 "pool_recycle": 1800,
                                 "connect_args": {
@@ -409,7 +424,7 @@ async def get_write_session() -> AsyncGenerator[AsyncSession, None]:
                 try:
                     yield session
                     await session.commit()
-                except Exception:
+                except Exception, asyncio.CancelledError:
                     try:
                         await asyncio.shield(session.rollback())
                     except Exception:
@@ -420,7 +435,7 @@ async def get_write_session() -> AsyncGenerator[AsyncSession, None]:
             try:
                 yield session
                 await session.commit()
-            except Exception:
+            except Exception, asyncio.CancelledError:
                 try:
                     await asyncio.shield(session.rollback())
                 except Exception:
@@ -428,7 +443,7 @@ async def get_write_session() -> AsyncGenerator[AsyncSession, None]:
                 raise
 
 
-_IN_MEMORY_EXECUTION_LOCKS: dict[int, asyncio.Lock] = {}
+_IN_MEMORY_EXECUTION_LOCKS: dict[tuple[asyncio.AbstractEventLoop, int], asyncio.Lock] = {}
 
 
 @asynccontextmanager
@@ -476,7 +491,8 @@ async def transactional_advisory_lock(
 
         yield True
     else:
-        lock = _IN_MEMORY_EXECUTION_LOCKS.setdefault(numeric_key, asyncio.Lock())
+        loop = asyncio.get_running_loop()
+        lock = _IN_MEMORY_EXECUTION_LOCKS.setdefault((loop, numeric_key), asyncio.Lock())
         async with lock:
             from pathlib import Path
             from monika.infrastructure.database.session_db_wal import FileLockGuard

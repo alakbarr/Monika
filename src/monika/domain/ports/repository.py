@@ -290,3 +290,67 @@ class AnalysisRepositoryPort(Protocol):
     async def get_recent_executed_analysis_ids(self, limit: int = 500) -> Sequence[int]:
         """Fetch recent executed asset analysis IDs."""
         ...
+
+    async def get_by_id(self, analysis_id: int) -> Optional[Any]:
+        """Fetch an analysis record by ID."""
+        ...
+
+
+@runtime_checkable
+class PaperTradeRepositoryPort(Protocol):
+    """Pure domain protocol for PaperTradeRecord persistence."""
+
+    async def get_open_records(self, symbol: Optional[str] = None) -> Sequence[Any]:
+        """Fetch active open paper trade records."""
+        ...
+
+    async def get_by_id(self, record_id: int) -> Optional[Any]:
+        """Fetch a paper trade record by primary key ID."""
+        ...
+
+    async def create_record(
+        self,
+        symbol: str,
+        direction: str,
+        entry_price: float,
+        stop_loss: float,
+        take_profit: float,
+        risk_pct: float = 0.75,
+        analysis_id: Optional[int] = None,
+        stated_entry_price: Optional[float] = None,
+        requested_lot: Optional[float] = None,
+        slippage_applied: float = 0.0,
+    ) -> Any:
+        """Create and persist a new simulated paper trade record."""
+        ...
+
+    async def close_record(
+        self,
+        record_id: int,
+        exit_price: float,
+        pnl_pct: float,
+        exit_reason: str = "manual",
+    ) -> Optional[Any]:
+        """Close an existing paper trade record."""
+        ...
+
+
+@runtime_checkable
+class MarketDataRepositoryPort(Protocol):
+    """Pure domain protocol for historical price bars and macroeconomic rates."""
+
+    async def get_recent_bars(self, symbol: str, timeframe: str = "H1", limit: int = 100) -> Sequence[Any]:
+        """Fetch historical OHLCV price bars."""
+        ...
+
+    async def get_latest_vix(self) -> Optional[float]:
+        """Fetch latest available VIX index level."""
+        ...
+
+    async def get_latest_dxy(self) -> Optional[float]:
+        """Fetch latest available DXY index close."""
+        ...
+
+    async def get_latest_yield(self, tenor: str = "10Y") -> Optional[float]:
+        """Fetch latest treasury yield percent."""
+        ...

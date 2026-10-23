@@ -42,10 +42,11 @@ async def _get_pct_change(
         return None
 
     try:
-        import importlib
+        from monika.domain.models_resolver import resolve_model
 
-        mod = importlib.import_module("monika.infrastructure.database.models")
-        PriceOHLCV = getattr(mod, "PriceOHLCV")
+        PriceOHLCV = resolve_model("PriceOHLCV")
+        if not PriceOHLCV:
+            return None
         from sqlalchemy import select
 
         stmt = select(PriceOHLCV.close).where(PriceOHLCV.symbol == symbol).where(PriceOHLCV.timeframe == timeframe)
@@ -115,10 +116,15 @@ async def compute_usd_strength_proxy(
         }
 
     try:
-        import importlib
+        from monika.domain.models_resolver import resolve_model
 
-        mod = importlib.import_module("monika.infrastructure.database.models")
-        DXYData = getattr(mod, "DXYData")
+        DXYData = resolve_model("DXYData")
+        if not DXYData:
+            return {
+                "weighted_usd_change_pct": 0.0,
+                "direction": "flat",
+                "method": "dxy_daily_fallback_no_model",
+            }
         from sqlalchemy import select
 
         rows = (

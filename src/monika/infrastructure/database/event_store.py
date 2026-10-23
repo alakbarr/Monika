@@ -29,6 +29,7 @@ class TradingEventStore:
         causation_id: Optional[str] = None,
         actor: str = "system",
         source: str = "system",
+        strict: Optional[bool] = None,
         **kwargs: Any,
     ) -> str:
         """
@@ -55,12 +56,15 @@ class TradingEventStore:
             actor=actor,
             ts_created=datetime.now(timezone.utc),
         )
+        is_strict = strict if strict is not None else event_type.startswith(("risk.", "order.", "kill_switch"))
         try:
             async with session.begin_nested():
                 session.add(event)
                 await session.flush()
         except Exception as e:
             logger.error(f"Event flush failed for {event_type} (corr={correlation_id}): {e}", exc_info=True)
+            if is_strict:
+                raise
             return ""
 
         logger.debug(
