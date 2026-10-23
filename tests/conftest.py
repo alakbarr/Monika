@@ -323,6 +323,29 @@ def protect_llm_provider_network_and_pools(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def reset_service_container():
+    """
+    Reset singleton ServiceContainer sebelum dan sesudah setiap unit test
+    untuk menjamin isolasi konfigurasi dan dependensi hermetik (AGENTS.md §5.6).
+    """
+    try:
+        from monika.core.container import ServiceContainer
+
+        ServiceContainer.reset()
+    except Exception:
+        pass
+
+    yield
+
+    try:
+        from monika.core.container import ServiceContainer
+
+        ServiceContainer.reset()
+    except Exception:
+        pass
+
+
+@pytest.fixture(autouse=True)
 def drain_orphan_async_tasks():
     """Drain any lingering background async tasks before event loop teardown."""
     yield

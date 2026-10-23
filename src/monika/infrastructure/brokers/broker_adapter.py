@@ -15,6 +15,7 @@ Adapters:
 
 import asyncio
 import logging
+import os
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
@@ -1270,3 +1271,31 @@ class MT5RemoteGatewayAdapter(BrokerAdapter):
         except Exception as e:
             logger.warning(f"[MT5RemoteGatewayAdapter] get_account_info failed: {e}")
         return {"balance": 0.0, "equity": 0.0, "margin": 0.0, "free_margin": 0.0, "leverage": 100.0}
+
+
+def create_broker_adapter_from_settings(settings: Optional[dict[str, Any]]) -> Optional[BrokerAdapter]:
+    """
+    Canonical factory for instantiating BrokerAdapter based on execution configuration.
+    Returns MT5RemoteGatewayAdapter when adapter_type is 'remote_gateway', else None
+    (which directs ExecutionService to use default MT5LiveAdapter / PaperTradingAdapter).
+    """
+    if not isinstance(settings, dict):
+        return None
+    exec_cfg = settings.get("execution", {}) if isinstance(settings, dict) else {}
+    adapter_type = exec_cfg.get("adapter_type", "live")
+    if adapter_type == "remote_gateway":
+        gateway_url = (
+            exec_cfg.get("remote_gateway_url")
+            or exec_cfg.get("gateway_url")
+            or os.getenv("EXECUTION_SERVICE_URL")
+            or os.getenv("MT5_GATEWAY_URL")
+            or "http://127.0.0.1:8080"
+        )
+        api_token = (
+            exec_cfg.get("remote_gateway_token")
+            or exec_cfg.get("api_token")
+            or os.getenv("EXECUTION_SERVICE_AUTH_TOKEN")
+            or os.getenv("MT5_GATEWAY_TOKEN")
+        )
+        return MT5RemoteGatewayAdapter(gateway_url=gateway_url, api_token=api_token)
+    return None

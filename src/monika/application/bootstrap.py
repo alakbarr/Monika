@@ -331,30 +331,11 @@ def build_application_container(
 
     # Execution service
     from monika.application.execution.execution_service import ExecutionService
+    from monika.infrastructure.brokers.broker_adapter import create_broker_adapter_from_settings
 
     def _build_execution_service(c: ServiceContainer) -> ExecutionService:
         settings = c.get("settings", {})
-        exec_cfg = settings.get("execution", {})
-        adapter_type = exec_cfg.get("adapter_type", "live")
-        broker_adapter = None
-        if adapter_type == "remote_gateway":
-            from monika.infrastructure.brokers.broker_adapter import MT5RemoteGatewayAdapter
-
-            gateway_url = (
-                exec_cfg.get("remote_gateway_url")
-                or exec_cfg.get("gateway_url")
-                or os.getenv("EXECUTION_SERVICE_URL")
-                or os.getenv("MT5_GATEWAY_URL")
-                or "http://127.0.0.1:8080"
-            )
-            api_token = (
-                exec_cfg.get("remote_gateway_token")
-                or exec_cfg.get("api_token")
-                or os.getenv("EXECUTION_SERVICE_AUTH_TOKEN")
-                or os.getenv("MT5_GATEWAY_TOKEN")
-            )
-            broker_adapter = MT5RemoteGatewayAdapter(gateway_url=gateway_url, api_token=api_token)
-
+        broker_adapter = create_broker_adapter_from_settings(settings)
         return ExecutionService(
             settings=settings,
             mt5_client=c.get("mt5_client"),

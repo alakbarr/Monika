@@ -148,27 +148,13 @@ class AgentBuilderMixin:
         warmup_evt = getattr(self, "_warmup_complete", self._recovery_complete)
         self.macro_data_scheduler = MacroDataScheduler(self.settings, recovery_event=warmup_evt)
 
-        exec_cfg = self.settings.get("execution", {})
-        adapter_type = exec_cfg.get("adapter_type", "live")
-        broker_adapter = None
-        if adapter_type == "remote_gateway":
-            from monika.infrastructure.brokers.broker_adapter import MT5RemoteGatewayAdapter
+        from monika.infrastructure.brokers.broker_adapter import create_broker_adapter_from_settings
 
-            gateway_url = (
-                exec_cfg.get("remote_gateway_url")
-                or exec_cfg.get("gateway_url")
-                or os.getenv("EXECUTION_SERVICE_URL")
-                or os.getenv("MT5_GATEWAY_URL")
-                or "http://127.0.0.1:8080"
+        broker_adapter = create_broker_adapter_from_settings(self.settings)
+        if broker_adapter is not None:
+            logger.info(
+                f"ExecutionService configured with {type(broker_adapter).__name__} ({getattr(broker_adapter, 'gateway_url', 'custom')})"
             )
-            api_token = (
-                exec_cfg.get("remote_gateway_token")
-                or exec_cfg.get("api_token")
-                or os.getenv("EXECUTION_SERVICE_AUTH_TOKEN")
-                or os.getenv("MT5_GATEWAY_TOKEN")
-            )
-            broker_adapter = MT5RemoteGatewayAdapter(gateway_url=gateway_url, api_token=api_token)
-            logger.info(f"ExecutionService configured with MT5RemoteGatewayAdapter ({gateway_url})")
 
         if broker_adapter is not None or not container.has("execution_service"):
             self.execution_service = ExecutionService(

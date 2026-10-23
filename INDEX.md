@@ -10745,6 +10745,8 @@
     - `async get_positions() -> List[dict]`
     - `async get_open_positions(symbol: Optional[str]) -> List[dict]`
     - `async get_account_info() -> dict`
+- **Top-Level Functions**:
+  - `create_broker_adapter_from_settings(settings: Optional[dict[str, Any]]) -> Optional[BrokerAdapter]`: Canonical factory for instantiating BrokerAdapter based on execution configuration.
 
 #### `ibkr_adapter.py` - *Interactive Brokers (IBKR) Execution Adapter (Async).*
 - **Path**: [`src/monika/infrastructure/brokers/ibkr_adapter.py`](src/monika/infrastructure/brokers/ibkr_adapter.py)

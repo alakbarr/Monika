@@ -165,7 +165,8 @@ class TradingAgent(AgentBuilderMixin, AgentRecoveryMixin, AgentMonitorsMixin, Ag
         else:
             from monika.core.container import get_container
 
-            self.container = get_container()
+            self.container = get_container().extend()
+            self.container.register("settings", self.settings)
         self.plugin_engine = None
         self.universal_cron = None
         self.guardian_supervisor = None
