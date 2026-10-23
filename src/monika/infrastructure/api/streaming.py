@@ -3,9 +3,6 @@ Backward-compatibility facade for streaming.
 Canonical location: monika.infrastructure.llm.rate_limiting.streaming
 """
 
-import sys
-import monika.infrastructure.llm.rate_limiting.streaming as _canonical
-
 from monika.infrastructure.llm.rate_limiting.streaming import (
     StreamConfig,
     StreamingHeartbeatMonitor,
@@ -27,5 +24,3 @@ __all__ = [
     "consume_sse_stream",
     "streaming_request",
 ]
-
-sys.modules[__name__] = _canonical

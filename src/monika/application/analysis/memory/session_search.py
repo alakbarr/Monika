@@ -355,10 +355,13 @@ class SessionSearchEngine:
 
     def _format_reflection(self, r: DecisionReflection) -> Dict[str, Any]:
         pnl_val = None
+        pnl_unit = "USD"
         if r.outcome_pnl_usd is not None:
             pnl_val = float(r.outcome_pnl_usd)
+            pnl_unit = "USD"
         elif r.is_paper_whatif and r.whatif_hypothetical_pnl_pips is not None:
-            pnl_val = float(r.whatif_hypothetical_pnl_pips) / 10.0
+            pnl_val = float(r.whatif_hypothetical_pnl_pips)
+            pnl_unit = "pips"
 
         stage_val = "whatif" if r.is_paper_whatif else "execution"
         content_text = r.rationale_summary or f"Decision {r.decision} for {r.symbol}"
@@ -385,6 +388,7 @@ class SessionSearchEngine:
             "lesson_tags": r.lesson_tags,
             "alpha_lesson": r.alpha_lesson,
             "pnl": pnl_val,
+            "pnl_unit": pnl_unit,
         }
 
     async def hybrid_search(

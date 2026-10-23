@@ -13,7 +13,7 @@ from monika.infrastructure.providers.gemini_provider import GeminiProvider
 from monika.infrastructure.providers.anthropic_provider import AnthropicProvider
 from monika.infrastructure.providers.openai_provider import OpenAIProvider
 from monika.infrastructure.providers.llm_factory import LLMFactory
-from monika.infrastructure.api.streaming import StreamTimeoutError, StreamConfig, StreamResult
+from monika.infrastructure.llm.rate_limiting.streaming import StreamTimeoutError, StreamConfig, StreamResult
 
 
 SAMPLE_SETTINGS = {

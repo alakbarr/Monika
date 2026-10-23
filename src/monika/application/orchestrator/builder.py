@@ -170,7 +170,7 @@ class AgentBuilderMixin:
             broker_adapter = MT5RemoteGatewayAdapter(gateway_url=gateway_url, api_token=api_token)
             logger.info(f"ExecutionService configured with MT5RemoteGatewayAdapter ({gateway_url})")
 
-        if not container.has("execution_service"):
+        if broker_adapter is not None or not container.has("execution_service"):
             self.execution_service = ExecutionService(
                 self.settings,
                 mt5_client=self.mt5_client,

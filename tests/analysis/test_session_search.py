@@ -60,9 +60,11 @@ async def test_session_search_postgresql_engine():
         assert precedents[0]["symbol"] == "EURUSD"
         assert precedents[0]["stage"] == "whatif"
         assert precedents[0]["confidence"] == 0.88
-        assert precedents[0]["pnl"] == 2.50
+        assert precedents[0]["pnl"] == 25.0
+        assert precedents[0]["pnl_unit"] == "pips"
         assert precedents[1]["stage"] == "execution"
         assert precedents[1]["pnl"] == 1.45
+        assert precedents[1]["pnl_unit"] == "USD"
 
         # 2. Test keyword search
         search_res = await search_engine.search("FVG", limit=5, session=session)

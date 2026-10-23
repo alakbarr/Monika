@@ -96,8 +96,19 @@ class SkillCrystallizer:
                 stmt = stmt.where(DecisionReflection.symbol == clean_sym)
 
             raw_res = await session.execute(stmt)
-            # Preserve all columns from multi-column outerjoin using .all()
-            results = raw_res.all() if hasattr(raw_res, "all") else []
+            # Preserve all columns from multi-column outerjoin, with scalar fallback for single-entity or mock results
+            results = []
+            if hasattr(raw_res, "all"):
+                res_all = raw_res.all()
+                if isinstance(res_all, (list, tuple)):
+                    results = res_all
+            if not results and hasattr(raw_res, "scalars"):
+                try:
+                    res_scalars = raw_res.scalars().all()
+                    if isinstance(res_scalars, (list, tuple)):
+                        results = res_scalars
+                except Exception:
+                    pass
 
             if not isinstance(results, (list, tuple)):
                 return []

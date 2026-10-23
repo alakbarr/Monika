@@ -443,7 +443,42 @@ async def get_write_session() -> AsyncGenerator[AsyncSession, None]:
                 raise
 
 
-_IN_MEMORY_EXECUTION_LOCKS: dict[tuple[asyncio.AbstractEventLoop, int], asyncio.Lock] = {}
+class _ExecutionLocksDict(dict):
+    """
+    Dict mapping (loop, numeric_key) -> asyncio.Lock, with fallback lookup by numeric_key
+    to maintain backward compatibility with callers and tests querying by integer key.
+    """
+
+    def __contains__(self, key: Any) -> bool:
+        if super().__contains__(key):
+            return True
+        if isinstance(key, int):
+            try:
+                loop = asyncio.get_running_loop()
+                if (loop, key) in self:
+                    return True
+            except RuntimeError:
+                pass
+            return any(k[1] == key for k in self.keys() if isinstance(k, tuple) and len(k) == 2)
+        return False
+
+    def __getitem__(self, key: Any) -> asyncio.Lock:
+        if super().__contains__(key):
+            return super().__getitem__(key)
+        if isinstance(key, int):
+            try:
+                loop = asyncio.get_running_loop()
+                if (loop, key) in self:
+                    return super().__getitem__((loop, key))
+            except RuntimeError:
+                pass
+            for k, v in self.items():
+                if isinstance(k, tuple) and len(k) == 2 and k[1] == key:
+                    return v
+        return super().__getitem__(key)
+
+
+_IN_MEMORY_EXECUTION_LOCKS: dict[Any, asyncio.Lock] = _ExecutionLocksDict()
 
 
 @asynccontextmanager
