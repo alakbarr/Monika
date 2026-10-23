@@ -89,19 +89,20 @@ def adf_test_approx(series: np.ndarray, max_lags: int = 1) -> Tuple[float, float
         se_gamma = np.sqrt(s2 * inv_xx[1, 1])
         t_stat = gamma / se_gamma if se_gamma > 1e-12 else 0.0
     except Exception:
-        return 0.0, 1.0, {"1%": -3.5, "5%": -2.88, "10%": -2.57}
+        return 0.0, 1.0, {"1%": -3.90, "5%": -3.34, "10%": -3.04}
 
-    crit_values = {"1%": -3.46, "5%": -2.88, "10%": -2.57}
+    # Engle-Yoo (1987) / Phillips-Ouliaris critical values for 2-variable cointegrating regression residuals
+    crit_values = {"1%": -3.90, "5%": -3.34, "10%": -3.04}
 
-    # MacKinnon approximation for p-value
-    if t_stat <= -3.46:
+    # MacKinnon / Engle-Yoo approximation for p-value
+    if t_stat <= -3.90:
         p_val = 0.01
-    elif t_stat <= -2.88:
+    elif t_stat <= -3.34:
         p_val = 0.05
-    elif t_stat <= -2.57:
+    elif t_stat <= -3.04:
         p_val = 0.10
     else:
-        p_val = min(1.0, 0.10 + 0.3 * (t_stat - (-2.57)))
+        p_val = min(1.0, 0.10 + 0.3 * (t_stat - (-3.04)))
 
     return float(t_stat), float(p_val), crit_values
 

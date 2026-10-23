@@ -66,8 +66,11 @@ class TimesFMAlphaCalculator:
             upper_expansion = max(0.0, q90 - q50)
             lower_expansion = max(0.0, q50 - q10)
 
-            # Hitung rasio kemiringan (skew ratio)
-            if lower_expansion < 1e-8:
+            # Hitung rasio kemiringan (skew ratio) dengan noise suppression pada rentang mendekati nol
+            base_ref = max(current_price or 1.0, 1.0)
+            if (upper_expansion + lower_expansion) < 1e-5 * base_ref:
+                skew_ratio = 1.0
+            elif lower_expansion < 1e-8:
                 skew_ratio = 2.5 if upper_expansion > 1e-8 else 1.0
             else:
                 skew_ratio = float(upper_expansion / lower_expansion)

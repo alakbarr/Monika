@@ -33,7 +33,7 @@ except ImportError:
     stats = None
 
 
-def _calc_corr(a: pd.Series, b: pd.Series, method: str = "spearman") -> float:
+def _calc_corr(a: pd.Series | np.ndarray, b: pd.Series | np.ndarray, method: str = "spearman") -> float:
     """Computes correlation using pandas/scipy with automatic fallback."""
     if _HAS_SCIPY and stats is not None:
         fn = stats.spearmanr if method == "spearman" else stats.pearsonr
@@ -44,10 +44,12 @@ def _calc_corr(a: pd.Series, b: pd.Series, method: str = "spearman") -> float:
         c = float(np.asarray(val, dtype=float).item()) if val is not None else 0.0
         return c if not np.isnan(c) else 0.0
 
+    s_a = pd.Series(a) if not isinstance(a, pd.Series) else a
+    s_b = pd.Series(b) if not isinstance(b, pd.Series) else b
     if method == "spearman":
-        c = a.rank().corr(b.rank())
+        c = s_a.rank().corr(s_b.rank())
     else:
-        c = a.corr(b)
+        c = s_a.corr(s_b)
     return float(c) if (c is not None and not np.isnan(c)) else 0.0
 
 

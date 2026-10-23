@@ -169,22 +169,22 @@ def evaluate_joint_tail_risk(
     """
     independent_prob = tail_quantile * tail_quantile
 
-    s_a = pd.Series(returns_a).dropna()
-    s_b = pd.Series(returns_b).dropna()
+    # Align series on common timestamps
+    df_returns = pd.DataFrame({"a": returns_a, "b": returns_b}).dropna()
 
-    if len(s_a) < 10 or len(s_b) < 10:
+    if len(df_returns) < 10:
         return {
             "theta": 0.0,
             "lambda_lower_tail": 0.0,
             "joint_crash_prob": round(independent_prob, 5),
             "independent_prob": round(independent_prob, 5),
             "crash_excess_ratio": 1.0,
-            "recommended_haircut": 1.0,
+            "recommended_haircut": 0.50,  # Fail-closed protective haircut
             "risk_level": "INSUFFICIENT_DATA",
         }
 
-    u = empirical_cdf(returns_a)
-    v = empirical_cdf(returns_b)
+    u = empirical_cdf(df_returns["a"].to_numpy())
+    v = empirical_cdf(df_returns["b"].to_numpy())
 
     theta, lambda_lower = fit_copula_from_tau(u, v, copula_type="clayton")
     if theta <= 0.0:

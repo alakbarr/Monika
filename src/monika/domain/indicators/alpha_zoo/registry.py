@@ -23,7 +23,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
-from monika.domain.indicators.alpha_zoo.meta import AlphaMeta
+from monika.domain.indicators.alpha_zoo.meta import AlphaCategory, AlphaDirection, AlphaMeta
 
 
 class RegistryError(Exception):
@@ -53,7 +53,51 @@ def load_alpha_meta_from_py(file_path: Union[str, Path]) -> AlphaMeta:
                 if isinstance(target, ast.Name) and target.id == "__alpha_meta__":
                     try:
                         raw_dict = ast.literal_eval(node.value)
-                        return AlphaMeta(**raw_dict)
+                        if not isinstance(raw_dict, dict):
+                            raise ValueError("__alpha_meta__ is not a dict")
+                        factor_id = raw_dict.get("name") or raw_dict.get("id") or path.stem
+                        cat = raw_dict.get("category")
+                        if not cat and raw_dict.get("theme"):
+                            themes = raw_dict["theme"]
+                            cat = themes[0] if isinstance(themes, list) and themes else str(themes)
+                        cat = cat or "momentum"
+                        if cat == "reversal":
+                            cat = "mean_reversion"
+                        valid_cats: dict[str, AlphaCategory] = {
+                            "momentum": "momentum",
+                            "mean_reversion": "mean_reversion",
+                            "volatility": "volatility",
+                            "volume": "volume",
+                            "liquidity": "liquidity",
+                            "trend": "trend",
+                            "structural": "structural",
+                            "fundamental": "fundamental",
+                            "risk_premia": "risk_premia",
+                            "microstructure": "microstructure",
+                        }
+                        validated_cat: AlphaCategory = valid_cats.get(cat, "momentum")
+                        warmup = int(raw_dict.get("min_warmup_bars") or 5)
+                        lookback = int(raw_dict.get("lookback") or warmup)
+                        decay = int(raw_dict.get("decay_horizon") or 5)
+                        dir_raw = str(raw_dict.get("direction") or "positive_bullish")
+                        valid_dirs: dict[str, AlphaDirection] = {
+                            "positive_bullish": "positive_bullish",
+                            "positive_bearish": "positive_bearish",
+                            "neutral_volatility": "neutral_volatility",
+                        }
+                        validated_dir: AlphaDirection = valid_dirs.get(dir_raw, "positive_bullish")
+
+                        return AlphaMeta(
+                            name=str(factor_id),
+                            category=validated_cat,
+                            lookback=lookback,
+                            columns_required=raw_dict.get("columns_required", ["close"]),
+                            min_warmup_bars=warmup,
+                            decay_horizon=decay,
+                            direction=validated_dir,
+                            formula_latex=str(raw_dict.get("formula_latex", "")),
+                            description=str(raw_dict.get("description") or raw_dict.get("nickname", "")),
+                        )
                     except Exception as err:
                         raise RegistryError(f"Failed to parse __alpha_meta__ in {path}: {err}") from err
 
@@ -98,6 +142,20 @@ class FactorRegistry:
         if name not in cls._FACTORS:
             cls.ensure_zoo_loaded()
         if name not in cls._FACTORS:
+            # Check normalized alias (e.g. qlib_wvma5 vs qlib_wvma_5)
+            alt_name = None
+            if "_" in name:
+                parts = name.split("_")
+                if len(parts) == 3 and parts[2].isdigit():
+                    alt_name = f"{parts[0]}_{parts[1]}{parts[2]}"
+            else:
+                import re
+
+                m = re.match(r"(qlib_\w+?)(\d+)$", name)
+                if m:
+                    alt_name = f"{m.group(1)}_{m.group(2)}"
+            if alt_name and alt_name in cls._FACTORS:
+                return cls._FACTORS[alt_name]
             raise KeyError(f"Factor '{name}' is not registered in FactorRegistry")
         return cls._FACTORS[name]
 

@@ -29,18 +29,19 @@ async def estimate_swap_cost(
         return 0.0
 
     # Calculate effective rollover days (Wednesday = 3x swap)
-    effective_nights = 0
+    effective_nights = 0.0
     if start_time:
-        cur_dt = start_time
         end_dt = start_time + timedelta(hours=holding_hours)
-        while cur_dt < end_dt:
-            # Rollover occurs at ~21:00 UTC
-            roll_time = cur_dt.replace(hour=21, minute=0, second=0, microsecond=0)
-            if cur_dt < roll_time <= end_dt:
-                # Wednesday rollover (weekday == 2) incurs 3x swap
-                multiplier = 3.0 if roll_time.weekday() == 2 else 1.0
-                effective_nights += multiplier
-            cur_dt += timedelta(days=1)
+        # Find first rollover (21:00 UTC) strictly after start_time
+        first_roll = start_time.replace(hour=21, minute=0, second=0, microsecond=0)
+        if first_roll <= start_time:
+            first_roll += timedelta(days=1)
+        cur_roll = first_roll
+        while cur_roll <= end_dt:
+            # Wednesday rollover (weekday == 2) incurs 3x swap
+            multiplier = 3.0 if cur_roll.weekday() == 2 else 1.0
+            effective_nights += multiplier
+            cur_roll += timedelta(days=1)
     else:
         effective_nights = float(max(0, int(holding_hours // 24)))
 

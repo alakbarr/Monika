@@ -181,6 +181,13 @@ class VectorFactorEngine:
         df_eval = df.copy()
         df_eval.columns = [c.lower() for c in df_eval.columns]
 
+        # Precompute amount and vwap once per batch if volume and close exist
+        if "amount" not in df_eval.columns and "volume" in df_eval.columns and "close" in df_eval.columns:
+            df_eval["amount"] = df_eval["close"] * df_eval["volume"]
+        if "vwap" not in df_eval.columns and "amount" in df_eval.columns and "volume" in df_eval.columns:
+            safe_vol = df_eval["volume"].replace(0, np.nan)
+            df_eval["vwap"] = df_eval["amount"] / safe_vol
+
         # Determine target categories based on market regime
         target_cats = self.REGIME_CATEGORY_MAP.get(regime.lower(), ["momentum", "volatility", "mean_reversion"])
 
@@ -237,7 +244,8 @@ class VectorFactorEngine:
                         description=meta.description,
                     )
                 )
-            except Exception:
+            except Exception as e:
+                logger.debug("Factor %s evaluation failed: %s", meta.name, e)
                 continue
 
         # Sort factors by absolute conviction |signal|

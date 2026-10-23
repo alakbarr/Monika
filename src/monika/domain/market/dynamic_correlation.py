@@ -287,7 +287,7 @@ async def compute_cross_asset_macro_correlation(
 
         corrs = {}
         if "us10y" in merged and "xauusd" in merged and len(merged) >= 10:
-            s_10y = pd.Series(merged["us10y"], dtype=float).pct_change()
+            s_10y = pd.Series(merged["us10y"], dtype=float).diff()
             s_xau = pd.Series(merged["xauusd"], dtype=float).pct_change()
             c_val = s_10y.corr(s_xau)
             corrs["us10y_xau_corr"] = round(float(c_val), 3) if pd.notna(c_val) else -0.45
@@ -295,7 +295,7 @@ async def compute_cross_asset_macro_correlation(
             corrs["us10y_xau_corr"] = -0.45
 
         if "us10y" in merged and "usdjpy" in merged and len(merged) >= 10:
-            s_10y = pd.Series(merged["us10y"], dtype=float).pct_change()
+            s_10y = pd.Series(merged["us10y"], dtype=float).diff()
             s_jpy = pd.Series(merged["usdjpy"], dtype=float).pct_change()
             c_val = s_10y.corr(s_jpy)
             corrs["us10y_usdjpy_corr"] = round(float(c_val), 3) if pd.notna(c_val) else 0.65

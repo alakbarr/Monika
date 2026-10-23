@@ -62,6 +62,8 @@ def _ind_neutralize(x: Any, panel: Any) -> Any:
     cross-sectional demean (subtract row mean). This is a degraded fallback
     relative to the paper's industry/subindustry neutralization; see notes.
     """
+    if isinstance(x, pd.Series) or (hasattr(x, "shape") and len(x.shape) > 1 and x.shape[1] <= 1):
+        return x
     sector_df = panel.get("sector")
     if sector_df is None:
         row_mean = x.mean(axis=1, skipna=True)

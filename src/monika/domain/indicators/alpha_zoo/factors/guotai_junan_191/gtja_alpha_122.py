@@ -60,6 +60,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
         return x.ewm(alpha=m / n, adjust=False).mean()
 
     c = panel["close"]
-    s = _sma(_sma(_sma(np.log(c), 13, 2), 13, 2), 13, 2)
+    log_c = np.log(c.where(c > 0)) if hasattr(c, "where") else np.log(np.maximum(c, 1e-12))
+    s = _sma(_sma(_sma(log_c, 13, 2), 13, 2), 13, 2)
     out = safe_div(s - s.shift(1), s.shift(1))
     return out

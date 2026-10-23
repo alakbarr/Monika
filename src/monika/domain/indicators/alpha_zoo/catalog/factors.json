@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "total_count": 462,
+  "total_count": 467,
   "factors": {
     "academic_illiq": {
       "id": "academic_illiq",
@@ -10394,6 +10394,119 @@
       "formula_latex": "(close - open) / ((high - low) + 0.001)",
       "description": "",
       "code": "def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:\n    \"\"\"Compute the alpha on the OHLCV+ panel and return a wide DataFrame.\"\"\"\n    close = panel[\"close\"]\n    open_ = panel[\"open\"]\n    high = panel[\"high\"]\n    low = panel[\"low\"]\n\n\n    # Helper aliases (local closures keep the file standalone & purity-safe).\n    out = safe_div((close - open_), (high - low + 0.001))\n    return out"
+    },
+    "microstructure_range_dispersion": {
+      "id": "microstructure_range_dispersion",
+      "name": "microstructure_range_dispersion",
+      "family": "microstructure",
+      "file_name": "range_dispersion.py",
+      "nickname": "Intraday High-Low Range Dispersion",
+      "category": "volatility",
+      "theme": [
+        "volatility"
+      ],
+      "columns_required": [
+        "high",
+        "low",
+        "close"
+      ],
+      "lookback": 10,
+      "min_warmup_bars": 10,
+      "decay_horizon": 4,
+      "direction": "positive_bearish",
+      "formula_latex": "\\frac{H - L}{\\text{SMA}(H - L, 10)} - 1.0",
+      "description": "Relative intraday candle spread normalized against its 10-period moving average.",
+      "code": "def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:\n    high = panel['high']\n    low = panel['low']\n    candle_range = high - low\n    avg_range = candle_range.rolling(10, min_periods=3).mean()\n    return safe_div(candle_range, avg_range) - 1.0"
+    },
+    "microstructure_shadow_asymmetry": {
+      "id": "microstructure_shadow_asymmetry",
+      "name": "microstructure_shadow_asymmetry",
+      "family": "microstructure",
+      "file_name": "shadow_asymmetry.py",
+      "nickname": "Candlestick Shadow Asymmetry Reversal",
+      "category": "mean_reversion",
+      "theme": [
+        "mean_reversion"
+      ],
+      "columns_required": [
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "lookback": 5,
+      "min_warmup_bars": 5,
+      "decay_horizon": 2,
+      "direction": "positive_bullish",
+      "formula_latex": "\\frac{\\text{LowerShadow} - \\text{UpperShadow}}{\\text{High} - \\text{Low}}",
+      "description": "Calculates rejection shadow asymmetry: Long lower wicks indicate institutional absorption and support.",
+      "code": "def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:\n    op, hi, lo, cl = panel['open'], panel['high'], panel['low'], panel['close']\n    candle_range = hi - lo\n    body_high = np.maximum(op, cl)\n    body_low = np.minimum(op, cl)\n    upper_shadow = hi - body_high\n    lower_shadow = body_low - lo\n    asymmetry = safe_div(lower_shadow - upper_shadow, candle_range)\n    return asymmetry.rolling(5, min_periods=1).mean()"
+    },
+    "microstructure_volume_price_rank_divergence": {
+      "id": "microstructure_volume_price_rank_divergence",
+      "name": "microstructure_volume_price_rank_divergence",
+      "family": "microstructure",
+      "file_name": "volume_price_rank_divergence.py",
+      "nickname": "Volume-Price Rank Divergence Correlation",
+      "category": "microstructure",
+      "theme": [
+        "microstructure"
+      ],
+      "columns_required": [
+        "close",
+        "open",
+        "volume"
+      ],
+      "lookback": 6,
+      "min_warmup_bars": 6,
+      "decay_horizon": 3,
+      "direction": "positive_bullish",
+      "formula_latex": "-\\text{corr}(\\text{rank}(\\Delta \\ln(\\text{Vol})), \\text{rank}(\\frac{C-O}{O}), 6)",
+      "description": "Identifies volume-price divergence: Unbacked price advances forecast mean-reverting retracements.",
+      "code": "def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:\n    cl, op, vol = panel['close'], panel['open'], panel['volume']\n    delta_log_vol = np.log(vol + 1.0) - np.log(vol.shift(1) + 1.0)\n    intraday_ret = safe_div(cl - op, op)\n    r_vol = delta_log_vol.rolling(6).apply(lambda x: pd.Series(x).rank(pct=True).iloc[-1], raw=False)\n    r_ret = intraday_ret.rolling(6).apply(lambda x: pd.Series(x).rank(pct=True).iloc[-1], raw=False)\n    return -r_vol.rolling(6).corr(r_ret)"
+    },
+    "microstructure_volume_weighted_momentum": {
+      "id": "microstructure_volume_weighted_momentum",
+      "name": "microstructure_volume_weighted_momentum",
+      "family": "microstructure",
+      "file_name": "volume_weighted_momentum.py",
+      "nickname": "Volume-Weighted Momentum Surge",
+      "category": "momentum",
+      "theme": [
+        "momentum"
+      ],
+      "columns_required": [
+        "close",
+        "volume"
+      ],
+      "lookback": 14,
+      "min_warmup_bars": 14,
+      "decay_horizon": 5,
+      "direction": "positive_bullish",
+      "formula_latex": "\\frac{\\text{SMA}(C \\times \\text{Vol}, 5)}{\\text{SMA}(\\text{Vol}, 5)} - \\frac{\\text{SMA}(C \\times \\text{Vol}, 14)}{\\text{SMA}(\\text{Vol}, 14)}",
+      "description": "VWAP crossover divergence measuring short-term volume-weighted velocity relative to medium-term baseline.",
+      "code": "def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:\n    cl, vol = pd.Series(panel['close']), pd.Series(panel['volume'])\n    pv = cl * vol\n    vwap_fast = pd.Series(safe_div(pv.rolling(5).sum(), vol.rolling(5).sum()))\n    vwap_slow = pd.Series(safe_div(pv.rolling(14).sum(), vol.rolling(14).sum()))\n    return pd.Series(safe_div(vwap_fast - vwap_slow, vwap_slow))"
+    },
+    "academic_idiosyncratic_volatility": {
+      "id": "academic_idiosyncratic_volatility",
+      "name": "academic_idiosyncratic_volatility",
+      "family": "academic",
+      "file_name": "idiosyncratic_volatility.py",
+      "nickname": "Ang et al. Idiosyncratic Volatility",
+      "category": "volatility",
+      "theme": [
+        "volatility"
+      ],
+      "columns_required": [
+        "close"
+      ],
+      "lookback": 30,
+      "min_warmup_bars": 30,
+      "decay_horizon": 15,
+      "direction": "positive_bearish",
+      "formula_latex": "\\text{std}(R_i - \\text{trend}(R_i), 30)",
+      "description": "Ang et al. Idiosyncratic Volatility: Assets with high idiosyncratic volatility underperform.",
+      "code": "def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:\n    cl = panel['close']\n    ret = safe_div(cl - cl.shift(1), cl.shift(1))\n    trend = ret.rolling(20, min_periods=5).mean()\n    residual = ret - trend\n    return residual.rolling(30, min_periods=10).std()"
     }
   }
 }

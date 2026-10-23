@@ -216,18 +216,16 @@ class OrderFlowEngine:
             cvd += delta
             cvd_series.append(cvd)
 
-        # Evaluasi divergensi (penyerapan institusi)
-        half = len(prices) // 2
-        p_first = float(np.mean(prices[:half]))
-        p_second = float(np.mean(prices[half:]))
-        cvd_first = float(np.mean(cvd_series[:half]))
-        cvd_second = float(np.mean(cvd_series[half:]))
-
+        # Evaluasi divergensi (penyerapan institusi) berbasis delta lokal
         divergence = "NONE"
-        if p_second > p_first and cvd_second < cvd_first:
-            divergence = "BEARISH_ABSORPTION"
-        elif p_second < p_first and cvd_second > cvd_first:
-            divergence = "BULLISH_ABSORPTION"
+        if len(prices) >= 4:
+            k = min(len(prices), 15)
+            delta_p = prices[-1] - prices[-k]
+            delta_cvd = cvd_series[-1] - cvd_series[-k]
+            if delta_p > 0 and delta_cvd < 0:
+                divergence = "BEARISH_ABSORPTION"
+            elif delta_p < 0 and delta_cvd > 0:
+                divergence = "BULLISH_ABSORPTION"
 
         tot_vol = sum(volumes) if volumes else 1.0
         synthetic_obi = (cvd / tot_vol) if tot_vol > 0 else 0.0

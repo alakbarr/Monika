@@ -142,6 +142,14 @@ def _get_quasi_diag_order(node: _ClusterNode) -> list[int]:
     return order
 
 
+def _make_psd(mat: np.ndarray, min_eigenval: float = 1e-8) -> np.ndarray:
+    """Project symmetric matrix to nearest positive semi-definite matrix via spectral clipping."""
+    sym = (mat + mat.T) / 2.0
+    vals, vecs = np.linalg.eigh(sym)
+    vals = np.maximum(vals, min_eigenval)
+    return vecs @ np.diag(vals) @ vecs.T
+
+
 def _compute_cluster_variance(cov: np.ndarray, cluster_indices: list[int]) -> float:
     """Computes inverse-variance weighted variance of a sub-cluster with singularity guards."""
     sub_cov = cov[np.ix_(cluster_indices, cluster_indices)]
@@ -154,8 +162,8 @@ def _compute_cluster_variance(cov: np.ndarray, cluster_indices: list[int]) -> fl
     else:
         w = inv_diag / sum_inv_diag
     var = float(np.dot(w.T, np.dot(sub_cov, w)))
-    if not np.isfinite(var) or var < 1e-12:
-        return 1e-12
+    if not np.isfinite(var) or var < 1e-8:
+        return 0.0
     return var
 
 
@@ -177,7 +185,8 @@ def compute_hrp_weights(returns_df: pd.DataFrame) -> pd.Series:
         return pd.Series([1.0 / n] * n, index=symbols)
 
     corr = clean_df.corr().to_numpy(dtype=np.float64)
-    cov = clean_df.cov().to_numpy(dtype=np.float64)
+    raw_cov = clean_df.cov().to_numpy(dtype=np.float64)
+    cov = _make_psd(np.nan_to_num(raw_cov, nan=0.0, posinf=1.0, neginf=-1.0))
 
     # 1. Tree Clustering
     dist_mat = correlation_distance_matrix(corr)
@@ -203,10 +212,10 @@ def compute_hrp_weights(returns_df: pd.DataFrame) -> pd.Series:
 
                 # Allocation factor alpha with finite guard
                 total_var = var1 + var2
-                if total_var <= 0.0 or not np.isfinite(total_var):
+                if var1 <= 1e-8 or var2 <= 1e-8 or total_var <= 0.0 or not np.isfinite(total_var):
                     alpha = 0.5
                 else:
-                    alpha = float(np.clip(1.0 - (var1 / total_var), 0.01, 0.99))
+                    alpha = float(np.clip(1.0 - (var1 / total_var), 0.05, 0.95))
 
                 weights[c1] *= alpha
                 weights[c2] *= 1.0 - alpha

@@ -62,6 +62,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]
     s1 = _sma(c, 13, 2)
     s2 = _sma(s1, 13, 2)
-    s3 = _sma(_sma(_sma(np.log(c), 13, 2), 13, 2), 13, 2)
+    log_c = np.log(c.where(c > 0)) if hasattr(c, "where") else np.log(np.maximum(c, 1e-12))
+    s3 = _sma(_sma(_sma(log_c, 13, 2), 13, 2), 13, 2)
     out = 3.0 * s1 - 2.0 * s2 + s3
     return out

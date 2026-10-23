@@ -54,7 +54,7 @@ def compute_vpin(
     VPIN < 0.35: low toxicity retail flow -> clean entry.
     """
     if trades_df is None or len(trades_df) < 2 or bucket_volume <= 0:
-        return 0.5
+        return np.nan
 
     price_col = "price" if "price" in trades_df.columns else "close"
     prices = np.asarray(trades_df[price_col], dtype=np.float64)
@@ -151,9 +151,9 @@ def compute_amihud_illiquidity(
     if returns is None or len(returns) < 2:
         return pd.Series(dtype=float)
 
-    safe_vol = dollar_volume.replace(0, np.nan).fillna(1.0)
+    safe_vol = dollar_volume.where(dollar_volume > 0, np.nan)
     ratio = returns.abs() / safe_vol
-    return ratio.rolling(window).mean().fillna(0.0)
+    return ratio.rolling(window, min_periods=1).mean().fillna(0.0)
 
 
 def compute_kyle_lambda(

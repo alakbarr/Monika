@@ -5635,11 +5635,8 @@
   - `basel_traffic_light(exceptions: int, n_observations: int, target_alpha: float) -> str`: Basel Committee traffic light framework (Green / Yellow / Red).
   - `student_t_copula_tail_dependence(df: float, correlation: float) -> float`: Computes symmetric tail dependence coefficient for bivariate Student-t copula.
 
-#### `regime_classifier.py`
+#### `regime_classifier.py` - *Compatibility shim: Technical regime classifier.*
 - **Path**: [`src/monika/application/analysis/calculators/regime_classifier.py`](src/monika/application/analysis/calculators/regime_classifier.py)
-- **Top-Level Functions**:
-  - `async classify_market_regime(session: AsyncSession, symbol: str, settings: Optional[dict], ...) -> dict`: Composite regime: D1 trend strength (ADX) + H4 volatility expansion/contraction
-  - `async compute_bollinger_donchian_chop(session, symbol: str, timeframe: str, ...) -> dict`
 
 #### `rolling_correlation_calculator.py` - *Rolling Cross-Asset Correlation & Macro Regime Decoupling Calculator.*
 - **Path**: [`src/monika/application/analysis/calculators/rolling_correlation_calculator.py`](src/monika/application/analysis/calculators/rolling_correlation_calculator.py)

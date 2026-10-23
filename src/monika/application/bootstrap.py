@@ -381,7 +381,7 @@ def build_application_container(
             lambda session=None, settings=None: SqlAlchemyRiskRepository(session=session, settings=settings)
         )
 
-        from monika.application.analysis.calculators.regime_classifier import classify_market_regime
+        from monika.application.analysis.calculators.technical_regime_calculator import classify_market_regime
 
         register_regime_classifier(classify_market_regime)
 

@@ -67,9 +67,7 @@ def get_current_market_session(dt: Optional[datetime] = None) -> Dict[str, Any]:
         active_sessions.append("New York")
 
     is_london_ny_overlap = "London" in active_sessions and "New York" in active_sessions
-    is_off_peak = len(active_sessions) == 0 or (
-        len(active_sessions) == 1 and "Sydney" in active_sessions and dt.hour >= 21
-    )
+    is_off_peak = len(active_sessions) == 0 or (len(active_sessions) == 1 and "Sydney" in active_sessions)
 
     if is_off_peak and "Off-Peak" not in active_sessions:
         active_sessions.append("Off-Peak")

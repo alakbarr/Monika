@@ -587,10 +587,14 @@ class MarketStructureAnalyzer:
                 formed_at = item.formed_at
                 filled_at = item.filled_at
                 if filled_at is None:
-                    # Find if any candle in df fills it
-                    check_filled = self._check_fvg_filled(ohlcv, 0, g_high, g_low, direction)
-                    if check_filled:
-                        filled_at = check_filled
+                    # Find if any candle strictly after formed_at in df fills it
+                    ts_formed = pd.Timestamp(formed_at)
+                    after_mask = ohlcv["timestamp"] > ts_formed
+                    if after_mask.any():
+                        start_idx = int(after_mask.idxmax())
+                        check_filled = self._check_fvg_filled(ohlcv, start_idx, g_high, g_low, direction)
+                        if check_filled:
+                            filled_at = check_filled
                 zones.append(
                     FVGData(
                         symbol=symbol,
@@ -837,13 +841,19 @@ class MarketStructureAnalyzer:
         swings.sort(key=lambda x: x[0])
         current_trend = "ranging"
         last_high = None
+        last_high_ts = None
         last_low = None
+        last_low_ts = None
 
         for ts, price, typ in swings:
             if typ == "high":
                 if last_high and price > last_high:
-                    subsequent = df.loc[df.index >= ts]
-                    breaking_candles = subsequent.loc[subsequent["close"] > last_high]
+                    subsequent = (
+                        df.loc[df.index >= last_high_ts] if last_high_ts is not None else df.loc[df.index <= ts]
+                    )
+                    breaking_candles = subsequent.loc[(subsequent.index <= ts) & (subsequent["close"] > last_high)]
+                    if breaking_candles.empty:
+                        breaking_candles = subsequent.loc[subsequent["close"] > last_high]
                     if not breaking_candles.empty:
                         break_ts = pd.to_datetime(breaking_candles.index[0]).to_pydatetime()
                         break_type = "ChoCH" if current_trend == "bearish" else "BOS"
@@ -861,10 +871,13 @@ class MarketStructureAnalyzer:
                 elif last_high and price < last_high:
                     current_trend = "bearish"
                 last_high = price
+                last_high_ts = ts
             else:
                 if last_low and price < last_low:
-                    subsequent = df.loc[df.index >= ts]
-                    breaking_candles = subsequent.loc[subsequent["close"] < last_low]
+                    subsequent = df.loc[df.index >= last_low_ts] if last_low_ts is not None else df.loc[df.index <= ts]
+                    breaking_candles = subsequent.loc[(subsequent.index <= ts) & (subsequent["close"] < last_low)]
+                    if breaking_candles.empty:
+                        breaking_candles = subsequent.loc[subsequent["close"] < last_low]
                     if not breaking_candles.empty:
                         break_ts = pd.to_datetime(breaking_candles.index[0]).to_pydatetime()
                         break_type = "ChoCH" if current_trend == "bullish" else "BOS"
@@ -882,6 +895,7 @@ class MarketStructureAnalyzer:
                 elif last_low and price > last_low:
                     current_trend = "bullish"
                 last_low = price
+                last_low_ts = ts
 
         return breaks[-10:]  # Batasi 10 terakhir agar konteks prompt efisien
 
@@ -909,22 +923,34 @@ class MarketStructureAnalyzer:
 
         saved = 0
         for _, row in highs.iterrows():
+            ts_val = row["confirmed_at"] if "confirmed_at" in row.index else None
+            ts_confirmed = (
+                ts_val
+                if ts_val is not None and str(ts_val).strip() not in ("", "nan", "NaT", "None")
+                else row["timestamp"]
+            )
             self.session.add(
                 SwingPoint(
                     symbol=symbol,
                     timeframe=timeframe,
-                    timestamp=pd.Timestamp(str(row["timestamp"])).to_pydatetime(),
+                    timestamp=pd.Timestamp(str(ts_confirmed)).to_pydatetime(),
                     type="high",
                     price=float(np.asarray(row["price"]).item()),
                 )
             )
             saved += 1
         for _, row in lows.iterrows():
+            ts_val = row["confirmed_at"] if "confirmed_at" in row.index else None
+            ts_confirmed = (
+                ts_val
+                if ts_val is not None and str(ts_val).strip() not in ("", "nan", "NaT", "None")
+                else row["timestamp"]
+            )
             self.session.add(
                 SwingPoint(
                     symbol=symbol,
                     timeframe=timeframe,
-                    timestamp=pd.Timestamp(str(row["timestamp"])).to_pydatetime(),
+                    timestamp=pd.Timestamp(str(ts_confirmed)).to_pydatetime(),
                     type="low",
                     price=float(np.asarray(row["price"]).item()),
                 )

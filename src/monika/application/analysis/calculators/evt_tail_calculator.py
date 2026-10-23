@@ -122,9 +122,19 @@ def fit_gpd_tail(
     if _HAS_SCIPY and stats is not None:
         try:
             c_fit, loc_fit, scale_fit = stats.genpareto.fit(exceedances, floc=0.0)
-            xi = float(c_fit)
-            sigma = float(scale_fit)
-            fitted = True
+            candidate_xi = float(c_fit)
+            candidate_sigma = float(scale_fit)
+            if (
+                np.isfinite(candidate_xi)
+                and (-0.8 <= candidate_xi <= 1.5)
+                and np.isfinite(candidate_sigma)
+                and candidate_sigma > 1e-8
+            ):
+                xi = candidate_xi
+                sigma = candidate_sigma
+                fitted = True
+            else:
+                fitted = False
         except Exception:
             fitted = False
 

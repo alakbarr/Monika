@@ -208,13 +208,13 @@ def detect_harmonic_patterns(pivots: List[Dict[str, Any]], tolerance: float = 0.
         ab = abs(B["price"] - A["price"])
         bc = abs(C["price"] - B["price"])
         cd = abs(D["price"] - C["price"])
-        xd = abs(D["price"] - X["price"])
+        ad = abs(D["price"] - A["price"])
 
         if xa < 1e-6:
             continue
 
         b_ratio = ab / xa
-        d_ratio = xd / xa
+        d_ratio = ad / xa
 
         for pat_name, spec in HARMONIC_SPECS.items():
             if (

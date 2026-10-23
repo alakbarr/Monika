@@ -38,6 +38,8 @@ __alpha_meta__ = {
 
 def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
     """Per-row z-score: (x - row_mean) / row_std; zero/NaN std rows -> NaN."""
+    if isinstance(df, pd.Series) or (hasattr(df, "shape") and len(df.shape) > 1 and df.shape[1] <= 1):
+        return df
     mean = df.mean(axis=1, skipna=True)
     std = df.std(axis=1, ddof=1, skipna=True)
     centered = df.sub(mean, axis=0)

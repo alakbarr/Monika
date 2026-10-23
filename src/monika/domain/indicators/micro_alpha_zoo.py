@@ -116,7 +116,7 @@ class MicroAlphaZoo:
     description="Short-term return volatility surge: ts_argmax of squared 1-bar returns over 5 bars.",
 )
 def alpha_001(df: pd.DataFrame) -> pd.Series:
-    ret = delta(df["close"], 1) / df["close"].shift(1)
+    ret = safe_div(delta(df["close"], 1), df["close"].shift(1))
     ret_df = pd.DataFrame({"r": ret})
     sq = signed_power(ret_df, 2.0)
     am = ts_argmax(sq, 5)
@@ -294,10 +294,10 @@ def alpha_060(df: pd.DataFrame) -> pd.Series:
     description="Amihud illiquidity ratio: rolling mean of |return| / (volume * close).",
 )
 def alpha_amihud_illiquidity(df: pd.DataFrame) -> pd.Series:
-    ret = abs(delta(df["close"], 1)) / df["close"].shift(1)
+    ret = pd.Series(safe_div(abs(delta(df["close"], 1)), df["close"].shift(1)), index=df.index)
     dollar_vol = df["volume"] * df["close"]
-    impact = safe_div(ret, dollar_vol)
-    return impact.rolling(20, min_periods=20).mean()
+    impact = pd.Series(safe_div(ret, dollar_vol), index=df.index)
+    return pd.Series(impact.rolling(20, min_periods=20).mean(), index=df.index)
 
 
 @MicroAlphaZoo.register(
@@ -324,8 +324,8 @@ def alpha_hl_volatility_ratio(df: pd.DataFrame) -> pd.Series:
     description="Rolling 20-bar return skewness (3rd standardized moment).",
 )
 def alpha_return_skewness(df: pd.DataFrame) -> pd.Series:
-    ret = delta(df["close"], 1) / df["close"].shift(1)
-    return ret.rolling(20, min_periods=20).skew()
+    ret = pd.Series(safe_div(delta(df["close"], 1), df["close"].shift(1)), index=df.index)
+    return pd.Series(ret.rolling(20, min_periods=20).skew(), index=df.index)
 
 
 @MicroAlphaZoo.register(
@@ -356,7 +356,7 @@ def alpha_volume_vwap_deviation(df: pd.DataFrame) -> pd.Series:
     c = pd.Series(df["close"])
     v = pd.Series(df["volume"])
     pv = c * v
-    vwap = pd.Series(pv.rolling(20, min_periods=20).sum() / v.rolling(20, min_periods=20).sum())
+    vwap = pd.Series(safe_div(pv.rolling(20, min_periods=20).sum(), v.rolling(20, min_periods=20).sum()))
     std = pd.Series(c.rolling(20, min_periods=20).std())
     return safe_div(c - vwap, std)
 

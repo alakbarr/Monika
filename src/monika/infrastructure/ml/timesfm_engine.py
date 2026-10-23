@@ -19,6 +19,7 @@ import json
 import logging
 import math
 import os
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -46,6 +47,7 @@ class TimesFMEngine:
 
     _model_instance = None
     _model_initialized = False
+    _model_lock = threading.Lock()
 
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
@@ -61,77 +63,84 @@ class TimesFMEngine:
         """
         Lazy loading model singleton sesuai spesifikasi resmi Google Research TimesFM 3.0.
         Mendukung TimesFM3Forecaster (v3.0.1) native dan legacy v1/v2 checkpoint.
+        Thread-safe via double-checked locking.
         """
         if cls._model_initialized:
             return cls._model_instance
 
-        tfm_cfg = (settings or {}).get("timesfm", {})
-        requested_device = str(tfm_cfg.get("device", "cuda")).lower()
-        model_id = tfm_cfg.get("model_id", "google/timesfm-3.0-pytorch")
+        with cls._model_lock:
+            if cls._model_initialized:
+                return cls._model_instance
 
-        try:
-            torch_mod = importlib.import_module("torch")
-            # Zen 4 CPU multi-threading optimization for AMD Ryzen 7 8845HS (8 physical cores)
-            try:
-                torch_mod.set_num_threads(8)
-            except Exception:
-                pass
-            has_cuda = getattr(torch_mod, "cuda", None) and torch_mod.cuda.is_available()
-            device = "cuda" if (requested_device in ("cuda", "gpu") and has_cuda) else "cpu"
-            if requested_device in ("cuda", "gpu") and not has_cuda:
-                logger.info("[TimesFMEngine] CUDA requested but unavailable, using CPU.")
+            tfm_cfg = (settings or {}).get("timesfm", {})
+            requested_device = str(tfm_cfg.get("device", "cuda")).lower()
+            model_id = tfm_cfg.get("model_id", "google/timesfm-3.0-pytorch")
 
             try:
-                timesfm_mod = importlib.import_module("timesfm")
+                torch_mod = importlib.import_module("torch")
+                # Zen 4 CPU multi-threading optimization for AMD Ryzen 7 8845HS (8 physical cores)
+                try:
+                    torch_mod.set_num_threads(8)
+                except Exception:
+                    pass
+                has_cuda = getattr(torch_mod, "cuda", None) and torch_mod.cuda.is_available()
+                device = "cuda" if (requested_device in ("cuda", "gpu") and has_cuda) else "cpu"
+                if requested_device in ("cuda", "gpu") and not has_cuda:
+                    logger.info("[TimesFMEngine] CUDA requested but unavailable, using CPU.")
 
-                # Approach 1: SOTA Google TimesFM 3.0 Native Forecaster (from_pretrained)
-                if hasattr(timesfm_mod, "TimesFM3Forecaster"):
-                    hf_token = os.getenv("HF_TOKEN")
-                    model = timesfm_mod.TimesFM3Forecaster.from_pretrained(
-                        pretrained_model_name_or_path=model_id,
-                        device=device,
-                        token=hf_token,
+                try:
+                    timesfm_mod = importlib.import_module("timesfm")
+
+                    # Approach 1: SOTA Google TimesFM 3.0 Native Forecaster (from_pretrained)
+                    if hasattr(timesfm_mod, "TimesFM3Forecaster"):
+                        hf_token = os.getenv("HF_TOKEN")
+                        model = timesfm_mod.TimesFM3Forecaster.from_pretrained(
+                            pretrained_model_name_or_path=model_id,
+                            device=device,
+                            token=hf_token,
+                        )
+                        cls._model_instance = model
+                        cls._model_initialized = True
+                        logger.info(
+                            f"[TimesFMEngine] Successfully initialized TimesFM 3.0 ({model_id}) on device={device}."
+                        )
+                        return cls._model_instance
+
+                    # Approach 2: Legacy TimesFm v1/v2 compatibility
+                    elif hasattr(timesfm_mod, "TimesFm"):
+                        backend = "gpu" if device == "cuda" else "cpu"
+                        model = timesfm_mod.TimesFm(
+                            context_len=512,
+                            horizon_len=64,
+                            input_patch_len=32,
+                            output_patch_len=128,
+                            num_layers=20,
+                            model_dims=1280,
+                            backend=backend,
+                        )
+                        if hasattr(model, "load_from_checkpoint"):
+                            model.load_from_checkpoint(repo_id=model_id)
+
+                        cls._model_instance = model
+                        cls._model_initialized = True
+                        logger.info(
+                            f"[TimesFMEngine] Successfully initialized TimesFM legacy ({model_id}) on backend={backend}."
+                        )
+                        return cls._model_instance
+
+                except Exception as e:
+                    logger.warning(
+                        f"[TimesFMEngine] Neural model load note: {e}. Operating in robust statistical mode."
                     )
-                    cls._model_instance = model
-                    cls._model_initialized = True
-                    logger.info(
-                        f"[TimesFMEngine] Successfully initialized TimesFM 3.0 ({model_id}) on device={device}."
-                    )
-                    return cls._model_instance
 
-                # Approach 2: Legacy TimesFm v1/v2 compatibility
-                elif hasattr(timesfm_mod, "TimesFm"):
-                    backend = "gpu" if device == "cuda" else "cpu"
-                    model = timesfm_mod.TimesFm(
-                        context_len=512,
-                        horizon_len=64,
-                        input_patch_len=32,
-                        output_patch_len=128,
-                        num_layers=20,
-                        model_dims=1280,
-                        backend=backend,
-                    )
-                    if hasattr(model, "load_from_checkpoint"):
-                        model.load_from_checkpoint(repo_id=model_id)
+            except ImportError:
+                logger.debug(
+                    "[TimesFMEngine] PyTorch or timesfm library not available. Operating in robust statistical mode."
+                )
 
-                    cls._model_instance = model
-                    cls._model_initialized = True
-                    logger.info(
-                        f"[TimesFMEngine] Successfully initialized TimesFM legacy ({model_id}) on backend={backend}."
-                    )
-                    return cls._model_instance
-
-            except Exception as e:
-                logger.warning(f"[TimesFMEngine] Neural model load note: {e}. Operating in robust statistical mode.")
-
-        except ImportError:
-            logger.debug(
-                "[TimesFMEngine] PyTorch or timesfm library not available. Operating in robust statistical mode."
-            )
-
-        cls._model_instance = None
-        cls._model_initialized = True
-        return None
+            cls._model_instance = None
+            cls._model_initialized = True
+            return None
 
     async def _fetch_multivariate_series(
         self,
@@ -311,14 +320,14 @@ class TimesFMEngine:
 
         return quantiles
 
-    async def _get_baseline_atr(self, session: AsyncSession, symbol: str) -> float:
+    async def _get_baseline_atr(self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None) -> float:
         """Mengambil ATR_14 terbaru untuk normalisasi ekspansi volatilitas."""
-        stmt = (
-            select(TechnicalIndicator)
-            .where(TechnicalIndicator.symbol == symbol, TechnicalIndicator.indicator_name == "ATR_14")
-            .order_by(desc(TechnicalIndicator.timestamp))
-            .limit(1)
+        stmt = select(TechnicalIndicator).where(
+            TechnicalIndicator.symbol == symbol, TechnicalIndicator.indicator_name == "ATR_14"
         )
+        if as_of:
+            stmt = stmt.where(TechnicalIndicator.timestamp <= as_of)
+        stmt = stmt.order_by(desc(TechnicalIndicator.timestamp)).limit(1)
         row = (await session.execute(stmt)).scalar_one_or_none()
         if row and row.value_json:
             try:
@@ -354,14 +363,14 @@ class TimesFMEngine:
             return None
 
         current_price: float = float(target_df["close"].iloc[-1])
-        baseline_atr: float = await self._get_baseline_atr(session, symbol)
+        baseline_atr: float = await self._get_baseline_atr(session, symbol, as_of=as_of)
         if baseline_atr <= 0:
             high_s = target_df["high"].astype(float)
             low_s = target_df["low"].astype(float)
             diff_s = (high_s - low_s).tail(14)
             baseline_atr = float(diff_s.mean()) if not diff_s.empty else float(current_price * 0.005)
 
-        model = self.get_model(self.settings)
+        model = await asyncio.to_thread(self.get_model, self.settings)
         model_backend = "statistical_garch_fallback"
         is_fallback = True
 
@@ -436,7 +445,19 @@ class TimesFMEngine:
                 else:
                     quantiles = self._generate_statistical_quantiles(target_df, covariates, horizon_steps, baseline_atr)
             except Exception as infer_err:
-                logger.error(f"[{symbol}] TimesFM forward pass error: {infer_err}. Using statistical fallback.")
+                is_oom = "out of memory" in str(infer_err).lower() or "cuda" in str(infer_err).lower()
+                if is_oom:
+                    try:
+                        import torch
+
+                        torch.cuda.empty_cache()
+                    except Exception:
+                        pass
+                    logger.error(
+                        f"[{symbol}] TimesFM CUDA OOM / memory error: {infer_err}. Purged cache and falling back."
+                    )
+                else:
+                    logger.error(f"[{symbol}] TimesFM forward pass error: {infer_err}. Using statistical fallback.")
                 quantiles = self._generate_statistical_quantiles(target_df, covariates, horizon_steps, baseline_atr)
         else:
             quantiles = self._generate_statistical_quantiles(target_df, covariates, horizon_steps, baseline_atr)
@@ -549,7 +570,7 @@ class TimesFMEngine:
         if computed:
             try:
                 await self.save_forecast(session, computed)
-                await session.commit()
+                await session.flush()
             except Exception as e:
                 logger.debug(f"[{symbol}] Failed to persist computed forecast (non-fatal): {e}")
             return computed
@@ -586,5 +607,5 @@ class TimesFMEngine:
             except Exception as e:
                 logger.error(f"[{sym}] Batch TimesFM forecast failed: {e}")
 
-        await session.commit()
+        await session.flush()
         return {"status": "success", "count": len(results), "forecasts": results}

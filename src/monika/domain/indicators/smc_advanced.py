@@ -255,11 +255,22 @@ def detect_breaker_blocks(
         if not price_low or not price_high:
             continue
 
+        df_after_ob = df
+        if ob_time:
+            try:
+                ob_ts = pd.to_datetime(ob_time)
+                df_after_ob = df[df.index > ob_ts]
+            except Exception:
+                df_after_ob = df
+
+        close_arr = np.asarray(df_after_ob["close"])
+        idx_arr = np.asarray(df_after_ob.index)
+
         if "bull" in ob_type.lower():
             # Bullish OB tertembus ke bawah (close < price_low)
-            broken_candles = df[df["close"] < price_low]
-            if not broken_candles.empty:
-                broken_time = str(broken_candles.index[-1])
+            match_idx = np.where(close_arr < price_low)[0]
+            if len(match_idx) > 0:
+                broken_time = str(pd.Timestamp(idx_arr[match_idx[0]]))
                 retested = bool(df["high"].iloc[-5:].max() >= price_low and last_close <= price_high)
 
                 # Check liquidity sweep: did the pivot swing before the break sweep a prior low?
@@ -286,9 +297,9 @@ def detect_breaker_blocks(
                 )
         elif "bear" in ob_type.lower():
             # Bearish OB tertembus ke atas (close > price_high)
-            broken_candles = df[df["close"] > price_high]
-            if not broken_candles.empty:
-                broken_time = str(broken_candles.index[-1])
+            match_idx = np.where(close_arr > price_high)[0]
+            if len(match_idx) > 0:
+                broken_time = str(pd.Timestamp(idx_arr[match_idx[0]]))
                 retested = bool(df["low"].iloc[-5:].min() <= price_high and last_close >= price_low)
 
                 # Check liquidity sweep: did the pivot swing before the break sweep a prior high?
@@ -363,11 +374,22 @@ def detect_inverted_fvg(df: pd.DataFrame, fvg_zones: List[Any]) -> List[Inverted
 
         midpoint = round((price_low + price_high) / 2.0, 5)
 
+        df_after_fvg = df
+        if fvg_time:
+            try:
+                fvg_ts = pd.to_datetime(fvg_time)
+                df_after_fvg = df[df.index > fvg_ts]
+            except Exception:
+                df_after_fvg = df
+
+        close_arr = np.asarray(df_after_fvg["close"])
+        idx_arr = np.asarray(df_after_fvg.index)
+
         # Bullish FVG inverted downward (close < price_low)
         if "bull" in fvg_type.lower():
-            inverting_candles = df[df["close"] < price_low]
-            if not inverting_candles.empty:
-                inv_time = str(inverting_candles.index[-1])
+            match_idx = np.where(close_arr < price_low)[0]
+            if len(match_idx) > 0:
+                inv_time = str(pd.Timestamp(idx_arr[match_idx[0]]))
                 retested = bool(df["high"].iloc[-5:].max() >= price_low and last_close <= price_high)
                 ifvgs.append(
                     InvertedFVGResult(
@@ -385,9 +407,9 @@ def detect_inverted_fvg(df: pd.DataFrame, fvg_zones: List[Any]) -> List[Inverted
                 )
         # Bearish FVG inverted upward (close > price_high)
         elif "bear" in fvg_type.lower():
-            inverting_candles = df[df["close"] > price_high]
-            if not inverting_candles.empty:
-                inv_time = str(inverting_candles.index[-1])
+            match_idx = np.where(close_arr > price_high)[0]
+            if len(match_idx) > 0:
+                inv_time = str(pd.Timestamp(idx_arr[match_idx[0]]))
                 retested = bool(df["low"].iloc[-5:].min() <= price_high and last_close >= price_low)
                 ifvgs.append(
                     InvertedFVGResult(
@@ -668,7 +690,7 @@ def find_wick_to_wick_fvg(df: pd.DataFrame, min_atr: float = 0.0, symbol: Option
                         "gap_low": round(float(c1["high"]), 5),
                         "gap_high": round(float(c3["low"]), 5),
                         "midpoint": round(float(c1["high"] + c3["low"]) / 2.0, 5),
-                        "time": str(df.index[i - 1]),
+                        "time": str(df.index[i]),
                         "gap_size_pips": round(gap_size / pip_size, 2),
                     }
                 )
@@ -683,7 +705,7 @@ def find_wick_to_wick_fvg(df: pd.DataFrame, min_atr: float = 0.0, symbol: Option
                         "gap_low": round(float(c3["high"]), 5),
                         "gap_high": round(float(c1["low"]), 5),
                         "midpoint": round(float(c1["low"] + c3["high"]) / 2.0, 5),
-                        "time": str(df.index[i - 1]),
+                        "time": str(df.index[i]),
                         "gap_size_pips": round(gap_size / pip_size, 2),
                     }
                 )

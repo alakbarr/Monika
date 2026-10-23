@@ -116,6 +116,11 @@ class GarchVolatilityEngine:
                 am = arch_model(scaled_returns, mean="Constant", vol="GARCH", p=p, q=q, dist=dist, rescale=False)
                 res = am.fit(disp="off", show_warning=False)
 
+                if getattr(res, "convergence_flag", 0) != 0:
+                    raise ValueError(
+                        f"GARCH optimizer failed to converge (flag={getattr(res, 'convergence_flag', -1)})"
+                    )
+
                 # Extract parameters
                 params = res.params.to_dict()
                 omega = float(params.get("omega", 0.0))
@@ -191,15 +196,15 @@ class GarchVolatilityEngine:
 
     @classmethod
     def _estimate_ewma_fallback(
-        cls, returns: pd.Series, annualization_factor: float, decay_factor: float = 0.94
+        cls, returns: pd.Series | np.ndarray, annualization_factor: float, decay_factor: float = 0.94
     ) -> GarchForecastResult:
         """EWMA Fallback when arch is unavailable or optimizer fails."""
-        arr = returns.to_numpy(dtype=float)
+        arr = np.asarray(returns, dtype=float)
         var = float(np.var(arr))
         for r in arr:
             var = decay_factor * var + (1.0 - decay_factor) * (r**2)
 
-        vol = math.sqrt(var)
+        vol = max(1e-6, math.sqrt(var))
         ann_vol = round(vol * annualization_factor * 100.0, 2)
 
         return GarchForecastResult(
@@ -223,10 +228,10 @@ class GarchVolatilityEngine:
         return GarchForecastResult(
             status="ERROR",
             model_type="NONE",
-            current_volatility=0.0,
-            forecasted_volatility_1step=0.0,
-            annualized_current_vol=0.0,
-            annualized_forecast_vol=0.0,
+            current_volatility=0.01,
+            forecasted_volatility_1step=0.01,
+            annualized_current_vol=1.0,
+            annualized_forecast_vol=1.0,
             persistence=0.0,
             half_life_bars=None,
             unconditional_volatility=None,

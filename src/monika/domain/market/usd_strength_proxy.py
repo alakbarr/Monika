@@ -127,9 +127,11 @@ async def compute_usd_strength_proxy(
             }
         from sqlalchemy import select
 
-        rows = (
-            (await session.execute(select(DXYData).order_by(DXYData.date.desc()).limit(lookback_bars))).scalars().all()
-        )
+        stmt = select(DXYData)
+        if as_of:
+            stmt = stmt.where(DXYData.date <= as_of.date())
+        stmt = stmt.order_by(DXYData.date.desc()).limit(lookback_bars)
+        rows = (await session.execute(stmt)).scalars().all()
         if not rows or len(rows) < 2:
             return {
                 "weighted_usd_change_pct": 0.0,

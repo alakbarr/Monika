@@ -101,8 +101,10 @@ class TimesFMResidualValidator:
         lb_pvals: Dict[int, float] = {}
         try:
             lb_res = acorr_ljungbox(residuals, lags=valid_lags, return_df=True)
-            for idx, row in lb_res.iterrows():
-                lb_pvals[int(str(idx))] = round(float(row["lb_pvalue"]), 5)
+            for row in lb_res.itertuples():
+                lag_idx = int(getattr(row, "Index", 1))
+                pval = float(getattr(row, "lb_pvalue", 1.0))
+                lb_pvals[lag_idx] = round(pval, 5)
         except Exception as e:
             logger.warning(f"Ljung-Box test encountered error: {str(e)}")
 

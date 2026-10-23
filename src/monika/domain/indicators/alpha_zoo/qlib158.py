@@ -175,7 +175,6 @@ def _register_wvma(window: int) -> None:
         return _calc_wvma(df, window)
 
     FactorRegistry.register(meta_with_us)(_fn)
-    FactorRegistry.register(meta_without_us)(_fn)
 
 
 for w in (5, 10, 20, 60):
@@ -223,7 +222,6 @@ def _register_rsv(window: int) -> None:
         return _calc_rsv(df, window)
 
     FactorRegistry.register(meta_with_us)(_fn)
-    FactorRegistry.register(meta_without_us)(_fn)
 
 
 for w in (5, 10, 20, 60):
@@ -282,7 +280,8 @@ def _calc_resi_rsqr(df: pd.DataFrame, window: int) -> tuple[pd.Series, pd.Series
     # R^2 = (cov_xy^2) / (sum_x_dm2 * ss_tot)
     if sum_x_dm2 > 1e-12:
         denom = sum_x_dm2 * ss_tot
-        r2 = np.where(denom > 1e-12, (cov_xy**2) / denom, 0.0)
+        safe_denom = np.where(denom > 1e-12, denom, 1.0)
+        r2 = np.where(denom > 1e-12, (cov_xy**2) / safe_denom, 0.0)
     else:
         r2 = np.zeros_like(ss_tot)
 
@@ -328,7 +327,6 @@ def _register_resi_rsqr(window: int) -> None:
         return resi
 
     FactorRegistry.register(meta_resi)(_fn_resi)
-    FactorRegistry.register(meta_resi_no_us)(_fn_resi)
 
     meta_rsqr = AlphaMeta(
         name=f"qlib_rsqr_{window}",
@@ -358,7 +356,6 @@ def _register_resi_rsqr(window: int) -> None:
         return rsqr
 
     FactorRegistry.register(meta_rsqr)(_fn_rsqr)
-    FactorRegistry.register(meta_rsqr_no_us)(_fn_rsqr)
 
 
 for w in (5, 10, 20):
