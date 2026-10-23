@@ -570,6 +570,8 @@ ALL_TOOLS: list[dict] = list(
             GET_WICK_TO_WICK_FVG,
             GET_INVERTED_FVG,
             GET_MARKET_CONTEXT,
+            TODO_WRITE,
+            GET_PREDICTION_MARKET_ODDS,
         ]
     }.values()
 )

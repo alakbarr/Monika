@@ -635,7 +635,7 @@ class SystemToolsMixin(_ToolExecutorMixinBase):
         symbol = self._resolve_symbol(inp) or inp.get("symbol")
         if not symbol:
             return {"error": "Missing required parameter 'symbol'"}
-        timeframe = inp["timeframe"]
+        timeframe = inp.get("timeframe", "H1")
         limit = min(inp.get("limit", 50), 200)
 
         rows = (

@@ -14,6 +14,7 @@ Tools registered:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Optional
 
@@ -74,7 +75,8 @@ async def handle_read_file(
     context: Optional[Any] = None,
 ) -> str:
     """Read file content with line numbers under stale-overwrite tracking."""
-    success, result = _FILE_PATCH_ENGINE.read_file(
+    success, result = await asyncio.to_thread(
+        _FILE_PATCH_ENGINE.read_file,
         path=params.path,
         offset=params.offset,
         limit=params.limit,
@@ -92,7 +94,8 @@ async def handle_write_file(
     context: Optional[Any] = None,
 ) -> str:
     """Write file under stale-overwrite protection and post-write syntax linting."""
-    success, result = _FILE_PATCH_ENGINE.write_file(
+    success, result = await asyncio.to_thread(
+        _FILE_PATCH_ENGINE.write_file,
         path=params.path,
         content=params.content,
         allow_overwrite=params.allow_overwrite,
@@ -111,7 +114,8 @@ async def handle_patch(
     context: Optional[Any] = None,
 ) -> str:
     """Apply targeted replacement via 9-stage fuzzy matching with automatic syntax validation."""
-    success, result = _FILE_PATCH_ENGINE.patch_file(
+    success, result = await asyncio.to_thread(
+        _FILE_PATCH_ENGINE.patch_file,
         path=params.path,
         old_string=params.old_string,
         new_string=params.new_string,

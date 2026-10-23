@@ -114,7 +114,12 @@ class PositionToolHandlers:
                 if cur_p:
                     cur_p = float(cur_p)
                     p["price_current"] = round(cur_p, 5)
-                    pip_size = 0.01 if ("JPY" in sym or "XAU" in sym or "BTC" in sym) else 0.0001
+                    from monika.domain.risk.position_sizing import DEFAULT_INSTRUMENTS
+
+                    spec = DEFAULT_INSTRUMENTS.get(sym.upper())
+                    pip_size = (
+                        spec.pip_size if spec else (0.01 if ("JPY" in sym or "XAU" in sym or "BTC" in sym) else 0.0001)
+                    )
                     sl = p.get("stop_loss")
                     tp = p.get("take_profit")
                     entry = p.get("entry_price")
@@ -126,7 +131,11 @@ class PositionToolHandlers:
                         direction = (p.get("direction") or "buy").lower()
                         price_diff = (cur_p - float(entry)) if direction == "buy" else (float(entry) - cur_p)
                         lots = float(p.get("lots") or 0.01)
-                        contract_size = 100 if "XAU" in sym else 100000
+                        contract_size = (
+                            spec.contract_size
+                            if spec
+                            else (100 if "XAU" in sym else (1.0 if "BTC" in sym or "ETH" in sym else 100000))
+                        )
                         floating_usd = round(price_diff * lots * contract_size, 2)
                         p["unrealized_pnl_usd"] = floating_usd
                         if p.get("pnl") is None:

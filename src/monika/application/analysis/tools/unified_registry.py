@@ -13,6 +13,7 @@ import asyncio
 import inspect
 import json
 import logging
+import threading
 from typing import Any, Callable, Dict, List, Optional, Set, Type, Union
 
 from pydantic import BaseModel
@@ -26,28 +27,70 @@ logger = logging.getLogger("TradingAgent.Tools.UnifiedRegistry")
 # ==============================================================================
 TRADING_TOOLSET: Set[str] = {
     # Market Data & Analysis
+    "get_price_history",
+    "get_market_quote",
+    "get_economic_calendar",
+    "get_technical_indicators",
+    "get_atr",
+    "get_daily_range_context",
+    "get_optimal_intraday_levels",
+    "get_smc_zones",
+    "get_sr_zones",
+    "get_liquidity_zones",
+    "get_fvg_zones",
+    "get_order_blocks",
+    "get_structure_breaks",
+    "get_swing_points",
+    "get_fibonacci_levels",
+    "get_market_regime",
+    "get_volatility_regime",
+    "get_price_momentum",
+    "get_verified_market_snapshot",
+    # Position & Execution
+    "get_open_positions",
+    "get_account_info",
+    "get_spread_snapshot",
+    "calculate_position_size",
+    "propose_action",
+    "modify_position",
+    "close_position",
+    "get_risk_state",
+    # Macro & Sentiment
+    "get_interest_rates",
+    "get_treasury_yields",
+    "get_bond_yield_spreads",
+    "get_central_bank_expectations",
+    "get_dxy",
+    "get_vix",
+    "get_fear_greed",
+    "get_retail_sentiment",
+    "get_forex_sentiment",
+    "get_fxssi_sentiment",
+    "get_structured_sentiment",
+    "get_news_digest",
+    "get_news_items",
+    "get_cot_report",
+    "get_precomputed_cot_signals",
+    "get_prediction_market_odds",
+    "submit_asset_analysis",
+    "submit_fundamental_brief",
+    # Backward compatibility aliases
     "get_market_data",
     "fetch_market_data",
-    "get_economic_calendar",
     "fetch_economic_calendar",
     "calculate_technical_indicators",
     "get_smc_levels",
-    "get_order_flow",
-    # Position & Execution
-    "get_open_positions",
     "get_account_balance",
     "propose_trade",
-    "modify_position",
-    "close_position",
-    # Alpha Factors
-    "evaluate_alpha_factors",
-    "get_alpha_catalog",
 }
 
 DEVELOPER_TOOLSET: Set[str] = {
     # Code Execution & Sandboxing
-    "execute_python_code",
+    "execute_analysis_code",
     "execute_code",
+    "execute_python_code",
+    "handle_terminal",
+    "terminal",
     "run_terminal_command",
     # File Operations
     "read_file",
@@ -57,7 +100,9 @@ DEVELOPER_TOOLSET: Set[str] = {
     "list_directory",
     "search_files",
     # Workspace & Tasks
+    "todo_write",
     "manage_todo",
+    "manage_kanban_board",
     "update_kanban_board",
     "retrieve_spilled_context",
 }
@@ -65,16 +110,24 @@ DEVELOPER_TOOLSET: Set[str] = {
 RESEARCH_TOOLSET: Set[str] = {
     # Web & Academic Research
     "web_search",
+    "read_url",
     "web_fetch",
+    "search_academic",
     "search_academic_papers",
     "summarize_document",
     # Visual & Multimodal
+    "chart_vision_analyze",
     "inspect_chart_image",
     "describe_image",
     "browse_web_page",
     # Skills & Knowledge
+    "skills_list_tool",
+    "skill_view_tool",
+    "create_skill",
+    "skill_manage",
     "search_skills",
     "invoke_skill",
+    "clarify_with_user",
     "ask_clarification",
 }
 
@@ -273,7 +326,18 @@ def run_security_interceptors(name: str, arguments: Dict[str, Any]) -> None:
 
         for k, v in arguments.items():
             if isinstance(v, str) and k in ("path", "file_path", "filepath", "source_path", "target_path"):
-                if name in ("write_file", "patch", "delete_file", "append_file", "save_file"):
+                if name in (
+                    "write_file",
+                    "patch",
+                    "patch_file",
+                    "edit_file",
+                    "modify_file",
+                    "patch_source_file",
+                    "write_source_file",
+                    "delete_file",
+                    "append_file",
+                    "save_file",
+                ):
                     assert_safe_write_path(v)
                 elif name in ("read_file", "view_file", "inspect_file", "get_file"):
                     assert_safe_read_path(v)
@@ -288,6 +352,15 @@ class UnifiedToolRegistry:
     def __init__(self):
         self._tools: Dict[str, ToolEntry] = {}
         self._aliases: Dict[str, str] = {}
+        self._lock = threading.RLock()
+
+    def unregister(self, name: str) -> None:
+        """Remove a tool and its aliases from the registry."""
+        with self._lock:
+            self._tools.pop(name, None)
+            to_del = [alias for alias, target in self._aliases.items() if target == name or alias == name]
+            for alias in to_del:
+                self._aliases.pop(alias, None)
 
     def register(
         self,
@@ -314,7 +387,8 @@ class UnifiedToolRegistry:
                 timeout_seconds=timeout_seconds,
                 parallel_safe=parallel_safe,
             )
-            self._tools[name] = entry
+            with self._lock:
+                self._tools[name] = entry
             return fn
 
         return decorator
@@ -354,19 +428,21 @@ class UnifiedToolRegistry:
             timeout_seconds=timeout_seconds,
             parallel_safe=parallel_safe,
         )
-        self._tools[name] = entry
-        if aliases:
-            for alias in aliases:
-                self._aliases[alias] = name
+        with self._lock:
+            self._tools[name] = entry
+            if aliases:
+                for alias in aliases:
+                    self._aliases[alias] = name
         return entry
 
     def get_tool(self, name: str) -> Optional[ToolEntry]:
         """Retrieve registered tool entry by name or alias."""
-        if name in self._tools:
-            return self._tools[name]
-        aliased = self._aliases.get(name)
-        if aliased and aliased in self._tools:
-            return self._tools[aliased]
+        with self._lock:
+            if name in self._tools:
+                return self._tools[name]
+            aliased = self._aliases.get(name)
+            if aliased and aliased in self._tools:
+                return self._tools[aliased]
         # Fallback bridge to default_tool_registry
         try:
             from monika.application.analysis.tools.registry import default_tool_registry
@@ -411,7 +487,9 @@ class UnifiedToolRegistry:
         """List all registered tools, optionally filtered by category and availability."""
         seen_names: Set[str] = set()
         res: List[ToolEntry] = []
-        for t in self._tools.values():
+        with self._lock:
+            tool_entries = list(self._tools.values())
+        for t in tool_entries:
             if t.name in seen_names:
                 continue
             seen_names.add(t.name)
@@ -535,15 +613,29 @@ class UnifiedToolRegistry:
                 call_kwargs[k] = v
 
         coro_or_val: Any
-        # Check if handler expects positional args or kwargs
+        # Check if handler expects positional model/dict or kwargs
         params_list = list(sig.parameters.values())
-        if params_list and params_list[0].kind in (
+        if entry.input_model is not None:
+            coro_or_val = entry.handler(args_payload, **call_kwargs)
+        elif len(params_list) == 1 and params_list[0].kind in (
             inspect.Parameter.POSITIONAL_ONLY,
             inspect.Parameter.POSITIONAL_OR_KEYWORD,
         ):
             coro_or_val = entry.handler(args_payload, **call_kwargs)
+        elif (
+            params_list
+            and params_list[0].name in ("args", "arguments", "payload", "params")
+            and params_list[0].kind
+            in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            )
+        ):
+            coro_or_val = entry.handler(args_payload, **call_kwargs)
         else:
-            coro_or_val = entry.handler(**call_kwargs)
+            merged = {**args_payload} if isinstance(args_payload, dict) else {}
+            merged.update(call_kwargs)
+            coro_or_val = entry.handler(**merged)
 
         if inspect.isawaitable(coro_or_val):
             return await asyncio.wait_for(coro_or_val, timeout=entry.timeout_seconds)

@@ -14,6 +14,7 @@ Tools registered:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any, List, Optional
@@ -79,7 +80,8 @@ async def handle_terminal(
     context: Optional[Any] = None,
 ) -> str:
     """Execute shell command with auto-demotion to background if long-running."""
-    result = _TERMINAL_ENGINE.execute(
+    result = await asyncio.to_thread(
+        _TERMINAL_ENGINE.execute,
         command=params.command,
         workdir=params.workdir,
         timeout=int(params.timeout),

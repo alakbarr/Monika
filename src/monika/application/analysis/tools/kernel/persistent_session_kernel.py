@@ -67,15 +67,23 @@ def _clip(text):
     return text[:_CAPTURE_LIMIT], True
 
 def _start_watchdog_windows():
+    raw_pid = os.environ.get("MONIKA_PARENT_PID", "")
     raw_handle = os.environ.get("MONIKA_PARENT_HANDLE", "")
-    if not raw_handle:
-        return
     try:
         import ctypes
-        handle = int(raw_handle)
+        h_process = None
+        SYNCHRONIZE = 0x00100000
+        if raw_pid:
+            h_process = ctypes.windll.kernel32.OpenProcess(SYNCHRONIZE, False, int(raw_pid))
+        elif raw_handle:
+            h_process = int(raw_handle)
+        if not h_process:
+            return
         def _wait():
-            ctypes.windll.kernel32.WaitForSingleObject(handle, 0xFFFFFFFF)
-            os._exit(0)
+            # WAIT_OBJECT_0 is 0. Only exit when the parent has truly terminated.
+            res = ctypes.windll.kernel32.WaitForSingleObject(h_process, 0xFFFFFFFF)
+            if res == 0:
+                os._exit(0)
         t = threading.Thread(target=_wait, name="monika-parent-watchdog", daemon=True)
         t.start()
     except Exception:
@@ -253,16 +261,29 @@ class PersistentSessionKernel:
         # Setup OS watchdog handle/pipe
         pass_fds = []
         if sys.platform == "win32":
+            child_env["MONIKA_PARENT_PID"] = str(os.getpid())
             import ctypes
             import ctypes.wintypes
 
             windll = getattr(ctypes, "windll", None)
             if windll:
                 SYNCHRONIZE = 0x00100000
-                current_proc = windll.kernel32.GetCurrentProcess()
+                kernel32 = windll.kernel32
+                kernel32.DuplicateHandle.argtypes = [
+                    ctypes.wintypes.HANDLE,
+                    ctypes.wintypes.HANDLE,
+                    ctypes.wintypes.HANDLE,
+                    ctypes.POINTER(ctypes.wintypes.HANDLE),
+                    ctypes.wintypes.DWORD,
+                    ctypes.wintypes.BOOL,
+                    ctypes.wintypes.DWORD,
+                ]
+                kernel32.DuplicateHandle.restype = ctypes.wintypes.BOOL
+                kernel32.GetCurrentProcess.restype = ctypes.wintypes.HANDLE
+
+                current_proc = kernel32.GetCurrentProcess()
                 target_proc_handle = ctypes.wintypes.HANDLE()
-                # Duplicate handle for inheritance
-                windll.kernel32.DuplicateHandle(
+                success = kernel32.DuplicateHandle(
                     current_proc,
                     current_proc,
                     current_proc,
@@ -271,13 +292,15 @@ class PersistentSessionKernel:
                     True,  # bInheritHandle
                     0,
                 )
-                child_env["MONIKA_PARENT_HANDLE"] = str(target_proc_handle.value)
+                if success and target_proc_handle.value is not None:
+                    child_env["MONIKA_PARENT_HANDLE"] = str(int(target_proc_handle.value))
         else:
             r_fd, w_fd = os.pipe()
             os.set_inheritable(r_fd, True)
             os.set_inheritable(w_fd, False)
             child_env["MONIKA_PARENT_DEATH_FD"] = str(r_fd)
             pass_fds.append(r_fd)
+            self._death_w_fd = w_fd
 
         cmd = [sys.executable, str(runner_path)]
         self.proc = subprocess.Popen(
@@ -291,6 +314,17 @@ class PersistentSessionKernel:
             bufsize=0,
         )
         self._is_alive = True
+
+        def _drain_stderr():
+            try:
+                while self.proc and self.proc.stderr:
+                    chunk = self.proc.stderr.read(4096)
+                    if not chunk:
+                        break
+            except Exception:
+                pass
+
+        threading.Thread(target=_drain_stderr, daemon=True).start()
         logger.debug(f"[PersistentSessionKernel] Spawned runner PID {self.proc.pid} for session {self.session_id}")
 
     def execute(self, code_str: str, timeout_seconds: Optional[float] = None) -> Tuple[str, bool]:
@@ -436,6 +470,12 @@ class PersistentSessionKernel:
             except Exception:
                 pass
             self.proc = None
+        if hasattr(self, "_death_w_fd") and self._death_w_fd is not None:
+            try:
+                os.close(self._death_w_fd)
+            except Exception:
+                pass
+            self._death_w_fd = None
         self._is_alive = False
 
         if self._temp_dir:

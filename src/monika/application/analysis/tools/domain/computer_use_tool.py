@@ -13,6 +13,7 @@ Includes strict coordinate boundary validation and fail-safe safety guards.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import io
 import logging
@@ -128,7 +129,7 @@ async def handle_computer_use(
 
         # For interactive actions, snap focus to MT5 if available
         if action in {"mouse_move", "left_click", "right_click", "type_text", "key_press"}:
-            focus_mt5_window()
+            await asyncio.to_thread(focus_mt5_window)
 
         if action in {"mouse_move", "left_click", "right_click"}:
             if not params.coordinate or len(params.coordinate) != 2:

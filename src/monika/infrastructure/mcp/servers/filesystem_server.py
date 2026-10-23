@@ -156,6 +156,16 @@ class FilesystemMcpServer:
             raise PermissionError(
                 f"Access denied: path '{raw_path}' is outside the allowed workspace root '{self.root_dir}'."
             )
+        name_lower = p.name.lower()
+        if (
+            name_lower.startswith(".env")
+            or "credential" in name_lower
+            or "secret" in name_lower
+            or p.suffix.lower() in (".pem", ".key")
+        ):
+            raise PermissionError(
+                f"Access denied: access to sensitive/credential file '{p.name}' is strictly prohibited."
+            )
         return p
 
     def _resolve_safe_path(self, filename: str) -> Path:

@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from httpx import AsyncClient, ASGITransport
 from tests.conftest import create_mock_async_session
-from monika.application.analysis.mcp.dispatcher import MonikaMcpDispatcher
+from monika.infrastructure.mcp.dispatcher import MonikaMcpDispatcher
 from monika.interfaces.cli.subcommands.mcp import McpSubcommand
 from monika.interfaces.dashboard.api import app
 

@@ -24,9 +24,23 @@ class TechnicalToolHandlers:
     ) -> Any:
         from monika.infrastructure.brokers.mt5_client import get_mt5_client
 
-        client = get_mt5_client()
         effective_count = kwargs.get("limit") or count
-        return await client.get_rates(symbol=symbol, timeframe=timeframe, count=effective_count)
+        client = kwargs.get("mt5_client") or get_mt5_client(self.settings)
+        if client and hasattr(client, "get_rates"):
+            import inspect
+
+            res = client.get_rates(symbol=symbol, timeframe=timeframe, count=effective_count)
+            if inspect.iscoroutine(res):
+                return await res
+            return res
+
+        from monika.application.analysis.tools.handlers.market_data_tools import handle_get_price_history
+
+        return await handle_get_price_history(
+            {"symbol": symbol, "timeframe": timeframe, "count": effective_count, **kwargs},
+            session=session,
+            settings=self.settings,
+        )
 
     async def get_technical_indicators(
         self, symbol: str, timeframe: str = "H4", session: Optional[AsyncSession] = None, **kwargs

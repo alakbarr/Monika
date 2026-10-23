@@ -285,10 +285,6 @@ class McpServerProcess:
                 for arg in self.args:
                     if arg.startswith("analysis.mcp.servers."):
                         args.append(f"monika.infrastructure.mcp.servers.{arg.removeprefix('analysis.mcp.servers.')}")
-                    elif arg.startswith("monika.application.analysis.mcp.servers."):
-                        args.append(
-                            f"monika.infrastructure.mcp.servers.{arg.removeprefix('monika.application.analysis.mcp.servers.')}"
-                        )
                     else:
                         args.append(arg)
                 cmd = [resolved_cmd] + args

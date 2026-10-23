@@ -150,24 +150,6 @@ Monika/
 │       │   │   │   ├── behavioral_diagnostics.py
 │       │   │   │   ├── journal_parser.py
 │       │   │   │   └── shadow_extractor.py
-│       │   │   ├── mcp/
-│       │   │   │   ├── servers/
-│       │   │   │   │   ├── __init__.py
-│       │   │   │   │   ├── excel_server.py
-│       │   │   │   │   ├── fetch_server.py
-│       │   │   │   │   ├── filesystem_server.py
-│       │   │   │   │   ├── google_sheets_server.py
-│       │   │   │   │   └── sqlite_server.py
-│       │   │   │   ├── __init__.py
-│       │   │   │   ├── client.py
-│       │   │   │   ├── dispatcher.py
-│       │   │   │   ├── event_bridge.py
-│       │   │   │   ├── mcp_death_supervisor.py
-│       │   │   │   ├── mcp_schema_cache.py
-│       │   │   │   ├── mcp_serve.py
-│       │   │   │   ├── oauth_handler.py
-│       │   │   │   ├── protocol.py
-│       │   │   │   └── server.py
 │       │   │   ├── memory/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── alpha_calculator.py
@@ -3084,4 +3066,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2787
+**Total Tracked Directories**: 265 | **Total Tracked Files**: 2771

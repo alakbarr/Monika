@@ -51,8 +51,6 @@
 - [`src/monika/application/analysis/evaluation`](#folder-srcmonikaapplicationanalysisevaluation)
 - [`src/monika/application/analysis/grounding`](#folder-srcmonikaapplicationanalysisgrounding)
 - [`src/monika/application/analysis/journal`](#folder-srcmonikaapplicationanalysisjournal)
-- [`src/monika/application/analysis/mcp`](#folder-srcmonikaapplicationanalysismcp)
-- [`src/monika/application/analysis/mcp/servers`](#folder-srcmonikaapplicationanalysismcpservers)
 - [`src/monika/application/analysis/memory`](#folder-srcmonikaapplicationanalysismemory)
 - [`src/monika/application/analysis/prefetch`](#folder-srcmonikaapplicationanalysisprefetch)
 - [`src/monika/application/analysis/prefetch/news_digest`](#folder-srcmonikaapplicationanalysisprefetchnewsdigest)
@@ -1585,7 +1583,7 @@
     - `async compute_and_save(symbol: str, timeframe: str) -> int` - *Menjalankan alur lengkap: load OHLCV -> hitung -> simpan.*
     - `async compute_all_symbols(symbols: list[str], timeframes: list[str]) -> dict[str, int]` - *Menjalankan komputasi untuk semua aset dan timeframe.*
     - `async get_latest(symbol: str, timeframe: str, indicator_name: str) -> Optional[dict]` - *Mengambil metrik indikator terbaru untuk suatu symbol/timeframe.*
-    - `async get_snapshot(symbol: str, timeframe: str, series_depth: int) -> dict` - *Mengambil semua nilai indikator pada timestamp terkini dengan konteks delta, arah,*
+    - `async get_snapshot(symbol: str, timeframe: str, series_depth: int, ...) -> dict` - *Mengambil semua nilai indikator pada timestamp terkini dengan konteks delta, arah,*
 - **Top-Level Functions**:
   - `compute_yang_zhang_volatility(df: pd.DataFrame, window: int) -> pd.Series`: Yang-Zhang (2000) historical volatility estimator.
   - `compute_lag1_autocorrelation(close: pd.Series, window: int) -> pd.Series`: Rolling lag-1 return autocorrelation for statistical regime detection.
@@ -5956,58 +5954,6 @@
   - `class ShadowRuleExtractor`: Extracts explicit, falsifiable trading rules from winning trades.
     - `extract_rules(trades: List[BrokerTrade], min_cluster_trades: int) -> List[ShadowRule]`
 
-### Folder: `src/monika/application/analysis/mcp` <a id="folder-srcmonikaapplicationanalysismcp"></a>
-
-#### `__init__.py` - *Backward-compatibility facade for monika.application.analysis.mcp.*
-- **Path**: [`src/monika/application/analysis/mcp/__init__.py`](src/monika/application/analysis/mcp/__init__.py)
-
-#### `client.py` - *Backward-compatibility facade for McpClientManager.*
-- **Path**: [`src/monika/application/analysis/mcp/client.py`](src/monika/application/analysis/mcp/client.py)
-
-#### `dispatcher.py` - *Backward-compatibility facade for MonikaMcpDispatcher.*
-- **Path**: [`src/monika/application/analysis/mcp/dispatcher.py`](src/monika/application/analysis/mcp/dispatcher.py)
-
-#### `event_bridge.py` - *Backward-compatibility facade for McpEventBridge.*
-- **Path**: [`src/monika/application/analysis/mcp/event_bridge.py`](src/monika/application/analysis/mcp/event_bridge.py)
-
-#### `mcp_death_supervisor.py` - *Backward-compatibility facade for McpDeathSupervisor.*
-- **Path**: [`src/monika/application/analysis/mcp/mcp_death_supervisor.py`](src/monika/application/analysis/mcp/mcp_death_supervisor.py)
-
-#### `mcp_schema_cache.py` - *Backward-compatibility facade for McpSchemaCache.*
-- **Path**: [`src/monika/application/analysis/mcp/mcp_schema_cache.py`](src/monika/application/analysis/mcp/mcp_schema_cache.py)
-
-#### `mcp_serve.py` - *Backward-compatibility facade for mcp_serve.*
-- **Path**: [`src/monika/application/analysis/mcp/mcp_serve.py`](src/monika/application/analysis/mcp/mcp_serve.py)
-
-#### `oauth_handler.py` - *Backward-compatibility facade for oauth_handler.*
-- **Path**: [`src/monika/application/analysis/mcp/oauth_handler.py`](src/monika/application/analysis/mcp/oauth_handler.py)
-
-#### `protocol.py` - *Backward-compatibility facade for MCP protocol.*
-- **Path**: [`src/monika/application/analysis/mcp/protocol.py`](src/monika/application/analysis/mcp/protocol.py)
-
-#### `server.py` - *Backward-compatibility facade for MonikaMcpServer.*
-- **Path**: [`src/monika/application/analysis/mcp/server.py`](src/monika/application/analysis/mcp/server.py)
-
-### Folder: `src/monika/application/analysis/mcp/servers` <a id="folder-srcmonikaapplicationanalysismcpservers"></a>
-
-#### `__init__.py` - *Backward-compatibility facade for MCP servers package.*
-- **Path**: [`src/monika/application/analysis/mcp/servers/__init__.py`](src/monika/application/analysis/mcp/servers/__init__.py)
-
-#### `excel_server.py` - *Backward-compatibility facade for ExcelMcpServer.*
-- **Path**: [`src/monika/application/analysis/mcp/servers/excel_server.py`](src/monika/application/analysis/mcp/servers/excel_server.py)
-
-#### `fetch_server.py` - *Backward-compatibility facade for FetchMcpServer.*
-- **Path**: [`src/monika/application/analysis/mcp/servers/fetch_server.py`](src/monika/application/analysis/mcp/servers/fetch_server.py)
-
-#### `filesystem_server.py` - *Backward-compatibility facade for FilesystemMcpServer.*
-- **Path**: [`src/monika/application/analysis/mcp/servers/filesystem_server.py`](src/monika/application/analysis/mcp/servers/filesystem_server.py)
-
-#### `google_sheets_server.py` - *Backward-compatibility facade for GoogleSheetsMcpServer.*
-- **Path**: [`src/monika/application/analysis/mcp/servers/google_sheets_server.py`](src/monika/application/analysis/mcp/servers/google_sheets_server.py)
-
-#### `sqlite_server.py` - *Backward-compatibility facade for SqliteMcpServer.*
-- **Path**: [`src/monika/application/analysis/mcp/servers/sqlite_server.py`](src/monika/application/analysis/mcp/servers/sqlite_server.py)
-
 ### Folder: `src/monika/application/analysis/memory` <a id="folder-srcmonikaapplicationanalysismemory"></a>
 
 #### `alpha_calculator.py`
@@ -7395,6 +7341,7 @@
     - `is_available() -> bool` - *Evaluate availability check function if provided.*
   - `class UnifiedToolRegistry`: Central registry and dispatcher for all trading analysis and general-purpose tools.
     - `__init__()`
+    - `unregister(name: str) -> None` - *Remove a tool and its aliases from the registry.*
     - `register(name: str, category: str, input_model: Type[BaseModel], ...) -> Callable` - *Decorator to register a tool handler function with a Pydantic model.*
     - `register_tool(name: str, category: str, handler: Callable, ...) -> ToolEntry` - *Imperative method to register a tool handler function or MCP bridge.*
     - `get_tool(name: str) -> Optional[ToolEntry]` - *Retrieve registered tool entry by name or alias.*
@@ -13179,7 +13126,8 @@
     - `__init__(base_dir: Optional[Union[str, Path]], max_preview_chars: int)`
     - `generate_preview(text: str, max_chars: int, head_ratio: float) -> str` - *Generate bounded head/tail preview of large text content.*
     - `spill_artifact(content: Union[str, dict, list], artifact_type: str, artifact_id: Optional[str], ...) -> Dict[str, Any]` - *Save large artifact payload to disk and return metadata with bounded preview.*
-    - `load_artifact(artifact_id_or_path: str) -> Optional[Union[str, dict, list]]` - *Retrieve full artifact from disk by ID or direct path.*
+    - `load_artifact(artifact_id_or_path: str) -> Optional[Union[str, dict, list]]` - *Retrieve full artifact from disk by ID or direct path, strictly inside base_dir.*
+    - `cleanup_expired(max_age_seconds: int) -> int` - *Purge spilled artifacts older than max_age_seconds (default 24h). Returns count deleted.*
 - **Top-Level Functions**:
   - `get_spill_store() -> SpillStore`: Get or instantiate default SpillStore singleton.
 

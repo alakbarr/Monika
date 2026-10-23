@@ -36,6 +36,17 @@ SENSITIVE_PATTERNS = (
     "POSTGRES",
     "MT5",
     "TELEGRAM",
+    "PYTHONPATH",
+    "PYTHONHOME",
+    "PYTHONSTARTUP",
+    "REDIS",
+    "RABBITMQ",
+    "MONGO",
+    "BROKER",
+    "LOGIN",
+    "ACCOUNT",
+    "PRIVATE",
+    "CERT",
 )
 
 # Essential system environment variables allowed to pass through

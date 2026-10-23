@@ -69,9 +69,17 @@ class SpillStore:
         if not artifact_id:
             digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16]
             artifact_id = f"{artifact_type}_{digest}"
+        else:
+            artifact_id = Path(artifact_id).name  # Prevent directory traversal
 
         ext = ".json" if is_json else ".txt"
-        file_path = self.base_dir / f"{artifact_id}{ext}"
+        file_path = (self.base_dir / f"{artifact_id}{ext}").resolve()
+        if not file_path.is_relative_to(self.base_dir.resolve()):
+            return {
+                "spilled": False,
+                "error": "Security boundary violation: target file path is outside base dir",
+                "preview": serialized[: (preview_chars or self.max_preview_chars)],
+            }
 
         try:
             file_path.write_text(serialized, encoding="utf-8")
@@ -97,15 +105,26 @@ class SpillStore:
         }
 
     def load_artifact(self, artifact_id_or_path: str) -> Optional[Union[str, dict, list]]:
-        """Retrieve full artifact from disk by ID or direct path."""
+        """Retrieve full artifact from disk by ID or direct path, strictly inside base_dir."""
+        base_resolved = self.base_dir.resolve()
         target_path = Path(artifact_id_or_path)
-        if not target_path.exists():
-            # Check within base_dir
-            for ext in (".json", ".txt"):
-                candidate = self.base_dir / f"{artifact_id_or_path}{ext}"
-                if candidate.exists():
-                    target_path = candidate
-                    break
+        if not target_path.is_absolute():
+            candidate = (self.base_dir / target_path).resolve()
+            if candidate.exists():
+                target_path = candidate
+            else:
+                for ext in (".json", ".txt"):
+                    candidate_ext = (self.base_dir / f"{artifact_id_or_path}{ext}").resolve()
+                    if candidate_ext.exists():
+                        target_path = candidate_ext
+                        break
+        else:
+            target_path = target_path.resolve()
+
+        # Enforce boundary: must be within self.base_dir
+        if not target_path.is_relative_to(base_resolved):
+            logger.warning(f"[SpillStore] Security boundary violation: '{artifact_id_or_path}' is outside base dir")
+            return None
 
         if not target_path.exists() or not target_path.is_file():
             logger.warning(f"[SpillStore] Artifact '{artifact_id_or_path}' not found")
@@ -118,6 +137,25 @@ class SpillStore:
             except Exception:
                 return raw
         return raw
+
+    def cleanup_expired(self, max_age_seconds: int = 86400) -> int:
+        """Purge spilled artifacts older than max_age_seconds (default 24h). Returns count deleted."""
+        import time
+
+        now = time.time()
+        deleted = 0
+        try:
+            for p in self.base_dir.glob("*"):
+                if p.is_file():
+                    try:
+                        if now - p.stat().st_mtime > max_age_seconds:
+                            p.unlink()
+                            deleted += 1
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.warning(f"[SpillStore] Cleanup error: {e}")
+        return deleted
 
 
 def get_spill_store() -> SpillStore:

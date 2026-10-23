@@ -54,6 +54,13 @@ FORBIDDEN_CALLS = frozenset(
         "exec",
         "__import__",
         "open",
+        "getattr",
+        "setattr",
+        "delattr",
+        "globals",
+        "locals",
+        "vars",
+        "breakpoint",
     }
 )
 
@@ -68,6 +75,12 @@ DANGEROUS_ATTRIBUTES = frozenset(
         "__subclasses__",
         "__builtins__",
         "__base__",
+        "__bases__",
+        "__mro__",
+        "__class__",
+        "__code__",
+        "__reduce__",
+        "__reduce_ex__",
     }
 )
 
@@ -104,8 +117,15 @@ def validate_code_ast(code: str) -> Tuple[bool, str]:
                         f"Security Violation: Invocation of dangerous attribute '{node.func.attr}' is prohibited.",
                     )
         elif isinstance(node, ast.Attribute):
-            if node.attr in {"__subclasses__", "__builtins__", "__base__"}:
+            if node.attr in DANGEROUS_ATTRIBUTES:
                 return False, f"Security Violation: Access to reflective attribute '{node.attr}' is prohibited."
+        elif isinstance(node, ast.Subscript):
+            if isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, str):
+                if node.slice.value in DANGEROUS_ATTRIBUTES or node.slice.value in FORBIDDEN_CALLS:
+                    return (
+                        False,
+                        f"Security Violation: Subscript access to restricted symbol '{node.slice.value}' is prohibited.",
+                    )
 
     return True, ""
 

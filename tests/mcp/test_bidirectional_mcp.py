@@ -14,12 +14,12 @@ import time
 from pathlib import Path
 import pytest
 
-from monika.application.analysis.mcp.protocol import (
+from monika.infrastructure.mcp.protocol import (
     JsonRpcRequest,
     LATEST_PROTOCOL_VERSION,
 )
-from monika.application.analysis.mcp.server import MonikaMcpServer
-from monika.application.analysis.mcp.event_bridge import McpEventBridge
+from monika.infrastructure.mcp.server import MonikaMcpServer
+from monika.infrastructure.mcp.event_bridge import McpEventBridge
 from monika.infrastructure.database.session_db_wal import SessionDbWal
 from monika.infrastructure.database.fts5_cjk import Fts5SessionSearch
 

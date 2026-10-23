@@ -2902,21 +2902,21 @@ mcp:
         enabled: true
         transport: "stdio"
         command: "python"
-        args: ["-m", "monika.application.analysis.mcp.servers.sqlite_server"]
+        args: ["-m", "monika.infrastructure.mcp.servers.sqlite_server"]
         description: "Read-only access to local checkpointer and trading metrics"
 
       local_market_fs:
         enabled: true
         transport: "stdio"
         command: "python"
-        args: ["-m", "monika.application.analysis.mcp.servers.filesystem_server"]
+        args: ["-m", "monika.infrastructure.mcp.servers.filesystem_server"]
         description: "Sandboxed read-only access to playbooks and trading files"
 
       web_fetch:
         enabled: true
         transport: "stdio"
         command: "python"
-        args: ["-m", "monika.application.analysis.mcp.servers.fetch_server"]
+        args: ["-m", "monika.infrastructure.mcp.servers.fetch_server"]
         description: "Lightweight public web content text extractor"
 
       # --- WORKSPACE & SECOND-BRAIN MCP SERVERS ---
@@ -2924,7 +2924,7 @@ mcp:
         enabled: true
         transport: "stdio"
         command: "python"
-        args: ["-m", "monika.application.analysis.mcp.servers.filesystem_server"]
+        args: ["-m", "monika.infrastructure.mcp.servers.filesystem_server"]
         description: "Direct read/write access to Obsidian notes, markdown documents,
           and local filesystem"
 
@@ -2932,7 +2932,7 @@ mcp:
         enabled: true
         transport: "stdio"
         command: "python"
-        args: ["-m", "monika.application.analysis.mcp.servers.excel_server"]
+        args: ["-m", "monika.infrastructure.mcp.servers.excel_server"]
         description: "Direct inspection, reading, and appending of Excel (.xlsx) and
           CSV spreadsheets"
 
@@ -2950,7 +2950,7 @@ mcp:
         enabled: true
         transport: "stdio"
         command: "python"
-        args: ["-m", "monika.application.analysis.mcp.servers.google_sheets_server"]
+        args: ["-m", "monika.infrastructure.mcp.servers.google_sheets_server"]
         description: "Google Sheets and Google Docs integration via Service Account
           in Google Drive"
 

@@ -26,11 +26,11 @@ from monika.application.analysis.tools.domain.code_execution_tool import (
     handle_execute_code,
 )
 from monika.infrastructure.sandboxes.local_backend import LocalTerminalBackend
-from monika.application.analysis.mcp.oauth_handler import (
+from monika.infrastructure.mcp.oauth_handler import (
     generate_pkce_pair,
     OAuthTokenStorage,
 )
-from monika.application.analysis.mcp.mcp_serve import McpServerDispatcher
+from monika.infrastructure.mcp.mcp_serve import McpServerDispatcher
 from monika.application.analysis.tools.domain.clarify_tool import ClarifyInput, handle_clarify_with_user
 from monika.application.analysis.tools.domain.kanban_tools import KanbanBoardInput, handle_manage_kanban_board
 from monika.application.analysis.tools.domain.computer_use_tool import ComputerUseInput, handle_computer_use

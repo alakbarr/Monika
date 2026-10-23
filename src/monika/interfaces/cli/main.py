@@ -181,7 +181,7 @@ async def _dispatch_cli(args: Any) -> None:
         elif args.command == "profile":
             await _cmd_profile(args)
         elif args.command in ("mcp-serve", "mcp_serve"):
-            from monika.application.analysis.mcp.server import MonikaMcpServer
+            from monika.infrastructure.mcp.server import MonikaMcpServer
             from monika.core.config.settings import load_settings
 
             cfg = load_settings(getattr(args, "config", None))

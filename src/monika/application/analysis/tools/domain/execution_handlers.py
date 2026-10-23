@@ -67,7 +67,11 @@ class ExecutionToolHandlers:
             client = get_mt5_client(self.settings)
         if client:
             return await client.get_spread(symbol=symbol or "EURUSD")
-        return {"symbol": symbol or "EURUSD", "spread_points": 0}
+        return {
+            "status": "error",
+            "symbol": symbol or "EURUSD",
+            "error": "SPREAD_UNAVAILABLE: MT5 client is not connected. Spread cannot be verified (Fail-Closed).",
+        }
 
     async def calculate_margin(
         self, symbol: str, lot_size: float, action: str = "buy", price: Optional[float] = None, **kwargs
@@ -86,4 +90,9 @@ class ExecutionToolHandlers:
             if inspect.iscoroutine(res):
                 res = await res
             return res
-        return {"symbol": symbol, "lot": lot_size, "required_margin": 0.0, "error": "calc_margin not available"}
+        return {
+            "status": "error",
+            "symbol": symbol,
+            "lot": lot_size,
+            "error": "MARGIN_CALCULATION_UNAVAILABLE: MT5 client does not support calc_margin (Fail-Closed).",
+        }

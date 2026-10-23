@@ -718,6 +718,9 @@ class FilePatchEngine:
             elif op.action == "ADD":
                 if not norm_path:
                     return False, "Phase 1 Dry-run failed: ADD missing target file path.", op_summaries
+                can_mod, reason = self.guard.verify_can_modify(norm_path)
+                if not can_mod:
+                    return False, f"Phase 1 Dry-run rejected ADD for '{op.path}': {reason}", op_summaries
                 new_content = op.new_file_content or ""
                 lint_err = SyntaxLinter.lint_content(norm_path, new_content)
                 if lint_err:
@@ -738,6 +741,9 @@ class FilePatchEngine:
             elif op.action == "DELETE":
                 if not norm_path or not os.path.exists(norm_path):
                     return False, f"Phase 1 Dry-run failed: file to delete '{op.path}' does not exist.", op_summaries
+                can_mod, reason = self.guard.verify_can_modify(norm_path)
+                if not can_mod:
+                    return False, f"Phase 1 Dry-run rejected DELETE for '{op.path}': {reason}", op_summaries
                 staged_deletions.append(norm_path)
                 op_summaries.append({"action": "DELETE", "path": op.path})
 
@@ -748,7 +754,13 @@ class FilePatchEngine:
                         f"Phase 1 Dry-run failed: MOVE operation missing target path for '{op.path}'.",
                         op_summaries,
                     )
+                can_mod_src, reason_src = self.guard.verify_can_modify(norm_path)
+                if not can_mod_src:
+                    return False, f"Phase 1 Dry-run rejected MOVE source '{op.path}': {reason_src}", op_summaries
                 norm_new_path = os.path.normpath(os.path.abspath(op.new_path))
+                can_mod_dst, reason_dst = self.guard.verify_can_modify(norm_new_path)
+                if not can_mod_dst:
+                    return False, f"Phase 1 Dry-run rejected MOVE target '{op.new_path}': {reason_dst}", op_summaries
                 if not os.path.exists(norm_path):
                     return False, f"Phase 1 Dry-run failed: file to move '{op.path}' does not exist.", op_summaries
                 staged_moves.append((norm_path, norm_new_path))

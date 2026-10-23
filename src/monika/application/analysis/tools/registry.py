@@ -303,6 +303,12 @@ class ToolRegistry:
                 self._toolsets[tool.toolset].discard(canonical)
         self._handlers.pop(canonical, None)
         self._handler_classes.pop(canonical, None)
+        try:
+            from monika.application.analysis.tools.unified_registry import unified_tool_registry
+
+            unified_tool_registry.unregister(canonical)
+        except Exception:
+            pass
 
     def register_handler(self, name: str, handler: Any) -> None:
         """Register a callable or handler instance directly by name."""

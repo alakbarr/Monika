@@ -199,7 +199,7 @@ async def handle_get_spread_snapshot(
         client = get_mt5_client()
         return await client.get_spread(symbol=sym)
     except Exception as e:
-        return {"symbol": sym, "spread_points": 0, "error": str(e)}
+        return {"symbol": sym, "status": "error", "error": f"SPREAD_FETCH_FAILED: {e}"}
 
 
 async def handle_get_market_correlations(

@@ -8,6 +8,7 @@ Integrates decorator-based ToolRegistry, domain handlers, dynamic tool dispatch,
 monotonic guards, LFSP condensation, and OpenTelemetry tracing.
 """
 
+import asyncio
 import inspect
 import json
 import logging
@@ -18,7 +19,6 @@ from pydantic import ValidationError
 from sqlalchemy import and_, desc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import monika.application.analysis.tools.handlers  # Auto-registers all modular tool handlers
 import monika.core.primitives.clock as clock
 from monika.application.analysis.schemas.schemas import SubmitAssetAnalysisSchema, SubmitFundamentalBriefSchema
 from monika.application.analysis.tools.registry import ToolRegistry, default_tool_registry
@@ -117,8 +117,6 @@ class ToolExecutor(
         symbol: Optional[str] = None,
         registry: Optional[Any] = None,
     ):
-        import asyncio
-
         self.session = session
         self.submit_attempts = 0
         self.called_tools = set()
@@ -146,6 +144,10 @@ class ToolExecutor(
             self._session_lock = lock
         else:
             self._session_lock = asyncio.Lock()
+        try:
+            import monika.application.analysis.tools.handlers
+        except Exception as _e:
+            logger.debug(f"Handlers auto-import notice: {_e}")
         if registry is not None:
             self.registry = registry
         else:
@@ -437,6 +439,25 @@ class ToolExecutor(
         "judas_swing": "get_judas_swing",
         "wick_fvg": "get_wick_to_wick_fvg",
         "wick_to_wick_fvg": "get_wick_to_wick_fvg",
+        "delegate_task": "delegate_specialist_analysis",
+        "delegate_specialist": "delegate_specialist_analysis",
+        "execute_code": "execute_analysis_code",
+        "execute_python_code": "execute_analysis_code",
+        "manage_todo": "todo_write",
+        "todo": "todo_write",
+        "schedule_cron_job": "manage_cron",
+        "cron_manage": "manage_cron",
+        "web_fetch": "read_url",
+        "tool_search": "search_tools",
+        "skill_manage": "create_skill",
+        "get_account_balance": "get_account_info",
+        "get_market_data": "get_price_history",
+        "fetch_market_data": "get_price_history",
+        "calculate_technical_indicators": "get_technical_indicators",
+        "get_smc_levels": "get_smc_zones",
+        "propose_trade": "propose_action",
+        "close_positions": "close_position",
+        "modify_positions": "modify_position",
     }
 
     def _normalize_tool_name(self, raw_name: str) -> str:
@@ -562,17 +583,15 @@ class ToolExecutor(
 
         # 2. Read-Before-Act Invariant & Mandatory Tool Enforcement:
         if normalized_name == "submit_asset_analysis":
-            DATA_READING_TOOLS = {
-                "get_price_history",
-                "get_technical_indicators",
+            from monika.application.analysis.tools.tool_guardrails import DATA_READ_TOOLS
+
+            DATA_READING_TOOLS = DATA_READ_TOOLS | {
                 "get_price_momentum",
                 "execute_price_data",
                 "execute_technical_analysis",
                 "get_multi_timeframe_summary",
-                "get_verified_market_snapshot",
                 "get_price_data",
                 "get_technical_analysis",
-                "get_market_quote",
             }
             if not (self.effective_called_tools & DATA_READING_TOOLS):
                 return {
@@ -667,10 +686,27 @@ class ToolExecutor(
                         if hasattr(_rh, "execute"):
                             res = await _rh.execute(inp_dict, self.session, executor=self)
                         elif hasattr(_rh, "handler"):
-                            if inspect.iscoroutinefunction(_rh.handler):
-                                res = await _rh.handler(**inp_dict)
+                            target_fn = _rh.handler
+                            sig = inspect.signature(target_fn)
+                            params = list(sig.parameters.values())
+                            if len(params) == 1 and params[0].kind in (
+                                inspect.Parameter.POSITIONAL_ONLY,
+                                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                            ):
+                                if inspect.iscoroutinefunction(target_fn):
+                                    res = await target_fn(inp_dict)
+                                else:
+                                    res = target_fn(inp_dict)
+                            elif params and params[0].name in ("args", "arguments", "payload"):
+                                if inspect.iscoroutinefunction(target_fn):
+                                    res = await target_fn(inp_dict, session=self.session, executor=self)
+                                else:
+                                    res = target_fn(inp_dict, session=self.session, executor=self)
                             else:
-                                res = _rh.handler(**inp_dict)
+                                if inspect.iscoroutinefunction(target_fn):
+                                    res = await target_fn(**inp_dict)
+                                else:
+                                    res = target_fn(**inp_dict)
                         elif callable(_rh):
                             res = _rh(inp_dict)
                         else:
@@ -715,8 +751,6 @@ class ToolExecutor(
 
         session_lock = getattr(self.session, "_session_lock", None) or getattr(self, "_session_lock", None)
         if session_lock is None:
-            import asyncio
-
             session_lock = asyncio.Lock()
             self._session_lock = session_lock
             if self.session is not None:
@@ -724,9 +758,8 @@ class ToolExecutor(
 
         result = None
         max_db_attempts = 2
-        import asyncio as _asyncio
 
-        _cur_task = _asyncio.current_task()
+        _cur_task = asyncio.current_task()
         for db_attempt in range(max_db_attempts):
             try:
                 if concurrency_safe:
@@ -742,6 +775,13 @@ class ToolExecutor(
                         finally:
                             setattr(session_lock, "_owner_task", None)
                 break
+            except asyncio.CancelledError:
+                if self.session is not None:
+                    try:
+                        await self.session.rollback()
+                    except Exception as rb_err:
+                        logger.debug(f"Rollback on cancellation non-fatal: {rb_err}")
+                raise
             except Exception as e:
                 err_text = str(e).lower()
                 is_concurrency_error = (
@@ -757,7 +797,6 @@ class ToolExecutor(
                             await self.session.rollback()
                         except Exception as rb_err:
                             logger.debug(f"Rollback during retry non-fatal: {rb_err}")
-                    import asyncio
 
                     await asyncio.sleep(0.05)
                     continue

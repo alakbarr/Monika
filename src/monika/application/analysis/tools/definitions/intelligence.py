@@ -485,4 +485,18 @@ __all__ = [
     "ADD_JOURNAL_ENTRY_TOOL",
     "GET_JOURNAL_ENTRIES_TOOL",
     "SEARCH_SOCIAL_SENTIMENT",
+    "GET_PREDICTION_MARKET_ODDS",
 ]
+
+GET_PREDICTION_MARKET_ODDS = _tool(
+    name="get_prediction_market_odds",
+    description="Fetch decentralized prediction market odds on Fed rates, CPI, tariffs, and geopolitical events.",
+    properties={
+        "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Optional category or event tags to filter prediction markets.",
+        }
+    },
+    required=[],
+)

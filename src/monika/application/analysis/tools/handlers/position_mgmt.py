@@ -103,17 +103,15 @@ async def handle_calculate_position_size(
         except Exception:
             pass
 
-    # If stop loss is not provided, estimate based on 30 pips default
-    if stop_loss <= 0 and entry_price > 0:
-        from monika.domain.risk.position_sizing import DEFAULT_INSTRUMENTS
-
-        spec = DEFAULT_INSTRUMENTS.get(clean_sym)
-        pip_size = spec.pip_size if spec else (0.01 if "JPY" in clean_sym or "XAU" in clean_sym else 0.0001)
-        direction = (args.get("direction") or "buy").lower()
-        if direction == "sell":
-            stop_loss = entry_price + (30 * pip_size)
-        else:
-            stop_loss = entry_price - (30 * pip_size)
+    # Fail-Closed invariant: stop loss is strictly required for risk-bounded position sizing
+    if stop_loss <= 0:
+        return {
+            "status": "error",
+            "error": "CALCULATION_REJECTED: Valid positive stop_loss price is strictly required for position sizing (Fail-Closed).",
+            "lots": 0.0,
+            "risk_amount": 0.0,
+            "units": 0,
+        }
 
     account_equity_val = float(args.get("account_equity") or args.get("equity") or args.get("capital") or 0.0)
     extra_kwargs = {

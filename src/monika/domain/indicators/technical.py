@@ -654,7 +654,9 @@ class TechnicalIndicatorCalculator:
             return None
         return {"timestamp": row.timestamp, "value": json.loads(row.value_json)}
 
-    async def get_snapshot(self, symbol: str, timeframe: str, series_depth: int = 15) -> dict:
+    async def get_snapshot(
+        self, symbol: str, timeframe: str, series_depth: int = 15, as_of: Optional[datetime] = None
+    ) -> dict:
         """
         Mengambil semua nilai indikator pada timestamp terkini dengan konteks delta, arah,
         dan histori pergerakan N-bar (series_depth) untuk indikator kunci (RSI, MACD, Stoch, ADX, dsb).
@@ -667,11 +669,12 @@ class TechnicalIndicatorCalculator:
             return {}
 
         fetch_limit = max(2, min(series_depth, 30))
+        cutoff = as_of if as_of is not None else clock.now()
         recent_ts_result = await self.session.execute(
             select(TechnicalIndicator.timestamp)
             .where(TechnicalIndicator.symbol == symbol)
             .where(TechnicalIndicator.timeframe == timeframe)
-            .where(TechnicalIndicator.timestamp <= clock.now())
+            .where(TechnicalIndicator.timestamp <= cutoff)
             .group_by(TechnicalIndicator.timestamp)
             .order_by(TechnicalIndicator.timestamp.desc())
             .limit(fetch_limit)

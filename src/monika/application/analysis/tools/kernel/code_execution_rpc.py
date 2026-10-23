@@ -283,6 +283,9 @@ class CodeExecutionRpcServer:
                 if not chunk:
                     break
                 buf.extend(chunk)
+                if len(buf) > 5 * 1024 * 1024:
+                    conn.sendall(json.dumps({"error": "Payload exceeds 5MB limit"}).encode("utf-8") + b"\n")
+                    return
                 if b"\n" in chunk:
                     break
             if buf:

@@ -563,14 +563,14 @@ def test_analysis_core_framework_identity_and_parity():
     assert shim_sb.SubagentBlackboard is canon_sb.SubagentBlackboard
 
     # 5. MCP framework
-    import monika.application.analysis.mcp.protocol as shim_mcp_proto
-    import monika.application.analysis.mcp.protocol as canon_mcp_proto
+    import monika.infrastructure.mcp.protocol as shim_mcp_proto
+    import monika.infrastructure.mcp.protocol as canon_mcp_proto
 
     assert shim_mcp_proto.JsonRpcRequest is canon_mcp_proto.JsonRpcRequest
     assert shim_mcp_proto.JsonRpcResponse is canon_mcp_proto.JsonRpcResponse
 
-    import monika.application.analysis.mcp.client as shim_mcp_cli
-    import monika.application.analysis.mcp.client as canon_mcp_cli
+    import monika.infrastructure.mcp.client as shim_mcp_cli
+    import monika.infrastructure.mcp.client as canon_mcp_cli
 
     assert shim_mcp_cli.McpClientManager is canon_mcp_cli.McpClientManager
 

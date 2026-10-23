@@ -111,6 +111,9 @@ async def handle_get_market_regime(args: dict, **ctx) -> dict:
     symbols = symbols_input
     timeframe = args.get("timeframe", "D1")
 
+    as_of = args.get("as_of")
+    cutoff = as_of if as_of is not None else clock.now()
+
     regimes = {}
     for symbol in symbols:
         adx_row = (
@@ -119,7 +122,7 @@ async def handle_get_market_regime(args: dict, **ctx) -> dict:
                 .where(TechnicalIndicator.symbol == symbol)
                 .where(TechnicalIndicator.timeframe == timeframe)
                 .where(TechnicalIndicator.indicator_name == "ADX_14")
-                .where(TechnicalIndicator.timestamp <= clock.now())
+                .where(TechnicalIndicator.timestamp <= cutoff)
                 .order_by(TechnicalIndicator.timestamp.desc())
                 .limit(1)
             )

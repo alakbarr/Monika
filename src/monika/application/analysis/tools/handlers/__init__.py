@@ -9,6 +9,8 @@ from monika.application.analysis.tools.handlers import (
     advanced_quant_tools,
     analysis_submit,
     analytical_query_builder,
+    behavioral_alert_tool,
+    broker_profile_tool,
     category_loader,
     chart_bridge_tools,
     db_tools,
@@ -61,4 +63,6 @@ __all__ = [
     "skills_tools",
     "pattern_similarity_tools",
     "analytical_query_builder",
+    "behavioral_alert_tool",
+    "broker_profile_tool",
 ]
