@@ -1603,7 +1603,7 @@
   - `compute_bollinger_bands(close: pd.Series, period: int, std_dev: float) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]`: Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth.
   - `compute_atr(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> pd.Series`: Computes Average True Range.
   - `compute_adx(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes ADX, +DI, and -DI.
-  - `compute_pivot_points(high: float, low: float, close: float, ...) -> dict[str, Any]`: Menghitung Classical / Camarilla / Fibonacci Pivot Points dari satu bar D1/W1.
+  - `compute_pivot_points(high: float, low: float, close: float, ...) -> dict[str, Any]`: Menghitung Classical / Camarilla / Fibonacci / Woodie Pivot Points dari satu bar D1/W1.
   - `compute_ichimoku(df: pd.DataFrame, tenkan_period: int, kijun_period: int, ...) -> dict[str, Any]`: Menghitung komponen Ichimoku Kinko Hyo:
   - `detect_rsi_divergence(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> dict[str, Any]`: Detect regular bullish and bearish RSI divergences:
   - `detect_macd_divergence(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> dict[str, Any]`: Detect regular and hidden MACD divergences (Line and Histogram):
@@ -5941,6 +5941,13 @@
 - **Top-Level Functions**:
   - `verify_declared_figures(block: DeclaredFiguresBlock, ledger: ProvenanceLedger, default_tolerances: Optional[Dict[FigureRole, float]]) -> GroundingReport`: Verifies a declared figures block against the empirical ProvenanceLedger.
 
+#### `market_grounding.py` - *Pre-Execution Market Grounding:*
+- **Path**: [`src/monika/application/analysis/grounding/market_grounding.py`](src/monika/application/analysis/grounding/market_grounding.py)
+- **Classes**:
+  - `class MarketGroundingEngine`: Extracts empirical market realities and constructs Ground Truth prompt context.
+    - `async build_grounding_table(symbol: str, session: Any, days_back: int, ...) -> str` - *Constructs Markdown Ground Truth section for prompt injection via MarketDataRepository.*
+    - `format_grounding_from_df(symbol: str, df: Optional[pd.DataFrame]) -> str` - *Constructs Markdown Ground Truth section directly from an OHLCV DataFrame.*
+
 #### `provenance_tagger.py` - *Provenance Tagger & Ledger: Tracks numeric provenance of tool outputs*
 - **Path**: [`src/monika/application/analysis/grounding/provenance_tagger.py`](src/monika/application/analysis/grounding/provenance_tagger.py)
 - **Classes**:
@@ -6908,6 +6915,8 @@
     - `from_dict(data: Dict[str, Any]) -> 'StrategyHealth'`
   - `class StrategyDecayMonitor`: In-memory and stateful monitor for tracking per-strategy degradation and incubation.
     - `__init__(min_incubation_trades: Optional[int])`
+    - `strategies() -> list[str]` - *Return list of strategy IDs currently tracked.*
+    - `is_monitored(strategy_id: str) -> bool` - *Check if strategy has explicit health tracking registered.*
     - `get_health(strategy_id: str) -> StrategyHealth`
     - `register_incubating_strategy(strategy_id: str) -> StrategyHealth` - *Register a new alpha/synthesized strategy for paper trading incubation.*
     - `is_tradeable(strategy_id: str) -> bool` - *ACTIVE and MONITORING states are allowed to emit signals.*
@@ -11504,8 +11513,6 @@
     - `__init__(session: Optional[AsyncSession])`
     - `async fetch_open_interest_btc() -> dict` - *Fetch BTC Open Interest data directly.*
     - `async fetch() -> dict` - *Mengambil data funding rate & open interest BTC saat ini secara resilient dari bursa-bursa utama.*
-- **Top-Level Functions**:
-  - `async fetch_with_retry()`
 
 #### `crypto_orderbook_depth.py` - *Level-2 Orderbook Depth & Microstructure Liquidity Ladder for Crypto Assets.*
 - **Path**: [`src/monika/infrastructure/data_ingestion/sources/crypto_orderbook_depth.py`](src/monika/infrastructure/data_ingestion/sources/crypto_orderbook_depth.py)
@@ -13565,6 +13572,13 @@
 - **Path**: [`src/monika/interfaces/cli/subcommands/daemon.py`](src/monika/interfaces/cli/subcommands/daemon.py)
 - **Classes**:
   - `class DaemonSubcommand(Subcommand)`
+    - `register_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser`
+    - `async execute(args: argparse.Namespace) -> int`
+
+#### `desks.py` - *CLI Subcommand for inspecting and managing specialized multi-agent trading desk swarms.*
+- **Path**: [`src/monika/interfaces/cli/subcommands/desks.py`](src/monika/interfaces/cli/subcommands/desks.py)
+- **Classes**:
+  - `class DesksSubcommand(Subcommand)`: Subcommand for inspecting declarative YAML trading desk swarms.
     - `register_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser`
     - `async execute(args: argparse.Namespace) -> int`
 

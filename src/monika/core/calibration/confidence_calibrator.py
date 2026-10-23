@@ -21,10 +21,16 @@ def fit_platt_scaling(confidences: list[float], outcomes: list[int], max_iter: i
         return 1.0, 0.0
     mean_conf = sum(confidences) / n
     var_conf = sum((z - mean_conf) ** 2 for z in confidences) / n
-    if var_conf < 1e-6:
-        return 1.0, 0.0
     n_pos = sum(outcomes)
     n_neg = n - n_pos
+
+    if var_conf < 1e-6:
+        # Zero variance in input confidence: cannot fit slope A.
+        # Intercept B directly encodes empirical prior log-odds with Laplace smoothing.
+        # P(Y=1 | z) = 1 / (1 + exp(-B)) = (n_pos + 1) / (n + 2)
+        # exp(-B) = (n_neg + 1) / (n_pos + 1) => B = ln((n_pos + 1) / (n_neg + 1))
+        b_intercept = math.log((n_pos + 1.0) / (n_neg + 1.0)) if (n_neg + 1.0) > 0 else 0.0
+        return 0.0, round(b_intercept, 4)
 
     # Bayes Laplace Platt target probabilities prior
     t_pos = (n_pos + 1.0) / (n_pos + 2.0)

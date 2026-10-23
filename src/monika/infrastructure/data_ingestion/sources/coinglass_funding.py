@@ -16,15 +16,11 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import monika.infrastructure.llm.rate_limiting.http_retry as http_retry
 from monika.infrastructure.database.models import SystemConfig
 from monika.infrastructure.database.safe_ops import safe_commit
+from monika.infrastructure.llm.rate_limiting.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.CoinglassFunding")
-
-
-async def fetch_with_retry(*args, **kwargs):
-    return await http_retry.fetch_with_retry(*args, **kwargs)
 
 
 BINANCE_FUNDING_URL = "https://fapi.binance.com/fapi/v1/premiumIndex"

@@ -216,6 +216,16 @@ class SignalArbitrator:
             except ValueError, TypeError:
                 pass
 
+        # Populate prices from kwargs into res if not already set on res
+        if res.entry_price is None and kwargs.get("entry_price") is not None:
+            res.entry_price = kwargs.get("entry_price")
+        if res.stop_loss is None:
+            res.stop_loss = kwargs.get("sl_price") if kwargs.get("sl_price") is not None else kwargs.get("stop_loss")
+        if res.take_profit is None:
+            res.take_profit = (
+                kwargs.get("tp_price") if kwargs.get("tp_price") is not None else kwargs.get("take_profit")
+            )
+
         def _parse_safe_price(val: Any) -> float:
             if val is None:
                 return 0.0
@@ -240,17 +250,18 @@ class SignalArbitrator:
             sl_p = _parse_safe_price(res.stop_loss)
             tp_p = _parse_safe_price(res.take_profit)
             geom_violation = None
-            if e_p <= 0 or sl_p <= 0:
-                geom_violation = f"Missing or non-positive Entry Price ({e_p:.5f}) or Stop Loss ({sl_p:.5f})"
-            elif res.decision == "buy" and sl_p >= e_p:
-                geom_violation = f"BUY Stop Loss ({sl_p:.5f}) >= Entry Price ({e_p:.5f})"
-            elif res.decision == "sell" and sl_p <= e_p:
-                geom_violation = f"SELL Stop Loss ({sl_p:.5f}) <= Entry Price ({e_p:.5f})"
-            if not geom_violation and tp_p > 0 and e_p > 0:
-                if res.decision == "buy" and tp_p <= e_p:
-                    geom_violation = f"BUY Take Profit ({tp_p:.5f}) <= Entry Price ({e_p:.5f})"
-                elif res.decision == "sell" and tp_p >= e_p:
-                    geom_violation = f"SELL Take Profit ({tp_p:.5f}) >= Entry Price ({e_p:.5f})"
+            if e_p > 0 and sl_p > 0:
+                if res.decision == "buy" and sl_p >= e_p:
+                    geom_violation = f"BUY Stop Loss ({sl_p:.5f}) >= Entry Price ({e_p:.5f})"
+                elif res.decision == "sell" and sl_p <= e_p:
+                    geom_violation = f"SELL Stop Loss ({sl_p:.5f}) <= Entry Price ({e_p:.5f})"
+                if not geom_violation and tp_p > 0:
+                    if res.decision == "buy" and tp_p <= e_p:
+                        geom_violation = f"BUY Take Profit ({tp_p:.5f}) <= Entry Price ({e_p:.5f})"
+                    elif res.decision == "sell" and tp_p >= e_p:
+                        geom_violation = f"SELL Take Profit ({tp_p:.5f}) >= Entry Price ({e_p:.5f})"
+            elif (e_p > 0 and sl_p <= 0) or (e_p <= 0 and sl_p > 0):
+                geom_violation = f"Asymmetric geometry: Entry Price ({e_p:.5f}) and Stop Loss ({sl_p:.5f}) must both be positive when priced."
 
             if geom_violation:
                 logger.error(
@@ -798,11 +809,14 @@ class SignalArbitrator:
                 quant_signal.get("meta", {}) if isinstance(quant_signal, dict) else getattr(quant_signal, "meta", {})
             )
             is_incubating = bool(q_meta.get("is_incubating", False)) if isinstance(q_meta, dict) else False
+            if not is_incubating and "incubating" in quant_strat_id.lower():
+                is_incubating = True
 
             try:
                 from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
 
                 decay_mon = get_strategy_decay_monitor()
+                is_explicitly_tracked = decay_mon.is_monitored(quant_strat_id)
                 if not decay_mon.is_tradeable(quant_strat_id):
                     return ArbitrationResult(
                         symbol=symbol,
@@ -813,12 +827,13 @@ class SignalArbitrator:
                         arbitration_reason=f"Quant strategy {quant_strat_id} is quarantined/decayed by StrategyDecayMonitor.",
                         meta={"quarantined_strategy": quant_strat_id},
                     )
-                if hasattr(decay_mon, "is_live_ready"):
-                    is_incubating = not decay_mon.is_live_ready(quant_strat_id)
-                else:
-                    strat_health = decay_mon.get_health(quant_strat_id)
-                    if not strat_health.is_incubation_passed:
-                        is_incubating = True
+                if is_explicitly_tracked:
+                    if hasattr(decay_mon, "is_live_ready"):
+                        is_incubating = is_incubating or (not decay_mon.is_live_ready(quant_strat_id))
+                    else:
+                        strat_health = decay_mon.get_health(quant_strat_id)
+                        if not strat_health.is_incubation_passed:
+                            is_incubating = True
             except Exception as dec_err:
                 logger.debug(f"[{symbol}] Decay monitor check in arbitrator non-fatal: {dec_err}")
 

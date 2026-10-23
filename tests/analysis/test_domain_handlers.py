@@ -118,7 +118,10 @@ async def test_sentiment_handlers():
         assert ret_res["long_pct"] == 40.0
 
     # get_funding_rate
-    with patch("monika.infrastructure.api.http_retry.fetch_with_retry", new_callable=AsyncMock) as mock_retry:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.coinglass_funding.fetch_with_retry",
+        new_callable=AsyncMock,
+    ) as mock_retry:
         mock_retry.return_value = [{"fundingRate": "0.0001", "fundingTime": 1720000000}]
         fund_res = await handlers.get_funding_rate("BTCUSD")
         assert fund_res["funding_rate"] == 0.0001
@@ -184,7 +187,10 @@ async def test_sentiment_tool_handlers_no_symbol_collision():
         ret_res = await handle_get_retail_sentiment({"symbol": "EURUSD"}, session=mock_session)
         assert ret_res["long_pct"] == 40.0
 
-    with patch("monika.infrastructure.api.http_retry.fetch_with_retry", new_callable=AsyncMock) as mock_retry:
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.coinglass_funding.fetch_with_retry",
+        new_callable=AsyncMock,
+    ) as mock_retry:
         mock_retry.return_value = [{"fundingRate": "0.0001", "fundingTime": 1720000000}]
         fund_res = await handle_get_funding_rate({"symbol": "BTCUSD"}, session=mock_session)
         assert fund_res["funding_rate"] == 0.0001

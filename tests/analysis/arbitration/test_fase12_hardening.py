@@ -159,9 +159,10 @@ def test_confidence_calibrator_platt_stability():
     a, b = fit_platt_scaling([0.7, 0.8], [1, 0])
     assert (a, b) == (1.0, 0.0)
 
-    # Zero variance in confidences
+    # Zero variance in confidences: slope is 0.0, intercept is Laplace empirical log-odds
     a, b = fit_platt_scaling([0.8, 0.8, 0.8, 0.8, 0.8, 0.8], [1, 1, 0, 1, 0, 1])
-    assert (a, b) == (1.0, 0.0)
+    assert a == 0.0
+    assert b == round(math.log(5.0 / 3.0), 4)
 
 
 def test_cot_thresholds_filters_none_and_nan():

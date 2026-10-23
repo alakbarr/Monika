@@ -143,6 +143,7 @@ Monika/
 │       │   │   ├── grounding/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── declared_figures.py
+│       │   │   │   ├── market_grounding.py
 │       │   │   │   ├── provenance_tagger.py
 │       │   │   │   └── surgical_redaction.py
 │       │   │   ├── journal/
@@ -1837,6 +1838,7 @@ Monika/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base.py
 │       │   │   │   ├── daemon.py
+│       │   │   │   ├── desks.py
 │       │   │   │   ├── mcp.py
 │       │   │   │   ├── runcard.py
 │       │   │   │   ├── simulation.py
@@ -2107,7 +2109,8 @@ Monika/
 │   │   ├── evaluation/
 │   │   │   └── test_decision_quality.py
 │   │   ├── grounding/
-│   │   │   └── test_extended_grounding.py
+│   │   │   ├── test_extended_grounding.py
+│   │   │   └── test_market_grounding_live.py
 │   │   ├── mcp/
 │   │   │   ├── test_mcp.py
 │   │   │   ├── test_mcp_and_integrations.py
@@ -2504,6 +2507,7 @@ Monika/
 │   │   ├── test_reactive_graph.py
 │   │   ├── test_risk_gate_node_levels.py
 │   │   ├── test_state_pruner_and_checkpointer.py
+│   │   ├── test_team_compiler_live.py
 │   │   └── test_workflow_authoritative_checkpointer.py
 │   ├── harness/
 │   │   ├── test_domain_plugins_integration.py
@@ -3078,4 +3082,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 265 | **Total Tracked Files**: 2783
+**Total Tracked Directories**: 265 | **Total Tracked Files**: 2787

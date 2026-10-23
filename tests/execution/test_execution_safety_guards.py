@@ -275,14 +275,17 @@ async def test_an3_adversarial_check_prompt_initialization():
         "monika.application.analysis.validators.adversarial_check.get_client_for_task",
         side_effect=RuntimeError("LLM down"),
     ):
-        res = await run_adversarial_check(mock_session, analysis, {})
-        assert res["approve"] is True
-        assert "Adversarial check unavailable" in res["strongest_counter_argument"]
+        # Default: fail_closed is True per AGENTS.md §1
+        res_default = await run_adversarial_check(mock_session, analysis, {})
+        assert res_default["approve"] is False
+        assert res_default["hard_block"] is True
+        assert "failing closed per AGENTS.md §1" in res_default["strongest_counter_argument"]
 
-        res_closed = await run_adversarial_check(mock_session, analysis, {"adversarial_check": {"fail_closed": True}})
-        assert res_closed["approve"] is False
-        assert res_closed["hard_block"] is True
-        assert "failing closed per AGENTS.md §1" in res_closed["strongest_counter_argument"]
+        # Configured override: fail_closed is False (damped execution)
+        res_open = await run_adversarial_check(mock_session, analysis, {"adversarial_check": {"fail_closed": False}})
+        assert res_open["approve"] is True
+        assert res_open["hard_block"] is False
+        assert "Adversarial check unavailable" in res_open["strongest_counter_argument"]
 
 
 def test_an8_fundamental_brief_schema_harmonization():

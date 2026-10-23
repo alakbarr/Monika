@@ -28,17 +28,17 @@ def test_migrate_config_baseline():
 
 
 def test_migrate_config_ladder():
-    # Register test migration
-    @register_migration(2)
-    def v1_to_v2(cfg):
-        cfg["migrated_field"] = True
-        return cfg
-
-    # Temporarily adjust CURRENT_CONFIG_VERSION for test
     import monika.core.config.migrations as m
 
+    old_registry = m.MIGRATION_REGISTRY.copy()
     old_cur = m.CURRENT_CONFIG_VERSION
     try:
+        # Register test migration
+        @register_migration(2)
+        def v1_to_v2(cfg):
+            cfg["migrated_field"] = True
+            return cfg
+
         m.CURRENT_CONFIG_VERSION = 2
         raw = {"app_name": "Monika", "_config_version": 1}
         migrated, was_migrated = migrate_config(raw)
@@ -47,6 +47,8 @@ def test_migrate_config_ladder():
         assert migrated["migrated_field"] is True
     finally:
         m.CURRENT_CONFIG_VERSION = old_cur
+        m.MIGRATION_REGISTRY.clear()
+        m.MIGRATION_REGISTRY.update(old_registry)
 
 
 def test_require_parseable_config_valid(tmp_path: Path):

@@ -115,6 +115,15 @@ class StrategyDecayMonitor:
         self.min_incubation_trades = min_incubation_trades or self.MIN_INCUBATION_TRADES
         self._health_map: Dict[str, StrategyHealth] = {}
 
+    @property
+    def strategies(self) -> list[str]:
+        """Return list of strategy IDs currently tracked."""
+        return list(self._health_map.keys())
+
+    def is_monitored(self, strategy_id: str) -> bool:
+        """Check if strategy has explicit health tracking registered."""
+        return strategy_id in self._health_map
+
     def get_health(self, strategy_id: str) -> StrategyHealth:
         health = self._health_map.get(strategy_id)
         if health is None:

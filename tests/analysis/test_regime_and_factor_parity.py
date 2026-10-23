@@ -62,15 +62,15 @@ async def test_regime_classifier_probabilities():
 
     with (
         patch(
-            "monika.application.analysis.calculators.regime_classifier._get_latest_adx",
+            "monika.application.analysis.calculators.technical_regime_calculator._get_latest_adx",
             AsyncMock(return_value={"adx": 32.5}),
         ),
         patch(
-            "monika.application.analysis.calculators.regime_classifier._get_atr_series",
+            "monika.application.analysis.calculators.technical_regime_calculator._get_atr_series",
             AsyncMock(return_value=[1.2] * 20),
         ),
         patch(
-            "monika.application.analysis.calculators.regime_classifier.compute_bollinger_donchian_chop",
+            "monika.application.analysis.calculators.technical_regime_calculator.compute_bollinger_donchian_chop",
             AsyncMock(return_value={"chop_block": False}),
         ),
     ):

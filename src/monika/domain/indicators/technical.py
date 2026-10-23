@@ -178,7 +178,7 @@ def compute_adx(
 
 def compute_pivot_points(high: float, low: float, close: float, method: str = "classic") -> dict[str, Any]:
     """
-    Menghitung Classical / Camarilla / Fibonacci Pivot Points dari satu bar D1/W1.
+    Menghitung Classical / Camarilla / Fibonacci / Woodie Pivot Points dari satu bar D1/W1.
     """
     if method == "fibonacci":
         pp = (high + low + close) / 3.0
@@ -204,6 +204,23 @@ def compute_pivot_points(high: float, low: float, close: float, method: str = "c
             "s2": round(close - rng * 1.1 / 6, 5),
             "s3": round(close - rng * 1.1 / 4, 5),
             "s4": round(close - rng * 1.1 / 2, 5),
+        }
+    elif method == "woodie":
+        pp = (high + low + 2.0 * close) / 4.0
+        rng = high - low
+        return {
+            "pivot": round(pp, 5),
+            "r1": round(2.0 * pp - low, 5),
+            "r2": round(pp + rng, 5),
+            "s1": round(2.0 * pp - high, 5),
+            "s2": round(pp - rng, 5),
+        }
+    elif method == "all":
+        return {
+            "classic": compute_pivot_points(high, low, close, method="classic"),
+            "fibonacci": compute_pivot_points(high, low, close, method="fibonacci"),
+            "camarilla": compute_pivot_points(high, low, close, method="camarilla"),
+            "woodie": compute_pivot_points(high, low, close, method="woodie"),
         }
     else:  # classic
         pp = (high + low + close) / 3.0
@@ -233,7 +250,7 @@ def compute_ichimoku(
     - Chikou Span (Lagging Span)
     """
     if df is None or len(df) < senkou_b_period:
-        return {}
+        return {"status": "unavailable"}
 
     high = df["high"]
     low = df["low"]
@@ -251,6 +268,7 @@ def compute_ichimoku(
     kj_val = float(kijun.iloc[-1]) if pd.notna(kijun.iloc[-1]) else None
     sa_val = float(senkou_a.iloc[-1]) if pd.notna(senkou_a.iloc[-1]) else None
     sb_val = float(senkou_b.iloc[-1]) if pd.notna(senkou_b.iloc[-1]) else None
+    ck_val = float(chikou.iloc[-1]) if pd.notna(chikou.iloc[-1]) else last_close
 
     # Cloud position
     cloud_color = "neutral"
@@ -265,10 +283,13 @@ def compute_ichimoku(
             price_vs_cloud = "below"
 
     return {
-        "tenkan_sen": round(tk_val, 5) if tk_val else None,
-        "kijun_sen": round(kj_val, 5) if kj_val else None,
-        "senkou_span_a": round(sa_val, 5) if sa_val else None,
-        "senkou_span_b": round(sb_val, 5) if sb_val else None,
+        "status": "success",
+        "tenkan_sen": round(tk_val, 5) if tk_val is not None else None,
+        "kijun_sen": round(kj_val, 5) if kj_val is not None else None,
+        "senkou_span_a": round(sa_val, 5) if sa_val is not None else None,
+        "senkou_span_b": round(sb_val, 5) if sb_val is not None else None,
+        "chikou_span": round(ck_val, 5) if ck_val is not None else None,
+        "cloud_bias": cloud_color,
         "cloud_color": cloud_color,
         "price_vs_cloud": price_vs_cloud,
         "tk_cross": bool(tk_val > kj_val) if (tk_val and kj_val) else None,

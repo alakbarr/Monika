@@ -3,9 +3,6 @@ Backward-compatibility facade for http_retry.
 Canonical location: monika.infrastructure.llm.rate_limiting.http_retry
 """
 
-import sys
-import monika.infrastructure.llm.rate_limiting.http_retry as _canonical
-
 from monika.infrastructure.llm.rate_limiting.http_retry import (
     _CIRCUIT_BREAKER,
     _DEFAULT_SSL_CONTEXT,
@@ -29,5 +26,3 @@ __all__ = [
     "_jittered_delay",
     "_sanitize_url",
 ]
-
-sys.modules[__name__] = _canonical
