@@ -84,6 +84,7 @@ async def plan_refinement_node(state: TradingState, config: Optional[RunnableCon
         )
         return {
             "actionable_trades": [],
+            "approved_trades": [],
             "refinement_count": refinement_count,
             "is_negotiable_rejection": False,
             "rejection_feedback": None,
@@ -221,6 +222,7 @@ async def plan_refinement_node(state: TradingState, config: Optional[RunnableCon
 
     return {
         "actionable_trades": refined_trades,
+        "approved_trades": [],
         "refinement_count": refinement_count,
         "is_negotiable_rejection": False,
         "rejection_feedback": None,

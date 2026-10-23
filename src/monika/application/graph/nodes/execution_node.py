@@ -21,7 +21,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
     ) or {}
     scheduler = configurable.get("scheduler") if isinstance(configurable, dict) else None
     summary = state.get("summary", {})
-    actionable = state.get("actionable_trades", [])
+    actionable = state.get("approved_trades") or state.get("actionable_trades", [])
 
     if scheduler is None:
         logger.error("Scheduler not found in config")

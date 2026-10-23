@@ -82,6 +82,8 @@ def prune_after_debate(state: TradingState, *args, **kwargs) -> Dict[str, Any]:
                 "intermediate_dialogue",
                 "transcript",
                 "dialogue_history",
+                "fact_sheet",
+                "original_context",
             ]:
                 if key in ds and ds[key] != "_DELETED_":
                     archived_payloads[f"debate.{sym}.{key}"] = ds[key]

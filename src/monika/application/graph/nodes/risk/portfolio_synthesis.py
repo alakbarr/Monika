@@ -44,7 +44,13 @@ async def ai_portfolio_synthesis(
             f"confidence={r.get('confidence', 0):.0%}, "
             f"analysis_id={r.get('analysis_id', '?')}"
         )
-        proposed_trades.append({"symbol": sym, "decision": r.get("decision", "unknown")})
+        proposed_trades.append(
+            {
+                "symbol": sym,
+                "decision": r.get("decision", "unknown"),
+                "confidence": float(r.get("confidence", 0.0) or 0.0),
+            }
+        )
 
     corr_context = []
     for i in range(len(proposed_trades)):
@@ -227,6 +233,16 @@ async def apply_portfolio_synthesis_reduction(
             actionable = [(sym, r) for sym, r in actionable if sym in keep_symbols]
             logger.info(f"[PortfolioSynthesis] Reduced trades to: {[s for s, _ in actionable]}")
     except Exception as e:
-        logger.debug(f"[PortfolioSynthesis] Synthesis failed non-fatal: {e}")
+        logger.warning(
+            f"[PortfolioSynthesis] Synthesis failed: {e}. Enforcing conservative 0.5x risk mitigation.",
+            exc_info=True,
+        )
+        damped_actionable = []
+        for sym, r in actionable:
+            d_r = dict(r) if isinstance(r, dict) else {}
+            old_rm = float(d_r.get("risk_multiplier", 1.0) or 1.0)
+            d_r["risk_multiplier"] = round(old_rm * 0.50, 2)
+            damped_actionable.append((sym, d_r))
+        actionable = damped_actionable
 
     return actionable, newly_rejected

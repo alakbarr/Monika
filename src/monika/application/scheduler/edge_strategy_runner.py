@@ -758,7 +758,6 @@ class EdgeStrategyRunner:
                     "strategy_id": sig.strategy_id,
                     "analyses": analyses_to_execute,
                     "pair_group_id": pair_group_id,
-                    "session": session,
                     "regime_dict": regime_dict,
                 },
                 "market_regime": regime_name,
@@ -766,7 +765,13 @@ class EdgeStrategyRunner:
                 "errors": [],
                 "should_pause": False,
             }
-            config = {"configurable": {"scheduler": self}}
+            config = {
+                "configurable": {
+                    "scheduler": self,
+                    "session": session,
+                    "analyses": analyses_to_execute,
+                }
+            }
             logger.info(f"[{sig.strategy_id}] Routing edge signal through LangGraph ReactiveStateGraph...")
             await reactive_graph.ainvoke(reactive_state, config=config)
         except Exception as e:

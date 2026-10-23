@@ -225,18 +225,32 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
             emit_analysis_event("analysis_step_start", {"cycle_id": cycle_id, "step": node_name, "symbol": sym})
             t0 = time.time()
             res = None
-            with node_span(node_name, cycle_id=cycle_id) as span_inst:
-                res = await node_fn(state, *args, **kwargs)
+            try:
+                with node_span(node_name, cycle_id=cycle_id) as span_inst:
+                    res = await node_fn(state, *args, **kwargs)
+                    dur_s = time.time() - t0
+                    inp, out = _extract_tokens_from_result(node_name, res)
+                    if span_inst:
+                        span_inst.set_attribute("input_tokens", inp)
+                        span_inst.set_attribute("output_tokens", out)
+                        is_skipped = _is_node_skipped(node_name, res, state)
+                        span_inst.set_attribute("is_skipped", is_skipped)
+                        payload = _build_node_payload_summary(node_name, res, state)
+                        if payload:
+                            span_inst.set_attribute("output_payload", payload)
+            except Exception as exc:
                 dur_s = time.time() - t0
-                inp, out = _extract_tokens_from_result(node_name, res)
-                if span_inst:
-                    span_inst.set_attribute("input_tokens", inp)
-                    span_inst.set_attribute("output_tokens", out)
-                    is_skipped = _is_node_skipped(node_name, res, state)
-                    span_inst.set_attribute("is_skipped", is_skipped)
-                    payload = _build_node_payload_summary(node_name, res, state)
-                    if payload:
-                        span_inst.set_attribute("output_payload", payload)
+                emit_analysis_event(
+                    "analysis_step_failed",
+                    {
+                        "cycle_id": cycle_id,
+                        "step": node_name,
+                        "duration_s": dur_s,
+                        "error": str(exc),
+                    },
+                )
+                logger.error(f"[Workflow] Node '{node_name}' failed after {dur_s:.2f}s: {exc}", exc_info=True)
+                raise
             dur_s = time.time() - t0
             inp, out = _extract_tokens_from_result(node_name, res)
             try:
@@ -274,18 +288,32 @@ def _wrap_traced_node(node_name: str, node_fn: Any):
             emit_analysis_event("analysis_step_start", {"cycle_id": cycle_id, "step": node_name, "symbol": sym})
             t0 = time.time()
             res = None
-            with node_span(node_name, cycle_id=cycle_id) as span_inst:
-                res = node_fn(state, *args, **kwargs)
+            try:
+                with node_span(node_name, cycle_id=cycle_id) as span_inst:
+                    res = node_fn(state, *args, **kwargs)
+                    dur_s = time.time() - t0
+                    inp, out = _extract_tokens_from_result(node_name, res)
+                    if span_inst:
+                        span_inst.set_attribute("input_tokens", inp)
+                        span_inst.set_attribute("output_tokens", out)
+                        is_skipped = _is_node_skipped(node_name, res, state)
+                        span_inst.set_attribute("is_skipped", is_skipped)
+                        payload = _build_node_payload_summary(node_name, res, state)
+                        if payload:
+                            span_inst.set_attribute("output_payload", payload)
+            except Exception as exc:
                 dur_s = time.time() - t0
-                inp, out = _extract_tokens_from_result(node_name, res)
-                if span_inst:
-                    span_inst.set_attribute("input_tokens", inp)
-                    span_inst.set_attribute("output_tokens", out)
-                    is_skipped = _is_node_skipped(node_name, res, state)
-                    span_inst.set_attribute("is_skipped", is_skipped)
-                    payload = _build_node_payload_summary(node_name, res, state)
-                    if payload:
-                        span_inst.set_attribute("output_payload", payload)
+                emit_analysis_event(
+                    "analysis_step_failed",
+                    {
+                        "cycle_id": cycle_id,
+                        "step": node_name,
+                        "duration_s": dur_s,
+                        "error": str(exc),
+                    },
+                )
+                logger.error(f"[Workflow] Node '{node_name}' failed after {dur_s:.2f}s: {exc}", exc_info=True)
+                raise
             dur_s = time.time() - t0
             inp, out = _extract_tokens_from_result(node_name, res)
             try:

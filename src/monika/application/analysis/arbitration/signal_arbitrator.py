@@ -84,15 +84,30 @@ class SignalArbitrator:
         regime_info: Optional[Any] = None,
         **kwargs,
     ) -> ArbitrationResult:
-        res = await self._do_arbitrate(
-            session=session,
-            symbol=symbol,
-            quant_signal=quant_signal,
-            llm_decision=llm_decision,
-            vix_level=vix_level,
-            regime_info=regime_info,
-            **kwargs,
-        )
+        try:
+            res = await self._do_arbitrate(
+                session=session,
+                symbol=symbol,
+                quant_signal=quant_signal,
+                llm_decision=llm_decision,
+                vix_level=vix_level,
+                regime_info=regime_info,
+                **kwargs,
+            )
+        except Exception as e:
+            logger.critical(
+                f"[{symbol}] SignalArbitrator unhandled exception: {e}. Enforcing FAIL-CLOSED -> AVOID.",
+                exc_info=True,
+            )
+            return ArbitrationResult(
+                symbol=symbol,
+                decision="avoid",
+                confidence=0.0,
+                risk_multiplier=0.0,
+                selected_source="fail_closed_exception",
+                arbitration_reason=f"Fail-closed unhandled arbitrator error: {e}",
+                meta={"exception": str(e)},
+            )
 
         # Borderline Buffer Band Guard (Subsystem 3: 0.60x risk multiplier for borderline strategies)
         if res.decision in ("buy", "sell") and res.risk_multiplier > 0:
@@ -225,11 +240,12 @@ class SignalArbitrator:
             sl_p = _parse_safe_price(res.stop_loss)
             tp_p = _parse_safe_price(res.take_profit)
             geom_violation = None
-            if e_p > 0 and sl_p > 0:
-                if res.decision == "buy" and sl_p >= e_p:
-                    geom_violation = f"BUY Stop Loss ({sl_p:.5f}) >= Entry Price ({e_p:.5f})"
-                elif res.decision == "sell" and sl_p <= e_p:
-                    geom_violation = f"SELL Stop Loss ({sl_p:.5f}) <= Entry Price ({e_p:.5f})"
+            if e_p <= 0 or sl_p <= 0:
+                geom_violation = f"Missing or non-positive Entry Price ({e_p:.5f}) or Stop Loss ({sl_p:.5f})"
+            elif res.decision == "buy" and sl_p >= e_p:
+                geom_violation = f"BUY Stop Loss ({sl_p:.5f}) >= Entry Price ({e_p:.5f})"
+            elif res.decision == "sell" and sl_p <= e_p:
+                geom_violation = f"SELL Stop Loss ({sl_p:.5f}) <= Entry Price ({e_p:.5f})"
             if not geom_violation and tp_p > 0 and e_p > 0:
                 if res.decision == "buy" and tp_p <= e_p:
                     geom_violation = f"BUY Take Profit ({tp_p:.5f}) <= Entry Price ({e_p:.5f})"
@@ -419,6 +435,8 @@ class SignalArbitrator:
             raw_c = llm_decision.get("confidence")
             try:
                 conf = float(raw_c) if isinstance(raw_c, (int, float, str)) and str(raw_c).strip() != "" else 0.0
+                if math.isnan(conf) or math.isinf(conf):
+                    conf = 0.0
             except ValueError, TypeError:
                 conf = 0.0
 
@@ -429,6 +447,8 @@ class SignalArbitrator:
                     if isinstance(raw_r, (int, float, str)) and str(raw_r).strip() != ""
                     else (1.0 if raw_r is None else 0.0)
                 )
+                if math.isnan(risk_mult) or math.isinf(risk_mult):
+                    risk_mult = 0.0
             except ValueError, TypeError:
                 risk_mult = 0.0
 
@@ -483,9 +503,14 @@ class SignalArbitrator:
             l_dir = str(llm_decision.get("decision", "avoid")).lower()
 
             q_conf = round(_raw_q_conf, 4)
+            if math.isnan(q_conf) or math.isinf(q_conf):
+                q_conf = 0.0
+
             raw_lc = llm_decision.get("confidence")
             try:
                 l_conf = float(raw_lc) if isinstance(raw_lc, (int, float, str)) and str(raw_lc).strip() != "" else 0.0
+                if math.isnan(l_conf) or math.isinf(l_conf):
+                    l_conf = 0.0
             except ValueError, TypeError:
                 l_conf = 0.0
 
@@ -732,17 +757,26 @@ class SignalArbitrator:
                 )
 
             # 3. TimesFM 3.0 Statistical Arbiter Check & Skew Lookup
-            tfm_skew = 0.0
-            if session:
+            raw_skew = kwargs.get("timesfm_skew")
+            if raw_skew is None and session:
                 try:
                     from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
 
                     tfm_engine = TimesFMEngine(self.settings)
                     tfm_fc = await tfm_engine.get_latest_forecast(session, symbol, timeframe="H1", max_age_hours=8.0)
                     if tfm_fc:
-                        tfm_skew = float(tfm_fc.get("quantile_skew", 0.0))
+                        raw_skew = tfm_fc.get("quantile_skew", 0.0)
                 except Exception as tfm_err:
                     logger.debug(f"[{symbol}] TimesFM lookup in arbitrator failed (non-fatal): {tfm_err}")
+
+            tfm_skew = 0.0
+            if raw_skew is not None:
+                try:
+                    f_skew = float(raw_skew)
+                    if not (math.isnan(f_skew) or math.isinf(f_skew)):
+                        tfm_skew = f_skew
+                except ValueError, TypeError:
+                    tfm_skew = 0.0
 
             tfm_confirms = (q_dir == "buy" and tfm_skew >= 0.20) or (q_dir == "sell" and tfm_skew <= -0.20)
             tfm_opposes = (q_dir == "buy" and tfm_skew < -0.15) or (q_dir == "sell" and tfm_skew > 0.15)
@@ -940,6 +974,22 @@ class SignalArbitrator:
             if abs(tfm_skew) >= 0.20:
                 tfm_favors = "buy" if tfm_skew > 0 else "sell"
                 favored_source = "quant" if q_dir == tfm_favors else ("llm" if l_dir == tfm_favors else None)
+                if favored_source == "quant" and is_incubating:
+                    # FR-3.5: Incubating quant strategy cannot override conflicting LLM stance
+                    return ArbitrationResult(
+                        symbol=symbol,
+                        decision="avoid",
+                        confidence=0.0,
+                        risk_multiplier=0.0,
+                        selected_source="incubation_conflict_suppression",
+                        arbitration_reason=f"Quant strategy {quant_strat_id} is incubating — forbidden from overriding conflicting LLM {l_dir.upper()}.",
+                        meta={
+                            "quant_signal": q_dir,
+                            "llm_signal": l_dir,
+                            "is_incubating": True,
+                            "timesfm_skew": tfm_skew,
+                        },
+                    )
                 if favored_source:
                     fav_entry = _get_q("entry_price") if favored_source == "quant" else llm_decision.get("entry_price")
                     fav_sl = _get_q("stop_loss") if favored_source == "quant" else llm_decision.get("stop_loss")
@@ -977,7 +1027,7 @@ class SignalArbitrator:
                     take_profit=llm_decision.get("take_profit"),
                     meta={"quant_signal": q_dir, "llm_signal": l_dir, "conviction_resolved": True},
                 )
-            elif q_conf >= (l_conf + 0.10) and q_dir in ("buy", "sell") and tfm_confirms:
+            elif q_conf >= (l_conf + 0.10) and q_dir in ("buy", "sell") and tfm_confirms and not is_incubating:
                 return ArbitrationResult(
                     symbol=symbol,
                     decision=q_dir,
@@ -1096,6 +1146,7 @@ async def compute_empirical_arbitrator_weights(
     lookback_limit: int = 30,
     decay_factor: float = 0.94,
     symbol: Optional[str] = None,
+    as_of: Optional[datetime] = None,
 ) -> tuple[float, float]:
     """
     Menghitung bobot empiris dinamis untuk Quant vs LLM berbasis inverse Brier Score (1 - Brier)
@@ -1115,9 +1166,11 @@ async def compute_empirical_arbitrator_weights(
             .outerjoin(AssetAnalysis, PaperTradeRecord.analysis_id == AssetAnalysis.id)
             .where(PaperTradeRecord.status == "closed")
             .where(PaperTradeRecord.exit_reason.in_(["sl_hit", "tp_hit"]))
-            .order_by(PaperTradeRecord.closed_at.desc())
-            .limit(lookback_limit)
         )
+        if as_of is not None:
+            stmt = stmt.where(PaperTradeRecord.closed_at <= as_of)
+        stmt = stmt.order_by(PaperTradeRecord.closed_at.desc()).limit(lookback_limit)
+
         exec_res = await session.execute(stmt)
         records = exec_res.all() if hasattr(exec_res, "all") else []
         if len(records) < 10:
@@ -1153,36 +1206,43 @@ async def compute_empirical_arbitrator_weights(
             if ana and getattr(ana, "confidence", None) is not None:
                 try:
                     conf_l = float(ana.confidence)
-                    err_sq = (conf_l - is_win) ** 2
-                    brier_llm_list.append((err_sq, rec_w))
-                    if len(recent_llm_outcomes) < 5:
-                        recent_llm_outcomes.append(is_win)
+                    if not (math.isnan(conf_l) or math.isinf(conf_l)):
+                        err_sq = (conf_l - is_win) ** 2
+                        brier_llm_list.append((err_sq, rec_w))
+                        if len(recent_llm_outcomes) < 5:
+                            recent_llm_outcomes.append(is_win)
                 except ValueError, TypeError:
                     pass
 
-            # Quant Brier extraction
+            # Quant Brier extraction: only evaluate when explicit strategy_confidence is available
             rec_src = getattr(rec, "decision_source", "") or ""
             has_quant_src = rec_src in ("quant", "strategy_runner", "concordant") or (
                 ana and getattr(ana, "source_strategy_id", None) is not None
             )
             if has_quant_src:
-                q_conf = 0.60
-                if ana and (
-                    getattr(ana, "strategy_confidence", None) is not None
-                    or getattr(ana, "confidence", None) is not None
-                ):
+                q_conf = None
+                if ana and getattr(ana, "strategy_confidence", None) is not None:
                     try:
-                        c_val = getattr(ana, "strategy_confidence", None)
-                        if c_val is None:
-                            c_val = getattr(ana, "confidence", None)
+                        c_val = getattr(ana, "strategy_confidence")
                         if c_val is not None:
-                            q_conf = float(c_val)
+                            f_c = float(c_val)
+                            if not (math.isnan(f_c) or math.isinf(f_c)):
+                                q_conf = f_c
                     except ValueError, TypeError:
-                        q_conf = 0.60
-                err_sq = (q_conf - is_win) ** 2
-                brier_quant_list.append((err_sq, rec_w))
-                if len(recent_quant_outcomes) < 5:
-                    recent_quant_outcomes.append(is_win)
+                        q_conf = None
+                elif getattr(rec, "confidence", None) is not None and rec_src in ("quant", "strategy_runner"):
+                    try:
+                        f_c = float(getattr(rec, "confidence"))
+                        if not (math.isnan(f_c) or math.isinf(f_c)):
+                            q_conf = f_c
+                    except ValueError, TypeError:
+                        q_conf = None
+
+                if q_conf is not None:
+                    err_sq = (q_conf - is_win) ** 2
+                    brier_quant_list.append((err_sq, rec_w))
+                    if len(recent_quant_outcomes) < 5:
+                        recent_quant_outcomes.append(is_win)
 
         # Weighted mean Brier calculations
         if len(brier_llm_list) >= 8:

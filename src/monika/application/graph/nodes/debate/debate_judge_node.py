@@ -77,9 +77,15 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
 
         async with semaphore:
             try:
-                verdict = await evaluate_debate(
-                    judge_client, sym, original_context, verified_bull_claim, bear_dissent, bull_rebuttal=bull_rebuttal
-                )
+                async with asyncio.timeout(45.0):
+                    verdict = await evaluate_debate(
+                        judge_client,
+                        sym,
+                        original_context,
+                        verified_bull_claim,
+                        bear_dissent,
+                        bull_rebuttal=bull_rebuttal,
+                    )
 
                 async with get_session() as session:
                     ana = await session.get(AssetAnalysis, analysis_id)
@@ -149,6 +155,31 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                             )
                         except Exception:
                             pass
+
+                        try:
+                            from monika.infrastructure.database.models import DebateTranscript
+
+                            c_id = str(state.get("cycle_id") or f"cycle_{analysis_id}")
+                            transcript_rec = DebateTranscript(
+                                cycle_id=c_id,
+                                symbol=sym,
+                                timeframe=str(getattr(ana, "timeframe", "H1") or "H1"),
+                                bull_perspective=verified_bull_claim,
+                                bear_perspective=bear_dissent,
+                                judge_adjudication=verdict,
+                                final_decision=str(verdict.get("final_decision", "avoid")).lower(),
+                                confidence=float(verdict.get("confidence") or getattr(ana, "confidence", 0.0) or 0.0),
+                                confluence_score=float(getattr(ana, "confluence_score", 0.0) or 0.0),
+                                risk_multiplier=float(verdict.get("risk_multiplier") or 0.0),
+                                meta={
+                                    "analysis_id": analysis_id,
+                                    "bull_rebuttal": bull_rebuttal,
+                                    "was_modified": getattr(ana, "was_debate_modified", False),
+                                },
+                            )
+                            session.add(transcript_rec)
+                        except Exception as dt_err:
+                            logger.debug(f"[{sym}] Non-fatal error persisting DebateTranscript: {dt_err}")
 
                         await session.commit()
 

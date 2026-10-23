@@ -78,13 +78,67 @@ class SqliteCheckpointSaver(InMemorySaver):
                     channel TEXT,
                     value_type TEXT,
                     value_blob BLOB,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
                 )
             """)
+            try:
+                conn.execute("ALTER TABLE checkpoints ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+            except Exception:
+                pass
+            try:
+                conn.execute("ALTER TABLE writes ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+            except Exception:
+                pass
             conn.commit()
         finally:
             conn.close()
         self._load_from_sqlite()
+
+    def prune_disk_checkpoints(self, max_threads: int = 500, retention_days: Optional[int] = 7) -> int:
+        """Prune checkpoints and writes older than retention_days or exceeding max_threads from SQLite database."""
+        deleted_count = 0
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            if retention_days is not None and retention_days > 0:
+                cursor.execute(
+                    "DELETE FROM checkpoints WHERE created_at < datetime('now', '-' || ? || ' days')",
+                    (retention_days,),
+                )
+                deleted_count += cursor.rowcount
+
+            if max_threads is not None and max_threads > 0:
+                cursor.execute(
+                    """
+                    DELETE FROM checkpoints WHERE thread_id NOT IN (
+                        SELECT DISTINCT thread_id FROM checkpoints ORDER BY rowid DESC LIMIT ?
+                    )
+                    """,
+                    (max_threads,),
+                )
+                deleted_count += cursor.rowcount
+
+            cursor.execute(
+                """
+                DELETE FROM writes WHERE thread_id NOT IN (
+                    SELECT DISTINCT thread_id FROM checkpoints
+                )
+                """
+            )
+            deleted_count += cursor.rowcount
+            conn.commit()
+            if deleted_count > 0:
+                logger.info(f"[SqliteCheckpointer] Pruned {deleted_count} stale checkpoint/write entries from disk.")
+        except Exception as e:
+            logger.warning(f"[SqliteCheckpointer] Failed to prune disk checkpoints: {e}")
+        finally:
+            conn.close()
+        return deleted_count
+
+    async def aprune_disk_checkpoints(self, max_threads: int = 500, retention_days: Optional[int] = 7) -> int:
+        """Asynchronously prune checkpoints and writes from SQLite disk database."""
+        return await asyncio.to_thread(self.prune_disk_checkpoints, max_threads, retention_days)
 
     def _prune_memory_cache(self, max_threads: int = 50) -> None:
         """Limit in-memory cache to the most recent active threads to prevent memory leak."""

@@ -100,7 +100,10 @@ async def bull_advocate_node(state: TradingState, config: Optional[RunnableConfi
                         "vix": vix_val,
                     }
 
-                    verified_bull_claim = await generate_bull_advocacy(bull_client, sym, original_context, fact_sheet)
+                    async with asyncio.timeout(45.0):
+                        verified_bull_claim = await generate_bull_advocacy(
+                            bull_client, sym, original_context, fact_sheet
+                        )
 
                     curr_p = float(ana.price_at_analysis or 0.0)
                     if not _is_grounded(verified_bull_claim, curr_p, reference=fact_sheet):

@@ -12164,6 +12164,8 @@
 - **Classes**:
   - `class SqliteCheckpointSaver(InMemorySaver)`: Local SQLite checkpointer providing crash-safe state persistence across restarts.
     - `__init__(db_path: Optional[str])`
+    - `prune_disk_checkpoints(max_threads: int, retention_days: Optional[int]) -> int` - *Prune checkpoints and writes older than retention_days or exceeding max_threads from SQLite database.*
+    - `async aprune_disk_checkpoints(max_threads: int, retention_days: Optional[int]) -> int` - *Asynchronously prune checkpoints and writes from SQLite disk database.*
     - `put(config: RunnableConfig, checkpoint: Checkpoint, metadata: CheckpointMetadata, ...) -> RunnableConfig`
     - `async aput(config: RunnableConfig, checkpoint: Checkpoint, metadata: CheckpointMetadata, ...) -> RunnableConfig`
     - `put_writes(config: RunnableConfig, writes: Sequence[tuple[str, Any]], task_id: str, ...) -> None`

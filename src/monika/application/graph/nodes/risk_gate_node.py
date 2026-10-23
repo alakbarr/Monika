@@ -20,6 +20,7 @@ Decomposed into specialized sub-modules in `graph.nodes.risk.*`:
 from __future__ import annotations
 
 import logging
+import math
 from typing import Any, Dict, List, Optional
 
 from langchain_core.runnables.config import RunnableConfig
@@ -103,7 +104,13 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                     )
         actionable = kept_actionable
     except Exception as e:
-        logger.debug(f"[RiskGateNode] Correlation filter non-fatal error: {e}")
+        logger.critical(
+            f"[RiskGateNode] Correlation filter failed with error: {e}. Failing closed -> dropping unverified trades.",
+            exc_info=True,
+        )
+        for sym, r in actionable:
+            rejected_candidates.append({"symbol": sym, "trade": r, "reasons": [f"correlation_gate_exception: {e}"]})
+        actionable = []
 
     # 3. AI Portfolio Synthesis & Correlation Heat Reduction (if >= 3 trades proposed)
     actionable, synth_rejected = await apply_portfolio_synthesis_reduction(actionable, scheduler, state)
@@ -122,14 +129,47 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
             )
             gate_approved = []
 
-            equity = 10000.0
+            is_paper = bool(
+                scheduler.settings.get("paper_trading", {}).get("enabled", True)
+                if hasattr(scheduler, "settings") and isinstance(scheduler.settings, dict)
+                else True
+            )
+            equity: Optional[float] = None
             if hasattr(scheduler, "mt5") and scheduler.mt5:
                 try:
                     acc = await scheduler.mt5.get_account_info()
                     if isinstance(acc, dict):
-                        equity = float(acc.get("equity", 10000.0))
-                except Exception:
-                    equity = 10000.0
+                        raw_eq = acc.get("equity")
+                        if raw_eq is not None:
+                            val = float(raw_eq)
+                            if val > 0 and not (math.isnan(val) or math.isinf(val)):
+                                equity = val
+                except Exception as eq_err:
+                    logger.warning(f"[RiskGateNode] Failed to fetch MT5 account info: {eq_err}")
+
+            if equity is None:
+                if is_paper:
+                    equity = float(
+                        scheduler.settings.get("paper_trading", {}).get("initial_balance", 10000.0)
+                        if hasattr(scheduler, "settings") and isinstance(scheduler.settings, dict)
+                        else 10000.0
+                    )
+                else:
+                    logger.critical(
+                        "[RiskGateNode] Live trading active but account equity unavailable from MT5. "
+                        "Enforcing FAIL-CLOSED: dropping all trade proposals."
+                    )
+                    actionable = []
+                    summary["execution"] = {"status": "rejected_unverified_live_equity"}
+                    return {
+                        "summary": summary,
+                        "asset_analyses": state.get("asset_analyses", {}),
+                        "actionable_trades": [],
+                        "approved_trades": [],
+                        "is_negotiable_rejection": False,
+                        "negotiable_rejections": [],
+                        "rejection_feedback": None,
+                    }
 
             async with _gs_rg() as rg_session:
                 for sym, r in actionable:
@@ -364,6 +404,7 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
 
     return {
         "summary": summary,
+        "asset_analyses": state.get("asset_analyses", {}),
         "actionable_trades": actionable,
         "approved_trades": actionable,
         "is_negotiable_rejection": is_negotiable and not actionable,

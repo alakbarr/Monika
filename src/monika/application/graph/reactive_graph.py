@@ -369,11 +369,12 @@ async def reactive_execution_node(state: ReactiveState, config: Optional[Runnabl
 
     event_data = state.get("event_data") or {}
     pair_group_id = str(event_data.get("pair_group_id") or "")
-    raw_analyses = event_data.get("analyses") or []
+    configurable = (config or {}).get("configurable", {}) if config else {}
+    raw_analyses = configurable.get("analyses") or event_data.get("analyses") or []
     actionable_symbols = {sym for sym, r in actionable}
     # Filter analyses to only those approved in actionable_trades
     analyses_to_execute = [ana for ana in raw_analyses if getattr(ana, "symbol", "") in actionable_symbols]
-    session_override = event_data.get("session")
+    session_override = configurable.get("session") or event_data.get("session")
 
     async def _do_execution(session: AsyncSession):
         # 1. Handle paired hedge order from edge strategy runner

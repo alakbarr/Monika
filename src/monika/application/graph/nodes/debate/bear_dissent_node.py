@@ -67,7 +67,10 @@ async def bear_dissent_node(state: TradingState, config: Optional[RunnableConfig
 
         async with semaphore:
             try:
-                bear_dissent = await generate_bear_dissent(bear_client, sym, context_to_use, claim_to_use, fact_sheet)
+                async with asyncio.timeout(45.0):
+                    bear_dissent = await generate_bear_dissent(
+                        bear_client, sym, context_to_use, claim_to_use, fact_sheet
+                    )
 
                 if not _is_grounded(
                     bear_dissent, curr_p, reference=fact_sheet if isinstance(fact_sheet, dict) else None

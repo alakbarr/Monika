@@ -271,6 +271,7 @@ class DecisionQualityEvaluator:
         if clean_bull_trend or clean_bear_trend:
             # Missed opportunity: disciplined WAIT cost a clean trend move
             move_dist = up_move if clean_bull_trend else down_move
+            safe_atr = max(float(atr or 0.0), 1e-6)
             return EvaluationOutcome(
                 symbol=symbol,
                 decision=decision,
@@ -282,8 +283,8 @@ class DecisionQualityEvaluator:
                 is_wait=True,
                 missed_opportunity=True,
                 capital_preserved=False,
-                r_multiple=-round(move_dist / atr, 2),
-                rationale=f"Clean breakout missed ({move_dist / atr:.1f}x ATR move without deep pullback)",
+                r_multiple=-round(move_dist / safe_atr, 2),
+                rationale=f"Clean breakout missed ({move_dist / safe_atr:.1f}x ATR move without deep pullback)",
             )
         else:
             # Capital preserved: market chopped, whipsawed, or reversed

@@ -1,3 +1,4 @@
+import math
 from typing import Optional
 
 
@@ -13,8 +14,19 @@ def get_cot_extreme_thresholds(symbol: str, history_percentiles: list | None = N
         base_long = 80.0
         base_short = 20.0
 
-    if history_percentiles and len(history_percentiles) >= 10:
-        sorted_hist = sorted(history_percentiles)
+    valid_hist: list[float] = []
+    if history_percentiles:
+        for x in history_percentiles:
+            if x is not None:
+                try:
+                    fx = float(x)
+                    if math.isfinite(fx):
+                        valid_hist.append(fx)
+                except ValueError, TypeError:
+                    pass
+
+    if len(valid_hist) >= 10:
+        sorted_hist = sorted(valid_hist)
         idx_long = int(len(sorted_hist) * 0.9)
         idx_short = int(len(sorted_hist) * 0.1)
         dyn_long = sorted_hist[idx_long]
@@ -28,9 +40,16 @@ def cot_extreme_score(symbol: str, current_percentile: float, history_percentile
     """Returns +1 if extreme short (bullish for asset), -1 if extreme long (bearish), 0 if neutral"""
     if current_percentile is None:
         return 0
+    try:
+        val = float(current_percentile)
+        if not math.isfinite(val):
+            return 0
+    except ValueError, TypeError:
+        return 0
+
     t = get_cot_extreme_thresholds(symbol, history_percentiles)
-    if current_percentile >= t["extreme_long"]:
+    if val >= t["extreme_long"]:
         return -1
-    elif current_percentile <= t["extreme_short"]:
+    elif val <= t["extreme_short"]:
         return 1
     return 0

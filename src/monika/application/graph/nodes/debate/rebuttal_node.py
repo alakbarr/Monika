@@ -69,14 +69,15 @@ async def rebuttal_node(state: TradingState, config: Optional[RunnableConfig] = 
         async with semaphore:
             try:
                 logger.info(f"[{sym}] Executing round 2 dialectic rebuttal (direction={decision.upper()})...")
-                if is_sell:
-                    rebuttal_res = await generate_bear_rebuttal(
-                        bear_client, sym, original_context, fact_sheet, bear_dissent, verified_bull_claim
-                    )
-                else:
-                    rebuttal_res = await generate_bull_rebuttal(
-                        bull_client, sym, original_context, fact_sheet, verified_bull_claim, bear_dissent
-                    )
+                async with asyncio.timeout(45.0):
+                    if is_sell:
+                        rebuttal_res = await generate_bear_rebuttal(
+                            bear_client, sym, original_context, fact_sheet, bear_dissent, verified_bull_claim
+                        )
+                    else:
+                        rebuttal_res = await generate_bull_rebuttal(
+                            bull_client, sym, original_context, fact_sheet, verified_bull_claim, bear_dissent
+                        )
 
                 if not _is_grounded(
                     rebuttal_res, curr_p, reference=fact_sheet if isinstance(fact_sheet, dict) else None

@@ -17,7 +17,11 @@ def fit_platt_scaling(confidences: list[float], outcomes: list[int], max_iter: i
     Formula: P(Y=1 | z) = 1 / (1 + exp(-(A*z + B)))
     """
     n = len(confidences)
-    if n == 0:
+    if n < 5:
+        return 1.0, 0.0
+    mean_conf = sum(confidences) / n
+    var_conf = sum((z - mean_conf) ** 2 for z in confidences) / n
+    if var_conf < 1e-6:
         return 1.0, 0.0
     n_pos = sum(outcomes)
     n_neg = n - n_pos
@@ -56,10 +60,22 @@ def fit_platt_scaling(confidences: list[float], outcomes: list[int], max_iter: i
         delta_a = -(g1 * h22 - g2 * h12) / det
         delta_b = -(g2 * h11 - g1 * h12) / det
 
+        # Damping & clamping step
+        delta_a = max(-5.0, min(5.0, delta_a))
+        delta_b = max(-5.0, min(5.0, delta_b))
+
         a += delta_a
         b += delta_b
+
+        # Parameter clamping
+        a = max(-20.0, min(20.0, a))
+        b = max(-20.0, min(20.0, b))
+
         if abs(delta_a) < 1e-5 and abs(delta_b) < 1e-5:
             break
+
+    if math.isnan(a) or math.isnan(b) or math.isinf(a) or math.isinf(b):
+        return 1.0, 0.0
 
     return round(a, 4), round(b, 4)
 

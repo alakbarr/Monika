@@ -676,10 +676,13 @@ class RiskGate(
         rr = (tp_dist / sl_dist) if sl_dist > 1e-7 else 1.0
         risk_pct = float(proposal.metadata.get("risk_pct", 1.0)) if isinstance(proposal.metadata, dict) else 1.0
         risk_amount = eq * (risk_pct / 100.0)
+        pip_val = 10.0
         try:
             from monika.domain.risk.position_sizing import get_instrument_spec
 
             spec = get_instrument_spec(proposal.symbol)
+            if spec and spec.pip_value_per_lot > 0:
+                pip_val = float(spec.pip_value_per_lot)
             pips = (
                 sl_dist / spec.pip_size
                 if spec and spec.pip_size > 0
@@ -699,7 +702,7 @@ class RiskGate(
             risk_amount_usd=risk_amount,
             sl_distance_price=sl_dist,
             sl_distance_pips=pips,
-            pip_value_per_lot=10.0,
+            pip_value_per_lot=pip_val,
             raw_lots=proposal.lot_size,
             recommended_lots=proposal.lot_size,
             rr_ratio=rr,

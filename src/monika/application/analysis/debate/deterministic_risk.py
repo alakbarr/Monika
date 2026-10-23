@@ -58,9 +58,9 @@ def analyze_risk_aggressive(ctx: dict, min_rr_ratio: float = 1.5) -> dict:
     if open_positions >= 5:
         veto = True
         reasons.append(f"Rule0: open_positions={open_positions} >= 5 maximum aggressive capacity")
-    if rr_ratio is not None and rr_ratio < min_rr_ratio:
+    if rr_ratio is None or rr_ratio < min_rr_ratio:
         veto = True
-        reasons.append(f"Rule1: R:R={rr_ratio:.2f} < {min_rr_ratio}")
+        reasons.append(f"Rule1: R:R={'None' if rr_ratio is None else f'{rr_ratio:.2f}'} < {min_rr_ratio} (Fail-Closed)")
     if not sl_beyond_structure:
         veto = True
         reasons.append("Rule1: SL not beyond structural level")
@@ -96,9 +96,11 @@ def analyze_risk_neutral(ctx: dict, min_rr_ratio: float = 1.5) -> dict:
     if daily_pnl_pct <= -2.0:
         veto = True
         reasons.append(f"Rule1b: daily_pnl_pct={daily_pnl_pct:.2f}% <= -2.0%")
-    if rr_ratio is not None and rr_ratio < min_rr_ratio:
+    if rr_ratio is None or rr_ratio < min_rr_ratio:
         veto = True
-        reasons.append(f"Rule1c: R:R={rr_ratio:.2f} < min_rr_ratio={min_rr_ratio}")
+        reasons.append(
+            f"Rule1c: R:R={'None' if rr_ratio is None else f'{rr_ratio:.2f}'} < min_rr_ratio={min_rr_ratio} (Fail-Closed)"
+        )
 
     penalty_pos = 0.15 * max(0, open_positions - 1)
     penalty_pnl = 0.2 if daily_pnl_pct < -1.0 else 0.0

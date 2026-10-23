@@ -144,10 +144,8 @@ async def _compute_cds_calibration(session: AsyncSession, settings: dict) -> dic
 
     if not is_predictive and sum(b["total"] for b in buckets.values()) >= 25:
         recommendations.append(
-            "CDS not yet predictive (sample N>=25). Consider lowering warning threshold by 0.05 "
-            "to capture more divergence early."
+            "CDS not yet predictive (sample N>=25). Flagged for manual review; automatic threshold modification suppressed."
         )
-        new_thresholds["warning"] = max(0.10, new_thresholds["warning"] - 0.05)
 
     if is_predictive:
         # If high-CDS trades lose significantly with sufficient sample size, tighten block threshold

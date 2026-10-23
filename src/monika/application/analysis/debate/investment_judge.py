@@ -175,6 +175,9 @@ Before adjusting any risk multiplier or proposing level adjustments, verify:
 2. Does the proposed Stop Loss violate the 1.0x ATR minimum distance from entry?
 3. If the counter-argument is purely rhetorical without factual data basis, do NOT penalize the trade — maintain risk_multiplier = 1.0.
 
+TIE & LOW CONVICTION RULE:
+If Bull thesis and Bear dissent are evenly matched without a clear structural edge, or if empirical data is conflicting/inconclusive, you MUST declare final_decision = 'avoid' with risk_multiplier = 0.0 to preserve trading capital above all.
+
 MANDATORY ADJUSTMENT CONSTRAINT: If proposing adjusted_entry, adjusted_sl, or adjusted_tp, the resulting Risk-to-Reward ratio MUST remain >= 1.3 (i.e. |adjusted_tp - entry| >= 1.3 * |entry - adjusted_sl|). Any proposed adjustment with R:R < 1.5 will be automatically rejected by backend risk validators.
 
 {get_universal_execution_discipline()}

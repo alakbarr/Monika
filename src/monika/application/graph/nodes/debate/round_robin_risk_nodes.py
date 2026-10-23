@@ -66,10 +66,15 @@ async def _build_strict_context(
     entry_price = entry_zone_data.get("price") or ana.price_at_analysis
     rr_ratio = None
     if entry_price and ana.stop_loss and ana.take_profit:
-        sl_dist = abs(entry_price - ana.stop_loss)
-        tp_dist = abs(entry_price - ana.take_profit)
-        if sl_dist > 0:
-            rr_ratio = tp_dist / sl_dist
+        try:
+            from monika.application.analysis.debate.exact_decimal_math import exact_rr_ratio
+
+            rr_ratio = float(exact_rr_ratio(entry_price, ana.stop_loss, ana.take_profit))
+        except Exception:
+            sl_dist = abs(entry_price - ana.stop_loss)
+            tp_dist = abs(entry_price - ana.take_profit)
+            if sl_dist > 0:
+                rr_ratio = tp_dist / sl_dist
 
     strict_context = {
         "symbol": sym,
@@ -131,11 +136,13 @@ async def conservative_risk_node(state: TradingState, config: Optional[RunnableC
                                 analyze_risk_multi_persona_llm,
                             )
 
-                            batch_eval = await analyze_risk_multi_persona_llm(client, sym, strict_context)
+                            async with asyncio.timeout(45.0):
+                                batch_eval = await analyze_risk_multi_persona_llm(client, sym, strict_context)
                             return sym, batch_eval
                         except Exception as b_err:
                             logger.debug(f"[{sym}] Multi-persona batch fallback: {b_err}")
-                            cons_risk = await analyze_risk_conservative_llm(client, sym, strict_context)
+                            async with asyncio.timeout(45.0):
+                                cons_risk = await analyze_risk_conservative_llm(client, sym, strict_context)
                             return sym, {"conservative": cons_risk}
             except Exception as e:
                 logger.error(f"[{sym}] Conservative risk analysis failed: {e}", exc_info=True)
@@ -195,7 +202,8 @@ async def aggressive_risk_node(state: TradingState, config: Optional[RunnableCon
                         agg_risk = analyze_risk_aggressive(strict_context, min_rr_ratio=min_rr)
                     else:
                         client = get_client_for_task("risk_gate_aggressive", settings)
-                        agg_risk = await analyze_risk_aggressive_llm(client, sym, strict_context)
+                        async with asyncio.timeout(45.0):
+                            agg_risk = await analyze_risk_aggressive_llm(client, sym, strict_context)
 
                     return sym, agg_risk
             except Exception as e:
@@ -253,7 +261,8 @@ async def neutral_risk_node(state: TradingState, config: Optional[RunnableConfig
                         neu_risk = analyze_risk_neutral(strict_context, min_rr_ratio=min_rr)
                     else:
                         client = get_client_for_task("risk_gate_neutral", settings)
-                        neu_risk = await analyze_risk_neutral_llm(client, sym, strict_context)
+                        async with asyncio.timeout(45.0):
+                            neu_risk = await analyze_risk_neutral_llm(client, sym, strict_context)
 
                     return sym, neu_risk
             except Exception as e:
@@ -306,9 +315,10 @@ async def portfolio_judge_node(state: TradingState, config: Optional[RunnableCon
                         pm_decision = make_portfolio_decision_deterministic(single_risk_debate)
                     else:
                         client = get_client_for_task("portfolio_manager_per_trade", settings)
-                        pm_decision = await make_portfolio_decision(
-                            client, sym, single_risk_debate, actual_risk_state_with_intel
-                        )
+                        async with asyncio.timeout(45.0):
+                            pm_decision = await make_portfolio_decision(
+                                client, sym, single_risk_debate, actual_risk_state_with_intel
+                            )
 
                     pm_decision = _apply_deterministic_risk_clamp(
                         pm_decision, single_risk_debate, actual_risk_state_with_intel

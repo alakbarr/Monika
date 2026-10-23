@@ -110,10 +110,15 @@ async def risk_evaluator_node(state: TradingState, config: Optional[RunnableConf
                     entry_price = entry_zone_data.get("price") or ana.price_at_analysis
                     rr_ratio = None
                     if entry_price and ana.stop_loss and ana.take_profit:
-                        sl_dist = abs(entry_price - ana.stop_loss)
-                        tp_dist = abs(entry_price - ana.take_profit)
-                        if sl_dist > 0:
-                            rr_ratio = tp_dist / sl_dist
+                        try:
+                            from monika.application.analysis.debate.exact_decimal_math import exact_rr_ratio
+
+                            rr_ratio = float(exact_rr_ratio(entry_price, ana.stop_loss, ana.take_profit))
+                        except Exception:
+                            sl_dist = abs(entry_price - ana.stop_loss)
+                            tp_dist = abs(entry_price - ana.take_profit)
+                            if sl_dist > 0:
+                                rr_ratio = tp_dist / sl_dist
 
                     strict_context = {
                         "symbol": sym,
