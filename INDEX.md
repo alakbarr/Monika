@@ -4513,6 +4513,8 @@
     - `mean_variance(returns_df: pd.DataFrame, risk_free_rate: float, max_weight: float) -> OptimizationResult`
     - `risk_parity(cov_matrix: np.ndarray, symbols: list[str]) -> OptimizationResult`
     - `turnover_aware(expected_returns: np.ndarray, cov_matrix: np.ndarray, current_weights: np.ndarray, ...) -> OptimizationResult`
+- **Top-Level Functions**:
+  - `project_vector_bounded_simplex(v: np.ndarray, upper_bounds: np.ndarray) -> np.ndarray`: Project vector v onto the bounded probability simplex: sum(w) = 1, 0 <= w_i <= upper_bounds[i].
 
 #### `ports.py` - *Domain Risk Ports & Protocols.*
 - **Path**: [`src/monika/domain/risk/ports.py`](src/monika/domain/risk/ports.py)
@@ -4729,7 +4731,7 @@
     - `run_all(context: dict[str, Any], fail_fast: bool) -> list[InvariantResult]` - *Execute all registered invariants against provided runtime context.*
     - `assert_all(context: dict[str, Any]) -> None` - *Runs all invariants and raises InvariantViolationError if any fail.*
 - **Top-Level Functions**:
-  - `get_global_invariant_registry() -> InvariantRegistry`: Return the singleton InvariantRegistry instance.
+  - `get_global_invariant_registry(with_defaults: bool) -> InvariantRegistry`: Return the singleton InvariantRegistry instance with defaults populated.
   - `reset_global_invariant_registry() -> None`: Reset the singleton InvariantRegistry instance.
 
 #### `risk_gate_invariant.py` - *Risk Gate Runtime Invariant Listener (Phase 5.6).*

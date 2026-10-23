@@ -134,12 +134,13 @@ class ExecutionSimulator:
 
         if entry_price <= 0 or stop_loss <= 0 or take_profit <= 0:
             return ExecutionSimulationResult(
-                resilient=True,
-                edge_to_drag_ratio=1.0,
+                resilient=False,
+                rejection_reason="Invalid price coordinates: entry, SL, and TP must be strictly positive",
+                edge_to_drag_ratio=0.0,
                 median_spread=0.0,
                 current_spread=0.0,
                 scenarios={},
-                details={"status": "zero_price_bypass"},
+                details={"status": "invalid_coordinates_rejected"},
             )
 
         # 1. Fetch ticks

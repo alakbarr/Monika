@@ -63,10 +63,18 @@ class InvariantRegistry:
             cls._instance = cls()
             if with_defaults:
                 cls._instance.register_defaults()
+        elif with_defaults and not cls._instance._invariants:
+            cls._instance.register_defaults()
         return cls._instance
 
     def register_defaults(self) -> None:
         """Register default built-in invariants."""
+        try:
+            import monika.domain.risk.invariants.risk_gate_invariant  # noqa: F401
+            import monika.domain.risk.invariants.position_count_invariant  # noqa: F401
+        except Exception as e:
+            logger.debug(f"[InvariantRegistry] Default invariant import non-fatal error: {e}")
+
         for provider in self._default_registrations:
             try:
                 provider(self)
@@ -146,9 +154,9 @@ class InvariantRegistry:
             raise InvariantViolationError(f"Runtime invariant assertion failed: {summary}")
 
 
-def get_global_invariant_registry() -> InvariantRegistry:
-    """Return the singleton InvariantRegistry instance."""
-    return InvariantRegistry.get_instance()
+def get_global_invariant_registry(with_defaults: bool = True) -> InvariantRegistry:
+    """Return the singleton InvariantRegistry instance with defaults populated."""
+    return InvariantRegistry.get_instance(with_defaults=with_defaults)
 
 
 def reset_global_invariant_registry() -> None:

@@ -148,12 +148,14 @@ class CryptographicAuditLedger:
                 fd = f.fileno()
                 # Cross-process OS locking
                 locked_win = False
+                lock_pos = 0
                 try:
                     if sys.platform == "win32":
                         import msvcrt
 
-                        # Seek to file end before locking
+                        # Seek to file end before locking and record exact byte offset
                         f.seek(0, os.SEEK_END)
+                        lock_pos = f.tell()
                         try:
                             msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
                             locked_win = True
@@ -173,7 +175,7 @@ class CryptographicAuditLedger:
                             try:
                                 import msvcrt
 
-                                f.seek(0, os.SEEK_END)
+                                f.seek(lock_pos, os.SEEK_SET)
                                 msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
                             except OSError, IOError:
                                 pass

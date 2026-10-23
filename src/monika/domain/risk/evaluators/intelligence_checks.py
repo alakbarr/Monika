@@ -98,8 +98,10 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
             tp = sizing.take_profit
             sl = sizing.stop_loss
 
-            if not tp or not sl or entry <= 0:
-                return True, "Missing TP/SL levels for expectancy calculation"
+            if not sl or sl <= 0 or entry <= 0:
+                return False, "TimesFM expectancy check failed: invalid entry or stop loss price (fail-closed)"
+            if not tp:
+                return True, "TimesFM expectancy check skipped: no explicit TP (trailing stop mode)"
 
             # Determine dynamic evaluation step based on trade holding horizon
             exp_gate_cfg = tfm_cfg.get("expectancy_gate", {})

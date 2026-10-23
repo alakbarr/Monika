@@ -90,6 +90,9 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
 
         vix_close = defensive_threshold  # Fail-safe default (defensive volatility)
         if vix_row is None:
+            effective_is_paper = self.settings.get("paper_trading", {}).get("enabled", True)
+            if not effective_is_paper and not is_backtest:
+                return False, "VIX volatility data unavailable in database for live trade (fail-closed)"
             vix_age_days = 0
             vix_str_info = f"defaulting to {defensive_threshold} (Defensive Fail-Safe)"
         else:
@@ -214,6 +217,8 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
             return True, "news_window_backtest_ok"
         currencies = get_symbol_currencies(symbol)
         now = as_of or clock.now()
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=UTC)
         window = timedelta(minutes=self.news_window_minutes)
 
         from sqlalchemy import func, select
@@ -329,9 +334,10 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
                 for ev in user_blocked:
                     if not ev.event_time:
                         continue
+                    ev_time = ev.event_time if (ev.event_time.tzinfo is not None) else ev.event_time.replace(tzinfo=UTC)
                     ev_name_upper = (ev.event_name or "").upper()
                     if any(term in ev_name_upper for term in user_blacklisted_terms):
-                        delta = abs((ev.event_time - now).total_seconds() / 60)
+                        delta = abs((ev_time - now).total_seconds() / 60)
                         return False, (
                             f"Event blacklisted by user preference: '{ev.event_name}' "
                             f"({ev.currency}) at {ev.event_time.strftime('%H:%M UTC')} "
@@ -354,7 +360,12 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
         ).scalar_one_or_none()
 
         if upcoming is not None and upcoming.event_time is not None:
-            delta = abs((upcoming.event_time - now).total_seconds() / 60)
+            up_time = (
+                upcoming.event_time
+                if (upcoming.event_time.tzinfo is not None)
+                else upcoming.event_time.replace(tzinfo=UTC)
+            )
+            delta = abs((up_time - now).total_seconds() / 60)
             return False, (
                 f"High-impact event within news window: '{upcoming.event_name}' "
                 f"({upcoming.currency}) at {upcoming.event_time.strftime('%H:%M UTC')} "

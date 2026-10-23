@@ -487,7 +487,9 @@ def verify_module_6_governance_and_ledger() -> Dict[str, Any]:
     )
 
     # 6.2 Cross-Process Audit Ledger with OS-level locking & fsync
-    test_ledger_path = os.path.abspath("tests/test_audit_ledger.jsonl")
+    import tempfile
+
+    test_ledger_path = os.path.join(tempfile.gettempdir(), f"test_audit_ledger_{os.getpid()}.jsonl")
     if os.path.exists(test_ledger_path):
         os.remove(test_ledger_path)
 

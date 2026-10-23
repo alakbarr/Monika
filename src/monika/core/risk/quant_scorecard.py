@@ -121,6 +121,8 @@ _REQUIRED_FIELDS = (
 
 
 def _finite_float(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
     try:
         parsed = float(value)
     except TypeError, ValueError:
@@ -128,14 +130,28 @@ def _finite_float(value: Any) -> float | None:
     return parsed if math.isfinite(parsed) else None
 
 
-def _risk_reward(entry: Any, stop_loss: Any, take_profit: Any) -> float | None:
+def _risk_reward(entry: Any, stop_loss: Any, take_profit: Any, direction: str | None = None) -> float | None:
     entry_f = _finite_float(entry)
     sl_f = _finite_float(stop_loss)
     tp_f = _finite_float(take_profit)
     if entry_f is None or sl_f is None or tp_f is None:
         return None
-    risk = abs(entry_f - sl_f)
-    reward = abs(tp_f - entry_f)
+
+    dir_clean = str(direction or "").strip().lower()
+    if dir_clean == "buy":
+        if not (sl_f < entry_f < tp_f):
+            return None
+        risk = entry_f - sl_f
+        reward = tp_f - entry_f
+    elif dir_clean == "sell":
+        if not (tp_f < entry_f < sl_f):
+            return None
+        risk = sl_f - entry_f
+        reward = entry_f - tp_f
+    else:
+        risk = abs(entry_f - sl_f)
+        reward = abs(tp_f - entry_f)
+
     if risk <= 0 or reward <= 0:
         return None
     return round(reward / risk, 6)
@@ -159,7 +175,7 @@ def build_quant_scorecard(
     """
     normalized_direction = str(direction or "").strip().lower()
     confidence_f = _finite_float(confidence)
-    rr_ratio = _risk_reward(entry_price, stop_loss, take_profit)
+    rr_ratio = _risk_reward(entry_price, stop_loss, take_profit, direction=normalized_direction)
     valid = bool(
         strategy_id
         and normalized_direction in ("buy", "sell")

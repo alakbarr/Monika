@@ -524,7 +524,12 @@ class PositionSizer:
                 f"Actual risk (${actual_risk_usd:.2f}) exceeds configured risk limit of ${max_risk_cap:.2f}"
             )
 
-        # TAMBAHKAN: cap to max_lot
+        # Cap to user-configured max_lot and broker spec max_lot
+        max_lot_cfg = self.settings.get("trading", {}).get("risk", {}).get("max_lot_per_symbol")
+        if max_lot_cfg is None:
+            max_lot_cfg = self.settings.get("trading", {}).get("risk", {}).get("max_lot_size")
+        if max_lot_cfg is not None:
+            recommended_lots = min(float(max_lot_cfg), recommended_lots)
         if spec.max_lot > 0:
             recommended_lots = min(spec.max_lot, recommended_lots)
 
@@ -1116,12 +1121,9 @@ class PositionSizer:
         if d_steps <= 0:
             return 0.0
 
-        # Determine number of decimals from step
-        decimals = 2
-        if step < 0.01:
-            decimals = 3
-        elif step >= 1.0:
-            decimals = 0
+        # Determine number of decimals dynamically from step exponent
+        step_exp = Decimal(str(step)).as_tuple().exponent
+        decimals = abs(int(step_exp)) if isinstance(step_exp, int) and step_exp < 0 else 0
 
         rounded = (d_steps * d_step).quantize(Decimal(10) ** -decimals, rounding=ROUND_FLOOR)
         return float(rounded)
@@ -1137,7 +1139,7 @@ class PositionSizer:
         """
         Kalkulasi ukuran lot berbasis volatilitas ATR dengan guard pembagian nol.
         """
-        avg_atr = max(1e-6, float(avg_atr))  # prevent division by zero on flat readings
+        avg_atr = max(1e-6, float(avg_atr)) if math.isfinite(float(avg_atr)) else 1e-6
         spec = self._get_instrument_spec(symbol)
         risk_pct = risk_percent if risk_percent is not None else self.risk_percent
         risk_usd = account_equity * (risk_pct / 100.0)
@@ -1147,6 +1149,11 @@ class PositionSizer:
             denom = sl_distance * value_per_unit
             if denom > 0:
                 lots = self._round_lots(risk_usd / denom, spec.lot_step)
+                max_lot_cfg = self.settings.get("trading", {}).get("risk", {}).get("max_lot_per_symbol")
+                if max_lot_cfg is None:
+                    max_lot_cfg = self.settings.get("trading", {}).get("risk", {}).get("max_lot_size")
+                if max_lot_cfg is not None:
+                    lots = min(float(max_lot_cfg), lots)
                 if spec.max_lot > 0:
                     lots = min(spec.max_lot, lots)
                 if lots < spec.min_lot:

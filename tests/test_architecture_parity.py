@@ -9,7 +9,9 @@ as well as functional correctness of the Application Service Layer.
 """
 
 import time
+from datetime import UTC, datetime
 import pytest
+import monika.core.primitives.clock as clock
 import pandas as pd
 from unittest.mock import AsyncMock, MagicMock
 
@@ -70,49 +72,50 @@ def test_trading_service_preview_token_lifecycle():
 @pytest.mark.asyncio
 async def test_trading_service_preview_and_paper_submit(db_session):
     """Verify manual order preview calculation and paper execution flow."""
-    preview = await CanonicalTradingService.preview_manual_order(
-        session=db_session,
-        symbol="XAUUSD",
-        action="BUY",
-        volume=0.1,
-        entry_price=2650.0,
-        stop_loss=2640.0,
-        take_profit=2670.0,
-        is_paper=True,
-    )
+    with clock.frozen_time(datetime(2026, 1, 15, 12, 0, tzinfo=UTC)):
+        preview = await CanonicalTradingService.preview_manual_order(
+            session=db_session,
+            symbol="XAUUSD",
+            action="BUY",
+            volume=0.1,
+            entry_price=2650.0,
+            stop_loss=2640.0,
+            take_profit=2670.0,
+            is_paper=True,
+        )
 
-    assert isinstance(preview, OrderPreviewResult)
-    assert preview.symbol == "XAUUSD"
-    assert preview.action == "BUY"
-    assert preview.estimated_risk_usd > 0
-    assert preview.estimated_reward_usd > 0
-    assert preview.preview_token is not None
+        assert isinstance(preview, OrderPreviewResult)
+        assert preview.symbol == "XAUUSD"
+        assert preview.action == "BUY"
+        assert preview.estimated_risk_usd > 0
+        assert preview.estimated_reward_usd > 0
+        assert preview.preview_token is not None
 
-    # Submit paper order with valid preview token
-    exec_res = await CanonicalTradingService.submit_order(
-        session=db_session,
-        symbol=preview.symbol,
-        action=preview.action,
-        volume=preview.volume,
-        entry_price=preview.entry_price,
-        stop_loss=preview.stop_loss,
-        take_profit=preview.take_profit,
-        is_paper=True,
-        preview_token=preview.preview_token,
-        token_expires_at=preview.expires_at,
-        actor="unit_test",
-    )
+        # Submit paper order with valid preview token
+        exec_res = await CanonicalTradingService.submit_order(
+            session=db_session,
+            symbol=preview.symbol,
+            action=preview.action,
+            volume=preview.volume,
+            entry_price=preview.entry_price,
+            stop_loss=preview.stop_loss,
+            take_profit=preview.take_profit,
+            is_paper=True,
+            preview_token=preview.preview_token,
+            token_expires_at=preview.expires_at,
+            actor="unit_test",
+        )
 
-    assert isinstance(exec_res, TradeExecutionResult)
-    assert exec_res.success is True
-    assert exec_res.ticket is not None
-    assert exec_res.is_paper is True
+        assert isinstance(exec_res, TradeExecutionResult)
+        assert exec_res.success is True
+        assert exec_res.ticket is not None
+        assert exec_res.is_paper is True
 
-    # Verify position is queryable via CanonicalPortfolioService
-    open_positions = await CanonicalPortfolioService.get_open_positions(db_session, symbol="XAUUSD")
-    assert len(open_positions) == 1
-    assert open_positions[0].symbol == "XAUUSD"
-    assert float(open_positions[0].volume or 0.0) == 0.1
+        # Verify position is queryable via CanonicalPortfolioService
+        open_positions = await CanonicalPortfolioService.get_open_positions(db_session, symbol="XAUUSD")
+        assert len(open_positions) == 1
+        assert open_positions[0].symbol == "XAUUSD"
+        assert float(open_positions[0].volume or 0.0) == 0.1
 
 
 @pytest.mark.asyncio
@@ -250,7 +253,7 @@ def test_infrastructure_layer_identity_and_parity():
     assert shim_ba.SimulatedBrokerAdapter is canon_ba.SimulatedBrokerAdapter
 
     import monika.infrastructure.brokers.approval_transport as shim_at
-    import monika.infrastructure.brokers.approval_transport as canon_at
+    import monika.domain.risk.approval_transport as canon_at
 
     assert shim_at.ApprovalTransport is canon_at.ApprovalTransport
     assert shim_at.ApprovalRequestPayload is canon_at.ApprovalRequestPayload

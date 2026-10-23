@@ -81,3 +81,46 @@ def test_hypothesis_nonpositive_equity_rejected(equity: float, entry: float, sl_
     )
     # Must fail-closed on non-positive equity
     assert not res.is_valid or res.recommended_lots == 0.0
+
+
+@given(
+    raw_lots=st.floats(min_value=0.0001, max_value=500.0, allow_nan=False, allow_infinity=False),
+    step=st.sampled_from([0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]),
+)
+def test_hypothesis_round_lots_invariants(raw_lots: float, step: float):
+    settings = {"trading": {"risk": {}}}
+    sizer = PositionSizer(settings)
+    rounded = sizer._round_lots(raw_lots, step)
+
+    # Invariant 1: Round down never increases volume (critical risk rule)
+    assert rounded <= round(raw_lots, 8) + 1e-9
+
+    # Invariant 2: Result is a multiple of step within floating point tolerance
+    remainder = round(rounded % step, 8)
+    assert remainder < 1e-6 or abs(remainder - step) < 1e-6
+
+    # Invariant 3: Precision matches step exponent (no premature 2-decimal truncation for micro steps)
+    if step == 0.001:
+        assert round(rounded, 3) == rounded
+
+
+@given(
+    v1=st.floats(min_value=-5.0, max_value=5.0, allow_nan=False, allow_infinity=False),
+    v2=st.floats(min_value=-5.0, max_value=5.0, allow_nan=False, allow_infinity=False),
+    v3=st.floats(min_value=-5.0, max_value=5.0, allow_nan=False, allow_infinity=False),
+    max_w=st.floats(min_value=0.35, max_value=1.0, allow_nan=False, allow_infinity=False),
+)
+def test_hypothesis_project_vector_bounded_simplex_invariants(v1: float, v2: float, v3: float, max_w: float):
+    import numpy as np
+    from monika.domain.risk.portfolio_optimizer import project_vector_bounded_simplex
+
+    v = np.array([v1, v2, v3], dtype=np.float64)
+    u = np.full(3, max_w, dtype=np.float64)
+    w = project_vector_bounded_simplex(v, u)
+
+    # Invariant 1: Sums to 1.0 within numerical precision
+    assert abs(np.sum(w) - 1.0) < 1e-5
+
+    # Invariant 2: Each weight bounded between 0 and max_w
+    for x in w:
+        assert -1e-5 <= x <= max_w + 1e-5

@@ -120,7 +120,9 @@ async def test_risk_gate_adv_liquidity_fail_closed_on_error():
         is_valid=True,
     )
 
-    ok, reason = await rg._check_adv_liquidity(session, "EURUSD", sizing, is_backtest=False)
+    ok, reason = await rg._check_adv_liquidity(
+        session, "EURUSD", sizing, as_of=datetime(2026, 1, 1, 14, 0, tzinfo=timezone.utc), is_backtest=False
+    )
     assert ok is False
     assert "fail-closed" in reason
 

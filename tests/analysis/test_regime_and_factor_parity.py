@@ -1,3 +1,5 @@
+from datetime import datetime, UTC
+import monika.core.primitives.clock as clock
 from tests.conftest import create_mock_async_session
 import pytest
 import time
@@ -274,31 +276,32 @@ async def test_edge_strategy_runner_ensemble_concordance_boost():
     mock_res.scalar_one_or_none.return_value = None  # No open position
     mock_session.execute.return_value = mock_res
 
-    with (
-        patch(
-            "monika.application.scheduler.edge_strategy_runner.validate_data_freshness",
-            AsyncMock(return_value={"ready": True}),
-        ),
-        patch(
-            "monika.application.analysis.calculators.regime_classifier.classify_market_regime",
-            AsyncMock(return_value={"regime": "trend"}),
-        ),
-        patch(
-            "monika.application.scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all",
-            AsyncMock(return_value=[sig_buy1, sig_buy2]),
-        ),
-        patch("monika.application.scheduler.edge_strategy_runner.get_session") as mock_get_session,
-        patch.object(runner, "_materialize_and_route", AsyncMock()) as mock_route,
-    ):
-        mock_get_session.return_value.__aenter__.return_value = mock_session
-        await runner.run_once()
+    with clock.frozen_time(datetime(2026, 1, 15, 12, 0, tzinfo=UTC)):
+        with (
+            patch(
+                "monika.application.scheduler.edge_strategy_runner.validate_data_freshness",
+                AsyncMock(return_value={"ready": True}),
+            ),
+            patch(
+                "monika.application.analysis.calculators.regime_classifier.classify_market_regime",
+                AsyncMock(return_value={"regime": "trend"}),
+            ),
+            patch(
+                "monika.application.scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all",
+                AsyncMock(return_value=[sig_buy1, sig_buy2]),
+            ),
+            patch("monika.application.scheduler.edge_strategy_runner.get_session") as mock_get_session,
+            patch.object(runner, "_materialize_and_route", AsyncMock()) as mock_route,
+        ):
+            mock_get_session.return_value.__aenter__.return_value = mock_session
+            await runner.run_once()
 
-        # Concordant signals: chosen = sig_buy1, confidence boosted from 0.75 to 0.80
-        mock_route.assert_called_once()
-        routed_sig = mock_route.call_args[0][1]
-        assert routed_sig.strategy_id == "tsm_momentum"
-        assert round(routed_sig.confidence, 2) == 0.80
-        assert routed_sig.meta.get("ensemble_confirmed") is True
+            # Concordant signals: chosen = sig_buy1, confidence boosted from 0.75 to 0.80
+            mock_route.assert_called_once()
+            routed_sig = mock_route.call_args[0][1]
+            assert routed_sig.strategy_id == "tsm_momentum"
+            assert round(routed_sig.confidence, 2) == 0.80
+            assert routed_sig.meta.get("ensemble_confirmed") is True
 
 
 @pytest.mark.asyncio

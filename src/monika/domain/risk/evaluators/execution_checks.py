@@ -368,10 +368,21 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
             spread_info = await client.get_spread(symbol)
             if asyncio.iscoroutine(spread_info):
                 spread_info = await spread_info
-            spread_pts = spread_info.get("spread_points", 0) if isinstance(spread_info, dict) else 0
-            spread_cost = spread_info.get("spread_cost", 0.0) if isinstance(spread_info, dict) else 0.0
-            bid = spread_info.get("bid", 0.0) if isinstance(spread_info, dict) else 0.0
-            ask = spread_info.get("ask", 0.0) if isinstance(spread_info, dict) else 0.0
+            if not isinstance(spread_info, dict) or not spread_info:
+                if effective_paper:
+                    return True, "spread_data_unavailable_paper_skipped"
+                return False, f"Spread data unavailable from broker for {symbol} (fail-closed)"
+
+            raw_pts = spread_info.get("spread_points")
+            if raw_pts is None or not math.isfinite(float(raw_pts)) or float(raw_pts) < 0:
+                if effective_paper:
+                    return True, "spread_points_invalid_paper_skipped"
+                return False, f"Invalid or non-finite spread points for {symbol} (fail-closed)"
+
+            spread_pts = float(raw_pts)
+            spread_cost = float(spread_info.get("spread_cost", 0.0) or 0.0)
+            bid = float(spread_info.get("bid", 0.0) or 0.0)
+            ask = float(spread_info.get("ask", 0.0) or 0.0)
             current_price = (bid + ask) / 2.0 if (bid and ask) else 0.0
 
             max_spread_cfg = self.settings.get("trading", {}).get("risk", {}).get("max_spread_points") or {}

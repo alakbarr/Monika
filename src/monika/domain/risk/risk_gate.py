@@ -571,11 +571,26 @@ class RiskGate(
                         checks_failed=["DB_RISK_STATE_ERROR"],
                         rejection_reasons=["Fail-Closed: Risk state database query failed during drawdown evaluation"],
                     )
+            open_pos_list: list[Any] = []
+            if session is not None:
+                try:
+                    from sqlalchemy import select
+
+                    pos_model = Position or resolve_model("Position")
+                    if pos_model:
+                        open_pos_list = list(
+                            (await session.execute(select(pos_model).where(pos_model.status == "open"))).scalars().all()
+                        )
+                except Exception as e:
+                    logger.debug(f"Failed to fetch open positions for invariant check: {e}")
+
             inv_ctx = {
                 "proposal": proposal,
                 "max_drawdown_limit": self.max_daily_drawdown_pct,
                 "current_drawdown_pct": current_dd_pct,
                 "min_rr_ratio": float(self.settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5)),
+                "open_positions": open_pos_list,
+                "max_concurrent_positions": self.max_concurrent,
             }
             inv_results = get_global_invariant_registry().run_all(inv_ctx, fail_fast=False)
             inv_failures = [r for r in inv_results if r.failed]

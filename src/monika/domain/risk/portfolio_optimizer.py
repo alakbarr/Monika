@@ -74,6 +74,32 @@ class OptimizationResult:
     method: str
 
 
+def project_vector_bounded_simplex(v: np.ndarray, upper_bounds: np.ndarray) -> np.ndarray:
+    """Project vector v onto the bounded probability simplex: sum(w) = 1, 0 <= w_i <= upper_bounds[i]."""
+    n = len(v)
+    if n == 0:
+        return v
+    u_sum = float(np.sum(upper_bounds))
+    if u_sum < 1.0 - 1e-9:
+        return upper_bounds / u_sum if u_sum > 0 else np.full(n, 1.0 / n)
+    low = float(np.min(v) - 2.0)
+    high = float(np.max(v) + 2.0)
+    mid = 0.0
+    for _ in range(60):
+        mid = (low + high) / 2.0
+        w = np.clip(v - mid, 0.0, upper_bounds)
+        s = float(np.sum(w))
+        if abs(s - 1.0) < 1e-12:
+            break
+        if s > 1.0:
+            low = mid
+        else:
+            high = mid
+    w = np.clip(v - mid, 0.0, upper_bounds)
+    sum_w = float(np.sum(w))
+    return w / sum_w if sum_w > 0 else np.full(n, 1.0 / n)
+
+
 class PortfolioOptimizer:
     """
     Mathematical portfolio weight optimizer with risk constraints and pure-NumPy fallbacks.
@@ -87,6 +113,19 @@ class PortfolioOptimizer:
     ):
         self.symbols = list(symbols)
         self.cov_matrix = np.asarray(cov_matrix, dtype=np.float64)
+        # Institutional PSD (Positive Semi-Definite) Enforcement
+        if self.cov_matrix.ndim == 2 and self.cov_matrix.shape[0] == self.cov_matrix.shape[1] and len(self.symbols) > 1:
+            cov_sym = (self.cov_matrix + self.cov_matrix.T) / 2.0
+            try:
+                eigvals, eigvecs = np.linalg.eigh(cov_sym)
+                if np.any(eigvals < 1e-8):
+                    eigvals_clipped = np.maximum(eigvals, 1e-8)
+                    self.cov_matrix = eigvecs @ np.diag(eigvals_clipped) @ eigvecs.T
+                else:
+                    self.cov_matrix = cov_sym
+            except np.linalg.LinAlgError:
+                self.cov_matrix = cov_sym
+
         if expected_returns is not None:
             self.expected_returns = np.asarray(expected_returns, dtype=np.float64)
         else:
@@ -219,7 +258,7 @@ class PortfolioOptimizer:
             )
             w_opt = opt.x if opt.success else init_w
         else:
-            # Pure-NumPy projected gradient ascent
+            # Pure-NumPy projected gradient ascent with bounded simplex projection
             w = np.full(n, 1.0 / n)
             lr = 0.05
             for _ in range(250):
@@ -228,13 +267,10 @@ class PortfolioOptimizer:
                 vol_p = np.sqrt(max(var_p, 1e-8))
                 grad = (self.expected_returns / vol_p) - (r_p / (vol_p**3)) * (self.cov_matrix @ w)
                 w_new = w + lr * grad
-                w_new = np.clip(w_new, 0.0, effective_max)
-                w_new = w_new / np.sum(w_new)
-                w = w_new
+                w = project_vector_bounded_simplex(w_new, np.full(n, effective_max))
             w_opt = w
 
-        w_opt = np.maximum(0.0, w_opt)
-        w_opt = w_opt / np.sum(w_opt)
+        w_opt = project_vector_bounded_simplex(w_opt, np.full(n, effective_max))
 
         port_ret = float(np.dot(w_opt, self.expected_returns))
         port_vol = float(np.sqrt(w_opt @ self.cov_matrix @ w_opt))
@@ -289,52 +325,58 @@ class PortfolioOptimizer:
 
         # Check active group caps
         active_groups = set(g_map.get(s, "OTHER") for s in self.symbols)
-        active_cap_sum = sum(g_caps.get(g, 1.0) for g in active_groups)
         adjusted_caps = dict(g_caps)
 
-        # If active caps sum to < 1.0, distribute shortfall to non-metals groups
-        if active_cap_sum < 1.0:
-            shortfall = 1.0 - active_cap_sum
-            non_metals = [g for g in active_groups if g != "METALS"]
-            if non_metals:
-                add_per_g = shortfall / len(non_metals)
-                for g in non_metals:
-                    adjusted_caps[g] = adjusted_caps.get(g, 0.40) + add_per_g
-            else:
-                for g in active_groups:
-                    adjusted_caps[g] = adjusted_caps.get(g, 1.0) + (shortfall / len(active_groups))
+        # Base bounds per symbol
+        asset_bounds = np.array(
+            [
+                float(g_caps.get("METALS", 0.25))
+                if g_map.get(s, "OTHER") == "METALS"
+                else max(float(max_weight), 1.0 / n)
+                for s in self.symbols
+            ]
+        )
+
+        # If sum of asset_bounds < 1.0, expand non-metals
+        if np.sum(asset_bounds) < 1.0:
+            non_metals_idx = [i for i, s in enumerate(self.symbols) if g_map.get(s, "OTHER") != "METALS"]
+            shortfall = 1.0 - float(np.sum(asset_bounds))
+            if non_metals_idx:
+                asset_bounds[non_metals_idx] += shortfall / len(non_metals_idx)
+
+        # Update adjusted_caps so group enforcement respects asset bounds
+        for grp in active_groups:
+            idx = [i for i, s in enumerate(self.symbols) if g_map.get(s, "OTHER") == grp]
+            if idx:
+                adjusted_caps[grp] = max(adjusted_caps.get(grp, 1.0), float(np.sum(asset_bounds[idx])))
 
         def _project(w_in: np.ndarray) -> np.ndarray:
-            w = np.maximum(0.0, w_in)
-            total = np.sum(w)
-            if total > 1e-9:
-                w = w / total
-            else:
-                w = np.full(n, 1.0 / n)
+            w = project_vector_bounded_simplex(w_in, asset_bounds)
 
             # Iterative group cap enforcement
-            for _ in range(15):
+            for _ in range(20):
                 violated = False
                 for grp, cap in adjusted_caps.items():
                     idx = [i for i, s in enumerate(self.symbols) if g_map.get(s, "OTHER") == grp]
                     if not idx:
                         continue
-                    grp_sum = np.sum(w[idx])
+                    grp_sum = float(np.sum(w[idx]))
                     if grp_sum > cap + 1e-6:
                         violated = True
                         excess = grp_sum - cap
                         w[idx] = w[idx] * (cap / grp_sum)
                         other_idx = [i for i, s in enumerate(self.symbols) if g_map.get(s, "OTHER") != grp]
-                        if other_idx and np.sum(w[other_idx]) > 0:
-                            w[other_idx] += excess * (w[other_idx] / np.sum(w[other_idx]))
-                        elif other_idx:
-                            w[other_idx] += excess / len(other_idx)
+                        if other_idx:
+                            headroom = np.array([max(0.0, float(asset_bounds[i] - w[i])) for i in other_idx])
+                            hr_sum = float(np.sum(headroom))
+                            if hr_sum > 1e-9:
+                                w[other_idx] += excess * (headroom / hr_sum)
+                            else:
+                                w[other_idx] += excess / len(other_idx)
                 if not violated:
                     break
 
-            w = np.maximum(0.0, w)
-            sum_w = np.sum(w)
-            return w / sum_w if sum_w > 1e-9 else np.full(n, 1.0 / n)
+            return project_vector_bounded_simplex(w, asset_bounds)
 
         # Pure-NumPy subgradient descent
         w = _project(w_prev.copy())
@@ -349,21 +391,8 @@ class PortfolioOptimizer:
             w_next = w - step_size * grad
             w = _project(w_next)
 
-        # Final check: strict clamping of group caps
-        for grp, cap in adjusted_caps.items():
-            idx = [i for i, s in enumerate(self.symbols) if g_map.get(s, "OTHER") == grp]
-            if not idx:
-                continue
-            grp_sum = np.sum(w[idx])
-            if grp_sum > cap:
-                excess = grp_sum - cap
-                w[idx] = w[idx] * (cap / grp_sum)
-                other_idx = [i for i, s in enumerate(self.symbols) if g_map.get(s, "OTHER") != grp]
-                if other_idx:
-                    w[other_idx] += excess * (w[other_idx] / np.sum(w[other_idx]))
-
-        w = np.maximum(0.0, w)
-        w = w / np.sum(w)
+        # Final projection guaranteeing group caps and upper bounds
+        w = _project(w)
 
         turnover = float(0.5 * np.sum(np.abs(w - w_prev)))
         port_ret = float(np.dot(w, self.expected_returns))

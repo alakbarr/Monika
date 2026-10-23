@@ -516,7 +516,9 @@ class GraphCycleScheduler(CycleScheduler):
             return {"status": "skipped", "reason": "cycle_already_running"}
 
         async with self._cycle_lock:
-            start = datetime.now(timezone.utc)
+            import monika.core.primitives.clock as clock
+
+            start = clock.now()
 
             # Shared pre-cycle setup dari parent class
             setup = await self._pre_cycle_setup(forced)
@@ -679,7 +681,7 @@ class GraphCycleScheduler(CycleScheduler):
             from monika.core.validation.data_validator import is_crypto_symbol, is_forex_market_closed
 
             weekend_symbols_override = None
-            if is_forex_market_closed(start):
+            if not forced and is_forex_market_closed(start):
                 weekend_symbols_override = [s for s in self.asset_universe if is_crypto_symbol(s)]
                 logger.info(
                     f"[Graph] Forex market closed for weekend. Restricting symbols to crypto 24/7: {weekend_symbols_override}"
