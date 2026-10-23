@@ -7,6 +7,7 @@ EventBus when critical feeds become stale or fail.
 """
 
 import logging
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -57,6 +58,7 @@ class DataFeedCircuitBreaker:
         if custom_ttls:
             self.ttls.update(custom_ttls)
 
+        self._lock = threading.RLock()
         self._feeds: Dict[str, FeedStatus] = {}
         for name, ttl in self.ttls.items():
             self._feeds[name] = FeedStatus(name=name, ttl_seconds=ttl)
@@ -71,18 +73,21 @@ class DataFeedCircuitBreaker:
         key = feed_name.strip().lower()
         now_ts = timestamp if timestamp is not None else time.time()
 
-        if key not in self._feeds:
-            ttl = self.ttls.get(key, 300.0)
-            self._feeds[key] = FeedStatus(name=key, ttl_seconds=ttl)
+        with self._lock:
+            if key not in self._feeds:
+                ttl = self.ttls.get(key, 300.0)
+                self._feeds[key] = FeedStatus(name=key, ttl_seconds=ttl)
 
-        feed = self._feeds[key]
-        feed.last_heartbeat = now_ts
-        if metadata:
-            feed.metadata.update(metadata)
+            feed = self._feeds[key]
+            feed.last_heartbeat = now_ts
+            if metadata:
+                feed.metadata.update(metadata)
 
-        # Auto-reset if tripped solely due to staleness and now fresh
-        if feed.tripped and not feed.is_stale:
-            self.reset(key, reason="Fresh data received")
+            # Auto-reset if tripped solely due to staleness and now fresh, or if cooldown expired
+            is_stale_trip = bool(feed.trip_reason and "stale" in feed.trip_reason.lower())
+            is_cooldown_expired = feed.trip_timestamp is None or (now_ts - feed.trip_timestamp) >= feed.cooldown_seconds
+            if feed.tripped and not feed.is_stale and (is_stale_trip or is_cooldown_expired):
+                self.reset(key, reason="Fresh data received")
 
     def check_feed(self, feed_name: str, now: Optional[float] = None) -> Dict[str, Any]:
         """Check status of a single feed."""

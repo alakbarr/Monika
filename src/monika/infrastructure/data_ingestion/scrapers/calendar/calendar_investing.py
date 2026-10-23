@@ -6,7 +6,7 @@ import logging
 import re
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from bs4 import BeautifulSoup
 
@@ -20,6 +20,7 @@ class InvestingCalendarScraper(BaseScraper):
     def __init__(self, headless=True, profile_name="investing_calendar"):
         super().__init__(headless, profile_name, load_mode="eager", no_imgs=True)
         self.target_url = "https://www.investing.com/economic-calendar/"
+        self._cache: Dict[Tuple[bool, str], Tuple[float, List[CalendarEvent]]] = {}
 
     def _apply_time_filter_human_like(self, time_filter: str) -> bool:
         if not self.page:
@@ -237,20 +238,21 @@ class InvestingCalendarScraper(BaseScraper):
             except Exception:
                 pass
 
-    _cached_events: List[CalendarEvent] = []
-    _last_cache_time: float = 0.0
     CACHE_TTL_SECONDS: float = 900.0  # 15 minutes TTL
 
     def fetch_events(
         self, fast_mode: bool = False, time_filter: Optional[str] = None, force_refresh: bool = False
     ) -> List[CalendarEvent]:
         # Check in-memory cache first to avoid launching browser unnecessarily
+        cache_key = (fast_mode, str(time_filter).lower() if time_filter else "default")
         now_ts = time.time()
-        if not force_refresh and self._cached_events and (now_ts - self._last_cache_time < self.CACHE_TTL_SECONDS):
-            logger.info(
-                f"Returning {len(self._cached_events)} Investing.com calendar events from in-memory cache (age: {(now_ts - self._last_cache_time) / 60:.1f}m)"
-            )
-            return self._cached_events
+        if not force_refresh and cache_key in self._cache:
+            cache_time, cached_events = self._cache[cache_key]
+            if now_ts - cache_time < self.CACHE_TTL_SECONDS:
+                logger.info(
+                    f"Returning {len(cached_events)} Investing.com calendar events from in-memory cache (key: {cache_key}, age: {(now_ts - cache_time) / 60:.1f}m)"
+                )
+                return cached_events
 
         if not self.page:
             return self._fallback_forexfactory()
@@ -286,8 +288,7 @@ class InvestingCalendarScraper(BaseScraper):
             soup = BeautifulSoup(table_html, "html.parser")
             events = self._parse_table_html(soup, all_events_dict)
             if events:
-                InvestingCalendarScraper._cached_events = events
-                InvestingCalendarScraper._last_cache_time = time.time()
+                self._cache[cache_key] = (time.time(), events)
                 return events
             return self._fallback_forexfactory()
 
@@ -312,7 +313,10 @@ class InvestingCalendarScraper(BaseScraper):
             soup = BeautifulSoup(table_html, "html.parser")
             self._parse_table_html(soup, all_events_dict)
 
-        return list(all_events_dict.values())
+        res = list(all_events_dict.values())
+        if res:
+            self._cache[cache_key] = (time.time(), res)
+        return res
 
     def _fallback_forexfactory(self) -> List[CalendarEvent]:
         """Secondary seamless failover if Investing.com is unreachable or throttled."""

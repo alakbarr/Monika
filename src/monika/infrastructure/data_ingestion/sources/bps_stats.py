@@ -33,7 +33,7 @@ class BPSStatsFetcher:
             search_out = await ws.search("BPS inflasi indonesia tahunan yoy terkini persen", max_results=3)
             results = search_out.get("results", []) if isinstance(search_out, dict) else []
             for r in results:
-                snippet = r.get("snippet", "") + " " + r.get("title", "")
+                snippet = (r.get("content") or r.get("snippet", "")) + " " + r.get("title", "")
                 m = re.search(r"(\d+[\.,]\d+)\s*%", snippet)
                 if m:
                     val = float(m.group(1).replace(",", "."))
@@ -54,11 +54,11 @@ class BPSStatsFetcher:
         return {
             "country": "Indonesia",
             "indicator": "CPI Inflation YoY",
-            "value_pct": 2.50,
-            "status": "estimated_baseline",
-            "is_synthetic": True,
+            "value_pct": None,
+            "status": "unavailable",
+            "is_synthetic": False,
             "is_verified": False,
-            "note": "Target inflasi Bank Indonesia 2.5% ± 1%",
+            "note": "Inflation data unavailable from primary and web sources",
         }
 
     async def fetch_indonesia_trade_balance(self) -> Dict[str, Any]:
@@ -70,7 +70,7 @@ class BPSStatsFetcher:
             search_out = await ws.search("BPS neraca perdagangan indonesia surplus miliar dolar terkini", max_results=3)
             results = search_out.get("results", []) if isinstance(search_out, dict) else []
             for r in results:
-                snippet = r.get("snippet", "") + " " + r.get("title", "")
+                snippet = (r.get("content") or r.get("snippet", "")) + " " + r.get("title", "")
                 m = re.search(r"(\d+[\.,]\d+)\s*(?:miliar|billion)", snippet, re.IGNORECASE)
                 if m:
                     val = float(m.group(1).replace(",", "."))
@@ -92,10 +92,10 @@ class BPSStatsFetcher:
         return {
             "country": "Indonesia",
             "indicator": "Neraca Perdagangan (Trade Balance)",
-            "value_usd_billion": 2.8,
-            "surplus": True,
-            "status": "estimated_baseline",
-            "is_synthetic": True,
+            "value_usd_billion": None,
+            "surplus": None,
+            "status": "unavailable",
+            "is_synthetic": False,
             "is_verified": False,
         }
 
@@ -112,8 +112,9 @@ class BPSStatsFetcher:
             return_exceptions=True,
         )
 
-        has_synthetic = any(
-            isinstance(x, dict) and x.get("is_synthetic", False) for x in (bi_rate_res, jisdor_res, cpi_res, trade_res)
+        has_unavailable = any(
+            isinstance(x, dict) and (x.get("status") == "unavailable" or x.get("is_synthetic", False))
+            for x in (bi_rate_res, jisdor_res, cpi_res, trade_res)
         )
 
         return {
@@ -121,7 +122,7 @@ class BPSStatsFetcher:
             "jisdor": jisdor_res if isinstance(jisdor_res, dict) else {},
             "inflation": cpi_res if isinstance(cpi_res, dict) else {},
             "trade_balance": trade_res if isinstance(trade_res, dict) else {},
-            "status": "baseline_with_synthetic" if has_synthetic else "success",
-            "is_synthetic": has_synthetic,
-            "is_verified": not has_synthetic,
+            "status": "partial" if has_unavailable else "success",
+            "is_synthetic": False,
+            "is_verified": not has_unavailable,
         }

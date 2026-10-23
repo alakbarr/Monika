@@ -103,6 +103,10 @@ async def validate_url_ip(url: str) -> Optional[str]:
     """
     try:
         parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return f"Invalid or prohibited URL scheme: '{parsed.scheme}'"
+        if parsed.port and parsed.port not in (80, 443, 8080, 8443):
+            return f"Prohibited port: {parsed.port}"
         hostname = parsed.hostname
         if not hostname:
             return "Missing hostname in URL"
@@ -144,6 +148,27 @@ class WebReader:
 
     def _read_url_with_browser_sync(self, url: str) -> Optional[Dict[str, Any]]:
         """Synchronously opens Chromium via BaseScraper, waits for load, and extracts HTML."""
+        try:
+            parsed = urlparse(url)
+            if parsed.scheme not in ("http", "https"):
+                logger.warning(f"WebReader browser blocked invalid scheme: {parsed.scheme}")
+                return None
+            if parsed.port and parsed.port not in (80, 443, 8080, 8443):
+                logger.warning(f"WebReader browser blocked prohibited port: {parsed.port}")
+                return None
+            hostname = parsed.hostname
+            if not hostname:
+                return None
+            addr_info = socket.getaddrinfo(hostname, None, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM)
+            for entry in addr_info:
+                ip_str = str(entry[4][0])
+                if is_prohibited_ip(ip_str):
+                    logger.warning(f"WebReader browser SSRF blocked: {hostname} -> {ip_str}")
+                    return None
+        except Exception as e:
+            logger.warning(f"WebReader browser DNS validation error for {url}: {e}")
+            return None
+
         try:
             from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
 

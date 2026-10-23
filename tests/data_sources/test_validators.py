@@ -47,6 +47,28 @@ def test_validate_ohlcv_non_monotonic():
         validate_ohlcv_freshness(bars, "EURUSD", reference_date=now)
 
 
+def test_validate_ohlcv_duplicate_timestamp():
+    now = datetime(2026, 9, 6, 12, 0, tzinfo=timezone.utc)
+    bars = [
+        {"timestamp": (now - timedelta(days=1)).isoformat(), "close": 1.0820},
+        {"timestamp": (now - timedelta(days=1)).isoformat(), "close": 1.0825},
+    ]
+    with pytest.raises(NonMonotonicDataError) as exc:
+        validate_ohlcv_freshness(bars, "EURUSD", reference_date=now)
+    assert "duplicate" in str(exc.value)
+
+
+def test_validate_ohlcv_future_timestamp():
+    now = datetime(2026, 9, 6, 12, 0, tzinfo=timezone.utc)
+    bars = [
+        {"timestamp": (now - timedelta(days=1)).isoformat(), "close": 1.0820},
+        {"timestamp": (now + timedelta(hours=2)).isoformat(), "close": 1.0850},
+    ]
+    with pytest.raises(StaleDataError) as exc:
+        validate_ohlcv_freshness(bars, "EURUSD", reference_date=now)
+    assert "Future bar" in str(exc.value)
+
+
 def test_intraday_cache_expired():
     now = datetime(2026, 9, 6, 12, 0, tzinfo=timezone.utc)
     recent_cache = now - timedelta(seconds=300)  # 5 mins ago

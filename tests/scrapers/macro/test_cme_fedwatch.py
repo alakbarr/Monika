@@ -66,7 +66,7 @@ class TestFedWatchScraper:
         meeting = meetings[0]
         assert meeting.meeting_date == "Sep 16, 2026"
         assert meeting.current_rate_ref == 0.06
-        assert "HOLD (60.0%)" in meeting.most_likely
+        assert "CUT 25 bps (60.0%)" in meeting.most_likely
         assert len(meeting.probabilities) == 3
 
     @patch("monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch.BaseScraper._initialize_browser")
@@ -113,7 +113,7 @@ class TestFedWatchScraper:
         assert len(meetings) == 1
         assert meetings[0].meeting_date == "Nov 05, 2026"
         assert len(meetings[0].probabilities) == 2
-        assert "HOLD (80.0%)" in meetings[0].most_likely
+        assert "CUT 25 bps (80.0%)" in meetings[0].most_likely
 
     @patch("monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch.BaseScraper._initialize_browser")
     @patch("time.sleep", return_value=None)

@@ -90,9 +90,9 @@ def validate_ohlcv_freshness(
         bar_dt = _parse_timestamp(raw_ts)
 
         if require_monotonic and prev_dt is not None:
-            if bar_dt < prev_dt:
+            if bar_dt <= prev_dt:
                 raise NonMonotonicDataError(
-                    f"Non-monotonic timestamps detected in {symbol} at bar {idx}: {bar_dt} < {prev_dt}"
+                    f"Non-monotonic or duplicate timestamp detected in {symbol} at bar {idx}: {bar_dt} <= {prev_dt}"
                 )
         prev_dt = bar_dt
         if latest_dt is None or bar_dt > latest_dt:
@@ -102,6 +102,11 @@ def validate_ohlcv_freshness(
         raise NoMarketDataError(f"No valid timestamps found in OHLCV data for '{symbol}'")
 
     staleness_delta = ref_dt - latest_dt
+    if staleness_delta.total_seconds() < -300.0:
+        raise StaleDataError(
+            f"{symbol}: Future bar timestamp detected: {latest_dt.isoformat()} is ahead of reference {ref_dt.isoformat()}"
+        )
+
     staleness_days = staleness_delta.total_seconds() / 86400.0
 
     if staleness_days > max_stale_days:

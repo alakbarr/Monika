@@ -174,12 +174,12 @@ class NewsClassificationMixin(_NewsDigestMixinBase):
                 prior_tag = f" | CALENDAR_IMPACT_RATING={prior.upper()}" if prior else ""
                 i_utc = ensure_utc(item.fetched_at) if item.fetched_at else None
                 age_str = f"{round((now_utc - i_utc).total_seconds() / 60)}" if i_utc else "?"
+                formatted_item = _format_news_item_for_prompt(item, max_summary_chars=400)
                 items_text_lines.append(
                     f"{j + 1}. [ID: {item.id}] PUBLISHED: {(item.published_at.strftime('%H:%M UTC') if item.published_at else 'unknown')} "
                     f"(FETCHED: {(item.fetched_at.strftime('%H:%M UTC') if item.fetched_at else 'unknown')}) "
                     f"| TIME-IN-SYSTEM: {age_str} min ago{prior_tag}\n"
-                    f"   TITLE: {item.title[:150]}\n"
-                    f"   SUMMARY: {(item.summary or '')[:200]}"
+                    f"{formatted_item}"
                 )
             items_text = "\n".join(items_text_lines)
 

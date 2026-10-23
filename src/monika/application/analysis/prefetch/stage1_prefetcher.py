@@ -535,9 +535,13 @@ class Stage1DataBundler:
 
         # 2. DXY & VIX
         dxy_data = data.get("dxy", {})
-        dxy_val = dxy_data.get("value") if isinstance(dxy_data, dict) else None
+        dxy_val = (
+            dxy_data.get("latest", {}).get("close") or dxy_data.get("value") if isinstance(dxy_data, dict) else None
+        )
         vix_data = data.get("vix", {})
-        vix_val = vix_data.get("value") if isinstance(vix_data, dict) else None
+        vix_val = (
+            vix_data.get("latest", {}).get("close") or vix_data.get("value") if isinstance(vix_data, dict) else None
+        )
         terminal["market_volatility_dxy_vix"] = f"DXY={dxy_val or 'N/A'} | VIX={vix_val or 'N/A'}"
 
         # 3. FedWatch Trajectory

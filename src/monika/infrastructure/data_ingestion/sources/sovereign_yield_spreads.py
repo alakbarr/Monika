@@ -189,7 +189,7 @@ class SovereignYieldSpreads:
         if not us_data:
             return {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "us_10y_yield": 0.0,
+                "us_10y_yield": None,
                 "spreads": {},
                 "status": "error",
                 "error": "US 10Y yield data unavailable",
@@ -316,7 +316,7 @@ class SovereignYieldSpreads:
             logger.warning("SovereignYieldSpreads: US 10Y yield unavailable (fail-closed)")
             return {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "us_10y_yield": 0.0,
+                "us_10y_yield": None,
                 "spreads": {},
                 "status": "error",
                 "error": "US 10Y yield data unavailable",

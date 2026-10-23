@@ -111,8 +111,10 @@ class MyFxBookSentimentFetcher:
         # Jalankan proses scraping DrissionPage di thread terpisah
         result = await asyncio.to_thread(self.fetch_sync)
 
-        # Simpan ke DB hanya jika ada ratios valid
-        if "ratios" in result and result["ratios"]:
+        # Simpan ke DB hanya jika session tersedia dan ada ratios valid
+        if self.session and "ratios" in result and result["ratios"]:
+            from monika.infrastructure.database.safe_ops import safe_commit
+
             cfg_key = "myfxbook_sentiment_latest"
             existing = (
                 await self.session.execute(select(SystemConfig).where(SystemConfig.key == cfg_key))
@@ -122,6 +124,6 @@ class MyFxBookSentimentFetcher:
                 existing.value = json.dumps(result)
             else:
                 self.session.add(SystemConfig(key=cfg_key, value=json.dumps(result)))
-            await self.session.commit()
+            await safe_commit(self.session, label="MyfxbookSentiment")
 
         return result

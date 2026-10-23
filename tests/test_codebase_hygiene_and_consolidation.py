@@ -33,11 +33,16 @@ def test_pdf_report_generator_relocation(tmp_path):
 
 
 def test_brent_yfinance_relocation():
-    """Verify brent_yfinance canonical import and backwards-compatibility shim."""
+    """Verify brent_yfinance canonical import in infrastructure and absence of domain hack."""
+    import inspect
     from monika.infrastructure.data_ingestion.sources.brent_yfinance import get_brent_price as canonical_get
-    from monika.domain.market.brent_yfinance import get_brent_price as shim_get
 
-    assert canonical_get is shim_get
+    assert inspect.iscoroutinefunction(canonical_get)
+
+    import importlib.util
+
+    domain_spec = importlib.util.find_spec("monika.domain.market.brent_yfinance")
+    assert domain_spec is None
 
 
 def test_security_guards_relocation():

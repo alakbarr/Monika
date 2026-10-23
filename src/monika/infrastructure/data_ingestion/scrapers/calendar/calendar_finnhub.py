@@ -19,8 +19,8 @@ import asyncio
 import logging
 import os
 import time
-from datetime import date, timedelta
-from typing import List
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, List, Optional
 
 import aiohttp
 
@@ -112,7 +112,7 @@ class FinnhubCalendarScraper:
             logger.debug("Finnhub economic calendar in 403 cooldown — skipping request.")
             return []
 
-        today = date.today()
+        today = datetime.now(timezone.utc).date()
         # Awal minggu ini (Senin)
         start_date = today - timedelta(days=today.weekday())
         # Akhir minggu depan (Minggu)
@@ -181,6 +181,16 @@ class FinnhubCalendarScraper:
         events: List[CalendarEvent] = []
         for item in events_raw:
             try:
+                unit = (item.get("unit") or "").strip()
+
+                def _fmt(val: Any) -> Optional[str]:
+                    if val is None or str(val).strip() in ("", "-", "--", "N/A", "n/a"):
+                        return None
+                    s = str(val).strip()
+                    if unit and not s.endswith(unit):
+                        return f"{s}{unit}"
+                    return s
+
                 ev = CalendarEvent(
                     event_name=item.get("event", "Unknown Event"),
                     time=item.get("time", ""),
@@ -188,9 +198,9 @@ class FinnhubCalendarScraper:
                         (item.get("country") or "").upper(), (item.get("country") or "").upper() or "USD"
                     ),
                     impact=_IMPACT_MAP.get(str(item.get("impact", "low")).lower(), "Low"),
-                    actual=str(item.get("actual", "")) if item.get("actual") is not None else None,
-                    forecast=str(item.get("estimate", "")) if item.get("estimate") is not None else None,
-                    previous=str(item.get("prev", "")) if item.get("prev") is not None else None,
+                    actual=_fmt(item.get("actual")),
+                    forecast=_fmt(item.get("estimate")),
+                    previous=_fmt(item.get("prev")),
                     country=(item.get("country") or "").upper() or None,
                 )
                 events.append(ev)
@@ -219,7 +229,7 @@ class FinnhubCalendarScraper:
             logger.debug("Finnhub economic calendar in 403 cooldown — skipping request.")
             return []
 
-        today = date.today()
+        today = datetime.now(timezone.utc).date()
         start_date = today - timedelta(days=today.weekday())
         end = start_date + timedelta(days=13)
 
@@ -292,7 +302,7 @@ class FinnhubCalendarScraper:
         if not self.api_key or not HAS_REQUESTS or requests is None:
             return []
         url = "https://finnhub.io/api/v1/calendar/earnings"
-        today = date.today()
+        today = datetime.now(timezone.utc).date()
         from_str = from_date or today.strftime("%Y-%m-%d")
         to_str = to_date or (today + timedelta(days=30)).strftime("%Y-%m-%d")
         params = {"from": from_str, "to": to_str, "token": self.api_key}
@@ -314,7 +324,7 @@ class FinnhubCalendarScraper:
         if not self.api_key:
             return []
         url = "https://finnhub.io/api/v1/calendar/earnings"
-        today = date.today()
+        today = datetime.now(timezone.utc).date()
         from_str = from_date or today.strftime("%Y-%m-%d")
         to_str = to_date or (today + timedelta(days=30)).strftime("%Y-%m-%d")
         params = {"from": from_str, "to": to_str, "token": self.api_key}

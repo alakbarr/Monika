@@ -61,10 +61,10 @@ class DigestSliceGenerator:
         )
         all_items = (await session.execute(query)).scalars().all()
 
-        significant_items = [i for i in all_items if i.impact in ("BREAKING", "HIGH", "MEDIUM")]
+        significant_items = [i for i in all_items if str(i.impact or "").upper() in ("BREAKING", "HIGH", "MEDIUM")]
 
-        breaking_count = sum(1 for i in significant_items if i.impact == "BREAKING")
-        high_count = sum(1 for i in significant_items if i.impact == "HIGH")
+        breaking_count = sum(1 for i in significant_items if str(i.impact or "").upper() == "BREAKING")
+        high_count = sum(1 for i in significant_items if str(i.impact or "").upper() == "HIGH")
 
         # Group items by currency
         grouped_news: Dict[str, List[NewsItem]] = {c: [] for c in TARGET_CURRENCIES}
@@ -90,12 +90,12 @@ class DigestSliceGenerator:
         for cur in TARGET_CURRENCIES:
             cur_items = grouped_news.get(cur, [])
             bull_w = sum(
-                IMPACT_WEIGHT.get(i.impact or "", 1)
+                IMPACT_WEIGHT.get(str(i.impact or "").upper(), 1)
                 for i in cur_items
                 if i.sentiment and f"BULLISH_{cur}" in i.sentiment
             )
             bear_w = sum(
-                IMPACT_WEIGHT.get(i.impact or "", 1)
+                IMPACT_WEIGHT.get(str(i.impact or "").upper(), 1)
                 for i in cur_items
                 if i.sentiment and f"BEARISH_{cur}" in i.sentiment
             )
@@ -130,7 +130,10 @@ Provide a concise 2-hour update:
 
 Max 250 words. Be terse, factual, and strictly grounded in provided data."""
             try:
-                use_top = any(getattr(i, "impact", None) == "BREAKING" for i in items) or cur in ("USD", "XAU")
+                use_top = any(str(getattr(i, "impact", "") or "").upper() == "BREAKING" for i in items) or cur in (
+                    "USD",
+                    "XAU",
+                )
                 client = self._macro_synth if use_top else self._digest_generator
                 res = await client.generate(prompt)
                 return cur, res or "Insufficient data."
@@ -400,7 +403,11 @@ Strictly ground all numeric claims. Max 700 words."""
                 await session.execute(
                     select(func.count(NewsItem.id))
                     .where(NewsItem.fetched_at >= since)
-                    .where(NewsItem.impact.in_(["BREAKING", "HIGH", "MEDIUM"]))
+                    .where(
+                        NewsItem.impact.in_(
+                            ["BREAKING", "HIGH", "MEDIUM", "breaking", "high", "medium", "Breaking", "High", "Medium"]
+                        )
+                    )
                     .where(NewsItem.currency_tags.contains(cur))
                 )
             ).scalar_one_or_none() or 0

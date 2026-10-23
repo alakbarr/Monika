@@ -1,7 +1,9 @@
 import asyncio
-from datetime import datetime, timezone
+import logging
 
 import yfinance as yf
+
+logger = logging.getLogger(__name__)
 
 
 async def get_brent_price() -> float | None:
@@ -17,20 +19,8 @@ async def get_brent_price() -> float | None:
     try:
         return await asyncio.wait_for(asyncio.to_thread(_fetch), timeout=20.0)
     except asyncio.TimeoutError:
-        import logging
-
-        logging.getLogger("BrentYfinance").warning("Timed out fetching Brent price after 20.0s")
+        logger.warning("Timed out fetching Brent price after 20.0s")
         return None
     except Exception as e:
-        import logging
-
-        logging.getLogger("BrentYfinance").warning(f"Failed to fetch Brent price: {e}")
+        logger.warning(f"Failed to fetch Brent price: {e}")
         return None
-
-
-try:
-    from monika.domain.market.brent_yfinance import register_brent_price_fn
-
-    register_brent_price_fn(get_brent_price)
-except Exception:
-    pass

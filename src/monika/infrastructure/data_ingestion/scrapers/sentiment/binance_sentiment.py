@@ -73,8 +73,10 @@ class BinanceSentimentFetcher:
             logger.error(f"Error fetching Binance Sentiment: {e}")
             result = {"error": str(e)}
 
-        # Simpan ke DB jika session tersedia
-        if self.session:
+        # Simpan ke DB jika session tersedia dan ratios valid
+        if self.session and "ratios" in result and result["ratios"]:
+            from monika.infrastructure.database.safe_ops import safe_commit
+
             cfg_key = "binance_sentiment_latest"
             existing = (
                 await self.session.execute(select(SystemConfig).where(SystemConfig.key == cfg_key))
@@ -84,6 +86,6 @@ class BinanceSentimentFetcher:
                 existing.value = json.dumps(result)
             else:
                 self.session.add(SystemConfig(key=cfg_key, value=json.dumps(result)))
-            await self.session.commit()
+            await safe_commit(self.session, label="BinanceSentiment")
 
         return result

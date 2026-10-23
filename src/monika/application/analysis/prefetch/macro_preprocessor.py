@@ -25,7 +25,7 @@ from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 from monika.domain.market.instrument_identity import COT_CODE_TO_SYMBOL_MAP
 
-logger = logging.getLogger("TradingAgent.MacroPreprocessor")
+logger = logging.getLogger(__name__)
 
 _PREPROCESSOR_CACHE = collections.OrderedDict()
 _GEMINI_CACHE = _PREPROCESSOR_CACHE  # Backward compatibility alias
@@ -50,7 +50,7 @@ SYMBOL_USD_DIRECTION = {
 import hashlib
 
 
-def _check_cache(prompt: str) -> Optional[dict]:
+def _check_cache(prompt: str) -> Optional[Any]:
     key = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
     if key in _PREPROCESSOR_CACHE:
         ts, result = _PREPROCESSOR_CACHE[key]
@@ -67,7 +67,7 @@ def clear_cache():
     _PREPROCESSOR_CACHE.clear()
 
 
-def _set_cache(prompt: str, result: dict):
+def _set_cache(prompt: str, result: Any):
     key = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
     _PREPROCESSOR_CACHE[key] = (datetime.now(timezone.utc), result)
     _PREPROCESSOR_CACHE.move_to_end(key)
@@ -101,23 +101,27 @@ class MacroPreprocessor:
         validated = {}
         SIGNIFICANT_MOVE_PCT = 0.005  # 0.5% move over 5 days = significant
 
+        now_dt = clock.now()
         for market_code, signal in cot_signals.items():
             if not isinstance(signal, dict):
                 validated[market_code] = signal
                 continue
 
             symbol = MARKET_CODE_TO_SYMBOL.get(market_code)
+            if not symbol and market_code in SYMBOL_USD_DIRECTION:
+                symbol = market_code
             if not symbol:
                 validated[market_code] = signal
                 continue
 
-            # Get 5-day price direction
+            # Get 5-day price direction (anchored to avoid look-ahead)
             bars = (
                 (
                     await session.execute(
                         select(PriceOHLCV)
                         .where(PriceOHLCV.symbol == symbol)
                         .where(PriceOHLCV.timeframe == "D1")
+                        .where(PriceOHLCV.timestamp <= now_dt)
                         .order_by(PriceOHLCV.timestamp.desc())
                         .limit(5)
                     )
@@ -173,10 +177,14 @@ class MacroPreprocessor:
                 f"across markets, highlighting extreme/overcrowded positions and their implications for reversal risk. "
                 f"Do not invent new figures, synthesize strictly from the data above."
             )
+            cached = _check_cache(prompt)
+            if cached and isinstance(cached, str):
+                return cached
             narrative = await self.client.generate_content(
                 system_prompt="You are a concise institutional positioning analyst.", user_message=prompt
             )
             if isinstance(narrative, str):
+                _set_cache(prompt, narrative)
                 return narrative
             return ""
         except Exception as e:
@@ -309,7 +317,9 @@ class MacroPreprocessor:
         now_dt = clock.now()
 
         q = select(EconomicCalendar).where(
-            EconomicCalendar.event_time >= two_weeks_ago, EconomicCalendar.surprise_score.is_not(None)
+            EconomicCalendar.event_time >= two_weeks_ago,
+            EconomicCalendar.event_time <= now_dt,
+            EconomicCalendar.surprise_score.is_not(None),
         )
         events = (await session.execute(q)).scalars().all()
 
@@ -399,6 +409,8 @@ class MacroPreprocessor:
         if should_recompute_surprise:
             try:
                 surprises = await self.compute_surprise_summary(session)
+                now_str = datetime.now(timezone.utc).isoformat()
+                await self._mark_surprise_recomputed(session, now_str)
                 logger.info("Surprise summary recomputed")
             except Exception as e:
                 logger.error(f"Macro pre-computation (Surprise) failed: {e}")
@@ -484,21 +496,13 @@ class MacroPreprocessor:
         return False
 
     async def _should_recompute_surprise(self, session: AsyncSession) -> bool:
-        """Cek apakah terdapat data surprise ekonomi baru sejak pre-komputasi terakhir."""
+        """Cek apakah terdapat data surprise ekonomi baru sejak pre-komputasi terakhir (tanpa commit prematur)."""
         primary_key = "surprise_last_recompute"
         last_cfg = (
             await session.execute(select(SystemConfig).where(SystemConfig.key == primary_key))
         ).scalar_one_or_none()
 
-        now_str = datetime.now(timezone.utc).isoformat()
         if not last_cfg or not last_cfg.value:
-            for k in (primary_key, "gemini_surprise_last_recompute"):
-                cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == k))).scalar_one_or_none()
-                if not cfg:
-                    session.add(SystemConfig(key=k, value=now_str))
-                else:
-                    cfg.value = now_str
-            await session.commit()
             return True
 
         last_time = datetime.fromisoformat(last_cfg.value)
@@ -513,17 +517,17 @@ class MacroPreprocessor:
             )
         ).scalar_one_or_none() or 0
 
-        if new_surprises > 0:
-            for k in (primary_key, "gemini_surprise_last_recompute"):
-                cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == k))).scalar_one_or_none()
-                if cfg:
-                    cfg.value = now_str
-                else:
-                    session.add(SystemConfig(key=k, value=now_str))
-            await session.commit()
-            return True
+        return new_surprises > 0
 
-        return False
+    async def _mark_surprise_recomputed(self, session: AsyncSession, now_str: str) -> None:
+        """Memperbarui penanda waktu setelah komputasi surprise sukses."""
+        for k in ("surprise_last_recompute", "gemini_surprise_last_recompute"):
+            cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == k))).scalar_one_or_none()
+            if cfg:
+                cfg.value = now_str
+            else:
+                session.add(SystemConfig(key=k, value=now_str))
+        await session.commit()
 
 
 # Backward compatibility alias

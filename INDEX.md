@@ -4125,12 +4125,6 @@
   - `is_bearish(bias: Optional[str]) -> bool`
   - `is_neutral(bias: Optional[str]) -> bool`
 
-#### `brent_yfinance.py` - *Backward-compatibility re-export shim for brent_yfinance.*
-- **Path**: [`src/monika/domain/market/brent_yfinance.py`](src/monika/domain/market/brent_yfinance.py)
-- **Top-Level Functions**:
-  - `register_brent_price_fn(fn: Callable[..., Any]) -> None`
-  - `get_brent_price() -> Any`: Fetch Brent crude price using registered provider or loaded module.
-
 #### `currency_utils.py` - *Utilitas pemetaan simbol instrumen trading ke mata uang terkait.*
 - **Path**: [`src/monika/domain/market/currency_utils.py`](src/monika/domain/market/currency_utils.py)
 - **Top-Level Functions**:

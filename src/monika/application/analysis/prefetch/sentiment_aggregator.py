@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 from monika.application.analysis.schemas.pydantic_schemas import ConfidenceLevel, SentimentAnalysisSchema, SentimentBand
 from monika.domain.market.instrument_identity import get_cot_code_for_symbol
 
-logger = logging.getLogger("TradingAgent.SentimentAggregator")
+logger = logging.getLogger(__name__)
 
 SYMBOL_TO_CFTC_CODE = {
     "XAUUSD": "088691",
@@ -143,7 +143,12 @@ class SentimentAggregator:
         is_safe_haven_quote = any(sym_upper.endswith(s) for s in ["JPY", "CHF"])
 
         if risk_data and not risk_data.get("error"):
-            vix = risk_data.get("close", 20)
+            latest_obj = risk_data.get("latest", {}) if isinstance(risk_data.get("latest"), dict) else {}
+            raw_vix = latest_obj.get("close") or risk_data.get("close", 20)
+            try:
+                vix = float(raw_vix)
+            except ValueError, TypeError:
+                vix = 20.0
             if vix > 30:
                 if is_safe_haven_asset:
                     risk_score = 8.0

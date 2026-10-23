@@ -366,6 +366,7 @@ async def handle_search_academic(args: dict, **ctx) -> dict:
 async def handle_search_social_sentiment(args: dict, **ctx) -> dict:
     """Search for real-time social trader sentiment on Twitter/X or financial forums, with web search fallback."""
     query = (args.get("query") or args.get("symbol") or "XAUUSD").strip()
+    scraper = None
     try:
         from monika.infrastructure.data_ingestion.scrapers.social.twitter_watch import TwitterWatchScraper
 
@@ -385,6 +386,12 @@ async def handle_search_social_sentiment(args: dict, **ctx) -> dict:
                 return {"query": query, "source": "twitter", "items": matching[:10], "status": "success"}
     except Exception as e:
         logger.debug(f"Direct Twitter fetch failed for {query}: {e}")
+    finally:
+        if scraper:
+            try:
+                scraper.close()
+            except Exception:
+                pass
 
     try:
         from monika.infrastructure.data_ingestion.sources.web_search import WebSearch

@@ -85,9 +85,9 @@ class CoinglassFundingFetcher:
 
         return {
             "symbol": "BTCUSDT",
-            "open_interest_usd": 0.0,
-            "open_interest_coins": 0.0,
-            "status": "fallback",
+            "open_interest_usd": None,
+            "open_interest_coins": None,
+            "status": "unavailable",
         }
 
     async def fetch(self) -> dict:
@@ -115,23 +115,37 @@ class CoinglassFundingFetcher:
             if binance_data:
                 if isinstance(binance_data, list) and len(binance_data) > 0 and isinstance(binance_data[-1], dict):
                     b_item = binance_data[-1]
-                    rate_raw = b_item.get("lastFundingRate") or b_item.get("fundingRate", 0.0001)
-                    b_rate = float(rate_raw)
-                    rates.append({"exchange": "Binance", "rate": round(b_rate, 6), "next_rate": round(b_rate, 6)})
+                    rate_raw = (
+                        b_item.get("lastFundingRate")
+                        if b_item.get("lastFundingRate") is not None
+                        else b_item.get("fundingRate")
+                    )
+                    if rate_raw is not None:
+                        b_rate = float(rate_raw)
+                        rates.append({"exchange": "Binance", "rate": round(b_rate, 6), "next_rate": round(b_rate, 6)})
                 elif isinstance(binance_data, dict) and (
                     "lastFundingRate" in binance_data or "fundingRate" in binance_data
                 ):
-                    rate_raw = binance_data.get("lastFundingRate") or binance_data.get("fundingRate", 0.0001)
-                    b_rate = float(rate_raw)
-                    rates.append({"exchange": "Binance", "rate": round(b_rate, 6), "next_rate": round(b_rate, 6)})
+                    rate_raw = (
+                        binance_data.get("lastFundingRate")
+                        if binance_data.get("lastFundingRate") is not None
+                        else binance_data.get("fundingRate")
+                    )
+                    if rate_raw is not None:
+                        b_rate = float(rate_raw)
+                        rates.append({"exchange": "Binance", "rate": round(b_rate, 6), "next_rate": round(b_rate, 6)})
             elif not rates:
                 # In-line fallback: Binance Coin-Margined Futures (dapi)
                 dapi_data = await fetch_with_retry(BINANCE_DAPI_URL, params={"symbol": "BTCUSD_PERP"}, timeout=15)
                 if dapi_data and isinstance(dapi_data, list) and len(dapi_data) > 0:
                     item = dapi_data[0]
-                    if isinstance(item, dict) and "lastFundingRate" in item:
-                        d_rate = float(item.get("lastFundingRate", 0.0001))
-                        rates.append({"exchange": "Binance", "rate": round(d_rate, 6), "next_rate": round(d_rate, 6)})
+                    if isinstance(item, dict):
+                        d_raw = item.get("lastFundingRate")
+                        if d_raw is not None:
+                            d_rate = float(d_raw)
+                            rates.append(
+                                {"exchange": "Binance", "rate": round(d_rate, 6), "next_rate": round(d_rate, 6)}
+                            )
         except Exception as b_err:
             logger.debug(f"Binance funding rate fetch non-fatal: {b_err}")
 

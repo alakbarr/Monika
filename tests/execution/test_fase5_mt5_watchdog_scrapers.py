@@ -237,6 +237,6 @@ async def test_bank_indonesia_targeted_bi_rate_range_rejection():
         ),
     ):
         data = await fetcher.fetch_bi_rate()
-        # Outlier 19.5% must be rejected; baseline 6.00% returned
-        assert data["rate_pct"] == 6.00
-        assert data["status"] == "estimated_baseline"
+        # Outlier 19.5% must be rejected; fail-closed None returned
+        assert data["rate_pct"] is None
+        assert data["status"] == "unavailable"

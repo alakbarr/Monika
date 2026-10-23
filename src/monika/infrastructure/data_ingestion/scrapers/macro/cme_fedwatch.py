@@ -12,7 +12,16 @@ from bs4 import BeautifulSoup
 from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
 from monika.infrastructure.data_ingestion.scrapers.models import FedMeeting, FedProbability
 
-logger = logging.getLogger("TradingAgent.FedWatchScraper")
+logger = logging.getLogger(__name__)
+
+
+def _normalize_rate_pct(raw_val: float) -> float:
+    """Normalizes policy rate or target rate to a uniform percentage float (e.g. 5.25 for 5.25%)."""
+    if raw_val <= 0.20:
+        return raw_val * 100.0
+    if raw_val > 50.0:
+        return raw_val / 100.0
+    return raw_val
 
 
 class FedWatchScraper(BaseScraper):
@@ -263,14 +272,20 @@ class FedWatchScraper(BaseScraper):
                         cols = row.find_all(["th", "td"])
                         texts = [c.get_text(strip=True) for c in cols]
                         if len(texts) >= 5 and "(Current)" in texts[0]:
-                            current_rate_str = texts[0].replace(" (Current)", "").split("-")[1]
-                            current_rate = float(current_rate_str) / 100.0
+                            raw_target = texts[0].replace(" (Current)", "")
+                            if "-" in raw_target:
+                                parts = raw_target.split("-")
+                                try:
+                                    current_rate = _normalize_rate_pct(float(parts[1]))
+                                except ValueError:
+                                    pass
                             break
 
                     if current_rate is None:
-                        current_rate = self._get_fallback_policy_rate()
+                        fallback_val = self._get_fallback_policy_rate()
+                        current_rate = _normalize_rate_pct(fallback_val)
                         logger.warning(
-                            f"[FedWatch] Target rate marker not found in table, using rate {current_rate * 100:.2f}%"
+                            f"[FedWatch] Target rate marker not found in table, using rate {current_rate:.2f}%"
                         )
 
                     for row in rows:
@@ -305,17 +320,25 @@ class FedWatchScraper(BaseScraper):
                     # Hitung probabilitas tindakan Fed
                     final_probs = []
                     for p in probs_raw:
-                        upper_bound = float(p["target"].split("-")[1]) / 100.0
+                        target_str = p["target"]
+                        if "-" in target_str:
+                            try:
+                                upper_bound = _normalize_rate_pct(float(target_str.split("-")[1]))
+                            except ValueError:
+                                continue
+                        else:
+                            continue
+
                         diff = upper_bound - current_rate
 
                         action = "N/A"
-                        if abs(diff) < 0.005:
+                        if abs(diff) < 0.125:
                             action = "HOLD"
                         elif diff < 0:
-                            bps = int(round(abs(diff) * 100 / 25) * 25)
+                            bps = int(round(abs(diff) * 100.0 / 25.0) * 25.0)
                             action = f"CUT {bps} bps"
                         else:
-                            bps = int(round(diff * 100 / 25) * 25)
+                            bps = int(round(diff * 100.0 / 25.0) * 25.0)
                             action = f"HIKE {bps} bps"
 
                         final_probs.append(
@@ -335,7 +358,7 @@ class FedWatchScraper(BaseScraper):
                         meetings.append(
                             FedMeeting(
                                 meeting_date=meeting_date,
-                                current_rate_ref=round(current_rate, 2),
+                                current_rate_ref=round(current_rate / 100.0, 2),
                                 probabilities=final_probs,
                                 most_likely=most_likely,
                             )

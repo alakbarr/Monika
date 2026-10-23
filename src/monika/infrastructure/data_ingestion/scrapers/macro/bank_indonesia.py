@@ -112,7 +112,7 @@ class BankIndonesiaFetcher:
             search_out = await ws.search("Bank Indonesia BI Rate suku bunga terkini persen", max_results=3)
             results = search_out.get("results", []) if isinstance(search_out, dict) else []
             for r in results:
-                snippet = r.get("snippet", "") + " " + r.get("title", "")
+                snippet = (r.get("content") or r.get("snippet", "")) + " " + r.get("title", "")
                 m = re.search(r"(\d+[\.,]\d+)\s*%", snippet)
                 if m:
                     val = float(m.group(1).replace(",", "."))
@@ -130,15 +130,15 @@ class BankIndonesiaFetcher:
         except Exception as fallback_err:
             logger.debug(f"BI Rate web search fallback error: {fallback_err}")
 
-        # Baseline default based on latest known BI regime (6.00% - 6.25%)
+        # Fail-closed when live sources fail
         return {
             "central_bank": "Bank Indonesia",
             "rate_name": "BI-Rate",
-            "rate_pct": 6.00,
-            "status": "estimated_baseline",
-            "is_synthetic": True,
+            "rate_pct": None,
+            "status": "unavailable",
+            "is_synthetic": False,
             "is_verified": False,
-            "note": "Live fetch timed out, returned baseline policy rate",
+            "note": "Live fetch timed out and web search unavailable",
         }
 
     async def fetch_jisdor_rate(self) -> Dict[str, Any]:
@@ -202,9 +202,9 @@ class BankIndonesiaFetcher:
 
         return {
             "currency_pair": "USD/IDR",
-            "reference_rate": "USD/IDR Baseline",
-            "rate": 16250.0,
-            "status": "estimated_baseline",
-            "is_synthetic": True,
+            "reference_rate": "USD/IDR",
+            "rate": None,
+            "status": "unavailable",
+            "is_synthetic": False,
             "is_verified": False,
         }

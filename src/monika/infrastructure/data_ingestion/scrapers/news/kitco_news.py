@@ -73,12 +73,14 @@ class KitcoNewsScraper(BaseScraper):
                                 time_str = (now_utc - timedelta(days=val)).isoformat()
                         else:
                             try:
+                                from zoneinfo import ZoneInfo
                                 from dateutil import parser as dateutil_parser
 
+                                eastern_tz = ZoneInfo("America/New_York")
                                 parsed = dateutil_parser.parse(raw_time_str)
                                 if parsed.tzinfo is None:
-                                    parsed = parsed.replace(tzinfo=timezone.utc)
-                                time_str = parsed.isoformat()
+                                    parsed = parsed.replace(tzinfo=eastern_tz)
+                                time_str = parsed.astimezone(timezone.utc).isoformat()
                             except Exception:
                                 time_str = now_utc.isoformat()
 

@@ -40,6 +40,10 @@ class RssBaseScraper:
     def fetch_news(self, limit: int = 30, fetch_full_text: bool = False) -> List[ScrapedNews]:
         """Fetch news dari RSS feed menggunakan feedparser (tidak perlu browser)."""
         news_list = []
+        if not self.feed_url.startswith(("http://", "https://")):
+            logger.error(f"Invalid RSS feed URL scheme: {self.feed_url}")
+            return news_list
+
         try:
             import feedparser
         except ImportError:
@@ -70,6 +74,9 @@ class RssBaseScraper:
             if isinstance(status, int) and status >= 400:
                 logger.warning(f"RSS {self.source_name} returned HTTP {status}")
                 return news_list
+
+            if getattr(feed, "bozo", 0) == 1 and getattr(feed, "bozo_exception", None):
+                logger.warning(f"RSS {self.source_name} feed parser bozo exception: {feed.bozo_exception}")
 
             count = 0
             seen_urls = set()

@@ -64,12 +64,16 @@ class EIAInventoryFetcher:
                 continue
             val = r.get("value")
             if val is not None:
-                history.append(
-                    {
-                        "period": str(r.get("period", "")),
-                        "value_mbbl": round(float(val) / 1000, 2),
-                    }
-                )
+                try:
+                    f_val = float(val)
+                    history.append(
+                        {
+                            "period": str(r.get("period", "")),
+                            "value_mbbl": round(f_val / 1000, 2),
+                        }
+                    )
+                except ValueError, TypeError:
+                    continue
 
         if not history:
             return {"error": "No valid inventory values"}

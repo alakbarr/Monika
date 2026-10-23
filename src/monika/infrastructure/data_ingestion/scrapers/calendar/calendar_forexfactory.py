@@ -17,6 +17,15 @@ from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent
 logger = logging.getLogger("TradingAgent.ForexFactoryScraper")
 
 
+def _clean_val(val: Any) -> Optional[str]:
+    if val is None:
+        return None
+    s = str(val).strip()
+    if not s or s in ("-", "--", "---", "N/A", "n/a", "ND", "nd"):
+        return None
+    return s
+
+
 class ForexFactoryCalendarScraper(BaseScraper):
     def __init__(self, headless=True, profile_name="ff_calendar"):
         super().__init__(headless, profile_name, load_mode="eager", no_imgs=True)
@@ -56,10 +65,16 @@ class ForexFactoryCalendarScraper(BaseScraper):
     def _save_to_cache(self, raw_items: List[dict]) -> None:
         if not raw_items:
             return
+        import tempfile
+
         try:
             cache_path = self._get_cache_path()
-            with open(cache_path, "w", encoding="utf-8") as f:
-                json.dump(raw_items, f)
+            cache_dir = cache_path.parent
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile("w", dir=cache_dir, delete=False, encoding="utf-8") as tf:
+                json.dump(raw_items, tf)
+                temp_name = tf.name
+            os.replace(temp_name, cache_path)
         except Exception as e:
             logger.debug(f"Failed to write ForexFactory cache: {e}")
 
@@ -132,10 +147,9 @@ class ForexFactoryCalendarScraper(BaseScraper):
 
             currency = item.get("country", "").strip().upper()
             title = item.get("title", "").strip()
-            raw_actual = item.get("actual")
-            actual = str(raw_actual).strip() if raw_actual is not None and str(raw_actual).strip() != "" else None
-            forecast = item.get("forecast") or None
-            previous = item.get("previous") or None
+            actual = _clean_val(item.get("actual"))
+            forecast = _clean_val(item.get("forecast"))
+            previous = _clean_val(item.get("previous"))
 
             events.append(
                 CalendarEvent(
@@ -144,8 +158,8 @@ class ForexFactoryCalendarScraper(BaseScraper):
                     impact=impact,
                     event_name=title,
                     actual=actual,
-                    forecast=forecast if forecast else None,
-                    previous=previous if previous else None,
+                    forecast=forecast,
+                    previous=previous,
                     country=currency[:2] if currency else None,
                 )
             )
@@ -250,13 +264,13 @@ class ForexFactoryCalendarScraper(BaseScraper):
                 event_name = td_event.get_text(strip=True)
 
                 td_actual = row.find("td", class_="calendar__actual")
-                actual = td_actual.get_text(strip=True) if td_actual else None
+                actual = _clean_val(td_actual.get_text(strip=True)) if td_actual else None
 
                 td_forecast = row.find("td", class_="calendar__forecast")
-                forecast = td_forecast.get_text(strip=True) if td_forecast else None
+                forecast = _clean_val(td_forecast.get_text(strip=True)) if td_forecast else None
 
                 td_previous = row.find("td", class_="calendar__previous")
-                previous = td_previous.get_text(strip=True) if td_previous else None
+                previous = _clean_val(td_previous.get_text(strip=True)) if td_previous else None
 
                 # Konversi waktu ForexFactory (US Eastern Time) ke UTC ISO format
                 eastern_tz = ZoneInfo("America/New_York")

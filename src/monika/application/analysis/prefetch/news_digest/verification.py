@@ -665,19 +665,28 @@ Respond JSON array of objects:
             check_time = ensure_utc(news_item.fetched_at) or now_utc
             since = check_time - timedelta(hours=4)
 
-            stmt = (
-                select(EconomicCalendar)
-                .where(
-                    EconomicCalendar.event_time >= since,
-                    EconomicCalendar.event_time <= check_time + timedelta(hours=1),
-                    or_(
-                        EconomicCalendar.impact == "HIGH",
-                        EconomicCalendar.impact == "High",
-                        EconomicCalendar.impact == "high",
-                    ),
-                )
-                .limit(1)
-            )
+            currencies = []
+            if getattr(news_item, "currency_tags", None):
+                currencies = [c.strip().upper() for c in news_item.currency_tags.split(",") if c.strip()]
+            elif getattr(news_item, "title", None):
+                import re
+
+                found = re.findall(r"\b(USD|EUR|GBP|JPY|AUD|CAD|CHF|NZD|XAU)\b", (news_item.title or "").upper())
+                currencies = list(set(found))
+
+            filters = [
+                EconomicCalendar.event_time >= since,
+                EconomicCalendar.event_time <= check_time + timedelta(hours=1),
+                or_(
+                    EconomicCalendar.impact == "HIGH",
+                    EconomicCalendar.impact == "High",
+                    EconomicCalendar.impact == "high",
+                ),
+            ]
+            if currencies:
+                filters.append(EconomicCalendar.currency.in_(currencies))
+
+            stmt = select(EconomicCalendar).where(*filters).limit(1)
 
             event = (await session.execute(stmt)).scalar_one_or_none()
             return event is not None
@@ -697,17 +706,26 @@ Respond JSON array of objects:
 
             check_time = ensure_utc(news_item.fetched_at) or now_utc
             since = check_time - timedelta(hours=4)
-            stmt = (
-                select(EconomicCalendar)
-                .where(
-                    EconomicCalendar.event_time >= since,
-                    EconomicCalendar.event_time <= check_time + timedelta(hours=1),
-                    EconomicCalendar.impact.in_(["high", "High", "HIGH"]),
-                    EconomicCalendar.surprise_score.is_not(None),
-                )
-                .order_by(EconomicCalendar.event_time.desc())
-                .limit(3)
-            )
+
+            currencies = []
+            if getattr(news_item, "currency_tags", None):
+                currencies = [c.strip().upper() for c in news_item.currency_tags.split(",") if c.strip()]
+            elif getattr(news_item, "title", None):
+                import re
+
+                found = re.findall(r"\b(USD|EUR|GBP|JPY|AUD|CAD|CHF|NZD|XAU)\b", (news_item.title or "").upper())
+                currencies = list(set(found))
+
+            filters = [
+                EconomicCalendar.event_time >= since,
+                EconomicCalendar.event_time <= check_time + timedelta(hours=1),
+                EconomicCalendar.impact.in_(["high", "High", "HIGH"]),
+                EconomicCalendar.surprise_score.is_not(None),
+            ]
+            if currencies:
+                filters.append(EconomicCalendar.currency.in_(currencies))
+
+            stmt = select(EconomicCalendar).where(*filters).order_by(EconomicCalendar.event_time.desc()).limit(3)
             events = (await session.execute(stmt)).scalars().all()
             if not events:
                 return (True, "no_surprise_data_available")  # fail-open, data belum sempat dihitung

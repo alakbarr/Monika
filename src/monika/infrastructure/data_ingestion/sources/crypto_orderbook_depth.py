@@ -82,7 +82,7 @@ class CryptoOrderbookDepth:
         cls, book_side: List[Tuple[float, float]], target_usd: float, is_buy: bool
     ) -> float:
         """Simulates walking the orderbook to fill target_usd and calculates slippage in bps."""
-        if not book_side or target_usd <= 0:
+        if not book_side or target_usd <= 0 or book_side[0][0] <= 0.0:
             return 0.0
 
         remaining_usd = target_usd
@@ -91,6 +91,8 @@ class CryptoOrderbookDepth:
         best_price = book_side[0][0]
 
         for price, qty in book_side:
+            if price <= 0.0 or qty <= 0.0:
+                continue
             level_usd = price * qty
             if remaining_usd <= level_usd:
                 fill_qty = remaining_usd / price
@@ -103,11 +105,14 @@ class CryptoOrderbookDepth:
                 total_qty += qty
                 remaining_usd -= level_usd
 
-        if remaining_usd > 0:
+        if remaining_usd > 0 or total_qty <= 0.0:
             # Depth exhausted: assign severe penalty
             return 50.0
 
         avg_fill_price = spent_usd / total_qty
+        if best_price <= 0.0:
+            return 50.0
+
         if is_buy:
             slip_bps = ((avg_fill_price - best_price) / best_price) * 10000.0
         else:
@@ -150,6 +155,8 @@ class CryptoOrderbookDepth:
         best_bid = bids[0][0]
         best_ask = asks[0][0]
         mid_price = (best_bid + best_ask) / 2.0
+        if mid_price <= 0.0:
+            return None
         spread_bps = round(((best_ask - best_bid) / mid_price) * 10000.0, 3)
 
         bid_liquidity_usd = sum(p * q for p, q in bids)
