@@ -234,7 +234,8 @@ class SkillManager:
         Removes or archives a skill. Protected core skills cannot be deleted.
         """
         clean_name = name.strip().lower()
-        if clean_name in SkillCurator.PROTECTED_SKILLS and not force:
+        norm_name = clean_name.replace("-", "_")
+        if (clean_name in SkillCurator.PROTECTED_SKILLS or norm_name in SkillCurator.PROTECTED_SKILLS) and not force:
             return False, f"Skill '{name}' is a protected core playbook and cannot be removed."
 
         hub = self._get_hub()

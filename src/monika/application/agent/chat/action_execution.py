@@ -8,6 +8,7 @@ Trade action execution, order dispatcher, and database mutation execution.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from datetime import datetime, timezone
@@ -132,7 +133,8 @@ class ActionExecutionMixin(_ChatAgentMixinBase):
                 try:
                     from monika.infrastructure.storage.journal_helper import record_trade_to_workspace
 
-                    j_res = record_trade_to_workspace(
+                    j_res = await asyncio.to_thread(
+                        record_trade_to_workspace,
                         self.settings,
                         {
                             "symbol": result.symbol,
@@ -175,7 +177,8 @@ class ActionExecutionMixin(_ChatAgentMixinBase):
                 try:
                     from monika.infrastructure.storage.journal_helper import record_trade_to_workspace
 
-                    j_res = record_trade_to_workspace(
+                    j_res = await asyncio.to_thread(
+                        record_trade_to_workspace,
                         self.settings,
                         {
                             "symbol": params.get("symbol", "POSITION"),
@@ -288,7 +291,8 @@ class ActionExecutionMixin(_ChatAgentMixinBase):
                 try:
                     from monika.infrastructure.storage.journal_helper import record_trade_to_workspace
 
-                    record_trade_to_workspace(
+                    await asyncio.to_thread(
+                        record_trade_to_workspace,
                         self.settings,
                         {
                             "symbol": trade.symbol,

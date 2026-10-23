@@ -169,7 +169,10 @@ class JournalParser:
             )
 
             if not open_time:
-                open_time = datetime.now(timezone.utc)
+                logger.warning(
+                    f"[JournalParser] Skipping trade with unparseable open_time: ticket={ticket}, symbol={symbol}"
+                )
+                continue
             if not close_time:
                 close_time = open_time
 
@@ -234,7 +237,10 @@ class JournalParser:
             commission = cls._parse_float(cells[-3], 0.0) if len(cells) >= 13 else 0.0
 
             if not open_time:
-                open_time = datetime.now(timezone.utc)
+                logger.warning(
+                    f"[JournalParser] Skipping trade with unparseable open_time: ticket={ticket}, symbol={symbol}"
+                )
+                continue
             if not close_time:
                 close_time = open_time
 
@@ -298,7 +304,10 @@ class JournalParser:
                 )
                 close_time = cls._parse_datetime(str(item.get("close_time") or item.get("closed_at") or ""))
                 if not open_time:
-                    open_time = datetime.now(timezone.utc)
+                    logger.warning(
+                        f"[JournalParser] Skipping JSON record with unparseable open_time: ticket={ticket}, symbol={symbol}"
+                    )
+                    continue
                 if not close_time:
                     close_time = open_time
 

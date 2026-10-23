@@ -96,6 +96,9 @@ class MemoryLifecycleGC:
         stability = self.base_stability_days * reinforcement_boost * max(0.2, node.importance_weight)
 
         retention = math.exp(-delta_days / max(0.1, stability))
+        # Promoted golden lessons must have a retention floor to prevent permanent Ebbinghaus amnesia
+        if node.category == "candidate_lesson" and node.importance_weight >= 1.5:
+            return max(0.50, round(min(1.0, max(0.0, retention)), 4))
         return round(min(1.0, max(0.0, retention)), 4)
 
     def run_gc_pass(
@@ -293,10 +296,9 @@ class DatabaseMemoryGCAdapter:
                 if isinstance(db_item, CandidateLesson) and db_item.status == "rejected":
                     db_item.rejection_reason = f"gc_archived_retention_{detail.get('retention', 0.0)}"
                 elif isinstance(db_item, DecisionReflection):
-                    if db_item.outcome_process_classification:
-                        db_item.outcome_process_classification = f"gc_archived_{db_item.outcome_process_classification}"
-                    else:
-                        db_item.outcome_process_classification = "gc_archived"
+                    curr_cls = db_item.outcome_process_classification or ""
+                    if not curr_cls.startswith("gc_archived"):
+                        db_item.outcome_process_classification = f"gc_archived_{curr_cls}"[:50]
 
         logger.info(
             f"[DatabaseMemoryGC] Scanned {len(nodes)} records: {report.active_retained} active, "

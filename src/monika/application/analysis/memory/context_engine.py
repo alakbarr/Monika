@@ -83,7 +83,17 @@ class ContextEngine:
         else:
             processed_messages = list(messages)
 
-        return [system_msg] + processed_messages
+        # Filter pre-existing system messages to prevent duplicate system roles (Anthropic 400 rejection)
+        non_system_messages = [m for m in processed_messages if m.get("role") != "system"]
+        existing_sys_contents = [
+            str(m.get("content", "")).strip()
+            for m in processed_messages
+            if m.get("role") == "system" and str(m.get("content", "")).strip()
+        ]
+        if existing_sys_contents:
+            system_msg["content"] = "\n\n".join([full_system_text] + existing_sys_contents)
+
+        return [system_msg] + non_system_messages
 
     def clear(self) -> None:
         self.anchor_index.clear()

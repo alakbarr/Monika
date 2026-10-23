@@ -175,10 +175,13 @@ class SessionSearchEngine:
             results: List[Dict[str, Any]] = []
             for r in rows:
                 pnl_val = None
+                pnl_unit = "USD"
                 if r.outcome_pnl_usd is not None:
                     pnl_val = float(r.outcome_pnl_usd)
+                    pnl_unit = "USD"
                 elif r.is_paper_whatif and r.whatif_hypothetical_pnl_pips is not None:
-                    pnl_val = float(r.whatif_hypothetical_pnl_pips) / 10.0
+                    pnl_val = float(r.whatif_hypothetical_pnl_pips)
+                    pnl_unit = "pips"
 
                 stage_val = "whatif" if r.is_paper_whatif else "execution"
                 content_text = r.rationale_summary or f"Decision {r.decision} for {clean_sym}"
@@ -200,6 +203,7 @@ class SessionSearchEngine:
                         "confluence_score": int(r.confluence_score or 0),
                         "content": content_text,
                         "pnl": pnl_val,
+                        "pnl_unit": pnl_unit,
                     }
                 )
             return results
@@ -294,7 +298,9 @@ class SessionSearchEngine:
                     pgv_stmt = select(DecisionReflection).where(DecisionReflection.embedding.isnot(None))
                     if as_of is not None:
                         pgv_stmt = pgv_stmt.where(DecisionReflection.created_at <= as_of)
-                    pgv_stmt = pgv_stmt.order_by(text(f"embedding <=> '{vec_literal}'")).limit(limit * 2)
+                    pgv_stmt = pgv_stmt.order_by(text(f"cast(embedding as text)::vector <=> '{vec_literal}'")).limit(
+                        limit * 2
+                    )
                     dense_rows = list((await session.execute(pgv_stmt)).scalars().all())
                 except Exception as pgv_err:
                     logger.debug(f"[pgvector] <=> operator query error, falling back to NumPy SIMD: {pgv_err}")
@@ -583,7 +589,7 @@ class SessionSearchEngine:
                             select(DecisionReflection)
                             .where(DecisionReflection.symbol == clean_sym)
                             .where(DecisionReflection.embedding.isnot(None))
-                            .order_by(text(f"embedding <=> '{vec_str}'"))
+                            .order_by(text(f"cast(embedding as text)::vector <=> '{vec_str}'"))
                             .limit(30)
                         )
                         dense_ranks = list((await session.execute(pgv_cand_stmt)).scalars().all())

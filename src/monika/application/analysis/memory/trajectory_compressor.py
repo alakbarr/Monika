@@ -27,9 +27,13 @@ from monika.core.primitives import estimate_tokens
 
 def truncate_middle_text(text: str, max_chars: int) -> str:
     """Head + tail truncation for verbose text or tool outputs."""
+    if max_chars <= 0:
+        return ""
     if len(text) <= max_chars:
         return text
     half = max_chars // 2
+    if half <= 0:
+        return ""
     omitted = len(text) - (2 * half)
     return f"{text[:half]}\n[... {omitted} characters omitted ...]\n{text[-half:]}"
 

@@ -228,7 +228,11 @@ def is_playbook_eligible(skill_name: str, context: Optional[dict] = None) -> boo
         from monika.application.analysis.memory.playbook_lifecycle import PlaybookLifecycleManager
 
         mgr = PlaybookLifecycleManager()
-        meta = mgr.get_metadata(skill_name)
+        meta = (
+            mgr.get_metadata(skill_name)
+            or mgr.get_metadata(f"{skill_name}.md")
+            or mgr.get_metadata(skill_name.removesuffix(".md"))
+        )
         if meta and meta.status in ("archived", "demoted", "stale"):
             logger.info(
                 f"[ProgressiveDisclosure] Skipping ineligible/demoted playbook: {skill_name} (status={meta.status})"

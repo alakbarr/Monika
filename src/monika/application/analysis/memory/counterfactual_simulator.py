@@ -199,7 +199,15 @@ class CounterfactualSimulator:
         )
         exit_reason = str(trade.exit_reason if trade is not None else (getattr(pos, "exit_reason", None) or "unknown"))
 
-        pip_size = 0.01 if ("JPY" in symbol or "XAU" in symbol or "BTC" in symbol) else 0.0001
+        from monika.domain.risk.position_sizing import get_instrument_spec
+
+        spec = get_instrument_spec(symbol)
+        pip_size = (
+            spec.pip_size
+            if spec and spec.pip_size > 0
+            else (0.01 if ("JPY" in symbol or "XAU" in symbol or "BTC" in symbol) else 0.0001)
+        )
+        pip_value_usd = spec.pip_value_usd if spec and spec.pip_value_usd > 0 else 10.0
 
         if direction in ("BUY", "LONG"):
             cf_sl = (
@@ -283,43 +291,60 @@ class CounterfactualSimulator:
                         if direction in ("BUY", "LONG")
                         else (entry_price - trail_exit_price)
                     )
-                    cf_pnl = (pnl_diff_price / pip_size) * lot * 10.0
+                    cf_pnl = (pnl_diff_price / pip_size) * lot * pip_value_usd
                     cf_outcome = "TRAILING_STOP_TRIGGERED" if trail_hit else "TRAILING_STOP_HELD"
                     notes.append(
                         f"Simulated ATR trailing stop ({trailing_stop_atr_mult}x ATR = {trail_dist:.5f}). Exit price: {trail_exit_price:.5f}."
                     )
                 else:
-                    lowest_price = min(float(b.low) for b in bars)
-                    highest_price = max(float(b.high) for b in bars)
+                    cf_outcome = "SAME_OUTCOME"
+                    orig_sl_hit = False
+                    cf_sl_hit = False
+                    cf_tp_hit = False
 
-                    if direction in ("BUY", "LONG"):
-                        orig_sl_hit = (lowest_price <= original_sl) if original_sl > 0 else False
-                        cf_sl_hit = lowest_price <= cf_sl
-                        cf_tp_hit = (highest_price >= cf_tp) if cf_tp > 0 else False
-                    else:
-                        orig_sl_hit = (highest_price >= original_sl) if original_sl > 0 else False
-                        cf_sl_hit = highest_price >= cf_sl
-                        cf_tp_hit = (lowest_price <= cf_tp) if cf_tp > 0 else False
+                    # Chronological bar replay to eliminate look-ahead bias
+                    for b in bars:
+                        b_low = float(b.low)
+                        b_high = float(b.high)
+                        if direction in ("BUY", "LONG"):
+                            if original_sl > 0 and b_low <= original_sl:
+                                orig_sl_hit = True
+                            if cf_sl > 0 and b_low <= cf_sl:
+                                cf_sl_hit = True
+                                cf_outcome = "STILL_HIT_SL"
+                                break
+                            if cf_tp > 0 and b_high >= cf_tp:
+                                cf_tp_hit = True
+                                cf_outcome = "SL_SAVED_AND_TP_HIT" if orig_sl_hit else "TP_HIT"
+                                break
+                        else:
+                            if original_sl > 0 and b_high >= original_sl:
+                                orig_sl_hit = True
+                            if cf_sl > 0 and b_high >= cf_sl:
+                                cf_sl_hit = True
+                                cf_outcome = "STILL_HIT_SL"
+                                break
+                            if cf_tp > 0 and b_low <= cf_tp:
+                                cf_tp_hit = True
+                                cf_outcome = "SL_SAVED_AND_TP_HIT" if orig_sl_hit else "TP_HIT"
+                                break
 
                     if orig_sl_hit and not cf_sl_hit:
                         cf_survived_sl = True
                         notes.append(f"Wider SL (+{sl_pips_delta} pips) survived adverse price excursion.")
                         if cf_tp_hit:
-                            cf_outcome = "SL_SAVED_AND_TP_HIT"
                             pnl_pips = abs(cf_tp - entry_price) / pip_size
-                            cf_pnl = pnl_pips * lot * 10.0
+                            cf_pnl = pnl_pips * lot * pip_value_usd
                             notes.append(f"Subsequent market move reached TP ({cf_tp:.5f}). Trade turned into WIN.")
                         else:
                             cf_outcome = "SL_SAVED_OPEN"
                             notes.append("Trade would have avoided premature stop out.")
                     elif cf_sl_hit:
                         cf_survived_sl = False
-                        cf_outcome = "STILL_HIT_SL"
-                        loss_diff = sl_pips_delta * pip_size * lot * 10.0
+                        loss_diff = sl_pips_delta * lot * pip_value_usd
                         cf_pnl = actual_pnl - loss_diff
                         notes.append(f"Adverse excursion exceeded wider SL ({cf_sl:.5f}). Loss increased.")
                     else:
-                        cf_outcome = "SAME_OUTCOME"
                         notes.append("Original trade did not hit SL.")
 
         return {

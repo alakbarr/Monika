@@ -25,19 +25,24 @@ class AlphaCalculator:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_benchmark_return(self, benchmark_name: str, entry_time: datetime, exit_time: datetime) -> float:
+    async def get_benchmark_return(
+        self, benchmark_name: str, entry_time: datetime, exit_time: datetime, target_symbol: str = ""
+    ) -> float:
         """Mendapatkan return benchmark antara entry_time dan exit_time dalam persentase."""
         if benchmark_name == "FLAT":
             return 0.0
 
         if benchmark_name == "DXY":
-            # Jika trade intraday (buka & tutup pada hari yang sama), coba gunakan proxy H1 EURUSD terbalik
+            # Jika trade intraday (buka & tutup pada hari yang sama), gunakan proxy H1
+            # Hindari tautologi circular jika symbol target adalah EURUSD dengan menggunakan USDJPY
+            proxy_sym = "USDJPY" if (target_symbol and target_symbol.upper() == "EURUSD") else "EURUSD"
+            is_inverse = proxy_sym == "EURUSD"
             if entry_time.date() == exit_time.date():
-                stmt_eur_entry = (
+                stmt_proxy_entry = (
                     select(PriceOHLCV.close)
                     .where(
                         and_(
-                            PriceOHLCV.symbol == "EURUSD",
+                            PriceOHLCV.symbol == proxy_sym,
                             PriceOHLCV.timeframe == "H1",
                             PriceOHLCV.timestamp <= entry_time,
                         )
@@ -45,11 +50,11 @@ class AlphaCalculator:
                     .order_by(PriceOHLCV.timestamp.desc())
                     .limit(1)
                 )
-                stmt_eur_exit = (
+                stmt_proxy_exit = (
                     select(PriceOHLCV.close)
                     .where(
                         and_(
-                            PriceOHLCV.symbol == "EURUSD",
+                            PriceOHLCV.symbol == proxy_sym,
                             PriceOHLCV.timeframe == "H1",
                             PriceOHLCV.timestamp <= exit_time,
                         )
@@ -57,11 +62,11 @@ class AlphaCalculator:
                     .order_by(PriceOHLCV.timestamp.desc())
                     .limit(1)
                 )
-                eur_e = (await self.session.execute(stmt_eur_entry)).scalar_one_or_none()
-                eur_x = (await self.session.execute(stmt_eur_exit)).scalar_one_or_none()
-                if eur_e and eur_x and eur_e > 0:
-                    eur_ret = ((eur_x - eur_e) / eur_e) * 100.0
-                    return -eur_ret  # Inverse EUR return as intraday USD strength proxy
+                p_e = (await self.session.execute(stmt_proxy_entry)).scalar_one_or_none()
+                p_x = (await self.session.execute(stmt_proxy_exit)).scalar_one_or_none()
+                if p_e and p_x and p_e > 0:
+                    proxy_ret = ((p_x - p_e) / p_e) * 100.0
+                    return -proxy_ret if is_inverse else proxy_ret
 
             # Query DXYData harian
             stmt_entry = select(DXYData.close).where(DXYData.date <= entry_time).order_by(DXYData.date.desc()).limit(1)
@@ -144,7 +149,9 @@ class AlphaCalculator:
             benchmark_name = "DXY"
             benchmark_multiplier = 1.0
 
-        raw_benchmark_return = await self.get_benchmark_return(benchmark_name, entry_time, exit_time)
+        raw_benchmark_return = await self.get_benchmark_return(
+            benchmark_name, entry_time, exit_time, target_symbol=symbol_upper
+        )
 
         # Sesuaikan benchmark return berdasarkan arah korelasi dan arah trade
         # Jika trade SELL, maka return asset dibalik (karena harga turun = profit)
@@ -158,6 +165,6 @@ class AlphaCalculator:
         direction_mult = 1.0 if direction.upper() == "BUY" else -1.0
         eff_benchmark_return = raw_benchmark_return * benchmark_multiplier * direction_mult
 
-        alpha = asset_return_pct - eff_benchmark_return
+        alpha = float(asset_return_pct) - float(eff_benchmark_return)
 
         return {"benchmark_name": benchmark_name, "benchmark_return": eff_benchmark_return, "alpha_return": alpha}

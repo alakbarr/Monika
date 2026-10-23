@@ -102,7 +102,19 @@ class SkillASTVisitor(ast.NodeVisitor):
         # Check attribute calls like os.system(...), subprocess.run(...), shutil.rmtree(...)
         elif isinstance(node.func, ast.Attribute):
             attr_name = node.func.attr
-            if attr_name in ("system", "popen", "spawn", "rmtree", "run", "call", "check_output", "check_call"):
+            obj_name = ""
+            if isinstance(node.func.value, ast.Name):
+                obj_name = node.func.value.id
+
+            is_dangerous = False
+            if attr_name in ("system", "popen", "spawn", "rmtree", "check_output", "check_call"):
+                is_dangerous = True
+            elif attr_name in ("run", "call"):
+                # Only flag run/call if receiver is os, subprocess, or similar process modules
+                if obj_name in ("os", "subprocess", "pty", "commands") or not obj_name:
+                    is_dangerous = True
+
+            if is_dangerous:
                 self.findings.append(
                     AuditFinding(
                         severity="HIGH",

@@ -96,14 +96,8 @@ class SkillCrystallizer:
                 stmt = stmt.where(DecisionReflection.symbol == clean_sym)
 
             raw_res = await session.execute(stmt)
-            # Handle both SQLAlchemy Row tuples from outerjoin and results configured with .scalars().all()
-            if hasattr(raw_res, "scalars"):
-                try:
-                    results = raw_res.scalars().all()
-                except Exception:
-                    results = raw_res.all() if hasattr(raw_res, "all") else []
-            else:
-                results = raw_res.all() if hasattr(raw_res, "all") else []
+            # Preserve all columns from multi-column outerjoin using .all()
+            results = raw_res.all() if hasattr(raw_res, "all") else []
 
             if not isinstance(results, (list, tuple)):
                 return []

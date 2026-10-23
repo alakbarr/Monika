@@ -61,7 +61,7 @@ REFLECTION_SCHEMA = {
             "type": "boolean",
             "description": (
                 "TRUE if final synthesis (specialist conflict adjudication, trust_weight assignment, "
-                "debate judge decision) was logical based on specialist reports available AT THAT TIME — "
+                "debate judge decision) was logical based on specialist reports available AT THAT TIME -- "
                 "separate from whether the raw underlying data was accurate."
             ),
         },
@@ -425,6 +425,8 @@ class TradeReflector:
                 f"[TradeReflector] LLM reflection #{reflection_id} failed quality critique ({critique}). Retaining parsed fields and applying fallback for missing metrics."
             )
             fallback = self._generate_deterministic_fallback(reflection, enrichment)
+            data["specific_lesson"] = fallback["specific_lesson"]
+            data["lesson_tags"] = fallback["lesson_tags"]
             for k, v in fallback.items():
                 if not data.get(k):
                     data[k] = v

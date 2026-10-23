@@ -420,7 +420,7 @@ MODULE_MAPPING: dict[str, str] = {
     "utils.validation.indicator_sanitizer": "monika.core.validation.indicator_sanitizer",
     "utils.validation.tool_response_validator": "monika.core.validation.tool_response_validator",
     "utils.validation": "monika.core.validation",
-    "utils.workspace.journal_helper": "monika.interfaces.workspace.journal_helper",
+    "utils.workspace.journal_helper": "monika.infrastructure.storage.journal_helper",
     "telegram_bot.formatters": "monika.interfaces.telegram.formatters",
     "telegram_bot.handlers.market_commands": "monika.interfaces.telegram.handlers.market_commands",
     "telegram_bot.handlers.system_commands": "monika.interfaces.telegram.handlers.system_commands",

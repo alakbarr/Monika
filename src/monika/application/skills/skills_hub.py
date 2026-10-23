@@ -238,7 +238,9 @@ class SkillsHub:
         target_file = base_path
         if file_path:
             # Viewing a linked file (e.g. references/rules.md)
-            candidate = skill_dir / file_path
+            candidate = (skill_dir / file_path).resolve()
+            if not candidate.is_relative_to(skill_dir.resolve()):
+                return False, f"Access denied: path traversal attempt for '{file_path}'."
             if not candidate.exists() or not candidate.is_file():
                 return False, f"Linked file '{file_path}' not found for skill '{name}'."
             target_file = candidate

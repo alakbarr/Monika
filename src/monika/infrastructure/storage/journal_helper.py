@@ -180,7 +180,10 @@ def record_trade_to_workspace(settings: Optional[Dict[str, Any]], trade_data: Di
                             excel_path, engine="openpyxl", mode="a", if_sheet_exists="overlay"
                         ) as writer:
                             df = pd.DataFrame([row_data])
-                            df.to_excel(writer, sheet_name=sheet_name, index=False)
+                            start_row = writer.sheets[sheet_name].max_row if sheet_name in writer.sheets else 0
+                            df.to_excel(
+                                writer, sheet_name=sheet_name, index=False, header=(start_row == 0), startrow=start_row
+                            )
             res["excel_saved"] = True
             res["excel_path"] = str(excel_path)
         except Exception as e:

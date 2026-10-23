@@ -39,6 +39,7 @@ class OutcomeLinker:
         entry_time: Optional[datetime] = None,
         exit_time: Optional[datetime] = None,
         asset_return_pct: Optional[float] = None,
+        defer_reflection: bool = False,
     ):
         """Dipanggil saat trade benar-benar ditutup (Real/Paper Trade yang dieksekusi)."""
         try:
@@ -150,8 +151,12 @@ class OutcomeLinker:
                     except Exception as life_err:
                         logger.warning(f"Failed to record lifecycle outcome for {reflection.symbol}: {life_err}")
 
-                    # Picu refleksi AI
-                    await self.reflector.reflect_on_trade(session, reflection.id)
+                    if not defer_reflection:
+                        # Picu refleksi AI
+                        await self.reflector.reflect_on_trade(session, reflection.id)
+                    else:
+                        reflection.status = "pending_reflection"
+                        await safe_commit(session, label="outcome_linker_deferred")
                 else:
                     await safe_commit(session, label="outcome_linker_partial")
 
@@ -249,6 +254,7 @@ class OutcomeLinker:
                         )
                         reflection.whatif_sl_would_hit = sl_hit
                         reflection.whatif_tp_would_hit = tp_hit
+                        reflection.was_profitable = bool(tp_hit or (not sl_hit and diff_pips > 0))
 
                         asset_return_pct = (
                             ((price_now - entry_price) / entry_price) * 100.0 * direction if entry_price > 0 else 0.0

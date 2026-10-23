@@ -186,6 +186,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                                 pnl=db_pos.pnl or 0.0,
                                 holding_hours=holding_hours,
                                 exit_reason=reason or "unknown",
+                                defer_reflection=True,
                             )
                         except Exception as e:
                             logger.debug(f"OutcomeLinker failed for real trade (non-fatal): {e}")
@@ -305,6 +306,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                             pnl=paper.pnl_pct or 0.0,
                             holding_hours=paper.holding_hours or 0.0,
                             exit_reason=paper.exit_reason or "unknown",
+                            defer_reflection=True,
                         )
                 except Exception as e:
                     logger.debug(f"OutcomeLinker failed for paper manual-close: {e}")

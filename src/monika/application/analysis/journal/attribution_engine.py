@@ -68,8 +68,12 @@ class AttributionEngine:
                 narrative_summary="No trades available for attribution.",
             )
 
+        from collections import defaultdict
+
         real_pnl = sum(t.pnl for t in trades)
-        rules_by_symbol = {r.symbol.upper(): r for r in rules}
+        rules_by_symbol = defaultdict(list)
+        for r in rules:
+            rules_by_symbol[r.symbol.upper()].append(r)
 
         noise_losses = 0.0
         early_exit_loss = 0.0
@@ -78,24 +82,30 @@ class AttributionEngine:
         compliant_count = 0
 
         for t in trades:
-            rule = rules_by_symbol.get(t.symbol.upper())
-            if not rule:
+            candidate_rules = rules_by_symbol.get(t.symbol.upper(), [])
+            if not candidate_rules:
                 if t.pnl < 0:
                     noise_losses += abs(t.pnl)
-                    noise_count += 1
+                noise_count += 1
                 continue
 
-            # Check compliance with rule entry window
-            hour_ok = t.open_time.hour in rule.allowed_hours
-            day_ok = t.open_time.weekday() in rule.allowed_weekdays
-            action_ok = rule.action in ("both", t.action.lower())
+            # Match against candidate rules for this symbol
+            matched_rule = None
+            for r in candidate_rules:
+                hour_ok = t.open_time.hour in r.allowed_hours
+                day_ok = t.open_time.weekday() in r.allowed_weekdays
+                action_ok = r.action in ("both", t.action.lower())
+                if hour_ok and day_ok and action_ok:
+                    matched_rule = r
+                    break
 
-            if not (hour_ok and day_ok and action_ok):
+            if matched_rule is None:
                 # Trade violated systematic entry rule (Noise Trade)
                 if t.pnl < 0:
                     noise_losses += abs(t.pnl)
                 noise_count += 1
             else:
+                rule = matched_rule
                 compliant_count += 1
                 hold_mins = t.holding_seconds / 60.0
 

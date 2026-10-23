@@ -232,7 +232,8 @@ class PlaybookLedger:
             restored_content = bf.read().decode("utf-8")
 
         # Write to playbook file
-        playbook_path = os.path.join(self.playbooks_dir, f"{playbook_name}.md")
+        clean_pb_name = playbook_name.removesuffix(".md")
+        playbook_path = os.path.join(self.playbooks_dir, f"{clean_pb_name}.md")
         with open(playbook_path, "w", encoding="utf-8") as pf:
             pf.write(restored_content)
 

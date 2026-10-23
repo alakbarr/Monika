@@ -837,11 +837,12 @@ def test_pr7d_identity_and_parity():
 
     assert shim_wc.parse_time_list is canon_wc.parse_time_list
 
-    # 13. Interfaces Workspace
-    import monika.interfaces.workspace.journal_helper as shim_jh
-    import monika.interfaces.workspace.journal_helper as canon_jh
+    # 13. Infrastructure Storage Journal Helper
+    import monika.infrastructure.storage.journal_helper as canon_jh
 
-    assert shim_jh.format_dataview_journal is canon_jh.format_dataview_journal
+    assert callable(canon_jh.format_dataview_journal)
+    assert callable(canon_jh.format_spreadsheet_row)
+    assert callable(canon_jh.record_trade_to_workspace)
 
     # 14. Infrastructure Storage
     import monika.infrastructure.storage.spill_store as shim_sps

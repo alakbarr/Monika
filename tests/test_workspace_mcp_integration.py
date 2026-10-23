@@ -16,7 +16,7 @@ from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
 from monika.application.analysis.tools.tools_definitions import OPERATOR_INTERACTIVE_TOOLS
 from monika.application.analysis.tools.unified_registry import unified_tool_registry
 from monika.application.analysis.tools.tool_executor import ToolExecutor
-from monika.interfaces.workspace.journal_helper import (
+from monika.infrastructure.storage.journal_helper import (
     format_dataview_journal,
     format_spreadsheet_row,
     record_trade_to_workspace,

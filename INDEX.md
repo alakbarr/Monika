@@ -155,7 +155,6 @@
 - [`src/monika/interfaces/telegram/formatters`](#folder-srcmonikainterfacestelegramformatters)
 - [`src/monika/interfaces/telegram/handlers`](#folder-srcmonikainterfacestelegramhandlers)
 - [`src/monika/interfaces/telegram/routers`](#folder-srcmonikainterfacestelegramrouters)
-- [`src/monika/interfaces/workspace`](#folder-srcmonikainterfacesworkspace)
 - [`src/monika`](#folder-srcmonika)
 
 ---
@@ -5961,7 +5960,7 @@
 - **Classes**:
   - `class AlphaCalculator`: Kalkulator untuk menghitung Alpha (Return Asset vs Benchmark).
     - `__init__(session: AsyncSession)`
-    - `async get_benchmark_return(benchmark_name: str, entry_time: datetime, exit_time: datetime) -> float` - *Mendapatkan return benchmark antara entry_time dan exit_time dalam persentase.*
+    - `async get_benchmark_return(benchmark_name: str, entry_time: datetime, exit_time: datetime, ...) -> float` - *Mendapatkan return benchmark antara entry_time dan exit_time dalam persentase.*
     - `async calculate_alpha(symbol: str, direction: str, entry_time: datetime, ...) -> dict` - *Menghitung alpha untuk trade yang telah close.*
 
 #### `background_review.py` - *Pure async background review and reflection engine for post-trade learning.*
@@ -6082,7 +6081,7 @@
   - `class LayeredMemoryManager`: Manages 4-layer memory hierarchy for optimal context efficiency.
     - `__init__(settings: Optional[dict])`
     - `async get_frozen_snapshot(session: Optional[AsyncSession])` - *Retrieve frozen memory snapshot for prompt cache preservation.*
-    - `get_identity() -> str` - *Layer 0: Permanent trading soul identity (100% cacheable, capped at <=300 tokens).*
+    - `get_identity() -> str` - *Layer 0: Permanent trading soul identity (100% cacheable, bedrock preserved).*
     - `async get_stable_core_memory(session: Optional[AsyncSession]) -> str` - *Layer 1A: Stable curated memory (<=600 tok), invariant within cycle. 100% System Prompt cache-safe.*
     - `async get_volatile_portfolio_memory(session: Optional[AsyncSession]) -> str` - *Layer 1B: Volatile portfolio heat & equity state (<=200 tok). Injected into User Message tail to protect Prefix Cache.*
     - `async get_core_memory(session: Optional[AsyncSession]) -> str` - *Layer 1: Combined curated memory (<=800 tok). Maintained for backward compatibility.*
@@ -14354,14 +14353,6 @@
   - `class TradingRouter`: Dispatches and processes trading execution commands.
     - `can_handle(command: str) -> bool`
     - `async handle(command: str, args: List[str], session: Any, ...) -> Dict[str, Any]`
-
-### Folder: `src/monika/interfaces/workspace` <a id="folder-srcmonikainterfacesworkspace"></a>
-
-#### `__init__.py` - *Workspace interfaces and utilities.*
-- **Path**: [`src/monika/interfaces/workspace/__init__.py`](src/monika/interfaces/workspace/__init__.py)
-
-#### `journal_helper.py` - *Obsidian Dataview & Spreadsheet Trading Journal Helper — Backward-compatible facade.*
-- **Path**: [`src/monika/interfaces/workspace/journal_helper.py`](src/monika/interfaces/workspace/journal_helper.py)
 
 ### Folder: `src/monika` <a id="folder-srcmonika"></a>
 

@@ -1947,9 +1947,6 @@ Monika/
 │       │   │   ├── topic_manager.py
 │       │   │   ├── voice_handler.py
 │       │   │   └── voice_safety_gate.py
-│       │   ├── workspace/
-│       │   │   ├── __init__.py
-│       │   │   └── journal_helper.py
 │       │   └── __init__.py
 │       └── __init__.py
 │   ├── public/
@@ -2171,6 +2168,7 @@ Monika/
 │   │   │   ├── test_registry_and_handlers.py
 │   │   │   ├── test_sandbox_and_delegation.py
 │   │   │   ├── test_security_interceptors.py
+│   │   │   ├── test_security_remediation_phase7.py
 │   │   │   ├── test_skills_tools.py
 │   │   │   ├── test_spill_reader_tool.py
 │   │   │   ├── test_tool_catalog_and_spill.py
@@ -3066,4 +3064,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 265 | **Total Tracked Files**: 2771
+**Total Tracked Directories**: 264 | **Total Tracked Files**: 2770

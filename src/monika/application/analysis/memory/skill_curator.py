@@ -236,10 +236,22 @@ class SkillCurator:
                     shutil.move(item["path"], target_path)
                     archived_files.append(item["name"])
             elif item["mtime"] < stale_threshold:
-                if "# [STATUS: STALE]" not in item["content"]:
-                    updated = "# [STATUS: STALE]\n" + item["content"]
+                orig_mtime = item["mtime"]
+                content = item["content"]
+                if "status: stale" not in content and "# [STATUS: STALE]" not in content:
+                    if content.startswith("---"):
+                        parts = content.split("---", 2)
+                        if len(parts) >= 3:
+                            fm = parts[1]
+                            updated_fm = f"{fm.rstrip()}\nstatus: stale\n"
+                            updated = f"---{updated_fm}---{parts[2]}"
+                        else:
+                            updated = f"{content}\n\n# [STATUS: STALE]"
+                    else:
+                        updated = f"{content}\n\n# [STATUS: STALE]"
                     with open(item["path"], "w", encoding="utf-8") as f:
                         f.write(updated)
+                    os.utime(item["path"], (orig_mtime.timestamp(), orig_mtime.timestamp()))
                 stale_files.append(item["name"])
 
         # Check deduplication (>85% similarity on rule text for matching symbol)

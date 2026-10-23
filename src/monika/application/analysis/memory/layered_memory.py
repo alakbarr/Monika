@@ -81,14 +81,14 @@ class LayeredMemoryManager:
         return await get_frozen_snapshot_manager(self.settings).get_snapshot(session=session)
 
     def get_identity(self) -> str:
-        """Layer 0: Permanent trading soul identity (100% cacheable, capped at <=300 tokens)."""
+        """Layer 0: Permanent trading soul identity (100% cacheable, bedrock preserved)."""
         global _SOUL_CACHE
         if _SOUL_CACHE is None:
             soul_path = resolve_config_path("TRADING_SOUL.md")
             if soul_path.exists():
                 try:
                     raw_soul = soul_path.read_text(encoding="utf-8")
-                    _SOUL_CACHE = truncate_to_budget(raw_soul, 300)
+                    _SOUL_CACHE = truncate_to_budget(raw_soul, 1500)
                 except Exception as e:
                     logger.warning(f"Failed to read TRADING_SOUL.md: {e}")
                     _SOUL_CACHE = ""
@@ -124,6 +124,11 @@ class LayeredMemoryManager:
                 c_bullets = await c_writer.get_condensed_chronicle_bullets(session, limit=3)
                 if c_bullets:
                     parts.append(f"ACTIVE_MACRO_REALITY:\n{c_bullets}")
+                else:
+                    macro_path = resolve_config_path("MACRO_REALITY.md")
+                    if macro_path.exists():
+                        macro_text = macro_path.read_text(encoding="utf-8")
+                        parts.append(f"ACTIVE_MACRO_REALITY:\n{truncate_to_budget(macro_text, 150)}")
             except Exception as e:
                 logger.debug(f"Failed to load active macro reality for stable core memory: {e}")
 
@@ -175,7 +180,15 @@ class LayeredMemoryManager:
             if precedents:
                 parts.append("PRECEDENTS:")
                 for p in precedents:
-                    pnl_str = f" PnL:{p['pnl']:+.2f}%" if p.get("pnl") is not None else ""
+                    unit = p.get("pnl_unit", "USD")
+                    if p.get("pnl") is not None:
+                        pnl_str = (
+                            f" PnL:${p['pnl']:+,.2f}"
+                            if unit == "USD"
+                            else (f" PnL:{p['pnl']:+.1f}pips" if unit == "pips" else f" PnL:{p['pnl']:+.2f}%")
+                        )
+                    else:
+                        pnl_str = ""
                     stage_prefix = "[WHATIF] " if p.get("stage") == "whatif" else ""
                     parts.append(
                         f"- {p['timestamp'][:10]} {stage_prefix}{p['decision']} (conf={p['confidence']:.2f}{pnl_str}): {p['content'][:85]}"
