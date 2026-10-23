@@ -316,6 +316,12 @@ def build_application_container(
 
     container.register_factory("risk_gate", lambda c: RiskGate(settings=c.get("settings", {})))
 
+    from monika.domain.market.playbook_screener import PlaybookRegistry
+    from monika.infrastructure.storage.playbook_catalog_repository import PlaybookCatalogRepository
+
+    container.register_factory("playbook_repository", lambda c: PlaybookCatalogRepository())
+    PlaybookRegistry.set_repository(PlaybookCatalogRepository())
+
     # Canonical application services
     from monika.application.services.market_data_service import MarketDataService
     from monika.application.services.market_intel_service import MarketIntelService

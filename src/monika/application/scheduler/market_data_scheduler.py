@@ -22,8 +22,12 @@ from typing import Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.validation.data_validator import is_crypto_symbol, is_forex_market_closed
-from monika.domain.indicators.structure import MarketStructureAnalyzer
-from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+from monika.application.services.market_structure_service import (
+    MarketStructureService as MarketStructureAnalyzer,
+)
+from monika.application.services.technical_indicator_service import (
+    TechnicalIndicatorService as TechnicalIndicatorCalculator,
+)
 from monika.infrastructure.database.db import get_session
 
 logger = logging.getLogger("TradingAgent.MarketDataScheduler")

@@ -28,7 +28,9 @@ async def handle_get_technical_indicators(args: dict, **ctx) -> dict:
     timeframe = args.get("timeframe", "H4")
     if session:
         try:
-            from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+            from monika.application.services.technical_indicator_service import (
+                TechnicalIndicatorService as TechnicalIndicatorCalculator,
+            )
 
             calc = TechnicalIndicatorCalculator(session, settings)
             snapshot = await calc.get_snapshot(symbol, timeframe)
@@ -82,7 +84,9 @@ async def handle_get_atr(args: dict, **ctx) -> dict:
 
     if session:
         try:
-            from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+            from monika.application.services.technical_indicator_service import (
+                TechnicalIndicatorService as TechnicalIndicatorCalculator,
+            )
 
             calc = TechnicalIndicatorCalculator(session, settings)
             snapshot = await calc.get_snapshot(symbol, timeframe)
@@ -326,7 +330,9 @@ async def handle_get_multi_timeframe_summary(args: dict, **ctx) -> dict:
     mtf_data = {}
 
     if session:
-        from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+        from monika.application.services.technical_indicator_service import (
+            TechnicalIndicatorService as TechnicalIndicatorCalculator,
+        )
 
         calc = TechnicalIndicatorCalculator(session, settings or {})
 

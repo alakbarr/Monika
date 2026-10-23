@@ -35,9 +35,12 @@ register_session_factory(get_session)
 from monika.domain.risk.ports import register_data_freshness_validator, register_suspended_symbols_provider
 from monika.core.validation.data_validator import validate_data_freshness
 from monika.core.analytics.paper_tracker import PaperTracker
+from monika.domain.market.playbook_screener import PlaybookRegistry
+from monika.infrastructure.storage.playbook_catalog_repository import PlaybookCatalogRepository
 
 register_data_freshness_validator(validate_data_freshness)
 register_suspended_symbols_provider(lambda settings=None: PaperTracker(settings))
+PlaybookRegistry.set_repository(PlaybookCatalogRepository())
 
 import os
 

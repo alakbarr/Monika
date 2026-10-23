@@ -270,7 +270,8 @@ def detect_breaker_blocks(
             # Bullish OB tertembus ke bawah (close < price_low)
             match_idx = np.where(close_arr < price_low)[0]
             if len(match_idx) > 0:
-                broken_time = str(pd.Timestamp(idx_arr[match_idx[0]]))
+                first_broken_idx = int(match_idx[0])
+                broken_time = str(df_after_ob.index[first_broken_idx])
                 retested = bool(df["high"].iloc[-5:].max() >= price_low and last_close <= price_high)
 
                 # Check liquidity sweep: did the pivot swing before the break sweep a prior low?
@@ -299,7 +300,8 @@ def detect_breaker_blocks(
             # Bearish OB tertembus ke atas (close > price_high)
             match_idx = np.where(close_arr > price_high)[0]
             if len(match_idx) > 0:
-                broken_time = str(pd.Timestamp(idx_arr[match_idx[0]]))
+                first_broken_idx = int(match_idx[0])
+                broken_time = str(df_after_ob.index[first_broken_idx])
                 retested = bool(df["low"].iloc[-5:].min() <= price_high and last_close >= price_low)
 
                 # Check liquidity sweep: did the pivot swing before the break sweep a prior high?
@@ -389,7 +391,8 @@ def detect_inverted_fvg(df: pd.DataFrame, fvg_zones: List[Any]) -> List[Inverted
         if "bull" in fvg_type.lower():
             match_idx = np.where(close_arr < price_low)[0]
             if len(match_idx) > 0:
-                inv_time = str(pd.Timestamp(idx_arr[match_idx[0]]))
+                first_broken_idx = int(match_idx[0])
+                inv_time = str(df_after_fvg.index[first_broken_idx])
                 retested = bool(df["high"].iloc[-5:].max() >= price_low and last_close <= price_high)
                 ifvgs.append(
                     InvertedFVGResult(
@@ -409,7 +412,8 @@ def detect_inverted_fvg(df: pd.DataFrame, fvg_zones: List[Any]) -> List[Inverted
         elif "bear" in fvg_type.lower():
             match_idx = np.where(close_arr > price_high)[0]
             if len(match_idx) > 0:
-                inv_time = str(pd.Timestamp(idx_arr[match_idx[0]]))
+                first_broken_idx = int(match_idx[0])
+                inv_time = str(df_after_fvg.index[first_broken_idx])
                 retested = bool(df["low"].iloc[-5:].min() <= price_high and last_close >= price_low)
                 ifvgs.append(
                     InvertedFVGResult(

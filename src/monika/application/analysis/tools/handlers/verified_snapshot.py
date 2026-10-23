@@ -117,7 +117,9 @@ class VerifiedMarketSnapshotHandler(ToolHandler):
         # 2. Compute key technical indicators deterministically
         indicators = {}
         try:
-            from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+            from monika.application.services.technical_indicator_service import (
+                TechnicalIndicatorService as TechnicalIndicatorCalculator,
+            )
 
             calc_settings = self.settings or getattr(executor, "settings", {}) or {}
             calc = TechnicalIndicatorCalculator(session, calc_settings)

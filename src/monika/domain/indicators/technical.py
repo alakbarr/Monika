@@ -3,22 +3,27 @@
 # ==============================================================================
 
 """
-Kalkulator Indikator Teknikal (Async) berbasis library `ta`.
+Kalkulator Indikator Teknikal Murni (Pure Domain Indicators).
 
-Menghitung dan menyimpan indikator ke tabel `technical_indicators`:
+Menghitung indikator teknikal murni dari pandas DataFrame / Series tanpa I/O database:
 - Moving Averages (SMA, EMA)
 - Momentum & Oscillators (RSI, Stochastic, MACD)
-- Volatility (Bollinger Bands, ATR)
+- Volatility (Bollinger Bands, ATR, Yang-Zhang)
 - Trend (ADX)
+- Autocorrelation (AC1)
+- Pivot Points & Ichimoku Kinko Hyo
+- Divergence Detection (RSI, MACD)
 
-Hasil disimpan dalam format JSON string untuk fleksibilitas.
+Untuk orkestrasi pemuatan OHLCV dari database dan penyimpanan ke database,
+lihat monika.application.services.technical_indicator_service.
 """
 
-import inspect
+from __future__ import annotations
+
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -28,11 +33,12 @@ import ta.trend
 import ta.volatility
 import ta.volume
 
-import monika.core.primitives.clock as clock
-from monika.domain.models_resolver import resolve_model
-
 logger = logging.getLogger("TradingAgent.Indicators")
-_WARNED_INSUFFICIENT_BARS: set[str] = set()
+
+
+# ------------------------------------------------------------------
+# Pure Statistical & Volatility Functions
+# ------------------------------------------------------------------
 
 
 def compute_yang_zhang_volatility(df: pd.DataFrame, window: int = 20) -> pd.Series:
@@ -72,10 +78,8 @@ def compute_yang_zhang_volatility(df: pd.DataFrame, window: int = 20) -> pd.Seri
 
 def compute_lag1_autocorrelation(close: pd.Series, window: int = 20) -> pd.Series:
     """
-    Rolling lag-1 return autocorrelation for statistical regime detection.
-    AC1 > 0: momentum regime (trend-following strategies favored).
-    AC1 < 0: mean-reverting regime (reversals/sweeps favored).
-    Vectorized implementation: 100x faster than rolling apply.
+    Menghitung lag-1 return autocorrelation rolling window.
+    Indikator regime: AC1 > 0 menandakan momentum/trending, AC1 < 0 mean-reverting.
     """
     if close is None or len(close) < window + 2:
         return pd.Series(index=close.index if close is not None else [], dtype=float)
@@ -83,742 +87,213 @@ def compute_lag1_autocorrelation(close: pd.Series, window: int = 20) -> pd.Serie
     returns = close.astype(float).pct_change()
     r_lag = returns.shift(1)
     ac1 = returns.rolling(window).corr(r_lag).fillna(0.0).clip(-1.0, 1.0)
-    return cast(pd.Series, ac1)
+    return pd.Series(ac1)
 
 
-class TechnicalIndicatorCalculator:
+# ------------------------------------------------------------------
+# Pure Indicator Computation Functions
+# ------------------------------------------------------------------
+
+
+def compute_moving_averages(
+    close: pd.Series,
+    sma_periods: tuple[int, ...] = (20, 50, 200),
+    ema_periods: tuple[int, ...] = (9, 21, 50, 200),
+) -> dict[str, pd.Series]:
+    """Computes SMAs and EMAs for specified periods."""
+    result: dict[str, pd.Series] = {}
+    for p in sma_periods:
+        result[f"SMA_{p}"] = pd.Series(ta.trend.sma_indicator(close, window=p, fillna=False))
+    for p in ema_periods:
+        result[f"EMA_{p}"] = pd.Series(ta.trend.ema_indicator(close, window=p, fillna=False))
+    return result
+
+
+def compute_rsi(close: pd.Series, period: int = 14) -> pd.Series:
+    """Computes RSI (Relative Strength Index)."""
+    return pd.Series(ta.momentum.rsi(close, window=period, fillna=False))
+
+
+def compute_stochastic(
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+    k_period: int = 14,
+    d_period: int = 3,
+) -> tuple[pd.Series, pd.Series]:
+    """Computes Stochastic %K and %D."""
+    stoch = ta.momentum.StochasticOscillator(
+        high=high, low=low, close=close, window=k_period, smooth_window=d_period, fillna=False
+    )
+    return pd.Series(stoch.stoch()), pd.Series(stoch.stoch_signal())
+
+
+def compute_macd(
+    close: pd.Series,
+    fast: int = 12,
+    slow: int = 26,
+    signal: int = 9,
+) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """Computes MACD line, signal line, and histogram."""
+    macd_obj = ta.trend.MACD(close, window_fast=fast, window_slow=slow, window_sign=signal, fillna=False)
+    return pd.Series(macd_obj.macd()), pd.Series(macd_obj.macd_signal()), pd.Series(macd_obj.macd_diff())
+
+
+def compute_bollinger_bands(
+    close: pd.Series,
+    period: int = 20,
+    std_dev: float = 2.0,
+) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]:
+    """Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth."""
+    bb = ta.volatility.BollingerBands(close=close, window=period, window_dev=int(std_dev), fillna=False)
+    return (
+        pd.Series(bb.bollinger_hband()),
+        pd.Series(bb.bollinger_mavg()),
+        pd.Series(bb.bollinger_lband()),
+        pd.Series(bb.bollinger_pband()),
+        pd.Series(bb.bollinger_wband()),
+    )
+
+
+def compute_atr(
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+    period: int = 14,
+) -> pd.Series:
+    """Computes Average True Range."""
+    return pd.Series(ta.volatility.average_true_range(high=high, low=low, close=close, window=period, fillna=False))
+
+
+def compute_adx(
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+    period: int = 14,
+) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """Computes ADX, +DI, and -DI."""
+    adx_obj = ta.trend.ADXIndicator(high=high, low=low, close=close, window=period, fillna=False)
+    return pd.Series(adx_obj.adx()), pd.Series(adx_obj.adx_pos()), pd.Series(adx_obj.adx_neg())
+
+
+def compute_pivot_points(high: float, low: float, close: float, method: str = "classic") -> dict[str, Any]:
     """
-    Menghitung dan menyimpan indikator dari data OHLCV.
-
-    Penggunaan:
-        calc = TechnicalIndicatorCalculator(session, settings)
-        await calc.compute_and_save("XAUUSD", "H1")
+    Menghitung Classical / Camarilla / Fibonacci Pivot Points dari satu bar D1/W1.
     """
-
-    def __init__(self, session: Any, settings: Optional[dict] = None):
-        """
-        Args:
-            session: Async SQLAlchemy session.
-            settings: trading.indicators section from settings.yaml.
-        """
-        self.session = session
-        cfg = (settings or {}).get("trading", {}).get("indicators", {}) or (settings or {}).get("indicators", {})
-        self.ma_periods: list[int] = cfg.get("ma_periods", [20, 50, 200])
-        self.rsi_period: int = cfg.get("rsi_period", 14)
-        self.stoch_k: int = cfg.get("stochastic_k", 14)
-        self.stoch_d: int = cfg.get("stochastic_d", 3)
-        self.macd_fast: int = cfg.get("macd_fast", 12)
-        self.macd_slow: int = cfg.get("macd_slow", 26)
-        self.macd_signal: int = cfg.get("macd_signal", 9)
-        self.bb_period: int = cfg.get("bollinger_period", 20)
-        self.bb_std: int = int(cfg.get("bollinger_std", 2))
-        self.atr_period: int = cfg.get("atr_period", 14)
-        self.adx_period: int = cfg.get("adx_period", 14)
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
-    async def compute_and_save(self, symbol: str, timeframe: str) -> int:
-        """
-        Menjalankan alur lengkap: load OHLCV -> hitung -> simpan.
-
-        Returns:
-            Jumlah baris indikator yang disimpan.
-        """
-        if not self.session:
-            logger.warning(
-                f"No DB session provided to TechnicalIndicatorCalculator, cannot compute and save for {symbol}/{timeframe}"
-            )
-            return 0
-        df = await self._load_ohlcv(symbol, timeframe)
-        if df is None:
-            logger.warning(f"No OHLCV data for {symbol}/{timeframe}")
-            return 0
-
-        min_bars = max(self.ma_periods) if self.ma_periods else 30
-
-        if len(df) < min_bars:
-            warn_key = f"{symbol}/{timeframe}"
-            if warn_key not in _WARNED_INSUFFICIENT_BARS:
-                _WARNED_INSUFFICIENT_BARS.add(warn_key)
-                logger.warning(
-                    f"Insufficient OHLCV bars for {symbol}/{timeframe}: "
-                    f"have {len(df)}, need {min_bars}. "
-                    f"{'SMA_200 requires ~200 D1 bars — wait for more history.' if timeframe == 'D1' else 'Fetch more price history.'}"
-                )
-            else:
-                logger.debug(f"Insufficient OHLCV bars for {symbol}/{timeframe}: have {len(df)}, need {min_bars}.")
-            # Tetap hitung indikator yang memungkinkan dengan data terbatas
-            # Lewati sepenuhnya jika data terlalu sedikit bahkan untuk RSI
-            if len(df) < 20:
-                return 0
-
-            # Sesuaikan ma_periods hanya untuk yang bisa dihitung (SMA_p membutuhkan p bar)
-            computable_periods = [p for p in self.ma_periods if p <= len(df)]
-            if not computable_periods:
-                return 0
-
-            original_periods = self.ma_periods
-            self.ma_periods = computable_periods
-
-            try:
-                import asyncio
-
-                indicators = await asyncio.to_thread(self._compute_all, df)
-                saved = await self._save(symbol, timeframe, indicators)
-            finally:
-                self.ma_periods = original_periods
-        else:
-            import asyncio
-
-            indicators = await asyncio.to_thread(self._compute_all, df)
-            saved = await self._save(symbol, timeframe, indicators)
-
-        # Wire OrderFlow snapshot calculation
-        try:
-            from monika.domain.indicators.order_flow import OrderFlowEngine
-
-            TechnicalIndicator = resolve_model("TechnicalIndicator")
-            if not TechnicalIndicator:
-                return saved
-
-            of_engine = OrderFlowEngine(mt5_client=getattr(self, "mt5_client", None))
-            of_snapshot = await of_engine.analyze_order_flow(self.session, symbol, df=df)
-            bar_ts = df.index[-1] if not df.empty else clock.now()
-            if isinstance(bar_ts, pd.Timestamp):
-                bar_ts = bar_ts.to_pydatetime()
-            if isinstance(bar_ts, datetime):
-                if bar_ts.tzinfo is None:
-                    bar_ts = bar_ts.replace(tzinfo=timezone.utc)
-                else:
-                    bar_ts = bar_ts.astimezone(timezone.utc)
-            add_res: Any = self.session.add(
-                TechnicalIndicator(
-                    symbol=symbol,
-                    timeframe=timeframe,
-                    indicator_name="ORDER_FLOW_SNAPSHOT",
-                    value_json=json.dumps(of_snapshot.to_dict()),
-                    timestamp=bar_ts,
-                )
-            )
-            if inspect.isawaitable(add_res):
-                await cast(Any, add_res)
-            await self.session.commit()
-        except Exception as of_err:
-            logger.debug(f"OrderFlow snapshot save failed for {symbol}: {of_err}")
-
-        logger.debug(f"Saved {saved} indicator rows for {symbol}/{timeframe}")
-        return saved
-
-    async def compute_all_symbols(self, symbols: list[str], timeframes: list[str]) -> dict[str, int]:
-        """Menjalankan komputasi untuk semua aset dan timeframe."""
-        results = {}
-        for symbol in symbols:
-            for tf in timeframes:
-                key = f"{symbol}/{tf}"
-                try:
-                    n = await self.compute_and_save(symbol, tf)
-                    results[key] = n
-                except Exception as e:
-                    logger.error(f"Indicator computation failed for {key}: {e}")
-                    if hasattr(self.session, "rollback"):
-                        try:
-                            await self.session.rollback()
-                            if hasattr(self.session, "expunge_all"):
-                                self.session.expunge_all()
-                        except Exception:
-                            pass
-                    results[key] = 0
-        total_rows = sum(results.values())
-        logger.info(f"Technical indicators complete: {len(results)} pairs ({total_rows} indicator rows computed)")
-        return results
-
-    # ------------------------------------------------------------------
-    # Data loading
-    # ------------------------------------------------------------------
-
-    async def _load_ohlcv(self, symbol: str, timeframe: str) -> Optional[pd.DataFrame]:
-        """Memuat OHLCV secara descending, lalu dibalik menjadi kronologis untuk kalkulasi."""
-        fetch_limit = 1000 if timeframe.upper() in ("D1", "H4") else 500
-        from sqlalchemy import select
-
-        PriceOHLCV = resolve_model("PriceOHLCV")
-        if not PriceOHLCV or not self.session:
-            return None
-
-        result = await self.session.execute(
-            select(PriceOHLCV)
-            .where(PriceOHLCV.symbol == symbol)
-            .where(PriceOHLCV.timeframe == timeframe)
-            .order_by(PriceOHLCV.timestamp.desc())  # DESC to get most recent rows
-            .limit(fetch_limit)
-        )
-        rows = result.scalars().all()
-        if not rows:
-            logger.warning(f"No OHLCV data found for {symbol}/{timeframe}")
-            return None
-
-        # Balik urutan agar kembali kronologis (ascending) untuk perhitungan indikator
-        rows = list(reversed(rows))
-
-        def _get_ts(r: Any) -> Any:
-            c = getattr(r, "canonical_timestamp", None)
-            return c if isinstance(c, datetime) else getattr(r, "timestamp", None)
-
-        df = pd.DataFrame(
-            {
-                "timestamp": [_get_ts(r) for r in rows],
-                "open": [r.open for r in rows],
-                "high": [r.high for r in rows],
-                "low": [r.low for r in rows],
-                "close": [r.close for r in rows],
-                "volume": [r.volume for r in rows],
-            }
-        )
-        df.set_index("timestamp", inplace=True)
-
-        # Ensure index is timezone-aware UTC
-        df.index = pd.to_datetime(df.index, utc=True)
-
-        # Ensure chronological monotonic index
-        if not df.index.is_monotonic_increasing:
-            df.sort_index(inplace=True)
-
-        # Immediate deduplication on canonical timestamp index
-        df = df.loc[~df.index.duplicated(keep="last")]
-
-        # For D1, normalize timestamps to daily boundaries to prevent hour shifts from dropping candles
-        if timeframe.upper() == "D1" and len(df) > 1:
-            df.index = pd.to_datetime([pd.Timestamp(t).strftime("%Y-%m-%d") for t in df.index], utc=True)
-            df = df.loc[~df.index.duplicated(keep="last")]
-
-        # Resample and forward-fill to handle missing candles without time distortion
-        tf_freq_map = {
-            "M1": "1min",
-            "M5": "5min",
-            "M15": "15min",
-            "M30": "30min",
-            "H1": "1h",
-            "H4": "4h",
-            "D1": "1D",
+    if method == "fibonacci":
+        pp = (high + low + close) / 3.0
+        rng = high - low
+        return {
+            "pivot": round(pp, 5),
+            "r1": round(pp + 0.382 * rng, 5),
+            "r2": round(pp + 0.618 * rng, 5),
+            "r3": round(pp + 1.0 * rng, 5),
+            "s1": round(pp - 0.382 * rng, 5),
+            "s2": round(pp - 0.618 * rng, 5),
+            "s3": round(pp - 1.0 * rng, 5),
         }
-        freq = tf_freq_map.get(timeframe.upper())
-        if freq and len(df) > 1:
-            try:
-                deduped: pd.DataFrame = df.loc[~df.index.duplicated(keep="last")]
-                if freq == "1D":
-                    resampled = deduped.resample(freq).asfreq()
-                else:
-                    resampled = deduped.resample(freq, origin="epoch").asfreq()
-                # If resampling produced NaNs across the series, fallback to raw deduped data
-                if not resampled["close"].isna().all():
-                    # Filter weekend market closure bars for Forex / Commodities (non-24/7 crypto)
-                    is_crypto = any(c in symbol.upper() for c in ("BTC", "ETH", "SOL"))
-                    if not is_crypto:
-                        idx: Any = pd.DatetimeIndex(resampled.index)
-                        is_weekend = (
-                            (idx.dayofweek == 5)
-                            | ((idx.dayofweek == 6) & (idx.hour < 21))
-                            | ((idx.dayofweek == 4) & (idx.hour >= 22))
-                        )
-                        resampled = resampled[~is_weekend]
-                    resampled["close"] = resampled["close"].ffill()
-                    resampled["open"] = resampled["open"].fillna(resampled["close"])
-                    resampled["high"] = resampled["high"].fillna(resampled["close"])
-                    resampled["low"] = resampled["low"].fillna(resampled["close"])
-                    resampled["volume"] = resampled["volume"].fillna(0.0)
-                    if not resampled.empty and not resampled["close"].isna().all():
-                        df = resampled
-                    else:
-                        df = deduped
-                else:
-                    df = deduped
-            except Exception as e:
-                logger.debug(f"Resampling error for {symbol}/{timeframe} (fallback to raw): {e}")
-
-        if df is not None and not df.empty:
-            df.index = pd.to_datetime(df.index, utc=True)
-
-        return cast(Optional[pd.DataFrame], df)
-
-    # ------------------------------------------------------------------
-    # Indicator computation
-    # ------------------------------------------------------------------
-
-    def _compute_all(self, df: pd.DataFrame, is_final: bool = True) -> dict[datetime, list[dict]]:
-        """
-        Menghitung seluruh indikator dari DataFrame OHLCV.
-        Jika is_final=False, bar forming terakhir dikecualikan untuk mencegah repainting.
-
-        Returns:
-            Dict mapping timestamp -> list of dict {name, value_json}.
-        """
-        if df is None or len(df) == 0:
-            return {}
-
-        required_cols = ("open", "high", "low", "close", "volume")
-        if not all(col in df.columns for col in required_cols):
-            return {}
-
-        if not is_final and len(df) > 1:
-            df = df.iloc[:-1].copy()
-
-        result: dict[datetime, list[dict]] = {}
-
-        def add(ts, name: str, value):
-            """Menambahkan indikator ke hasil dictionary."""
-            if ts not in result:
-                result[ts] = []
-            result[ts].append({"name": name, "value_json": json.dumps(value)})
-
-        close = cast(pd.Series, df["close"])
-        high = cast(pd.Series, df["high"])
-        low = cast(pd.Series, df["low"])
-        volume = cast(pd.Series, df["volume"])
-
-        # Target timestamps to format and store: last 100 bars (earlier bars serve as calculation warmup)
-        target_index = df.index[-100:] if len(df) > 100 else df.index
-
-        # ---- Moving Averages ----
-        for period in self.ma_periods:
-            sma = ta.trend.sma_indicator(close, window=period, fillna=False)
-            ema = ta.trend.ema_indicator(close, window=period, fillna=False)
-            for ts in target_index:
-                sma_v = sma.get(ts)
-                ema_v = ema.get(ts)
-                if sma_v is not None and pd.notna(sma_v):
-                    add(ts, f"SMA_{period}", round(float(sma_v), 5))
-                if ema_v is not None and pd.notna(ema_v):
-                    add(ts, f"EMA_{period}", round(float(ema_v), 5))
-
-        # ---- RSI ----
-        rsi_series = ta.momentum.rsi(close, window=self.rsi_period, fillna=False)
-        for ts in target_index:
-            v = rsi_series.get(ts)
-            if v is not None and pd.notna(v):
-                add(ts, f"RSI_{self.rsi_period}", round(float(v), 2))
-
-        # ---- MACD ----
-        macd_obj = ta.trend.MACD(
-            close,
-            window_fast=self.macd_fast,
-            window_slow=self.macd_slow,
-            window_sign=self.macd_signal,
-            fillna=False,
-        )
-        macd_line = macd_obj.macd()
-        signal_line = macd_obj.macd_signal()
-        hist = macd_obj.macd_diff()
-
-        for ts in target_index:
-            m = macd_line.get(ts)
-            s = signal_line.get(ts)
-            h = hist.get(ts)
-            if m is not None and pd.notna(m):
-                add(
-                    ts,
-                    "MACD",
-                    {
-                        "macd": round(float(m), 5),
-                        "signal": round(float(s), 5) if (s is not None and pd.notna(s)) else None,
-                        "histogram": round(float(h), 5) if (h is not None and pd.notna(h)) else None,
-                    },
-                )
-
-        # ---- Bollinger Bands ----
-        bb_obj = ta.volatility.BollingerBands(
-            close,
-            window=self.bb_period,
-            window_dev=self.bb_std,
-            fillna=False,
-        )
-        bb_upper = bb_obj.bollinger_hband()
-        bb_mid = bb_obj.bollinger_mavg()
-        bb_lower = bb_obj.bollinger_lband()
-        bb_pct = bb_obj.bollinger_pband()
-        bb_width = bb_obj.bollinger_wband()
-
-        for ts in target_index:
-            u = bb_upper.get(ts)
-            m = bb_mid.get(ts)
-            l = bb_lower.get(ts)
-            if u is not None and m is not None and l is not None and pd.notna(u) and pd.notna(m) and pd.notna(l):
-                p = bb_pct.get(ts)
-                w = bb_width.get(ts)
-                add(
-                    ts,
-                    "BBANDS",
-                    {
-                        "upper": round(float(u), 5),
-                        "mid": round(float(m), 5),
-                        "lower": round(float(l), 5),
-                        "pct_b": round(float(p), 4) if (p is not None and pd.notna(p)) else None,
-                        "width": round(float(w), 4) if (w is not None and pd.notna(w)) else None,
-                    },
-                )
-
-        # ---- Stochastic ----
-        stoch_obj = ta.momentum.StochasticOscillator(
-            high,
-            low,
-            close,
-            window=self.stoch_k,
-            smooth_window=self.stoch_d,
-            fillna=False,
-        )
-        stoch_k = stoch_obj.stoch()
-        stoch_d_series = stoch_obj.stoch_signal()
-
-        for ts in target_index:
-            k = stoch_k.get(ts)
-            d = stoch_d_series.get(ts)
-            if k is not None and pd.notna(k):
-                add(
-                    ts,
-                    "STOCH",
-                    {
-                        "k": round(float(k), 2),
-                        "d": round(float(d), 2) if (d is not None and pd.notna(d)) else None,
-                    },
-                )
-
-        # ---- OBV (On-Balance Volume) ----
-        try:
-            if volume is not None and len(volume) > 0 and (volume > 0).any():
-                obv_series = ta.volume.on_balance_volume(close, volume, fillna=False)
-                for ts in target_index:
-                    v = obv_series.get(ts)
-                    if v is not None and pd.notna(v):
-                        add(ts, "OBV", round(float(v), 2))
-        except Exception as e:
-            logger.debug(f"OBV computation failed: {e}")
-
-        # ---- ATR (Average True Range) ----
-        try:
-            atr_series = ta.volatility.average_true_range(high, low, close, window=self.atr_period, fillna=False)
-            for ts in target_index:
-                v = atr_series.get(ts)
-                if v is not None and pd.notna(v):
-                    add(ts, f"ATR_{self.atr_period}", round(float(v), 5))
-        except Exception as e:
-            logger.debug(f"ATR computation failed: {e}")
-
-        # ---- ADX (Average Directional Index) — trend strength ----
-        try:
-            adx_indicator = ta.trend.ADXIndicator(high, low, close, window=self.adx_period, fillna=False)
-            adx_series = adx_indicator.adx()
-            adx_pos = adx_indicator.adx_pos()  # +DI
-            adx_neg = adx_indicator.adx_neg()  # -DI
-            for ts in target_index:
-                v = adx_series.get(ts)
-                if v is not None and pd.notna(v):
-                    pos = adx_pos.get(ts)
-                    neg = adx_neg.get(ts)
-                    add(
-                        ts,
-                        f"ADX_{self.adx_period}",
-                        {
-                            "adx": round(float(v), 2),
-                            "plus_di": round(float(pos), 2) if pos is not None and pd.notna(pos) else None,
-                            "minus_di": round(float(neg), 2) if neg is not None and pd.notna(neg) else None,
-                            "trending": bool(v > 25),
-                            "strong": bool(v > 40),
-                        },
-                    )
-        except Exception as e:
-            logger.debug(f"ADX computation failed: {e}")
-
-        # ---- Yang-Zhang Historical Volatility ----
-        try:
-            yz_series = compute_yang_zhang_volatility(df, window=20)
-            for ts in target_index:
-                v = yz_series.get(ts)
-                if v is not None and pd.notna(v):
-                    add(ts, "YANG_ZHANG_VOL_20", round(float(v), 6))
-        except Exception as e:
-            logger.debug(f"Yang-Zhang computation failed: {e}")
-
-        # ---- AC1 (Lag-1 Return Autocorrelation) ----
-        try:
-            ac1_series = compute_lag1_autocorrelation(close, window=20)
-            for ts in target_index:
-                v = ac1_series.get(ts)
-                if v is not None and pd.notna(v):
-                    add(ts, "AC1_20", round(float(v), 4))
-        except Exception as e:
-            logger.debug(f"AC1 computation failed: {e}")
-
-        return result
-
-    # ------------------------------------------------------------------
-    # Persistence
-    # ------------------------------------------------------------------
-
-    async def _save(
-        self,
-        symbol: str,
-        timeframe: str,
-        indicators: dict[datetime, list[dict]],
-    ) -> int:
-        """
-        Menyimpan indikator (upsert per timestamp) agar data sinkron
-        dengan bar/candle terbaru.
-        """
-        # Defensive normalization: ensure all timestamps are timezone-aware UTC datetime objects
-        clean_indicators: dict[datetime, list[dict]] = {}
-        for raw_ts, entries in indicators.items():
-            if raw_ts is None or pd.isna(raw_ts):
-                continue
-            if isinstance(raw_ts, pd.Timestamp):
-                ts_pydt = raw_ts.to_pydatetime()
-            elif isinstance(raw_ts, datetime):
-                ts_pydt = raw_ts
-            else:
-                parsed_ts = pd.Timestamp(raw_ts)
-                if pd.isna(parsed_ts):
-                    continue
-                ts_pydt = parsed_ts.to_pydatetime()
-
-            if not isinstance(ts_pydt, datetime):
-                continue
-
-            if ts_pydt.tzinfo is None:
-                ts_final = ts_pydt.replace(tzinfo=timezone.utc)
-            else:
-                ts_final = ts_pydt.astimezone(timezone.utc)
-
-            clean_indicators[ts_final] = entries
-
-        timestamps = list(clean_indicators.keys())
-        if not timestamps:
-            return 0
-
-        # Simpan maksimal 100 bar terkini untuk efisiensi runtime
-        if len(timestamps) > 100:
-            timestamps = timestamps[-100:]
-
-        from sqlalchemy import delete
-
-        TechnicalIndicator = resolve_model("TechnicalIndicator")
-        if not TechnicalIndicator or not self.session:
-            return 0
-
-        await self.session.execute(
-            delete(TechnicalIndicator)
-            .where(TechnicalIndicator.symbol == symbol)
-            .where(TechnicalIndicator.timeframe == timeframe)
-            .where(TechnicalIndicator.timestamp.in_(timestamps))
-        )
-
-        saved = 0
-        for ts in timestamps:
-            for entry in clean_indicators.get(ts, []):
-                self.session.add(
-                    TechnicalIndicator(
-                        symbol=symbol,
-                        timeframe=timeframe,
-                        timestamp=ts,
-                        indicator_name=entry["name"],
-                        value_json=entry["value_json"],
-                    )
-                )
-                saved += 1
-
-        await self.session.commit()
-        return saved
-
-    # ------------------------------------------------------------------
-    # Read helpers (used by analysis stage)
-    # ------------------------------------------------------------------
-
-    async def get_latest(self, symbol: str, timeframe: str, indicator_name: str) -> Optional[dict]:
-        """Mengambil metrik indikator terbaru untuk suatu symbol/timeframe."""
-        from sqlalchemy import select
-
-        TechnicalIndicator = resolve_model("TechnicalIndicator")
-        if not TechnicalIndicator or not self.session:
-            return None
-
-        result = await self.session.execute(
-            select(TechnicalIndicator)
-            .where(TechnicalIndicator.symbol == symbol)
-            .where(TechnicalIndicator.timeframe == timeframe)
-            .where(TechnicalIndicator.indicator_name == indicator_name)
-            .where(TechnicalIndicator.timestamp <= clock.now())
-            .order_by(TechnicalIndicator.timestamp.desc())
-            .limit(1)
-        )
-        row = result.scalar_one_or_none()
-        if row is None:
-            return None
-        return {"timestamp": row.timestamp, "value": json.loads(row.value_json)}
-
-    async def get_snapshot(
-        self, symbol: str, timeframe: str, series_depth: int = 15, as_of: Optional[datetime] = None
-    ) -> dict:
-        """
-        Mengambil semua nilai indikator pada timestamp terkini dengan konteks delta, arah,
-        dan histori pergerakan N-bar (series_depth) untuk indikator kunci (RSI, MACD, Stoch, ADX, dsb).
-        Berguna untuk analisis trend, cross, dan divergence oleh specialist LLM.
-        """
-        from sqlalchemy import select
-
-        TechnicalIndicator = resolve_model("TechnicalIndicator")
-        if not TechnicalIndicator or not self.session:
-            return {}
-
-        fetch_limit = max(2, min(series_depth, 30))
-        cutoff = as_of if as_of is not None else clock.now()
-        recent_ts_result = await self.session.execute(
-            select(TechnicalIndicator.timestamp)
-            .where(TechnicalIndicator.symbol == symbol)
-            .where(TechnicalIndicator.timeframe == timeframe)
-            .where(TechnicalIndicator.timestamp <= cutoff)
-            .group_by(TechnicalIndicator.timestamp)
-            .order_by(TechnicalIndicator.timestamp.desc())
-            .limit(fetch_limit)
-        )
-        recent_ts = recent_ts_result.scalars().all()
-        if not recent_ts:
-            return {}
-
-        latest_ts = recent_ts[0]
-        prev_ts = recent_ts[1] if len(recent_ts) > 1 else None
-
-        rows_by_indicator: dict[str, list[Any]] = {}
-        if len(recent_ts) <= 2:
-            result_latest = await self.session.execute(
-                select(TechnicalIndicator)
-                .where(TechnicalIndicator.symbol == symbol)
-                .where(TechnicalIndicator.timeframe == timeframe)
-                .where(TechnicalIndicator.timestamp == latest_ts)
-            )
-            latest_rows = result_latest.scalars().all()
-
-            prev_map: dict[str, tuple[Any, Any]] = {}
-            if prev_ts:
-                result_prev = await self.session.execute(
-                    select(TechnicalIndicator)
-                    .where(TechnicalIndicator.symbol == symbol)
-                    .where(TechnicalIndicator.timeframe == timeframe)
-                    .where(TechnicalIndicator.timestamp == prev_ts)
-                )
-                prev_map = {r.indicator_name: (r, json.loads(r.value_json)) for r in result_prev.scalars().all()}
-
-            for r in latest_rows:
-                pair = [r]
-                if r.indicator_name in prev_map:
-                    pair.insert(0, prev_map[r.indicator_name][0])
-                rows_by_indicator[r.indicator_name] = pair
-        else:
-            # Fetch all indicator rows for these timestamps in chronological order
-            result_rows = await self.session.execute(
-                select(TechnicalIndicator)
-                .where(TechnicalIndicator.symbol == symbol)
-                .where(TechnicalIndicator.timeframe == timeframe)
-                .where(TechnicalIndicator.timestamp.in_(recent_ts))
-                .order_by(TechnicalIndicator.timestamp.asc())
-            )
-            all_rows = result_rows.scalars().all()
-            for r in all_rows:
-                rows_by_indicator.setdefault(r.indicator_name, []).append(r)
-
-        def _extract_scalar(val: Any) -> Optional[float]:
-            if isinstance(val, (int, float)):
-                return float(val)
-            if isinstance(val, dict):
-                for k in ("rsi", "histogram", "macd", "adx", "k", "pct_b", "atr", "value"):
-                    if k in val and isinstance(val[k], (int, float)):
-                        return float(val[k])
-            return None
-
-        KEY_SERIES_INDICATORS = {
-            "RSI_14",
-            "MACD_12_26_9",
-            "MACD",
-            "STOCH_14_3",
-            "STOCH",
-            "ADX_14",
-            "ADX",
-            "EMA_20",
-            "EMA_50",
-            "EMA_200",
-            "SMA_20",
-            "SMA_50",
-            "BB_20_2",
-            "AC1_20",
-            "YANG_ZHANG_VOL_20",
+    elif method == "camarilla":
+        rng = high - low
+        return {
+            "pivot": round((high + low + close) / 3.0, 5),
+            "r4": round(close + rng * 1.1 / 2, 5),
+            "r3": round(close + rng * 1.1 / 4, 5),
+            "r2": round(close + rng * 1.1 / 6, 5),
+            "r1": round(close + rng * 1.1 / 12, 5),
+            "s1": round(close - rng * 1.1 / 12, 5),
+            "s2": round(close - rng * 1.1 / 6, 5),
+            "s3": round(close - rng * 1.1 / 4, 5),
+            "s4": round(close - rng * 1.1 / 2, 5),
+        }
+    else:  # classic
+        pp = (high + low + close) / 3.0
+        return {
+            "pivot": round(pp, 5),
+            "r1": round(2 * pp - low, 5),
+            "r2": round(pp + (high - low), 5),
+            "r3": round(high + 2 * (pp - low), 5),
+            "s1": round(2 * pp - high, 5),
+            "s2": round(pp - (high - low), 5),
+            "s3": round(low - 2 * (high - pp), 5),
         }
 
-        snapshot = {}
-        for ind_name, rows in rows_by_indicator.items():
-            latest_row = next((r for r in reversed(rows) if r.timestamp == latest_ts), rows[-1])
-            prev_row = next((r for r in reversed(rows) if prev_ts and r.timestamp == prev_ts), None)
 
-            curr_val = json.loads(latest_row.value_json)
-            prev_val = json.loads(prev_row.value_json) if prev_row else None
-            curr_num = _extract_scalar(curr_val)
-            prev_num = _extract_scalar(prev_val) if prev_val is not None else None
+def compute_ichimoku(
+    df: pd.DataFrame,
+    tenkan_period: int = 9,
+    kijun_period: int = 26,
+    senkou_b_period: int = 52,
+) -> dict[str, Any]:
+    """
+    Menghitung komponen Ichimoku Kinko Hyo:
+    - Tenkan-sen (Conversion Line)
+    - Kijun-sen (Base Line)
+    - Senkou Span A (Leading Span A)
+    - Senkou Span B (Leading Span B)
+    - Chikou Span (Lagging Span)
+    """
+    if df is None or len(df) < senkou_b_period:
+        return {}
 
-            delta = None
-            direction = "flat"
-            if curr_num is not None and prev_num is not None:
-                delta = round(curr_num - prev_num, 5)
-                threshold = 0.0001 if abs(curr_num) < 10 else 0.01
-                if delta > threshold:
-                    direction = "rising"
-                elif delta < -threshold:
-                    direction = "falling"
+    high = df["high"]
+    low = df["low"]
+    close = df["close"]
 
-            entry: dict[str, Any] = {
-                "timestamp": latest_row.timestamp,
-                "value": curr_val,
-                "prev": prev_val,
-                "delta": delta,
-                "direction": direction,
-            }
+    tenkan = (high.rolling(tenkan_period).max() + low.rolling(tenkan_period).min()) / 2.0
+    kijun = (high.rolling(kijun_period).max() + low.rolling(kijun_period).min()) / 2.0
+    senkou_a = ((tenkan + kijun) / 2.0).shift(kijun_period)
+    senkou_b = ((high.rolling(senkou_b_period).max() + low.rolling(senkou_b_period).min()) / 2.0).shift(kijun_period)
+    chikou = close.shift(-kijun_period)
 
-            if ind_name in KEY_SERIES_INDICATORS and len(rows) > 1:
-                series_vals = []
-                for r in rows:
-                    parsed = json.loads(r.value_json)
-                    if isinstance(parsed, dict) and "histogram" in parsed:
-                        series_vals.append(round(float(parsed.get("histogram", 0)), 5))
-                    elif isinstance(parsed, dict) and "k" in parsed and "d" in parsed:
-                        series_vals.append(
-                            {
-                                "k": round(float(parsed.get("k", 0)), 2),
-                                "d": round(float(parsed.get("d", 0)), 2),
-                            }
-                        )
-                    elif isinstance(parsed, dict) and "adx" in parsed:
-                        series_vals.append(round(float(parsed.get("adx", 0)), 2))
-                    else:
-                        num = _extract_scalar(parsed)
-                        if num is not None:
-                            series_vals.append(round(num, 4))
-                if series_vals:
-                    entry["series"] = series_vals
+    last_ts = df.index[-1]
+    last_close = float(close.iloc[-1])
+    tk_val = float(tenkan.iloc[-1]) if pd.notna(tenkan.iloc[-1]) else None
+    kj_val = float(kijun.iloc[-1]) if pd.notna(kijun.iloc[-1]) else None
+    sa_val = float(senkou_a.iloc[-1]) if pd.notna(senkou_a.iloc[-1]) else None
+    sb_val = float(senkou_b.iloc[-1]) if pd.notna(senkou_b.iloc[-1]) else None
 
-            snapshot[ind_name] = entry
+    # Cloud position
+    cloud_color = "neutral"
+    price_vs_cloud = "inside"
+    if sa_val is not None and sb_val is not None:
+        cloud_color = "bullish" if sa_val > sb_val else "bearish"
+        cloud_top = max(sa_val, sb_val)
+        cloud_bottom = min(sa_val, sb_val)
+        if last_close > cloud_top:
+            price_vs_cloud = "above"
+        elif last_close < cloud_bottom:
+            price_vs_cloud = "below"
 
-        return snapshot
+    return {
+        "tenkan_sen": round(tk_val, 5) if tk_val else None,
+        "kijun_sen": round(kj_val, 5) if kj_val else None,
+        "senkou_span_a": round(sa_val, 5) if sa_val else None,
+        "senkou_span_b": round(sb_val, 5) if sb_val else None,
+        "cloud_color": cloud_color,
+        "price_vs_cloud": price_vs_cloud,
+        "tk_cross": bool(tk_val > kj_val) if (tk_val and kj_val) else None,
+    }
 
 
 def detect_rsi_divergence(
     high: pd.Series,
     low: pd.Series,
     close: pd.Series,
-    rsi: pd.Series,
+    rsi: Optional[pd.Series] = None,
     lookback: int = 30,
 ) -> dict[str, Any]:
     """
     Detect regular bullish and bearish RSI divergences:
-    - Bullish: Price makes Lower Low while RSI makes Higher Low (reversal up signal).
-    - Bearish: Price makes Higher High while RSI makes Lower High (reversal down signal).
+    - Regular Bullish: Price Lower Low, RSI Higher Low (reversal up signal)
+    - Regular Bearish: Price Higher High, RSI Lower High (reversal down signal)
     """
-    if len(close) < 15 or len(rsi) < 15:
+    if rsi is None:
+        try:
+            rsi = ta.momentum.rsi(close=close, window=14)
+        except Exception:
+            return {"divergence": "none", "strength": 0.0, "details": "RSI computation failed"}
+
+    if len(close) < 20 or len(rsi) < 20:
         return {"divergence": "none", "strength": 0.0, "details": "Insufficient data"}
 
     sub_low = low.iloc[-lookback:]
@@ -827,8 +302,6 @@ def detect_rsi_divergence(
 
     bullish_div = False
     bearish_div = False
-    hidden_bullish_div = False
-    hidden_bearish_div = False
     details = []
 
     try:
@@ -840,17 +313,10 @@ def detect_rsi_divergence(
         rsi_low_1 = float(sub_rsi.loc[min_idx_1])
         rsi_low_2 = float(sub_rsi.loc[min_idx_2])
 
-        # Regular Bullish: Price Lower Low, RSI Higher Low (reversal up)
         if price_low_1 < price_low_2 and rsi_low_1 > rsi_low_2 and rsi_low_1 < 50:
             bullish_div = True
             details.append(
-                f"Regular Bullish Divergence: Price Lower Low ({price_low_2:.5f} -> {price_low_1:.5f}) with RSI Higher Low ({rsi_low_2:.1f} -> {rsi_low_1:.1f})"
-            )
-        # Hidden Bullish: Price Higher Low, RSI Lower Low (continuation up)
-        elif price_low_1 > price_low_2 and rsi_low_1 < rsi_low_2 and rsi_low_2 < 50:
-            hidden_bullish_div = True
-            details.append(
-                f"Hidden Bullish Divergence: Price Higher Low ({price_low_2:.5f} -> {price_low_1:.5f}) with RSI Lower Low ({rsi_low_2:.1f} -> {rsi_low_1:.1f})"
+                f"Bullish Divergence: Price Lower Low ({price_low_2:.5f} -> {price_low_1:.5f}) with RSI Higher Low ({rsi_low_2:.1f} -> {rsi_low_1:.1f})"
             )
     except Exception:
         pass
@@ -864,58 +330,22 @@ def detect_rsi_divergence(
         rsi_high_1 = float(sub_rsi.loc[max_idx_1])
         rsi_high_2 = float(sub_rsi.loc[max_idx_2])
 
-        # Regular Bearish: Price Higher High, RSI Lower High (reversal down)
         if price_high_1 > price_high_2 and rsi_high_1 < rsi_high_2 and rsi_high_1 > 50:
             bearish_div = True
             details.append(
-                f"Regular Bearish Divergence: Price Higher High ({price_high_2:.5f} -> {price_high_1:.5f}) with RSI Lower High ({rsi_high_2:.1f} -> {rsi_high_1:.1f})"
-            )
-        # Hidden Bearish: Price Lower High, RSI Higher High (continuation down)
-        elif price_high_1 < price_high_2 and rsi_high_1 > rsi_high_2 and rsi_high_2 > 50:
-            hidden_bearish_div = True
-            details.append(
-                f"Hidden Bearish Divergence: Price Lower High ({price_high_2:.5f} -> {price_high_1:.5f}) with RSI Higher High ({rsi_high_2:.1f} -> {rsi_high_1:.1f})"
+                f"Bearish Divergence: Price Higher High ({price_high_2:.5f} -> {price_high_1:.5f}) with RSI Lower High ({rsi_high_2:.1f} -> {rsi_high_1:.1f})"
             )
     except Exception:
         pass
 
-    if bullish_div and not (bearish_div or hidden_bearish_div):
-        return {
-            "divergence": "bullish",
-            "divergence_type": "regular_bullish",
-            "strength": 0.8,
-            "details": "; ".join(details),
-        }
-    elif bearish_div and not (bullish_div or hidden_bullish_div):
-        return {
-            "divergence": "bearish",
-            "divergence_type": "regular_bearish",
-            "strength": 0.8,
-            "details": "; ".join(details),
-        }
-    elif hidden_bullish_div and not (bearish_div or hidden_bearish_div):
-        return {
-            "divergence": "hidden_bullish",
-            "divergence_type": "hidden_bullish",
-            "strength": 0.75,
-            "details": "; ".join(details),
-        }
-    elif hidden_bearish_div and not (bullish_div or hidden_bullish_div):
-        return {
-            "divergence": "hidden_bearish",
-            "divergence_type": "hidden_bearish",
-            "strength": 0.75,
-            "details": "; ".join(details),
-        }
-    elif any([bullish_div, hidden_bullish_div]) and any([bearish_div, hidden_bearish_div]):
-        return {"divergence": "mixed", "divergence_type": "mixed", "strength": 0.5, "details": "; ".join(details)}
+    if bullish_div and not bearish_div:
+        return {"divergence": "bullish", "strength": 0.8, "details": "; ".join(details)}
+    elif bearish_div and not bullish_div:
+        return {"divergence": "bearish", "strength": 0.8, "details": "; ".join(details)}
+    elif bullish_div and bearish_div:
+        return {"divergence": "mixed", "strength": 0.5, "details": "; ".join(details)}
 
-    return {
-        "divergence": "none",
-        "divergence_type": "none",
-        "strength": 0.0,
-        "details": "No divergence detected across lookback window",
-    }
+    return {"divergence": "none", "strength": 0.0, "details": "No divergence detected across lookback window"}
 
 
 def detect_macd_divergence(
@@ -1016,139 +446,286 @@ def detect_macd_divergence(
     }
 
 
-def compute_pivot_points(high: float, low: float, close: float, method: str = "classic") -> dict[str, Any]:
+# ------------------------------------------------------------------
+# Pure Domain TechnicalIndicatorCalculator Class
+# ------------------------------------------------------------------
+
+_SERVICE_CLS: Optional[type] = None
+
+
+class TechnicalIndicatorCalculator:
     """
-    Compute daily/weekly pivot points.
-    Supported methods: 'classic' (floor), 'camarilla', 'woodie'.
+    Pure Domain Technical Indicator Calculator.
+    Calculates technical indicators on pandas DataFrame in-memory without database dependencies.
+    When instantiated with a database session, delegates to registered TechnicalIndicatorService for DB persistence.
     """
-    method_lower = (method or "classic").lower()
-    diff = high - low
 
-    if method_lower == "all":
-        return {
-            "classic": compute_pivot_points(high, low, close, method="classic"),
-            "camarilla": compute_pivot_points(high, low, close, method="camarilla"),
-            "woodie": compute_pivot_points(high, low, close, method="woodie"),
-        }
+    @classmethod
+    def register_service_class(cls, service_cls: type) -> None:
+        """Register the application service class for DB persistence."""
+        global _SERVICE_CLS
+        _SERVICE_CLS = service_cls
 
-    if method_lower == "camarilla":
-        pp = (high + low + close) / 3.0
-        r4 = close + diff * 1.1 / 2.0
-        r3 = close + diff * 1.1 / 4.0
-        r2 = close + diff * 1.1 / 6.0
-        r1 = close + diff * 1.1 / 12.0
-        s1 = close - diff * 1.1 / 12.0
-        s2 = close - diff * 1.1 / 6.0
-        s3 = close - diff * 1.1 / 4.0
-        s4 = close - diff * 1.1 / 2.0
-        return {
-            "method": "camarilla",
-            "pp": round(pp, 5),
-            "pivot": round(pp, 5),
-            "r4": round(r4, 5),
-            "r3": round(r3, 5),
-            "r2": round(r2, 5),
-            "r1": round(r1, 5),
-            "s1": round(s1, 5),
-            "s2": round(s2, 5),
-            "s3": round(s3, 5),
-            "s4": round(s4, 5),
-        }
-    elif method_lower == "woodie":
-        pp = (high + low + 2.0 * close) / 4.0
-        r1 = 2.0 * pp - low
-        s1 = 2.0 * pp - high
-        r2 = pp + diff
-        s2 = pp - diff
-        return {
-            "method": "woodie",
-            "pp": round(pp, 5),
-            "pivot": round(pp, 5),
-            "r1": round(r1, 5),
-            "r2": round(r2, 5),
-            "s1": round(s1, 5),
-            "s2": round(s2, 5),
-        }
-    else:  # classic
-        pp = (high + low + close) / 3.0
-        r1 = 2.0 * pp - low
-        s1 = 2.0 * pp - high
-        r2 = pp + diff
-        s2 = pp - diff
-        r3 = high + 2.0 * (pp - low)
-        s3 = low - 2.0 * (high - pp)
-        return {
-            "method": "classic",
-            "pp": round(pp, 5),
-            "pivot": round(pp, 5),
-            "r1": round(r1, 5),
-            "r2": round(r2, 5),
-            "r3": round(r3, 5),
-            "s1": round(s1, 5),
-            "s2": round(s2, 5),
-            "s3": round(s3, 5),
-        }
+    def __new__(cls, *args: Any, **kwargs: Any) -> Any:
+        global _SERVICE_CLS
+        if cls is TechnicalIndicatorCalculator and _SERVICE_CLS is not None:
+            session = kwargs.get("session") if "session" in kwargs else (args[0] if len(args) > 0 else None)
+            if session is not None:
+                return super().__new__(_SERVICE_CLS)
+        return super().__new__(cls)
 
+    def __init__(self, session: Any = None, settings: Optional[dict] = None):
+        """
+        Args:
+            session: Optional session (ignored in pure domain detector, kept for signature compatibility).
+            settings: trading.indicators section from settings.yaml.
+        """
+        self.session = session
+        cfg = (settings or {}).get("trading", {}).get("indicators", {}) or (settings or {}).get("indicators", {})
+        self.ma_periods: list[int] = cfg.get("ma_periods", [20, 50, 200])
+        self.rsi_period: int = cfg.get("rsi_period", 14)
+        self.stoch_k: int = cfg.get("stochastic_k", 14)
+        self.stoch_d: int = cfg.get("stochastic_d", 3)
+        self.macd_fast: int = cfg.get("macd_fast", 12)
+        self.macd_slow: int = cfg.get("macd_slow", 26)
+        self.macd_signal: int = cfg.get("macd_signal", 9)
+        self.bb_period: int = cfg.get("bollinger_period", 20)
+        self.bb_std: float = float(cfg.get("bollinger_std", 2.0))
+        self.atr_period: int = cfg.get("atr_period", 14)
+        self.adx_period: int = cfg.get("adx_period", 14)
 
-def compute_ichimoku(
-    df: pd.DataFrame,
-    tenkan_period: int = 9,
-    kijun_period: int = 26,
-    senkou_b_period: int = 52,
-) -> dict[str, Any]:
-    """
-    Compute Ichimoku Kinko Hyo components and current regime:
-    - Tenkan-sen (Conversion Line)
-    - Kijun-sen (Base Line)
-    - Senkou Span A (Leading Span A)
-    - Senkou Span B (Leading Span B)
-    - Chikou Span (Lagging Span)
-    """
-    if df is None or len(df) < senkou_b_period:
-        return {
-            "error": f"Insufficient data for Ichimoku (need >= {senkou_b_period} bars, got {len(df) if df is not None else 0})"
-        }
+    def _compute_all(self, df: pd.DataFrame, is_final: bool = True) -> dict[datetime, list[dict[str, Any]]]:
+        """
+        Menghitung seluruh indikator dari DataFrame OHLCV secara in-memory.
+        """
+        if df is None or len(df) == 0:
+            return {}
 
-    high = df["high"].astype(float)
-    low = df["low"].astype(float)
-    close = df["close"].astype(float)
+        required_cols = ("open", "high", "low", "close", "volume")
+        if not all(col in df.columns for col in required_cols):
+            return {}
 
-    tenkan = (high.rolling(tenkan_period).max() + low.rolling(tenkan_period).min()) / 2.0
-    kijun = (high.rolling(kijun_period).max() + low.rolling(kijun_period).min()) / 2.0
-    senkou_a = (tenkan + kijun) / 2.0
-    senkou_b = (high.rolling(senkou_b_period).max() + low.rolling(senkou_b_period).min()) / 2.0
+        if not is_final and len(df) > 1:
+            df = df.iloc[:-1].copy()
 
-    cur_close = float(close.iloc[-1])
-    cur_tenkan = float(tenkan.iloc[-1]) if pd.notna(tenkan.iloc[-1]) else cur_close
-    cur_kijun = float(kijun.iloc[-1]) if pd.notna(kijun.iloc[-1]) else cur_close
-    cloud_a = float(senkou_a.iloc[-26]) if len(senkou_a) >= 26 and pd.notna(senkou_a.iloc[-26]) else cur_close
-    cloud_b = float(senkou_b.iloc[-26]) if len(senkou_b) >= 26 and pd.notna(senkou_b.iloc[-26]) else cur_close
+        result: dict[datetime, list[dict[str, Any]]] = {}
 
-    cloud_top = max(cloud_a, cloud_b)
-    cloud_bottom = min(cloud_a, cloud_b)
+        def add(ts: Any, name: str, value: Any) -> None:
+            if ts not in result:
+                result[ts] = []
+            result[ts].append({"name": name, "value_json": json.dumps(value)})
 
-    if cur_close > cloud_top:
-        cloud_pos = "above_cloud (bullish)"
-    elif cur_close < cloud_bottom:
-        cloud_pos = "below_cloud (bearish)"
-    else:
-        cloud_pos = "inside_cloud (neutral/consolidation)"
+        close = pd.Series(df["close"])
+        high = pd.Series(df["high"])
+        low = pd.Series(df["low"])
 
-    tk_cross = "bullish_tk_cross" if cur_tenkan > cur_kijun else "bearish_tk_cross"
-    future_sentiment = "bullish_green" if float(senkou_a.iloc[-1]) > float(senkou_b.iloc[-1]) else "bearish_red"
+        target_index = df.index[-100:] if len(df) > 100 else df.index
 
-    return {
-        "status": "success",
-        "current_price": round(cur_close, 5),
-        "tenkan_sen": round(cur_tenkan, 5),
-        "kijun_sen": round(cur_kijun, 5),
-        "senkou_span_a": round(cloud_a, 5),
-        "senkou_span_b": round(cloud_b, 5),
-        "chikou_span": round(cur_close, 5),
-        "future_senkou_a": round(float(senkou_a.iloc[-1]), 5),
-        "future_senkou_b": round(float(senkou_b.iloc[-1]), 5),
-        "cloud_position": cloud_pos,
-        "cloud_bias": cloud_pos,
-        "tk_cross": tk_cross,
-        "future_cloud_sentiment": future_sentiment,
-    }
+        # 1. Moving Averages
+        for period in self.ma_periods:
+            sma = ta.trend.sma_indicator(close, window=period, fillna=False)
+            ema = ta.trend.ema_indicator(close, window=period, fillna=False)
+            for ts in target_index:
+                sma_v = sma.get(ts)
+                ema_v = ema.get(ts)
+                if sma_v is not None and pd.notna(sma_v):
+                    add(ts, f"SMA_{period}", round(float(sma_v), 5))
+                if ema_v is not None and pd.notna(ema_v):
+                    add(ts, f"EMA_{period}", round(float(ema_v), 5))
+
+        # 2. RSI
+        rsi_series = ta.momentum.rsi(close, window=self.rsi_period, fillna=False)
+        for ts in target_index:
+            v = rsi_series.get(ts)
+            if v is not None and pd.notna(v):
+                add(ts, f"RSI_{self.rsi_period}", round(float(v), 2))
+
+        # 3. MACD
+        macd_obj = ta.trend.MACD(
+            close,
+            window_fast=self.macd_fast,
+            window_slow=self.macd_slow,
+            window_sign=self.macd_signal,
+            fillna=False,
+        )
+        macd_line = macd_obj.macd()
+        signal_line = macd_obj.macd_signal()
+        hist = macd_obj.macd_diff()
+
+        for ts in target_index:
+            m = macd_line.get(ts)
+            s = signal_line.get(ts)
+            h = hist.get(ts)
+            if m is not None and pd.notna(m):
+                add(
+                    ts,
+                    "MACD",
+                    {
+                        "macd": round(float(m), 5),
+                        "signal": round(float(s), 5) if (s is not None and pd.notna(s)) else None,
+                        "histogram": round(float(h), 5) if (h is not None and pd.notna(h)) else None,
+                    },
+                )
+
+        # 4. Bollinger Bands
+        bb_obj = ta.volatility.BollingerBands(
+            close,
+            window=self.bb_period,
+            window_dev=int(self.bb_std),
+            fillna=False,
+        )
+        bb_upper = bb_obj.bollinger_hband()
+        bb_mid = bb_obj.bollinger_mavg()
+        bb_lower = bb_obj.bollinger_lband()
+        bb_pct = bb_obj.bollinger_pband()
+        bb_width = bb_obj.bollinger_wband()
+
+        for ts in target_index:
+            u = bb_upper.get(ts)
+            m = bb_mid.get(ts)
+            l = bb_lower.get(ts)
+            if u is not None and m is not None and l is not None and pd.notna(u) and pd.notna(m) and pd.notna(l):
+                p = bb_pct.get(ts)
+                w = bb_width.get(ts)
+                add(
+                    ts,
+                    "BBANDS",
+                    {
+                        "upper": round(float(u), 5),
+                        "mid": round(float(m), 5),
+                        "lower": round(float(l), 5),
+                        "pct_b": round(float(p), 4) if (p is not None and pd.notna(p)) else None,
+                        "width": round(float(w), 4) if (w is not None and pd.notna(w)) else None,
+                    },
+                )
+
+        # 5. Stochastic
+        stoch_obj = ta.momentum.StochasticOscillator(
+            high,
+            low,
+            close,
+            window=self.stoch_k,
+            smooth_window=self.stoch_d,
+            fillna=False,
+        )
+        stoch_k_series = stoch_obj.stoch()
+        stoch_d_series = stoch_obj.stoch_signal()
+
+        for ts in target_index:
+            k_val = stoch_k_series.get(ts)
+            d_val = stoch_d_series.get(ts)
+            if k_val is not None and pd.notna(k_val):
+                add(
+                    ts,
+                    "STOCH",
+                    {
+                        "k": round(float(k_val), 2),
+                        "d": round(float(d_val), 2) if (d_val is not None and pd.notna(d_val)) else None,
+                    },
+                )
+
+        # 5.5 OBV (On-Balance Volume)
+        volume = pd.Series(df["volume"]) if "volume" in df.columns else None
+        try:
+            if volume is not None and len(volume) > 0 and (volume > 0).any():
+                obv_series = ta.volume.on_balance_volume(close, volume, fillna=False)
+                for ts in target_index:
+                    v = obv_series.get(ts)
+                    if v is not None and pd.notna(v):
+                        add(ts, "OBV", round(float(v), 2))
+        except Exception as e:
+            logger.debug(f"OBV computation failed: {e}")
+
+        # 6. ATR
+        try:
+            atr_series = ta.volatility.average_true_range(high, low, close, window=self.atr_period, fillna=False)
+            for ts in target_index:
+                v = atr_series.get(ts)
+                if v is not None and pd.notna(v):
+                    add(ts, f"ATR_{self.atr_period}", round(float(v), 5))
+        except Exception as e:
+            logger.debug(f"ATR computation failed: {e}")
+
+        # 7. ADX
+        try:
+            adx_indicator = ta.trend.ADXIndicator(high, low, close, window=self.adx_period, fillna=False)
+            adx_series = adx_indicator.adx()
+            adx_pos = adx_indicator.adx_pos()
+            adx_neg = adx_indicator.adx_neg()
+            for ts in target_index:
+                v = adx_series.get(ts)
+                if v is not None and pd.notna(v):
+                    pos = adx_pos.get(ts)
+                    neg = adx_neg.get(ts)
+                    add(
+                        ts,
+                        f"ADX_{self.adx_period}",
+                        {
+                            "adx": round(float(v), 2),
+                            "plus_di": round(float(pos), 2) if pos is not None and pd.notna(pos) else None,
+                            "minus_di": round(float(neg), 2) if neg is not None and pd.notna(neg) else None,
+                            "trending": bool(v > 25),
+                            "strong": bool(v > 40),
+                        },
+                    )
+        except Exception as e:
+            logger.debug(f"ADX computation failed: {e}")
+
+        # 8. Yang-Zhang Historical Volatility
+        try:
+            yz_series = compute_yang_zhang_volatility(df, window=20)
+            for ts in target_index:
+                v = yz_series.get(ts)
+                if v is not None and pd.notna(v):
+                    add(ts, "YANG_ZHANG_VOL_20", round(float(v), 6))
+        except Exception as e:
+            logger.debug(f"Yang-Zhang computation failed: {e}")
+
+        # 9. Autocorrelation (AC1)
+        try:
+            ac1_series = compute_lag1_autocorrelation(close, window=20)
+            for ts in target_index:
+                v = ac1_series.get(ts)
+                if v is not None and pd.notna(v):
+                    add(ts, "AC1_20", round(float(v), 4))
+        except Exception as e:
+            logger.debug(f"AC1 computation failed: {e}")
+
+        return result
+
+    async def compute_and_save(self, symbol: str, timeframe: str) -> int:
+        """Contract stub for indicator calculation and persistence. Overridden by TechnicalIndicatorService."""
+        return 0
+
+    async def compute_all_symbols(self, symbols: list[str], timeframes: list[str]) -> dict[str, int]:
+        """Contract stub for batch computation. Overridden by TechnicalIndicatorService."""
+        results: dict[str, int] = {}
+        for s in symbols:
+            for tf in timeframes:
+                key = f"{s}/{tf}"
+                try:
+                    results[key] = await self.compute_and_save(s, tf)
+                except Exception:
+                    if hasattr(self, "session") and self.session is not None:
+                        try:
+                            await self.session.rollback()
+                            if hasattr(self.session, "expunge_all"):
+                                exp = self.session.expunge_all()
+                                import inspect
+
+                                if inspect.isawaitable(exp):
+                                    await exp
+                        except Exception:
+                            pass
+                    results[key] = 0
+        return results
+
+    async def get_snapshot(
+        self, symbol: str, timeframe: str, series_depth: int = 15, as_of: Optional[datetime] = None
+    ) -> dict[str, Any]:
+        """Contract stub for indicator snapshot. Overridden by TechnicalIndicatorService."""
+        return {}
+
+    async def get_latest(self, symbol: str, timeframe: str, indicator_name: str) -> Optional[dict[str, Any]]:
+        """Contract stub for latest indicator. Overridden by TechnicalIndicatorService."""
+        return None

@@ -30,6 +30,7 @@
 - [`src/monika/domain/indicators/alpha_zoo/factors/fundamental`](#folder-srcmonikadomainindicatorsalphazoofactorsfundamental)
 - [`src/monika/domain/indicators/alpha_zoo/factors/guotai_junan_191`](#folder-srcmonikadomainindicatorsalphazoofactorsguotaijunan191)
 - [`src/monika/domain/indicators/alpha_zoo/factors/microsoft_qlib_158`](#folder-srcmonikadomainindicatorsalphazoofactorsmicrosoftqlib158)
+- [`src/monika/domain/indicators/alpha_zoo/factors/microstructure`](#folder-srcmonikadomainindicatorsalphazoofactorsmicrostructure)
 - [`src/monika/domain/indicators/alpha_zoo/factors/worldquant_101`](#folder-srcmonikadomainindicatorsalphazoofactorsworldquant101)
 - [`src/monika/domain/indicators/pattern_similarity`](#folder-srcmonikadomainindicatorspatternsimilarity)
 - [`src/monika/domain/macro`](#folder-srcmonikadomainmacro)
@@ -1524,7 +1525,7 @@
     - `__init__(mt5_client, settings: Optional[dict])`
     - `async analyze_order_flow(session: Optional[Any], symbol: str, lookback: int, ...) -> OrderFlowSnapshot` - *Entry point utama: coba DOM L2 jika broker mendukung, atau beralih ke Lee-Ready CVD.*
 - **Top-Level Functions**:
-  - `async fetch_latest_order_flow(session: Any, symbol: str) -> OrderFlowSnapshot`: Ambil snapshot order flow terbaru dari database atau hitung on-the-fly.
+  - `async fetch_latest_order_flow(session: Any, symbol: str) -> OrderFlowSnapshot`: Ambil snapshot order flow terbaru.
 
 #### `regime_detector.py` - *Schmitt-Trigger Regime Detector: Stateful hysteresis-based market regime classification.*
 - **Path**: [`src/monika/domain/indicators/regime_detector.py`](src/monika/domain/indicators/regime_detector.py)
@@ -1559,37 +1560,53 @@
   - `find_wick_to_wick_fvg(df: pd.DataFrame, min_atr: float, symbol: Optional[str]) -> List[Dict[str, Any]]`: Detects Implied / Wick-to-Wick Fair Value Gaps where candle wicks leave unmitigated gaps.
   - `detect_smt_divergence(asset1_df: pd.DataFrame, asset2_df: pd.DataFrame, asset1_name: str, ...) -> Dict[str, Any]`: Detects Smart Money Technique (SMT) Divergence between correlated or inversely correlated pairs.
 
-#### `structure.py` - *Market Structure Analyzer: Swing Points, S/R Zones, Liquidity Zones, FVG.*
+#### `structure.py` - *Market Structure Pure Domain Calculator: Swing Points, S/R Zones, Liquidity Zones, FVG.*
 - **Path**: [`src/monika/domain/indicators/structure.py`](src/monika/domain/indicators/structure.py)
 - **Classes**:
   - `class FVGData`
   - `class OrderBlockData`
   - `class LiquidityZoneData`
   - `class StructureBreakData`
-  - `class MarketStructureAnalyzer`: Detects and persists market structure primitives from historical and real-time OHLCV.
+  - `class MarketStructureAnalyzer`: Pure Domain Market Structure Detector for OHLCV data.
     - `__init__(session: Any, settings: Optional[dict])` - *Args:*
-    - `async analyze(symbol: str, timeframe: str) -> dict[str, int]` - *Menjalankan analisis struktur pasar (Swing, S/R, Liq, FVG, OB, BOS).*
-    - `async analyze_all(symbols: list[str], timeframes: list[str]) -> dict[str, dict[str, int]]` - *Menjalankan analisis untuk kumpulan symbol dan timeframe.*
-    - `async get_structure_snapshot(symbol: str, timeframe: str) -> dict` - *Snapshot ringkas struktur pasar (Swings, S/R, FVG, dll).*
+    - `analyze_dataframe(df: pd.DataFrame, symbol: str, timeframe: str) -> dict[str, Any]` - *Pure in-memory analysis of OHLCV DataFrame.*
+    - `async analyze(symbol: str, timeframe: str) -> dict[str, int]` - *Contract stub for analyzing structure. Overridden by MarketStructureService.*
+    - `async analyze_all(symbols: list[str], timeframes: list[str]) -> dict[str, dict[str, int]]` - *Contract stub for batch structure analysis. Overridden by MarketStructureService.*
+    - `async get_structure_snapshot(symbol: str, timeframe: str) -> dict[str, Any]` - *Contract stub for snapshot retrieval. Overridden by MarketStructureService.*
 - **Top-Level Functions**:
   - `get_fvg_max_distance(symbol: str) -> float`: Mengembalikan jarak toleransi maksimal FVG berdasarkan kelas aset.
+  - `find_swings(df: pd.DataFrame, swing_window: int) -> tuple[pd.DataFrame, pd.DataFrame]`: Detect swing high/low points using a symmetric fractal window (n-candle comparison).
+  - `find_sr_zones(swing_highs: pd.DataFrame, swing_lows: pd.DataFrame, df: pd.DataFrame, ...) -> list[dict[str, Any]]`: Mengelompokkan swing points berdekatan menjadi S/R zones berdasarkan toleransi harga dan recency.
+  - `find_liquidity_zones(swing_highs: pd.DataFrame, swing_lows: pd.DataFrame, symbol: str, ...) -> list[LiquidityZoneData]`: Mengidentifikasi pool likuiditas (swing points yang belum disapu harga) dengan dynamic ATR buffer.
+  - `check_fvg_filled(ohlcv: pd.DataFrame, start_idx: int, gap_high: float, ...) -> Optional[datetime]`: Mengecek apakah FVG sudah terisi (50% mitigated) oleh pergerakan candle sesudahnya.
+  - `find_fvg(df: pd.DataFrame, symbol: str, timeframe: str, ...) -> list[FVGData]`: Detect Fair Value Gaps (FVG) from 3-candle imbalance patterns.
+  - `find_order_blocks(df: pd.DataFrame, symbol: str, timeframe: str, ...) -> list[OrderBlockData]`: Detect order blocks using ATR impulse qualification and 50% penetration mitigation.
+  - `detect_structure_breaks(df: pd.DataFrame, swing_highs: pd.DataFrame, swing_lows: pd.DataFrame, ...) -> list[StructureBreakData]`: Detects BOS (Break of Structure) and CHoCH (Change of Character) with candle close confirmation.
 
-#### `technical.py` - *Kalkulator Indikator Teknikal (Async) berbasis library `ta`.*
+#### `technical.py` - *Kalkulator Indikator Teknikal Murni (Pure Domain Indicators).*
 - **Path**: [`src/monika/domain/indicators/technical.py`](src/monika/domain/indicators/technical.py)
 - **Classes**:
-  - `class TechnicalIndicatorCalculator`: Menghitung dan menyimpan indikator dari data OHLCV.
+  - `class TechnicalIndicatorCalculator`: Pure Domain Technical Indicator Calculator.
+    - `register_service_class(service_cls: type) -> None` - *Register the application service class for DB persistence.*
     - `__init__(session: Any, settings: Optional[dict])` - *Args:*
-    - `async compute_and_save(symbol: str, timeframe: str) -> int` - *Menjalankan alur lengkap: load OHLCV -> hitung -> simpan.*
-    - `async compute_all_symbols(symbols: list[str], timeframes: list[str]) -> dict[str, int]` - *Menjalankan komputasi untuk semua aset dan timeframe.*
-    - `async get_latest(symbol: str, timeframe: str, indicator_name: str) -> Optional[dict]` - *Mengambil metrik indikator terbaru untuk suatu symbol/timeframe.*
-    - `async get_snapshot(symbol: str, timeframe: str, series_depth: int, ...) -> dict` - *Mengambil semua nilai indikator pada timestamp terkini dengan konteks delta, arah,*
+    - `async compute_and_save(symbol: str, timeframe: str) -> int` - *Contract stub for indicator calculation and persistence. Overridden by TechnicalIndicatorService.*
+    - `async compute_all_symbols(symbols: list[str], timeframes: list[str]) -> dict[str, int]` - *Contract stub for batch computation. Overridden by TechnicalIndicatorService.*
+    - `async get_snapshot(symbol: str, timeframe: str, series_depth: int, ...) -> dict[str, Any]` - *Contract stub for indicator snapshot. Overridden by TechnicalIndicatorService.*
+    - `async get_latest(symbol: str, timeframe: str, indicator_name: str) -> Optional[dict[str, Any]]` - *Contract stub for latest indicator. Overridden by TechnicalIndicatorService.*
 - **Top-Level Functions**:
   - `compute_yang_zhang_volatility(df: pd.DataFrame, window: int) -> pd.Series`: Yang-Zhang (2000) historical volatility estimator.
-  - `compute_lag1_autocorrelation(close: pd.Series, window: int) -> pd.Series`: Rolling lag-1 return autocorrelation for statistical regime detection.
+  - `compute_lag1_autocorrelation(close: pd.Series, window: int) -> pd.Series`: Menghitung lag-1 return autocorrelation rolling window.
+  - `compute_moving_averages(close: pd.Series, sma_periods: tuple[int, ...], ema_periods: tuple[int, ...]) -> dict[str, pd.Series]`: Computes SMAs and EMAs for specified periods.
+  - `compute_rsi(close: pd.Series, period: int) -> pd.Series`: Computes RSI (Relative Strength Index).
+  - `compute_stochastic(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series]`: Computes Stochastic %K and %D.
+  - `compute_macd(close: pd.Series, fast: int, slow: int, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes MACD line, signal line, and histogram.
+  - `compute_bollinger_bands(close: pd.Series, period: int, std_dev: float) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]`: Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth.
+  - `compute_atr(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> pd.Series`: Computes Average True Range.
+  - `compute_adx(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes ADX, +DI, and -DI.
+  - `compute_pivot_points(high: float, low: float, close: float, ...) -> dict[str, Any]`: Menghitung Classical / Camarilla / Fibonacci Pivot Points dari satu bar D1/W1.
+  - `compute_ichimoku(df: pd.DataFrame, tenkan_period: int, kijun_period: int, ...) -> dict[str, Any]`: Menghitung komponen Ichimoku Kinko Hyo:
   - `detect_rsi_divergence(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> dict[str, Any]`: Detect regular bullish and bearish RSI divergences:
   - `detect_macd_divergence(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> dict[str, Any]`: Detect regular and hidden MACD divergences (Line and Histogram):
-  - `compute_pivot_points(high: float, low: float, close: float, ...) -> dict[str, Any]`: Compute daily/weekly pivot points.
-  - `compute_ichimoku(df: pd.DataFrame, tenkan_period: int, kijun_period: int, ...) -> dict[str, Any]`: Compute Ichimoku Kinko Hyo components and current regime:
 
 ### Folder: `src/monika/domain/indicators/alpha_zoo` <a id="folder-srcmonikadomainindicatorsalphazoo"></a>
 
@@ -1715,6 +1732,11 @@
 - **Path**: [`src/monika/domain/indicators/alpha_zoo/factors/academic/high_minus_low_value.py`](src/monika/domain/indicators/alpha_zoo/factors/academic/high_minus_low_value.py)
 - **Top-Level Functions**:
   - `compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series`: Return inverse 252-day return cross-sectional z-score per stock.
+
+#### `idiosyncratic_volatility.py` - *Academic Idiosyncratic Volatility Alpha.*
+- **Path**: [`src/monika/domain/indicators/alpha_zoo/factors/academic/idiosyncratic_volatility.py`](src/monika/domain/indicators/alpha_zoo/factors/academic/idiosyncratic_volatility.py)
+- **Top-Level Functions**:
+  - `compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series`: Compute Idiosyncratic Volatility.
 
 #### `market_excess_return.py` - *academic MKT_RF: market factor as 21-day return, cross-sectionally z-scored.*
 - **Path**: [`src/monika/domain/indicators/alpha_zoo/factors/academic/market_excess_return.py`](src/monika/domain/indicators/alpha_zoo/factors/academic/market_excess_return.py)
@@ -3506,6 +3528,31 @@
 - **Top-Level Functions**:
   - `compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series`: Return qlib158 WVMA60 on the supplied OHLCV panel.
 
+### Folder: `src/monika/domain/indicators/alpha_zoo/factors/microstructure` <a id="folder-srcmonikadomainindicatorsalphazoofactorsmicrostructure"></a>
+
+#### `__init__.py` - *Institutional Microstructure Factors.*
+- **Path**: [`src/monika/domain/indicators/alpha_zoo/factors/microstructure/__init__.py`](src/monika/domain/indicators/alpha_zoo/factors/microstructure/__init__.py)
+
+#### `range_dispersion.py` - *Microstructure Range Dispersion Alpha.*
+- **Path**: [`src/monika/domain/indicators/alpha_zoo/factors/microstructure/range_dispersion.py`](src/monika/domain/indicators/alpha_zoo/factors/microstructure/range_dispersion.py)
+- **Top-Level Functions**:
+  - `compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series`: Compute Range Dispersion.
+
+#### `shadow_asymmetry.py` - *Microstructure Shadow Asymmetry Alpha.*
+- **Path**: [`src/monika/domain/indicators/alpha_zoo/factors/microstructure/shadow_asymmetry.py`](src/monika/domain/indicators/alpha_zoo/factors/microstructure/shadow_asymmetry.py)
+- **Top-Level Functions**:
+  - `compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series`: Compute Shadow Asymmetry.
+
+#### `volume_price_rank_divergence.py` - *Microstructure Volume Price Rank Divergence Alpha.*
+- **Path**: [`src/monika/domain/indicators/alpha_zoo/factors/microstructure/volume_price_rank_divergence.py`](src/monika/domain/indicators/alpha_zoo/factors/microstructure/volume_price_rank_divergence.py)
+- **Top-Level Functions**:
+  - `compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series`: Compute Volume Price Rank Divergence.
+
+#### `volume_weighted_momentum.py` - *Microstructure Volume Weighted Momentum Alpha.*
+- **Path**: [`src/monika/domain/indicators/alpha_zoo/factors/microstructure/volume_weighted_momentum.py`](src/monika/domain/indicators/alpha_zoo/factors/microstructure/volume_weighted_momentum.py)
+- **Top-Level Functions**:
+  - `compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series`: Compute Volume Weighted Momentum.
+
 ### Folder: `src/monika/domain/indicators/alpha_zoo/factors/worldquant_101` <a id="folder-srcmonikadomainindicatorsalphazoofactorsworldquant101"></a>
 
 #### `__init__.py`
@@ -4164,17 +4211,28 @@
   - `class PlaybookTriggerSignal`: Deterministic trade signal emitted by an empirical playbook.
   - `class PlaybookScreeningReport`: Structured report returned by the Playbook Screener.
     - `format_for_prompt() -> str` - *Format screening result as a concise, high-confluence prompt card for LLM.*
-  - `class PlaybookRegistry`: Caches and resolves empirical playbook specifications from disk.
-    - `get_playbooks_dir() -> Path` - *Resolve the playbooks directory path.*
-    - `set_playbooks_dir(custom_dir: Path) -> None` - *Explicitly override directory for testing.*
+  - `class PlaybookRepositoryProtocol(Protocol)`: Protocol for empirical playbook persistence and catalog loading.
+    - `get_playbooks_dir() -> Path`
+    - `set_playbooks_dir(custom_dir: Path) -> None`
+    - `load_playbooks_for_symbol(symbol: str) -> List[PlaybookSpec]`
+    - `load_reserve_playbooks(symbol: Optional[str]) -> List[Dict[str, Any]]`
+    - `parse_playbook_file(path: Path, expected_symbol: str) -> Optional[PlaybookSpec]`
+  - `class PlaybookRegistry`: In-memory registry and resolver for empirical playbook specifications.
+    - `register_default_repository_factory(factory: Callable[[], PlaybookRepositoryProtocol]) -> None` - *Register the default infrastructure repository factory.*
+    - `set_repository(repo: Optional[PlaybookRepositoryProtocol]) -> None` - *Set the active playbook repository adapter.*
+    - `get_repository() -> Optional[PlaybookRepositoryProtocol]` - *Get the active repository or lazily instantiate from registered factory.*
+    - `register_specs(symbol: str, specs: List[PlaybookSpec]) -> None` - *Explicitly register in-memory specs for a symbol (testing/mocking).*
+    - `clear_cache() -> None` - *Clear all cached playbook specifications.*
+    - `get_playbooks_dir() -> Path` - *Resolve the playbooks directory path via repository.*
+    - `set_playbooks_dir(custom_dir: Path) -> None` - *Explicitly override directory for testing via repository.*
     - `load_playbooks_for_symbol(symbol: str) -> List[PlaybookSpec]` - *Load and cache all playbook specifications for a given symbol.*
-    - `load_reserve_playbooks(symbol: Optional[str]) -> List[Dict[str, Any]]` - *Load quantitative reserve playbooks from reserve_catalog.json.*
+    - `load_reserve_playbooks(symbol: Optional[str]) -> List[Dict[str, Any]]` - *Load quantitative reserve playbooks via repository.*
   - `class PlaybookScreener`: Deterministic quantitative signal screener.
     - `compute_atr(bars: List[Dict[str, Any]], period: int) -> float` - *Compute Wilder's ATR over a list of OHLCV bars.*
     - `compute_ema(values: List[float], period: int) -> float` - *Compute Exponential Moving Average.*
     - `compute_rsi(closes: List[float], period: int) -> float` - *Compute Relative Strength Index.*
     - `compute_stoch(closes: List[float], highs: List[float], lows: List[float], ...) -> Tuple[float, float]` - *Compute Fast/Slow Stochastic Oscillator (%K, %D).*
-    - `screen(symbol: str, bars: List[Dict[str, Any]], indicators: Optional[Dict[str, Any]], ...) -> PlaybookScreeningReport` - *Screen the latest bars for symbol against all 15 empirical playbooks.*
+    - `screen(symbol: str, bars: List[Dict[str, Any]], indicators: Optional[Dict[str, Any]], ...) -> PlaybookScreeningReport` - *Screen the latest bars for symbol against empirical playbooks.*
 
 #### `session_info.py` - *Market session tracking and timing rules utility with DST and weekend awareness.*
 - **Path**: [`src/monika/domain/market/session_info.py`](src/monika/domain/market/session_info.py)
@@ -5664,6 +5722,12 @@
     - `calculate_fed_taylor_rule(actual_effr: float, current_inflation: float, r_star: float, ...) -> TaylorRuleResult` - *Calculates Fed Taylor Rule implied rate:*
     - `calculate_central_bank_taylor_rule(central_bank: str, actual_rate: float, current_inflation: float, ...) -> TaylorRuleResult` - *Calculates Taylor Rule using calibrated parameters for specified central bank.*
 
+#### `technical_regime_calculator.py`
+- **Path**: [`src/monika/application/analysis/calculators/technical_regime_calculator.py`](src/monika/application/analysis/calculators/technical_regime_calculator.py)
+- **Top-Level Functions**:
+  - `async classify_market_regime(session: AsyncSession, symbol: str, settings: Optional[dict], ...) -> dict`: Composite regime: D1 trend strength (ADX) + H4 volatility expansion/contraction
+  - `async compute_bollinger_donchian_chop(session, symbol: str, timeframe: str, ...) -> dict`
+
 #### `timesfm_alpha.py` - *TimesFM Quantile Asymmetry Skew Alpha Calculator.*
 - **Path**: [`src/monika/application/analysis/calculators/timesfm_alpha.py`](src/monika/application/analysis/calculators/timesfm_alpha.py)
 - **Classes**:
@@ -5688,14 +5752,14 @@
 - **Path**: [`src/monika/application/analysis/calculators/universal_cb_differ.py`](src/monika/application/analysis/calculators/universal_cb_differ.py)
 - **Classes**:
   - `class UniversalCentralBankDiffer`: Institutional central bank statement and minutes redline comparison engine.
-    - `__init__(session: AsyncSession)`
+    - `__init__(session: AsyncSession, router: Optional[Any])`
     - `async diff_cb_documents(bank: str, doc_type: str, current_date: Optional[datetime], ...) -> Dict[str, Any]` - *Extracts consecutive documents and performs sentence-level redline diffing.*
 
 #### `universal_liquidity_analyzer.py` - *Universal Systemic Liquidity, Credit Stress & Debt Auction Analyzer (Async).*
 - **Path**: [`src/monika/application/analysis/calculators/universal_liquidity_analyzer.py`](src/monika/application/analysis/calculators/universal_liquidity_analyzer.py)
 - **Classes**:
   - `class UniversalLiquidityAnalyzer`: Institutional liquidity and debt market analytics calculator.
-    - `__init__(session: AsyncSession)`
+    - `__init__(session: AsyncSession, router: Optional[Any])`
     - `async analyze_fed_net_liquidity(lookback_weeks: int) -> Dict[str, Any]` - *Calculates Net Liquidity trajectory and its expected cross-asset market regime.*
     - `async analyze_credit_and_funding_stress() -> Dict[str, Any]` - *Evaluates corporate credit spreads (HY OAS) and SOFR overnight rate.*
     - `async analyze_treasury_auction_demand(tenor: str, limit: int) -> Dict[str, Any]` - *Retrieves recent US Treasury debt auctions and inspects tail spread and indirect bidder demand.*
@@ -5705,7 +5769,7 @@
 - **Path**: [`src/monika/application/analysis/calculators/universal_macro_analyzer.py`](src/monika/application/analysis/calculators/universal_macro_analyzer.py)
 - **Classes**:
   - `class UniversalMacroAnalyzer`: Institutional macro analysis desk calculator.
-    - `__init__(session: AsyncSession)`
+    - `__init__(session: AsyncSession, router: Optional[Any])`
     - `async decompose_report(report_type: str, period: Optional[str], country: str, ...) -> Dict[str, Any]` - *Decomposes macroeconomic releases into sub-components.*
     - `async decompose_labor_market(period: Optional[str]) -> Dict[str, Any]` - *Decomposes US labor market reports (NFP, revisions, wages, household divergence).*
     - `async analyze_cross_report_synthesis(currency: str, lookback_days: int) -> Dict[str, Any]` - *Synthesizes the complete macroeconomic pipeline:*

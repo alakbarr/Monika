@@ -20,18 +20,27 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
-from monika.infrastructure.data_ingestion.scrapers.macro.macro_trigger_router import MacroTriggerRouter
 from monika.infrastructure.database.models import CentralBankDocument
 
 logger = logging.getLogger("TradingAgent.UniversalCentralBankDiffer")
 
 
+class _DefaultCBRouter:
+    """Default no-op router adapter that can be mocked or replaced."""
+
+    def __init__(self, session: Any = None):
+        self.session = session
+
+    async def ensure_cb_document_available(self, **kwargs: Any) -> None:
+        pass
+
+
 class UniversalCentralBankDiffer:
     """Institutional central bank statement and minutes redline comparison engine."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, router: Optional[Any] = None):
         self.session = session
-        self.router = MacroTriggerRouter(session)
+        self.router = router if router is not None else _DefaultCBRouter(session)
 
     async def diff_cb_documents(
         self,
@@ -47,8 +56,9 @@ class UniversalCentralBankDiffer:
         bank_clean = bank.strip().upper()
         doc_clean = doc_type.strip().upper()
 
-        # Ensure documents are available via JIT
-        await self.router.ensure_cb_document_available(bank=bank_clean, doc_type=doc_clean)
+        # Ensure documents are available via JIT if router configured
+        if self.router is not None:
+            await self.router.ensure_cb_document_available(bank=bank_clean, doc_type=doc_clean)
 
         stmt = (
             select(CentralBankDocument)

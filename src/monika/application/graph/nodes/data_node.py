@@ -204,7 +204,9 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     # Step 4: Technical indicators
     logger.info(f"[Step 4/7] Computing technical indicators for {len(target_symbols)} symbols...")
     try:
-        from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+        from monika.application.services.technical_indicator_service import (
+            TechnicalIndicatorService as TechnicalIndicatorCalculator,
+        )
 
         async with get_session() as session:
             calc = TechnicalIndicatorCalculator(session, scheduler.settings.get("trading", {}))
@@ -219,7 +221,9 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     # Step 5: Structure analysis
     logger.info(f"[Step 5/7] Analyzing market structure for {len(target_symbols)} symbols (swings, SR, FVG)...")
     try:
-        from monika.domain.indicators.structure import MarketStructureAnalyzer
+        from monika.application.services.market_structure_service import (
+            MarketStructureService as MarketStructureAnalyzer,
+        )
 
         async with get_session() as session:
             analyzer = MarketStructureAnalyzer(session, scheduler.settings)

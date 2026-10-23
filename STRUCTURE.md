@@ -108,6 +108,7 @@ Monika/
 │       │   │   │   ├── seasonality.py
 │       │   │   │   ├── stage1_priced_in.py
 │       │   │   │   ├── taylor_rule.py
+│       │   │   │   ├── technical_regime_calculator.py
 │       │   │   │   ├── timesfm_alpha.py
 │       │   │   │   ├── timesfm_residual_validator.py
 │       │   │   │   ├── unified_threshold_calculator.py
@@ -955,6 +956,7 @@ Monika/
 │       │   │   │   │   │   ├── conservative_minus_aggressive.py
 │       │   │   │   │   │   ├── correlation_rewiring.py
 │       │   │   │   │   │   ├── high_minus_low_value.py
+│       │   │   │   │   │   ├── idiosyncratic_volatility.py
 │       │   │   │   │   │   ├── market_excess_return.py
 │       │   │   │   │   │   ├── proximity_52_week_high.py
 │       │   │   │   │   │   ├── return_skewness.py
@@ -1316,6 +1318,12 @@ Monika/
 │       │   │   │   │   │   ├── volume_weighted_volatility_30.py
 │       │   │   │   │   │   ├── volume_weighted_volatility_5.py
 │       │   │   │   │   │   └── volume_weighted_volatility_60.py
+│       │   │   │   │   ├── microstructure/
+│       │   │   │   │   │   ├── __init__.py
+│       │   │   │   │   │   ├── range_dispersion.py
+│       │   │   │   │   │   ├── shadow_asymmetry.py
+│       │   │   │   │   │   ├── volume_price_rank_divergence.py
+│       │   │   │   │   │   └── volume_weighted_momentum.py
 │       │   │   │   │   ├── worldquant_101/
 │       │   │   │   │   │   ├── __init__.py
 │       │   │   │   │   │   ├── wq_alpha_001.py
@@ -2510,6 +2518,7 @@ Monika/
 │   │   ├── test_micro_alpha_zoo.py
 │   │   ├── test_microstructure.py
 │   │   ├── test_pattern_similarity.py
+│   │   ├── test_phase10_regression.py
 │   │   ├── test_qlib_and_wq_factors.py
 │   │   ├── test_regime_detector.py
 │   │   ├── test_structure.py
@@ -3064,4 +3073,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 264 | **Total Tracked Files**: 2770
+**Total Tracked Directories**: 265 | **Total Tracked Files**: 2778

@@ -154,33 +154,6 @@ class OrderFlowEngine:
             except Exception as df_err:
                 logger.debug(f"Error parsing in-memory df for CVD: {df_err}")
 
-        if len(prices) < 2 and session is not None:
-            try:
-                from sqlalchemy import select
-                from monika.domain.models_resolver import resolve_model
-
-                PriceOHLCV = resolve_model("PriceOHLCV")
-                if PriceOHLCV:
-                    stmt = (
-                        select(PriceOHLCV)
-                        .where(PriceOHLCV.symbol == symbol)
-                        .where(PriceOHLCV.timeframe == timeframe)
-                        .order_by(PriceOHLCV.timestamp.desc())
-                        .limit(lookback)
-                    )
-                    res = await session.execute(stmt)
-                    rows = res.scalars().all()
-                    if rows and len(rows) >= 2:
-                        bars = list(reversed(rows))
-                        prices = [
-                            float(b.close)
-                            for b in bars
-                            if hasattr(b, "close") and isinstance(getattr(b, "close", None), (int, float))
-                        ]
-                        volumes = [float(b.volume or 1.0) for b in bars if hasattr(b, "volume")]
-            except Exception as db_err:
-                logger.debug(f"Error loading OHLCV for CVD: {db_err}")
-
         if len(prices) < 2:
             return OrderFlowSnapshot(
                 symbol=symbol,
@@ -270,41 +243,11 @@ class OrderFlowEngine:
         return await self._compute_tick_rule_cvd_snapshot(session, symbol, lookback, df=df, timeframe=timeframe)
 
 
-async def fetch_latest_order_flow(session: Any, symbol: str) -> OrderFlowSnapshot:
-    """Ambil snapshot order flow terbaru dari database atau hitung on-the-fly."""
-    row = None
-    try:
-        from sqlalchemy import select
-        from monika.domain.models_resolver import resolve_model
-
-        TechnicalIndicator = resolve_model("TechnicalIndicator")
-        if TechnicalIndicator:
-            row = (
-                await session.execute(
-                    select(TechnicalIndicator)
-                    .where(TechnicalIndicator.symbol == symbol)
-                    .where(TechnicalIndicator.indicator_name == "ORDER_FLOW_SNAPSHOT")
-                    .order_by(TechnicalIndicator.timestamp.desc())
-                    .limit(1)
-                )
-            ).scalar_one_or_none()
-    except Exception as exc:
-        logger.debug(f"Error fetching cached order flow for {symbol}: {exc}")
-
-    if row and row.value_json:
-        try:
-            data = json.loads(row.value_json)
-            return OrderFlowSnapshot(
-                symbol=symbol,
-                mode=data.get("mode", "SYNTHETIC_TICK_RULE"),
-                order_book_imbalance=float(data.get("order_book_imbalance", 0.0)),
-                cvd_session_delta=float(data.get("cvd_session_delta", 0.0)),
-                cvd_divergence=data.get("cvd_divergence", "NONE"),
-                top_of_book_depth=data.get("top_of_book_depth", {}),
-                vpin=float(data["vpin"]) if data.get("vpin") is not None else None,
-            )
-        except Exception:
-            pass
-
+async def fetch_latest_order_flow(session: Any = None, symbol: str = "") -> OrderFlowSnapshot:
+    """
+    Ambil snapshot order flow terbaru.
+    Pure domain stub; for DB-cached retrieval from TechnicalIndicator table,
+    use monika.application.services.order_flow_service.fetch_latest_order_flow.
+    """
     engine = OrderFlowEngine()
     return await engine.analyze_order_flow(session, symbol)

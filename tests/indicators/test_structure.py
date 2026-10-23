@@ -12,7 +12,7 @@ from monika.infrastructure.database.models import (
     LiquidityZone,
     StructureBreak,
 )
-from monika.domain.indicators.structure import MarketStructureAnalyzer
+from monika.application.services.market_structure_service import MarketStructureService as MarketStructureAnalyzer
 
 
 class TestMarketStructureAnalyzer:

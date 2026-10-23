@@ -80,7 +80,9 @@ async def get_technical_indicators_snapshot(
         if not indicators_map:
             try:
                 from monika.core.config.settings import load_settings
-                from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+                from monika.application.services.technical_indicator_service import (
+                    TechnicalIndicatorService as TechnicalIndicatorCalculator,
+                )
 
                 settings = load_settings() or {}
                 calc = TechnicalIndicatorCalculator(session, settings)

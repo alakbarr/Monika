@@ -227,7 +227,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
         "cvd_divergence": "NONE",
     }
     try:
-        from monika.domain.indicators.order_flow import fetch_latest_order_flow
+        from monika.application.services.order_flow_service import fetch_latest_order_flow
 
         of_snap = await fetch_latest_order_flow(session, analysis.symbol)
         if of_snap:

@@ -5,7 +5,9 @@ import numpy as np
 import json
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
-from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+from monika.application.services.technical_indicator_service import (
+    TechnicalIndicatorService as TechnicalIndicatorCalculator,
+)
 from monika.infrastructure.database.models import TechnicalIndicator
 
 

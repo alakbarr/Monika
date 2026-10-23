@@ -17,18 +17,27 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
-from monika.infrastructure.data_ingestion.scrapers.macro.macro_trigger_router import MacroTriggerRouter
 from monika.infrastructure.database.models import EconomicReportDecomposition, InterestRate, TreasuryYield
 
 logger = logging.getLogger("TradingAgent.UniversalMacroAnalyzer")
 
 
+class _DefaultMacroRouter:
+    """Default no-op router adapter that can be mocked or replaced."""
+
+    def __init__(self, session: Any = None):
+        self.session = session
+
+    async def ensure_report_available(self, **kwargs: Any) -> None:
+        pass
+
+
 class UniversalMacroAnalyzer:
     """Institutional macro analysis desk calculator."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, router: Optional[Any] = None):
         self.session = session
-        self.router = MacroTriggerRouter(session)
+        self.router = router if router is not None else _DefaultMacroRouter(session)
 
     async def decompose_report(
         self,
@@ -44,10 +53,11 @@ class UniversalMacroAnalyzer:
         rtype = report_type.upper()
         rep_period = period or clock.now().strftime("%Y-%m")
 
-        # JIT ensure available
-        await self.router.ensure_report_available(
-            report_type=rtype, period=rep_period, country=country, currency=currency
-        )
+        # JIT ensure available if router configured
+        if self.router is not None:
+            await self.router.ensure_report_available(
+                report_type=rtype, period=rep_period, country=country, currency=currency
+            )
 
         stmt = (
             select(EconomicReportDecomposition)
@@ -171,7 +181,8 @@ class UniversalMacroAnalyzer:
         Decomposes US labor market reports (NFP, revisions, wages, household divergence).
         """
         rep_period = period or clock.now().strftime("%Y-%m")
-        await self.router.ensure_report_available(report_type="NFP", period=rep_period)
+        if self.router is not None:
+            await self.router.ensure_report_available(report_type="NFP", period=rep_period)
 
         stmt = select(EconomicReportDecomposition).where(
             EconomicReportDecomposition.report_type == "NFP",

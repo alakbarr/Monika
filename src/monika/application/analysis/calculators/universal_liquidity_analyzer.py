@@ -17,25 +17,36 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
-from monika.infrastructure.data_ingestion.scrapers.macro.macro_trigger_router import MacroTriggerRouter
 from monika.infrastructure.database.models import MacroLiquidityCreditMetric, TreasuryYield
 
 logger = logging.getLogger("TradingAgent.UniversalLiquidityAnalyzer")
 
 
+class _DefaultLiquidityRouter:
+    """Default no-op router adapter that can be mocked or replaced."""
+
+    def __init__(self, session: Any = None):
+        self.session = session
+
+    async def ensure_liquidity_and_stress_available(self, **kwargs: Any) -> None:
+        pass
+
+
 class UniversalLiquidityAnalyzer:
     """Institutional liquidity and debt market analytics calculator."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, router: Optional[Any] = None):
         self.session = session
-        self.router = MacroTriggerRouter(session)
+        self.router = router if router is not None else _DefaultLiquidityRouter(session)
 
     async def analyze_fed_net_liquidity(self, lookback_weeks: int = 8) -> Dict[str, Any]:
         """
         Calculates Net Liquidity trajectory and its expected cross-asset market regime.
         Formula: Net Liquidity = WALCL - TGA - ON_RRP.
         """
-        await self.router.ensure_liquidity_and_stress_available()
+        # Ensure liquidity metrics are available via JIT if router configured
+        if self.router is not None:
+            await self.router.ensure_liquidity_and_stress_available()
 
         stmt = (
             select(MacroLiquidityCreditMetric)
@@ -93,7 +104,9 @@ class UniversalLiquidityAnalyzer:
         Evaluates corporate credit spreads (HY OAS) and SOFR overnight rate.
         Detects impending carry trade unwinding and risk-off liquidations.
         """
-        await self.router.ensure_liquidity_and_stress_available()
+        # Ensure liquidity metrics are available via JIT if router configured
+        if self.router is not None:
+            await self.router.ensure_liquidity_and_stress_available()
 
         stmt = (
             select(MacroLiquidityCreditMetric)
@@ -145,7 +158,9 @@ class UniversalLiquidityAnalyzer:
         """
         Retrieves recent US Treasury debt auctions and inspects tail spread and indirect bidder demand.
         """
-        await self.router.ensure_liquidity_and_stress_available()
+        # Ensure liquidity metrics are available via JIT if router configured
+        if self.router is not None:
+            await self.router.ensure_liquidity_and_stress_available()
         tenor_clean = tenor.strip().upper()
         metric_key = f"TREASURY_AUCTION_{tenor_clean}"
 

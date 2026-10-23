@@ -9,14 +9,13 @@ and provide grounded quantitative confluence signals to Stage 2 analysis.
 
 from __future__ import annotations
 
-import json
 import logging
 import math
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple
 
 logger = logging.getLogger("TradingAgent.Market.PlaybookScreener")
 
@@ -146,34 +145,69 @@ class PlaybookScreeningReport:
         return "\n".join(lines)
 
 
+class PlaybookRepositoryProtocol(Protocol):
+    """Protocol for empirical playbook persistence and catalog loading."""
+
+    def get_playbooks_dir(self) -> Path: ...
+    def set_playbooks_dir(self, custom_dir: Path) -> None: ...
+    def load_playbooks_for_symbol(self, symbol: str) -> List[PlaybookSpec]: ...
+    def load_reserve_playbooks(self, symbol: Optional[str] = None) -> List[Dict[str, Any]]: ...
+    def parse_playbook_file(self, path: Path, expected_symbol: str) -> Optional[PlaybookSpec]: ...
+
+
+_DEFAULT_PLAYBOOK_REPO_FACTORY: Optional[Callable[[], PlaybookRepositoryProtocol]] = None
+
+
 class PlaybookRegistry:
-    """Caches and resolves empirical playbook specifications from disk."""
+    """In-memory registry and resolver for empirical playbook specifications."""
 
     _cached_specs: Dict[str, List[PlaybookSpec]] = {}
-    _playbooks_dir: Optional[Path] = None
+    _repository: Optional[PlaybookRepositoryProtocol] = None
+
+    @classmethod
+    def register_default_repository_factory(cls, factory: Callable[[], PlaybookRepositoryProtocol]) -> None:
+        """Register the default infrastructure repository factory."""
+        global _DEFAULT_PLAYBOOK_REPO_FACTORY
+        _DEFAULT_PLAYBOOK_REPO_FACTORY = factory
+
+    @classmethod
+    def set_repository(cls, repo: Optional[PlaybookRepositoryProtocol]) -> None:
+        """Set the active playbook repository adapter."""
+        cls._repository = repo
+        cls._cached_specs.clear()
+
+    @classmethod
+    def get_repository(cls) -> Optional[PlaybookRepositoryProtocol]:
+        """Get the active repository or lazily instantiate from registered factory."""
+        global _DEFAULT_PLAYBOOK_REPO_FACTORY
+        if cls._repository is None and _DEFAULT_PLAYBOOK_REPO_FACTORY is not None:
+            cls._repository = _DEFAULT_PLAYBOOK_REPO_FACTORY()
+        return cls._repository
+
+    @classmethod
+    def register_specs(cls, symbol: str, specs: List[PlaybookSpec]) -> None:
+        """Explicitly register in-memory specs for a symbol (testing/mocking)."""
+        cls._cached_specs[symbol.strip().upper()] = list(specs)
+
+    @classmethod
+    def clear_cache(cls) -> None:
+        """Clear all cached playbook specifications."""
+        cls._cached_specs.clear()
 
     @classmethod
     def get_playbooks_dir(cls) -> Path:
-        """Resolve the playbooks directory path."""
-        if cls._playbooks_dir is not None and cls._playbooks_dir.exists():
-            return cls._playbooks_dir
-
-        base = Path(__file__).resolve().parents[4] / "skills" / "trading" / "playbooks"
-        if base.exists():
-            cls._playbooks_dir = base
-            return base
-
-        fallback = Path("skills/trading/playbooks").resolve()
-        if fallback.exists():
-            cls._playbooks_dir = fallback
-            return fallback
-
-        return base
+        """Resolve the playbooks directory path via repository."""
+        repo = cls.get_repository()
+        if repo is not None:
+            return repo.get_playbooks_dir()
+        return Path("skills/trading/playbooks").resolve()
 
     @classmethod
     def set_playbooks_dir(cls, custom_dir: Path) -> None:
-        """Explicitly override directory for testing."""
-        cls._playbooks_dir = custom_dir
+        """Explicitly override directory for testing via repository."""
+        repo = cls.get_repository()
+        if repo is not None:
+            repo.set_playbooks_dir(custom_dir)
         cls._cached_specs.clear()
 
     @classmethod
@@ -183,161 +217,30 @@ class PlaybookRegistry:
         if sym_clean in cls._cached_specs:
             return cls._cached_specs[sym_clean]
 
-        pb_dir = cls.get_playbooks_dir()
-        if not pb_dir.exists():
-            logger.warning(f"Playbooks directory not found at {pb_dir}")
-            return []
+        repo = cls.get_repository()
+        if repo is not None:
+            specs = repo.load_playbooks_for_symbol(sym_clean)
+            cls._cached_specs[sym_clean] = specs
+            return specs
 
-        specs: List[PlaybookSpec] = []
-        prefix = sym_clean.lower() + "_"
-
-        for f in pb_dir.glob("*.md"):
-            fname = f.name.lower()
-            if not fname.startswith(prefix):
-                continue
-            try:
-                spec = cls._parse_playbook_file(f, sym_clean)
-                if spec is not None:
-                    specs.append(spec)
-            except Exception as e:
-                logger.debug(f"Failed parsing playbook {f.name}: {e}")
-
-        # Sort by Profit Factor descending to prioritize highest-edge playbooks
-        specs.sort(key=lambda s: s.profit_factor, reverse=True)
-        cls._cached_specs[sym_clean] = specs
-        return specs
+        logger.warning(f"No PlaybookRepository configured; cannot load playbooks for {sym_clean}.")
+        return []
 
     @classmethod
     def load_reserve_playbooks(cls, symbol: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Load quantitative reserve playbooks from reserve_catalog.json."""
-        pb_dir = cls.get_playbooks_dir()
-        catalog_path = pb_dir / "reserve_catalog.json"
-        if not catalog_path.exists():
-            return []
-        try:
-            with open(catalog_path, "r", encoding="utf-8") as f:
-                data: Dict[str, Any] = json.load(f)
-            if symbol:
-                sym_clean = symbol.strip().upper()
-                res = data.get(sym_clean, [])
-                return res if isinstance(res, list) else []
-            all_reserves: List[Dict[str, Any]] = []
-            for plist in data.values():
-                if isinstance(plist, list):
-                    all_reserves.extend(plist)
-            return all_reserves
-        except Exception as e:
-            logger.debug(f"Failed loading reserve catalog: {e}")
-            return []
+        """Load quantitative reserve playbooks via repository."""
+        repo = cls.get_repository()
+        if repo is not None:
+            return repo.load_reserve_playbooks(symbol)
+        return []
 
     @classmethod
     def _parse_playbook_file(cls, path: Path, expected_symbol: str) -> Optional[PlaybookSpec]:
-        """Parse frontmatter and quantitative directives from a markdown playbook file."""
-        text = path.read_text(encoding="utf-8")
-        if not text.startswith("---"):
-            return None
-
-        parts = text.split("---", 2)
-        if len(parts) < 3:
-            return None
-
-        frontmatter_raw = parts[1]
-        body = parts[2]
-
-        fm: Dict[str, Any] = {}
-        for line in frontmatter_raw.strip().split("\n"):
-            line = line.strip()
-            if not line or line.startswith("#") or ":" not in line:
-                continue
-            k, v = line.split(":", 1)
-            k = k.strip()
-            v = v.strip().strip("'").strip('"')
-            fm[k] = v
-
-        name = fm.get("name", path.stem)
-        symbol = fm.get("symbol", expected_symbol).upper()
-        if symbol != expected_symbol:
-            return None
-
-        def _safe_float(val: Any, default: float) -> float:
-            try:
-                f_val = float(val)
-                return f_val if not math.isnan(f_val) and not math.isinf(f_val) else default
-            except ValueError, TypeError:
-                return default
-
-        def _safe_int(val: Any, default: int) -> int:
-            try:
-                return int(val)
-            except ValueError, TypeError:
-                return default
-
-        pf = _safe_float(fm.get("profit_factor"), 1.3)
-        wr = _safe_float(fm.get("win_rate"), 0.5)
-        sr = _safe_float(fm.get("sharpe_ratio"), 2.0)
-        max_dd = _safe_float(fm.get("max_drawdown_pct"), 8.0)
-        min_rr = _safe_float(fm.get("min_rr"), 1.5)
-        raw_regime = str(fm.get("regime", "trending")).lower().strip()
-        if raw_regime in ("trend", "trending"):
-            regime = "trending"
-        elif raw_regime in ("range", "ranging", "mean_reverting", "mean_reversion"):
-            regime = "mean_reverting"
-        elif raw_regime in ("breakout", "momentum"):
-            regime = "breakout"
-        elif raw_regime in ("volatile", "volatility"):
-            regime = "volatile"
-        else:
-            regime = raw_regime
-        timeframe = fm.get("timeframe", "H1")
-        description = fm.get("description", "")
-        status = fm.get("status", "active")
-
-        # Extract calibrated ATR multipliers from body
-        sl_mult = 1.5
-        tp_mult = 3.0
-        max_hold = 24
-
-        m_sl = re.search(r"Stop-Loss\s*=\s*([\d\.]+)x\s*ATR", body, re.IGNORECASE)
-        if m_sl:
-            sl_mult = _safe_float(m_sl.group(1), 1.5)
-        else:
-            m_sl2 = re.search(r"set at ([\d\.]+)x.*?ATR", body, re.IGNORECASE)
-            if m_sl2:
-                sl_mult = _safe_float(m_sl2.group(1), 1.5)
-
-        m_tp = re.search(r"Take-Profit\s*=\s*([\d\.]+)x\s*ATR", body, re.IGNORECASE)
-        if m_tp:
-            tp_mult = _safe_float(m_tp.group(1), max(2.5, min_rr * sl_mult))
-        else:
-            m_tp2 = re.search(r"placed at ([\d\.]+)x.*?ATR", body, re.IGNORECASE)
-            if m_tp2:
-                tp_mult = _safe_float(m_tp2.group(1), max(2.5, min_rr * sl_mult))
-
-        m_hold = re.search(r"Max Holding\s*=\s*(\d+)\s*bars", body, re.IGNORECASE)
-        if m_hold:
-            max_hold = _safe_int(m_hold.group(1), 24)
-        else:
-            m_hold2 = re.search(r"within (\d+) bars", body, re.IGNORECASE)
-            if m_hold2:
-                max_hold = _safe_int(m_hold2.group(1), 24)
-
-        return PlaybookSpec(
-            name=name,
-            symbol=symbol,
-            regime=regime,
-            timeframe=timeframe,
-            min_rr=min_rr,
-            profit_factor=pf,
-            win_rate=wr,
-            sharpe_ratio=sr,
-            max_drawdown_pct=max_dd,
-            sl_atr_mult=sl_mult,
-            tp_atr_mult=tp_mult,
-            max_hold_bars=max_hold,
-            description=description,
-            status=status,
-            file_path=path,
-        )
+        """Delegate parsing to repository if available."""
+        repo = cls.get_repository()
+        if repo is not None:
+            return repo.parse_playbook_file(path, expected_symbol)
+        return None
 
 
 class PlaybookScreener:
@@ -449,20 +352,21 @@ class PlaybookScreener:
         now_utc: Optional[datetime] = None,
         macro_regime: Optional[str] = None,
         cooldown_playbooks: Optional[Set[str]] = None,
+        specs: Optional[List[PlaybookSpec]] = None,
     ) -> PlaybookScreeningReport:
         """
-        Screen the latest bars for symbol against all 15 empirical playbooks.
+        Screen the latest bars for symbol against empirical playbooks.
         Fail closed: returns empty report if bars are insufficient or data is corrupt.
         """
         sym_clean = symbol.strip().upper()
         now = now_utc or datetime.now(timezone.utc)
         cooldowns = cooldown_playbooks or set()
 
-        specs = PlaybookRegistry.load_playbooks_for_symbol(sym_clean)
+        resolved_specs = list(specs) if specs is not None else PlaybookRegistry.load_playbooks_for_symbol(sym_clean)
         report = PlaybookScreeningReport(
             symbol=sym_clean,
             evaluated_at=now,
-            total_evaluated=len(specs),
+            total_evaluated=len(resolved_specs),
         )
 
         if len(bars) < 10:
@@ -535,7 +439,7 @@ class PlaybookScreener:
 
         prec = _PRICE_PRECISION.get(sym_clean, 4)
 
-        for spec in specs:
+        for spec in resolved_specs:
             name_lower = spec.name.lower()
             if spec.name in cooldowns or name_lower in cooldowns:
                 report.cooldown_playbooks.append(spec.name)
