@@ -74,6 +74,18 @@ async def bull_advocate_node(state: TradingState, config: Optional[RunnableConfi
                     )
 
                     fact_sheet = await build_fact_sheet(session, analysis_id)
+
+                    # Dynamic Swarm Desk Swarm Execution (Asset-Class Specialized Microstructure)
+                    desk_verdict: Dict[str, Any] = {}
+                    try:
+                        from monika.application.graph.team_compiler import TeamCompiler, resolve_desk_for_symbol
+
+                        desk_id = resolve_desk_for_symbol(sym)
+                        desk_verdict = await TeamCompiler.execute_desk_swarm(desk_id, sym, fact_sheet, settings)
+                        fact_sheet["desk_specialist_verdict"] = desk_verdict
+                    except Exception as desk_err:
+                        logger.debug(f"[{sym}] Desk swarm execution note: {desk_err}")
+
                     entry_zone_data = json.loads(ana.entry_zone) if ana.entry_zone else {}
                     market_regime = (
                         getattr(ana, "market_regime_at_analysis", None)
@@ -98,6 +110,7 @@ async def bull_advocate_node(state: TradingState, config: Optional[RunnableConfi
                         "market_regime": market_regime,
                         "regime": market_regime,
                         "vix": vix_val,
+                        "desk_specialist_verdict": desk_verdict,
                     }
 
                     async with asyncio.timeout(45.0):
@@ -118,6 +131,7 @@ async def bull_advocate_node(state: TradingState, config: Optional[RunnableConfi
                         "original_context": original_context,
                         "fact_sheet": fact_sheet,
                         "verified_bull_claim": verified_bull_claim,
+                        "desk_specialist_verdict": desk_verdict,
                         "rel_intel": rel_intel,
                         "curr_p": curr_p,
                     }

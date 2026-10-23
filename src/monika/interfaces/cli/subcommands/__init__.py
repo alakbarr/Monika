@@ -10,6 +10,7 @@ from typing import Dict, List
 
 from monika.interfaces.cli.subcommands.base import Subcommand
 from monika.interfaces.cli.subcommands.daemon import DaemonSubcommand
+from monika.interfaces.cli.subcommands.desks import DesksSubcommand
 from monika.interfaces.cli.subcommands.mcp import McpSubcommand
 from monika.interfaces.cli.subcommands.runcard import RunCardSubcommand
 from monika.interfaces.cli.subcommands.simulation import SimulationSubcommand
@@ -23,4 +24,5 @@ AVAILABLE_SUBCOMMANDS: List[Subcommand] = [
     McpSubcommand(),
     RunCardSubcommand(),
     UpgradeSubcommand(),
+    DesksSubcommand(),
 ]

@@ -9495,12 +9495,12 @@
 #### `__init__.py` - *Application graph and cognitive workflow package.*
 - **Path**: [`src/monika/application/graph/__init__.py`](src/monika/application/graph/__init__.py)
 
-#### `grounding.py` - *Pre-Execution Market Grounding:*
+#### `grounding.py` - *Pre-Execution Market Grounding Facade:*
 - **Path**: [`src/monika/application/graph/grounding.py`](src/monika/application/graph/grounding.py)
 - **Classes**:
-  - `class MarketGroundingEngine`: Extracts empirical market realities and constructs Ground Truth prompt context.
-    - `async build_grounding_table(session: AsyncSession, symbols: List[str], days_back: int) -> str` - *Constructs Markdown Ground Truth section for prompt injection.*
-    - `format_grounding_from_df(symbol: str, df: pd.DataFrame) -> str` - *Constructs Markdown Ground Truth section directly from an OHLCV DataFrame.*
+  - `class MarketGroundingEngine`: Facade for canonical MarketGroundingEngine in analysis.grounding.
+    - `async build_grounding_table(session: Any, symbols: Union[str, List[str]], days_back: int) -> str` - *Constructs Markdown Ground Truth section for prompt injection.*
+    - `format_grounding_from_df(symbol: str, df: Optional[pd.DataFrame]) -> str` - *Constructs Markdown Ground Truth section directly from an OHLCV DataFrame.*
 
 #### `reactive_graph.py` - *Reactive Graph Workflow for AI Trading Agent (CRITICAL-01).*
 - **Path**: [`src/monika/application/graph/reactive_graph.py`](src/monika/application/graph/reactive_graph.py)
@@ -9541,7 +9541,11 @@
   - `class TeamCompiler`: Loads and compiles modular financial desk swarm configurations.
     - `list_available_desks() -> List[str]` - *Returns list of available desk IDs in the presets catalog.*
     - `load_desk_config(desk_id: str) -> Optional[DeskConfig]` - *Loads and validates desk configuration from YAML.*
+    - `async execute_role_analysis(role: DeskRole, symbol: str, fact_sheet: Dict[str, Any], ...) -> Dict[str, Any]` - *Executes a specialized desk analyst role against live market fact sheet and grounding context.*
+    - `async execute_desk_swarm(desk_id: str, symbol: str, fact_sheet: Dict[str, Any], ...) -> Dict[str, Any]` - *Executes all roles within a specialized desk concurrently via asyncio.gather.*
     - `compile_desk_subgraph(desk_id: str, state_cls: Any, node_executor_factory: Optional[Callable[[DeskRole], Any]]) -> Any` - *Compiles the desk into a LangGraph StateGraph executable.*
+- **Top-Level Functions**:
+  - `resolve_desk_for_symbol(symbol: str) -> str`: Dynamically maps a traded instrument to its specialized institutional desk preset.
 
 #### `workflow.py`
 - **Path**: [`src/monika/application/graph/workflow.py`](src/monika/application/graph/workflow.py)

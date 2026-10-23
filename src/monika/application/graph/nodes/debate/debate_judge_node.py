@@ -87,6 +87,19 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                         bull_rebuttal=bull_rebuttal,
                     )
 
+                # Enforce Specialized Swarm Desk Risk Veto if triggered
+                desk_verdict = deb.get("desk_specialist_verdict") or (deb.get("fact_sheet") or {}).get(
+                    "desk_specialist_verdict", {}
+                )
+                if desk_verdict.get("risk_veto"):
+                    veto_reasons = "; ".join(
+                        desk_verdict.get("veto_reasons") or ["Specialized desk risk veto enforced"]
+                    )
+                    logger.warning(f"[{sym}] Enforcing Swarm Desk Risk Veto: {veto_reasons}")
+                    verdict["final_decision"] = "avoid"
+                    verdict["recommended_multiplier"] = 0.0
+                    verdict["reason"] = (verdict.get("reason") or "") + f" [DESK VETO: {veto_reasons}]"
+
                 async with get_session() as session:
                     ana = await session.get(AssetAnalysis, analysis_id)
                     if ana:

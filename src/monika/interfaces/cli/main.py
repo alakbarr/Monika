@@ -201,7 +201,7 @@ async def _dispatch_cli(args: Any) -> None:
             code = handle_auth_command(args)
             if code is not None and isinstance(code, int) and code != 0:
                 sys.exit(code)
-        elif args.command in ("daemon", "simulation", "trading", "mcp", "runcard", "upgrade"):
+        elif args.command in ("daemon", "simulation", "trading", "mcp", "runcard", "upgrade", "desks"):
             from monika.interfaces.cli.subcommands import AVAILABLE_SUBCOMMANDS
 
             for sc in AVAILABLE_SUBCOMMANDS:

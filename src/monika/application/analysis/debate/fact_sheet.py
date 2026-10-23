@@ -275,4 +275,15 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
     except Exception as t_err:
         logger.debug(f"FactSheet telemetry injection error: {t_err}")
 
+    # Inject empirical OHLCV market grounding table to strictly anchor debate agents
+    try:
+        from monika.application.analysis.grounding.market_grounding import MarketGroundingEngine
+
+        fact_sheet["empirical_market_grounding"] = await MarketGroundingEngine.build_grounding_table(
+            symbol=analysis.symbol, session=session, days_back=30
+        )
+    except Exception as g_err:
+        logger.debug(f"FactSheet grounding injection note: {g_err}")
+        fact_sheet["empirical_market_grounding"] = ""
+
     return fact_sheet
