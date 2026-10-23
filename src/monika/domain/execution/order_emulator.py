@@ -528,7 +528,8 @@ class ClientOrderEmulator:
                 return False
 
         if self.on_sl_adjustment is None and self.execution_service is None:
-            # Standalone emulator mode (simulation / paper testing without bound service)
+            # Standalone emulator mode (simulation / test without bound service)
+            logger.info(f"[ClientOrderEmulator] Standalone emulator modified #{ticket} SL to {new_sl:.5f}")
             return True
 
         logger.warning(f"[ClientOrderEmulator] No execution service handler available to modify SL for #{ticket}")

@@ -8,6 +8,7 @@ Verifies:
 - Leg 2 failure with failed rollback (orphan position marked with status 'orphan_pending_close').
 """
 
+import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass
@@ -82,8 +83,14 @@ async def test_tranche_order_success(base_analysis, mock_session):
         ]
     )
 
+    async def _mock_admit(fn, **kw):
+        res = fn()
+        if asyncio.iscoroutine(res):
+            return await res
+        return res
+
     mock_effect_gate = AsyncMock()
-    mock_effect_gate.admit = AsyncMock(side_effect=lambda fn, **kw: fn())
+    mock_effect_gate.admit = AsyncMock(side_effect=_mock_admit)
 
     executor = DummyExecutor(settings, broker_adapter=mock_adapter, effect_gate=mock_effect_gate)
     executor.sizer.calculate_with_session = AsyncMock(return_value=make_mock_sizing(0.20))

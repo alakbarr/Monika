@@ -509,8 +509,15 @@ class MT5ExecutionMixin(MT5MixinBase):
                             if exit_px is not None:
                                 pt_record.exit_price = float(exit_px)
                             reason_code = getattr(db_pos, "_mt5_close_reason", None)
+                            # ENUM_DEAL_REASON: 3=DEAL_REASON_EXPERT, 4=DEAL_REASON_SL, 5=DEAL_REASON_TP, 6=DEAL_REASON_SO
                             reason_str = (
-                                "tp_hit" if reason_code == 4 else ("sl_hit" if reason_code == 3 else "broker_close")
+                                "sl_hit"
+                                if reason_code == 4
+                                else (
+                                    "tp_hit"
+                                    if reason_code == 5
+                                    else ("ea_close" if reason_code == 3 else "broker_close")
+                                )
                             )
                             pt_record.exit_reason = reason_str
                             if pt_record.exit_price and pt_record.entry_price and pt_record.entry_price > 0:

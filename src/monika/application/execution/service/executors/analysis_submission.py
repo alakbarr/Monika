@@ -503,29 +503,30 @@ class AnalysisSubmissionMixin(_ExecutionServiceMixinBase):
                         elapsed_ms=elapsed,
                     )
 
-                # Submit order to broker adapter under EffectGate admission
+                # Submit order to broker adapter under EffectGate admission with timeout (AGENTS.md §5.4)
                 try:
                     if self.broker_adapter is None:
                         raise RuntimeError("Broker adapter is not initialized")
-                    if hasattr(self, "effect_gate") and self.effect_gate is not None:
-                        mt5_result = await self.effect_gate.admit(
-                            lambda: self.broker_adapter.submit_order(
+                    async with asyncio.timeout(10.0):
+                        if hasattr(self, "effect_gate") and self.effect_gate is not None:
+                            mt5_result = await self.effect_gate.admit(
+                                lambda: self.broker_adapter.submit_order(
+                                    order=order,
+                                    sl=sl_price,
+                                    tp=tp_price,
+                                    comment=comment,
+                                    max_spread_multiplier=max_spread_mult,
+                                ),
+                                context_name=f"order_{order.client_order_id}_{symbol}",
+                            )
+                        else:
+                            mt5_result = await self.broker_adapter.submit_order(
                                 order=order,
                                 sl=sl_price,
                                 tp=tp_price,
                                 comment=comment,
                                 max_spread_multiplier=max_spread_mult,
-                            ),
-                            context_name=f"order_{order.client_order_id}_{symbol}",
-                        )
-                    else:
-                        mt5_result = await self.broker_adapter.submit_order(
-                            order=order,
-                            sl=sl_price,
-                            tp=tp_price,
-                            comment=comment,
-                            max_spread_multiplier=max_spread_mult,
-                        )
+                            )
                 except AbortRequested as abort_err:
                     elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
                     logger.warning(f"[EffectGate] Order blocked for {symbol}: {abort_err}")

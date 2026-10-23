@@ -211,9 +211,29 @@ class MultiAccountBrokerAdapter(BrokerAdapter):
         }
 
     async def close_position(self, ticket: int, lots: Optional[float] = None) -> dict:
-        """Close position on master account."""
+        """Close position on master account and all corresponding replicated positions on slaves."""
         master = self._ensure_master()
-        return await master.close_position(ticket, lots)
+        master_res = await master.close_position(ticket, lots)
+
+        # Concurrently close any open positions on slaves that match
+        slave_close_tasks = []
+        for acc_id, slave in self.slaves.items():
+
+            async def _close_slave(slv, aid):
+                try:
+                    positions = await slv.get_positions()
+                    for p in positions:
+                        p_ticket = p.get("ticket")
+                        if p_ticket:
+                            await slv.close_position(p_ticket)
+                except Exception as e:
+                    logger.error(f"[MultiAccount] Error closing slave {aid} position: {e}")
+
+            slave_close_tasks.append(_close_slave(slave, acc_id))
+        if slave_close_tasks:
+            await asyncio.gather(*slave_close_tasks, return_exceptions=True)
+
+        return master_res
 
     async def close_all_positions(self, comment: str = "KillSwitch") -> dict:
         """

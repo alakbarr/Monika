@@ -60,7 +60,8 @@ class OrderLifecycleService:
         try:
             await session.flush()
         except Exception as e:
-            logger.debug(f"[OrderLifecycle] flush order event error: {e}")
+            logger.error(f"[OrderLifecycle] Failed to flush order event to database: {e}")
+            raise
 
         # Emit to TradingEventStore
         try:

@@ -8,6 +8,7 @@ Principle: NEVER assume an analysis or order execution succeeded without verifia
 import hashlib
 import json
 import logging
+import math
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -87,48 +88,85 @@ class EvidenceFirstVerifier:
 
         symbol = signal.get("symbol", "")
         decision = (signal.get("decision") or signal.get("action") or "").upper()
-        entry_price = float(signal.get("entry_price") or signal.get("entry") or 0.0)
-        stop_loss = float(signal.get("stop_loss") or signal.get("sl") or 0.0)
-        take_profit = float(signal.get("take_profit") or signal.get("tp") or 0.0)
+        try:
+            entry_price = float(signal.get("entry_price") or signal.get("entry") or 0.0)
+        except TypeError, ValueError:
+            entry_price = float("nan")
+        try:
+            stop_loss = float(signal.get("stop_loss") or signal.get("sl") or 0.0)
+        except TypeError, ValueError:
+            stop_loss = float("nan")
+        try:
+            take_profit = float(signal.get("take_profit") or signal.get("tp") or 0.0)
+        except TypeError, ValueError:
+            take_profit = float("nan")
         confidence = float(signal.get("confidence") or 0.0)
         confluence_score = int(signal.get("confluence_score") or 0)
         priced_in_score = int(signal.get("priced_in_score") or 0)
         invalidation = signal.get("invalidation") or signal.get("invalidation_condition") or ""
 
+        # 0. Finite Geometry & Volume Assertions (Fail-Closed)
+        if math.isnan(entry_price) or math.isinf(entry_price) or entry_price <= 0:
+            violations.append(f"ASSERT_2: Entry price ({entry_price}) must be strictly positive and finite.")
+
+        if math.isnan(stop_loss) or math.isinf(stop_loss) or stop_loss <= 0:
+            violations.append(f"ASSERT_3: Stop Loss ({stop_loss}) must be strictly positive and finite.")
+
+        if math.isnan(take_profit) or math.isinf(take_profit) or take_profit <= 0:
+            violations.append(f"ASSERT_4: Take Profit ({take_profit}) must be strictly positive and finite.")
+
+        raw_volume = signal.get("volume") or signal.get("requested_volume")
+        if raw_volume is not None:
+            try:
+                vol_f = float(raw_volume)
+                if math.isnan(vol_f) or math.isinf(vol_f) or vol_f <= 0:
+                    violations.append(f"ASSERT_VOL: Volume ({vol_f}) must be strictly positive and finite.")
+            except TypeError, ValueError:
+                violations.append(f"ASSERT_VOL: Volume ({raw_volume}) cannot be parsed as float.")
+
         # 1. Actionable Direction
         if decision not in ("BUY", "SELL"):
             violations.append(f"ASSERT_1: Invalid actionable decision '{decision}' (expected BUY or SELL).")
 
-        # 2. Entry Price Positivity
-        if entry_price <= 0:
-            violations.append(f"ASSERT_2: Entry price ({entry_price}) must be strictly positive.")
+        # 2. Entry Price Positivity (Already validated finite > 0 above)
 
-        # 3. Stop Loss Validity
-        if stop_loss <= 0:
-            violations.append(f"ASSERT_3: Stop Loss ({stop_loss}) must be strictly positive.")
-        elif decision == "BUY" and stop_loss >= entry_price:
-            violations.append(f"ASSERT_3: BUY Stop Loss ({stop_loss}) must be below Entry ({entry_price}).")
-        elif decision == "SELL" and stop_loss <= entry_price:
-            violations.append(f"ASSERT_3: SELL Stop Loss ({stop_loss}) must be above Entry ({entry_price}).")
-        else:
-            # Enforce minimum SL distance in pips
-            from monika.domain.market.instrument_identity import resolve_instrument_identity
+        # 3. Stop Loss Validity Geometry
+        if (
+            not math.isnan(stop_loss)
+            and not math.isinf(stop_loss)
+            and not math.isnan(entry_price)
+            and not math.isinf(entry_price)
+            and stop_loss > 0
+            and entry_price > 0
+        ):
+            if decision == "BUY" and stop_loss >= entry_price:
+                violations.append(f"ASSERT_3: BUY Stop Loss ({stop_loss}) must be below Entry ({entry_price}).")
+            elif decision == "SELL" and stop_loss <= entry_price:
+                violations.append(f"ASSERT_3: SELL Stop Loss ({stop_loss}) must be above Entry ({entry_price}).")
+            else:
+                # Enforce minimum SL distance in pips
+                from monika.domain.market.instrument_identity import resolve_instrument_identity
 
-            try:
-                pip_sz = float(resolve_instrument_identity(symbol).pip_size)
-            except Exception:
-                pip_sz = 0.0001
-            pip_sz = pip_sz if pip_sz > 0 else 0.0001
-            sl_dist_pips = abs(entry_price - stop_loss) / pip_sz
-            if sl_dist_pips < self.minimum_sl_pips:
-                violations.append(
-                    f"ASSERT_3: Stop Loss distance ({sl_dist_pips:.1f} pips) is below minimum ({self.minimum_sl_pips:.1f} pips)."
-                )
+                try:
+                    pip_sz = float(resolve_instrument_identity(symbol).pip_size)
+                except Exception:
+                    pip_sz = 0.0001
+                pip_sz = pip_sz if pip_sz > 0 else 0.0001
+                sl_dist_pips = abs(entry_price - stop_loss) / pip_sz
+                if sl_dist_pips < self.minimum_sl_pips:
+                    violations.append(
+                        f"ASSERT_3: Stop Loss distance ({sl_dist_pips:.1f} pips) is below minimum ({self.minimum_sl_pips:.1f} pips)."
+                    )
 
         # 4. Take Profit Validity & R:R
-        if take_profit <= 0:
-            violations.append(f"ASSERT_4: Take Profit ({take_profit}) must be strictly positive.")
-        else:
+        if (
+            not math.isnan(take_profit)
+            and not math.isinf(take_profit)
+            and not math.isnan(stop_loss)
+            and not math.isinf(stop_loss)
+            and not math.isnan(entry_price)
+            and not math.isinf(entry_price)
+        ):
             sl_dist = abs(entry_price - stop_loss)
             tp_dist = abs(take_profit - entry_price)
             if sl_dist > 0:
@@ -311,7 +349,7 @@ class EvidenceFirstVerifier:
             if status in ("REJECTED", "FAILED", "ERROR"):
                 report["issues"].append(f"Paper order #{ticket} execution returned failure status: {status}")
             actual_sl = float(order_result.get("sl", 0.0) or order_result.get("stop_loss", 0.0) or 0.0)
-            if "sl" in order_result and actual_sl <= 0:
+            if ("sl" in order_result or "stop_loss" in order_result) and actual_sl <= 0:
                 report["issues"].append(f"Paper order #{ticket} recorded with non-positive Stop Loss ({actual_sl}).")
             requested = float(order_result.get("requested_price", 0.0) or 0.0)
             filled = float(order_result.get("price_open", 0.0) or order_result.get("fill_price", 0.0) or 0.0)

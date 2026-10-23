@@ -659,7 +659,26 @@ class AnalysisPreflightMixin(_ExecutionServiceMixinBase):
                         elapsed_ms=elapsed,
                     ), None
             except Exception as e:
-                logger.debug(f"Spread check failed (non-fatal): {e}")
+                logger.error(f"Live spread verification failed closed: {e}")
+                elapsed = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+                return ExecutionResult(
+                    symbol=symbol,
+                    analysis_id=analysis.id,
+                    decision=decision,
+                    sizing=None,
+                    risk_approved=False,
+                    risk_checks_passed=[],
+                    risk_checks_failed=["spread_verification_error"],
+                    risk_rejection_reasons=[f"Live spread verification threw exception: {e}"],
+                    executed=False,
+                    mt5_ticket=None,
+                    executed_price=None,
+                    executed_lots=None,
+                    mt5_error=None,
+                    position_id=None,
+                    timestamp=start,
+                    elapsed_ms=elapsed,
+                ), None
 
         try:
             raw_spec = entry_cond.get("price")

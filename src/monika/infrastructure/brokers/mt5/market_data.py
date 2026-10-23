@@ -154,7 +154,7 @@ class MT5MarketDataMixin(MT5MixinBase):
 
         from monika.infrastructure.brokers.mt5.broker_time import BrokerTimeResolver
 
-        offset = BrokerTimeResolver.resolve_offset_seconds(self.settings)
+        offset = await asyncio.to_thread(BrokerTimeResolver.resolve_offset_seconds, self.settings)
         self._broker_utc_offset_seconds = offset
         return self._broker_utc_offset_seconds
 

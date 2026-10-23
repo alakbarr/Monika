@@ -108,20 +108,20 @@ class OrderCreator:
         if dir_clean not in ("BUY", "SELL"):
             return False, f"Invalid direction '{direction}': must be BUY or SELL"
 
-        if entry_price <= 0 or math.isnan(entry_price):
-            return False, f"Invalid entry price {entry_price}: must be > 0"
+        if entry_price <= 0 or math.isnan(entry_price) or math.isinf(entry_price):
+            return False, f"Invalid entry price {entry_price}: must be > 0 and finite"
 
         if sl is not None:
-            if sl <= 0 or math.isnan(sl):
-                return False, f"Invalid Stop Loss {sl}: must be > 0"
+            if sl <= 0 or math.isnan(sl) or math.isinf(sl):
+                return False, f"Invalid Stop Loss {sl}: must be > 0 and finite"
             if dir_clean == "BUY" and sl >= entry_price:
                 return False, f"Invalid BUY SL {sl}: must be below entry {entry_price}"
             if dir_clean == "SELL" and sl <= entry_price:
                 return False, f"Invalid SELL SL {sl}: must be above entry {entry_price}"
 
         if tp is not None:
-            if tp <= 0 or math.isnan(tp):
-                return False, f"Invalid Take Profit {tp}: must be > 0"
+            if tp <= 0 or math.isnan(tp) or math.isinf(tp):
+                return False, f"Invalid Take Profit {tp}: must be > 0 and finite"
             if dir_clean == "BUY" and tp <= entry_price:
                 return False, f"Invalid BUY TP {tp}: must be above entry {entry_price}"
             if dir_clean == "SELL" and tp >= entry_price:

@@ -7,6 +7,7 @@ and performs zero-token deterministic micro-repairs without dropping trades.
 
 import asyncio
 import logging
+import math
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger("TradingAgent.Execution.SelfHealing")
@@ -71,6 +72,26 @@ class MT5SelfHealingExecutor:
                     f"[SelfHealingMT5] Attempt {attempt}/{self.MAX_HEALING_ATTEMPTS} for {symbol}: "
                     f"Retcode={retcode}, Error='{err_msg}'"
                 )
+                # MANDATORY RECONCILIATION: Check if position already exists on broker
+                try:
+                    if hasattr(self.broker_adapter, "get_positions"):
+                        open_positions = await self.broker_adapter.get_positions()
+                        for p in open_positions or []:
+                            if p.get("symbol") == symbol and (
+                                p.get("comment", "") == comment
+                                or p.get("client_order_id") == getattr(order, "client_order_id", None)
+                            ):
+                                logger.warning(
+                                    f"[SelfHealingMT5] Reconciled in-flight order before retry: position #{p.get('ticket')} already active at broker. Halting re-submission to prevent double execution!"
+                                )
+                                return {
+                                    "success": True,
+                                    "ticket": p.get("ticket"),
+                                    "price": p.get("price_open"),
+                                    "retcode": 10009,
+                                }
+                except Exception as rec_err:
+                    logger.error(f"[SelfHealingMT5] Reconciliation error prior to retry: {rec_err}")
 
                 # ── 1. Retcode 10016: TRADE_RETCODE_INVALID_STOPS ──
                 if retcode == 10016 or "invalid stops" in err_msg or "stops" in err_msg:
@@ -217,11 +238,12 @@ class MT5SelfHealingExecutor:
             vol_max = getattr(info, "volume_max", 100.0) or 100.0
             vol_step = getattr(info, "volume_step", 0.01) or 0.01
 
-            # Snap to step
-            steps = round(volume / vol_step)
-            snapped = round(steps * vol_step, 2)
-            snapped = max(vol_min, min(vol_max, snapped))
-            return snapped
+            # Snap to step using floor rounding down (AGENTS.md §5.5)
+            steps = math.floor((volume / vol_step) + 1e-9)
+            floored = steps * vol_step
+            decimals = 2 if vol_step >= 0.01 else (3 if vol_step >= 0.001 else 0)
+            snapped = max(vol_min, min(vol_max, round(floored, decimals)))
+            return round(snapped, decimals)
         except Exception as e:
             logger.debug(f"[SelfHealingMT5] Error snapping volume: {e}")
             return None

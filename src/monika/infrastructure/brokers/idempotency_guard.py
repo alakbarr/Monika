@@ -251,12 +251,30 @@ class IdempotencyGuard:
                 if rec.state == IdempotencyState.IN_FLIGHT:
                     # Check if ticket was matched in broker active tickets
                     t = rec.metadata.get("ticket") or rec.ticket
+                    matched_ticket = None
                     if t and t in active_tickets:
+                        matched_ticket = t
+                    elif not t:
+                        # Match by symbol, direction and recent timestamp window (<= 120s)
+                        sym_target = rec.symbol.upper()
+                        dir_target = rec.direction.upper()
+                        for p in open_positions or []:
+                            p_sym = str(p.get("symbol", "")).upper()
+                            p_dir = str(
+                                p.get("direction")
+                                or ("BUY" if p.get("type") == 0 else "SELL" if p.get("type") == 1 else "")
+                            ).upper()
+                            if p_sym == sym_target and p_dir == dir_target:
+                                p_ts = float(p.get("time", p.get("time_setup", 0)))
+                                if abs(p_ts - rec.created_at) <= 120.0 or abs(now - rec.created_at) <= 120.0:
+                                    matched_ticket = int(p.get("ticket", 0))
+                                    break
+                    if matched_ticket:
                         rec.state = IdempotencyState.COMPLETED
-                        rec.ticket = t
+                        rec.ticket = matched_ticket
                         rec.expires_at = now + self.COMPLETION_COOLDOWN_SECONDS
                         reconciled_count += 1
-                        logger.info(f"[Reconcile] In-flight key={key} matched live broker ticket=#{t}")
+                        logger.info(f"[Reconcile] In-flight key={key} matched live broker ticket=#{matched_ticket}")
 
         return reconciled_count
 

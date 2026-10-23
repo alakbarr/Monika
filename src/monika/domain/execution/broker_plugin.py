@@ -149,10 +149,12 @@ def normalize_order_request(order: Any) -> OrderRequest:
     if isinstance(order, OrderRequest):
         return order
     if isinstance(order, dict):
+        raw_vol = order.get("volume") if order.get("volume") is not None else order.get("requested_volume")
+        vol_f = float(raw_vol) if raw_vol is not None else 0.0
         return OrderRequest(
             symbol=order.get("symbol", ""),
             direction=order.get("direction", "buy"),
-            volume=float(order.get("volume", order.get("requested_volume", 0.01))),
+            volume=vol_f,
             order_type=str(order.get("order_type", "MARKET")).upper(),
             price=order.get("price", order.get("requested_price")),
             sl=order.get("sl", order.get("stop_loss")),
@@ -167,7 +169,10 @@ def normalize_order_request(order: Any) -> OrderRequest:
         )
     symbol = getattr(order, "symbol", "")
     direction = str(getattr(order, "direction", "buy"))
-    volume = getattr(order, "requested_volume", None) or getattr(order, "volume", 0.01)
+    raw_vol = getattr(order, "requested_volume", None)
+    if raw_vol is None:
+        raw_vol = getattr(order, "volume", None)
+    volume = float(raw_vol) if raw_vol is not None else 0.0
     raw_order_type = getattr(order, "order_type", None)
     order_type = str(getattr(raw_order_type, "value", raw_order_type) or "MARKET")
     price = getattr(order, "requested_price", None) or getattr(order, "price", None)

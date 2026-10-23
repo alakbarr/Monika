@@ -74,6 +74,11 @@ class OrderEntity(BaseModel):
         target = new_status if isinstance(new_status, OrderStatus) else OrderStatus(new_status)
         curr = self.status
 
+        if curr.is_terminal:
+            raise InvalidOrderStateTransitionError(
+                f"Cannot transition order {self.id}: current state {curr.value} is terminal"
+            )
+
         if curr == target and not allow_same_state:
             raise InvalidOrderStateTransitionError(
                 f"Cannot transition order {self.id} from {curr.value} to same state {target.value}"

@@ -184,7 +184,14 @@ class RiskEvaluatorMixin(_ExecutionServiceMixinBase):
         except Exception as e:
             logger.warning(f"Cannot get live price for {symbol}: {e}")
 
-        # Fallback: use last known close from DB
+        # In live trading, never fall back to stale DB close (fail closed AGENTS.md §1)
+        if not getattr(self, "dry_run", True):
+            logger.error(
+                f"[RiskEvaluator] Rejecting live price estimate for {symbol}: broker tick unavailable (fail-closed)"
+            )
+            return 0.0, True, float("inf")
+
+        # Fallback for paper/simulation: use last known close from DB
         async with get_session() as session:
             from monika.infrastructure.database.models import PriceOHLCV
 

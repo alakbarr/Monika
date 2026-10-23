@@ -39,7 +39,7 @@ class EAWatchdog:
 
         self._running = False
         self._stop_event = asyncio.Event()
-        self._is_ea_alive = True
+        self._is_ea_alive = False  # Fail-closed until first verified heartbeat
         self._last_stale_seconds = 0
         self._consecutive_failures = 0
         self._tripped = False
@@ -94,7 +94,7 @@ class EAWatchdog:
 
         while self._running and not self._stop_event.is_set():
             try:
-                self.check_now()
+                await asyncio.to_thread(self.check_now)
             except Exception as e:
                 logger.error(f"[EAWatchdog] Error during heartbeat inspection: {e}")
 
@@ -126,6 +126,16 @@ class EAWatchdog:
 
     def _emit_recover_event(self) -> None:
         """Emits circuit breaker recovery and invokes callback."""
+        try:
+            from monika.core.primitives.event_bus import CircuitBreakerEvent, get_event_bus
+
+            bus = get_event_bus()
+            bus.publish_nowait(
+                CircuitBreakerEvent(component="MQL5_EA_Bridge", is_active=False, reason="EA heartbeat restored")
+            )
+        except Exception as e:
+            logger.debug(f"[EAWatchdog] EventBus recover notification non-fatal: {e}")
+
         if self.on_recover_callback:
             try:
                 self.on_recover_callback()

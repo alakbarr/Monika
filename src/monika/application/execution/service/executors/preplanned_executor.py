@@ -406,8 +406,10 @@ class PreplannedOrderMixin(_ExecutionServiceMixinBase):
                 min_limit = float(getattr(spec, "min_lot", 0.01))
             except TypeError, ValueError:
                 min_limit = 0.01
-            # Preplanned lot size provided in order_plan: clamp to broker bounds
+            # Preplanned lot size provided in order_plan: clamp to broker bounds AND fortress safety cap
             safe_lots = round(max(min_limit, min(specified_lots, max_limit)), 2)
+            if sizing.recommended_lots and sizing.recommended_lots > 0:
+                safe_lots = min(safe_lots, sizing.recommended_lots)
             sizing.recommended_lots = safe_lots
             sizing.raw_lots = specified_lots
             # Recalculate actual dollar risk based on revised lot size
@@ -440,8 +442,8 @@ class PreplannedOrderMixin(_ExecutionServiceMixinBase):
             decision=decision,
             stop_loss=sl_price,
             take_profit=tp_price,
-            confidence=float(order_plan.get("confidence", 0.85)),
-            confluence_score=int(order_plan.get("confluence_score", 8)),
+            confidence=float(order_plan.get("confidence", 0.0)),
+            confluence_score=int(order_plan.get("confluence_score", 0)),
             priced_in_score=eff_priced_in,
         )
 

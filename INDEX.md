@@ -9368,7 +9368,7 @@
     - `async get_orders(symbol: Optional[str]) -> List[dict]` - *Return aggregated active orders across all accounts.*
     - `async get_positions() -> List[dict]` - *Return aggregated open positions across master and slaves.*
     - `async get_account_info() -> dict` - *Return consolidated multi-account financial summary and per-account breakdown.*
-    - `async close_position(ticket: int, lots: Optional[float]) -> dict` - *Close position on master account.*
+    - `async close_position(ticket: int, lots: Optional[float]) -> dict` - *Close position on master account and all corresponding replicated positions on slaves.*
     - `async close_all_positions(comment: str) -> dict` - *Emergency kill-switch: Concurrently closes all positions on master and ALL slaves.*
 
 #### `order_executor.py` - *Order Executor Service Coordinator.*

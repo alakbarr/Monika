@@ -236,15 +236,7 @@ int EmergencyCloseAllAIPositions()
                     ask = tick.ask;
                 }
             }
-            if(bid == 0.0 || ask == 0.0)
-            {
-                double lastM1 = iClose(sym, PERIOD_M1, 0);
-                if(lastM1 > 0.0)
-                {
-                    bid = lastM1;
-                    ask = lastM1;
-                }
-            }
+            // Do not use synthetic iClose bar prices as market quotes
 
             double targetPrice = (posType == POSITION_TYPE_BUY) ? bid : ask;
             if(targetPrice <= 0.0)
@@ -260,7 +252,7 @@ int EmergencyCloseAllAIPositions()
             req.comment      = "DeadManSwitch";
             req.magic        = AI_MAGIC_NUMBER;
 
-            if(OrderSend(req, res) && (res.retcode == TRADE_RETCODE_DONE || res.retcode == 10009))
+            if(OrderSend(req, res) && (res.retcode == TRADE_RETCODE_DONE || res.retcode == 10009 || res.retcode == 10010))
             {
                 Print("[AIAgent EA] Emergency closed ticket=", ticket, " sym=", sym);
                 closedCount++;
@@ -272,8 +264,8 @@ int EmergencyCloseAllAIPositions()
                 failedCount++;
                 if(res.retcode == 10018)
                 {
-                    Print("[AIAgent EA] Market is closed for ", sym, ". Halting retries.");
-                    break;
+                    Print("[AIAgent EA] Market is closed for ", sym, ". Continuing next position.");
+                    continue;
                 }
             }
         }
@@ -331,8 +323,10 @@ void EnforceSLOnAIPositions()
 
         double sl = PositionGetDouble(POSITION_SL);
 
-        // If SL is 0 (not set), this is dangerous — log it
-        if(sl == 0.0)
+        // If SL is 0 (not set), verify age first: allow 10s grace period for two-step ECN execution
+        datetime posTime = (datetime)PositionGetInteger(POSITION_TIME);
+        datetime nowTime = TimeCurrent();
+        if(sl == 0.0 && (nowTime - posTime) >= 10)
         {
             string sym = PositionGetString(POSITION_SYMBOL);
             Print("[AIAgent EA] CRITICAL: Position ", ticket, " (", sym,

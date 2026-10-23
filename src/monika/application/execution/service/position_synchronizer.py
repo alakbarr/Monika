@@ -548,17 +548,31 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
             # Get open positions and pending orders from broker
             broker_positions = []
             broker_orders = []
+            broker_fetch_ok = False
             try:
                 if hasattr(self, "broker_adapter") and self.broker_adapter:
                     broker_positions = await self.broker_adapter.get_positions()
                     if hasattr(self.broker_adapter, "get_orders"):
                         broker_orders = await self.broker_adapter.get_orders()
+                    broker_fetch_ok = True
                 elif hasattr(self, "mt5") and self.mt5:
                     broker_positions = await self.mt5.get_open_positions()
                     if hasattr(self.mt5, "get_orders"):
                         broker_orders = await self.mt5.get_orders()
+                    broker_fetch_ok = True
             except Exception as e:
                 logger.error(f"[Recovery] Failed to fetch broker positions/orders for in-flight reconciliation: {e}")
+
+            if not broker_fetch_ok:
+                logger.critical(
+                    "[Recovery] Aborting in-flight order termination: Broker position query failed! Preserving in-flight state."
+                )
+                return {
+                    "reconciled": 0,
+                    "interrupted": 0,
+                    "total": len(inflight_orders),
+                    "error": "broker_query_failed",
+                }
 
             for order in inflight_orders:
                 matched_pos = None

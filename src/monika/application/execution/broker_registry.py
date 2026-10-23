@@ -21,7 +21,7 @@ class BrokerAdapterRegistry:
 
     _adapters: Dict[str, Any] = {}
     _adapter_factories: Dict[str, Any] = {}
-    _active_name: str = "mt5_live"
+    _active_name: str = "simulated"
 
     @classmethod
     def register(cls, name: str, adapter_or_factory: Any) -> None:
@@ -76,7 +76,7 @@ class BrokerAdapterRegistry:
         """Reset internal registries (primarily for testing)."""
         cls._adapters.clear()
         cls._adapter_factories.clear()
-        cls._active_name = "mt5_live"
+        cls._active_name = "simulated"
 
 
 # Register standard built-in factories lazily

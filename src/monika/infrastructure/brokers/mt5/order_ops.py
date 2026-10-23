@@ -198,21 +198,25 @@ def _place_order(
         )
         try:
             positions = mt5.positions_get(symbol=resolved_symbol)
-            if positions:
+            orders = mt5.orders_get(symbol=resolved_symbol)
+            candidates = list(positions or ()) + list(orders or ())
+            if candidates:
                 magic_num = request.get("magic", 20250101)
-                matching = [p for p in positions if getattr(p, "magic", None) == magic_num]
+                matching = [c for c in candidates if getattr(c, "magic", None) == magic_num]
                 if matching:
-                    latest_pos = max(matching, key=lambda p: getattr(p, "time_msc", getattr(p, "time", 0)))
+                    latest_c = max(
+                        matching, key=lambda c: getattr(c, "time_msc", getattr(c, "time", getattr(c, "time_setup", 0)))
+                    )
                     now_ts = time.time()
-                    pos_ts = getattr(latest_pos, "time", 0)
-                    if abs(now_ts - pos_ts) <= 5:
+                    c_ts = getattr(latest_c, "time", getattr(latest_c, "time_setup", 0))
+                    if abs(now_ts - c_ts) <= 5:
                         logger.warning(
-                            f"[{resolved_symbol}] Reconciled open position ticket {latest_pos.ticket} after order_send returned None"
+                            f"[{resolved_symbol}] Reconciled open position/order ticket {latest_c.ticket} after order_send returned None"
                         )
                         return {
                             "success": True,
-                            "ticket": latest_pos.ticket,
-                            "price": getattr(latest_pos, "price_open", None),
+                            "ticket": latest_c.ticket,
+                            "price": getattr(latest_c, "price_open", getattr(latest_c, "price_current", None)),
                             "error": None,
                             "retcode": 10009,
                         }
@@ -229,8 +233,9 @@ def _place_order(
 
     done_code = getattr(mt5, "TRADE_RETCODE_DONE", 10009)
     placed_code = getattr(mt5, "TRADE_RETCODE_PLACED", 10008)
+    partial_code = getattr(mt5, "TRADE_RETCODE_DONE_PARTIAL", 10010)
     res_retcode = getattr(result, "retcode", -1)
-    success = res_retcode in (done_code, placed_code, 10009, 10008)
+    success = res_retcode in (done_code, placed_code, partial_code, 10009, 10008, 10010)
     ticket_id = getattr(result, "order", None)
     if success and not ticket_id:
         ticket_id = getattr(result, "deal", None)
@@ -288,8 +293,10 @@ def _modify_position(ticket: Any, sl: Optional[float], tp: Optional[float]) -> d
     if result is None:
         return {"success": False, "error": str(mt5.last_error()), "retcode": -1}
 
-    success = getattr(result, "retcode", -1) == getattr(mt5, "TRADE_RETCODE_DONE", 10009)
+    done_code = getattr(mt5, "TRADE_RETCODE_DONE", 10009)
+    no_changes_code = getattr(mt5, "TRADE_RETCODE_NO_CHANGES", 10025)
     res_retcode = getattr(result, "retcode", -1)
+    success = res_retcode in (done_code, no_changes_code, 10009, 10025)
     return {
         "success": success,
         "error": None if success else format_mt5_error(res_retcode, getattr(result, "comment", "")),
@@ -405,7 +412,9 @@ def _close_position(
         else:
             break
 
-    success = res_retcode == getattr(mt5, "TRADE_RETCODE_DONE", 10009)
+    done_code = getattr(mt5, "TRADE_RETCODE_DONE", 10009)
+    partial_code = getattr(mt5, "TRADE_RETCODE_DONE_PARTIAL", 10010)
+    success = res_retcode in (done_code, partial_code, 10009, 10010)
 
     reported_profit = None
     if success:

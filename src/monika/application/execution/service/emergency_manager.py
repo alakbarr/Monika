@@ -162,7 +162,10 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                         except TypeError, ValueError:
                             equity = None
                         if not equity or equity <= 0:
-                            equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+                            if self.dry_run:
+                                equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+                            else:
+                                equity = None
                         await self.gate.update_risk_state(
                             session=session,
                             pnl_delta=result["profit"],
@@ -560,7 +563,8 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                     remaining_positions = await self.mt5.get_open_positions()
                 else:
                     remaining_positions = []
-                agent_positions = [p for p in remaining_positions if p.get("magic") == 20250101]
+                configured_magic = int(self.settings.get("trading", {}).get("mt5", {}).get("magic", 20250101))
+                agent_positions = [p for p in remaining_positions if p.get("magic") == configured_magic]
                 if agent_positions:
                     logger.critical(
                         f"Kill switch: {len(agent_positions)} positions STILL OPEN after {max_retries} retries!"

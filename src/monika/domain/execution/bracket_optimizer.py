@@ -9,6 +9,7 @@ proposals into Forced WAIT.
 
 from dataclasses import dataclass, field
 import logging
+import math
 from typing import Any, Dict, List, Optional
 
 from monika.core.config.risk_defaults import DEFAULT_MIN_RR_RATIO
@@ -82,8 +83,14 @@ class BracketOptimizer:
         if dir_clean not in ("buy", "sell"):
             raise ValueError(f"Invalid direction '{direction}', expected 'buy' or 'sell'")
 
-        if entry_price <= 0:
-            raise ValueError(f"Invalid entry_price {entry_price}, must be strictly positive")
+        if entry_price <= 0 or math.isnan(entry_price) or math.isinf(entry_price):
+            raise ValueError(f"Invalid entry_price {entry_price}, must be strictly positive and finite")
+        if math.isnan(stop_loss) or math.isinf(stop_loss):
+            raise ValueError(f"Invalid stop_loss {stop_loss}, must be finite")
+        if math.isnan(take_profit) or math.isinf(take_profit):
+            raise ValueError(f"Invalid take_profit {take_profit}, must be finite")
+        if atr is not None and (math.isnan(atr) or math.isinf(atr)):
+            raise ValueError(f"Invalid atr {atr}, must be finite")
 
         decimals = get_symbol_decimals(symbol)
         adjustments: List[str] = []

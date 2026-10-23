@@ -57,6 +57,7 @@ class HeartbeatManager:
         self.ea_heartbeat_file = self.common_path / EA_HEARTBEAT_FILENAME
         self._running = False
         self._stop_event = asyncio.Event()
+        self._consecutive_write_failures = 0
 
     def get_common_path(self) -> str:
         """Return path to MT5 common files directory as string."""
@@ -103,9 +104,22 @@ class HeartbeatManager:
                                 tmp_file.unlink()
                             except OSError:
                                 pass
+            self._consecutive_write_failures = 0
             logger.debug(f"Heartbeat written: {ts}")
         except Exception as e:
-            logger.error(f"Failed to write heartbeat: {e}")
+            self._consecutive_write_failures += 1
+            logger.error(f"Failed to write heartbeat ({self._consecutive_write_failures}): {e}")
+            if self._consecutive_write_failures >= 3:
+                try:
+                    from monika.core.primitives.event_bus import CircuitBreakerEvent, get_event_bus
+
+                    get_event_bus().publish_nowait(
+                        CircuitBreakerEvent(
+                            component="Python_Heartbeat_Writer", is_active=True, reason=f"Heartbeat write failed: {e}"
+                        )
+                    )
+                except Exception:
+                    pass
 
     def check_ea_alive(self) -> tuple[bool, int]:
         """Periksa apakah EA baru-baru ini menulis file heartbeat-nya (EA masih aktif)."""

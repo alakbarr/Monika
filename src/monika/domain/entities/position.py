@@ -103,13 +103,6 @@ class PositionEntity(BaseModel):
             raw_vol = _clean(getattr(obj, "volume", None))
             raw_dir = _clean(getattr(obj, "direction", None))
 
-            # In test mocks with explicit position attributes, allow safe test defaults
-            if is_mock:
-                raw_symbol = raw_symbol or "EURUSD"
-                raw_dir = raw_dir or "buy"
-                raw_entry = raw_entry if raw_entry is not None else 1.0
-                raw_vol = raw_vol if raw_vol is not None else 0.1
-
             if not raw_symbol or raw_entry is None or raw_vol is None or not raw_dir:
                 raise ValueError(f"Cannot convert object to PositionEntity (missing mandatory fields): {obj}") from err
 
