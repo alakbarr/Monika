@@ -4,8 +4,8 @@
     "caveman": {
       "source": "JuliusBrussee/caveman",
       "sourceType": "github",
-      "skillPath": "skills/caveman/SKILL.md",
-      "computedHash": "42d72b7f2a23f9732cbaa6d5a76a5c8fd240f0114be4a7347109cd413fcccd82"
+      "skillPath": "skills/trading/caveman-mode/SKILL.md",
+      "computedHash": "c659bcb267bc859220604fd5a493118d439c6beaede641b3b1d3f74f3cf46e45"
     }
   }
 }

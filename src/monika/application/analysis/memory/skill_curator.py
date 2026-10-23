@@ -321,3 +321,9 @@ class SkillCurator:
             except Exception as e:
                 logger.error(f"[SkillCurator] Error in background loop: {e}", exc_info=True)
             await asyncio.sleep(interval_seconds)
+
+
+# Canonical alias to disambiguate from monika.application.skills.curator.SkillCurator
+PlaybookCurator = SkillCurator
+
+__all__ = ["SkillCurator", "PlaybookCurator"]

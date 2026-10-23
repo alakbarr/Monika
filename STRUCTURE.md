@@ -2104,6 +2104,7 @@ Monika/
 │   │   ├── memory/
 │   │   │   ├── test_counterfactual_simulator.py
 │   │   │   ├── test_failure_taxonomy.py
+│   │   │   ├── test_fase_8_hardening.py
 │   │   │   ├── test_negative_constraint_generator.py
 │   │   │   ├── test_playbook_ledger.py
 │   │   │   ├── test_playbook_lifecycle.py
@@ -3064,4 +3065,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 264 | **Total Tracked Files**: 2770
+**Total Tracked Directories**: 264 | **Total Tracked Files**: 2771
