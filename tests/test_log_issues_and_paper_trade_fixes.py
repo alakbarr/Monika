@@ -233,7 +233,7 @@ async def test_edge_strategy_runner_trend_trailing_rr_ratio():
 
 def test_invalidation_direction_schema_no_ambiguity():
     """Verify invalidation_direction schema does not contain type: [string, null] alongside enum."""
-    from monika.application.analysis.schemas.schemas import get_tool_schema
+    from monika.application.analysis.schemas import get_tool_schema
     from monika.application.analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema
 
     schema = get_tool_schema(SubmitAssetAnalysisSchema)

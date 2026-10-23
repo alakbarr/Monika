@@ -285,19 +285,38 @@ class ProvenanceLedger:
         if free_margin is None or free_margin <= 0:
             return False, f"Ungrounded account state: free_margin must be positive (received {free_margin})."
 
-        sym_u = symbol.upper()
+        sym_u = symbol.upper().replace("/", "")
         contract_size = 100000.0
-        if "XAU" in sym_u or "GOLD" in sym_u:
-            contract_size = 100.0
-        elif "BTC" in sym_u:
-            contract_size = 1.0
-        elif "ETH" in sym_u:
-            contract_size = 10.0
-        elif "XTI" in sym_u or "XBR" in sym_u:
-            contract_size = 1000.0
+        try:
+            from monika.domain.risk.position_sizing import get_instrument_spec
+
+            spec = get_instrument_spec(sym_u)
+            if spec and spec.contract_size:
+                contract_size = float(spec.contract_size)
+        except Exception:
+            if "XAU" in sym_u or "GOLD" in sym_u:
+                contract_size = 100.0
+            elif any(k in sym_u for k in ("BTC", "US500", "NAS100", "SPX", "US30", "GER40")):
+                contract_size = 1.0
+            elif "ETH" in sym_u:
+                contract_size = 10.0
+            elif "XTI" in sym_u or "XBR" in sym_u or "OIL" in sym_u:
+                contract_size = 1000.0
 
         eff_price = entry_price if (entry_price and entry_price > 0) else 1.0
-        notional = (lot_size or 0.0) * contract_size * eff_price
+        is_jpy_quote = sym_u.endswith("JPY")
+        is_usd_base = (
+            sym_u.startswith("USD")
+            and not is_jpy_quote
+            and not any(k in sym_u for k in ("BTC", "ETH", "XAU", "XTI", "XBR"))
+        )
+        if is_usd_base:
+            notional = (lot_size or 0.0) * contract_size
+        elif is_jpy_quote:
+            usd_jpy_rate = eff_price if sym_u.startswith("USD") else 150.0
+            notional = ((lot_size or 0.0) * contract_size * eff_price) / max(1.0, usd_jpy_rate)
+        else:
+            notional = (lot_size or 0.0) * contract_size * eff_price
         eff_leverage = max(1.0, leverage)
         estimated_margin_required = notional / eff_leverage
 

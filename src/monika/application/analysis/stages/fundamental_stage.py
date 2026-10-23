@@ -1338,7 +1338,11 @@ INSTRUCTIONS:
                 result["error"] = "Brief submission missing — LLM did not call submit tool"
                 return result
 
-        if brief and (escalated or not _debate_outcome or not _debate_outcome.get("ran")):
+        if (
+            brief
+            and not result.get("is_deterministic_fallback")
+            and (escalated or not _debate_outcome or not _debate_outcome.get("ran"))
+        ):
             _debate_outcome = await self._run_macro_debate(session, brief, prefetched_data=prefetched_json)
             MINIMUM_USABLE_CONFIDENCE = 0.50
             if brief.confidence is not None and brief.confidence < MINIMUM_USABLE_CONFIDENCE and not _quality_flag:

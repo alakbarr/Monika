@@ -301,7 +301,7 @@ Formulate strongest_counter_argument, hard_block, and recommend_block FIRST befo
         except Exception:
             pass
 
-        fail_closed = bool(settings.get("adversarial_check", {}).get("fail_closed", False))
+        fail_closed = bool(settings.get("adversarial_check", {}).get("fail_closed", True))
         if fail_closed:
             return {
                 "strongest_counter_argument": f"Adversarial check unavailable (failing closed per AGENTS.md §1): {e}",

@@ -191,6 +191,11 @@ class TradePreCommitGate:
         # 4. High-Impact Event Proximity Assertion
         # -------------------------------------------------------------
         try:
+            if isinstance(eval_time, str):
+                try:
+                    eval_time = datetime.fromisoformat(eval_time.replace("Z", "+00:00"))
+                except Exception:
+                    eval_time = None
             now = eval_time or clock.now()
             window_start = now - timedelta(minutes=15)
             window_end = now + timedelta(minutes=15)

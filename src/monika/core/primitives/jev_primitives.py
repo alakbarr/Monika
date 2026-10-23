@@ -188,7 +188,7 @@ def parse_jev_response_to_dict(
     result: dict[str, Any] = {}
     confidences: dict[str, float] = {}
     probabilities: dict[str, Any] = {}
-    overall_confidence: float = 1.0
+    overall_confidence: float = 0.0
 
     properties = (schema or {}).get("properties", {}) if isinstance(schema, dict) else {}
 
@@ -244,12 +244,12 @@ def parse_jev_response_to_dict(
         result["currency_bias"] = bias_map
         if "agreement_pct" not in result:
             if confidences:
-                bias_confs = [confidences.get(f"bias_{c.upper()}", 1.0) for c in bias_map]
+                bias_confs = [confidences.get(f"bias_{c.upper()}", 0.0) for c in bias_map]
                 result["agreement_pct"] = round((sum(bias_confs) / len(bias_confs)) * 100, 1)
-                result["flagged_currencies"] = [c for c in bias_map if confidences.get(f"bias_{c.upper()}", 1.0) < 0.60]
+                result["flagged_currencies"] = [c for c in bias_map if confidences.get(f"bias_{c.upper()}", 0.0) < 0.60]
             else:
-                result["agreement_pct"] = 85.0
-                result["flagged_currencies"] = []
+                result["agreement_pct"] = 0.0
+                result["flagged_currencies"] = list(bias_map.keys())
 
     result["_confidence"] = overall_confidence
     result["_confidences"] = confidences

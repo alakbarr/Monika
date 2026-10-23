@@ -426,7 +426,8 @@ class SpecialistPipelineMixin:
                     cfg = (
                         await session.execute(_sel3(SystemConfig).where(SystemConfig.key == key))
                     ).scalar_one_or_none()
-                    val = json.dumps({"biases": specialist_biases, "flagged_at": _get_clock().now().isoformat()})
+                    now_iso = _get_clock().now().isoformat()
+                    val = json.dumps({"biases": specialist_biases, "flagged_at": now_iso, "timestamp": now_iso})
                     if cfg:
                         cfg.value = val
                     else:
@@ -736,13 +737,13 @@ class SpecialistPipelineMixin:
                 schema=SECOND_OPINION_SCHEMA,
             )
             return result or {
-                "agree": True,
-                "disagreement_category": "none",
-                "reason": "second_opinion_call_failed_defaulting_agree",
+                "agree": False,
+                "disagreement_category": "error",
+                "reason": "second_opinion_call_failed",
             }
         except Exception as e:
-            logger.debug(f"[{symbol}] Second opinion check failed (non-fatal): {e}")
-            return {"agree": True, "disagreement_category": "none", "reason": "error_defaulting_agree"}
+            logger.warning(f"[{symbol}] Second opinion check failed (fail-closed): {e}")
+            return {"agree": False, "disagreement_category": "error", "reason": f"error_defaulting_disagree: {e}"}
 
     def _build_structured_specialist_view(self, raw_bundle_data: dict, specialist: str) -> str:
         import json as _json

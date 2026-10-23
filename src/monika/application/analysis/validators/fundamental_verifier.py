@@ -52,11 +52,11 @@ async def verify_fundamental_brief(session: AsyncSession, brief: FundamentalBrie
     ONLY internal logical consistency, never re-derives the macro call itself."""
     FAIL_CLOSED_CONFIDENCE_CAP = 0.6
     default = {
-        "internally_consistent": True,
-        "contradictions_found": [],
+        "internally_consistent": False,
+        "contradictions_found": ["Verifier call failed or unavailable (Fail-Closed)"],
         "unjustified_confidence": True,
-        "recommended_confidence_cap": min(brief.confidence or 0.7, FAIL_CLOSED_CONFIDENCE_CAP),
-        "counter_thesis_is_substantive": True,
+        "recommended_confidence_cap": min(brief.confidence or 0.6, FAIL_CLOSED_CONFIDENCE_CAP),
+        "counter_thesis_is_substantive": False,
         "verdict": "UNVERIFIED",
     }
     try:

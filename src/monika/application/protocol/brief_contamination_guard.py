@@ -199,10 +199,6 @@ class BriefContaminationGuard:
                     risk_score += penalty
         except Exception as e:
             logger.debug(f"BriefContaminationGuard: DXY check failed (non-fatal): {e}")
-            try:
-                await session.rollback()
-            except Exception:
-                pass
 
         # Check 4: VIX consistency
         try:
@@ -224,10 +220,6 @@ class BriefContaminationGuard:
                     risk_score += 0.20
         except Exception as e:
             logger.debug(f"BriefContaminationGuard: VIX check failed (non-fatal): {e}")
-            try:
-                await session.rollback()
-            except Exception:
-                pass
 
         # Check 5: Brief confidence sanity
         if confidence < 0.40:
@@ -295,10 +287,10 @@ class BriefContaminationGuard:
             except Exception as e:
                 logger.error(f"Per-symbol safety check failed for {symbol}: {e}")
                 result[symbol] = {
-                    "safety_level": "warning",  # Fail-safe: raise warning context if check fails
-                    "cds": 0.35,
+                    "safety_level": "block_buysell",  # Fail-closed: block trading on error
+                    "cds": 1.0,
                     "breakdown": {"error": str(e)},
-                    "context": f"Contamination check failed with exception: {e}",
+                    "context": f"[SSVP BLOCK] Contamination check failed with exception: {e}",
                 }
 
         return result
@@ -432,7 +424,7 @@ def _build_contextmerge_prompt(symbol: str, cds: float, breakdown: dict, force_w
 
     return f"""
 ╔══════════════════════════════════════════════════════════════════╗
-║ SSVP CONTEXT MERGE REQUIRED: CONFLICTING DATA DETECTED 
+║ SSVP CONTEXT MERGE REQUIRED: CONFLICTING DATA DETECTED
 ╚══════════════════════════════════════════════════════════════════╝
 Context Divergence Score (CDS) = {cds:.2f} (HIGH RISK OF HALLUCINATION)
 
@@ -441,7 +433,7 @@ Conflict Details:
 
 {force_wait_instruction}
 YOUR INSTRUCTIONS:
-1. DO NOT simply blend conflicting signals (e.g., "brief is 
+1. DO NOT simply blend conflicting signals (e.g., "brief is
    bullish, but H4 price dropped 0.3% since brief."
 
 2. EVALUATE SOURCE AUTHORITY:
@@ -458,7 +450,7 @@ YOUR INSTRUCTIONS:
 VALIDATION: Your rationale in submit_asset_analysis MUST contain
 one of these adjudication markers:
   → "I trust price action because..."
-  → "I trust the brief because..."  
+  → "I trust the brief because..."
   → "Contradiction unresolved → WAIT"
   → "Brief overrides because..."
   → "Price action overrides because..."

@@ -153,6 +153,7 @@ class OutputVerifier:
         except TypeError, ValueError:
             return output, []
 
+        initial_sl_valid = (decision == "buy" and sl < entry) or (decision == "sell" and sl > entry)
         sl_dist = abs(entry - sl)
         tp_dist = abs(entry - tp)
         snaps = []
@@ -168,12 +169,15 @@ class OutputVerifier:
                 anchor_dist = abs(entry - nearest_anchor)
                 max_snap_dist = (0.25 * atr_val) if (atr_val and atr_val > 0) else (0.003 * entry)
                 if 0 < anchor_dist <= max_snap_dist:
-                    old_entry = entry
-                    entry = round(nearest_anchor, digits)
-                    sl_dist = abs(entry - sl)
-                    if isinstance(output.get("entry_condition"), dict):
-                        output["entry_condition"]["price"] = entry
-                    snaps.append(f"Deterministic snap: anchored Entry from {old_entry} to structural level {entry}")
+                    cand_entry = round(nearest_anchor, digits)
+                    # Prevent anchor snapping from inverting SL
+                    if (decision == "buy" and cand_entry > sl) or (decision == "sell" and cand_entry < sl):
+                        old_entry = entry
+                        entry = cand_entry
+                        sl_dist = abs(entry - sl)
+                        if isinstance(output.get("entry_condition"), dict):
+                            output["entry_condition"]["price"] = entry
+                        snaps.append(f"Deterministic snap: anchored Entry from {old_entry} to structural level {entry}")
 
         if sl_dist <= 0 or entry == sl:
             return output, []
@@ -221,8 +225,10 @@ class OutputVerifier:
 
                 m = re.search(r"ceiling \(([0-9.]+)\)", f)
                 if m and decision == "buy":
-                    tp = round(float(m.group(1)), digits)
-                    output["take_profit"] = tp
+                    cand_tp = round(float(m.group(1)), digits)
+                    if cand_tp > entry:
+                        tp = cand_tp
+                        output["take_profit"] = tp
                     snaps.append(f"Deterministic snap: capped BUY TP to TimesFM Q90 ceiling ({output['take_profit']})")
                     new_tp_dist = abs(entry - output["take_profit"])
                     if sl_dist > 0 and (new_tp_dist / sl_dist) < (min_rr - 0.05):
@@ -240,8 +246,10 @@ class OutputVerifier:
 
                 m = re.search(r"floor \(([0-9.]+)\)", f)
                 if m and decision == "sell":
-                    tp = round(float(m.group(1)), digits)
-                    output["take_profit"] = tp
+                    cand_tp = round(float(m.group(1)), digits)
+                    if cand_tp < entry:
+                        tp = cand_tp
+                        output["take_profit"] = tp
                     snaps.append(f"Deterministic snap: capped SELL TP to TimesFM Q10 floor ({output['take_profit']})")
                     new_tp_dist = abs(entry - output["take_profit"])
                     if sl_dist > 0 and (new_tp_dist / sl_dist) < (min_rr - 0.05):
@@ -254,8 +262,6 @@ class OutputVerifier:
                         snaps.append(
                             f"Deterministic snap: harmonized SL to {sl} preserving min 1.0x ATR under TimesFM cap"
                         )
-
-        initial_sl_valid = (decision == "buy" and sl < entry) or (decision == "sell" and sl > entry)
 
         # Direction invariant check post-snapping (prevent snapping from inverting SL / TP)
         if initial_sl_valid:

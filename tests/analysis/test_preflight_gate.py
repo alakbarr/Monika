@@ -161,3 +161,24 @@ async def test_preflight_adr_exhaustion_blocks_turn():
             assert is_allowed is False
             assert "Daily range exhausted" in reason
             assert "consumed 98.8%" in reason
+
+
+@pytest.mark.asyncio
+async def test_preflight_stale_crypto_quote_blocks_turn():
+    # Crypto must NOT be exempt from stale quote check
+    test_time = datetime(2026, 9, 4, 14, 30, tzinfo=timezone.utc)
+    mock_mt5 = MagicMock()
+    mock_tick = MagicMock()
+    mock_tick.time = test_time.timestamp() - 300  # 300s old (> 180s)
+    mock_tick.spread = 20.0
+    mock_mt5.get_latest_tick = AsyncMock(return_value=mock_tick)
+
+    is_allowed, reason = await PreFlightTurnGate.evaluate_preconditions(
+        session=None,
+        symbol="BTCUSD",
+        settings={"trading": {"24_7_assets": ["BTCUSD"]}},
+        mt5_client=mock_mt5,
+        override_time=test_time,
+    )
+    assert is_allowed is False
+    assert "MT5 quote stale" in reason

@@ -587,12 +587,13 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
                 return {**result, "symbol": symbol, "elapsed_seconds": elapsed}
 
         # Pastikan analisis benar-benar tersimpan pada siklus/sesi saat ini
+        now_ts = _get_clock().now()
         analysis = (
             await session.execute(
                 select(AssetAnalysis)
                 .where(AssetAnalysis.symbol == symbol)
                 .where(AssetAnalysis.generated_at >= start_time - timedelta(seconds=15))
-                .where(AssetAnalysis.generated_at <= start_time + timedelta(minutes=5))
+                .where(AssetAnalysis.generated_at <= now_ts + timedelta(minutes=1))
                 .order_by(AssetAnalysis.generated_at.desc())
                 .limit(1)
             )

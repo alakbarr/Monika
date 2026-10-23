@@ -150,11 +150,14 @@ class VerifiedMarketSnapshot:
         if len(bars) < 15:
             return
 
-        # Sort chronologically
-        bars = sorted(bars, key=lambda b: b.timestamp)
-        closes = [float(b.close) for b in bars if b.close is not None]
-        highs = [float(b.high) for b in bars if b.high is not None]
-        lows = [float(b.low) for b in bars if b.low is not None]
+        # Sort chronologically & synchronize lengths across OHLC
+        valid_bars = [b for b in bars if b.close is not None and b.high is not None and b.low is not None]
+        if len(valid_bars) < 15:
+            return
+        valid_bars = sorted(valid_bars, key=lambda b: b.timestamp)
+        closes = [float(b.close) for b in valid_bars]
+        highs = [float(b.high) for b in valid_bars]
+        lows = [float(b.low) for b in valid_bars]
 
         # ATR 14
         if "atr_14" not in snapshot and len(highs) >= 15:
@@ -218,7 +221,7 @@ class VerifiedMarketSnapshot:
         issues = []
         close = snapshot.get("latest_close")
         if close is None:
-            return True, []
+            return False, ["Missing latest_close in market snapshot (Fail-Closed)."]
 
         action = str(plan.get("action", plan.get("decision", plan.get("direction", "")))).upper()
         if action not in ("BUY", "SELL"):
@@ -233,7 +236,12 @@ class VerifiedMarketSnapshot:
         if "MARKET" in order_type and abs(entry - close) / close > 0.10:
             issues.append(f"Market order entry {entry} diverges >10% from current price {close}")
 
-        # SL / TP directional consistency
+        # SL / TP directional consistency (Fail-Closed: mandatory SL and TP)
+        if sl is None:
+            issues.append(f"{action} order missing mandatory stop_loss (Fail-Closed).")
+        if tp is None:
+            issues.append(f"{action} order missing mandatory take_profit (Fail-Closed).")
+
         if action == "BUY":
             if sl is not None and sl >= entry:
                 issues.append(f"BUY order SL ({sl}) must be below entry price ({entry})")

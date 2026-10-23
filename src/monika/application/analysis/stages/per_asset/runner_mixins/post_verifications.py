@@ -225,7 +225,14 @@ class PostProcessVerificationMixin(_RunnerMixinBase):
                         await session.commit()
                         decision = "wait"
             except Exception as ground_err:
-                logger.debug(f"[{symbol}] InHarnessGroundingValidator non-fatal: {ground_err}")
+                logger.error(
+                    f"[{symbol}] InHarnessGroundingValidator error, demoting to wait (Fail-Closed): {ground_err}"
+                )
+                if str(analysis.decision or "").lower() in ("buy", "sell"):
+                    analysis.decision = "wait"
+                    analysis.rationale = (analysis.rationale or "") + f" [GROUNDING ERROR REJECT: {ground_err}]"
+                    await session.commit()
+                    decision = "wait"
 
             # Cross-Timeframe Confirmation Gate (HTF Alignment Sentinel)
             try:
@@ -421,7 +428,11 @@ class PostProcessVerificationMixin(_RunnerMixinBase):
                         flag_data = (
                             json.loads(cfg.value) if isinstance(cfg.value, str) and cfg.value.startswith("{") else {}
                         )
-                        flagged_at_str = flag_data.get("timestamp") or cfg.value
+                        flagged_at_str = (
+                            flag_data.get("flagged_at")
+                            or flag_data.get("timestamp")
+                            or (cfg.value if isinstance(cfg.value, str) and not cfg.value.startswith("{") else None)
+                        )
                         flagged_at = datetime.fromisoformat(flagged_at_str) if isinstance(flagged_at_str, str) else None
                         if flagged_at:
                             if flagged_at.tzinfo is None:

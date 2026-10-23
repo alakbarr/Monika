@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.application.analysis.schemas.schemas import SubmitAssetAnalysisSchema, SubmitFundamentalBriefSchema
+from monika.application.analysis.schemas import SubmitAssetAnalysisSchema, SubmitFundamentalBriefSchema
 from monika.application.analysis.tools.tool_executor import ToolExecutor
 from monika.infrastructure.database.models import (
     AssetAnalysis,

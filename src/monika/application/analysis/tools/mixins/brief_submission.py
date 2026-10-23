@@ -19,7 +19,7 @@ from sqlalchemy import and_, desc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
-from monika.application.analysis.schemas.schemas import SubmitFundamentalBriefSchema
+from monika.application.analysis.schemas import SubmitFundamentalBriefSchema
 from monika.application.analysis.tools.mixins.base import _ToolExecutorMixinBase, logger
 from monika.infrastructure.database.models import (
     COTReport,

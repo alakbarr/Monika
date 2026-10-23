@@ -85,21 +85,23 @@ class CrossAgentSynchronizer:
             if contradiction_cds < self.contradiction_threshold:
                 continue  # Not strong enough to suppress
 
-            # Identify suspect (lower confidence = more suspect)
+            # Identify suspect using composite score (confidence + confluence)
             conf1 = result1.get("confidence", 0.5)
             conf2 = result2.get("confidence", 0.5)
-            suspect = sym1 if conf1 < conf2 else sym2
 
-            # Also consider confluence score — lower score = more suspect
-            cs1 = result1.get("confluence_score") or 0
-            cs2 = result2.get("confluence_score") or 0
+            cs1 = float(result1.get("confluence_score") or 0)
+            cs2 = float(result2.get("confluence_score") or 0)
 
-            if cs1 != 0 and cs2 != 0:
-                # If confluence score clearly differs, weight that more
-                if cs1 < cs2 - 2:
-                    suspect = sym1
-                elif cs2 < cs1 - 2:
-                    suspect = sym2
+            # 70% model probability confidence, 30% checklist confluence (max 14)
+            score1 = conf1 * 0.7 + (min(max(cs1, 0.0), 14.0) / 14.0) * 0.3
+            score2 = conf2 * 0.7 + (min(max(cs2, 0.0), 14.0) / 14.0) * 0.3
+
+            if abs(score1 - score2) < 0.01:
+                suspect = "BOTH"
+            elif score1 < score2:
+                suspect = sym1
+            else:
+                suspect = sym2
 
             contradictions.append(
                 {
@@ -135,34 +137,45 @@ class CrossAgentSynchronizer:
 
         for contradiction in contradictions:
             suspect = contradiction["suspect"]
-
-            if suspect in suppressed:
-                continue  # Already suppressed by a previous contradiction
-
             sym1, sym2 = contradiction["sym1"], contradiction["sym2"]
-            trusted = sym2 if suspect == sym1 else sym1
 
-            original_decision = updated[suspect].get("decision", "unknown")
-            updated[suspect] = dict(updated[suspect])
-            updated[suspect]["_original_decision"] = original_decision
-            updated[suspect]["decision"] = "wait"
-            updated[suspect]["confidence"] = 0.0
-            updated[suspect]["rationale"] = (
-                f"[SSVP Cross-Agent Suppression] "
-                f"Decision '{original_decision}' suppressed due to contradiction with {trusted}. "
-                f"Both {sym1} and {sym2} have correlated USD exposure (r={contradiction['expected_corr']:.2f}), "
-                f"but their decisions imply opposite USD directions "
-                f"({contradiction['impl1']} vs {contradiction['impl2']}). "
-                f"Lower-confidence agent ({suspect}: conf={contradiction['conf1' if suspect == sym1 else 'conf2']:.2f}) "
-                f"suppressed per SSVP selective synchronization protocol. "
-                f"Re-analysis recommended with explicit cross-pair context."
-            )
-            suppressed.add(suspect)
+            if suspect == "BOTH":
+                targets = [sym1, sym2]
+            else:
+                trusted = sym2 if suspect == sym1 else sym1
+                # If trusted agent was already suppressed, its vote is invalid
+                if trusted in suppressed:
+                    logger.info(
+                        f"[SSVP] Skipping contradiction between {sym1} and {sym2}: "
+                        f"trusted agent {trusted} was already suppressed."
+                    )
+                    continue
+                targets = [suspect]
 
-            logger.warning(
-                f"[SSVP] Suppressed {suspect} ({original_decision}) "
-                f"due to contradiction with {trusted} "
-                f"(corr={contradiction['expected_corr']:.2f})"
-            )
+            for target in targets:
+                if target in suppressed:
+                    continue
+
+                original_decision = updated[target].get("decision", "unknown")
+                updated[target] = dict(updated[target])
+                updated[target]["_original_decision"] = original_decision
+                updated[target]["decision"] = "wait"
+                updated[target]["confidence"] = 0.0
+                other = sym2 if target == sym1 else sym1
+                updated[target]["rationale"] = (
+                    f"[SSVP Cross-Agent Suppression] "
+                    f"Decision '{original_decision}' suppressed due to contradiction with {other}. "
+                    f"Both {sym1} and {sym2} have correlated USD exposure (r={contradiction['expected_corr']:.2f}), "
+                    f"but their decisions imply opposite USD directions "
+                    f"({contradiction['impl1']} vs {contradiction['impl2']}). "
+                    f"Suppressed per SSVP selective synchronization protocol. "
+                    f"Re-analysis recommended with explicit cross-pair context."
+                )
+                suppressed.add(target)
+
+                logger.warning(
+                    f"[SSVP] Suppressed {target} ({original_decision}) "
+                    f"due to contradiction (corr={contradiction['expected_corr']:.2f})"
+                )
 
         return updated, list(suppressed)

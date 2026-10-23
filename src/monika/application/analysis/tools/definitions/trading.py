@@ -8,7 +8,7 @@ Trading execution, fundamental brief, asset analysis, position, and risk tool de
 
 from __future__ import annotations
 
-from monika.application.analysis.schemas.schemas import (
+from monika.application.analysis.schemas import (
     SubmitAssetAnalysisSchema,
     SubmitFundamentalBriefSchema,
     get_tool_schema,

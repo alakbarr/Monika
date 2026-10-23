@@ -80,6 +80,14 @@ class SSVPCoordinator:
             session, brief_data, settings
         )
 
+        if not is_safe:
+            msg = (
+                f"[SSVP ABORT] Brief integrity validation failed: {contamination_issues}. "
+                f"contamination_risk={contamination_risk:.2f}"
+            )
+            logger.warning(msg)
+            return False, 1.0, msg
+
         # Compute per-symbol CDS
         asset_universe = settings.get("trading", {}).get("asset_universe", [])
         per_symbol_safety = await BriefContaminationGuard.compute_per_symbol_safety(

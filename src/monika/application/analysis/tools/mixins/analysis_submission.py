@@ -20,7 +20,7 @@ from sqlalchemy import and_, desc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
-from monika.application.analysis.schemas.schemas import SubmitAssetAnalysisSchema
+from monika.application.analysis.schemas import SubmitAssetAnalysisSchema
 from monika.application.analysis.tools.mixins.base import (
     FACTOR_CONSISTENCY_TOLERANCE,
     FACTOR_POINT_MAP,

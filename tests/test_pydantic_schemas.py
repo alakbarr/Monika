@@ -327,7 +327,7 @@ def test_upcoming_risk_events_coercion_robustness():
 
 def test_inline_refs_preserves_nullable_numbers_for_gemini_tools():
     import jsonschema
-    from monika.application.analysis.schemas.schemas import SubmitFundamentalBriefSchema, _inline_refs
+    from monika.application.analysis.schemas import SubmitFundamentalBriefSchema, _inline_refs
 
     raw_schema = SubmitFundamentalBriefSchema.model_json_schema()
     inlined = _inline_refs(raw_schema)
@@ -664,3 +664,38 @@ def test_fundamental_brief_validate_confidence_scales():
     assert b100.confidence == 0.85
     assert b100.currency_confidence["USD"] == 0.90
     assert b100.currency_confidence["EUR"] == 0.65
+
+
+def test_phase11_pydantic_hardening_invariants():
+    import math
+    import pytest
+    from pydantic import ValidationError
+    from monika.application.analysis.schemas import (
+        coerce_float,
+        coerce_int,
+        coerce_string_list,
+        SubmitAssetAnalysisSchema,
+    )
+
+    # 1. NaN and Inf rejection
+    assert coerce_int(float("nan")) is None
+    assert coerce_int(float("inf")) is None
+    assert coerce_int(float("-inf")) is None
+    assert coerce_float(float("nan")) is None
+    assert coerce_float(float("inf")) is None
+    assert coerce_float(float("-inf")) is None
+
+    # 2. String list prefix stripping doesn't corrupt prices
+    assert coerce_string_list("1.0850 target level") == ["1.0850 target level"]
+    assert coerce_string_list("1. Validated level\n2. Another level") == ["Validated level", "Another level"]
+    assert coerce_string_list("- Bullet point") == ["Bullet point"]
+
+    # 3. Confluence score bounds [0, 14]
+    with pytest.raises(ValidationError):
+        SubmitAssetAnalysisSchema(
+            symbol="EURUSD", decision="wait", confidence=0.7, rationale="Test", invalidation="Test", confluence_score=15
+        )
+    with pytest.raises(ValidationError):
+        SubmitAssetAnalysisSchema(
+            symbol="EURUSD", decision="wait", confidence=0.7, rationale="Test", invalidation="Test", confluence_score=-1
+        )

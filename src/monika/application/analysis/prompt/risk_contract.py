@@ -61,9 +61,15 @@ def build_risk_contract(
         symbol=symbol,
         min_rr_ratio=min_rr,
         min_sl_atr_multiplier=base_mult,
-        max_sl_adr_pct=float(trading_risk.get("max_sl_adr_pct", 0.35) or 0.35),
-        target_tp_min_adr_pct=float(trading_risk.get("target_tp_min_adr_pct", 0.50) or 0.50),
-        target_tp_max_adr_pct=float(trading_risk.get("target_tp_max_adr_pct", 0.80) or 0.80),
+        max_sl_adr_pct=float(
+            trading_risk.get("intraday_max_sl_adr_pct", trading_risk.get("max_sl_adr_pct", 0.35)) or 0.35
+        ),
+        target_tp_min_adr_pct=float(
+            trading_risk.get("intraday_tp_min_adr_pct", trading_risk.get("target_tp_min_adr_pct", 0.50)) or 0.50
+        ),
+        target_tp_max_adr_pct=float(
+            trading_risk.get("intraday_tp_max_adr_pct", trading_risk.get("target_tp_max_adr_pct", 0.80)) or 0.80
+        ),
         max_tp_entry_pct=float(trading_risk.get("max_tp_entry_pct", 0.20) or 0.20),
         band_tolerance_pct=float(trading_risk.get("band_tolerance_pct", 0.10) or 0.10),
     )

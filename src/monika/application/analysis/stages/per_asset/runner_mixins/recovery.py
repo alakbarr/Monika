@@ -151,8 +151,8 @@ class RecoveryMixin(_RunnerMixinBase):
                                 "price": parsed_sl,
                                 "detail": f"Re-evaluate if SL breached at {parsed_sl}",
                             }
-                            fallback_payload["confluence_score"] = 7
-                            fallback_payload["priced_in_score"] = 4
+                            fallback_payload["confluence_score"] = 0
+                            fallback_payload["priced_in_score"] = 5
                         else:
                             extracted_decision = "wait"
                             fallback_payload["decision"] = "wait"

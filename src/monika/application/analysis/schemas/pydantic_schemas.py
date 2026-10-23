@@ -1,5 +1,6 @@
 import copy
 import json
+import math
 import re
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
@@ -248,6 +249,8 @@ class SpecialistAdjudication(BaseModel):
                 data["resolution_path"] = (
                     rp if rp in ("override_macro", "cancel_setup", "scale_out", "hedged_entry") else None
                 )
+            if data.get("conflict_detected") and not data.get("resolution_path"):
+                data["resolution_path"] = "cancel_setup"
         return data
 
 
@@ -469,11 +472,11 @@ def coerce_string_list(v: Any, default: Optional[List[str]] = None) -> Optional[
             for item in raw_items:
                 clean_item = item.strip()
                 # Strip only bullet / numbered prefixes (e.g. '1. ', '- ', '• ') preserving numeric dates/prices
-                clean_item = re.sub(r"^[-*•\d]+[.)]\s*", "", clean_item).strip()
+                clean_item = re.sub(r"^(?:[-*•]|\d+[.)])\s+", "", clean_item).strip()
                 if clean_item:
                     items.append(clean_item)
             return items
-        return [re.sub(r"^[-*•\d]+[.)]\s*", "", s).strip()]
+        return [re.sub(r"^(?:[-*•]|\d+[.)])\s+", "", s).strip()]
     if isinstance(v, (list, tuple, set)):
         result = []
         for item in v:
@@ -527,7 +530,10 @@ def coerce_float(v: Any, default: Optional[float] = None) -> Optional[float]:
     if v is None or isinstance(v, bool):
         return default
     if isinstance(v, (int, float)):
-        return float(v)
+        fv = float(v)
+        if math.isnan(fv) or math.isinf(fv):
+            return default
+        return fv
     if isinstance(v, str):
         s = v.strip().replace(",", "")
         if not s or s.lower() in (
@@ -566,6 +572,8 @@ def coerce_int(v: Any, default: Optional[int] = None) -> Optional[int]:
     if isinstance(v, int):
         return v
     if isinstance(v, float):
+        if math.isnan(v) or math.isinf(v):
+            return default
         return int(round(v))
     if isinstance(v, str):
         s = v.strip().replace(",", "")
@@ -576,8 +584,11 @@ def coerce_int(v: Any, default: Optional[int] = None) -> Optional[int]:
         clean_s = re.sub(r"^[~><$€£¥\s]+|(?:%|\s+|pts|bps|pips)+$", "", clean_s, flags=re.IGNORECASE).strip()
         if re.fullmatch(r"[-+]?\d+(?:\.0+)?", clean_s):
             try:
-                return int(float(clean_s))
-            except ValueError:
+                fv = float(clean_s)
+                if math.isnan(fv) or math.isinf(fv):
+                    return default
+                return int(fv)
+            except ValueError, OverflowError:
                 return default
     return default
 
@@ -871,6 +882,8 @@ class SubmitAssetAnalysisSchema(BaseModel):
     )
     confluence_score: Optional[int] = Field(
         None,
+        ge=0,
+        le=14,
         description="REQUIRED for buy/sell decisions: Total confluence score (integer 0-14) based on SMC/ICT framework.",
     )
     confluence_factors: Optional[List[str]] = Field(
@@ -1284,10 +1297,10 @@ class SubmitFundamentalBriefSchema(BaseModel):
             # Auto-heal priced_in_assessment if omitted or stringified
             if not data.get("priced_in_assessment"):
                 data["priced_in_assessment"] = {
-                    "dominant_driver": "Federal Reserve policy trajectory and geopolitical premium",
+                    "dominant_driver": "General macroeconomic baseline",
                     "priced_in_score": 5,
                     "sell_the_news_risk": "medium",
-                    "key_unpriced_drivers": ["Middle East escalation", "labor market deterioration"],
+                    "key_unpriced_drivers": [],
                     "cot_positioning_percentile": None,
                 }
             elif isinstance(data.get("priced_in_assessment"), str):
@@ -1366,7 +1379,7 @@ class SubmitFundamentalBriefSchema(BaseModel):
                 ):
                     data["strongest_counter_thesis"] = (
                         "Risiko skenario berlawanan: Jika kejutan data ekonomi riil berbalik "
-                        "arah drastis dari konsensus dan memicu repricing agresif ekspektasi kebijakan moneter."
+                        "arah drastis dari konsensus ekspektasi kebijakan moneter."
                     )
 
             # Auto-heal yield_curve_regime and systemic_liquidity_trend if omitted
@@ -1868,3 +1881,77 @@ def make_openai_strict_schema(schema_dict: dict) -> dict:
 
     _patch_object(s)
     return s
+
+
+def _inline_refs(schema: Any, defs: Optional[dict[str, Any]] = None) -> Any:
+    """Recursively replaces $ref with actual schema definitions to produce
+    a flat JSON schema compatible with raw tool execution payloads.
+    Also simplifies anyOf null structures common in Pydantic v2 Optionals.
+    """
+    if defs is None:
+        if isinstance(schema, dict):
+            raw_defs = schema.get("$defs")
+            defs_map: dict[str, Any] = raw_defs if isinstance(raw_defs, dict) else {}
+            schema = {k: v for k, v in schema.items() if k != "$defs"}
+        else:
+            defs_map = {}
+    else:
+        defs_map = defs
+
+    if isinstance(schema, dict):
+        if "$ref" in schema:
+            ref_name = schema["$ref"].split("/")[-1]
+            if ref_name in defs_map:
+                resolved = _inline_refs(dict(defs_map[ref_name]), defs_map)
+                extra = {k: v for k, v in schema.items() if k != "$ref"}
+                if extra:
+                    resolved.update(_inline_refs(extra, defs_map))
+                return resolved
+            return schema
+
+        # Simplify anyOf with null (Pydantic v2 Optionals)
+        if "anyOf" in schema:
+            any_of = schema["anyOf"]
+            null_branches = [s for s in any_of if isinstance(s, dict) and s.get("type") == "null"]
+            non_null_branches = [s for s in any_of if not (isinstance(s, dict) and s.get("type") == "null")]
+
+            if null_branches and len(non_null_branches) == 1:
+                non_null_schema = non_null_branches[0]
+                merged = {k: v for k, v in schema.items() if k != "anyOf"}
+                resolved_non_null = _inline_refs(non_null_schema, defs_map)
+                if isinstance(resolved_non_null, dict):
+                    merged.update(resolved_non_null)
+                if "enum" not in merged and "type" in merged:
+                    if isinstance(merged["type"], str):
+                        merged["type"] = [merged["type"], "null"]
+                    elif isinstance(merged["type"], list) and "null" not in merged["type"]:
+                        merged["type"].append("null")
+                elif "type" not in merged:
+                    merged["anyOf"] = [resolved_non_null, {"type": "null"}]
+                if "default" in merged and merged["default"] is None:
+                    del merged["default"]
+                return merged
+            elif null_branches and len(non_null_branches) > 1:
+                merged = {k: v for k, v in schema.items()}
+                merged["anyOf"] = [_inline_refs(s, defs_map) for s in any_of]
+                if "default" in merged and merged["default"] is None:
+                    del merged["default"]
+                return merged
+
+        res = {}
+        for k, v in schema.items():
+            if k == "default" and v is None:
+                continue
+            res[k] = _inline_refs(v, defs_map)
+        return res
+
+    elif isinstance(schema, list):
+        return [_inline_refs(item, defs_map) for item in schema]
+
+    return schema
+
+
+def get_tool_schema(pydantic_model: type[BaseModel]) -> dict:
+    """Generate a flattened JSON schema for a tool definition."""
+    schema = pydantic_model.model_json_schema()
+    return _inline_refs(schema)

@@ -6636,6 +6636,9 @@
 
 ### Folder: `src/monika/application/analysis/schemas` <a id="folder-srcmonikaapplicationanalysisschemas"></a>
 
+#### `__init__.py` - *Monika Analysis Schemas Package.*
+- **Path**: [`src/monika/application/analysis/schemas/__init__.py`](src/monika/application/analysis/schemas/__init__.py)
+
 #### `pydantic_schemas.py`
 - **Path**: [`src/monika/application/analysis/schemas/pydantic_schemas.py`](src/monika/application/analysis/schemas/pydantic_schemas.py)
 - **Classes**:
@@ -6712,11 +6715,10 @@
   - `coerce_float(v: Any, default: Optional[float]) -> Optional[float]`: Safely coerces strings, percentages, numbers, and common LLM non-numeric strings
   - `coerce_int(v: Any, default: Optional[int]) -> Optional[int]`: Safely coerces strings (e.g. '8', '8/10', '8.0', 'N/A') into int or None.
   - `make_openai_strict_schema(schema_dict: dict) -> dict`: Transforms standard Pydantic JSON schema into OpenAI strict: true compliant schema.
-
-#### `schemas.py`
-- **Path**: [`src/monika/application/analysis/schemas/schemas.py`](src/monika/application/analysis/schemas/schemas.py)
-- **Top-Level Functions**:
   - `get_tool_schema(pydantic_model: type[BaseModel]) -> dict`: Generate a flattened JSON schema for a tool definition.
+
+#### `schemas.py` - *Deprecated module: import directly from monika.application.analysis.schemas instead.*
+- **Path**: [`src/monika/application/analysis/schemas/schemas.py`](src/monika/application/analysis/schemas/schemas.py)
 
 ### Folder: `src/monika/application/analysis/stages` <a id="folder-srcmonikaapplicationanalysisstages"></a>
 
@@ -10488,6 +10490,21 @@
     - `async get_recent_candles(session: AsyncSession, symbol: str, timeframe: str, ...) -> List[PriceOHLCV]` - *Fetch latest cached OHLCV candles from persistence store.*
     - `async get_upcoming_economic_events(session: AsyncSession, currencies: Optional[List[str]], impact_levels: Optional[List[str]], ...) -> List[EconomicCalendar]` - *Fetch upcoming economic calendar news events to inform news safety filters.*
 
+#### `market_structure_service.py` - *Market Structure Application Service.*
+- **Path**: [`src/monika/application/services/market_structure_service.py`](src/monika/application/services/market_structure_service.py)
+- **Classes**:
+  - `class MarketStructureService(DomainMarketStructureAnalyzer)`: Application Service that detects and persists market structure primitives.
+    - `__init__(session: Any, settings: Optional[dict])` - *Args:*
+    - `async analyze(symbol: str, timeframe: str) -> dict[str, int]` - *Menjalankan analisis struktur pasar (Swing, S/R, Liq, FVG, OB, BOS).*
+    - `async analyze_all(symbols: list[str], timeframes: list[str]) -> dict[str, dict[str, int]]` - *Menjalankan analisis untuk kumpulan symbol dan timeframe.*
+    - `async get_structure_snapshot(symbol: str, timeframe: str) -> dict` - *Snapshot ringkas struktur pasar (Swings, S/R, FVG, dll).*
+
+#### `order_flow_service.py` - *Order Flow Application Service.*
+- **Path**: [`src/monika/application/services/order_flow_service.py`](src/monika/application/services/order_flow_service.py)
+- **Classes**:
+  - `class OrderFlowService`: Application Service for Order Flow querying and execution.
+    - `async fetch_latest_order_flow(session: Any, symbol: str) -> OrderFlowSnapshot` - *Ambil snapshot order flow terbaru dari database atau hitung on-the-fly.*
+
 #### `portfolio_service.py` - *Portfolio & Position Application Service.*
 - **Path**: [`src/monika/application/services/portfolio_service.py`](src/monika/application/services/portfolio_service.py)
 - **Classes**:
@@ -10505,6 +10522,16 @@
   - `class SystemStatusService`: Consolidates system observability and component state queries.
     - `get_system_health(container: Optional[ServiceContainer], engine: Optional[PluginEngine]) -> Dict[str, Any]` - *Aggregate health across container services, plugins, and execution channels.*
     - `get_plugin_summary(engine: Optional[PluginEngine]) -> List[Dict[str, Any]]` - *Return a structured summary of all registered plugins.*
+
+#### `technical_indicator_service.py` - *Technical Indicator Application Service.*
+- **Path**: [`src/monika/application/services/technical_indicator_service.py`](src/monika/application/services/technical_indicator_service.py)
+- **Classes**:
+  - `class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator)`: Application Service that computes and persists technical indicators from OHLCV data.
+    - `__init__(session: Any, settings: Optional[dict])`
+    - `async compute_and_save(symbol: str, timeframe: str) -> int` - *Menjalankan alur lengkap: load OHLCV -> hitung -> simpan.*
+    - `async compute_all_symbols(symbols: list[str], timeframes: list[str]) -> dict[str, int]` - *Menjalankan komputasi untuk semua aset dan timeframe.*
+    - `async get_latest(symbol: str, timeframe: str, indicator_name: str) -> Optional[dict]` - *Mengambil metrik indikator terbaru untuk suatu symbol/timeframe.*
+    - `async get_snapshot(symbol: str, timeframe: str, series_depth: int, ...) -> dict` - *Mengambil semua nilai indikator pada timestamp terkini dengan konteks delta, arah,*
 
 #### `trading_service.py` - *Trading Application Service.*
 - **Path**: [`src/monika/application/services/trading_service.py`](src/monika/application/services/trading_service.py)
@@ -13172,6 +13199,18 @@
   - `format_dataview_journal(trade_data: Dict[str, Any]) -> str`: Format trade execution data into an Obsidian Dataview-compatible markdown file
   - `format_spreadsheet_row(trade_data: Dict[str, Any]) -> Dict[str, Any]`: Format trade record into a dictionary row suitable for Excel or CSV appending.
   - `record_trade_to_workspace(settings: Optional[Dict[str, Any]], trade_data: Dict[str, Any]) -> Dict[str, Any]`: Safely writes trade log to Obsidian vault and appends row to Excel spreadsheet
+
+#### `playbook_catalog_repository.py` - *Filesystem storage adapter for empirical trading playbooks.*
+- **Path**: [`src/monika/infrastructure/storage/playbook_catalog_repository.py`](src/monika/infrastructure/storage/playbook_catalog_repository.py)
+- **Classes**:
+  - `class PlaybookCatalogRepository`: Filesystem repository for empirical trading playbooks and reserve catalogs.
+    - `__init__(playbooks_dir: Optional[Path]) -> None`
+    - `get_playbooks_dir() -> Path` - *Resolve the playbooks directory path.*
+    - `set_playbooks_dir(custom_dir: Path) -> None` - *Explicitly override directory for testing or configuration.*
+    - `load_playbooks_for_symbol(symbol: str) -> List[PlaybookSpec]` - *Load and cache all playbook specifications for a given symbol.*
+    - `load_reserve_playbooks(symbol: Optional[str]) -> List[Dict[str, Any]]` - *Load quantitative reserve playbooks from reserve_catalog.json.*
+    - `parse_playbook_file(path: Path, expected_symbol: str) -> Optional[PlaybookSpec]` - *Parse frontmatter and quantitative directives from a markdown playbook file.*
+    - `parse_playbook_text(text: str, expected_symbol: str, path: Optional[Path]) -> Optional[PlaybookSpec]` - *Parse frontmatter and quantitative directives from markdown text.*
 
 #### `spill_store.py` - *Output Spill Store for Large Artifacts (Phase 7.4).*
 - **Path**: [`src/monika/infrastructure/storage/spill_store.py`](src/monika/infrastructure/storage/spill_store.py)

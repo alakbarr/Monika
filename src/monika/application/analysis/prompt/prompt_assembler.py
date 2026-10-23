@@ -247,7 +247,7 @@ class PromptAssembler:
             except Exception:
                 pass
         tier2_sections = [
-            PromptSection(name="TOOL_STUBS", content=TIER2_TOOL_STUBS),
+            PromptSection(name="TOOL_STUBS", content=STAGE2_TOOL_STUBS),
         ]
         if discipline:
             tier2_sections.append(PromptSection(name="MODEL_DISCIPLINE", content=discipline))
@@ -550,7 +550,7 @@ class PromptAssembler:
         soul_prefix = f"{soul_identity}\n\n---\n\n" if soul_identity else ""
         anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
         tier1 = f"{anchor}\n\n---\n\n{soul_prefix}{STAGE2_TIER1}\n\n{self._mandatory_rules(effective_threshold, min_rr_ratio)}"
-        tier2 = TIER2_TOOL_STUBS
+        tier2 = STAGE2_TOOL_STUBS
 
         # Canonical universal skills for 100% byte-for-byte static KV-cache hit across all universe symbols
         skill_names = [

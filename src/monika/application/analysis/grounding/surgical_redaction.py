@@ -76,7 +76,7 @@ def repair_provenance(
     (e.g., agent writes 2650.40 when tick was 2650.42) and repairs them to exact truth.
     Returns: (repaired_text, repair_count)
     """
-    if not text or not ledger._facts:
+    if not text or not ledger.facts:
         return text, 0
 
     tokens = re.findall(r"[-+]?(?:\d*\.\d+|\d+)", text)
@@ -99,7 +99,7 @@ def repair_provenance(
             # If there is slight drift but within tolerance, align to truth
             exact_val_str = str(round(match.value, 5))
             if tok != exact_val_str and abs(match.value - num) > 1e-6:
-                pattern = rf"(?<![\w\.\-])\b{re.escape(tok)}\b(?![\w\.\-])"
+                pattern = rf"(?<![\w\.\-]){re.escape(tok)}(?![\w\.\-])"
                 repaired_text = re.sub(pattern, exact_val_str, repaired_text)
                 repairs_made += 1
                 logger.debug(f"[RepairProvenance] Repaired drift: {tok} -> {exact_val_str} ({match.field})")

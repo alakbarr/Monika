@@ -105,8 +105,8 @@ class PreFlightTurnGate:
                 return True, f"{event.event_name} ({event.currency})"
             return False, None
         except Exception as e:
-            logger.debug(f"[{symbol}] News proximity check non-fatal error: {e}")
-            return False, None
+            logger.warning(f"[{symbol}] News proximity check error (fail-closed): {e}")
+            return True, f"Economic calendar error ({e})"
 
     @classmethod
     async def evaluate_preconditions(
@@ -197,7 +197,7 @@ class PreFlightTurnGate:
 
                     tick_utc_ts = tick_ts - broker_offset
                     age = abs(now_utc.timestamp() - tick_utc_ts)
-                    if not is_replay_or_sim and age > 180 and not is_24_7:
+                    if not is_replay_or_sim and age > 180:
                         reason = f"MT5 quote stale for {sym_clean} (age={age:.0f}s > 180s)."
                         logger.info(f"[{sym_clean}] PreFlightGate: Blocked — {reason}")
                         return False, reason

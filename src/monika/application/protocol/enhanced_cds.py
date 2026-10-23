@@ -85,7 +85,7 @@ async def compute_spatial_cds(
     first_close = bars[0].close
     last_close = bars[-1].close
 
-    if not first_close or first_close <= 0:
+    if not first_close or first_close <= 0 or not last_close or last_close <= 0:
         return 0.0
 
     pct_change = (last_close - first_close) / first_close
@@ -292,9 +292,12 @@ async def compute_task_cds(session: AsyncSession, symbol: str, current_decision:
 
     if last_tradeable and last_tradeable.decision != current_decision:
         # Directional flip — check if it's within short timeframe (potentially reactive)
-        time_since_last = (
-            datetime.now(timezone.utc) - last_tradeable.generated_at.replace(tzinfo=timezone.utc)
-        ).total_seconds() / 3600
+        gen_at = last_tradeable.generated_at
+        if gen_at.tzinfo is None:
+            gen_at = gen_at.replace(tzinfo=timezone.utc)
+        else:
+            gen_at = gen_at.astimezone(timezone.utc)
+        time_since_last = (datetime.now(timezone.utc) - gen_at).total_seconds() / 3600
 
         if time_since_last < 4.0:  # Flip within 4 hours
             # Rapid direction change - moderate task CDS
@@ -402,13 +405,16 @@ async def get_cds_thresholds_async(session: AsyncSession, settings: Optional[dic
                 if k in overrides:
                     base[k] = overrides[k]
 
-        # Clamp block_buysell to sane bounds regardless of auto-calibration
-        base["block_buysell"] = max(0.4, min(0.7, base["block_buysell"]))
+        # Ensure monotonic order and sane bounds
+        w = max(0.1, min(0.5, float(base.get("warning", 0.35))))
+        s = max(w + 0.05, min(0.65, float(base.get("sync_trigger", 0.50))))
+        b = max(s + 0.05, min(0.75, float(base.get("block_buysell", 0.65))))
+        a = max(b + 0.05, min(0.95, float(base.get("abort_all", 0.75))))
+        base["warning"] = w
+        base["sync_trigger"] = s
+        base["block_buysell"] = b
+        base["abort_all"] = a
     except Exception as e:
         logger.debug(f"Failed to fetch dynamic CDS thresholds: {e}")
-        try:
-            await session.rollback()
-        except Exception:
-            pass
 
     return base

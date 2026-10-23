@@ -217,7 +217,7 @@ class ToolEntry:
 
     def get_parameters_schema(self) -> Dict[str, Any]:
         """Return base JSON schema parameters dictionary with inlined references."""
-        from monika.application.analysis.schemas.schemas import _inline_refs
+        from monika.application.analysis.schemas import _inline_refs
 
         if self.input_model is not None:
             schema = self.input_model.model_json_schema()

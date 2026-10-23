@@ -39,10 +39,10 @@ def coerce_optional_float(value: Any) -> Optional[float]:
             # Multiple thousands separators: e.g. "1,000,000"
             cleaned = cleaned.replace(",", "")
         elif re.match(r"^[1-9]\d{0,2},\d{3}$", cleaned):
-            # Ambiguous single comma: e.g. "1,000", "10,000" vs "1,085"
+            # Ambiguous single comma: e.g. "1,000", "2,650", "10,000" vs "1,085"
             leading = cleaned.split(",")[0]
-            if len(leading) >= 2 or cleaned.endswith(",000"):
-                # "10,000", "100,000" or "1,000" are thousands
+            if len(leading) >= 2 or leading != "1" or cleaned.endswith(",000"):
+                # "10,000", "100,000", "2,650", "5,850" or "1,000" are thousands
                 cleaned = cleaned.replace(",", "")
             else:
                 # "1,085", "1,234" in FX context are European decimals (1.085, 1.234)

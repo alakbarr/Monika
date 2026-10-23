@@ -792,8 +792,11 @@ Monika/
 │       │   │   ├── general_harness_service.py
 │       │   │   ├── market_data_service.py
 │       │   │   ├── market_intel_service.py
+│       │   │   ├── market_structure_service.py
+│       │   │   ├── order_flow_service.py
 │       │   │   ├── portfolio_service.py
 │       │   │   ├── system_status_service.py
+│       │   │   ├── technical_indicator_service.py
 │       │   │   └── trading_service.py
 │       │   ├── skills/
 │       │   │   ├── __init__.py
@@ -1804,6 +1807,7 @@ Monika/
 │       │   ├── storage/
 │       │   │   ├── __init__.py
 │       │   │   ├── journal_helper.py
+│       │   │   ├── playbook_catalog_repository.py
 │       │   │   └── spill_store.py
 │       │   └── __init__.py
 │       ├── interfaces/
@@ -3073,4 +3077,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 265 | **Total Tracked Files**: 2778
+**Total Tracked Directories**: 265 | **Total Tracked Files**: 2782
