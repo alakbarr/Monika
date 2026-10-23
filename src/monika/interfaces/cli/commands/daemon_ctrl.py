@@ -444,7 +444,7 @@ async def _acli_run(args: Any) -> None:
         logger.info(f"Starting in PAPER trading mode (simulation) [Tier: {active_tier.upper()}].")
 
     # Configure Gemini Rate Limiter limits from settings
-    from monika.infrastructure.api.gemini_rate_limiter import configure_from_settings
+    from monika.infrastructure.llm.rate_limiting.gemini_rate_limiter import configure_from_settings
 
     configure_from_settings(settings)
 

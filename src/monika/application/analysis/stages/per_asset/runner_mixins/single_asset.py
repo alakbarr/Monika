@@ -514,7 +514,7 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
 
         # Rate limiting
         try:
-            from monika.infrastructure.api.claude_rate_limiter import ClaudeRateLimiter
+            from monika.infrastructure.llm.rate_limiting.claude_rate_limiter import ClaudeRateLimiter
 
             await ClaudeRateLimiter.acquire_session_slot(model_name=active_client.model)
         except Exception as e:

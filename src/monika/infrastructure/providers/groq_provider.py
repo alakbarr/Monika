@@ -9,7 +9,7 @@ import time
 from typing import Any, ClassVar, Optional
 
 from monika.core.security.log_redactor import mask_credential
-from monika.infrastructure.api.groq_rate_limiter import GroqRateLimiter, get_api_keys
+from monika.infrastructure.llm.rate_limiting.groq_rate_limiter import GroqRateLimiter, get_api_keys
 from monika.infrastructure.providers.openai_provider import OpenAIProvider
 
 logger = logging.getLogger(__name__)

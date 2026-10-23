@@ -7,7 +7,7 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from monika.infrastructure.api.http_retry import fetch_with_retry
+from monika.infrastructure.llm.rate_limiting.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.Embedding")
 
@@ -36,7 +36,7 @@ async def generate_gemini_embedding(
     resolved_key = api_key
     if not resolved_key:
         try:
-            from monika.infrastructure.api.credential_pool import get_credential_pool
+            from monika.infrastructure.credentials.credential_pool import get_credential_pool
 
             pool = get_credential_pool()
             resolved_key = pool.get_key("gemini")

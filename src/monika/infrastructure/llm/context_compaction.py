@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import re
+import threading
 from typing import Any, Dict, List, Optional
 
 from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncate_to_budget
@@ -34,8 +35,20 @@ def spill_tool_output(
         filename = f"{clean_name}_{content_hash}.json"
         filepath = os.path.join(spill_dir, filename)
 
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(tool_output)
+        if not os.path.exists(filepath):
+            tmp_path = f"{filepath}.{os.getpid()}.{threading.get_ident()}.tmp"
+            try:
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    f.write(tool_output)
+                os.replace(tmp_path, filepath)
+            except OSError:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+                if not os.path.exists(filepath):
+                    raise
 
         # Check if original output was valid JSON
         is_json = False
@@ -1005,7 +1018,7 @@ class ContextCompactionEngine:
         Layer 2 Synthesis with Model Offload and Warm-Prefix Replay.
         Uses lightweight model with warm-prefix replay to achieve 99%+ KV-cache hit rate.
         """
-        if not messages or len(messages) <= 6:
+        if not messages or len(messages) <= 6 or context_window <= 0:
             return messages
 
         current_tokens = self.calculate_history_tokens(messages)

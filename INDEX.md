@@ -363,7 +363,9 @@
   - `infer_provider_from_model(model_name: str) -> str`: Inferensi otomatis provider berdasarkan nama model jika provider tidak diberikan.
   - `is_free_tier(model_name: str, provider: str | None, is_direct_free_tier: bool | None) -> bool`: Evaluasi apakah pemanggilan model masuk kategori Free Tier ($0).
   - `get_price(model_name: str) -> Price`: Mengembalikan objek Price untuk model yang diberikan.
-  - `cost_usd(model_name: str, input_tokens: int, output_tokens: int, ...) -> float`: Menghitung estimasi biaya pemanggilan API dalam USD menggunakan decimal.Decimal.
+  - `cost_usd_decimal(model_name: str, input_tokens: int, output_tokens: int, ...) -> Decimal`: Menghitung estimasi biaya pemanggilan API dalam USD menggunakan decimal.Decimal
+  - `cost_usd(model_name: str, input_tokens: int, output_tokens: int, ...) -> float`: Menghitung estimasi biaya pemanggilan API dalam USD (kembalian float).
+  - `cost_decimal_from_canonical(model_name: str, usage: CanonicalUsage, provider: str | None) -> Decimal`: Calculate Decimal USD cost directly from CanonicalUsage.
   - `cost_from_canonical(model_name: str, usage: CanonicalUsage, provider: str | None) -> float`: Calculate USD cost directly from CanonicalUsage.
   - `async fetch_openrouter_pricing_async(cache_path: str | None) -> dict[str, Price]`: Fetches live model pricing from OpenRouter API (/api/v1/models) with local disk caching.
 
@@ -11946,6 +11948,12 @@
   - `upgrade() -> None`: Upgrade schema: Drop duplicate index on technical_indicators and enforce unique session_id.
   - `downgrade() -> None`: Downgrade schema: Restore duplicate index and non-unique session_id index.
 
+#### `0012_sync_indexes_and_constraints.py` - *sync position paper index, active order index, and foreign keys*
+- **Path**: [`src/monika/infrastructure/database/migrations/versions/0012_sync_indexes_and_constraints.py`](src/monika/infrastructure/database/migrations/versions/0012_sync_indexes_and_constraints.py)
+- **Top-Level Functions**:
+  - `upgrade() -> None`: Upgrade schema: Include is_paper in position unique index, add active order index, and add missing FKs.
+  - `downgrade() -> None`: Downgrade schema: Revert uq_position_symbol_open, drop active order index, and drop added FKs.
+
 #### `c83c5e451412_sync_schema_indexes_types_and_.py` - *sync_schema_indexes_types_and_constraints*
 - **Path**: [`src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py`](src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py)
 - **Top-Level Functions**:
@@ -11965,6 +11973,35 @@
     - `async log_activity(category: str, description: str, actor: str, ...) -> ActivityLog` - *Create and persist an activity log entry.*
     - `async get_recent(limit: int, offset: int, category: Optional[str], ...) -> Sequence[ActivityLog]` - *Fetch latest activity log records with optional filtering.*
     - `async count_by_category(category: str) -> int` - *Count total log entries in a given category.*
+
+#### `asset_analysis_repository.py` - *Concrete SQLAlchemy implementation of AnalysisRepositoryPort.*
+- **Path**: [`src/monika/infrastructure/database/repositories/asset_analysis_repository.py`](src/monika/infrastructure/database/repositories/asset_analysis_repository.py)
+- **Classes**:
+  - `class SqlAlchemyAssetAnalysisRepository(AnalysisRepositoryPort)`: Encapsulates all database operations for AssetAnalysis entities.
+    - `__init__(session: AsyncSession) -> None`
+    - `async get_by_id(analysis_id: int) -> Optional[AssetAnalysis]` - *Fetch an AssetAnalysis record by primary key ID.*
+    - `async get_recent_executed_analysis_ids(limit: int) -> Sequence[int]` - *Fetch distinct analysis IDs that resulted in real positions (deduplication).*
+    - `async get_latest_by_symbol(symbol: str) -> Optional[AssetAnalysis]` - *Fetch most recent asset analysis evaluation for a symbol.*
+
+#### `market_data_repository.py` - *Concrete SQLAlchemy implementation of MarketDataRepositoryPort.*
+- **Path**: [`src/monika/infrastructure/database/repositories/market_data_repository.py`](src/monika/infrastructure/database/repositories/market_data_repository.py)
+- **Classes**:
+  - `class SqlAlchemyMarketDataRepository(MarketDataRepositoryPort)`: Encapsulates all database operations for market indicators and price bars.
+    - `__init__(session: AsyncSession) -> None`
+    - `async get_recent_bars(symbol: str, timeframe: str, limit: int) -> Sequence[PriceOHLCV]` - *Fetch historical OHLCV price bars ordered by timestamp ascending.*
+    - `async get_latest_vix() -> Optional[float]` - *Fetch latest available VIX index level.*
+    - `async get_latest_dxy() -> Optional[float]` - *Fetch latest available DXY index close.*
+    - `async get_latest_yield(tenor: str) -> Optional[float]` - *Fetch latest treasury yield percent for specified tenor.*
+
+#### `paper_trade_repository.py` - *Concrete SQLAlchemy implementation of PaperTradeRepositoryPort.*
+- **Path**: [`src/monika/infrastructure/database/repositories/paper_trade_repository.py`](src/monika/infrastructure/database/repositories/paper_trade_repository.py)
+- **Classes**:
+  - `class SqlAlchemyPaperTradeRepository(PaperTradeRepositoryPort)`: Encapsulates all database operations for PaperTradeRecord entities.
+    - `__init__(session: AsyncSession) -> None`
+    - `async get_open_records(symbol: Optional[str]) -> Sequence[PaperTradeRecord]` - *Fetch active open paper trades, optionally filtered by symbol.*
+    - `async get_by_id(record_id: int) -> Optional[PaperTradeRecord]` - *Fetch a specific paper trade record by primary key ID.*
+    - `async create_record(symbol: str, direction: str, entry_price: float, ...) -> PaperTradeRecord` - *Create and persist a new simulated paper trade record.*
+    - `async close_record(record_id: int, exit_price: float, pnl_pct: float, ...) -> Optional[PaperTradeRecord]` - *Close an existing paper trade record with exit price and calculated PnL.*
 
 #### `position_repository.py` - *Position Repository.*
 - **Path**: [`src/monika/infrastructure/database/repositories/position_repository.py`](src/monika/infrastructure/database/repositories/position_repository.py)
@@ -12930,6 +12967,7 @@
 - **Top-Level Functions**:
   - `get_model_pricing(model_name: str) -> Price`: Lookup Price dataclass for a given model identifier.
   - `calculate_cost(model_name: str, input_tokens: int, output_tokens: int, ...) -> float`: Calculate USD turn cost using production pricing catalog.
+  - `calculate_cost_decimal(model_name: str, input_tokens: int, output_tokens: int, ...) -> Decimal`: Calculate USD turn cost with institutional Decimal precision.
 
 #### `provider_failover_classifier.py` - *Structured Error Classification Pipeline.*
 - **Path**: [`src/monika/infrastructure/providers/provider_failover_classifier.py`](src/monika/infrastructure/providers/provider_failover_classifier.py)
@@ -12986,6 +13024,8 @@
     - `to_openai(tools: Optional[List[Any]], supports_cache_control: bool) -> List[Dict[str, Any]]` - *Serialize tools to OpenAI standard tool calling payload.*
     - `to_anthropic(tools: Optional[List[Any]]) -> List[Dict[str, Any]]` - *Serialize tools to Anthropic format: [{"name": ..., "description": ..., "input_schema": ...}].*
     - `to_gemini(tools: Optional[List[Any]]) -> List[Dict[str, Any]]` - *Serialize tools to Gemini functionDeclarations format.*
+- **Top-Level Functions**:
+  - `inline_json_refs(schema: Any, defs: Optional[Dict[str, Any]]) -> Any`: Recursively replaces $ref with actual schema definitions to produce
 
 #### `streaming_think_scrubber.py` - *Real-Time Streaming Think Tag Scrubber.*
 - **Path**: [`src/monika/infrastructure/providers/streaming_think_scrubber.py`](src/monika/infrastructure/providers/streaming_think_scrubber.py)

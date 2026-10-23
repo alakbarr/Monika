@@ -46,29 +46,35 @@ def extract_key_values_by_regex(text: str, fields: List[str]) -> Dict[str, Any]:
     extracted = {}
     sep = r"(?::|=|is)\s*"
     for f in fields:
-        # Pattern 1: string value -> "key": "value" or key is 'value'
-        str_match = re.search(rf'["\']?\b{re.escape(f)}\b["\']?\s*{sep}["\']([^"\'\r\n]+)["\']', text, re.IGNORECASE)
-        if str_match:
-            extracted[f] = str_match.group(1).strip()
+        # Pattern 1: string value -> "key": "value" or key is 'value' (use last match for final verdict)
+        str_matches = list(
+            re.finditer(rf'["\']?\b{re.escape(f)}\b["\']?\s*{sep}["\']([^"\'\r\n]+)["\']', text, re.IGNORECASE)
+        )
+        if str_matches:
+            extracted[f] = str_matches[-1].group(1).strip()
             continue
 
-        # Pattern 2: number/float value -> "key": 123.45 or key is 0.85
-        num_match = re.search(rf'["\']?\b{re.escape(f)}\b["\']?\s*{sep}(-?[0-9]+(?:\.[0-9]+)?)', text, re.IGNORECASE)
-        if num_match:
-            raw_num = num_match.group(1)
+        # Pattern 2: number/float value -> "key": 123.45 or key is 0.85 (use last match)
+        num_matches = list(
+            re.finditer(rf'["\']?\b{re.escape(f)}\b["\']?\s*{sep}(-?[0-9]+(?:\.[0-9]+)?)', text, re.IGNORECASE)
+        )
+        if num_matches:
+            raw_num = num_matches[-1].group(1)
             extracted[f] = float(raw_num) if "." in raw_num else int(raw_num)
             continue
 
-        # Pattern 3: boolean value -> "key": true / false or key is true
-        bool_match = re.search(rf'["\']?\b{re.escape(f)}\b["\']?\s*{sep}(true|false|yes|no)\b', text, re.IGNORECASE)
-        if bool_match:
-            extracted[f] = bool_match.group(1).lower() in ("true", "yes")
+        # Pattern 3: boolean value -> "key": true / false or key is true (use last match)
+        bool_matches = list(
+            re.finditer(rf'["\']?\b{re.escape(f)}\b["\']?\s*{sep}(true|false|yes|no)\b', text, re.IGNORECASE)
+        )
+        if bool_matches:
+            extracted[f] = bool_matches[-1].group(1).lower() in ("true", "yes")
             continue
 
-        # Pattern 4: array of strings/numbers -> "key": ["a", "b"]
-        arr_match = re.search(rf'["\']?\b{re.escape(f)}\b["\']?\s*{sep}\[([^\]]+)\]', text, re.IGNORECASE)
-        if arr_match:
-            items = [item.strip().strip("\"'") for item in arr_match.group(1).split(",") if item.strip()]
+        # Pattern 4: array of strings/numbers -> "key": ["a", "b"] (use last match)
+        arr_matches = list(re.finditer(rf'["\']?\b{re.escape(f)}\b["\']?\s*{sep}\[([^\]]+)\]', text, re.IGNORECASE))
+        if arr_matches:
+            items = [item.strip().strip("\"'") for item in arr_matches[-1].group(1).split(",") if item.strip()]
             extracted[f] = items
             continue
 
@@ -191,13 +197,15 @@ def parse_structured_output(
                     model_instance=None,
                 )
 
+        is_success = not missing if expected_fields else bool(combined)
         return StructuredOutputResult(
             data=combined,
-            success=True,
+            success=is_success,
             degradation_stage="regex_field_recovery",
             extracted_fields=list(combined.keys()),
             missing_fields=missing,
             model_instance=model_inst,
+            error=f"Regex field recovery missing required fields: {missing}" if missing else None,
         )
 
     # --- Pass 4: Default Fallback ---

@@ -58,3 +58,39 @@ def test_cache_tracker_metrics():
     assert summary["total_cache_read_tokens"] == 2000
     # Hit rate = 2000 / (1500 + 2000) = 2000 / 3500 ~= 0.5714
     assert 0.57 < summary["cache_hit_rate"] < 0.58
+
+
+def test_apply_4breakpoint_cache_never_exceeds_four():
+    """Verify that total breakpoints across system, tools, and messages never exceeds 4."""
+    system_prompt = "Prefix Section\n---\nVolatile System Section"
+    tools = [
+        {"name": "tool_a", "description": "A"},
+        {"name": "tool_b", "description": "B"},
+    ]
+    messages = [
+        {"role": "user", "content": "Msg 1"},
+        {"role": "assistant", "content": "Msg 2"},
+        {"role": "user", "content": "Msg 3"},
+        {"role": "assistant", "content": "Msg 4"},
+        {"role": "user", "content": "Msg 5"},
+    ]
+
+    sys_blocks, cached_tools, cached_msgs = PromptCacheManager.apply_4breakpoint_cache(
+        system_prompt=system_prompt,
+        tools=tools,
+        messages=messages,
+    )
+
+    sys_bp = sum(1 for b in sys_blocks if isinstance(b, dict) and "cache_control" in b)
+    tools_bp = sum(1 for t in (cached_tools or []) if isinstance(t, dict) and "cache_control" in t)
+    msgs_bp = 0
+    for m in cached_msgs:
+        content = m.get("content")
+        if isinstance(content, list):
+            msgs_bp += sum(1 for c in content if isinstance(c, dict) and "cache_control" in c)
+
+    total_bp = sys_bp + tools_bp + msgs_bp
+    assert sys_bp == 2
+    assert tools_bp == 1
+    assert msgs_bp == 1
+    assert total_bp == 4

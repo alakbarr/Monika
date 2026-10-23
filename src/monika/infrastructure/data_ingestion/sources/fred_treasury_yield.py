@@ -29,7 +29,7 @@ import aiohttp
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.api.http_retry import fetch_with_retry
+from monika.infrastructure.llm.rate_limiting.http_retry import fetch_with_retry
 from monika.infrastructure.database.models import (
     InterestRate,
     MacroLiquidityCreditMetric,

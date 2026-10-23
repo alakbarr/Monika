@@ -8,7 +8,7 @@ import time
 from types import SimpleNamespace
 from typing import Any, Dict, Optional
 
-from monika.infrastructure.api.streaming import StreamConfig, StreamSafetyTimeoutError, StreamTimeoutError
+from monika.infrastructure.llm.rate_limiting.streaming import StreamConfig, StreamSafetyTimeoutError, StreamTimeoutError
 from monika.infrastructure.providers.base_provider import BaseLLMClient, _flatten_system_prompt
 
 logger = logging.getLogger(__name__)
@@ -252,6 +252,13 @@ class OpenAIProvider(BaseLLMClient):
         """Update active API key and re-initialize underlying AsyncOpenAI client."""
         super().set_api_key(api_key)
         self.api_key = api_key
+        old_client = getattr(self, "client", None)
+        if old_client is not None and hasattr(old_client, "close"):
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(old_client.close())
+            except RuntimeError:
+                pass
         try:
             from openai import AsyncOpenAI
 

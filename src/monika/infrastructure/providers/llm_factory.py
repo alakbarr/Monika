@@ -14,7 +14,7 @@ import os
 import time
 from typing import Any, Dict, Optional
 
-from monika.infrastructure.api.streaming import StreamSafetyTimeoutError, StreamTimeoutError
+from monika.infrastructure.llm.rate_limiting.streaming import StreamSafetyTimeoutError, StreamTimeoutError
 from monika.infrastructure.providers.base_provider import BaseLLMClient, MockBlock, MockResponse
 
 logger = logging.getLogger("TradingAgent.LLMFactory")
@@ -517,7 +517,7 @@ class LLMFactory:
         # Note: OpenRouter manages its own dual-tier key pool (OPENROUTER_PAID_API_KEY vs OPENROUTER_API_KEYS)
         # with model-aware paid/free routing & per-model cooldowns. Do not override with a generic pooled key.
         try:
-            from monika.infrastructure.api.credential_pool import get_credential_pool
+            from monika.infrastructure.credentials.credential_pool import get_credential_pool
 
             cred_pool = get_credential_pool()
             if provider_name == "openrouter":
@@ -832,7 +832,7 @@ class FallbackClientWrapper(BaseLLMClient):
                 continue
 
             try:
-                from monika.infrastructure.api.credential_pool import get_credential_pool
+                from monika.infrastructure.credentials.credential_pool import get_credential_pool
 
                 cred_pool = get_credential_pool()
                 if cred_pool and not cred_pool.is_model_available(model):

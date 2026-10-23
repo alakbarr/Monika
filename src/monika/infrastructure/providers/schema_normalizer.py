@@ -7,8 +7,50 @@ Ensures zero-drop tool delivery and polymorphic parameter handling across hetero
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
+
+
+def inline_json_refs(schema: Any, defs: Optional[Dict[str, Any]] = None) -> Any:
+    """
+    Recursively replaces $ref with actual schema definitions to produce
+    a flat, self-contained JSON schema without mutating the caller's dictionary.
+    Supports both modern '$defs' and legacy 'definitions' keywords.
+    """
+    if not isinstance(schema, dict):
+        return schema
+
+    if defs is None:
+        schema = copy.deepcopy(schema)
+        defs = {}
+        if "$defs" in schema:
+            defs.update(schema.pop("$defs"))
+        if "definitions" in schema:
+            defs.update(schema.pop("definitions"))
+
+    if "$ref" in schema:
+        ref_path = schema["$ref"]
+        ref_name = ref_path.split("/")[-1]
+        if ref_name in defs:
+            resolved = inline_json_refs(copy.deepcopy(defs[ref_name]), defs)
+            extra = {k: v for k, v in schema.items() if k != "$ref"}
+            if extra:
+                resolved.update(inline_json_refs(extra, defs))
+            return resolved
+        return schema
+
+    res: Dict[str, Any] = {}
+    for k, v in schema.items():
+        if k == "default" and v is None:
+            continue
+        if isinstance(v, dict):
+            res[k] = inline_json_refs(v, defs)
+        elif isinstance(v, list):
+            res[k] = [inline_json_refs(item, defs) if isinstance(item, dict) else item for item in v]
+        else:
+            res[k] = v
+    return res
 
 
 @dataclass
@@ -24,6 +66,9 @@ class ToolSchemaNormalizer:
     @classmethod
     def normalize_tool(cls, tool: Any) -> Optional[CanonicalToolSchema]:
         """Extract canonical name, description, and JSON schema parameters from any tool format."""
+        if isinstance(tool, CanonicalToolSchema):
+            return tool
+
         if not isinstance(tool, dict):
             return None
 
@@ -85,7 +130,7 @@ class ToolSchemaNormalizer:
         sorted_tools = sorted(canonical_tools, key=lambda t: t.name)
         out: List[Dict[str, Any]] = []
         for i, ct in enumerate(sorted_tools):
-            clean_params = sanitize_tool_parameters_schema(ct.parameters)
+            clean_params = sanitize_tool_parameters_schema(inline_json_refs(ct.parameters))
             tool_obj: Dict[str, Any] = {
                 "type": "function",
                 "function": {
@@ -102,17 +147,21 @@ class ToolSchemaNormalizer:
     @classmethod
     def to_anthropic(cls, tools: Optional[List[Any]]) -> List[Dict[str, Any]]:
         """Serialize tools to Anthropic format: [{"name": ..., "description": ..., "input_schema": ...}]."""
-        from monika.infrastructure.providers.openai_provider import _canonicalize_schema
+        from monika.infrastructure.providers.openai_provider import (
+            _canonicalize_schema,
+            sanitize_tool_parameters_schema,
+        )
 
         canonical_tools = cls.normalize_tools(tools)
         sorted_tools = sorted(canonical_tools, key=lambda t: t.name)
         out: List[Dict[str, Any]] = []
         for ct in sorted_tools:
+            clean_params = sanitize_tool_parameters_schema(inline_json_refs(ct.parameters))
             out.append(
                 {
                     "name": ct.name,
                     "description": ct.description,
-                    "input_schema": _canonicalize_schema(ct.parameters),
+                    "input_schema": _canonicalize_schema(clean_params),
                 }
             )
         return out

@@ -6,6 +6,7 @@ Re-exports pricing definitions and cost calculations from utils.analytics.pricin
 providing single source of truth for provider pricing lookups.
 """
 
+from decimal import Decimal
 from typing import Any, Dict, Optional
 
 from monika.core.analytics.pricing import (
@@ -13,7 +14,10 @@ from monika.core.analytics.pricing import (
     OPENROUTER_PRICING_MAP,
     PRICING,
     Price,
+    cost_decimal_from_canonical,
+    cost_from_canonical,
     cost_usd,
+    cost_usd_decimal,
     estimate_cost,
     get_price,
     infer_provider_from_model,
@@ -29,9 +33,13 @@ __all__ = [
     "is_free_tier",
     "get_price",
     "cost_usd",
+    "cost_usd_decimal",
+    "cost_from_canonical",
+    "cost_decimal_from_canonical",
     "estimate_cost",
     "get_model_pricing",
     "calculate_cost",
+    "calculate_cost_decimal",
 ]
 
 
@@ -49,6 +57,23 @@ def calculate_cost(
 ) -> float:
     """Calculate USD turn cost using production pricing catalog."""
     return cost_usd(
+        model_name=model_name,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cached_tokens=cached_tokens,
+        provider=provider,
+    )
+
+
+def calculate_cost_decimal(
+    model_name: str,
+    input_tokens: int,
+    output_tokens: int,
+    cached_tokens: int = 0,
+    provider: Optional[str] = None,
+) -> Decimal:
+    """Calculate USD turn cost with institutional Decimal precision."""
+    return cost_usd_decimal(
         model_name=model_name,
         input_tokens=input_tokens,
         output_tokens=output_tokens,

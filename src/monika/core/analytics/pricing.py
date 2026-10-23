@@ -102,6 +102,7 @@ PRICING: dict[str, Price] = {
     "gemini-1.5-pro": Price(1.25, 0.3125, 5.00),
     "gemini-1.5-flash": Price(0.075, 0.01875, 0.30),
     # --- OpenAI Models ---
+    "gpt-6": Price(2.00, 0.10, 10.00),
     "gpt-6-astra": Price(2.00, 0.10, 10.00),
     "gpt-6.1-sol": Price(2.00, 0.10, 10.00),
     "gpt-sol-6.1": Price(2.00, 0.10, 10.00),
@@ -202,6 +203,7 @@ OPENROUTER_PRICING_MAP: dict[str, str] = {
     "deepseek/deepseek-r1": "deepseek-reasoner",
     "deepseek/deepseek-reasoner": "deepseek-reasoner",
     # OpenAI
+    "openai/gpt-6": "gpt-6",
     "openai/gpt-6-astra": "gpt-6-astra",
     "openai/gpt-6.1-sol": "gpt-6.1-sol",
     "openai/gpt-sol-6.1": "gpt-6.1-sol",
@@ -573,7 +575,7 @@ class CanonicalUsage:
         )
 
 
-def cost_usd(
+def cost_usd_decimal(
     model_name: str,
     input_tokens: int,
     output_tokens: int,
@@ -582,23 +584,17 @@ def cost_usd(
     is_direct_free_tier: bool | None = None,
     is_already_uncached: bool | None = None,
     cache_creation_tokens: int = 0,
-) -> float:
+) -> Decimal:
     """
-    Menghitung estimasi biaya pemanggilan API dalam USD menggunakan decimal.Decimal.
-
-    Perhatian Khusus Provider Anthropic:
-    Pada API resmi Anthropic Claude, input_tokens yang dikembalikan sudah uncached.
-    Oleh karena itu, sistem tidak mengurangkan cached_tokens dua kali jika model adalah Anthropic.
+    Menghitung estimasi biaya pemanggilan API dalam USD menggunakan decimal.Decimal
+    dengan presisi institusional (6 desimal) tanpa konversi ke float.
     """
     if is_free_tier(model_name, provider=provider, is_direct_free_tier=is_direct_free_tier):
-        return 0.0
+        return Decimal("0.000000")
 
     p = get_price(model_name)
     if p.input == 0.0 and p.output == 0.0:
-        return 0.0
-
-    prov = (provider or infer_provider_from_model(model_name)).lower()
-    clean_name = str(model_name).lower()
+        return Decimal("0.000000")
 
     # Tentukan apakah input_tokens sudah berstatus uncached
     if is_already_uncached:
@@ -645,9 +641,50 @@ def cost_usd(
         cost_out = (Decimal(str(output_tokens)) / one_million) * rate_out
 
     total_cost = cost_in + cost_cache + cost_cache_write + cost_out
-    # Quantize to 6 decimal places
-    quantized = total_cost.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
-    return float(quantized)
+    return total_cost.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
+
+def cost_usd(
+    model_name: str,
+    input_tokens: int,
+    output_tokens: int,
+    cached_tokens: int = 0,
+    provider: str | None = None,
+    is_direct_free_tier: bool | None = None,
+    is_already_uncached: bool | None = None,
+    cache_creation_tokens: int = 0,
+) -> float:
+    """
+    Menghitung estimasi biaya pemanggilan API dalam USD (kembalian float).
+    """
+    dec = cost_usd_decimal(
+        model_name=model_name,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cached_tokens=cached_tokens,
+        provider=provider,
+        is_direct_free_tier=is_direct_free_tier,
+        is_already_uncached=is_already_uncached,
+        cache_creation_tokens=cache_creation_tokens,
+    )
+    return float(dec)
+
+
+def cost_decimal_from_canonical(
+    model_name: str,
+    usage: CanonicalUsage,
+    provider: str | None = None,
+) -> Decimal:
+    """Calculate Decimal USD cost directly from CanonicalUsage."""
+    return cost_usd_decimal(
+        model_name=model_name,
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
+        cached_tokens=usage.cache_read_tokens,
+        cache_creation_tokens=usage.cache_creation_tokens,
+        provider=provider,
+        is_already_uncached=True,
+    )
 
 
 def cost_from_canonical(

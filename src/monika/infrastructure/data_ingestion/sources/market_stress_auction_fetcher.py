@@ -20,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
-from monika.infrastructure.api.http_retry import _DEFAULT_SSL_CONTEXT
+from monika.infrastructure.llm.rate_limiting.http_retry import _DEFAULT_SSL_CONTEXT
 from monika.infrastructure.database.models import MacroLiquidityCreditMetric
 from monika.infrastructure.database.safe_ops import safe_commit, safe_upsert
 

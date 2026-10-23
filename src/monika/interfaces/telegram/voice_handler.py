@@ -298,13 +298,13 @@ class VoiceHandler:
         # Resolve API keys
         openrouter_key = self.settings.get("api_keys", {}).get("openrouter") or os.getenv("OPENROUTER_API_KEY")
         if not openrouter_key:
-            from monika.infrastructure.api.openrouter_rate_limiter import get_free_keys, get_paid_key
+            from monika.infrastructure.llm.rate_limiting.openrouter_rate_limiter import get_free_keys, get_paid_key
 
             openrouter_key = get_paid_key() or (get_free_keys()[0] if get_free_keys() else None)
 
         groq_key = self.settings.get("api_keys", {}).get("groq") or os.getenv("GROQ_API_KEY")
         if not groq_key:
-            from monika.infrastructure.api.groq_rate_limiter import get_api_keys
+            from monika.infrastructure.llm.rate_limiting.groq_rate_limiter import get_api_keys
 
             g_keys = get_api_keys()
             if g_keys:

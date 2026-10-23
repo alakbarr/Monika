@@ -16,7 +16,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import monika.infrastructure.api.http_retry as http_retry
+import monika.infrastructure.llm.rate_limiting.http_retry as http_retry
 from monika.infrastructure.database.models import SystemConfig
 from monika.infrastructure.database.safe_ops import safe_commit
 

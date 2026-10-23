@@ -199,7 +199,7 @@ async def get_health_diagnostics():
         from monika.infrastructure.database.db import AsyncSessionLocal
 
         async with AsyncSessionLocal() as session:
-            from monika.infrastructure.api.gemini_rate_limiter import GeminiRateLimiter
+            from monika.infrastructure.llm.rate_limiting.gemini_rate_limiter import GeminiRateLimiter
 
             limiter = GeminiRateLimiter(session)
             gemini_quota["flash"] = await limiter.get_usage("flash")
@@ -226,7 +226,7 @@ async def get_health_diagnostics():
 @router.get("/gemini-quota", tags=["System"])
 async def get_gemini_quota():
     """Cek kuota rate limiter API Gemini (harian)."""
-    from monika.infrastructure.api.gemini_rate_limiter import GeminiRateLimiter
+    from monika.infrastructure.llm.rate_limiting.gemini_rate_limiter import GeminiRateLimiter
     from monika.infrastructure.database.db import AsyncSessionLocal
 
     try:

@@ -241,6 +241,9 @@ async def fetch_with_retry(
                             return {"_error": True, "_status": resp.status, "_body": body, "_url": safe_url}
                         return None
 
+                    if use_circuit_breaker and domain in _CIRCUIT_BREAKER:
+                        _CIRCUIT_BREAKER.pop(domain, None)
+
                     if response_type == "text":
                         return await resp.text()
                     try:

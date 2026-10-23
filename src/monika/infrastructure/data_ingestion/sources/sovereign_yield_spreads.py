@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
-from monika.infrastructure.api.http_retry import fetch_with_retry
+from monika.infrastructure.llm.rate_limiting.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.SovereignYieldSpreads")
 

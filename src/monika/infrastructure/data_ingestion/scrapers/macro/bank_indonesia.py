@@ -20,7 +20,7 @@ from typing import Any, Dict, Optional
 import aiohttp
 from bs4 import BeautifulSoup
 
-from monika.infrastructure.api.http_retry import fetch_with_retry
+from monika.infrastructure.llm.rate_limiting.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.Scrapers.BankIndonesia")
 

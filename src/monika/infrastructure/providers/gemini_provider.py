@@ -9,14 +9,14 @@ from typing import Any, ClassVar, Literal, Optional
 
 from dotenv import load_dotenv
 
-from monika.infrastructure.api.gemini_rate_limiter import GeminiRateLimiter
-from monika.infrastructure.api.http_retry import (
+from monika.infrastructure.llm.rate_limiting.gemini_rate_limiter import GeminiRateLimiter
+from monika.infrastructure.llm.rate_limiting.http_retry import (
     APIStatusError,
     RateLimitError,
     fetch_with_retry,
     format_api_error_summary,
 )
-from monika.infrastructure.api.streaming import (
+from monika.infrastructure.llm.rate_limiting.streaming import (
     StreamConfig,
     StreamResult,
     StreamSafetyTimeoutError,
@@ -65,26 +65,48 @@ def _sanitize_schema_for_gemini(schema: dict) -> dict:
     if not isinstance(schema, dict):
         return schema
 
-    from monika.application.analysis.schemas.schemas import _inline_refs
+    from monika.infrastructure.providers.schema_normalizer import inline_json_refs
 
-    schema = _inline_refs(schema)
+    schema = inline_json_refs(schema)
     if not isinstance(schema, dict):
         return schema
 
     sanitized = {}
     for k, v in schema.items():
-        if k == "additionalProperties":
+        if k in ("additionalProperties", "$schema"):
             continue
-        if k == "anyOf" and isinstance(v, list):
+        if k == "allOf" and isinstance(v, list):
+            merged_properties = {}
+            merged_required = set()
+            for item in v:
+                if isinstance(item, dict):
+                    s_item = _sanitize_schema_for_gemini(item)
+                    merged_properties.update(s_item.get("properties", {}))
+                    merged_required.update(s_item.get("required", []))
+            sanitized["type"] = "OBJECT"
+            if merged_properties:
+                sanitized["properties"] = merged_properties
+            if merged_required:
+                sanitized["required"] = sorted(merged_required)
+            continue
+        if k in ("anyOf", "oneOf") and isinstance(v, list):
             non_null_items = [
                 item for item in v if isinstance(item, dict) and str(item.get("type", "")).lower() != "null"
             ]
             has_null = any(isinstance(item, dict) and str(item.get("type", "")).lower() == "null" for item in v)
-            if has_null and len(non_null_items) == 1:
+            if len(non_null_items) == 1:
                 inner = _sanitize_schema_for_gemini(non_null_items[0])
                 for ik, iv in inner.items():
                     sanitized[ik] = iv
-                sanitized["nullable"] = True
+                if has_null:
+                    sanitized["nullable"] = True
+                continue
+            elif len(non_null_items) > 1:
+                sanitized["type"] = "STRING"
+                types_str = ", ".join(str(it.get("type", "object")) for it in non_null_items)
+                sanitized["description"] = (schema.get("description", "") + f" (Accepted types: {types_str})").strip()
+                if has_null:
+                    sanitized["nullable"] = True
                 continue
         if k == "type" and isinstance(v, list):
             valid_types = [t for t in v if t != "null"]
@@ -982,9 +1004,9 @@ class GeminiProvider(BaseLLMClient):
 
         if dynamic_note:
             injected = False
-            for gc in gemini_contents:
+            for gc in reversed(gemini_contents):
                 if gc.get("role") == "user":
-                    for p in gc.get("parts", []):
+                    for p in reversed(gc.get("parts", [])):
                         if "text" in p:
                             p["text"] = f"{p['text']}\n\n{dynamic_note}"
                             injected = True
@@ -992,7 +1014,7 @@ class GeminiProvider(BaseLLMClient):
                     if injected:
                         break
             if not injected and gemini_contents:
-                gemini_contents[0]["parts"].append({"text": dynamic_note})
+                gemini_contents[-1]["parts"].append({"text": dynamic_note})
 
         eff_max_tokens = self.max_tokens or 36000
         is_thinking_active = str(self.thinking_level or "none").lower() not in ("none", "off")

@@ -24,7 +24,7 @@ from typing import List
 
 import aiohttp
 
-from monika.infrastructure.api.http_retry import _CIRCUIT_BREAKER
+from monika.infrastructure.llm.rate_limiting.http_retry import _CIRCUIT_BREAKER
 
 logger = logging.getLogger("TradingAgent.FinnhubCalendar")
 

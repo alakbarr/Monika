@@ -660,10 +660,13 @@ def get_model_capabilities(model_name: Optional[str]) -> ModelCapabilities:
             clean_name = stripped
             break
 
-    # Partial / prefix match
-    for key, caps in MODEL_CAPABILITIES.items():
-        if key in clean_name or clean_name in key:
-            return caps
+    # Partial / prefix match: exact match first, then longest matching key
+    if clean_name in MODEL_CAPABILITIES:
+        return MODEL_CAPABILITIES[clean_name]
+    matching_keys = [k for k in MODEL_CAPABILITIES if k in clean_name]
+    if matching_keys:
+        best_key = max(matching_keys, key=len)
+        return MODEL_CAPABILITIES[best_key]
 
     # Provider heuristic fallbacks
     if "jev" in clean_name or "typesafe" in clean_name:

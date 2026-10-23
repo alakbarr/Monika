@@ -69,6 +69,8 @@ class KeyHealth:
             cd = self.model_cooldowns.get(model, 0.0)
             if time.time() < cd:
                 return False
+            elif model in self.model_cooldowns:
+                del self.model_cooldowns[model]
         return True
 
     def calculate_exponential_cooldown(
@@ -295,24 +297,25 @@ class CredentialPool:
     def add_key(self, provider: str, key: str) -> None:
         """Add a key to the provider's pool if not already present."""
         prov = provider.lower()
-        if prov not in self._pools:
-            self._pools[prov] = []
+        with self._sync_lock:
+            if prov not in self._pools:
+                self._pools[prov] = []
 
-        for kh in self._pools[prov]:
-            if kh.key == key:
-                return
+            for kh in self._pools[prov]:
+                if kh.key == key:
+                    return
 
-        # Register secret in CredentialVault for dynamic exact-byte log redaction
-        try:
-            from monika.core.security.credential_vault import vault
+            # Register secret in CredentialVault for dynamic exact-byte log redaction
+            try:
+                from monika.core.security.credential_vault import vault
 
-            vault.register_secret(key)
-        except Exception:
-            pass
+                vault.register_secret(key)
+            except Exception:
+                pass
 
-        self._pools[prov].append(KeyHealth(key=key, provider=prov))
-        masked = key[:6] + "..." + key[-4:] if len(key) > 12 else "***"
-        logger.debug(f"[CredentialPool] Registered key {masked} for provider '{prov}'")
+            self._pools[prov].append(KeyHealth(key=key, provider=prov))
+            masked = key[:6] + "..." + key[-4:] if len(key) > 12 else "***"
+            logger.debug(f"[CredentialPool] Registered key {masked} for provider '{prov}'")
 
     def total_keys(self, provider: Optional[str] = None) -> int:
         """Return total keys count for a provider or across all providers."""
@@ -406,10 +409,11 @@ class CredentialPool:
     ) -> None:
         """Report successful request on key."""
         prov = provider.lower()
-        for kh in self._pools.get(prov, []):
-            if kh.key == key:
-                kh.mark_success(tokens=tokens, cost_usd=cost_usd)
-                return
+        with self._sync_lock:
+            for kh in self._pools.get(prov, []):
+                if kh.key == key:
+                    kh.mark_success(tokens=tokens, cost_usd=cost_usd)
+                    return
 
     def report_rate_limit(
         self,
@@ -421,33 +425,34 @@ class CredentialPool:
         reset_at: Optional[float] = None,
     ) -> float:
         """Report rate limit on key, arming exponential cooldown and propagating across sibling pools."""
-        # Arm no-recovery guard window (5 seconds)
-        self._recently_exhausted[key] = time.time() + 5.0
-
         prov = provider.lower()
-        active_keys = [k for k in self._pools.get(prov, []) if k.is_active]
-        sole_credential = len(active_keys) <= 1
-        effective_cd = 0.0
+        with self._sync_lock:
+            # Arm no-recovery guard window (5 seconds)
+            self._recently_exhausted[key] = time.time() + 5.0
 
-        # Sibling key propagation: if same physical key is used across providers, mark all instances
-        for pool_prov, key_list in self._pools.items():
-            for kh in key_list:
-                if kh.key == key:
-                    eff = kh.mark_rate_limited(
-                        cooldown_seconds=cooldown_seconds,
-                        model=model,
-                        retry_after=retry_after,
-                        reset_at=reset_at,
-                        base_seconds=self.base_cooldown_seconds,
-                        max_seconds=self.max_cooldown_seconds,
-                        sole_credential_clamp=sole_credential,
-                    )
-                    effective_cd = max(effective_cd, eff)
+            active_keys = [k for k in self._pools.get(prov, []) if k.is_active]
+            sole_credential = len(active_keys) <= 1
+            effective_cd = 0.0
 
-        if effective_cd == 0.0:
-            effective_cd = min(cooldown_seconds, 60.0 if sole_credential else self.max_cooldown_seconds)
+            # Sibling key propagation: if same physical key is used across providers, mark all instances
+            for pool_prov, key_list in self._pools.items():
+                for kh in key_list:
+                    if kh.key == key:
+                        eff = kh.mark_rate_limited(
+                            cooldown_seconds=cooldown_seconds,
+                            model=model,
+                            retry_after=retry_after,
+                            reset_at=reset_at,
+                            base_seconds=self.base_cooldown_seconds,
+                            max_seconds=self.max_cooldown_seconds,
+                            sole_credential_clamp=sole_credential,
+                        )
+                        effective_cd = max(effective_cd, eff)
 
-        return effective_cd
+            if effective_cd == 0.0:
+                effective_cd = min(cooldown_seconds, 60.0 if sole_credential else self.max_cooldown_seconds)
+
+            return effective_cd
 
     def mark_model_rate_limited(
         self,
@@ -458,21 +463,22 @@ class CredentialPool:
     ) -> float:
         """Mark model-level rate limit across all keys for a given provider."""
         prov = provider.lower()
-        keys = self._pools.get(prov, [])
-        if not keys:
-            return 0.0
+        with self._sync_lock:
+            keys = self._pools.get(prov, [])
+            if not keys:
+                return 0.0
 
-        effective_cd = cooldown_seconds
-        for kh in keys:
-            eff = kh.mark_rate_limited(
-                cooldown_seconds=cooldown_seconds,
-                model=model,
-                retry_after=retry_after,
-                base_seconds=self.base_cooldown_seconds,
-                max_seconds=self.max_cooldown_seconds,
-            )
-            effective_cd = max(effective_cd, eff)
-        return effective_cd
+            effective_cd = cooldown_seconds
+            for kh in keys:
+                eff = kh.mark_rate_limited(
+                    cooldown_seconds=cooldown_seconds,
+                    model=model,
+                    retry_after=retry_after,
+                    base_seconds=self.base_cooldown_seconds,
+                    max_seconds=self.max_cooldown_seconds,
+                )
+                effective_cd = max(effective_cd, eff)
+            return effective_cd
 
     def validate_entitlement(
         self,
@@ -502,27 +508,29 @@ class CredentialPool:
         model: Optional[str] = None,
     ) -> None:
         """Report failure on key, propagating permanent disabled status across sibling pools."""
-        if is_permanent:
-            # Sibling permanent disable propagation
-            for pool_prov, key_list in self._pools.items():
-                for kh in key_list:
-                    if kh.key == key:
-                        kh.mark_failure(reason=reason, is_permanent=True)
-            return
-
-        prov = provider.lower()
-        for kh in self._pools.get(prov, []):
-            if kh.key == key:
-                kh.mark_failure(reason=reason, is_permanent=is_permanent)
+        with self._sync_lock:
+            if is_permanent:
+                # Sibling permanent disable propagation
+                for pool_prov, key_list in self._pools.items():
+                    for kh in key_list:
+                        if kh.key == key:
+                            kh.mark_failure(reason=reason, is_permanent=True)
                 return
+
+            prov = provider.lower()
+            for kh in self._pools.get(prov, []):
+                if kh.key == key:
+                    kh.mark_failure(reason=reason, is_permanent=is_permanent)
+                    return
 
     def all_exhausted(self, provider: str, model: Optional[str] = None) -> bool:
         """Check if all keys for a provider are in cooldown or disabled."""
         prov = provider.lower()
-        keys = self._pools.get(prov, [])
-        if not keys:
-            return True
-        return not any(k.is_model_available(model) for k in keys)
+        with self._sync_lock:
+            keys = self._pools.get(prov, [])
+            if not keys:
+                return True
+            return not any(k.is_model_available(model) for k in keys)
 
     def get_cumulative_cost(self, provider: Optional[str] = None) -> float:
         """Get total cost in USD tracked across keys."""

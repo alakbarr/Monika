@@ -1674,6 +1674,7 @@ Monika/
 │       │   │   │   │   ├── 0009_price_ohlcv_canonical_ts.py
 │       │   │   │   │   ├── 0010_paper_trade_initial_risk.py
 │       │   │   │   │   ├── 0011_sync_indexes_constraints.py
+│       │   │   │   │   ├── 0012_sync_indexes_and_constraints.py
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   └── c83c5e451412_sync_schema_indexes_types_and_.py
 │       │   │   │   ├── __init__.py
@@ -1683,6 +1684,9 @@ Monika/
 │       │   │   ├── repositories/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── activity_log_repository.py
+│       │   │   │   ├── asset_analysis_repository.py
+│       │   │   │   ├── market_data_repository.py
+│       │   │   │   ├── paper_trade_repository.py
 │       │   │   │   ├── position_repository.py
 │       │   │   │   ├── risk_repository.py
 │       │   │   │   ├── system_config_repository.py
@@ -3080,4 +3084,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2783
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2787

@@ -214,15 +214,20 @@ class PromptCacheManager:
                     t_copy["cache_control"] = dict(cache_marker)
                 cached_tools.append(t_copy)
 
-        # 3. Messages: add breakpoints on the 2 most recent non-system messages
+        # 3. Messages: add breakpoints within remaining budget (Anthropic limit: max 4 total breakpoints)
         cached_messages = list(messages or [])
+        num_sys_bp = sum(1 for b in system_blocks if isinstance(b, dict) and "cache_control" in b)
+        num_tools_bp = sum(1 for t in (cached_tools or []) if isinstance(t, dict) and "cache_control" in t)
+        remaining_budget = max(0, 4 - (num_sys_bp + num_tools_bp))
+
         non_system_indices = [
             i for i, m in enumerate(cached_messages) if isinstance(m, dict) and m.get("role") != "system"
         ]
 
-        if len(non_system_indices) >= 2:
-            # Place breakpoint on penultimate and last
-            for idx in non_system_indices[-2:]:
+        if remaining_budget > 0 and non_system_indices:
+            take_n = min(remaining_budget, len(non_system_indices), 2)
+            # Place breakpoint on up to remaining_budget most recent non-system messages
+            for idx in non_system_indices[-take_n:]:
                 msg = dict(cached_messages[idx])
                 content = msg.get("content")
                 if isinstance(content, list):

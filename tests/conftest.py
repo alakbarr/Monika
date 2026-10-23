@@ -172,6 +172,26 @@ def isolate_risk_port_registry():
 
 
 @pytest.fixture(autouse=True)
+def isolate_llm_circuit_breakers():
+    """Ensure in-memory circuit breakers and model blacklists do not leak across tests."""
+    try:
+        from monika.infrastructure.providers.llm_factory import EndpointBlackhole, ProviderCircuitBreaker
+
+        ProviderCircuitBreaker.reset()
+        EndpointBlackhole.reset()
+    except Exception:
+        pass
+    yield
+    try:
+        from monika.infrastructure.providers.llm_factory import EndpointBlackhole, ProviderCircuitBreaker
+
+        ProviderCircuitBreaker.reset()
+        EndpointBlackhole.reset()
+    except Exception:
+        pass
+
+
+@pytest.fixture(autouse=True)
 def protect_live_db_from_test_activity_logs(monkeypatch):
     """
     Mencegah seluruh unit test memanggil database live untuk ActivityLog saat session=None.

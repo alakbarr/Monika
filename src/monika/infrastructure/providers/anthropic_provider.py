@@ -29,8 +29,8 @@ from anthropic import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from monika.infrastructure.api.claude_rate_limiter import ClaudeRateLimiter
-from monika.infrastructure.api.streaming import StreamConfig, StreamSafetyTimeoutError, StreamTimeoutError
+from monika.infrastructure.llm.rate_limiting.claude_rate_limiter import ClaudeRateLimiter
+from monika.infrastructure.llm.rate_limiting.streaming import StreamConfig, StreamSafetyTimeoutError, StreamTimeoutError
 from monika.infrastructure.database.models import ActivityLog
 from monika.infrastructure.providers.base_provider import BaseLLMClient, MockResponse
 
@@ -139,6 +139,13 @@ class AnthropicProvider(BaseLLMClient):
         """Update active API key and underlying AsyncAnthropic client."""
         super().set_api_key(api_key)
         self.api_key = api_key
+        old_client = getattr(self, "client", None)
+        if old_client is not None and hasattr(old_client, "close"):
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(old_client.close())
+            except RuntimeError:
+                pass
         try:
             provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get("anthropic", {})
             max_retries = provider_cfg.get("max_retries", 3)
@@ -239,9 +246,7 @@ class AnthropicProvider(BaseLLMClient):
             system = kwargs.pop("system_prompt")
 
         use_thinking = bool(
-            self.thinking_level
-            and str(self.thinking_level).lower() != "none"
-            and any(x in self.model.lower() for x in self.THINKING_CAPABLE_MODELS)
+            self.thinking_level and str(self.thinking_level).lower() != "none" and self._is_thinking_capable()
         )
         thinking_budget = getattr(self, "thinking_budget", None) or self.THINKING_BUDGETS.get(self.thinking_level, 4096)
 
@@ -378,6 +383,11 @@ class AnthropicProvider(BaseLLMClient):
     ]
     THINKING_BUDGETS = {"low": 1024, "medium": 4096, "high": 10000, "xhigh": 16000, "extended": 16000, "max": 32000}
 
+    def _is_thinking_capable(self) -> bool:
+        clean = self.model.lower().replace("anthropic/", "")
+        clean_bare = clean[7:] if clean.startswith("claude-") else clean
+        return any(x in clean or x.replace("claude-", "") in clean_bare for x in self.THINKING_CAPABLE_MODELS)
+
     async def classify_json(
         self,
         prompt: str,
@@ -399,9 +409,7 @@ class AnthropicProvider(BaseLLMClient):
                 "input_schema": schema,
             }
             use_thinking = bool(
-                self.thinking_level
-                and str(self.thinking_level).lower() != "none"
-                and any(x in self.model.lower() for x in self.THINKING_CAPABLE_MODELS)
+                self.thinking_level and str(self.thinking_level).lower() != "none" and self._is_thinking_capable()
             )
 
             from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
@@ -550,9 +558,7 @@ class AnthropicProvider(BaseLLMClient):
             raise Exception("Anthropic API client not initialized")
 
         use_thinking = bool(
-            self.thinking_level
-            and str(self.thinking_level).lower() != "none"
-            and any(x in self.model.lower() for x in self.THINKING_CAPABLE_MODELS)
+            self.thinking_level and str(self.thinking_level).lower() != "none" and self._is_thinking_capable()
         )
         thinking_budget = getattr(self, "thinking_budget", None) or self.THINKING_BUDGETS.get(self.thinking_level, 4096)
 

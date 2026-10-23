@@ -118,7 +118,7 @@ async def _amain() -> None:
     settings = container.settings
 
     # Configure Gemini Rate Limiter limits from settings
-    from monika.infrastructure.api.gemini_rate_limiter import configure_from_settings
+    from monika.infrastructure.llm.rate_limiting.gemini_rate_limiter import configure_from_settings
 
     configure_from_settings(settings)
 

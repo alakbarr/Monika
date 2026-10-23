@@ -1091,7 +1091,7 @@ class CycleScheduler:
                     logger.debug(f"Failed to check M15 data freshness: {e}")
 
                 try:
-                    from monika.infrastructure.api.gemini_rate_limiter import GeminiRateLimiter
+                    from monika.infrastructure.llm.rate_limiting.gemini_rate_limiter import GeminiRateLimiter
 
                     limiter = GeminiRateLimiter(session)
                     await GeminiRateLimiter._ensure_initialized(session)

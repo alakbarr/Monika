@@ -767,7 +767,7 @@ class TelegramFormatterMixin(_TelegramBotMixinBase):
 
     async def _build_credits_text(self) -> str:
         try:
-            from monika.infrastructure.api.credit_balance_tracker import CreditBalanceTracker
+            from monika.infrastructure.llm.rate_limiting.credit_balance_tracker import CreditBalanceTracker
 
             rep = await CreditBalanceTracker.get_full_credit_report()
 

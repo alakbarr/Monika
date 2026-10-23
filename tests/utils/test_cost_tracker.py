@@ -1,9 +1,17 @@
+from decimal import Decimal
 from tests.conftest import create_mock_async_session
 import pytest
 import json
 from unittest.mock import MagicMock, AsyncMock, patch
 from monika.core.analytics.cost_tracker import CostTracker
-from monika.core.analytics.pricing import cost_usd, get_price, is_free_tier, infer_provider_from_model
+from monika.core.analytics.pricing import (
+    cost_usd,
+    cost_usd_decimal,
+    get_price,
+    is_free_tier,
+    infer_provider_from_model,
+)
+from monika.infrastructure.providers.pricing_catalog import calculate_cost_decimal
 from monika.infrastructure.database.models import SystemConfig
 from datetime import datetime, timezone
 
@@ -54,6 +62,17 @@ class TestCostTracker:
         gpt_cost = cost_usd("gpt-4o", 1_000_000, 1_000_000)
         # 1M in ($2.50) + 1M out ($10.00) = $12.50
         assert round(gpt_cost, 2) == 12.50
+
+        # 5. GPT-6 Rate Verification
+        gpt6_cost = cost_usd("gpt-6", 1_000_000, 1_000_000)
+        # 1M in ($2.00) + 1M out ($10.00) = $12.00
+        assert round(gpt6_cost, 2) == 12.00
+
+        # 6. High-Precision Decimal Cost
+        dec_cost = cost_usd_decimal("gpt-6", 1_000_000, 1_000_000)
+        assert isinstance(dec_cost, Decimal)
+        assert dec_cost == Decimal("12.000000")
+        assert calculate_cost_decimal("gpt-6", 1_000_000, 1_000_000) == Decimal("12.000000")
 
     @pytest.mark.asyncio
     async def test_log_cycle_cost_gemini_free_tier(self):

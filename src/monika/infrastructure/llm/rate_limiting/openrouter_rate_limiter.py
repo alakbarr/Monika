@@ -61,6 +61,7 @@ DEFAULT_PAID_QUOTA = {"rpm": 100, "rpd": 10000}
 
 import json
 from pathlib import Path
+import tempfile
 
 from monika.core.paths import DATA_DIR
 
@@ -113,6 +114,7 @@ class OpenRouterRateLimiter:
 
     @classmethod
     def _save_state(cls):
+        tmp_name = None
         try:
             _STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
             daily_payload = {f"{k[0]}||{k[1]}": v for k, v in cls._daily_counts.items()}
@@ -120,10 +122,16 @@ class OpenRouterRateLimiter:
             data = {
                 "openrouter": {"daily_counts": daily_payload, "cooldowns": cooldown_payload, "updated_at": time.time()}
             }
-            tmp_file = _STATE_FILE.with_suffix(".tmp")
-            tmp_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
-            os.replace(tmp_file, _STATE_FILE)
+            with tempfile.NamedTemporaryFile("w", dir=_STATE_FILE.parent, delete=False, encoding="utf-8") as tf:
+                json.dump(data, tf, indent=2)
+                tmp_name = tf.name
+            os.replace(tmp_name, _STATE_FILE)
         except Exception as e:
+            if tmp_name and os.path.exists(tmp_name):
+                try:
+                    os.remove(tmp_name)
+                except OSError:
+                    pass
             logger.debug(f"Could not save rate limit state to disk: {e}")
 
     @classmethod

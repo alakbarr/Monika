@@ -1211,7 +1211,10 @@ class AgentHarness:
                         assemble_fn = getattr(system_prompt, "assemble", None)
 
                         if callable(assemble_fn):
-                            current_static_sys = assemble_fn(provider=provider_name)
+                            try:
+                                current_static_sys = assemble_fn(provider=provider_name, quarantine_volatile=True)
+                            except TypeError:
+                                current_static_sys = assemble_fn(provider=provider_name)
                             dynamic_sys = str(getattr(system_prompt, "tier3_volatile", "") or "").strip()
                         elif isinstance(system_prompt, tuple) and len(system_prompt) >= 2:
                             current_static_sys = system_prompt[0]

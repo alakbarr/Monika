@@ -12,7 +12,7 @@ import time
 from typing import Any, ClassVar, Dict, Optional
 
 from monika.core.security.log_redactor import mask_credential
-from monika.infrastructure.api.openrouter_rate_limiter import (
+from monika.infrastructure.llm.rate_limiting.openrouter_rate_limiter import (
     OpenRouterRateLimiter,
     get_all_keys,
     get_free_keys,
