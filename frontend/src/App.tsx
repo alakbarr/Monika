@@ -34,6 +34,7 @@ const PluginManagerPanel = React.lazy(() => import('./components/panels/PluginMa
 const BenchmarkPanel = React.lazy(() => import('./components/panels/BenchmarkPanel').then(m => ({ default: m.BenchmarkPanel })));
 const TerminalPanel = React.lazy(() => import('./components/panels/TerminalPanel').then(m => ({ default: m.TerminalPanel })));
 import { CommandPalette } from './components/ui/CommandPalette';
+import { AuthModal } from './components/ui/AuthModal';
 import { MarkdownRenderer } from './components/ui/MarkdownRenderer';
 import { useDashboardStore } from './store/dashboardStore';
 import { usePolling } from './hooks/usePolling';
@@ -165,6 +166,15 @@ const App: React.FC = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showError, setShowError] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleAuthError = () => {
+      setAuthModalOpen(true);
+    };
+    window.addEventListener('dashboard-auth-error', handleAuthError);
+    return () => window.removeEventListener('dashboard-auth-error', handleAuthError);
+  }, []);
 
   useEffect(() => {
     if (error) {
@@ -366,6 +376,16 @@ const App: React.FC = () => {
       <CommandPalette
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
+      />
+
+      {/* 10. Dashboard API Key Auth Modal */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onSuccess={() => {
+          setAuthModalOpen(false);
+          window.location.reload();
+        }}
+        onClose={() => setAuthModalOpen(false)}
       />
     </div>
   );

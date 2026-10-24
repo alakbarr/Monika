@@ -32,16 +32,26 @@ if defined SYS_PYTHON goto :python_found
 
 echo [!] Python is not found in your system PATH.
 where winget >nul 2>&1
-if %ERRORLEVEL% neq 0 goto :manual_python
+if %ERRORLEVEL% neq 0 goto :powershell_python
 
 echo [*] Windows Package Manager (winget) detected.
 set "INSTALL_PY=y"
-set /p INSTALL_PY="Install Python 3.11 automatically via winget? (y/n) [default: y]: "
+set /p INSTALL_PY="Install Python 3.14 automatically via winget? (y/n) [default: y]: "
 if /i "!INSTALL_PY!"=="y" (
-    echo [*] Downloading and installing Python 3.11...
-    winget install -e --id Python.Python.3.11 --scope user
+    echo [*] Downloading and installing Python 3.14...
+    winget install -e --id Python.Python.3.14 --scope user
     echo.
     echo [OK] Python installed successfully. Please restart this launcher.
+    pause
+    exit /b 0
+)
+
+:powershell_python
+echo [*] Downloading and installing Python 3.14 automatically via PowerShell...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference = 'Stop'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $installer = Join-Path $env:TEMP 'python-3.14.0-amd64.exe'; Write-Host '[*] Fetching Python 3.14 installer from python.org...'; try { Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.14.0/python-3.14.0-amd64.exe' -OutFile $installer -UseBasicParsing; if (Test-Path $installer) { Write-Host '[*] Installing Python 3.14 silently...'; $proc = Start-Process -FilePath $installer -ArgumentList '/quiet InstallAllUsers=1 PrependPath=1' -Wait -PassThru; Remove-Item $installer -Force -ErrorAction SilentlyContinue; if ($proc.ExitCode -eq 0) { Write-Host '[OK] Python 3.14 installation completed!'; exit 0 } else { exit $proc.ExitCode } } } catch { Write-Host ('[ERROR] ' + $_.Exception.Message); exit 1 }"
+if %ERRORLEVEL% equ 0 (
+    echo.
+    echo [OK] Python 3.14 installed successfully. Please restart this launcher.
     pause
     exit /b 0
 )
@@ -130,6 +140,23 @@ set "CURRENT_TIER="
 if exist "%ROOT_DIR%\.monika_tier" set /p CURRENT_TIER=<"%ROOT_DIR%\.monika_tier"
 if not defined CURRENT_TIER set "CURRENT_TIER=trial"
 
+set "NON_INTERACTIVE=0"
+if /i "%~1"=="run" (
+    set "NON_INTERACTIVE=1"
+    shift
+    goto :apply_tier
+)
+if /i "%~1"=="--daemon" (
+    set "NON_INTERACTIVE=1"
+    shift
+    goto :apply_tier
+)
+if /i "%~1"=="--non-interactive" (
+    set "NON_INTERACTIVE=1"
+    shift
+    goto :apply_tier
+)
+
 if /i "%~1"=="full" (
     set "CURRENT_TIER=full"
     shift
@@ -186,24 +213,22 @@ if "!TIER_KEY!"=="2" (
     set "CURRENT_TIER=trial"
 )
 
+:apply_tier
 echo !CURRENT_TIER!>"%ROOT_DIR%\.monika_tier"
 
 echo.
+set "MONIKA_TIER=!CURRENT_TIER!"
 if /i "!CURRENT_TIER!"=="trial" (
-    set "MONIKA_TIER=trial"
-    set "DATABASE_URL=sqlite+aiosqlite:///data/monika.db"
-    set "PAPER_TRADING_MODE=true"
     echo [*] Active Package Tier: Trial Package
     echo [*] Engine: Zero-Config SQLite + Paper Trading Simulation.
     echo [*] Control: Interactive CLI + Telegram Alerts.
     echo [*] Note: Upgrade anytime to Full Package via: python -m monika.interfaces.cli.main upgrade
 ) else (
-    set "MONIKA_TIER=full"
-    set "DATABASE_URL="
-    set "PAPER_TRADING_MODE="
     echo [*] Active Package Tier: Full Package
     echo [*] Engine: Enterprise PostgreSQL + 9Router AI Gateway + Web Dashboard.
-    start "" cmd /c "%SystemRoot%\System32\timeout.exe /t 3 >nul 2>&1 && start http://localhost:8000"
+    if "!NON_INTERACTIVE!"=="0" (
+        start "" cmd /c "%SystemRoot%\System32\timeout.exe /t 3 >nul 2>&1 && start http://localhost:8000"
+    )
 )
 echo.
 

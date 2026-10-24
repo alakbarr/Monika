@@ -172,7 +172,17 @@ async def verify_api_key(request: Request, call_next):
     path = request.url.path
 
     # Always allow CORS preflight and health pings without auth hurdles
-    if request.method == "OPTIONS" or path in ("/api/ping", "/api/v1/ping", "/ping"):
+    is_static_asset = (
+        path == "/"
+        or path.startswith("/assets/")
+        or path == "/favicon.ico"
+        or path.endswith((".js", ".css", ".png", ".jpg", ".svg", ".ico", ".woff", ".woff2"))
+    )
+    if (
+        request.method == "OPTIONS"
+        or path in ("/api/ping", "/api/v1/ping", "/ping", "/api/v1/health")
+        or is_static_asset
+    ):
         return await call_next(request)
 
     if allowed_ips and not is_localhost:

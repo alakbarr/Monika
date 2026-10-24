@@ -33,6 +33,15 @@ class SetupWizard:
     def detect_mt5_path() -> Optional[str]:
         """Automatically find standard MetaTrader 5 terminal64.exe on host system."""
         if sys.platform != "win32":
+            linux_candidates = [
+                "/opt/mt5/terminal64.exe",
+                os.path.expanduser("~/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe"),
+                os.path.expanduser("~/.wine/drive_c/Program Files (x86)/MetaTrader 5/terminal64.exe"),
+                "/wine/prefix/drive_c/Program Files/MetaTrader 5/terminal64.exe",
+            ]
+            for cand in linux_candidates:
+                if os.path.exists(cand):
+                    return cand
             return None
         candidates = [
             r"C:\Program Files\MetaTrader 5\terminal64.exe",
@@ -364,17 +373,37 @@ class SetupWizard:
                 )
 
                 if sys.platform != "win32":
+                    console.print(f"\n[{MUTED}]Linux/Unix host detected. Please select MetaTrader 5 execution mode:[/]")
                     console.print(
-                        f"[{MUTED}]Linux/Unix host detected. MT5 typically runs via Remote Gateway, EA Bridge, or Wine.[/]"
+                        "  1. [bold green]🚀 Paper Trading Sandbox (Recommended - Zero Config, No MT5 needed)[/]"
                     )
-                    use_gateway = Confirm.ask("Use Remote MT5 Gateway / EA Bridge adapter?", default=True)
-                    if use_gateway:
+                    console.print("  2. [bold]🍷 Headless MT5 via Wine / RPC Bridge[/]")
+                    console.print("  3. [bold]🌐 Remote MT5 Gateway / EA Bridge[/]\n")
+                    linux_choice = _ask_step("Select execution mode [1/2/3]", default="1")
+                    if linux_choice == "1":
+                        settings_updates.setdefault("paper_trading", {})["enabled"] = True
+                        settings_updates.setdefault("execution", {})["adapter_type"] = "mock"
+                        console.print(
+                            f"{stamp_ok('PAPER TRADING')} Paper Trading Sandbox selected (native Linux execution)."
+                        )
+                        current_step += 1
+                        continue
+                    elif linux_choice == "3":
                         gw_url = _ask_step("Remote Gateway URL", default="http://127.0.0.1:8080")
                         settings_updates.setdefault("execution", {})["adapter_type"] = "remote_gateway"
                         settings_updates["execution"]["remote_gateway_url"] = gw_url
                         console.print(f"{stamp_ok('GATEWAY')} Configured remote gateway adapter -> {gw_url}")
                         current_step += 1
                         continue
+                    else:
+                        rpc_host = _ask_step(
+                            "MT5 RPC Bridge Host", default=os.environ.get("MT5_LINUX_HOST", "127.0.0.1")
+                        )
+                        rpc_port = _ask_step("MT5 RPC Bridge Port", default=os.environ.get("MT5_LINUX_PORT", "18812"))
+                        env_updates["MT5_LINUX_HOST"] = rpc_host
+                        env_updates["MT5_LINUX_PORT"] = rpc_port
+                        settings_updates.setdefault("execution", {})["adapter_type"] = "mt5_live"
+                        console.print(f"{stamp_ok('WINE BRIDGE')} Configured MT5 RPC Bridge -> {rpc_host}:{rpc_port}")
 
                 detected_mt5 = self.detect_mt5_path()
                 while not detected_mt5:
@@ -973,6 +1002,31 @@ class SetupWizard:
                 console.print(
                     f"  {stamp_ok('TELEGRAM')} Telegram bot configured (Admin ID: {chat_id}, Voice: {voice_enabled})\n"
                 )
+                if Confirm.ask("Send test welcome greeting to Telegram now?", default=True):
+                    try:
+                        import urllib.request
+                        import json
+
+                        tg_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+                        tg_data = json.dumps(
+                            {
+                                "chat_id": chat_id,
+                                "text": "🔔 [Monika Trading Agent] Successfully connected to your Telegram account! Real-time alerts and oversight are active.",
+                                "parse_mode": "HTML",
+                            }
+                        ).encode("utf-8")
+                        tg_req = urllib.request.Request(
+                            tg_url, data=tg_data, headers={"Content-Type": "application/json"}
+                        )
+                        with urllib.request.urlopen(tg_req, timeout=5) as resp:
+                            if resp.status == 200:
+                                console.print(
+                                    f"  {stamp_ok('TELEGRAM SENT')} Test greeting delivered to your Telegram app!\n"
+                                )
+                    except Exception as tg_err:
+                        console.print(
+                            f"  {stamp_warn('TELEGRAM TEST')} Note: Could not send test message ({tg_err}). Settings are still saved.\n"
+                        )
 
                 current_step += 1
                 continue

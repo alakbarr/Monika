@@ -2025,6 +2025,7 @@ Monika/
 │   │   │   └── ui/
 │   │   │       ├── AnalogDial.tsx
 │   │   │       ├── ApprovalModal.tsx
+│   │   │       ├── AuthModal.tsx
 │   │   │       ├── Badge.tsx
 │   │   │       ├── BootSequence.tsx
 │   │   │       ├── Card.tsx
@@ -2987,6 +2988,9 @@ Monika/
 │   ├── docker-compose.vps.yml
 │   ├── Dockerfile.mt5-wine
 │   ├── entrypoint_mt5.sh
+│   ├── install_vps.bat
+│   ├── install_vps.ps1
+│   ├── install_vps.sh
 │   ├── monika.service
 │   ├── tradeagent.service
 │   └── vps_deployment_guide.md
@@ -3087,4 +3091,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 265 | **Total Tracked Files**: 2792
+**Total Tracked Directories**: 265 | **Total Tracked Files**: 2796

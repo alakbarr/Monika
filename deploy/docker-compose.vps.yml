@@ -21,18 +21,19 @@ volumes:
 
 services:
   # ----------------------------------------------------------------------------
-  # 1. Database Service: PostgreSQL 16 + pgvector
+  # 1. Database Service: PostgreSQL 16 + pgvector (Profile: local-db)
   # ----------------------------------------------------------------------------
   db:
     image: pgvector/pgvector:pg16
     container_name: monika-vps-db
+    profiles: ["local-db"]
     restart: always
     networks:
       - monika-vps-net
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-monika_trading}
       POSTGRES_USER: ${POSTGRES_USER:-monika}
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Error: POSTGRES_PASSWORD must be set in .env}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-monika_postgres_secret}"
     volumes:
       - vps_postgres_data:/var/lib/postgresql/data
     ports:
@@ -63,14 +64,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
+        required: false
       mt5-wine:
         condition: service_started
+        required: false
     env_file:
       - ../.env
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/src
-      - "DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-monika}:${POSTGRES_PASSWORD:?Error: POSTGRES_PASSWORD must be set in .env}@db:5432/${POSTGRES_DB:-monika_trading}"
+      - "DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-monika}:${POSTGRES_PASSWORD:-monika_postgres_secret}@db:5432/${POSTGRES_DB:-monika_trading}}"
       - DASHBOARD_HOST=0.0.0.0
       - DASHBOARD_PORT=8000
       - MT5_COMMON_FILES_PATH=/shared/mt5_bridge
@@ -82,7 +85,7 @@ services:
       - vps_agent_data:/app/data
       - vps_mt5_bridge:/shared/mt5_bridge
     ports:
-      - "127.0.0.1:8000:8000"
+      - "${DASHBOARD_BIND_IP:-0.0.0.0}:8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
@@ -111,6 +114,7 @@ services:
       - WINEPREFIX=/wine/prefix
       - MT5_LOGIN=${MT5_ACCOUNT:-0}
       - MT5_SERVER=${MT5_SERVER:-"MetaQuotes-Demo"}
+      - AUTO_INSTALL_MT5=${AUTO_INSTALL_MT5:-true}
     ports:
       - "127.0.0.1:18812:18812"
     volumes:
