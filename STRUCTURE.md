@@ -2898,6 +2898,7 @@ Monika/
 │   ├── test_paper_tracker_fix.py
 │   ├── test_paths.py
 │   ├── test_phase19_remediation.py
+│   ├── test_phase20_remediation.py
 │   ├── test_phase_2_remediation.py
 │   ├── test_platform_compat.py
 │   ├── test_process_guardian.py
@@ -2986,6 +2987,7 @@ Monika/
 │   ├── docker-compose.vps.yml
 │   ├── Dockerfile.mt5-wine
 │   ├── entrypoint_mt5.sh
+│   ├── monika.service
 │   ├── tradeagent.service
 │   └── vps_deployment_guide.md
 │   ├── adr/
@@ -3085,4 +3087,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 265 | **Total Tracked Files**: 2790
+**Total Tracked Directories**: 265 | **Total Tracked Files**: 2792
