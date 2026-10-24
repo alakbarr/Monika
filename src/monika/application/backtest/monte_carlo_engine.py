@@ -35,6 +35,7 @@ class MonteCarloStressTester:
         """
         if not trade_returns or len(trade_returns) < 5:
             return {
+                "is_valid": False,
                 "num_simulations": 0,
                 "var_95_drawdown_pct": 0.0,
                 "var_99_drawdown_pct": 0.0,
@@ -48,6 +49,13 @@ class MonteCarloStressTester:
                     "p95": initial_equity,
                 },
             }
+
+        if self.seed is not None:
+            self.rng = np.random.default_rng(self.seed)
+
+        # Normalize ruin_drawdown_pct if passed as percentage (e.g. 50.0 -> 0.50)
+        if ruin_drawdown_pct > 1.0:
+            ruin_drawdown_pct = ruin_drawdown_pct / 100.0
 
         returns_arr = np.array(trade_returns, dtype=float)
         simulated_max_dds = []
@@ -100,6 +108,7 @@ class MonteCarloStressTester:
         ruin_prob = (ruin_count / num_simulations) * 100.0
 
         return {
+            "is_valid": True,
             "num_simulations": num_simulations,
             "var_95_drawdown_pct": round(float(p95_dd), 2),
             "var_99_drawdown_pct": round(float(p99_dd), 2),

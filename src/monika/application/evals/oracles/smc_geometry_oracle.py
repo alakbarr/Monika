@@ -3,6 +3,7 @@
 # Description: Programmatic Oracle for SMC Structural & Geometric Validation
 # ==============================================================================
 
+import math
 from typing import Any, Dict, List
 
 
@@ -39,7 +40,7 @@ def evaluate_smc_geometry(fixture: Dict[str, Any], decision_data: Dict[str, Any]
             "checks_passed": checks_passed,
         }
 
-    raw_entry = decision_data.get("entry_price") or decision_data.get("entry") or fixture.get("current_price")
+    raw_entry = decision_data.get("entry_price") or decision_data.get("entry")
     raw_sl = decision_data.get("stop_loss") or decision_data.get("sl")
     raw_tp = decision_data.get("take_profit") or decision_data.get("tp")
     if raw_entry is None or raw_sl is None or raw_tp is None:
@@ -56,6 +57,16 @@ def evaluate_smc_geometry(fixture: Dict[str, Any], decision_data: Dict[str, Any]
         tp = float(raw_tp)
     except (ValueError, TypeError) as err:
         violations.append(f"Invalid or missing numerical levels (entry/sl/tp): {err}")
+        return {
+            "passed": False,
+            "violations": violations,
+            "checks_passed": checks_passed,
+        }
+
+    if any(math.isnan(x) or math.isinf(x) or x <= 0 for x in (entry, sl, tp)):
+        violations.append(
+            f"Numerical coordinates must be finite and strictly positive, got entry={entry}, sl={sl}, tp={tp}"
+        )
         return {
             "passed": False,
             "violations": violations,
@@ -93,18 +104,28 @@ def evaluate_smc_geometry(fixture: Dict[str, Any], decision_data: Dict[str, Any]
 
     # 3. Structural SL and TP bounds from fixture
     exp = fixture.get("expected_outcome", {})
-    if "max_sl" in exp and sl > exp["max_sl"]:
-        violations.append(f"SL ({sl}) exceeds maximum allowable structural SL ({exp['max_sl']})")
-    elif "min_sl" in exp and sl < exp["min_sl"]:
-        violations.append(f"SL ({sl}) violates minimum allowable structural SL ({exp['min_sl']})")
-    else:
+    has_sl_bound = False
+    if "max_sl" in exp:
+        has_sl_bound = True
+        if sl > exp["max_sl"]:
+            violations.append(f"SL ({sl}) exceeds maximum allowable structural SL ({exp['max_sl']})")
+    if "min_sl" in exp:
+        has_sl_bound = True
+        if sl < exp["min_sl"]:
+            violations.append(f"SL ({sl}) violates minimum allowable structural SL ({exp['min_sl']})")
+    if has_sl_bound and not any("SL (" in v for v in violations):
         checks_passed.append("SL respects fixture structural bounds")
 
-    if "max_tp" in exp and tp > exp["max_tp"]:
-        violations.append(f"TP ({tp}) exceeds maximum allowable structural TP ({exp['max_tp']})")
-    elif "min_tp" in exp and tp < exp["min_tp"]:
-        violations.append(f"TP ({tp}) violates minimum allowable structural TP ({exp['min_tp']})")
-    else:
+    has_tp_bound = False
+    if "max_tp" in exp:
+        has_tp_bound = True
+        if tp > exp["max_tp"]:
+            violations.append(f"TP ({tp}) exceeds maximum allowable structural TP ({exp['max_tp']})")
+    if "min_tp" in exp:
+        has_tp_bound = True
+        if tp < exp["min_tp"]:
+            violations.append(f"TP ({tp}) violates minimum allowable structural TP ({exp['min_tp']})")
+    if has_tp_bound and not any("TP (" in v for v in violations):
         checks_passed.append("TP respects fixture structural bounds")
 
     # 4. Minimum ATR buffer (SL distance >= 0.8x ATR)

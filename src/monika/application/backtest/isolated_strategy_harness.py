@@ -134,7 +134,7 @@ def resample_candles(h1_candles: List[CandleDict], factor: int) -> List[CandleDi
 
     res = []
     for chunk in chunks:
-        if not chunk:
+        if not chunk or len(chunk) < factor:
             continue
         c_open = chunk[0].open
         c_high = max(c.high for c in chunk)
@@ -841,6 +841,7 @@ class IsolatedStrategyBacktestHarness:
             if i + 1 >= len(primary_candles):
                 break
             next_bar = primary_candles[i + 1]
+            next_time = next_bar.get("time") or cur_time
             base_price = float(next_bar.open)
             if sig.direction == "buy":
                 entry_price = base_price + (self.spread_cost / 2.0) + self.slippage_cost
@@ -928,7 +929,7 @@ class IsolatedStrategyBacktestHarness:
                 StrategyTradeRecord(
                     symbol=self.symbol,
                     direction=sig.direction,
-                    entry_time=cur_time,
+                    entry_time=next_time,
                     entry_price=round(entry_price, 5),
                     exit_time=exit_time,
                     exit_price=round(exit_price, 5),
@@ -1223,6 +1224,11 @@ class IsolatedStrategyBacktestHarness:
             if i + 1 >= len(candles):
                 break
             next_bar = candles[i + 1]
+            next_time = (
+                next_bar.get("time") or next_bar.get("timestamp")
+                if isinstance(next_bar, dict)
+                else getattr(next_bar, "timestamp", cur_time)
+            ) or cur_time
             base_price = float(next_bar.get("open") or 0.0) if isinstance(next_bar, dict) else float(next_bar.open)
             entry_price = (
                 base_price + (self.spread_cost / 2.0) + self.slippage_cost
@@ -1303,7 +1309,7 @@ class IsolatedStrategyBacktestHarness:
                 StrategyTradeRecord(
                     symbol=self.symbol,
                     direction=sig.direction,
-                    entry_time=cur_time,
+                    entry_time=next_time,
                     entry_price=entry_price,
                     exit_time=exit_time,
                     exit_price=exit_price,

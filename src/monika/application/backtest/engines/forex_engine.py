@@ -35,11 +35,15 @@ class ForexEngine:
 
     @classmethod
     def get_pip_size(cls, symbol: str) -> float:
-        norm = symbol.upper()
+        norm = symbol.upper().replace("/", "").replace("-", "").strip()
+        from monika.domain.risk.instruments.instruments import DEFAULT_INSTRUMENTS
+
+        if norm in DEFAULT_INSTRUMENTS:
+            return float(DEFAULT_INSTRUMENTS[norm].pip_size)
         if "JPY" in norm:
             return 0.01
         elif "XAU" in norm:
-            return 0.10
+            return 0.01
         return 0.0001
 
     @classmethod
@@ -72,11 +76,16 @@ class ForexEngine:
         lots: float,
         days_held: float,
         is_wednesday_rollover: bool = False,
+        symbol: str = "",
     ) -> float:
         """Calculates overnight rollover financing charges (with triple swap on Wednesday)."""
         if days_held <= 0:
             return 0.0
-        contract_val = price * lots * 100000.0
+        sym_clean = symbol.upper().replace("/", "").replace("-", "").strip()
+        if sym_clean.startswith("USD") and len(sym_clean) == 6:
+            contract_val = lots * 100000.0
+        else:
+            contract_val = price * lots * 100000.0
         rate = -0.018 if action.lower() == "buy" else 0.002
         # Wednesday rollover charges 3 days instead of 1 (+2 additional financing days)
         effective_days = days_held + (2.0 if is_wednesday_rollover else 0.0)

@@ -66,6 +66,8 @@ class SimulationClock:
             target_time = datetime.fromisoformat(target_time)
         if target_time.tzinfo is None:
             target_time = target_time.replace(tzinfo=timezone.utc)
+        else:
+            target_time = target_time.astimezone(timezone.utc)
 
         if target_time < self._current_time:
             raise ValueError("Target time is in the past relative to current simulation clock.")
@@ -98,9 +100,9 @@ _PIP_UNITS: Dict[str, float] = {
     "JPY": 0.01,
     "HUF": 0.01,
     "KRW": 0.01,
-    "XAU": 0.10,
+    "XAU": 0.01,
     "XAG": 0.001,
-    "XPT": 0.10,
+    "XPT": 0.01,
     "BTC": 1.0,
     "ETH": 0.01,
     "US30": 1.0,
@@ -119,9 +121,16 @@ _PIP_UNITS: Dict[str, float] = {
 
 def get_pip_unit(symbol: str) -> float:
     """Returns pip scale unit for given symbol across FX, Gold, Crypto, Indices, Energy."""
-    sym = (symbol or "").upper()
+    clean = (symbol or "").upper().replace("/", "").replace("-", "").strip()
+    from monika.domain.risk.instruments.instruments import DEFAULT_INSTRUMENTS
+
+    if clean in DEFAULT_INSTRUMENTS:
+        return float(DEFAULT_INSTRUMENTS[clean].pip_size)
+    for k, spec in DEFAULT_INSTRUMENTS.items():
+        if k in clean:
+            return float(spec.pip_size)
     for k, v in _PIP_UNITS.items():
-        if k in sym:
+        if k in clean:
             return v
     return 0.0001
 

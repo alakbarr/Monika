@@ -90,6 +90,7 @@ class RiskDataProviderProtocol(Protocol):
         timeframe: str = "H1",
         limit: int = 100,
         session: Any | None = None,
+        as_of: datetime | None = None,
     ) -> list[dict[str, Any]]:
         """Retrieve OHLCV price bars for volatility, correlation, or indicator checks."""
         ...

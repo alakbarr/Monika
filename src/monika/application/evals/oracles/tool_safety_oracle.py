@@ -66,6 +66,15 @@ class ToolSafetyOracle:
     def evaluate_traps_suite(self) -> List[OracleResult]:
         """Runs oracle evaluation over all loaded fixture traps."""
         traps = self.load_traps()
+        if not traps:
+            return [
+                OracleResult(
+                    test_id="fixture_load_failure",
+                    passed=False,
+                    reason=f"Failed to load traps from {self.fixture_path}: fixture missing or empty",
+                    details={"fixture_path": self.fixture_path},
+                )
+            ]
         results: List[OracleResult] = []
 
         for trap in traps:

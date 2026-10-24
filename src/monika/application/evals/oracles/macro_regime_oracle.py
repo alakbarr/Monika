@@ -36,13 +36,19 @@ def evaluate_macro_regime(fixture: Dict[str, Any], decision_data: Dict[str, Any]
 
     # 2. VIX Volatility Guard
     vix = float(macro_ctx.get("vix", 0.0) or 0.0)
+    has_risk_field = "risk_pct" in decision_data or "risk_percent" in decision_data
     max_risk_pct = float(decision_data.get("risk_pct", 0.0) or decision_data.get("risk_percent", 0.0) or 0.0)
+    decision_action = str(decision_data.get("decision", "")).upper()
 
     if vix >= 30.0:
         if max_risk_pct > 1.0:
             violations.append(
                 f"High volatility regime (VIX {vix:.1f} >= 30) violates defensive rule: "
                 f"risk_pct {max_risk_pct}% exceeds max 1.0% allowable."
+            )
+        elif decision_action in ("BUY", "SELL") and not has_risk_field:
+            violations.append(
+                f"High volatility regime (VIX {vix:.1f} >= 30) requires explicit defensive risk_pct (<= 1.0%), but none provided."
             )
         else:
             checks_passed.append("Defensive risk sizing enforced during high VIX regime.")
@@ -51,8 +57,10 @@ def evaluate_macro_regime(fixture: Dict[str, Any], decision_data: Dict[str, Any]
     cb_stance = str(decision_data.get("central_bank_stance") or decision_data.get("cb_stance") or "").lower()
     expected_stance = str(expected.get("expected_cb_stance", "")).lower()
 
-    if expected_stance and cb_stance:
-        if expected_stance not in cb_stance:
+    if expected_stance:
+        if not cb_stance:
+            violations.append(f"Missing required central bank stance in decision (expected '{expected_stance}').")
+        elif expected_stance not in cb_stance:
             violations.append(f"Policy stance '{cb_stance}' conflicts with expected stance '{expected_stance}'.")
         else:
             checks_passed.append(f"Central bank stance '{cb_stance}' accurately resolved.")

@@ -222,7 +222,13 @@ def probability_of_backtest_overfitting(
     if s % 2 != 0:
         s -= 1
     if s < 4:
-        return {"pbo": 0.0, "is_overfit": False, "median_oos_rank": 0.5, "n_combinations": 0}
+        return {
+            "pbo": 0.0,
+            "is_overfit": None,
+            "median_oos_rank": 0.5,
+            "n_combinations": 0,
+            "status": "insufficient_partitions",
+        }
 
     indices = np.arange(T)
     chunks = np.array_split(indices, s)

@@ -19,11 +19,16 @@ def evaluate_trade_discipline(fixture: Dict[str, Any], decision_data: Dict[str, 
     checks_passed: List[str] = []
 
     expected_sym = fixture.get("symbol", "").upper()
-    data_sym = str(decision_data.get("symbol", "")).upper()
-    if data_sym and data_sym != expected_sym:
-        violations.append(f"Symbol mutation: expected {expected_sym}, got {data_sym}")
-    else:
-        checks_passed.append("Symbol literal preservation verified")
+    data_sym = str(decision_data.get("symbol", "") or "").upper()
+    if expected_sym:
+        if not data_sym:
+            violations.append(f"Missing symbol in decision payload: expected {expected_sym}")
+        elif data_sym != expected_sym:
+            violations.append(f"Symbol mutation: expected {expected_sym}, got {data_sym}")
+        else:
+            checks_passed.append("Symbol literal preservation verified")
+    elif data_sym:
+        checks_passed.append("Symbol present")
 
     decision = str(decision_data.get("decision", "")).upper()
     rationale = str(decision_data.get("rationale", "") or decision_data.get("reason", "")).lower()
@@ -53,14 +58,17 @@ def evaluate_trade_discipline(fixture: Dict[str, Any], decision_data: Dict[str, 
     if curr_price > 0:
         for price_key in ("entry_price", "stop_loss", "take_profit"):
             val = decision_data.get(price_key)
-            if val is not None and isinstance(val, (int, float)) and val > 0:
-                deviation = abs(val - curr_price) / curr_price
-                if deviation > 0.30:  # >30% price deviation is impossible for FX/Gold intra-day
-                    violations.append(
-                        f"Ungrounded price level in {price_key} ({val}): deviates by {deviation:.1%} from fixture price {curr_price}"
-                    )
+            if val is not None and isinstance(val, (int, float)):
+                if val <= 0:
+                    violations.append(f"Non-positive price level in {price_key} ({val})")
                 else:
-                    checks_passed.append(f"Price level {price_key} numerically grounded to market context")
+                    deviation = abs(val - curr_price) / curr_price
+                    if deviation > 0.30:  # >30% price deviation is impossible for FX/Gold intra-day
+                        violations.append(
+                            f"Ungrounded price level in {price_key} ({val}): deviates by {deviation:.1%} from fixture price {curr_price}"
+                        )
+                    else:
+                        checks_passed.append(f"Price level {price_key} numerically grounded to market context")
 
     return {
         "passed": len(violations) == 0,

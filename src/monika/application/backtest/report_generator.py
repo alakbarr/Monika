@@ -76,6 +76,27 @@ class ReportGenerator:
             round(gross_profit / gross_loss, 2) if gross_loss > 0 else (99.0 if gross_profit > 0 else 0.0)
         )
 
+        # 0. Synthesize equity curve if missing from trade sequence
+        if (not self.equity_curve or not isinstance(self.equity_curve, list)) and self.trades:
+            cur_eq = initial_eq
+            first_ts = self.start_date or getattr(self.trades[0], "entry_time", datetime.now(timezone.utc))
+            synth_curve = [{"timestamp": first_ts, "equity": initial_eq}]
+            for t in sorted(
+                self.trades,
+                key=lambda tr: (
+                    getattr(tr, "exit_time", None)
+                    or getattr(tr, "entry_time", None)
+                    or datetime.min.replace(tzinfo=timezone.utc)
+                ),
+            ):
+                pnl = getattr(t, "pnl_usd", None)
+                if pnl is None:
+                    pnl = (float(getattr(t, "pnl_pct", 0.0) or 0.0) / 100.0) * initial_eq
+                cur_eq += float(pnl)
+                ts = getattr(t, "exit_time", None) or getattr(t, "entry_time", None)
+                synth_curve.append({"timestamp": ts, "equity": cur_eq})
+            self.equity_curve = synth_curve
+
         # 1. Resample equity curve to Daily Return Series
         daily_returns = self._resample_daily_returns(initial_eq)
 
@@ -111,8 +132,11 @@ class ReportGenerator:
             self.run.sharpe_ratio = 0.0
             self.sortino_ratio = 0.0
 
-        # 4. Expectancy per-R
-        avg_loss_pct = abs(sum(t.pnl_pct for t in losses if t.pnl_pct) / len(losses)) if losses else 1.0
+        # 4. Expectancy per-R (exclude scratch trades from avg loss calculation)
+        strict_losses = [t for t in losses if (t.pnl_pct or 0) < 0]
+        avg_loss_pct = (
+            abs(sum(t.pnl_pct for t in strict_losses if t.pnl_pct) / len(strict_losses)) if strict_losses else 1.0
+        )
         avg_win_pct = sum(t.pnl_pct for t in wins if t.pnl_pct) / len(wins) if wins else 0.0
         win_rate_dec = len(wins) / len(self.trades)
         loss_rate_dec = 1.0 - win_rate_dec
@@ -124,24 +148,6 @@ class ReportGenerator:
         curve_to_use = (
             [p for p in self.equity_curve] if (self.equity_curve and isinstance(self.equity_curve, list)) else []
         )
-        if not curve_to_use and self.trades:
-            cur_eq = initial_eq
-            first_ts = self.start_date or getattr(self.trades[0], "entry_time", datetime.now(timezone.utc))
-            curve_to_use = [{"timestamp": first_ts, "equity": initial_eq}]
-            for t in sorted(
-                self.trades,
-                key=lambda tr: (
-                    getattr(tr, "exit_time", None)
-                    or getattr(tr, "entry_time", None)
-                    or datetime.min.replace(tzinfo=timezone.utc)
-                ),
-            ):
-                pnl = getattr(t, "pnl_usd", None)
-                if pnl is None:
-                    pnl = (float(getattr(t, "pnl_pct", 0.0) or 0.0) / 100.0) * initial_eq
-                cur_eq += float(pnl)
-                ts = getattr(t, "exit_time", None) or getattr(t, "entry_time", None)
-                curve_to_use.append({"timestamp": ts, "equity": cur_eq})
 
         if curve_to_use:
             equities = [
@@ -184,7 +190,7 @@ class ReportGenerator:
         # 7. Extended Risk Metrics
         if len(daily_returns) > 1:
             var_5 = float(np.percentile(daily_returns, 5))
-            tail_losses = [r for r in daily_returns if r <= var_5]
+            tail_losses = [r for r in daily_returns if r <= var_5 and r < 0]
             self.cvar_95 = round(abs(float(np.mean(tail_losses))) * 100.0, 2) if tail_losses else 0.0
         else:
             self.cvar_95 = 0.0

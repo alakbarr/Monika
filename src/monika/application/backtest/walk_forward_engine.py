@@ -303,8 +303,11 @@ class WalkForwardEngine:
 
         if avg_is_ret > 0:
             overall_wfe = round(avg_oos_ret / avg_is_ret, 3)
-        else:
+        elif avg_is_ret == 0.0:
             overall_wfe = 1.0 if avg_oos_ret >= 0 else 0.0
+        else:
+            # IS was negative: if OOS is also negative, efficiency is 0.0; if OOS is positive, ratio of recovery
+            overall_wfe = 0.0 if avg_oos_ret <= 0 else round(avg_oos_ret / abs(avg_is_ret), 3)
 
         # Compute Deflated Sharpe Ratio (DSR) across folds
         effective_trials = (
@@ -312,8 +315,8 @@ class WalkForwardEngine:
         )
         total_oos_days = max(10, sum((f.oos_end - f.oos_start).days for f in results_folds))
         n_obs = max(len(all_oos_trades), total_oos_days)
-        # De-annualize Sharpe to match daily frequency scale of n_obs
-        daily_oos_sr = avg_oos_sharpe / math.sqrt(252.0) if avg_oos_sharpe > 0 else avg_oos_sharpe
+        # De-annualize Sharpe symmetrically to match daily frequency scale of n_obs
+        daily_oos_sr = avg_oos_sharpe / math.sqrt(252.0)
         oos_trade_returns = [float(t.pnl_pct or 0.0) / 100.0 for t in all_oos_trades] if all_oos_trades else []
         _, _, oos_skew, oos_kurt = (
             compute_sample_moments(oos_trade_returns) if len(oos_trade_returns) >= 3 else (0.0, 0.0, 0.0, 0.0)

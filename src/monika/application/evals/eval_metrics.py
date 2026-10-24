@@ -74,7 +74,10 @@ def compute_brier_score(decisions: List[DecisionEvaluation]) -> float:
 
     total_sq_err = 0.0
     for d in active:
-        conf = (d.confluence_score / 100.0) if d.confluence_score is not None else 0.5
+        if d.confluence_score is not None:
+            conf = d.confluence_score / 100.0 if d.confluence_score > 1.0 else d.confluence_score
+        else:
+            conf = 0.5
         conf = max(0.0, min(1.0, conf))
         outcome = 1.0 if d.is_valid_direction and d.oracle_passed else 0.0
         total_sq_err += (conf - outcome) ** 2

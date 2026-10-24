@@ -8,20 +8,23 @@ logger = logging.getLogger("Benchmark.Judge")
 JUDGE_SCHEMA = {
     "type": "object",
     "properties": {
+        "notes": {
+            "type": "string",
+            "description": "Critical evaluation reasoning and factual rationale before assigning numerical scores.",
+        },
+        "hallucination_risk": {"type": "string", "enum": ["none", "low", "medium", "high"]},
         "grounding_score": {"type": "integer", "minimum": 0, "maximum": 10},
         "accuracy_score": {"type": "integer", "minimum": 0, "maximum": 10},
         "actionability_score": {"type": "integer", "minimum": 0, "maximum": 10},
         "consistency_score": {"type": "integer", "minimum": 0, "maximum": 10},
-        "hallucination_risk": {"type": "string", "enum": ["none", "low", "medium", "high"]},
-        "notes": {"type": "string"},
     },
     "required": [
+        "notes",
+        "hallucination_risk",
         "grounding_score",
         "accuracy_score",
         "actionability_score",
         "consistency_score",
-        "hallucination_risk",
-        "notes",
     ],
 }
 

@@ -260,14 +260,15 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
         timeframe: str = "H1",
         limit: int = 100,
         session: Optional[Any] = None,
+        as_of: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
         """Retrieve price history OHLCV bars."""
         sess: Optional[AsyncSession] = session or self.session
         if sess is not None:
-            return await self._query_price_bars(sess, symbol, timeframe, limit)
+            return await self._query_price_bars(sess, symbol, timeframe, limit, as_of=as_of)
 
         async with get_session() as new_session:
-            return await self._query_price_bars(new_session, symbol, timeframe, limit)
+            return await self._query_price_bars(new_session, symbol, timeframe, limit, as_of=as_of)
 
     async def _query_price_bars(
         self,
@@ -275,13 +276,12 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
         symbol: str,
         timeframe: str,
         limit: int,
+        as_of: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
-        stmt = (
-            select(PriceOHLCV)
-            .where(PriceOHLCV.symbol == symbol.upper().strip(), PriceOHLCV.timeframe == timeframe)
-            .order_by(desc(PriceOHLCV.timestamp))
-            .limit(limit)
-        )
+        conditions = [PriceOHLCV.symbol == symbol.upper().strip(), PriceOHLCV.timeframe == timeframe]
+        if as_of is not None:
+            conditions.append(PriceOHLCV.timestamp <= as_of)
+        stmt = select(PriceOHLCV).where(*conditions).order_by(desc(PriceOHLCV.timestamp)).limit(limit)
         res = await session.execute(stmt)
         bars: List[Dict[str, Any]] = []
         for row in reversed(res.scalars().all()):

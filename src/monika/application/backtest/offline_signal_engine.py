@@ -133,25 +133,30 @@ class OfflineSignalEngine:
     def calculate_stops_and_targets(self, df: pd.DataFrame, risk_reward_ratio: float = 2.0) -> pd.DataFrame:
         """
         Calculates Stop Loss and Take Profit levels for generated signals using ATR.
-        Uses Open price of the execution bar (or Close fallback) to match shifted execution.
+        Uses Open price of the execution bar to match shifted execution.
         """
-        df = self._normalize_df(df)
-        exec_price = df["Open"] if "Open" in df.columns else df["Close"]
+        df = self._normalize_df(df).copy()
+        if "Open" not in df.columns:
+            raise ValueError("DataFrame must contain 'Open' column for zero-lookahead point-in-time execution")
+        exec_price = df["Open"]
 
         # Shift ATR by 1 bar to prevent look-ahead bias: at execution Open of bar t+1,
         # only ATR computed from bars <= t is available
-        if "ATR" in df.columns:
-            df["ATR"] = df["ATR"].shift(1)
+        atr_col = "ATR"
+        if atr_col in df.columns:
+            atr_series = df[atr_col].shift(1)
+        else:
+            atr_series = exec_price * 0.005
 
         # For Buy (Signal == 1)
         buy_mask = df["Signal"] == 1
-        df.loc[buy_mask, "StopLoss"] = exec_price[buy_mask] - (df.loc[buy_mask, "ATR"] * 1.5)
-        df.loc[buy_mask, "TakeProfit"] = exec_price[buy_mask] + (df.loc[buy_mask, "ATR"] * 1.5 * risk_reward_ratio)
+        df.loc[buy_mask, "StopLoss"] = exec_price[buy_mask] - (atr_series[buy_mask] * 1.5)
+        df.loc[buy_mask, "TakeProfit"] = exec_price[buy_mask] + (atr_series[buy_mask] * 1.5 * risk_reward_ratio)
 
         # For Sell (Signal == -1)
         sell_mask = df["Signal"] == -1
-        df.loc[sell_mask, "StopLoss"] = exec_price[sell_mask] + (df.loc[sell_mask, "ATR"] * 1.5)
-        df.loc[sell_mask, "TakeProfit"] = exec_price[sell_mask] - (df.loc[sell_mask, "ATR"] * 1.5 * risk_reward_ratio)
+        df.loc[sell_mask, "StopLoss"] = exec_price[sell_mask] + (atr_series[sell_mask] * 1.5)
+        df.loc[sell_mask, "TakeProfit"] = exec_price[sell_mask] - (atr_series[sell_mask] * 1.5 * risk_reward_ratio)
 
         # Hold (Signal == 0)
         hold_mask = df["Signal"] == 0

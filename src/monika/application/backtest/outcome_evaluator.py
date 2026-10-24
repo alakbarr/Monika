@@ -187,7 +187,9 @@ class OutcomeEvaluator:
         r_dist = abs(trade.entry_price - trade.stop_loss)
         reward_dist = abs(trade.take_profit - trade.entry_price)
         min_rr = getattr(risk_gate, "min_rr_ratio", 1.5) if risk_gate else 1.5
-        if r_dist > 0 and (reward_dist / r_dist) < (min_rr - 1e-4):
+        if r_dist <= 0:
+            return False, "Invalid trade setup: entry and stop loss coordinates are identical (zero risk distance)"
+        if (reward_dist / r_dist) < (min_rr - 1e-4):
             return False, f"RR ratio {reward_dist / r_dist:.2f} < minimum {min_rr}"
 
         sym_profile = self.friction_profile.get(trade.symbol, {})
@@ -401,8 +403,12 @@ class OutcomeEvaluator:
                     trade.symbol, trade.direction, lots, holding_hours, start_time=trade_entry_time
                 )
                 outcome["swap_cost_usd"] = round(swap, 2)
-                # Deduct swap from pnl_usd
+                # Deduct swap from pnl_usd and update net pnl_pct
                 outcome["pnl_usd"] = round(outcome["pnl_usd"] + swap, 2)
+                cs = self._get_contract_size(trade.symbol)
+                notional = float(trade.entry_price or 0.0) * float(lots) * float(cs)
+                if notional > 0:
+                    outcome["pnl_pct"] = round((outcome["pnl_usd"] / notional) * 100.0, 4)
             except Exception as e:
                 logger.debug(f"Swap estimation failed: {e}")
                 outcome["swap_cost_usd"] = 0.0
@@ -541,11 +547,6 @@ class OutcomeEvaluator:
         friction_price = friction_pips * pip_size
         net_price_delta = price_delta - friction_price
 
-        if trade.entry_price > 0:
-            net_pnl_pct = (net_price_delta / trade.entry_price) * 100.0
-        else:
-            net_pnl_pct = 0.0
-
         # Calculate exact dollar PnL using instrument pip value per lot
         pip_val = getattr(spec, "pip_value_per_lot", None)
         if not pip_val or pip_val <= 0:
@@ -554,8 +555,6 @@ class OutcomeEvaluator:
                     pip_val = pip_size * contract_size
                 elif trade.symbol.startswith("USD"):
                     pip_val = (pip_size * contract_size) / exit_price
-                elif trade.symbol == "BTCUSD":
-                    pip_val = pip_size * 1.0
                 elif trade.symbol.endswith("JPY"):
                     # Convert JPY pip value (e.g. 1000 JPY) to USD using approximate rate (~150)
                     pip_val = (pip_size * contract_size) / 150.0
@@ -567,6 +566,14 @@ class OutcomeEvaluator:
         net_usd = (lots * net_pnl_pips * pip_val) - commission_usd
         gross_usd = lots * gross_pnl_pips * pip_val
         friction_usd = (lots * friction_pips * pip_val) + commission_usd
+
+        notional = float(trade.entry_price or 0.0) * float(lots) * float(contract_size)
+        if notional > 0:
+            net_pnl_pct = (net_usd / notional) * 100.0
+        elif trade.entry_price > 0:
+            net_pnl_pct = (net_price_delta / trade.entry_price) * 100.0
+        else:
+            net_pnl_pct = 0.0
 
         return {
             "exit_time": exit_time,

@@ -168,30 +168,30 @@ async def main():
                     .scalars()
                     .all()
                 )
-            model_scores: dict[str, list[float]] = {}
-            for r in res_rows:
-                model_scores.setdefault(r.model_name, []).append(float(r.overall_score or 0.0))
-            for m_a, m_b in itertools.combinations(models, 2):
-                scores_a = model_scores.get(m_a, [50.0])
-                scores_b = model_scores.get(m_b, [50.0])
-                avg_a = sum(scores_a) / len(scores_a) if scores_a else 50.0
-                avg_b = sum(scores_b) / len(scores_b) if scores_b else 50.0
-                tournament.record_match(
-                    m_a,
-                    m_b,
-                    metrics_a={"pnl_pct": avg_a, "sharpe_ratio": avg_a / 50.0},
-                    metrics_b={"pnl_pct": avg_b, "sharpe_ratio": avg_b / 50.0},
-                )
-            leaderboard = tournament.get_leaderboard()
-            print("\n=== ALPHA ARENA LEADERBOARD ===")
-            for lb in leaderboard:
-                print(
-                    f"#{lb['rank']} {lb['name']}: Elo {lb['elo']} (Record: {lb['record']}, WinRate: {lb['win_rate']}%)"
-                )
-            from monika.application.benchmark.alpha_arena import persist_tournament_leaderboard
+                model_scores: dict[str, list[float]] = {}
+                for r in res_rows:
+                    model_scores.setdefault(r.model_name, []).append(float(r.overall_score or 0.0))
+                for m_a, m_b in itertools.combinations(models, 2):
+                    scores_a = model_scores.get(m_a, [50.0])
+                    scores_b = model_scores.get(m_b, [50.0])
+                    avg_a = sum(scores_a) / len(scores_a) if scores_a else 50.0
+                    avg_b = sum(scores_b) / len(scores_b) if scores_b else 50.0
+                    tournament.record_match(
+                        m_a,
+                        m_b,
+                        metrics_a={"pnl_pct": avg_a, "sharpe_ratio": avg_a / 50.0},
+                        metrics_b={"pnl_pct": avg_b, "sharpe_ratio": avg_b / 50.0},
+                    )
+                leaderboard = tournament.get_leaderboard()
+                print("\n=== ALPHA ARENA LEADERBOARD ===")
+                for lb in leaderboard:
+                    print(
+                        f"#{lb['rank']} {lb['name']}: Elo {lb['elo']} (Record: {lb['record']}, WinRate: {lb['win_rate']}%)"
+                    )
+                from monika.application.benchmark.alpha_arena import persist_tournament_leaderboard
 
-            await persist_tournament_leaderboard(tournament, sess)
-            print("\n[Alpha Arena] Leaderboard persisted to SystemConfig successfully.")
+                await persist_tournament_leaderboard(tournament, sess)
+                print("\n[Alpha Arena] Leaderboard persisted to SystemConfig successfully.")
         except Exception as e_arena:
             print(f"Arena tournament error (non-fatal): {e_arena}")
 

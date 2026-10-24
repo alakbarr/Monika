@@ -93,6 +93,12 @@ class CanonicalPriceLoader:
         # Extract rows
         records: List[Dict[str, Any]] = []
         for r in chronological:
+            if r.open is None or r.high is None or r.low is None or r.close is None:
+                raise DataQualityError(
+                    f"Corrupted OHLCV row in {sym}/{tf} containing None values",
+                    code="NULL_OHLCV_VALUE",
+                    details={"symbol": sym, "timeframe": tf},
+                )
             ts = r.canonical_timestamp or r.timestamp
             if ts.tzinfo is None:
                 ts = ts.replace(tzinfo=timezone.utc)
@@ -103,7 +109,7 @@ class CanonicalPriceLoader:
                     "high": float(r.high),
                     "low": float(r.low),
                     "close": float(r.close),
-                    "volume": float(r.volume),
+                    "volume": float(r.volume or 0.0),
                 }
             )
 
@@ -151,6 +157,9 @@ class CanonicalPriceLoader:
                     curr_w = times[i].weekday()
                     if prev_w == 4 and (curr_w == 6 or curr_w == 0):
                         # Friday to Sunday/Monday weekend closure is allowed
+                        continue
+                    # Daily overnight closure for equity / non-24h market
+                    if delta <= timedelta(hours=18) and ((curr_w == prev_w + 1) or (prev_w == 4 and curr_w == 0)):
                         continue
                 gaps += 1
 

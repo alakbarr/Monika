@@ -4472,7 +4472,7 @@
   - `class ExecutionSimulationResult`
   - `class ExecutionSimulator`: Pre-execution sandbox for simulating tick slippage resilience.
     - `__init__(settings: dict | None, mt5_client: Any | None)`
-    - `async fetch_recent_ticks(symbol: str, count: int, session: Any | None) -> list[dict[str, float]]` - *Retrieves up to `count` recent price ticks.*
+    - `async fetch_recent_ticks(symbol: str, count: int, session: Any | None, ...) -> list[dict[str, float]]` - *Retrieves up to `count` recent price ticks.*
     - `async simulate_execution(symbol: str, direction: str, entry_price: float, ...) -> ExecutionSimulationResult` - *Runs tick-level market replay and stress tests across 3 slippage scenarios.*
 
 #### `pending_action.py` - *2-Phase Order Commit Protocol (Fail-Closed Architecture).*

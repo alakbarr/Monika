@@ -155,6 +155,7 @@ class AlphaArenaTournament:
                 "record": f"{c.wins}-{c.losses}-{c.draws}",
                 "win_rate": round((c.wins / c.matches_played * 100.0), 1) if c.matches_played else 0.0,
                 "total_pnl_pct": round(c.total_pnl_pct, 2),
+                "avg_pnl_pct": round((c.total_pnl_pct / c.matches_played), 2) if c.matches_played else 0.0,
             }
             for i, c in enumerate(ranked)
         ]

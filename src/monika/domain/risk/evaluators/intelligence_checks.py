@@ -72,6 +72,8 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
                 )
 
             if not q:
+                if is_backtest:
+                    return True, "TimesFM expectancy check skipped in backtest mode (no forecast metadata)"
                 # Lightweight database query without loading TimesFMEngine or PyTorch
                 import json
                 from datetime import datetime, timedelta, timezone
@@ -88,7 +90,7 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
                     .limit(1)
                 )
                 record = (await session.execute(stmt)).scalar_one_or_none()
-                if record and record.quantiles_json:
+                if record and getattr(record, "quantiles_json", None):
                     q = json.loads(record.quantiles_json)
 
             if not q:

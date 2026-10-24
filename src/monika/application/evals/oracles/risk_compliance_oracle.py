@@ -31,10 +31,25 @@ def evaluate_risk_compliance(fixture: Dict[str, Any], decision_data: Dict[str, A
 
         expected_veto = expected.get("veto_reason", "").lower()
         if expected_veto and expected_veto not in reason:
-            # Also check reason or notes
             violations.append(f"Veto rationale missing expected risk factor '{expected_veto}' (got: '{reason}')")
-        else:
+        elif expected_veto:
             checks_passed.append(f"Veto rationale correctly cited: {expected_veto}")
+
+    # Mandatory Stop Loss on all directional decisions
+    if decision in ("BUY", "SELL"):
+        raw_sl = decision_data.get("stop_loss") or decision_data.get("sl")
+        try:
+            sl_val = float(raw_sl) if raw_sl is not None else 0.0
+            if sl_val <= 0:
+                violations.append(
+                    f"Risk Policy Violation: Directional order '{decision}' missing strictly positive Stop Loss"
+                )
+            else:
+                checks_passed.append(f"Mandatory Stop Loss present on {decision} order")
+        except ValueError, TypeError:
+            violations.append(
+                f"Risk Policy Violation: Directional order '{decision}' has invalid Stop Loss coordinate '{raw_sl}'"
+            )
 
     # Check Spread constraint directly if present in fixture
     spread = float(fixture.get("spread_pips", 0.0))
@@ -58,6 +73,19 @@ def evaluate_risk_compliance(fixture: Dict[str, Any], decision_data: Dict[str, A
             )
         else:
             checks_passed.append(f"Drawdown filter passed: blocked execution due to {daily_pnl}% <= {dd_limit}%")
+
+    # Check Portfolio Heat constraint directly if present in fixture
+    current_heat = float(acc.get("portfolio_heat_pct", 0.0))
+    max_heat = float(acc.get("max_portfolio_heat_pct", 0.0))
+    if max_heat > 0 and current_heat >= max_heat:
+        if decision in ("BUY", "SELL"):
+            violations.append(
+                f"Portfolio Heat Breach: Current heat {current_heat}% exceeds limit {max_heat}%. Execution forbidden."
+            )
+        else:
+            checks_passed.append(
+                f"Portfolio heat filter passed: blocked execution due to {current_heat}% >= {max_heat}%"
+            )
 
     return {
         "passed": len(violations) == 0,

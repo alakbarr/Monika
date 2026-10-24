@@ -86,9 +86,7 @@ def _execute_single_scenario_worker(
 
             std = float(np.std(pnls, ddof=1))
             mean = float(np.mean(pnls))
-            sharpe = round(float((mean / std) * np.sqrt(252)), 2) if std > 1e-8 else (1.5 if mean > 0 else 0.0)
-        elif pnls:
-            sharpe = 1.0 if pnls[0] > 0 else 0.0
+            sharpe = round(float(mean / std), 2) if std > 1e-8 else 0.0
         else:
             sharpe = 0.0
 

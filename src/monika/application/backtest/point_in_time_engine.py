@@ -422,12 +422,11 @@ class PointInTimeBacktestEngine:
                                 )
                             ).scalar_one_or_none()
 
-                            base_entry = next_bar.open if next_bar else latest_bar.close
+                            if not next_bar:
+                                # Fail-closed: require next bar for point-in-time execution
+                                continue
 
-                            if direction == "buy":
-                                entry_price = base_entry + (spread_cost / 2.0) + slip_cost
-                            else:
-                                entry_price = base_entry - (spread_cost / 2.0) - slip_cost
+                            entry_price = float(next_bar.open)
 
                             # Calculate ATR-based dynamic stops & targets
                             adr_ctx = await compute_daily_range_context(
@@ -468,7 +467,7 @@ class PointInTimeBacktestEngine:
                             if not sizing.is_valid or sizing.recommended_lots <= 0:
                                 continue
 
-                            # 4. RiskGate validation if configured (default True)
+                            # 4. RiskGate validation if configured (default False, opt-in for backtest)
                             if self.gate is not None and self.settings.get("backtest", {}).get(
                                 "enforce_risk_gate", False
                             ):
@@ -501,7 +500,8 @@ class PointInTimeBacktestEngine:
                                         )
                                         continue
                                 except Exception as gate_err:
-                                    logger.debug(f"RiskGate check in backtest error (fallback): {gate_err}")
+                                    logger.warning(f"RiskGate check in backtest failed closed: {gate_err}")
+                                    continue
 
                             trade = BacktestTrade(
                                 symbol=symbol,
@@ -656,7 +656,8 @@ class PointInTimeBacktestEngine:
                                 )
                                 continue
                         except Exception as gate_err:
-                            logger.debug(f"RiskGate check in replay error: {gate_err}")
+                            logger.warning(f"RiskGate check in replay failed closed: {gate_err}")
+                            continue
 
                 trade = BacktestTrade(
                     symbol=analysis.symbol,
@@ -810,20 +811,24 @@ class PointInTimeBacktestEngine:
                                         if self.gate is not None and self.settings.get("backtest", {}).get(
                                             "enforce_risk_gate", False
                                         ):
-                                            gate_verdict = await self.gate.check(
-                                                session=session,
-                                                symbol=sym,
-                                                direction=direction,
-                                                sizing=sizing,
-                                                account_equity=self.equity,
-                                                as_of=current_time,
-                                                simulated_equity=self.equity,
-                                                is_backtest=True,
-                                            )
-                                            if not gate_verdict.approved:
-                                                logger.debug(
-                                                    f"RiskGate rejected LangGraph trade {sym} at {current_time}: {gate_verdict.rejection_reasons}"
+                                            try:
+                                                gate_verdict = await self.gate.check(
+                                                    session=session,
+                                                    symbol=sym,
+                                                    direction=direction,
+                                                    sizing=sizing,
+                                                    account_equity=self.equity,
+                                                    as_of=current_time,
+                                                    simulated_equity=self.equity,
+                                                    is_backtest=True,
                                                 )
+                                                if not gate_verdict.approved:
+                                                    logger.debug(
+                                                        f"RiskGate rejected LangGraph trade {sym} at {current_time}: {gate_verdict.rejection_reasons}"
+                                                    )
+                                                    continue
+                                            except Exception as gate_err:
+                                                logger.warning(f"RiskGate check in LangGraph failed closed: {gate_err}")
                                                 continue
 
                                         trade = BacktestTrade(

@@ -161,9 +161,9 @@ def validate_alpha(
                 from monika.application.backtest.outcome_evaluator import ASSET_FRICTION_PROFILE
 
                 profile = ASSET_FRICTION_PROFILE.get(str(sym).upper(), {"spread_pips": 1.5, "slippage_pips": 0.5})
-                # Cost per lot in USD: forex pip ~$10, crypto ~$1, metals ~$10-100
+                # Cost per lot in USD: forex pip ~$10, crypto ~$1, metals ~$1 (100 oz * $0.01 pip)
                 sym_u = str(sym).upper()
-                pip_val = 1.0 if any(c in sym_u for c in ("BTC", "ETH", "SOL")) else 10.0
+                pip_val = 1.0 if any(c in sym_u for c in ("BTC", "ETH", "SOL", "XAU", "GOLD")) else 10.0
                 total_pips = float(profile.get("spread_pips", 1.5)) + float(profile.get("slippage_pips", 0.5))
                 comm = total_pips * pip_val * lots
             else:

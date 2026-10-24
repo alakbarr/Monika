@@ -57,16 +57,20 @@ class ExecutionSimulator:
         self.mt5_client = mt5_client
 
     async def fetch_recent_ticks(
-        self, symbol: str, count: int = 100, session: Any | None = None
+        self,
+        symbol: str,
+        count: int = 100,
+        session: Any | None = None,
+        as_of: Any | None = None,
     ) -> list[dict[str, float]]:
         """
         Retrieves up to `count` recent price ticks.
-        Queries MT5 COM API if available; otherwise derives micro-ticks from recent OHLCV bars.
+        Queries MT5 COM API if available and as_of is None; otherwise derives micro-ticks from recent OHLCV bars.
         """
         ticks: list[dict[str, float]] = []
 
-        # 1. Try MT5 COM API
-        if self.mt5_client is not None:
+        # 1. Try MT5 COM API (only for real-time live execution, never backtest as_of)
+        if as_of is None and self.mt5_client is not None:
             try:
                 # MT5 client get_ticks / copy_ticks
                 if hasattr(self.mt5_client, "get_ticks"):
@@ -88,7 +92,9 @@ class ExecutionSimulator:
                 from monika.domain.risk.ports import get_default_risk_data_provider
 
                 repo = get_default_risk_data_provider(session=session)
-                bars = await repo.get_recent_price_bars(symbol=symbol, timeframe="M15", limit=20, session=session)
+                bars = await repo.get_recent_price_bars(
+                    symbol=symbol, timeframe="M15", limit=20, session=session, as_of=as_of
+                )
                 if bars:
                     close_p = float(bars[-1]["close"])
                     # Baseline spread estimation (approx 0.01% - 0.02% of price or 1.5 pips)
@@ -105,7 +111,11 @@ class ExecutionSimulator:
                 logger.debug(f"[{symbol}] OHLCV tick fallback non-fatal: {e}")
 
         # 3. Fail-safe synthetic ticks if no DB or MT5 available
-        synth_spread = 0.00015
+        clean = symbol.upper().replace("/", "").replace("-", "").strip()
+        from monika.domain.risk.instruments.instruments import DEFAULT_INSTRUMENTS
+
+        spec = DEFAULT_INSTRUMENTS.get(clean)
+        synth_spread = float(spec.pip_size * 1.5) if spec else 0.00015
         return [{"bid": 1.0, "ask": 1.0 + synth_spread, "spread": synth_spread}] * count
 
     async def simulate_execution(
@@ -118,6 +128,7 @@ class ExecutionSimulator:
         volume: float = 0.1,
         ticks: list[dict[str, float]] | None = None,
         session: Any | None = None,
+        as_of: Any | None = None,
     ) -> ExecutionSimulationResult:
         """
         Runs tick-level market replay and stress tests across 3 slippage scenarios.
@@ -143,9 +154,31 @@ class ExecutionSimulator:
                 details={"status": "invalid_coordinates_rejected"},
             )
 
+        is_buy = str(direction).lower() == "buy"
+        if is_buy and (take_profit <= entry_price or stop_loss >= entry_price):
+            return ExecutionSimulationResult(
+                resilient=False,
+                rejection_reason=f"Inverted geometry for BUY: requires TP ({take_profit}) > Entry ({entry_price}) > SL ({stop_loss})",
+                edge_to_drag_ratio=0.0,
+                median_spread=0.0,
+                current_spread=0.0,
+                scenarios={},
+                details={"status": "inverted_geometry_rejected"},
+            )
+        elif not is_buy and (take_profit >= entry_price or stop_loss <= entry_price):
+            return ExecutionSimulationResult(
+                resilient=False,
+                rejection_reason=f"Inverted geometry for SELL: requires TP ({take_profit}) < Entry ({entry_price}) < SL ({stop_loss})",
+                edge_to_drag_ratio=0.0,
+                median_spread=0.0,
+                current_spread=0.0,
+                scenarios={},
+                details={"status": "inverted_geometry_rejected"},
+            )
+
         # 1. Fetch ticks
         if ticks is None:
-            ticks = await self.fetch_recent_ticks(symbol, count=100, session=session)
+            ticks = await self.fetch_recent_ticks(symbol, count=100, session=session, as_of=as_of)
 
         spreads = [max(1e-6, float(t["spread"])) for t in ticks] if ticks else [entry_price * 0.00015]
         median_spread = float(np.median(spreads))
