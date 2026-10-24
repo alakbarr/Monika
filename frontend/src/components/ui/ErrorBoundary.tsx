@@ -35,36 +35,39 @@ export class ErrorBoundary extends Component<Props, State> {
       }
       return (
         <div
-          className="ledger-card"
           style={{
             padding: '20px',
             margin: '16px 0',
-            borderRadius: 'var(--radius-card)',
-            background: 'var(--color-paper-raised)',
-            border: '2px solid var(--color-ledger-red)',
+            borderRadius: '2px',
+            background: 'var(--color-loss-soft)',
+            border: '1px solid var(--color-loss)',
             color: 'var(--color-ink)',
-            fontFamily: 'var(--font-precision)',
+            fontFamily: 'var(--font-sans)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
             <span
-              className="stamp-badge"
               style={{
-                color: 'var(--color-ledger-red)',
-                border: '2px solid var(--color-ledger-red)',
-                background: 'var(--color-loss-dim)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                fontWeight: 600,
+                letterSpacing: '0.06em',
+                padding: '2px 7px',
+                color: 'var(--color-loss)',
+                border: '1px solid var(--color-loss)',
+                borderRadius: '2px',
               }}
             >
-              [ SYSTEM ERROR // EXECUTION HALTED ]
+              SYSTEM FAULT
             </span>
-            <span style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-body-sm)' }}>
-              PANEL RENDERING FAULT
+            <span style={{ fontWeight: 600, fontSize: '13px', fontFamily: 'var(--font-mono)' }}>
+              PANEL RENDERING EXCEPTION
             </span>
           </div>
           <p
             style={{
-              fontSize: 'var(--text-body-sm)',
-              color: 'var(--color-ink-soft)',
+              fontSize: '12px',
+              color: 'var(--color-ink-muted)',
               marginBottom: '12px',
               wordBreak: 'break-word',
             }}
@@ -73,10 +76,10 @@ export class ErrorBoundary extends Component<Props, State> {
           </p>
           <button
             onClick={this.handleReset}
-            className="typewriter-btn"
-            style={{ fontSize: 'var(--text-xs)' }}
+            className="editorial-btn"
+            style={{ fontSize: '11px' }}
           >
-            [ RETRY COMPONENT ]
+            RETRY COMPONENT
           </button>
         </div>
       );

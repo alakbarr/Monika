@@ -22,7 +22,6 @@ export const GraphEdge: React.FC<GraphEdgeProps> = ({
   nodeWidth,
   nodeHeight,
 }) => {
-  // Determine connection orientation (vertical downward vs horizontal forward)
   const isVerticalDown = Math.abs(srcPos.x - dstPos.x) < 80 && dstPos.y > srcPos.y;
   const isHorizontalForward = dstPos.x >= srcPos.x + nodeWidth * 0.7;
 
@@ -36,7 +35,6 @@ export const GraphEdge: React.FC<GraphEdgeProps> = ({
   let c2y: number;
 
   if (isVerticalDown) {
-    // Flow straight downward from bottom-center of source to top-center of target
     startX = srcPos.x + nodeWidth / 2;
     startY = srcPos.y + nodeHeight;
     endX = dstPos.x + nodeWidth / 2;
@@ -47,7 +45,6 @@ export const GraphEdge: React.FC<GraphEdgeProps> = ({
     c2x = endX;
     c2y = startY + dy * 0.55;
   } else if (isHorizontalForward) {
-    // Standard left-to-right flow from right-center of source to left-center of target
     startX = srcPos.x + nodeWidth;
     startY = srcPos.y + nodeHeight / 2;
     endX = dstPos.x;
@@ -58,7 +55,6 @@ export const GraphEdge: React.FC<GraphEdgeProps> = ({
     c2x = startX + Math.max(dx * 0.55, 35);
     c2y = endY;
   } else {
-    // Diagonal or wrap-around connection
     startX = srcPos.x + nodeWidth / 2;
     startY = srcPos.y + nodeHeight;
     endX = dstPos.x + nodeWidth / 2;
@@ -84,7 +80,7 @@ export const GraphEdge: React.FC<GraphEdgeProps> = ({
     ? 'var(--color-brass)'
     : isSkipped
     ? 'var(--color-ink-muted)'
-    : 'var(--color-ink-soft)';
+    : 'var(--color-rule-strong)';
   const markerId = isDone
     ? 'url(#arrow-done)'
     : isRunning
@@ -95,22 +91,13 @@ export const GraphEdge: React.FC<GraphEdgeProps> = ({
 
   return (
     <g key={`${fromId}-${toId}`}>
-      {/* Tactile depth underlay */}
-      <path
-        d={pathData}
-        fill="none"
-        stroke="var(--color-rule)"
-        strokeWidth={isRunning ? 4 : 2.5}
-        strokeOpacity={0.2}
-        transform="translate(1, 1)"
-      />
       <path
         d={pathData}
         fill="none"
         stroke={strokeColor}
-        strokeWidth={isRunning ? 3 : 2}
-        strokeOpacity={isDone ? 1 : isRunning ? 1 : isSkipped ? 0.45 : 0.6}
-        strokeDasharray={isRunning ? '6 4' : isSkipped ? '4 3' : undefined}
+        strokeWidth={isRunning ? 1.75 : 1.15}
+        strokeOpacity={isDone ? 0.9 : isRunning ? 1 : isSkipped ? 0.4 : 0.65}
+        strokeDasharray={isRunning ? '5 3' : isSkipped ? '3 3' : undefined}
         markerEnd={markerId}
       />
     </g>

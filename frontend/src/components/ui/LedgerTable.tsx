@@ -22,53 +22,31 @@ export function LedgerTable<T extends Record<string, any>>({
   columns,
   data,
   keyField = 'id',
-  greenbar = true,
   onRowClick,
   emptyMessage = 'No ledger entries recorded.',
   style,
 }: LedgerTableProps<T>) {
   return (
     <div
-      className="table-responsive win-window"
+      className="table-responsive"
       style={{
-        border: '2px solid var(--color-rule)',
-        borderRadius: 'var(--radius-card)',
-        background: 'var(--color-paper-raised)',
-        boxShadow: 'var(--shadow-card)',
+        borderTop: '1px solid var(--color-border-strong)',
+        borderBottom: '1px solid var(--color-border)',
+        background: 'var(--color-surface)',
         overflowX: 'auto',
         ...style,
       }}
     >
-      <table
-        style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          fontFamily: 'var(--font-precision)',
-          fontSize: 'var(--text-body-sm)',
-          textAlign: 'left',
-        }}
-      >
+      <table className="ledger-table">
         <thead>
-          <tr
-            style={{
-              background: 'var(--color-paper)',
-              borderBottom: '2px solid var(--color-rule)',
-            }}
-          >
+          <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
                 style={{
-                  padding: '8px 12px',
-                  color: 'var(--color-ink)',
-                  fontSize: 'var(--text-xs)',
-                  fontWeight: 'var(--weight-bold)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
                   textAlign: col.align || 'left',
                   width: col.width,
                   whiteSpace: 'nowrap',
-                  borderRight: '1px solid var(--color-rule)',
                 }}
               >
                 {col.label}
@@ -85,8 +63,7 @@ export function LedgerTable<T extends Record<string, any>>({
                   padding: '24px 12px',
                   textAlign: 'center',
                   color: 'var(--color-ink-soft)',
-                  fontSize: 'var(--text-body-sm)',
-                  fontStyle: 'italic',
+                  fontSize: '12px',
                 }}
               >
                 — {emptyMessage} —
@@ -94,7 +71,6 @@ export function LedgerTable<T extends Record<string, any>>({
             </tr>
           ) : (
             data.map((row, rowIndex) => {
-              const isEven = rowIndex % 2 === 1;
               const rowKey = row[keyField] !== undefined ? String(row[keyField]) : String(rowIndex);
               const isClickable = !!onRowClick;
 
@@ -102,14 +78,8 @@ export function LedgerTable<T extends Record<string, any>>({
                 <tr
                   key={rowKey}
                   onClick={() => onRowClick && onRowClick(row)}
-                  className={greenbar && isEven ? 'greenbar-row' : ''}
                   style={{
-                    borderBottom: '1px solid var(--color-rule)',
-                    background: greenbar && isEven
-                      ? 'var(--color-profit-dim)'
-                      : 'var(--color-paper-raised)',
                     cursor: isClickable ? 'pointer' : 'default',
-                    transition: 'background var(--transition-fast)',
                   }}
                 >
                   {columns.map((col) => {
@@ -119,10 +89,7 @@ export function LedgerTable<T extends Record<string, any>>({
                         key={col.key}
                         className={col.align === 'right' ? 'tabular-nums' : ''}
                         style={{
-                          padding: '7px 12px',
-                          color: 'var(--color-ink)',
                           textAlign: col.align || 'left',
-                          borderRight: '1px solid var(--color-rule)',
                           whiteSpace: 'nowrap',
                         }}
                       >

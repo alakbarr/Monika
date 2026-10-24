@@ -31,53 +31,48 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
           alignItems: 'center',
           background: 'var(--color-paper)',
           border: '1px solid var(--color-rule)',
-          borderRadius: 'var(--radius-sm)',
-          boxShadow: '1px 1px 0 var(--color-rule)',
-          padding: '2px',
-          gap: '2px',
         }}
       >
         <button
           onClick={() => onChangeLayoutMode('compact')}
-          title="Compact Descending Flow (Screen-Fitted Multi-tier)"
+          title="Compact Architectural Schematic"
           style={{
-            background: layoutMode === 'compact' ? 'var(--color-win-yellow)' : 'transparent',
-            color: layoutMode === 'compact' ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
-            border: layoutMode === 'compact' ? '1px solid var(--color-rule)' : '1px solid transparent',
-            padding: '4px 8px',
-            borderRadius: '2px',
+            background: layoutMode === 'compact' ? 'var(--color-ink)' : 'transparent',
+            color: layoutMode === 'compact' ? 'var(--color-paper)' : 'var(--color-ink-soft)',
+            border: 'none',
+            borderRight: '1px solid var(--color-rule)',
+            padding: '5px 10px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px',
+            gap: '5px',
             fontSize: '11px',
             fontFamily: 'var(--font-precision)',
-            fontWeight: layoutMode === 'compact' ? 800 : 600,
+            fontWeight: 600,
           }}
         >
-          <LayoutGrid size={13} />
+          <LayoutGrid size={12} />
           <span>COMPACT</span>
         </button>
         <button
           onClick={() => onChangeLayoutMode('wide')}
-          title="Wide Linear Flow"
+          title="Linear Architectural Flow"
           style={{
-            background: layoutMode === 'wide' ? 'var(--color-win-yellow)' : 'transparent',
-            color: layoutMode === 'wide' ? 'var(--color-on-win-yellow)' : 'var(--color-ink-soft)',
-            border: layoutMode === 'wide' ? '1px solid var(--color-rule)' : '1px solid transparent',
-            padding: '4px 8px',
-            borderRadius: '2px',
+            background: layoutMode === 'wide' ? 'var(--color-ink)' : 'transparent',
+            color: layoutMode === 'wide' ? 'var(--color-paper)' : 'var(--color-ink-soft)',
+            border: 'none',
+            padding: '5px 10px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px',
+            gap: '5px',
             fontSize: '11px',
             fontFamily: 'var(--font-precision)',
-            fontWeight: layoutMode === 'wide' ? 800 : 600,
+            fontWeight: 600,
           }}
         >
-          <StretchHorizontal size={13} />
-          <span>WIDE</span>
+          <StretchHorizontal size={12} />
+          <span>LINEAR</span>
         </button>
       </div>
 
@@ -88,32 +83,28 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
           alignItems: 'center',
           background: 'var(--color-paper)',
           border: '1px solid var(--color-rule)',
-          borderRadius: 'var(--radius-sm)',
-          boxShadow: '1px 1px 0 var(--color-rule)',
-          padding: '2px',
-          gap: '2px',
         }}
       >
         <button
           onClick={onToggleAutoFit}
-          title={autoFit ? 'Auto-Fit Enabled (Adapts to screen and inspector resize)' : 'Auto-Fit Disabled (Manual Zoom Active)'}
+          title={autoFit ? 'Auto-Fit Enabled' : 'Auto-Fit Disabled'}
           style={{
-            background: autoFit ? 'var(--color-profit-dim)' : 'transparent',
-            color: autoFit ? 'var(--color-ledger-green)' : 'var(--color-ink-soft)',
-            border: autoFit ? '1px solid var(--color-ledger-green)' : '1px solid transparent',
-            padding: '4px 8px',
-            borderRadius: '2px',
+            background: autoFit ? 'var(--color-ink)' : 'transparent',
+            color: autoFit ? 'var(--color-paper)' : 'var(--color-ink-soft)',
+            border: 'none',
+            borderRight: '1px solid var(--color-rule)',
+            padding: '5px 10px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px',
+            gap: '5px',
             fontSize: '11px',
             fontFamily: 'var(--font-precision)',
-            fontWeight: autoFit ? 800 : 600,
+            fontWeight: 600,
           }}
         >
-          <Maximize2 size={13} />
-          <span>{autoFit ? 'AUTO-FIT: ON' : 'FIT SCREEN'}</span>
+          <Maximize2 size={12} />
+          <span>{autoFit ? 'AUTO-FIT' : 'FIT'}</span>
         </button>
         <button
           onClick={() => onZoom(1.15)}
@@ -121,15 +112,15 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
           style={{
             background: 'transparent',
             border: 'none',
+            borderRight: '1px solid var(--color-rule)',
             color: 'var(--color-ink)',
-            padding: '5px 7px',
-            borderRadius: '2px',
+            padding: '5px 8px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
           }}
         >
-          <ZoomIn size={14} />
+          <ZoomIn size={13} />
         </button>
         <button
           onClick={() => onZoom(0.85)}
@@ -137,15 +128,15 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
           style={{
             background: 'transparent',
             border: 'none',
+            borderRight: '1px solid var(--color-rule)',
             color: 'var(--color-ink)',
-            padding: '5px 7px',
-            borderRadius: '2px',
+            padding: '5px 8px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
           }}
         >
-          <ZoomOut size={14} />
+          <ZoomOut size={13} />
         </button>
         <button
           onClick={onReset}
@@ -154,42 +145,24 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
             background: 'transparent',
             border: 'none',
             color: 'var(--color-ink)',
-            padding: '5px 7px',
-            borderRadius: '2px',
+            padding: '5px 8px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
           }}
         >
-          <RotateCcw size={14} />
+          <RotateCcw size={13} />
         </button>
       </div>
 
-      {/* Retro Run Cycle Action Button */}
+      {/* Run Cycle Action Button */}
       <button
         onClick={onTriggerCycle}
         disabled={triggering}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '6px 14px',
-          background: triggering ? 'var(--color-surface)' : 'var(--color-win-yellow)',
-          color: 'var(--color-on-win-yellow)',
-          border: '1px solid var(--color-rule)',
-          borderRadius: 'var(--radius-sm)',
-          boxShadow: triggering ? 'none' : '1px 1px 0 var(--color-rule)',
-          fontWeight: 800,
-          fontSize: 'var(--text-xs)',
-          fontFamily: 'var(--font-precision)',
-          letterSpacing: '0.04em',
-          cursor: triggering ? 'not-allowed' : 'pointer',
-          opacity: triggering ? 0.7 : 1,
-          textTransform: 'uppercase',
-        }}
+        className="editorial-btn editorial-btn--accent"
       >
-        <Play size={13} fill="currentColor" />
-        {triggering ? 'TRIGGERING...' : 'RUN CYCLE'}
+        <Play size={11} fill="currentColor" />
+        {triggering ? 'DISPATCHING...' : 'RUN CYCLE'}
       </button>
     </div>
   );

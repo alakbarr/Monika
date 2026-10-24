@@ -357,7 +357,7 @@ export const SkillManagerPanel: React.FC = () => {
                   top: 0,
                   zIndex: 10,
                   background: 'var(--color-table-header)',
-                  borderBottom: '2px solid var(--color-rule)',
+                  borderBottom: '1px solid var(--color-rule)',
                 }}
               >
                 <tr>

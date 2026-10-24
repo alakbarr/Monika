@@ -276,180 +276,139 @@ export const GraphVisualizerPanel: React.FC = () => {
   const selectedNode = graphData?.nodes.find((n: GraphNode) => n.id === selectedNodeId) || null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
-      {/* 1. Header Toolbar */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+      {/* 1. Architectural Header Toolbar */}
       <div
-        className="win-window ledger-card"
+        className="editorial-section swiss-crosshair"
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           background: 'var(--color-paper-raised)',
-          padding: '12px 16px',
-          border: '2px solid var(--color-rule)',
-          borderRadius: 'var(--radius-card)',
-          boxShadow: 'var(--shadow-card)',
+          padding: '14px 18px',
+          border: '1px solid var(--color-rule)',
           flexWrap: 'wrap',
           gap: '12px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: 34,
-            height: 34,
-            borderRadius: '4px',
-            background: 'var(--color-win-yellow)',
-            border: '1px solid var(--color-rule)',
-            boxShadow: '1px 1px 0 var(--color-rule)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--color-on-win-yellow)',
-          }}>
-            <Workflow size={18} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <h2 style={{
-                fontSize: 'var(--text-title-sm)',
-                fontWeight: 800,
-                margin: 0,
-                color: 'var(--color-ink)',
-                fontFamily: 'var(--font-precision)',
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-              }}>
-                LANGGRAPH MULTI-AGENT PIPELINE
-              </h2>
-              {graphData && (
-                <span
-                  className="stamp-badge"
-                  style={{
-                    fontSize: '11px',
-                    background: graphData.status === 'completed'
-                      ? 'var(--color-profit-dim)'
-                      : graphData.status === 'running'
-                        ? 'var(--color-warn-dim)'
-                        : 'var(--color-loss-dim)',
-                    color: graphData.status === 'completed'
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span className="editorial-kicker">I. ARCHITECTURAL TOPOLOGY</span>
+            {graphData && (
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontFamily: 'var(--font-precision)',
+                  fontWeight: 600,
+                  padding: '1px 6px',
+                  letterSpacing: '0.06em',
+                  color: graphData.status === 'completed'
+                    ? 'var(--color-ledger-green)'
+                    : graphData.status === 'running'
+                      ? 'var(--color-brass)'
+                      : 'var(--color-ink-muted)',
+                  border: `1px solid ${
+                    graphData.status === 'completed'
                       ? 'var(--color-ledger-green)'
                       : graphData.status === 'running'
                         ? 'var(--color-brass)'
-                        : 'var(--color-ledger-red)',
-                    border: `1px solid ${
-                      graphData.status === 'completed'
-                        ? 'var(--color-ledger-green)'
-                        : graphData.status === 'running'
-                          ? 'var(--color-brass)'
-                          : 'var(--color-ledger-red)'
-                    }`,
-                  }}
-                >
-                  [{(graphData.status?.toUpperCase() || 'IDLE')}]
-                </span>
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 4, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', fontFamily: 'var(--font-precision)' }}>
-                EXECUTION CYCLE:
-              </span>
-              <select
-                value={selectedCycle}
-                onChange={(e) => setSelectedCycle(e.target.value)}
-                style={{
-                  background: 'var(--color-paper)',
-                  border: '1px solid var(--color-rule)',
-                  color: 'var(--color-ink)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '3px 8px',
-                  fontSize: 'var(--text-xs)',
-                  fontFamily: 'var(--font-precision)',
-                  cursor: 'pointer',
-                  outline: 'none',
+                        : 'var(--color-rule)'
+                  }`,
                 }}
               >
-                {(graphData?.available_cycles || []).map((c: CycleItem) => (
-                  <option key={c.cycle_id} value={c.cycle_id}>
-                    {c.label || c.cycle_id} ({c.status})
-                  </option>
-                ))}
-              </select>
-
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', fontFamily: 'var(--font-precision)', marginLeft: '6px' }}>
-                ASSET FILTER:
+                {graphData.status?.toUpperCase() || 'IDLE'}
               </span>
-              <select
-                value={selectedSymbol}
-                onChange={(e) => setSelectedSymbol(e.target.value)}
-                style={{
-                  background: 'var(--color-paper)',
-                  border: '1px solid var(--color-rule)',
-                  color: 'var(--color-ink)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '3px 8px',
-                  fontSize: 'var(--text-xs)',
-                  fontFamily: 'var(--font-precision)',
-                  cursor: 'pointer',
-                  outline: 'none',
-                }}
-              >
-                <option value="">ALL ASSETS (AGGREGATE)</option>
-                {(graphData?.available_symbols || []).map((sym: string) => (
-                  <option key={sym} value={sym}>
-                    {sym}
-                  </option>
-                ))}
-              </select>
+            )}
+          </div>
+          <h2
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '22px',
+              fontWeight: 400,
+              margin: '2px 0 0 0',
+              color: 'var(--color-ink)',
+            }}
+          >
+            LangGraph 5-Stage Architectural Pipeline
+          </h2>
 
-              {loading && <Loader2 size={13} color="var(--color-brass)" style={{ animation: 'spin 1s linear infinite' }} />}
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 8, flexWrap: 'wrap' }}>
+            <span className="editorial-kicker">CYCLE</span>
+            <select
+              value={selectedCycle}
+              onChange={(e) => setSelectedCycle(e.target.value)}
+              style={{
+                background: 'var(--color-paper)',
+                border: '1px solid var(--color-rule)',
+                color: 'var(--color-ink)',
+                padding: '3px 8px',
+                fontSize: '11px',
+                fontFamily: 'var(--font-precision)',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              {(graphData?.available_cycles || []).map((c: CycleItem) => (
+                <option key={c.cycle_id} value={c.cycle_id}>
+                  {c.label || c.cycle_id} ({c.status})
+                </option>
+              ))}
+            </select>
+
+            <span className="editorial-kicker" style={{ marginLeft: '6px' }}>INSTRUMENT</span>
+            <select
+              value={selectedSymbol}
+              onChange={(e) => setSelectedSymbol(e.target.value)}
+              style={{
+                background: 'var(--color-paper)',
+                border: '1px solid var(--color-rule)',
+                color: 'var(--color-ink)',
+                padding: '3px 8px',
+                fontSize: '11px',
+                fontFamily: 'var(--font-precision)',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              <option value="">ALL ASSETS (AGGREGATE)</option>
+              {(graphData?.available_symbols || []).map((sym: string) => (
+                <option key={sym} value={sym}>
+                  {sym}
+                </option>
+              ))}
+            </select>
+
+            {loading && <Loader2 size={13} color="var(--color-ink-muted)" style={{ animation: 'spin 1s linear infinite' }} />}
           </div>
         </div>
 
-        {/* Telemetry Summary Badges */}
+        {/* Telemetry Summary Hairline Strip */}
         {graphData && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <div style={{
+          <div
+            style={{
               display: 'flex',
-              flexDirection: 'column',
-              padding: '4px 10px',
-              background: 'var(--color-paper)',
+              alignItems: 'center',
               border: '1px solid var(--color-rule)',
-              borderRadius: 'var(--radius-sm)',
-              boxShadow: '1px 1px 0 var(--color-rule)',
-            }}>
-              <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>DURATION</span>
-              <span className="tabular-nums" style={{ fontSize: 'var(--text-body-sm)', fontWeight: 800, fontFamily: 'var(--font-precision)', color: 'var(--color-ink)' }}>
+              background: 'var(--color-paper)',
+            }}
+          >
+            <div style={{ padding: '6px 12px', borderRight: '1px solid var(--color-rule)' }}>
+              <span className="editorial-kicker" style={{ display: 'block' }}>DURATION</span>
+              <span className="tabular-nums" style={{ fontSize: '12px', fontWeight: 600, fontFamily: 'var(--font-precision)', color: 'var(--color-ink)' }}>
                 {((graphData.total_duration_ms ?? 0) / 1000).toFixed(2)}s
               </span>
             </div>
 
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              padding: '4px 10px',
-              background: 'var(--color-paper)',
-              border: '1px solid var(--color-rule)',
-              borderRadius: 'var(--radius-sm)',
-              boxShadow: '1px 1px 0 var(--color-rule)',
-            }}>
-              <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>TOKENS</span>
-              <span className="tabular-nums" style={{ fontSize: 'var(--text-body-sm)', fontWeight: 800, fontFamily: 'var(--font-precision)', color: 'var(--color-win-blue)' }}>
+            <div style={{ padding: '6px 12px', borderRight: '1px solid var(--color-rule)' }}>
+              <span className="editorial-kicker" style={{ display: 'block' }}>TOKENS</span>
+              <span className="tabular-nums" style={{ fontSize: '12px', fontWeight: 600, fontFamily: 'var(--font-precision)', color: 'var(--color-ink)' }}>
                 {((graphData.total_tokens?.total ?? 0) / 1000).toFixed(1)}k
               </span>
             </div>
 
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              padding: '4px 10px',
-              background: 'var(--color-paper)',
-              border: '1px solid var(--color-rule)',
-              borderRadius: 'var(--radius-sm)',
-              boxShadow: '1px 1px 0 var(--color-rule)',
-            }}>
-              <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', textTransform: 'uppercase', fontWeight: 'bold' }}>EST. COST</span>
-              <span className="tabular-nums" style={{ fontSize: 'var(--text-body-sm)', fontWeight: 800, fontFamily: 'var(--font-precision)', color: 'var(--color-ledger-green)' }}>
+            <div style={{ padding: '6px 12px' }}>
+              <span className="editorial-kicker" style={{ display: 'block' }}>EST. COST</span>
+              <span className="tabular-nums" style={{ fontSize: '12px', fontWeight: 600, fontFamily: 'var(--font-precision)', color: 'var(--color-ledger-green)' }}>
                 ${(graphData.total_tokens?.cost_usd ?? 0).toFixed(4)}
               </span>
             </div>
@@ -457,28 +416,14 @@ export const GraphVisualizerPanel: React.FC = () => {
         )}
 
         {/* Viewport controls & Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button
             onClick={() => setShowSteerModal(true)}
             title="Inject operator directive into current or next cycle"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '7px 12px',
-              background: 'var(--color-surface)',
-              color: 'var(--color-ink)',
-              border: '1px solid var(--color-rule)',
-              borderRadius: 'var(--radius-sm)',
-              fontWeight: 700,
-              fontSize: 'var(--text-xs)',
-              cursor: 'pointer',
-              boxShadow: '1px 1px 0 var(--color-rule)',
-              fontFamily: 'var(--font-precision)',
-            }}
+            className="editorial-btn editorial-btn--ghost"
           >
-            <Compass size={14} color="var(--color-brass)" />
-            <span>[ STEER DIRECTIVE ]</span>
+            <Compass size={13} />
+            <span>STEER DIRECTIVE</span>
           </button>
           <GraphControls
             onZoom={handleZoom}
@@ -495,61 +440,60 @@ export const GraphVisualizerPanel: React.FC = () => {
 
       {triggerMsg && (
         <div
-          className="win-window"
           style={{
             padding: '8px 14px',
-            borderRadius: 'var(--radius-card)',
             background: 'var(--color-paper-raised)',
-            border: '2px solid var(--color-win-yellow)',
-            boxShadow: 'var(--shadow-card)',
+            border: '1px solid var(--color-rule-strong)',
             color: 'var(--color-ink)',
-            fontSize: 'var(--text-body-sm)',
+            fontSize: '12px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
             fontFamily: 'var(--font-precision)',
           }}
         >
-          <Sparkles size={16} color="var(--color-brass)" />
+          <Sparkles size={14} color="var(--color-accent)" />
           {triggerMsg}
         </div>
       )}
 
-      {/* 2. Main Content: Interactive SVG Canvas + Side Inspector */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: selectedNode ? '1fr 380px' : '1fr',
-        gap: '16px',
-        height: '680px',
-        transition: 'all 0.2s ease-out',
-      }}>
-        {/* Canvas Card */}
+      {/* 2. Main Content: Interactive SVG Architectural Schematic + Side Inspector */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: selectedNode ? '1fr 380px' : '1fr',
+          gap: '14px',
+          height: '680px',
+          transition: 'all 0.2s ease-out',
+        }}
+      >
+        {/* Architectural Drafting Canvas */}
         <div
           ref={containerRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={() => setIsPanning(false)}
-          className="win-window dag-drafting-canvas"
+          className="editorial-section swiss-crosshair dag-drafting-canvas"
           style={{
             position: 'relative',
             background: 'var(--color-paper)',
-            border: '2px solid var(--color-rule)',
-            borderRadius: 'var(--radius-card)',
-            boxShadow: 'var(--shadow-card)',
+            border: '1px solid var(--color-rule)',
             overflow: 'hidden',
             cursor: isPanning ? 'grabbing' : (autoFit ? 'default' : 'grab'),
             userSelect: 'none',
           }}
         >
           {/* Architectural drafting grid background pattern */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundImage: 'radial-gradient(circle, var(--color-dag-grid) 1.2px, transparent 1.2px)',
-            backgroundSize: '24px 24px',
-            pointerEvents: 'none',
-          }} />
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage: 'radial-gradient(circle, var(--color-dag-grid) 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
+              pointerEvents: 'none',
+            }}
+          />
 
           {/* Canvas SVG */}
           <svg
@@ -563,8 +507,8 @@ export const GraphVisualizerPanel: React.FC = () => {
                 viewBox="0 0 10 10"
                 refX="8"
                 refY="5"
-                markerWidth="6"
-                markerHeight="6"
+                markerWidth="5"
+                markerHeight="5"
                 orient="auto-start-reverse"
               >
                 <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-ledger-green)" />
@@ -574,8 +518,8 @@ export const GraphVisualizerPanel: React.FC = () => {
                 viewBox="0 0 10 10"
                 refX="8"
                 refY="5"
-                markerWidth="6"
-                markerHeight="6"
+                markerWidth="5"
+                markerHeight="5"
                 orient="auto-start-reverse"
               >
                 <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-brass)" />
@@ -585,8 +529,8 @@ export const GraphVisualizerPanel: React.FC = () => {
                 viewBox="0 0 10 10"
                 refX="8"
                 refY="5"
-                markerWidth="6"
-                markerHeight="6"
+                markerWidth="5"
+                markerHeight="5"
                 orient="auto-start-reverse"
               >
                 <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-ink-soft)" opacity="0.6" />
@@ -596,8 +540,8 @@ export const GraphVisualizerPanel: React.FC = () => {
                 viewBox="0 0 10 10"
                 refX="8"
                 refY="5"
-                markerWidth="6"
-                markerHeight="6"
+                markerWidth="5"
+                markerHeight="5"
                 orient="auto-start-reverse"
               >
                 <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--color-ink-muted)" opacity="0.5" />
@@ -606,60 +550,58 @@ export const GraphVisualizerPanel: React.FC = () => {
 
             {/* Root SVG Transform Group */}
             <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`}>
-              {/* Subgraph container box: Dialectic Arbitration (rendered only when graph nodes exist) */}
+              {/* Subgraph Zone III: Dialectic Arbitration */}
               {graphData && graphData.nodes && graphData.nodes.length > 0 && (
                 <>
                   <rect
                     x={layoutMode === 'compact' ? '515' : '865'}
-                    y={layoutMode === 'compact' ? '50' : '80'}
+                    y={layoutMode === 'compact' ? '45' : '75'}
                     width={layoutMode === 'compact' ? '495' : '555'}
-                    height={layoutMode === 'compact' ? '395' : '435'}
-                    rx="4"
+                    height={layoutMode === 'compact' ? '400' : '440'}
+                    rx="0"
                     fill="var(--color-subgraph-bg)"
-                    stroke="var(--color-brass)"
-                    strokeWidth="1.5"
-                    strokeDasharray="6 4"
+                    stroke="var(--color-rule-strong)"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
                   />
                   <text
-                    x={layoutMode === 'compact' ? '530' : '880'}
-                    y={layoutMode === 'compact' ? '70' : '102'}
-                    fill="var(--color-brass)"
-                    fontSize={layoutMode === 'compact' ? '10.5' : '12'}
-                    fontWeight="800"
-                    letterSpacing="0.08em"
+                    x={layoutMode === 'compact' ? '528' : '878'}
+                    y={layoutMode === 'compact' ? '64' : '96'}
+                    fill="var(--color-ink-muted)"
+                    fontSize="10"
+                    fontWeight="600"
+                    letterSpacing="0.12em"
                     fontFamily="var(--font-precision)"
                   >
-                    {layoutMode === 'compact'
-                      ? '[ SUBGRAPH: DIALECTIC ARBITRATION (BULL / BEAR / JUDGE) ]'
-                      : '[ SUBGRAPH: PER-ASSET DIALECTIC ARBITRATION (BULL / BEAR / SYNTHESIS) ]'}
+                    STAGE III — DIALECTIC ARBITRATION (BULL / BEAR / JUDGE)
                   </text>
                 </>
               )}
 
-              {/* Subgraph container box: Fortress & Execution Waterfall (compact mode) */}
+              {/* Subgraph Zone IV & V: Fortress & Execution Waterfall (compact mode) */}
               {graphData && graphData.nodes && graphData.nodes.length > 0 && layoutMode === 'compact' && (
                 <>
                   <rect
                     x="1025"
-                    y="50"
-                    width="250"
-                    height="500"
-                    rx="4"
-                    fill="rgba(34, 197, 94, 0.03)"
-                    stroke="var(--color-ledger-green)"
-                    strokeWidth="1.5"
-                    strokeDasharray="6 4"
+                    y="45"
+                    width="255"
+                    height="505"
+                    rx="0"
+                    fill="transparent"
+                    stroke="var(--color-rule-strong)"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
                   />
                   <text
                     x="1038"
-                    y="70"
-                    fill="var(--color-ledger-green)"
+                    y="64"
+                    fill="var(--color-ink-muted)"
                     fontSize="10"
-                    fontWeight="800"
-                    letterSpacing="0.08em"
+                    fontWeight="600"
+                    letterSpacing="0.12em"
                     fontFamily="var(--font-precision)"
                   >
-                    [ FORTRESS & EXECUTION WATERFALL ]
+                    STAGE IV–V — FORTRESS & EXECUTION
                   </text>
                 </>
               )}
@@ -718,54 +660,55 @@ export const GraphVisualizerPanel: React.FC = () => {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '12px',
+                gap: '10px',
                 color: 'var(--color-ink-muted)',
                 pointerEvents: 'none',
               }}
             >
-              <Workflow size={36} color="var(--color-brass)" style={{ opacity: 0.6 }} />
-              <div style={{ fontSize: 'var(--text-body)', fontWeight: 700, color: 'var(--color-ink)' }}>
-                NO ACTIVE PIPELINE CYCLE
+              <Workflow size={28} color="var(--color-ink-muted)" />
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: 'var(--color-ink)' }}>
+                No Active Pipeline Cycle
               </div>
-              <div style={{ fontSize: 'var(--text-xs)', maxWidth: '340px', textAlign: 'center', lineHeight: 1.5 }}>
+              <div style={{ fontSize: '12px', maxWidth: '340px', textAlign: 'center', lineHeight: 1.5 }}>
                 The trading pipeline is currently idle. Trigger a manual cycle above or wait for the next scheduled 8-hour graph run.
               </div>
             </div>
           )}
 
-          {/* Minimap / Legend Badge */}
-          <div style={{
-            position: 'absolute',
-            bottom: 16,
-            left: 16,
-            background: 'var(--color-paper-raised)',
-            border: '1px solid var(--color-rule)',
-            borderRadius: 'var(--radius-sm)',
-            boxShadow: '1px 1px 0 var(--color-rule)',
-            padding: '6px 12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-            fontSize: 'var(--text-caption)',
-            color: 'var(--color-ink)',
-            fontFamily: 'var(--font-precision)',
-            pointerEvents: 'none',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '1px', background: 'var(--color-profit)' }} />
-              <span>[ COMPLETED ]</span>
+          {/* Architectural Legend Hairline Strip */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 14,
+              left: 14,
+              background: 'var(--color-paper-raised)',
+              border: '1px solid var(--color-rule)',
+              padding: '6px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              fontSize: '11px',
+              letterSpacing: '0.08em',
+              color: 'var(--color-ink-soft)',
+              fontFamily: 'var(--font-precision)',
+              pointerEvents: 'none',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ width: 6, height: 6, background: 'var(--color-profit)' }} />
+              <span>COMPLETED</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '1px', background: 'var(--color-brass)' }} />
-              <span>[ RUNNING ]</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ width: 6, height: 6, background: 'var(--color-brass)' }} />
+              <span>RUNNING</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '1px', background: 'var(--color-loss)' }} />
-              <span>[ FAILED ]</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ width: 6, height: 6, background: 'var(--color-loss)' }} />
+              <span>FAILED</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '1px', background: 'var(--color-ink-muted)' }} />
-              <span>[ PENDING ]</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ width: 6, height: 6, background: 'var(--color-ink-muted)' }} />
+              <span>PENDING</span>
             </div>
           </div>
         </div>
@@ -785,27 +728,15 @@ export const GraphVisualizerPanel: React.FC = () => {
 
       {showSteerModal && (
         <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
+          className="retro-modal-scrim"
+          style={{ zIndex: 1000 }}
           onClick={() => setShowSteerModal(false)}
         >
           <div
-            className="win-window ledger-card"
+            className="editorial-section swiss-crosshair"
             style={{
               background: 'var(--color-paper-raised)',
-              border: '2px solid var(--color-rule)',
-              borderRadius: 'var(--radius-card)',
-              boxShadow: '6px 6px 0 var(--color-rule)',
+              border: '1px solid var(--color-rule-strong)',
               width: '520px',
               maxWidth: '90vw',
               padding: '20px',
@@ -816,23 +747,24 @@ export const GraphVisualizerPanel: React.FC = () => {
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--color-rule)', paddingBottom: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Compass size={18} color="var(--color-brass)" />
-                <span style={{ fontSize: 'var(--text-body)', fontWeight: 800, fontFamily: 'var(--font-precision)', textTransform: 'uppercase' }}>
-                  OPERATOR STEER DIRECTIVE
-                </span>
+              <div>
+                <div className="editorial-kicker">OPERATOR OVERRIDE</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', color: 'var(--color-ink)', marginTop: '2px' }}>
+                  Steer Pipeline Directive
+                </div>
               </div>
               <button
                 onClick={() => setShowSteerModal(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-ink-muted)' }}
+                className="editorial-btn editorial-btn--ghost"
+                style={{ padding: '4px 8px' }}
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', fontFamily: 'var(--font-precision)', color: 'var(--color-ink-muted)', textTransform: 'uppercase' }}>
-                Directive Instruction / Message
+              <label className="editorial-kicker">
+                DIRECTIVE INSTRUCTION / MESSAGE
               </label>
               <textarea
                 value={steerMessage}
@@ -843,10 +775,9 @@ export const GraphVisualizerPanel: React.FC = () => {
                   width: '100%',
                   background: 'var(--color-paper)',
                   border: '1px solid var(--color-rule)',
-                  borderRadius: 'var(--radius-sm)',
                   padding: '10px',
                   color: 'var(--color-ink)',
-                  fontSize: 'var(--text-body-sm)',
+                  fontSize: '12px',
                   fontFamily: 'var(--font-precision)',
                   resize: 'vertical',
                   outline: 'none',
@@ -856,8 +787,8 @@ export const GraphVisualizerPanel: React.FC = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', fontFamily: 'var(--font-precision)', color: 'var(--color-ink-muted)', textTransform: 'uppercase' }}>
-                  Delivery Mode
+                <label className="editorial-kicker">
+                  DELIVERY MODE
                 </label>
                 <select
                   value={steerMode}
@@ -865,10 +796,9 @@ export const GraphVisualizerPanel: React.FC = () => {
                   style={{
                     background: 'var(--color-paper)',
                     border: '1px solid var(--color-rule)',
-                    borderRadius: 'var(--radius-sm)',
                     padding: '8px',
                     color: 'var(--color-ink)',
-                    fontSize: 'var(--text-body-sm)',
+                    fontSize: '12px',
                     fontFamily: 'var(--font-precision)',
                     outline: 'none',
                   }}
@@ -879,8 +809,8 @@ export const GraphVisualizerPanel: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', fontFamily: 'var(--font-precision)', color: 'var(--color-ink-muted)', textTransform: 'uppercase' }}>
-                  Symbols (Optional comma-sep)
+                <label className="editorial-kicker">
+                  SYMBOLS (OPTIONAL COMMA-SEP)
                 </label>
                 <input
                   type="text"
@@ -890,10 +820,9 @@ export const GraphVisualizerPanel: React.FC = () => {
                   style={{
                     background: 'var(--color-paper)',
                     border: '1px solid var(--color-rule)',
-                    borderRadius: 'var(--radius-sm)',
                     padding: '8px 10px',
                     color: 'var(--color-ink)',
-                    fontSize: 'var(--text-body-sm)',
+                    fontSize: '12px',
                     fontFamily: 'var(--font-precision)',
                     outline: 'none',
                   }}
@@ -904,40 +833,17 @@ export const GraphVisualizerPanel: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
               <button
                 onClick={() => setShowSteerModal(false)}
-                style={{
-                  padding: '8px 16px',
-                  background: 'transparent',
-                  border: '1px solid var(--color-rule)',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: 'var(--text-body-sm)',
-                  cursor: 'pointer',
-                  color: 'var(--color-ink)',
-                  fontFamily: 'var(--font-precision)',
-                }}
+                className="editorial-btn editorial-btn--ghost"
               >
-                Cancel
+                CANCEL
               </button>
               <button
                 onClick={handleSendSteer}
                 disabled={steerLoading || !steerMessage.trim()}
-                style={{
-                  padding: '8px 20px',
-                  background: 'var(--color-brass)',
-                  border: '1px solid var(--color-rule)',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: 'var(--text-body-sm)',
-                  fontWeight: 'bold',
-                  cursor: steerLoading || !steerMessage.trim() ? 'not-allowed' : 'pointer',
-                  color: 'var(--color-on-win-yellow)',
-                  fontFamily: 'var(--font-precision)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  opacity: steerLoading || !steerMessage.trim() ? 0.6 : 1,
-                }}
+                className="editorial-btn editorial-btn--accent"
               >
-                {steerLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />}
-                <span>Dispatch Steer</span>
+                {steerLoading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={13} />}
+                <span>DISPATCH STEER</span>
               </button>
             </div>
           </div>

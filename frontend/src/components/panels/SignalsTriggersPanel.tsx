@@ -529,7 +529,7 @@ export const SignalsTriggersPanel: React.FC = () => {
       </div>
 
       {/* Sub-tab Navigation */}
-      <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid var(--color-rule)', paddingBottom: '8px' }}>
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--color-rule)', paddingBottom: '8px' }}>
         <TypewriterButton
           size="sm"
           variant={panelTab === 'signals' ? 'primary' : 'secondary'}

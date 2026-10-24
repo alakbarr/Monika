@@ -13,7 +13,10 @@ interface TickerTapeProps {
 
 export const TickerTape: React.FC<TickerTapeProps> = ({ items, style }) => {
   const [isPaused, setIsPaused] = useState(false);
-  const prefersReduced = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const prefersReduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   if (!items || items.length === 0) return null;
 
@@ -27,10 +30,10 @@ export const TickerTape: React.FC<TickerTapeProps> = ({ items, style }) => {
         alignItems: 'center',
         height: '30px',
         padding: '0 12px',
-        borderBottom: '2px solid var(--color-rule)',
-        background: 'var(--color-paper-raised)',
-        fontSize: 'var(--text-xs)',
-        fontFamily: 'var(--font-precision)',
+        borderBottom: '1px solid var(--color-border)',
+        background: 'var(--color-surface-well)',
+        fontSize: '11px',
+        fontFamily: 'var(--font-mono)',
         position: 'relative',
         overflow: 'hidden',
         ...style,
@@ -44,18 +47,17 @@ export const TickerTape: React.FC<TickerTapeProps> = ({ items, style }) => {
           marginRight: '14px',
           flexShrink: 0,
           zIndex: 2,
-          background: 'var(--color-paper-raised)',
+          background: 'var(--color-surface-well)',
           paddingRight: '6px',
         }}
       >
         <span
-          className="win-badge"
           style={{
-            background: 'var(--color-win-yellow)',
-            color: 'var(--color-on-win-yellow)',
+            background: 'var(--color-ink)',
+            color: 'var(--color-surface)',
             padding: '1px 6px',
             fontSize: '11px',
-            border: '1px solid var(--color-rule)',
+            fontWeight: 600,
             borderRadius: '2px',
           }}
         >
@@ -86,7 +88,7 @@ export const TickerTape: React.FC<TickerTapeProps> = ({ items, style }) => {
                 color: 'var(--color-ink)',
               }}
             >
-              <span style={{ fontWeight: 'var(--weight-bold)', color: 'var(--color-ink)' }}>
+              <span style={{ fontWeight: 600, color: 'var(--color-ink)' }}>
                 {item.symbol}
               </span>
               <span className="tabular-nums" style={{ color: 'var(--color-ink-soft)' }}>
@@ -95,13 +97,13 @@ export const TickerTape: React.FC<TickerTapeProps> = ({ items, style }) => {
               <span
                 className="tabular-nums"
                 style={{
-                  color: isUp ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)',
-                  fontWeight: 'var(--weight-bold)',
+                  color: isUp ? 'var(--color-profit)' : 'var(--color-loss)',
+                  fontWeight: 600,
                 }}
               >
                 {isUp ? '▲' : '▼'} {Math.abs(item.changePct).toFixed(2)}%
               </span>
-              <span style={{ color: 'var(--color-ink-soft)', marginLeft: '8px' }}>•</span>
+              <span style={{ color: 'var(--color-ink-soft)', marginLeft: '8px' }}>·</span>
             </span>
           );
         })}

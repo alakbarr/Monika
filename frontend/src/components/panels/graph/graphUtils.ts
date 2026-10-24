@@ -37,6 +37,27 @@ export const getNodeIcon = (id: string) => {
   }
 };
 
+export const getStageKicker = (id: string, fallbackStage?: string): string => {
+  switch (id) {
+    case 'prefetch_data':
+    case 'fundamental_brief':
+      return 'STAGE I — MACRO';
+    case 'per_asset_analysis':
+      return 'STAGE II — SYNTHESIS';
+    case 'bull_advocate':
+    case 'bear_dissent':
+    case 'debate_judge':
+      return 'STAGE III — DIALECTIC';
+    case 'reflection':
+    case 'risk_gate':
+      return 'STAGE IV — FORTRESS';
+    case 'execution':
+      return 'STAGE V — EXECUTION';
+    default:
+      return fallbackStage ? `STAGE — ${fallbackStage.toUpperCase()}` : 'STAGE — NODE';
+  }
+};
+
 export const getStatusColor = (status: GraphNodeStatus) => {
   switch (status) {
     case 'done':
@@ -148,4 +169,3 @@ export const computeGraphLayout = (
 
   return positions;
 };
-

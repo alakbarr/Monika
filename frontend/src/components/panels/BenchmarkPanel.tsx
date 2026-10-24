@@ -246,7 +246,7 @@ export const BenchmarkPanel: React.FC = () => {
         className="win-window ledger-card"
         style={{
           background: 'var(--color-paper-raised)',
-          border: '2px solid var(--color-rule)',
+          border: '1px solid var(--color-rule)',
           borderRadius: 'var(--radius-card)',
           boxShadow: 'var(--shadow-card)',
           padding: '16px 20px',
@@ -345,7 +345,7 @@ export const BenchmarkPanel: React.FC = () => {
             className="win-window ledger-card"
             style={{
               background: 'var(--color-paper-raised)',
-              border: '2px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-card)',
               boxShadow: 'var(--shadow-card)',
               padding: '16px 20px',
@@ -396,7 +396,7 @@ export const BenchmarkPanel: React.FC = () => {
                 style={{
                   width: '100%',
                   padding: '8px 12px',
-                  border: '2px solid var(--color-rule)',
+                  border: '1px solid var(--color-rule)',
                   borderRadius: '4px',
                   background: 'var(--color-paper)',
                   fontFamily: 'var(--font-precision)',
@@ -527,7 +527,7 @@ export const BenchmarkPanel: React.FC = () => {
                       style={{
                         padding: '10px 14px',
                         borderRadius: '4px',
-                        border: isSelected ? '2px solid var(--color-moss)' : '1px solid var(--color-rule)',
+                        border: isSelected ? '1px solid var(--color-moss)' : '1px solid var(--color-rule)',
                         background: isSelected ? 'var(--color-moss-subtle)' : 'var(--color-paper)',
                         cursor: 'pointer',
                       }}
@@ -595,7 +595,7 @@ export const BenchmarkPanel: React.FC = () => {
               style={{
                 padding: '12px 18px',
                 background: 'var(--color-moss-subtle)',
-                border: '2px solid var(--color-moss)',
+                border: '1px solid var(--color-moss)',
                 borderRadius: '4px',
                 display: 'flex',
                 alignItems: 'center',
@@ -688,7 +688,7 @@ export const BenchmarkPanel: React.FC = () => {
             className="win-window ledger-card"
             style={{
               background: 'var(--color-paper-raised)',
-              border: '2px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-card)',
               boxShadow: 'var(--shadow-card)',
               overflow: 'hidden',
@@ -698,7 +698,7 @@ export const BenchmarkPanel: React.FC = () => {
               className="win-titlebar win-titlebar--moss"
               style={{
                 padding: '8px 14px',
-                borderBottom: '2px solid var(--color-rule)',
+                borderBottom: '1px solid var(--color-rule)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 fontWeight: 'bold',
@@ -850,7 +850,7 @@ export const BenchmarkPanel: React.FC = () => {
           className="win-window ledger-card"
           style={{
             background: 'var(--color-paper-raised)',
-            border: '2px solid var(--color-rule)',
+            border: '1px solid var(--color-rule)',
             borderRadius: 'var(--radius-card)',
             boxShadow: 'var(--shadow-card)',
             overflow: 'hidden',
@@ -860,7 +860,7 @@ export const BenchmarkPanel: React.FC = () => {
             className="win-titlebar win-titlebar--moss"
             style={{
               padding: '8px 14px',
-              borderBottom: '2px solid var(--color-rule)',
+              borderBottom: '1px solid var(--color-rule)',
               display: 'flex',
               justifyContent: 'space-between',
               fontWeight: 'bold',
@@ -921,7 +921,7 @@ export const BenchmarkPanel: React.FC = () => {
             className="win-window ledger-card"
             style={{
               background: 'var(--color-paper-raised)',
-              border: '2px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-card)',
               boxShadow: 'var(--shadow-card)',
               overflow: 'hidden',
@@ -931,7 +931,7 @@ export const BenchmarkPanel: React.FC = () => {
               className="win-titlebar"
               style={{
                 padding: '8px 14px',
-                borderBottom: '2px solid var(--color-rule)',
+                borderBottom: '1px solid var(--color-rule)',
                 fontWeight: 'bold',
               }}
             >
@@ -963,7 +963,7 @@ export const BenchmarkPanel: React.FC = () => {
             className="win-window ledger-card"
             style={{
               background: 'var(--color-paper-raised)',
-              border: '2px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-card)',
               boxShadow: 'var(--shadow-card)',
               overflow: 'hidden',
@@ -973,7 +973,7 @@ export const BenchmarkPanel: React.FC = () => {
               className="win-titlebar"
               style={{
                 padding: '8px 14px',
-                borderBottom: '2px solid var(--color-rule)',
+                borderBottom: '1px solid var(--color-rule)',
                 fontWeight: 'bold',
               }}
             >
@@ -1029,7 +1029,7 @@ export const BenchmarkPanel: React.FC = () => {
             className="win-window ledger-card"
             style={{
               background: 'var(--color-paper-raised)',
-              border: '2px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-card)',
               width: '100%',
               maxWidth: '700px',
@@ -1044,7 +1044,7 @@ export const BenchmarkPanel: React.FC = () => {
               className="win-titlebar"
               style={{
                 padding: '8px 14px',
-                borderBottom: '2px solid var(--color-rule)',
+                borderBottom: '1px solid var(--color-rule)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',

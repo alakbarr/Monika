@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle2, Clock, AlertCircle, X, Copy, Check, Activity, Coins } from 'lucide-react';
 import type { GraphNode } from '../../../types/api';
-import { getStatusColor } from './graphUtils';
+import { getStageKicker, getStatusColor } from './graphUtils';
 
 interface GraphInspectorProps {
   selectedNode: GraphNode;
@@ -22,61 +22,46 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
 }) => {
   return (
     <div
-      className="ledger-card"
+      className="editorial-section swiss-crosshair"
       style={{
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        borderRadius: '2px',
+        border: '1px solid var(--color-rule)',
+        background: 'var(--color-paper-raised)',
       }}
     >
       {/* Inspector Header */}
       <div
         style={{
           padding: '14px 16px',
-          borderBottom: '2px solid var(--color-rule)',
+          borderBottom: '1px solid var(--color-rule)',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           justifyContent: 'space-between',
-          background: 'var(--color-paper-raised)',
+          background: 'var(--color-paper)',
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h3
-              style={{
-                margin: 0,
-                fontSize: 'var(--text-title-sm)',
-                color: 'var(--color-ink)',
-                fontWeight: 800,
-                fontFamily: 'var(--font-precision)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-              }}
-            >
-              {selectedNode.name}
-            </h3>
-            <span
-              style={{
-                padding: '2px 6px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '11px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                border: '1px solid var(--color-brass)',
-                background: 'var(--color-paper)',
-                color: 'var(--color-brass)',
-                fontFamily: 'var(--font-precision)',
-              }}
-            >
-              {selectedNode.stage}
-            </span>
+          <div className="editorial-kicker">
+            {getStageKicker(selectedNode.id, selectedNode.stage)}
           </div>
+          <h3
+            style={{
+              margin: '2px 0 0 0',
+              fontFamily: 'var(--font-display)',
+              fontSize: '20px',
+              fontWeight: 400,
+              color: 'var(--color-ink)',
+            }}
+          >
+            {selectedNode.name}
+          </h3>
           <div
             style={{
-              fontSize: 'var(--text-caption)',
-              color: 'var(--color-ink-soft)',
-              marginTop: 4,
+              fontSize: '11px',
+              color: 'var(--color-ink-muted)',
+              marginTop: 2,
               fontFamily: 'var(--font-precision)',
             }}
           >
@@ -86,19 +71,11 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
 
         <button
           onClick={onClose}
-          style={{
-            background: 'var(--color-paper)',
-            border: '1px solid var(--color-rule)',
-            color: 'var(--color-ink)',
-            cursor: 'pointer',
-            padding: 4,
-            display: 'flex',
-            alignItems: 'center',
-            borderRadius: 'var(--radius-sm)',
-          }}
+          className="editorial-btn editorial-btn--ghost"
+          style={{ padding: '4px 8px' }}
           title="Close Inspector"
         >
-          <X size={16} />
+          <X size={14} />
         </button>
       </div>
 
@@ -111,7 +88,6 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
           flexDirection: 'column',
           gap: '16px',
           flex: 1,
-          background: 'var(--color-paper-raised)',
         }}
       >
         {/* Status & Timing Metrics */}
@@ -119,36 +95,37 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
-            gap: '10px',
+            borderTop: '1px solid var(--color-rule)',
+            borderLeft: '1px solid var(--color-rule)',
           }}
         >
           <div
             style={{
               padding: '10px 12px',
               background: 'var(--color-paper)',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--color-rule)',
+              borderRight: '1px solid var(--color-rule)',
+              borderBottom: '1px solid var(--color-rule)',
             }}
           >
-            <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Status</span>
+            <span className="editorial-kicker">STATUS</span>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
                 marginTop: 4,
-                fontSize: 'var(--text-body-sm)',
-                fontWeight: 700,
+                fontSize: '12px',
+                fontWeight: 600,
                 color: getStatusColor(selectedNode.status),
                 textTransform: 'uppercase',
                 fontFamily: 'var(--font-precision)',
               }}
             >
-              {selectedNode.status === 'done' && <CheckCircle2 size={14} />}
-              {selectedNode.status === 'running' && <Clock size={14} />}
-              {selectedNode.status === 'failed' && <AlertCircle size={14} />}
-              {selectedNode.status === 'skipped' && <Activity size={14} />}
-              [{selectedNode.status}]
+              {selectedNode.status === 'done' && <CheckCircle2 size={13} />}
+              {selectedNode.status === 'running' && <Clock size={13} />}
+              {selectedNode.status === 'failed' && <AlertCircle size={13} />}
+              {selectedNode.status === 'skipped' && <Activity size={13} />}
+              {selectedNode.status}
             </div>
           </div>
 
@@ -156,22 +133,22 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
             style={{
               padding: '10px 12px',
               background: 'var(--color-paper)',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--color-rule)',
+              borderRight: '1px solid var(--color-rule)',
+              borderBottom: '1px solid var(--color-rule)',
             }}
           >
-            <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Duration</span>
+            <span className="editorial-kicker">DURATION</span>
             <div
               className="tabular-nums"
               style={{
                 marginTop: 4,
-                fontSize: 'var(--text-body-sm)',
-                fontWeight: 700,
+                fontSize: '12px',
+                fontWeight: 600,
                 fontFamily: 'var(--font-precision)',
                 color: 'var(--color-ink)',
               }}
             >
-              {selectedNode.status === 'skipped' ? 'bypassed' : `${((selectedNode.duration_ms ?? 0) / 1000).toFixed(2)}s`}
+              {selectedNode.status === 'skipped' ? 'BYPASSED' : `${((selectedNode.duration_ms ?? 0) / 1000).toFixed(2)}s`}
             </div>
           </div>
 
@@ -179,37 +156,29 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
             style={{
               padding: '10px 12px',
               background: 'var(--color-paper)',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--color-rule)',
+              borderRight: '1px solid var(--color-rule)',
+              borderBottom: '1px solid var(--color-rule)',
             }}
           >
-            <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>
-              Tokens (In / Out)
-            </span>
+            <span className="editorial-kicker">TOKENS (IN / OUT)</span>
             <div
               className="tabular-nums"
               style={{
                 marginTop: 4,
-                fontSize: 'var(--text-body-sm)',
-                fontWeight: 700,
+                fontSize: '12px',
+                fontWeight: 600,
                 fontFamily: 'var(--font-precision)',
-                color: (selectedNode.tokens?.total ?? 0) > 0 ? 'var(--color-win-blue)' : 'var(--color-ink-soft)',
+                color: (selectedNode.tokens?.total ?? 0) > 0 ? 'var(--color-ink)' : 'var(--color-ink-soft)',
               }}
             >
               {(selectedNode.tokens?.total ?? 0) > 0 ? (
                 `${selectedNode.tokens?.input ?? 0} / ${selectedNode.tokens?.output ?? 0}`
               ) : selectedNode.id === 'execution' ? (
-                <span title="Deterministic MetaTrader 5 trade execution service (no LLM consumption by design)" style={{ fontSize: '11px' }}>
-                  0 (Deterministic MT5)
-                </span>
+                <span style={{ fontSize: '11px' }}>0 (Deterministic MT5)</span>
               ) : selectedNode.id === 'risk_gate' ? (
-                <span title="Deterministic mathematical risk and exposure validation (rule-based)" style={{ fontSize: '11px' }}>
-                  0 (Rule-Based Risk)
-                </span>
+                <span style={{ fontSize: '11px' }}>0 (Rule-Based Fortress)</span>
               ) : selectedNode.status === 'skipped' ? (
-                <span title="Node execution was bypassed in this cycle" style={{ fontSize: '11px' }}>
-                  0 (Skipped)
-                </span>
+                <span style={{ fontSize: '11px' }}>0 (Skipped)</span>
               ) : (
                 '0 / 0'
               )}
@@ -220,17 +189,17 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
             style={{
               padding: '10px 12px',
               background: 'var(--color-paper)',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--color-rule)',
+              borderRight: '1px solid var(--color-rule)',
+              borderBottom: '1px solid var(--color-rule)',
             }}
           >
-            <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 'bold', textTransform: 'uppercase' }}>Est. Cost</span>
+            <span className="editorial-kicker">EST. COST</span>
             <div
               className="tabular-nums"
               style={{
                 marginTop: 4,
-                fontSize: 'var(--text-body-sm)',
-                fontWeight: 700,
+                fontSize: '12px',
+                fontWeight: 600,
                 fontFamily: 'var(--font-precision)',
                 color: 'var(--color-ledger-green)',
               }}
@@ -245,17 +214,16 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
           <div
             style={{
               padding: '12px 14px',
-              borderRadius: 'var(--radius-sm)',
               background: 'var(--color-loss-bg)',
-              border: '2px solid var(--color-ledger-red)',
+              border: '1px solid var(--color-ledger-red)',
               color: 'var(--color-ledger-red)',
-              fontSize: 'var(--text-caption)',
+              fontSize: '11px',
               display: 'flex',
               alignItems: 'flex-start',
               gap: '8px',
             }}
           >
-            <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+            <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
             <div>
               <strong style={{ textTransform: 'uppercase' }}>Node Execution Error:</strong>
               <div style={{ marginTop: 4, fontFamily: 'var(--font-precision)' }}>
@@ -267,26 +235,14 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
 
         {/* Input Summary Section */}
         <div>
-          <span
-            style={{
-              fontSize: '11px',
-              fontWeight: 800,
-              color: 'var(--color-ink-soft)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              fontFamily: 'var(--font-precision)',
-            }}
-          >
-            INPUT SUMMARY
-          </span>
+          <span className="editorial-kicker">INPUT SUMMARY</span>
           <div
             style={{
               marginTop: 6,
               padding: '12px',
               background: 'var(--color-paper)',
-              borderRadius: 'var(--radius-sm)',
               border: '1px solid var(--color-rule)',
-              fontSize: 'var(--text-body-sm)',
+              fontSize: '12px',
               color: 'var(--color-ink)',
               fontFamily: 'var(--font-precision)',
               lineHeight: 1.5,
@@ -306,38 +262,15 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
               marginBottom: 6,
             }}
           >
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 800,
-                color: 'var(--color-ink-soft)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                fontFamily: 'var(--font-precision)',
-              }}
-            >
-              OUTPUT DECISION PAYLOAD
-            </span>
+            <span className="editorial-kicker">OUTPUT DECISION PAYLOAD</span>
             <button
               onClick={onCopyPayload}
               disabled={!selectedNode.output_payload}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                background: 'var(--color-paper)',
-                border: '1px solid var(--color-rule)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '2px 8px',
-                color: copied ? 'var(--color-ledger-green)' : 'var(--color-ink)',
-                fontSize: '11px',
-                fontWeight: 700,
-                fontFamily: 'var(--font-precision)',
-                cursor: 'pointer',
-              }}
+              className="editorial-btn editorial-btn--ghost"
+              style={{ padding: '2px 8px', fontSize: '11px' }}
             >
               {copied ? <Check size={11} /> : <Copy size={11} />}
-              {copied ? '[ COPIED ]' : '[ COPY JSON ]'}
+              {copied ? 'COPIED' : 'COPY JSON'}
             </button>
           </div>
 
@@ -345,11 +278,9 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
             style={{
               background: 'var(--color-paper)',
               border: '1px solid var(--color-rule)',
-              borderRadius: 'var(--radius-sm)',
               padding: '12px',
               maxHeight: '220px',
               overflowY: 'auto',
-              boxShadow: 'inset 1px 1px 0 rgba(0,0,0,0.06)',
             }}
           >
             <pre
@@ -374,21 +305,21 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
           </div>
         </div>
 
-        {/* Cycle Telemetry Summary (from api.cycleTraceSummary) */}
+        {/* Cycle Telemetry Summary */}
         {cycleTrace && (
-          <div style={{ marginTop: '4px', borderTop: '1px dashed var(--color-rule)', paddingTop: '14px' }}>
+          <div style={{ borderTop: '1px solid var(--color-rule)', paddingTop: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-              <Activity size={14} color="var(--color-brass)" />
-              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-ink)', fontFamily: 'var(--font-precision)' }}>
-                CYCLE TRACE TELEMETRY // {cycleTrace.cycle_id || 'ACTIVE'}
+              <Activity size={13} color="var(--color-ink-muted)" />
+              <span className="editorial-kicker">
+                CYCLE TRACE TELEMETRY — {cycleTrace.cycle_id || 'ACTIVE'}
               </span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px', fontFamily: 'var(--font-precision)' }}>
-              <div style={{ background: 'var(--color-paper)', padding: '6px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-rule)' }}>
+              <div style={{ background: 'var(--color-paper)', padding: '6px 8px', border: '1px solid var(--color-rule)' }}>
                 <span style={{ color: 'var(--color-ink-soft)' }}>Spans: </span>
                 <strong style={{ color: 'var(--color-ink)' }}>{cycleTrace.spans?.length ?? (cycleTrace.summary?.span_count ?? '—')}</strong>
               </div>
-              <div style={{ background: 'var(--color-paper)', padding: '6px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-rule)' }}>
+              <div style={{ background: 'var(--color-paper)', padding: '6px 8px', border: '1px solid var(--color-rule)' }}>
                 <span style={{ color: 'var(--color-ink-soft)' }}>Root: </span>
                 <strong style={{ color: 'var(--color-ink)' }}>{cycleTrace.summary?.root_name ?? 'Workflow'}</strong>
               </div>
@@ -396,16 +327,16 @@ export const GraphInspector: React.FC<GraphInspectorProps> = ({
           </div>
         )}
 
-        {/* Cycle Token Cost Attribution (from api.tokenCycles) */}
+        {/* Cycle Token Cost Attribution */}
         {cycleTokens && (
-          <div style={{ marginTop: '4px', borderTop: '1px dashed var(--color-rule)', paddingTop: '14px' }}>
+          <div style={{ borderTop: '1px solid var(--color-rule)', paddingTop: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-              <Coins size={14} color="var(--color-ledger-green)" />
-              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-ink)', fontFamily: 'var(--font-precision)' }}>
+              <Coins size={13} color="var(--color-ledger-green)" />
+              <span className="editorial-kicker">
                 CYCLE TOKEN ATTRIBUTION
               </span>
             </div>
-            <div style={{ background: 'var(--color-paper)', padding: '8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-rule)', fontSize: '11px', fontFamily: 'var(--font-precision)' }}>
+            <div style={{ background: 'var(--color-paper)', padding: '8px', border: '1px solid var(--color-rule)', fontSize: '11px', fontFamily: 'var(--font-precision)' }}>
               {cycleTokens.total_cost_usd != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <span style={{ color: 'var(--color-ink-soft)' }}>Cycle Cost:</span>

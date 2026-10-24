@@ -3058,6 +3058,7 @@ Monika/
 │   │   ├── STATE.md
 │   │   ├── SURFACES.md
 │   │   └── SYSTEM-MAP.md
+│   ├── design_system.html
 │   ├── ROADMAP_SRC_MONIKA.md
 │   └── SETUP_GUIDE.md
 │   ├── google_credentials.json.example
@@ -3091,4 +3092,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 265 | **Total Tracked Files**: 2796
+**Total Tracked Directories**: 265 | **Total Tracked Files**: 2797

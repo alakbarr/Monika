@@ -95,115 +95,87 @@ export const AgentChatPanel: React.FC = () => {
 
   return (
     <div
-      className="win-window"
+      className="editorial-section swiss-crosshair"
       style={{
         display: 'flex',
         flexDirection: 'column',
         height: 'calc(100vh - 145px)',
         background: 'var(--color-paper-raised)',
-        border: '2px solid var(--color-rule)',
-        borderRadius: 'var(--radius-card)',
-        boxShadow: 'var(--shadow-card)',
+        border: '1px solid var(--color-rule)',
         overflow: 'hidden',
       }}
     >
-      {/* 1. Categorical Titlebar — Institutional Telegraph Desk & Dispatch Terminal */}
+      {/* 1. Editorial Header */}
       <div
-        className="win-titlebar win-titlebar--salmon"
         style={{
-          padding: '6px 14px',
+          padding: '12px 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: '2px solid var(--color-rule)',
+          borderBottom: '1px solid var(--color-rule)',
+          background: 'var(--color-paper)',
           userSelect: 'none',
           flexWrap: 'wrap',
           gap: '10px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: '3px',
-              background: 'var(--color-paper)',
-              border: '1px solid var(--color-rule)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--color-ink)',
-            }}
-          >
-            <Bot size={14} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div>
+            <div className="editorial-kicker">I. AGENT DISPATCH & RESEARCH</div>
+            <div
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: '20px',
+                color: 'var(--color-ink)',
+                marginTop: '2px',
+              }}
+            >
+              Monika Quantitative Research Desk
+            </div>
           </div>
-          <span
-            style={{
-              fontWeight: 800,
-              letterSpacing: '0.04em',
-              fontSize: 'var(--text-title-xs)',
-              textTransform: 'uppercase',
-              color: 'var(--color-titlebar-text)',
-              fontFamily: 'var(--font-precision)',
-            }}
-          >
-            INSTITUTIONAL TELEGRAPH DESK // AI DISPATCH CONSOLE
-          </span>
           <span
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '5px',
               fontSize: '11px',
-              fontWeight: 800,
+              fontWeight: 600,
               padding: '2px 7px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--color-paper)',
+              background: 'var(--color-paper-raised)',
               border: '1px solid var(--color-rule)',
               color: wsConnected ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)',
               fontFamily: 'var(--font-precision)',
+              letterSpacing: '0.06em',
             }}
           >
             <span
               style={{
-                width: 6,
-                height: 6,
-                borderRadius: '1px',
+                width: 5,
+                height: 5,
                 background: wsConnected ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)',
               }}
             />
-            {wsConnected ? '[ ONLINE ]' : '[ DISCONNECTED ]'}
+            {wsConnected ? 'ONLINE' : 'DISCONNECTED'}
           </span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 800,
-                color: 'var(--color-titlebar-text)',
-                textTransform: 'uppercase',
-                fontFamily: 'var(--font-precision)',
-              }}
-            >
-              ROUTER:
-            </span>
+            <span className="editorial-kicker">ROUTER</span>
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
               style={{
-                height: '24px',
-                background: 'var(--color-paper)',
+                height: '28px',
+                background: 'var(--color-paper-raised)',
                 border: '1px solid var(--color-rule)',
-                borderRadius: 'var(--radius-sm)',
                 color: 'var(--color-ink)',
                 fontSize: '11px',
                 fontFamily: 'var(--font-precision)',
-                padding: '0 6px',
+                padding: '0 8px',
                 outline: 'none',
                 cursor: 'pointer',
-                fontWeight: 700,
+                fontWeight: 600,
               }}
             >
               <option value="auto">Auto (Smart Routing)</option>
@@ -222,46 +194,35 @@ export const AgentChatPanel: React.FC = () => {
             type="button"
             onClick={clearMessages}
             title="Clear console transcript"
-            style={{
-              background: 'var(--color-paper)',
-              border: '1px solid var(--color-rule)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '2px 8px',
-              fontSize: '11px',
-              fontWeight: 800,
-              fontFamily: 'var(--font-precision)',
-              color: 'var(--color-ink)',
-              cursor: 'pointer',
-              boxShadow: '1px 1px 0 var(--color-rule)',
-            }}
+            className="editorial-btn editorial-btn--ghost"
+            style={{ padding: '4px 10px' }}
           >
-            [ CLEAR ]
+            CLEAR
           </button>
         </div>
       </div>
 
-      {/* 2. Teletype Ribbon Status Bar */}
+      {/* 2. Protocol Ribbon Status Bar */}
       <div
         style={{
-          padding: '4px 14px',
+          padding: '5px 16px',
           background: 'var(--color-paper)',
-          borderBottom: '2px solid var(--color-rule)',
+          borderBottom: '1px solid var(--color-rule)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           fontSize: '11px',
           fontFamily: 'var(--font-precision)',
-          color: 'var(--color-ink-soft)',
-          fontWeight: 700,
-          letterSpacing: '0.04em',
+          color: 'var(--color-ink-muted)',
+          letterSpacing: '0.08em',
           userSelect: 'none',
         }}
       >
-        <span>TELEGRAPH PROTOCOL: WS/JSON-RPC // BAUD: 9600 · 8-N-1 · FULL DUPLEX</span>
-        <span>CHANNEL: AI-DISPATCH-MAIN · OPERATOR SESSION: {(userRole || 'VIEWER').toUpperCase()}</span>
+        <span>PROTOCOL: WS/JSON-RPC · FULL DUPLEX</span>
+        <span>CHANNEL: AI-DISPATCH-MAIN · SESSION: {(userRole || 'VIEWER').toUpperCase()}</span>
       </div>
 
-      {/* 3. Transcript Viewport (Vintage Teletype Paper Ledger) */}
+      {/* 3. Transcript Viewport */}
       <div
         className="telegraph-viewport"
         style={{
@@ -269,8 +230,8 @@ export const AgentChatPanel: React.FC = () => {
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: '14px',
-          padding: '16px',
+          gap: '16px',
+          padding: '18px',
         }}
       >
         {messages.map((msg) => (
@@ -280,7 +241,7 @@ export const AgentChatPanel: React.FC = () => {
               display: 'flex',
               flexDirection: 'column',
               alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
-              gap: '4px',
+              gap: '5px',
             }}
           >
             {/* Sender & Timestamp */}
@@ -290,46 +251,44 @@ export const AgentChatPanel: React.FC = () => {
                 alignItems: 'center',
                 gap: '6px',
                 fontSize: '11px',
-                fontWeight: 800,
-                color: msg.role === 'user' ? 'var(--color-ink-soft)' : 'var(--color-win-blue)',
+                fontWeight: 600,
+                color: msg.role === 'user' ? 'var(--color-ink-muted)' : 'var(--color-ink-soft)',
                 fontFamily: 'var(--font-precision)',
-                letterSpacing: '0.04em',
+                letterSpacing: '0.08em',
               }}
             >
               {msg.role === 'user' ? (
                 <>
-                  <span>[ OPERATOR DISPATCH ]</span>
-                  <User size={12} />
+                  <span>OPERATOR DISPATCH</span>
+                  <User size={11} />
                 </>
               ) : (
                 <>
-                  <Bot size={13} />
-                  <span>[ MONIKA AI // TELEGRAPH DISPATCH ]</span>
+                  <Bot size={12} />
+                  <span>MONIKA QUANTITATIVE DESK</span>
                 </>
               )}
             </div>
 
-            {/* Message Bubble Card */}
+            {/* Message Block */}
             <div
               style={{
-                maxWidth: msg.role === 'user' ? '82%' : '85%',
-                padding: '12px 16px',
-                borderRadius: 'var(--radius-sm)',
+                maxWidth: msg.role === 'user' ? '82%' : '86%',
+                padding: '14px 18px',
                 background: 'var(--color-paper-raised)',
-                border: '2px solid var(--color-rule)',
+                border: '1px solid var(--color-rule)',
                 borderLeft: msg.role !== 'user' && msg.role !== 'system'
-                  ? '5px solid var(--color-win-blue)'
+                  ? '2px solid var(--color-ink)'
                   : undefined,
-                boxShadow: '2px 2px 0 var(--color-rule)',
                 color: 'var(--color-ink)',
-                fontFamily: 'var(--font-precision)',
-                fontSize: 'var(--text-body-sm)',
-                lineHeight: '1.6',
+                fontFamily: 'var(--font-sans)',
+                fontSize: '13px',
+                lineHeight: '1.65',
                 wordBreak: 'break-word',
                 ...(msg.role === 'system'
                   ? {
                       background: 'var(--color-loss-bg)',
-                      border: '2px solid var(--color-ledger-red)',
+                      border: '1px solid var(--color-ledger-red)',
                       color: 'var(--color-ledger-red)',
                     }
                   : {}),
@@ -341,11 +300,10 @@ export const AgentChatPanel: React.FC = () => {
               {msg.pendingAction && (
                 <div
                   style={{
-                    marginTop: '12px',
-                    padding: '12px 14px',
-                    borderRadius: 'var(--radius-sm)',
+                    marginTop: '14px',
+                    padding: '14px',
                     background: 'var(--color-paper)',
-                    border: '2px dashed var(--color-rule)',
+                    border: '1px solid var(--color-rule-strong)',
                     color: 'var(--color-ink)',
                     fontFamily: 'var(--font-precision)',
                     display: 'flex',
@@ -354,20 +312,13 @@ export const AgentChatPanel: React.FC = () => {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span
-                      className="stamp-badge"
-                      style={{
-                        color: 'var(--color-brass)',
-                        background: 'var(--color-warn-dim)',
-                        border: '1px solid var(--color-brass)',
-                      }}
-                    >
-                      [ HITL // ORDER AUTHORIZATION SLIP ]
+                    <span className="editorial-kicker" style={{ color: 'var(--color-accent)' }}>
+                      HITL — ORDER AUTHORIZATION SLIP
                     </span>
                     <Badge variant="warn">EXPIRES 90S</Badge>
                   </div>
 
-                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink)', fontFamily: 'var(--font-precision)', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink)', fontFamily: 'var(--font-precision)', lineHeight: 1.5 }}>
                     <strong>ACTION:</strong> {msg.pendingAction.action_type.toUpperCase()}
                     <br />
                     <strong>PARAMETERS:</strong> {JSON.stringify(msg.pendingAction.params)}
@@ -380,7 +331,7 @@ export const AgentChatPanel: React.FC = () => {
                       onClick={() => handleApproval(msg.pendingAction!.action_id, 'allow_once')}
                       disabled={!isOperatorOrAdmin}
                     >
-                      <Check size={12} /> [ AUTHORIZE ONCE ]
+                      <Check size={12} /> AUTHORIZE ONCE
                     </TypewriterButton>
 
                     <TypewriterButton
@@ -388,7 +339,7 @@ export const AgentChatPanel: React.FC = () => {
                       onClick={() => handleApproval(msg.pendingAction!.action_id, 'allow_session')}
                       disabled={!isOperatorOrAdmin}
                     >
-                      <ShieldCheck size={12} /> [ 4H SESSION PERMIT ]
+                      <ShieldCheck size={12} /> 4H SESSION PERMIT
                     </TypewriterButton>
 
                     <TypewriterButton
@@ -396,7 +347,7 @@ export const AgentChatPanel: React.FC = () => {
                       onClick={() => setModalRequest(createApprovalRequest(msg.pendingAction!))}
                       title="Open interactive R:R ladder and order review modal"
                     >
-                      <Maximize2 size={12} /> [ EXPAND ORDER LADDER ]
+                      <Maximize2 size={12} /> EXPAND ORDER LADDER
                     </TypewriterButton>
 
                     <TypewriterButton
@@ -405,12 +356,12 @@ export const AgentChatPanel: React.FC = () => {
                       onClick={() => handleApproval(msg.pendingAction!.action_id, 'deny')}
                       disabled={!isOperatorOrAdmin}
                     >
-                      <X size={12} /> [ REJECT PROPOSAL ]
+                      <X size={12} /> REJECT PROPOSAL
                     </TypewriterButton>
                   </div>
 
                   {!isOperatorOrAdmin && (
-                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ledger-red)' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--color-ledger-red)' }}>
                       * Operator or Admin privileges required to authorize trade execution.
                     </span>
                   )}
@@ -427,13 +378,12 @@ export const AgentChatPanel: React.FC = () => {
                         padding: '2px 8px',
                         background: 'var(--color-paper)',
                         border: '1px solid var(--color-rule)',
-                        borderRadius: 'var(--radius-sm)',
                         color: 'var(--color-ink-soft)',
                         fontFamily: 'var(--font-precision)',
-                        fontWeight: 700,
+                        fontWeight: 600,
                       }}
                     >
-                      🔧 {t}
+                      TOOL · {t}
                     </span>
                   ))}
                 </div>
@@ -454,13 +404,11 @@ export const AgentChatPanel: React.FC = () => {
                   gap: '8px',
                   fontSize: '11px',
                   fontFamily: 'var(--font-precision)',
-                  fontWeight: 700,
-                  color: evt.type === 'tool_start' ? 'var(--color-win-blue)' : 'var(--color-ledger-green)',
+                  fontWeight: 600,
+                  color: evt.type === 'tool_start' ? 'var(--color-ink)' : 'var(--color-ledger-green)',
                   background: 'var(--color-paper-raised)',
                   padding: '6px 12px',
-                  borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--color-rule)',
-                  boxShadow: '1px 1px 0 var(--color-rule)',
                   width: 'fit-content',
                 }}
               >
@@ -476,12 +424,12 @@ export const AgentChatPanel: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 4. Typewriter Ribbon Input Bar */}
+      {/* 4. Editorial Input Bar */}
       <div
         style={{
           padding: '12px 16px',
           background: 'var(--color-paper-raised)',
-          borderTop: '2px solid var(--color-rule)',
+          borderTop: '1px solid var(--color-rule)',
           display: 'flex',
           gap: '12px',
           alignItems: 'stretch',
@@ -501,22 +449,20 @@ export const AgentChatPanel: React.FC = () => {
           }}
           placeholder={
             wsConnected
-              ? "Enter trade instruction or analysis query (e.g., 'analyze EURUSD')... [Press Enter to dispatch]"
+              ? "Enter trade instruction or analysis query (e.g., 'analyze EURUSD')... Press Enter to dispatch"
               : "Connecting to trading desk gateway..."
           }
           rows={2}
           style={{
             flex: 1,
             padding: '10px 14px',
-            borderRadius: 'var(--radius-sm)',
             background: 'var(--color-paper)',
-            border: '2px solid var(--color-rule)',
+            border: '1px solid var(--color-rule)',
             color: 'var(--color-ink)',
-            fontSize: 'var(--text-body-sm)',
+            fontSize: '12px',
             outline: 'none',
             resize: 'none',
             fontFamily: 'var(--font-precision)',
-            boxShadow: 'inset 1px 1px 0 rgba(0,0,0,0.06)',
           }}
         />
 
@@ -528,7 +474,7 @@ export const AgentChatPanel: React.FC = () => {
               title="Interrupt AI Execution"
               style={{ height: '100%' }}
             >
-              <Square size={14} /> [ HALT ]
+              <Square size={13} /> HALT
             </TypewriterButton>
           ) : (
             <TypewriterButton
@@ -537,7 +483,7 @@ export const AgentChatPanel: React.FC = () => {
               disabled={!inputText.trim() || !wsConnected}
               style={{ height: '100%' }}
             >
-              <Send size={14} /> [ DISPATCH ]
+              <Send size={13} /> DISPATCH
             </TypewriterButton>
           )}
         </div>

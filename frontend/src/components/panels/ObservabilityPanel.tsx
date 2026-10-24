@@ -379,7 +379,7 @@ export const ObservabilityPanel: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontFamily: 'var(--font-precision)' }}>
       {/* Sub-tab Navigation Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '2px solid var(--color-rule)', paddingBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--color-rule)', paddingBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <TypewriterButton
             size="sm"
@@ -885,7 +885,7 @@ export const ObservabilityPanel: React.FC = () => {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ borderBottom: '2px solid var(--color-rule)', color: 'var(--color-ink-muted)' }}>
+                    <tr style={{ borderBottom: '1px solid var(--color-rule)', color: 'var(--color-ink-muted)' }}>
                       <th style={{ padding: '8px 10px' }}>SEQ</th>
                       <th style={{ padding: '8px 10px' }}>EVENT TYPE</th>
                       <th style={{ padding: '8px 10px' }}>TIMESTAMP</th>
@@ -1111,4 +1111,3 @@ export const ObservabilityPanel: React.FC = () => {
     </div>
   );
 };
-

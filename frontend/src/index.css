@@ -617,12 +617,17 @@ body {
 }
 
 .ledger-table tbody tr {
-  transition: background-color var(--transition-fast);
+  transition: background-color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.ledger-table tbody:hover tr:not(:hover) {
+  opacity: 0.48;
 }
 
 .ledger-table tbody tr:hover,
 .greenbar-row:hover {
   background: var(--color-well) !important;
+  opacity: 1;
 }
 
 tr.retro-row-selected,

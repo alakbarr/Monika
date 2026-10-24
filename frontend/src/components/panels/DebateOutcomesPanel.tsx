@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
 import { api } from '../../lib/api';
@@ -7,12 +6,10 @@ import type { DebateOutcomeItem } from '../../types/api';
 import {
   TrendingUp,
   TrendingDown,
-  ShieldAlert,
   Scale,
   RefreshCw,
   Search,
   Clock,
-  Sparkles,
   ChevronDown,
   ChevronUp,
   Award,
@@ -20,29 +17,50 @@ import {
 
 const renderThesisContent = (content: unknown) => {
   if (!content) {
-    return <span style={{ color: 'var(--color-ink-muted)', fontStyle: 'italic' }}>No thesis recorded.</span>;
+    return (
+      <span style={{ color: 'var(--color-ink-muted)', fontStyle: 'italic' }}>
+        No thesis recorded for this cycle.
+      </span>
+    );
   }
   if (typeof content === 'string') {
-    return <span>{content}</span>;
+    return <p style={{ margin: 0, lineHeight: 1.65, color: 'var(--color-ink-soft)' }}>{content}</p>;
   }
   if (typeof content === 'object') {
     const obj = content as Record<string, unknown>;
     const summary = obj.summary || obj.thesis || obj.claim || obj.argument || obj.core_thesis;
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {summary && (
-          <div style={{ fontWeight: 600, color: 'var(--color-ink)', fontSize: '13px' }}>
-            {String(summary)}
+          <div
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '17px',
+              lineHeight: 1.35,
+              color: 'var(--color-ink)',
+            }}
+          >
+            “{String(summary)}”
           </div>
         )}
         {Object.entries(obj).map(([k, v]) => {
           if (['summary', 'thesis', 'claim', 'argument', 'core_thesis'].includes(k)) return null;
           return (
-            <div key={k} style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <span style={{ color: 'var(--color-ink-muted)', textTransform: 'capitalize', fontWeight: 500 }}>
-                {k.replace(/_/g, ' ')}:
+            <div
+              key={k}
+              style={{
+                fontSize: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '3px',
+                paddingTop: '6px',
+                borderTop: '1px solid var(--color-rule)',
+              }}
+            >
+              <span className="editorial-kicker">
+                {k.replace(/_/g, ' ')}
               </span>
-              <span style={{ color: 'var(--color-ink)', fontFamily: 'var(--font-precision)' }}>
+              <span style={{ color: 'var(--color-ink-soft)', fontFamily: 'var(--font-sans)', lineHeight: 1.55 }}>
                 {typeof v === 'object' ? JSON.stringify(v) : String(v)}
               </span>
             </div>
@@ -116,55 +134,41 @@ export const DebateOutcomesPanel: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}><Skeleton height="90px" /></Card>
-          ))}
-        </div>
-        <Card><Skeleton height="350px" /></Card>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <Skeleton height="90px" />
+        <Skeleton height="350px" />
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header */}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {/* Editorial Broadsheet Header */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: 'flex-end',
           flexWrap: 'wrap',
           gap: '16px',
-          borderBottom: '1px solid var(--color-border)',
-          paddingBottom: '16px',
+          borderBottom: '1px solid var(--color-rule)',
+          paddingBottom: '14px',
+          marginBottom: '16px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div
+        <div>
+          <div className="editorial-kicker">I. DIALECTIC ADJUDICATION</div>
+          <h2
             style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '2px',
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-surface-card)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              fontFamily: 'var(--font-display)',
+              fontSize: '24px',
+              fontWeight: 400,
+              margin: '2px 0 0 0',
               color: 'var(--color-ink)',
             }}
           >
-            <Scale size={18} />
-          </div>
-          <div>
-            <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--color-ink)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Bull vs Bear Debate Outcomes & Adjudication
-            </h2>
-            <div style={{ fontSize: '12px', color: 'var(--color-ink-muted)', marginTop: '2px', fontFamily: 'var(--font-precision)' }}>
-              Multi-agent dialectic arbitration, specialist thesis comparison, and final trade conviction
-            </div>
-          </div>
+            Bull vs. Bear Dialectic Broadsheet
+          </h2>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -173,18 +177,16 @@ export const DebateOutcomesPanel: React.FC = () => {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              height: '28px',
-              boxSizing: 'border-box',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '0 8px',
+              height: '30px',
+              background: 'var(--color-paper)',
+              border: '1px solid var(--color-rule)',
+              padding: '0 10px',
             }}
           >
-            <Search size={13} color="var(--color-ink-muted)" />
+            <Search size={12} color="var(--color-ink-muted)" />
             <input
               type="text"
-              placeholder="Search symbol..."
+              placeholder="Filter instrument..."
               value={symbolFilter}
               onChange={(e) => setSymbolFilter(e.target.value)}
               style={{
@@ -193,7 +195,7 @@ export const DebateOutcomesPanel: React.FC = () => {
                 color: 'var(--color-ink)',
                 fontSize: '11px',
                 outline: 'none',
-                width: '120px',
+                width: '130px',
                 fontFamily: 'var(--font-precision)',
               }}
             />
@@ -202,124 +204,104 @@ export const DebateOutcomesPanel: React.FC = () => {
           <button
             onClick={() => fetchData(true)}
             disabled={refreshing}
-            className="typewriter-btn"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              height: '28px',
-              boxSizing: 'border-box',
-              padding: '0 12px',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--color-ink)',
-              fontSize: '11px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              cursor: refreshing ? 'not-allowed' : 'pointer',
-              fontFamily: 'var(--font-precision)',
-            }}
+            className="editorial-btn editorial-btn--ghost"
           >
             <RefreshCw size={12} className={refreshing ? 'spin-anim' : ''} />
-            {refreshing ? 'REFRESHING...' : 'REFRESH'}
+            {refreshing ? 'SYNCING...' : 'REFRESH'}
           </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* Unboxed 4-Column Architectural KPI Strip */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '16px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+          borderTop: '1px solid var(--color-rule)',
+          borderBottom: '1px solid var(--color-rule)',
+          borderLeft: '1px solid var(--color-rule)',
+          marginBottom: '20px',
+          background: 'var(--color-paper-raised)',
         }}
       >
-        <Card className="ledger-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Total Adjudicated Debates
-              </div>
-              <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--color-ink)', marginTop: '4px', fontFamily: 'var(--font-precision)' }}>
-                {totalDebates}
-              </div>
-            </div>
-            <div style={{ color: 'var(--color-brass)' }}>
-              <Scale size={18} />
-            </div>
+        <div style={{ padding: '14px 16px', borderRight: '1px solid var(--color-rule)' }}>
+          <div className="editorial-kicker">ADJUDICATED DEBATES</div>
+          <div
+            className="tabular-nums"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '28px',
+              color: 'var(--color-ink)',
+              marginTop: '4px',
+            }}
+          >
+            {totalDebates}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '8px', fontFamily: 'var(--font-precision)' }}>
-            Multi-agent arbitration cycles
+          <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-precision)' }}>
+            Dialectic cycles recorded
           </div>
-        </Card>
+        </div>
 
-        <Card className="ledger-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Bull vs Bear Decisions
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-profit)', fontFamily: 'var(--font-precision)' }}>
-                  ▲ {buyDecisions}
-                </span>
-                <span style={{ fontSize: '16px', color: 'var(--color-ink-muted)' }}>/</span>
-                <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-loss)', fontFamily: 'var(--font-precision)' }}>
-                  ▼ {sellDecisions}
-                </span>
-              </div>
-            </div>
-            <div style={{ color: 'var(--color-ink-muted)' }}>
-              <Sparkles size={18} />
-            </div>
+        <div style={{ padding: '14px 16px', borderRight: '1px solid var(--color-rule)' }}>
+          <div className="editorial-kicker">DIRECTIONAL SPLIT</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '4px' }}>
+            <span
+              className="tabular-nums"
+              style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: 'var(--color-profit)' }}
+            >
+              +{buyDecisions}
+            </span>
+            <span style={{ color: 'var(--color-ink-muted)', fontFamily: 'var(--font-precision)' }}>/</span>
+            <span
+              className="tabular-nums"
+              style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: 'var(--color-loss)' }}
+            >
+              -{sellDecisions}
+            </span>
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '8px', fontFamily: 'var(--font-precision)' }}>
-            Directional outcome breakdown
+          <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-precision)' }}>
+            Bullish vs. Bearish verdicts
           </div>
-        </Card>
+        </div>
 
-        <Card className="ledger-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Average Conviction / Confidence
-              </div>
-              <div style={{ fontSize: '24px', fontWeight: 700, color: Number(avgConfidence) >= 70 ? 'var(--color-profit)' : 'var(--color-warning)', marginTop: '4px', fontFamily: 'var(--font-precision)' }}>
-                {avgConfidence}%
-              </div>
-            </div>
-            <div style={{ color: 'var(--color-profit)' }}>
-              <TrendingUp size={18} />
-            </div>
+        <div style={{ padding: '14px 16px', borderRight: '1px solid var(--color-rule)' }}>
+          <div className="editorial-kicker">MEAN CONVICTION</div>
+          <div
+            className="tabular-nums"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '28px',
+              color: Number(avgConfidence) >= 70 ? 'var(--color-profit)' : 'var(--color-ink)',
+              marginTop: '4px',
+            }}
+          >
+            {avgConfidence}%
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '8px', fontFamily: 'var(--font-precision)' }}>
-            Post-debate confidence level
+          <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-precision)' }}>
+            Post-arbitration confidence
           </div>
-        </Card>
+        </div>
 
-        <Card className="ledger-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Average Confluence Score
-              </div>
-              <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--color-brass)', marginTop: '4px', fontFamily: 'var(--font-precision)' }}>
-                {avgConfluence}
-              </div>
-            </div>
-            <div style={{ color: 'var(--color-brass)' }}>
-              <ShieldAlert size={18} />
-            </div>
+        <div style={{ padding: '14px 16px', borderRight: '1px solid var(--color-rule)' }}>
+          <div className="editorial-kicker">MEAN CONFLUENCE</div>
+          <div
+            className="tabular-nums"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '28px',
+              color: 'var(--color-ink)',
+              marginTop: '4px',
+            }}
+          >
+            {avgConfluence}
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '8px', fontFamily: 'var(--font-precision)' }}>
-            Technical + macro signal alignment
+          <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-precision)' }}>
+            Macro + technical alignment
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* Debates List */}
+      {/* Debates Broadsheet Stack */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {filteredDebates.length > 0 ? (
           filteredDebates.map((item) => {
@@ -330,11 +312,23 @@ export const DebateOutcomesPanel: React.FC = () => {
             const adj = item.specialist_adjudication;
 
             return (
-              <Card key={item.id} className="ledger-card">
-                {/* Collapsible Card Header */}
+              <div
+                key={item.id}
+                className="editorial-section swiss-crosshair"
+                style={{
+                  border: '1px solid var(--color-rule)',
+                  background: 'var(--color-paper-raised)',
+                }}
+              >
+                {/* Collapsible Broadsheet Masthead */}
                 <div
                   onClick={() => toggleExpand(item.id)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(item.id); } }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleExpand(item.id);
+                    }
+                  }}
                   role="button"
                   tabIndex={0}
                   aria-expanded={isExpanded}
@@ -346,65 +340,85 @@ export const DebateOutcomesPanel: React.FC = () => {
                     userSelect: 'none',
                     flexWrap: 'wrap',
                     gap: '12px',
+                    padding: '14px 18px',
+                    background: isExpanded ? 'var(--color-paper)' : 'transparent',
+                    borderBottom: isExpanded ? '1px solid var(--color-rule)' : 'none',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                     <div
                       style={{
-                        fontSize: '15px',
-                        fontWeight: 700,
+                        fontFamily: 'var(--font-display)',
+                        fontSize: '20px',
                         color: 'var(--color-ink)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
+                        gap: '10px',
                       }}
                     >
                       {item.symbol}
                       <Badge variant={isBuy ? 'buy' : 'sell'} size="sm">
                         {isBuy ? (
-                          <TrendingUp size={11} style={{ marginRight: 2 }} />
+                          <TrendingUp size={11} style={{ marginRight: 3 }} />
                         ) : (
-                          <TrendingDown size={11} style={{ marginRight: 2 }} />
+                          <TrendingDown size={11} style={{ marginRight: 3 }} />
                         )}
-                        {item.decision?.toUpperCase() ?? 'N/A'}
+                        {item.decision?.toUpperCase() ?? 'HOLD'}
                       </Badge>
                     </div>
 
-                    {/* Confidence with meter bar */}
+                    {/* Confidence with hairline meter */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '11px', color: 'var(--color-ink-muted)' }}>
-                        Confidence:
-                      </span>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-ink)', fontFamily: 'var(--font-precision)' }}>
+                      <span className="editorial-kicker">CONVICTION</span>
+                      <span
+                        className="tabular-nums"
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: 'var(--color-ink)',
+                          fontFamily: 'var(--font-precision)',
+                        }}
+                      >
                         {item.confidence !== null && item.confidence !== undefined ? `${confVal.toFixed(0)}%` : '—'}
                       </span>
-                      <div style={{ width: '50px', height: '3px', background: 'var(--color-rule)', borderRadius: '1px', overflow: 'hidden' }}>
+                      <div style={{ width: '56px', height: '3px', background: 'var(--color-rule)', overflow: 'hidden' }}>
                         <div
                           style={{
                             width: `${Math.min(100, Math.max(0, confVal))}%`,
                             height: '100%',
                             background: isBuy ? 'var(--color-profit)' : 'var(--color-loss)',
-                            borderRadius: '1px',
                           }}
                         />
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '11px', color: 'var(--color-ink-muted)' }}>
-                        Confluence:
-                      </span>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-brass)', fontFamily: 'var(--font-precision)' }}>
+                      <span className="editorial-kicker">CONFLUENCE</span>
+                      <span
+                        className="tabular-nums"
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: 'var(--color-ink)',
+                          fontFamily: 'var(--font-precision)',
+                        }}
+                      >
                         {item.confluence_score !== null && item.confluence_score !== undefined ? item.confluence_score : '—'}
                       </span>
                     </div>
 
                     {item.risk_multiplier !== null && item.risk_multiplier !== undefined && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '11px', color: 'var(--color-ink-muted)' }}>
-                          Risk:
-                        </span>
-                        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-ink-muted)', fontFamily: 'var(--font-precision)' }}>
+                        <span className="editorial-kicker">RISK MULT</span>
+                        <span
+                          className="tabular-nums"
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: 'var(--color-ink-soft)',
+                            fontFamily: 'var(--font-precision)',
+                          }}
+                        >
                           {item.risk_multiplier}x
                         </span>
                       </div>
@@ -417,144 +431,148 @@ export const DebateOutcomesPanel: React.FC = () => {
                         {item.execution_status}
                       </Badge>
                     )}
-                    <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'var(--font-precision)' }}>
+                    <div
+                      style={{
+                        fontSize: '11px',
+                        color: 'var(--color-ink-muted)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontFamily: 'var(--font-precision)',
+                      }}
+                    >
                       <Clock size={11} />
                       {item.generated_at ? new Date(item.generated_at).toLocaleString() : '—'}
                     </div>
-                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                   </div>
                 </div>
 
-                {/* Expanded Details */}
+                {/* Expanded 2-Column Swiss Broadsheet Details */}
                 {isExpanded && (
-                  <div
-                    style={{
-                      marginTop: '14px',
-                      paddingTop: '14px',
-                      borderTop: '1px solid var(--color-border)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '14px',
-                    }}
-                  >
-                    {/* Bull vs Bear Argument Cards Side-by-Side */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px' }}>
-                      {/* Bull Thesis Card */}
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {/* 2-Column Bull vs Bear Broadsheet Grid */}
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                        borderBottom: '1px solid var(--color-rule)',
+                      }}
+                    >
+                      {/* Column I: Bullish Proponent */}
                       <div
                         style={{
-                          background: 'var(--color-surface)',
-                          border: '1px solid var(--color-profit)',
-                          borderLeft: '3px solid var(--color-profit)',
-                          borderRadius: '2px',
-                          padding: '14px',
+                          padding: '18px 20px',
+                          borderRight: '1px solid var(--color-rule)',
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '8px',
+                          gap: '10px',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-profit)', fontWeight: 700, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          <TrendingUp size={14} />
-                          <span>Bull Thesis & Arguments</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span className="editorial-kicker" style={{ color: 'var(--color-profit)' }}>
+                            I. BULLISH THESIS — PROPONENT
+                          </span>
+                          <TrendingUp size={13} color="var(--color-profit)" />
                         </div>
-                        <div style={{ fontSize: '12px', color: 'var(--color-ink)', lineHeight: 1.6 }}>
+                        <div style={{ fontSize: '13px', color: 'var(--color-ink)', lineHeight: 1.65 }}>
                           {renderThesisContent(item.debate_bull_thesis)}
                         </div>
                       </div>
 
-                      {/* Bear Dissent Card */}
+                      {/* Column II: Bearish Dissent */}
                       <div
                         style={{
-                          background: 'var(--color-surface)',
-                          border: '1px solid var(--color-loss)',
-                          borderLeft: '3px solid var(--color-loss)',
-                          borderRadius: '2px',
-                          padding: '14px',
+                          padding: '18px 20px',
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '8px',
+                          gap: '10px',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-loss)', fontWeight: 700, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          <TrendingDown size={14} />
-                          <span>Bear Dissent & Counter-Arguments</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span className="editorial-kicker" style={{ color: 'var(--color-loss)' }}>
+                            II. BEARISH COUNTER-THESIS — DISSENT
+                          </span>
+                          <TrendingDown size={13} color="var(--color-loss)" />
                         </div>
-                        <div style={{ fontSize: '12px', color: 'var(--color-ink)', lineHeight: 1.6 }}>
+                        <div style={{ fontSize: '13px', color: 'var(--color-ink)', lineHeight: 1.65 }}>
                           {renderThesisContent(item.debate_bear_dissent)}
                         </div>
                       </div>
                     </div>
 
-                    {/* Debate Verdict & Reason Banner */}
-                    {(item.debate_verdict || item.debate_reason) && (
-                      <div
-                        style={{
-                          background: 'var(--color-surface-card)',
-                          border: '1px solid var(--color-border)',
-                          borderLeft: '3px solid var(--color-brass)',
-                          borderRadius: '2px',
-                          padding: '10px 14px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Award size={14} color="var(--color-brass)" />
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-brass)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Debate Verdict: {item.debate_verdict || item.decision?.toUpperCase() || 'N/A'}
+                    {/* Section III: Judge Verdict Pull-Quote & Synthesis */}
+                    <div
+                      style={{
+                        padding: '18px 20px',
+                        background: 'var(--color-paper)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Scale size={14} color="var(--color-accent)" />
+                          <span className="editorial-kicker" style={{ color: 'var(--color-accent)' }}>
+                            III. CHIEF RISK JUDGE VERDICT — {item.debate_verdict || item.decision?.toUpperCase() || 'ADJUDICATED'}
                           </span>
                         </div>
-                        {item.debate_reason && (
-                          <div style={{ fontSize: '12px', color: 'var(--color-ink-muted)', lineHeight: 1.5 }}>
-                            {item.debate_reason}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Synthesis Rationale */}
-                    <div>
-                      <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
-                        Synthesis Rationale
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '12px',
-                          color: 'var(--color-ink)',
-                          lineHeight: 1.6,
-                          background: 'var(--color-surface)',
-                          padding: '10px 14px',
-                          borderRadius: '2px',
-                          border: '1px solid var(--color-border)',
-                          whiteSpace: 'pre-wrap',
-                          fontFamily: 'var(--font-precision)',
-                        }}
-                      >
-                        {item.rationale || 'No specific rationale provided.'}
-                      </div>
-                    </div>
-
-                    {/* Specialist Adjudication breakdown */}
-                    {adj && (
-                      <div>
-                        <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>
-                          Specialist Dialectic Adjudication
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Award size={13} color="var(--color-ink-muted)" />
+                          <span style={{ fontSize: '11px', fontFamily: 'var(--font-precision)', color: 'var(--color-ink-muted)' }}>
+                            RECORD #{item.id}
+                          </span>
                         </div>
-                        <div
+                      </div>
+
+                      {(item.debate_reason || item.rationale) && (
+                        <blockquote
                           style={{
-                            background: 'var(--color-surface)',
-                            borderRadius: '2px',
-                            padding: '10px 14px',
-                            border: '1px solid var(--color-border)',
+                            margin: 0,
+                            paddingLeft: '14px',
+                            borderLeft: '2px solid var(--color-accent)',
+                            fontFamily: 'var(--font-display)',
+                            fontSize: '18px',
+                            lineHeight: 1.45,
+                            color: 'var(--color-ink)',
                           }}
                         >
+                          “{item.debate_reason || item.rationale}”
+                        </blockquote>
+                      )}
+
+                      {item.rationale && item.debate_reason && item.rationale !== item.debate_reason && (
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            color: 'var(--color-ink-soft)',
+                            lineHeight: 1.6,
+                            fontFamily: 'var(--font-sans)',
+                            paddingTop: '8px',
+                            borderTop: '1px solid var(--color-rule)',
+                          }}
+                        >
+                          {item.rationale}
+                        </div>
+                      )}
+
+                      {/* Specialist Adjudication breakdown */}
+                      {adj && (
+                        <div style={{ paddingTop: '10px', borderTop: '1px solid var(--color-rule)' }}>
+                          <div className="editorial-kicker" style={{ marginBottom: '6px' }}>
+                            IV. SPECIALIST DIALECTIC ADJUDICATION MATRIX
+                          </div>
                           {typeof adj === 'object' ? (
                             <pre
                               style={{
                                 margin: 0,
+                                padding: '10px 12px',
+                                background: 'var(--color-paper-raised)',
+                                border: '1px solid var(--color-rule)',
                                 fontSize: '11px',
                                 fontFamily: 'var(--font-precision)',
-                                color: 'var(--color-ink)',
+                                color: 'var(--color-ink-soft)',
                                 overflowX: 'auto',
                                 whiteSpace: 'pre-wrap',
                                 wordBreak: 'break-word',
@@ -563,24 +581,31 @@ export const DebateOutcomesPanel: React.FC = () => {
                               {JSON.stringify(adj, null, 2)}
                             </pre>
                           ) : (
-                            <div style={{ fontSize: '12px', color: 'var(--color-ink)', lineHeight: 1.6 }}>
+                            <div style={{ fontSize: '12px', color: 'var(--color-ink-soft)', lineHeight: 1.6 }}>
                               {String(adj)}
                             </div>
                           )}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
-              </Card>
+              </div>
             );
           })
         ) : (
-          <Card className="ledger-card">
-            <div style={{ textAlign: 'center', padding: '32px', color: 'var(--color-ink-muted)' }}>
-              No debate outcomes found matching filter.
-            </div>
-          </Card>
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '36px',
+              border: '1px solid var(--color-rule)',
+              color: 'var(--color-ink-muted)',
+              fontFamily: 'var(--font-precision)',
+              fontSize: '12px',
+            }}
+          >
+            No dialectic debate outcomes found matching filter.
+          </div>
         )}
       </div>
     </div>

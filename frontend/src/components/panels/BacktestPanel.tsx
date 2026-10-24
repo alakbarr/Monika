@@ -177,7 +177,7 @@ export const BacktestPanel: React.FC = () => {
           justifyContent: 'space-between',
           background: 'var(--color-paper-raised)',
           padding: '12px 18px',
-          border: '2px solid var(--color-rule)',
+          border: '1px solid var(--color-rule)',
           borderRadius: 'var(--radius-card)',
           boxShadow: 'var(--shadow-card)',
           flexWrap: 'wrap',

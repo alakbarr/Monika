@@ -136,7 +136,7 @@ export const PluginManagerPanel: React.FC = () => {
         className="win-window ledger-card"
         style={{
           background: 'var(--color-paper-raised)',
-          border: '2px solid var(--color-rule)',
+          border: '1px solid var(--color-rule)',
           borderRadius: 'var(--radius-card)',
           padding: '16px 20px',
           boxShadow: 'var(--shadow-card)',
@@ -212,7 +212,7 @@ export const PluginManagerPanel: React.FC = () => {
         style={{
           display: 'flex',
           gap: '8px',
-          borderBottom: '2px solid var(--color-rule)',
+          borderBottom: '1px solid var(--color-rule)',
           paddingBottom: '2px',
         }}
       >
@@ -227,7 +227,7 @@ export const PluginManagerPanel: React.FC = () => {
             fontSize: '0.9rem',
             padding: '8px 18px',
             background: activeSubView === 'installed' ? 'var(--color-paper-raised)' : 'transparent',
-            border: activeSubView === 'installed' ? '2px solid var(--color-rule)' : '2px solid transparent',
+            border: activeSubView === 'installed' ? '1px solid var(--color-rule)' : '1px solid transparent',
             borderBottom: 'none',
             borderTopLeftRadius: '6px',
             borderTopRightRadius: '6px',
@@ -249,7 +249,7 @@ export const PluginManagerPanel: React.FC = () => {
             fontSize: '0.9rem',
             padding: '8px 18px',
             background: activeSubView === 'marketplace' ? 'var(--color-paper-raised)' : 'transparent',
-            border: activeSubView === 'marketplace' ? '2px solid var(--color-rule)' : '2px solid transparent',
+            border: activeSubView === 'marketplace' ? '1px solid var(--color-rule)' : '1px solid transparent',
             borderBottom: 'none',
             borderTopLeftRadius: '6px',
             borderTopRightRadius: '6px',
@@ -271,7 +271,7 @@ export const PluginManagerPanel: React.FC = () => {
             fontSize: '0.9rem',
             padding: '8px 18px',
             background: activeSubView === 'custom' ? 'var(--color-paper-raised)' : 'transparent',
-            border: activeSubView === 'custom' ? '2px solid var(--color-rule)' : '2px solid transparent',
+            border: activeSubView === 'custom' ? '1px solid var(--color-rule)' : '1px solid transparent',
             borderBottom: 'none',
             borderTopLeftRadius: '6px',
             borderTopRightRadius: '6px',
@@ -684,7 +684,7 @@ export const PluginManagerPanel: React.FC = () => {
           className="win-window ledger-card"
           style={{
             background: 'var(--color-paper-raised)',
-            border: '2px solid var(--color-rule)',
+            border: '1px solid var(--color-rule)',
             borderRadius: 'var(--radius-card)',
             padding: '20px',
             maxWidth: '680px',
@@ -791,7 +791,7 @@ export const PluginManagerPanel: React.FC = () => {
             style={{
               background: 'var(--color-console-bg)',
               color: 'var(--color-console-phosphor)',
-              border: '2px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               borderRadius: 'var(--radius-card)',
               width: '100%',
               maxWidth: '720px',
@@ -806,7 +806,7 @@ export const PluginManagerPanel: React.FC = () => {
               className="win-titlebar"
               style={{
                 padding: '8px 14px',
-                borderBottom: '2px solid var(--color-rule)',
+                borderBottom: '1px solid var(--color-rule)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -855,7 +855,7 @@ export const PluginManagerPanel: React.FC = () => {
             <div
               style={{
                 padding: '10px 16px',
-                borderTop: '2px solid var(--color-rule)',
+                borderTop: '1px solid var(--color-rule)',
                 display: 'flex',
                 justifyContent: 'flex-end',
                 background: 'var(--color-paper-raised)',

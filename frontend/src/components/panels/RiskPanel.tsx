@@ -110,7 +110,7 @@ export const RiskPanel: React.FC = () => {
         style={{
           padding: '16px 20px',
           background: isPaused ? 'var(--color-loss-dim)' : 'var(--color-paper-raised)',
-          border: `2px solid ${isPaused ? 'var(--color-ledger-red)' : 'var(--color-rule)'}`,
+          border: `1px solid ${isPaused ? 'var(--color-ledger-red)' : 'var(--color-rule)'}`,
           borderRadius: 'var(--radius-card)',
           boxShadow: 'var(--shadow-card)',
           display: 'flex',
@@ -131,7 +131,7 @@ export const RiskPanel: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '2px solid var(--color-rule)',
+              border: '1px solid var(--color-rule)',
               boxShadow: '2px 2px 0 var(--color-rule)',
             }}
           >
@@ -177,7 +177,7 @@ export const RiskPanel: React.FC = () => {
           style={{
             padding: '10px 14px',
             background: 'var(--color-paper)',
-            border: '2px solid var(--color-win-yellow)',
+            border: '1px solid var(--color-win-yellow)',
             borderRadius: 'var(--radius-sm)',
             fontSize: 'var(--text-xs)',
             color: 'var(--color-ink)',

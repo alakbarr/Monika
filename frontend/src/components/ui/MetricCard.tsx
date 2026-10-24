@@ -21,14 +21,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   loading = false,
 }) => {
   return (
-    <div
-      className="win-window ledger-card"
+    <section
+      className="editorial-section swiss-crosshair"
       style={{
-        background: 'var(--color-paper-raised)',
-        border: '2px solid var(--color-rule)',
-        borderLeft: accent ? '5px solid var(--color-win-yellow)' : '2px solid var(--color-rule)',
-        borderRadius: 'var(--radius-card)',
-        boxShadow: 'var(--shadow-card)',
+        background: 'var(--color-surface)',
+        borderTop: accent ? '2px solid var(--color-ink)' : '1px solid var(--color-border)',
+        borderBottom: '1px solid var(--color-border)',
         padding: '16px',
         display: 'flex',
         flexDirection: 'column',
@@ -37,27 +35,16 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span
-          style={{
-            fontSize: 'var(--text-xs)',
-            fontWeight: 'var(--weight-bold)',
-            color: 'var(--color-ink-soft)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            fontFamily: 'var(--font-precision)',
-          }}
-        >
-          {title}
-        </span>
+        <span className="editorial-kicker">{title}</span>
         {icon && (
           <span
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '24px',
-              height: '24px',
-              color: accent ? 'var(--color-brass)' : 'var(--color-ink-soft)',
+              width: '20px',
+              height: '20px',
+              color: 'var(--color-ink-muted)',
             }}
           >
             {icon}
@@ -71,10 +58,10 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         <div
           className="tabular-nums"
           style={{
-            fontSize: 'var(--text-display-sm)',
-            fontWeight: 'var(--weight-bold)',
-            fontFamily: 'var(--font-precision)',
-            color: accent ? 'var(--color-brass)' : 'var(--color-ink)',
+            fontSize: '26px',
+            fontWeight: 600,
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--color-ink)',
             lineHeight: 1.1,
             letterSpacing: '-0.02em',
           }}
@@ -89,9 +76,9 @@ export const MetricCard: React.FC<MetricCardProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            fontSize: 'var(--text-xs)',
+            fontSize: '11px',
             color: 'var(--color-ink-soft)',
-            fontFamily: 'var(--font-precision)',
+            fontFamily: 'var(--font-mono)',
           }}
         >
           {trend && (
@@ -100,9 +87,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '3px',
-                color: trend.value >= 0 ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)',
-                fontWeight: 'var(--weight-bold)',
-                fontFamily: 'var(--font-precision)',
+                color: trend.value >= 0 ? 'var(--color-profit)' : 'var(--color-loss)',
+                fontWeight: 600,
               }}
             >
               {trend.value >= 0 ? '▲' : '▼'} {Math.abs(trend.value).toFixed(2)}%
@@ -111,6 +97,6 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           {subtitle && <span>{subtitle}</span>}
         </div>
       )}
-    </div>
+    </section>
   );
 };

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Clock } from 'lucide-react';
 import type { GraphNode as GraphNodeType } from '../../../types/api';
-import { getNodeIcon, getStatusColor } from './graphUtils';
+import { getNodeIcon, getStageKicker, getStatusColor } from './graphUtils';
 
 interface GraphNodeProps {
   node: GraphNodeType;
@@ -22,6 +22,7 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
 }) => {
   const Icon = getNodeIcon(node.id);
   const statusColor = getStatusColor(node.status);
+  const stageKicker = getStageKicker(node.id, node.stage);
 
   return (
     <g
@@ -32,43 +33,40 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
       }}
       style={{ cursor: 'pointer' }}
     >
-      {/* Retro 3D Hard Shadow Rect */}
-      <rect
-        x="3"
-        y="3"
-        width={nodeWidth}
-        height={nodeHeight}
-        rx="3"
-        fill="var(--color-rule)"
-      />
-
-      {/* Node Card Background Rect */}
+      {/* 1px Architectural Schematic Node Frame */}
       <rect
         x="0"
         y="0"
         width={nodeWidth}
         height={nodeHeight}
-        rx="3"
+        rx="0"
         fill="var(--color-paper-raised)"
-        stroke={isSelected ? 'var(--color-brass)' : node.status === 'skipped' ? 'var(--color-ink-muted)' : 'var(--color-rule)'}
-        strokeWidth={isSelected ? 2.5 : 1.5}
+        stroke={isSelected ? 'var(--color-ink)' : node.status === 'skipped' ? 'var(--color-ink-muted)' : 'var(--color-rule-strong)'}
+        strokeWidth={isSelected ? 1.5 : 1}
         strokeDasharray={node.status === 'skipped' ? '4 3' : undefined}
-        opacity={node.status === 'skipped' ? 0.8 : 1}
+        opacity={node.status === 'skipped' ? 0.78 : 1}
       />
 
-      {/* Top Accent Strip */}
+      {/* Top Hairline Status Indicator */}
       <rect
         x="0"
         y="0"
         width={nodeWidth}
-        height="4"
-        rx="2"
-        fill={statusColor}
-        opacity={node.status === 'skipped' ? 0.6 : 1}
+        height="2"
+        rx="0"
+        fill={isSelected ? 'var(--color-accent)' : statusColor}
+        opacity={node.status === 'skipped' ? 0.5 : 1}
       />
 
-      {/* Node Header: Icon + Title */}
-      <foreignObject x="8" y="10" width={nodeWidth - 16} height={nodeHeight - 18}>
+      {/* Swiss Crosshair Corner Tick (Top-Left) */}
+      <path
+        d="M -3 0 L 3 0 M 0 -3 L 0 3"
+        stroke="var(--color-ink-muted)"
+        strokeWidth="1"
+      />
+
+      {/* Node Schematic Content */}
+      <foreignObject x="10" y="10" width={nodeWidth - 20} height={nodeHeight - 18}>
         <div
           style={{
             display: 'flex',
@@ -79,79 +77,64 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
             fontFamily: 'var(--font-precision)',
           }}
         >
-          {/* Title Row */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0, flex: 1 }}>
-              <div
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: '3px',
-                  background: 'var(--color-paper)',
-                  border: '1px solid var(--color-rule)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: statusColor,
-                  flexShrink: 0,
-                }}
-              >
-                <Icon size={13} />
-              </div>
-
+          {/* Stage Kicker + Status */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
               <span
                 style={{
-                  fontSize: node.name.length > 18 ? '8.5px' : '10.5px',
-                  fontWeight: 800,
+                  fontSize: '11px',
+                  letterSpacing: '0.1em',
+                  color: 'var(--color-ink-muted)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {stageKicker}
+              </span>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  color: statusColor,
+                }}
+              >
+                <span
+                  style={{
+                    width: 5,
+                    height: 5,
+                    backgroundColor: statusColor,
+                    display: 'inline-block',
+                  }}
+                />
+                {node.status}
+              </span>
+            </div>
+
+            {/* Title Row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+              <Icon size={13} color={statusColor} style={{ flexShrink: 0 }} />
+              <span
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '15px',
+                  fontWeight: 400,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   color: 'var(--color-ink)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.01em',
                 }}
                 title={node.name}
               >
                 {node.name}
               </span>
             </div>
-
-            {/* Status pill with retro pixel LED */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '3px',
-                padding: '1px 5px',
-                borderRadius: '2px',
-                background: 'var(--color-paper)',
-                border: `1px solid ${statusColor}`,
-                flexShrink: 0,
-              }}
-            >
-              <span
-                style={{
-                  width: 4,
-                  height: 4,
-                  borderRadius: 1,
-                  backgroundColor: statusColor,
-                  display: 'inline-block',
-                }}
-              />
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  color: statusColor,
-                }}
-              >
-                {node.status}
-              </span>
-            </div>
           </div>
 
-          {/* Node Body Chips */}
+          {/* Node Telemetry Footer */}
           <div
             style={{
               display: 'flex',
@@ -159,10 +142,11 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
               justifyContent: 'space-between',
               gap: '6px',
               paddingTop: '6px',
-              borderTop: '1px dashed var(--color-rule)',
+              borderTop: '1px solid var(--color-rule)',
             }}
           >
             <span
+              className="tabular-nums"
               style={{
                 fontSize: '11px',
                 fontFamily: 'var(--font-precision)',
@@ -172,19 +156,20 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
                 gap: '3px',
               }}
             >
-              <Clock size={11} />
-              {node.status === 'skipped' ? 'bypassed' : `${(node.duration_ms / 1000).toFixed(2)}s`}
+              <Clock size={10} />
+              {node.status === 'skipped' ? 'BYPASSED' : `${(node.duration_ms / 1000).toFixed(2)}s`}
             </span>
 
             <span
+              className="tabular-nums"
               style={{
                 fontSize: '11px',
                 fontFamily: 'var(--font-precision)',
-                fontWeight: 700,
-                color: node.tokens.total > 0 ? 'var(--color-win-blue)' : 'var(--color-ink-soft)',
+                fontWeight: 600,
+                color: node.tokens.total > 0 ? 'var(--color-ink)' : 'var(--color-ink-muted)',
               }}
             >
-              {node.tokens.total > 0 ? `${(node.tokens.total / 1000).toFixed(1)}k tok` : '0 tok'}
+              {node.tokens.total > 0 ? `${(node.tokens.total / 1000).toFixed(1)}k tok` : 'DETERMINISTIC'}
             </span>
           </div>
         </div>
