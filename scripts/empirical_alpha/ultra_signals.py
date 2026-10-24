@@ -1,11 +1,10 @@
-import numpy as np
 import sys
 from pathlib import Path
 import numpy as np
 import pandas as pd
 import MetaTrader5 as mt5
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT_DIR / "src"))
 sys.path.insert(0, str(ROOT_DIR))
 

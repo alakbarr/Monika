@@ -1,0 +1,35 @@
+[Unit]
+Description=Monika MT5 Trading Agent Core Daemon
+Documentation=https://github.com/alakbarr/Monika
+After=network.target network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=monika
+Group=monika
+WorkingDirectory=/opt/monika
+Environment="PYTHONPATH=/opt/monika/src"
+Environment="PYTHONUNBUFFERED=1"
+Environment="DASHBOARD_HOST=127.0.0.1"
+Environment="DASHBOARD_PORT=8000"
+EnvironmentFile=-/opt/monika/.env
+ExecStart=/opt/monika/venv/bin/python -m monika.interfaces.cli.main run --mode paper
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=15s
+TimeoutStopSec=30s
+
+# Process and file descriptor limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Security hardening directives
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/monika/logs /opt/monika/data
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

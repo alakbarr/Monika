@@ -63,6 +63,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mt5-wine:
+        condition: service_started
     env_file:
       - ../.env
     environment:
@@ -108,7 +110,7 @@ services:
       - DISPLAY=:99
       - WINEPREFIX=/wine/prefix
       - MT5_LOGIN=${MT5_ACCOUNT:-0}
-      - MT5_SERVER=${MT5_SERVER:-"FBS-Real"}
+      - MT5_SERVER=${MT5_SERVER:-"MetaQuotes-Demo"}
     ports:
       - "127.0.0.1:18812:18812"
     volumes:

@@ -72,18 +72,23 @@ async def compute_agent_accuracy_report(
                 symbol = proxy["symbol"]
                 invert = proxy["invert"]
 
-                # Get price at brief generation and 4-8h later
-                price_at_brief = (
+                # Get price at brief generation (dialect-agnostic sorting in Python)
+                candles_at_brief = (
                     await session.execute(
-                        select(PriceOHLCV.close)
+                        select(PriceOHLCV.timestamp, PriceOHLCV.close)
                         .where(PriceOHLCV.symbol == symbol)
                         .where(PriceOHLCV.timeframe == "H4")
                         .where(PriceOHLCV.timestamp <= brief_time + timedelta(hours=1))
                         .where(PriceOHLCV.timestamp >= brief_time - timedelta(hours=1))
-                        .order_by(func.abs(func.extract("epoch", PriceOHLCV.timestamp) - brief_time.timestamp()))
-                        .limit(1)
                     )
-                ).scalar_one_or_none()
+                ).all()
+                price_at_brief = None
+                if candles_at_brief:
+                    sorted_candles = sorted(
+                        candles_at_brief,
+                        key=lambda r: abs((r[0] - brief_time).total_seconds()) if r[0] else 999999.0,
+                    )
+                    price_at_brief = sorted_candles[0][1]
 
                 price_after = (
                     await session.execute(

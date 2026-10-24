@@ -21,11 +21,11 @@ echo "[MT5-Wine] Shared bridge available at /shared/mt5_bridge"
 # Launch MT5 RPyC classic bridge if Wine Python is available
 PYTHON_BIN="C:\\Python311\\python.exe"
 if wine "$PYTHON_BIN" --version &>/dev/null; then
-    echo "[MT5-Wine] Starting Wine Python RPyC bridge on port 18812..."
-    wine "$PYTHON_BIN" -m rpyc.cli.rpyc_classic --port 18812 &
+    echo "[MT5-Wine] Starting Wine Python RPyC bridge on 0.0.0.0:18812..."
+    wine "$PYTHON_BIN" -m rpyc.cli.rpyc_classic --host 0.0.0.0 --port 18812 &
 elif wine python --version &>/dev/null; then
-    echo "[MT5-Wine] Starting Wine Python RPyC bridge on port 18812..."
-    wine python -m rpyc.cli.rpyc_classic --port 18812 &
+    echo "[MT5-Wine] Starting Wine Python RPyC bridge on 0.0.0.0:18812..."
+    wine python -m rpyc.cli.rpyc_classic --host 0.0.0.0 --port 18812 &
 fi
 
 # If terminal64.exe is mounted or present, launch it

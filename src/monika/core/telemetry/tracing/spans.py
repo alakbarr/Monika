@@ -38,11 +38,17 @@ def node_span(node_name: str, cycle_id: str | None = None, **attrs) -> Generator
     """Span for a LangGraph workflow node (e.g. fundamental, per_asset, debate, risk_gate)."""
     tracer = get_tracer()
     span_attrs = {"node_name": node_name, **attrs}
+    token_cycle = None
     if cycle_id:
         span_attrs["cycle_id"] = cycle_id
+        token_cycle = _current_cycle_id.set(cycle_id)
     span = tracer.start_span(f"node:{node_name}", kind="node", attributes=span_attrs)
-    with span:
-        yield span
+    try:
+        with span:
+            yield span
+    finally:
+        if token_cycle is not None:
+            _current_cycle_id.reset(token_cycle)
 
 
 @contextmanager

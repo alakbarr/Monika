@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea or feature for TradeAgent
+about: Suggest an idea or feature for Monika
 title: '[FEATURE] <Short description of feature>'
 labels: ['enhancement']
 assignees: ''

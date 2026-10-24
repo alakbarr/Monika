@@ -19,7 +19,7 @@ echo   MONIKA - Autonomous MT5 Quantitative Trading Agent
 echo ============================================================
 echo.
 
-:: ── 1. Verify System Python (Python >= 3.11 required) ────────
+:: ── 1. Verify System Python (Python >= 3.14 required) ────────
 set "SYS_PYTHON="
 python --version >nul 2>&1
 if %ERRORLEVEL% equ 0 set "SYS_PYTHON=python"
@@ -47,7 +47,7 @@ if /i "!INSTALL_PY!"=="y" (
 )
 
 :manual_python
-echo [ERROR] Please install Python 3.11+ from https://www.python.org/downloads/
+echo [ERROR] Please install Python 3.14+ from https://www.python.org/downloads/
 echo Remember to check "Add Python to PATH" during installation.
 pause
 exit /b 1

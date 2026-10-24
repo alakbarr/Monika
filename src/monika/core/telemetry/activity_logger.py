@@ -235,12 +235,8 @@ class ActivityLogger:
             pass
 
         try:
-            try:
-                from monika.infrastructure.database.db import get_write_session
-                from monika.infrastructure.database.models import ActivityLog
-            except ImportError:
-                from monika.infrastructure.database.db import get_write_session
-                from monika.infrastructure.database.models import ActivityLog
+            from monika.infrastructure.database.db import get_write_session
+            from monika.infrastructure.database.models import ActivityLog
 
             if session:
                 entry = ActivityLog(
@@ -348,12 +344,8 @@ class ActivityLogger:
         if not entries:
             return 0
         try:
-            try:
-                from monika.infrastructure.database.db import get_write_session
-                from monika.infrastructure.database.models import ActivityLog
-            except ImportError:
-                from monika.infrastructure.database.db import get_write_session
-                from monika.infrastructure.database.models import ActivityLog
+            from monika.infrastructure.database.db import get_write_session
+            from monika.infrastructure.database.models import ActivityLog
 
             async def _do_bulk(sess):
                 count = 0

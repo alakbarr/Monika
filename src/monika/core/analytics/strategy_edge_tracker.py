@@ -35,7 +35,11 @@ async def compute_strategy_pair_stats(session, settings: dict) -> dict:
             s["gross_loss"] += abs(pnl)
     out = {}
     for (strat, sym), s in stats.items():
-        pf = (s["gross_win"] / s["gross_loss"]) if s["gross_loss"] > 0 else float("inf") if s["gross_win"] > 0 else 0.0
+        pf = (
+            min(99.99, s["gross_win"] / s["gross_loss"])
+            if s["gross_loss"] > 0
+            else (99.99 if s["gross_win"] > 0 else 0.0)
+        )
         out[f"{strat}_{sym}"] = {
             "strategy_id": strat,
             "symbol": sym,

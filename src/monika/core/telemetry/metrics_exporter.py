@@ -25,12 +25,21 @@ class MetricsCollector:
                 cls._instance._init_metrics()
             return cls._instance
 
+    @classmethod
+    def reset(cls) -> None:
+        """Reset singleton and metrics state for test isolation."""
+        with cls._lock:
+            if cls._instance is not None:
+                cls._instance._init_metrics()
+
     def _init_metrics(self):
         self._counters: dict[str, float] = {}
         self._gauges: dict[str, float] = {}
         self._labeled_counters: dict[str, dict[str, float]] = {}
         self._labeled_gauges: dict[str, dict[str, float]] = {}
         self._histograms: dict[str, list[float]] = {}
+        self._summary_counts: dict[str, int] = {}
+        self._summary_sums: dict[str, float] = {}
 
         # Inisialisasi default baseline
         self.set_gauge("agent_uptime_seconds", 0.0)
@@ -42,10 +51,18 @@ class MetricsCollector:
         self.set_gauge("mt5_secondary_connected", 0.0)
         self.set_gauge("active_gateway_is_primary", 1.0)
 
+    @staticmethod
+    def _format_labels(labels: dict[str, Any]) -> str:
+        parts = []
+        for k, v in sorted(labels.items()):
+            v_esc = str(v).replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+            parts.append(f'{k}="{v_esc}"')
+        return ",".join(parts)
+
     def inc_counter(self, name: str, value: float = 1.0, labels: dict[str, str] | None = None):
         with self._lock:
             if labels:
-                label_key = ",".join(f'{k}="{v}"' for k, v in sorted(labels.items()))
+                label_key = self._format_labels(labels)
                 if name not in self._labeled_counters:
                     self._labeled_counters[name] = {}
                 self._labeled_counters[name][label_key] = self._labeled_counters[name].get(label_key, 0.0) + value
@@ -55,7 +72,7 @@ class MetricsCollector:
     def set_gauge(self, name: str, value: float, labels: dict[str, str] | None = None):
         with self._lock:
             if labels:
-                label_key = ",".join(f'{k}="{v}"' for k, v in sorted(labels.items()))
+                label_key = self._format_labels(labels)
                 if name not in self._labeled_gauges:
                     self._labeled_gauges[name] = {}
                 self._labeled_gauges[name][label_key] = float(value)
@@ -64,12 +81,16 @@ class MetricsCollector:
 
     def record_histogram(self, name: str, value: float):
         with self._lock:
+            val_f = float(value)
             if name not in self._histograms:
                 self._histograms[name] = []
-            self._histograms[name].append(float(value))
-            # Simpan 500 nilai terakhir
+            self._histograms[name].append(val_f)
+            # Simpan sampel recent untuk quantile inspection (maks 500)
             if len(self._histograms[name]) > 500:
                 self._histograms[name] = self._histograms[name][-500:]
+            # Pertahankan counter kumulatif yang strictly monotonic untuk spesifikasi Prometheus
+            self._summary_counts[name] = self._summary_counts.get(name, 0) + 1
+            self._summary_sums[name] = self._summary_sums.get(name, 0.0) + val_f
 
     def generate_prometheus_metrics(self) -> str:
         """Menghasilkan representasi string teks Prometheus/OpenMetrics standar."""
@@ -105,12 +126,10 @@ class MetricsCollector:
                 for label_str, val in sorted(label_dict.items()):
                     lines.append(f"{metric_name}{{{label_str}}} {val}")
 
-            # Histograms (Count, Sum)
-            for name, values in sorted(self._histograms.items()):
-                if not values:
-                    continue
-                count = len(values)
-                val_sum = sum(values)
+            # Histograms / Summaries (Count, Sum - strictly monotonic)
+            for name in sorted(set(self._histograms.keys()) | set(self._summary_counts.keys())):
+                count = self._summary_counts.get(name, len(self._histograms.get(name, [])))
+                val_sum = self._summary_sums.get(name, sum(self._histograms.get(name, [])))
                 metric_name = f"trading_agent_{name}"
                 lines.append(f"# HELP {metric_name} Summary metric for {name}")
                 lines.append(f"# TYPE {metric_name} summary")

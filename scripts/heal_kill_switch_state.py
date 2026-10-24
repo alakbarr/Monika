@@ -6,26 +6,34 @@
 Healing script to resolve persistent kill switch latch and close dangling positions.
 """
 
-import sys
-import os
+import argparse
 import asyncio
 import logging
+import os
+import sys
 
 # Add project root to sys.path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-from monika.infrastructure.database.db import get_session
-from monika.infrastructure.database.models import Position, PaperTradeRecord, SystemConfig, RiskState, ActivityLog
-from sqlalchemy import select
 import monika.core.primitives.clock as clock
+from monika.infrastructure.database.db import get_session
+from monika.infrastructure.database.models import ActivityLog, PaperTradeRecord, Position, RiskState, SystemConfig
+from sqlalchemy import select
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("HealKillSwitch")
 
 
-async def heal():
+async def heal(dry_run: bool = True):
+    if dry_run:
+        logger.warning(
+            "[DRY-RUN MODE] Previewing changes without committing to database. "
+            "Pass --confirm to apply changes to database."
+        )
+    else:
+        logger.warning("[EXECUTE MODE] Applying changes to database with explicit --confirm flag.")
     logger.info("Starting Kill Switch and Position Data Healing...")
     now = clock.now()
     async with get_session() as session:
@@ -91,11 +99,28 @@ async def heal():
             )
         )
 
-        await session.commit()
-        logger.info(
-            f"Data healing completed successfully. {closed_pos_count} positions closed, kill switch latch cleared."
-        )
+        if dry_run:
+            logger.info(
+                f"[DRY-RUN COMPLETE] Would close {closed_pos_count} positions and reset kill switch. "
+                "No changes committed. Pass --confirm to apply."
+            )
+        else:
+            await session.commit()
+            logger.info(
+                f"Data healing completed successfully. {closed_pos_count} positions closed, kill switch latch cleared."
+            )
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Heal kill switch latch and linger positions in Monika.")
+    parser.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Explicitly confirm applying healing changes to the database. Default is preview (dry-run).",
+    )
+    args = parser.parse_args()
+    asyncio.run(heal(dry_run=not args.confirm))
 
 
 if __name__ == "__main__":
-    asyncio.run(heal())
+    main()

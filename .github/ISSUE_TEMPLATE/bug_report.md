@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Create a report to help us improve TradeAgent
+about: Create a report to help us improve Monika
 title: '[BUG] <Short description of issue>'
 labels: ['bug']
 assignees: ''

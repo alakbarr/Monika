@@ -36,13 +36,15 @@ class PaperTracker:
     def __init__(self, settings: dict | None = None):
         if settings is None:
             try:
-                import os
-
                 import yaml
+                from monika.core.paths import CONFIG_DIR
 
-                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                with open(os.path.join(base_dir, "config", "settings.yaml")) as f:
-                    self.settings = yaml.safe_load(f)
+                cfg_file = CONFIG_DIR / "settings.yaml"
+                if cfg_file.exists():
+                    with open(cfg_file, encoding="utf-8") as f:
+                        self.settings = yaml.safe_load(f) or {}
+                else:
+                    self.settings = {}
             except Exception:
                 self.settings = {}
         else:
@@ -1240,20 +1242,23 @@ class PaperTracker:
         # Pisahkan list paper trades (r) dan list tuples untuk iterasi
         records = [r for r, a in results]
 
+        win_records = [r for r in records if (r.pnl_pct or 0) > 0 or r.exit_reason == "tp_hit"]
+        loss_records = [r for r in records if (r.pnl_pct or 0) < 0 or r.exit_reason == "sl_hit"]
         tp_hits = [r for r in records if r.exit_reason == "tp_hit"]
         sl_hits = [r for r in records if r.exit_reason == "sl_hit"]
         pnl_values = [r.pnl_pct or 0 for r in records]
 
         market_records = [r for r in records if r.exit_reason in MARKET_OUTCOME_EXIT_REASONS]
+        market_wins = [r for r in market_records if (r.pnl_pct or 0) > 0 or r.exit_reason == "tp_hit"]
 
-        avg_win_pct = sum(r.pnl_pct or 0 for r in tp_hits) / len(tp_hits) if tp_hits else 0
-        avg_loss_pct = abs(sum(r.pnl_pct or 0 for r in sl_hits) / len(sl_hits)) if sl_hits else 0
+        avg_win_pct = sum(r.pnl_pct or 0 for r in win_records) / len(win_records) if win_records else 0
+        avg_loss_pct = abs(sum(r.pnl_pct or 0 for r in loss_records) / len(loss_records)) if loss_records else 0
 
         market_total = len(market_records)
-        win_rate_market = len(tp_hits) / market_total if market_total > 0 else 0
+        win_rate_market = len(market_wins) / market_total if market_total > 0 else 0
         loss_rate_market = 1 - win_rate_market if market_total > 0 else 0
 
-        win_rate_operational = len(tp_hits) / len(records) if records else 0
+        win_rate_operational = len(win_records) / len(records) if records else 0
 
         # Expectancy per trade
         expectancy = (win_rate_market * avg_win_pct) - (loss_rate_market * avg_loss_pct)

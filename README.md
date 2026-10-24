@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/alakbarr/Monika/actions/workflows/ci.yml"><img src="https://github.com/alakbarr/Monika/actions/workflows/ci.yml/badge.svg" alt="CI Pipeline" /></a>
-  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?logo=python&logoColor=white" alt="Python 3.11+" /></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.14%2B-3776AB.svg?logo=python&logoColor=white" alt="Python 3.14+" /></a>
   <a href="https://langchain-ai.github.io/langgraph/"><img src="https://img.shields.io/badge/Orchestration-LangGraph-1C75BC.svg?logo=langchain&logoColor=white" alt="LangGraph" /></a>
   <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi&logoColor=white" alt="FastAPI" /></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-61DAFB.svg?logo=react&logoColor=black" alt="React 19" /></a>
@@ -156,7 +156,7 @@ flowchart LR
 | **AI & NLP Researchers** | Experimenting with structured output schemas, multi-agent adversarial debate, and prompt caching. | Recommended |
 | **Users Seeking Guaranteed Income** | Looking for turnkey profitability, automated signal services, or passive income bots. | Unsuitable |
 | **High-Frequency Scalpers** | Requiring sub-second execution speeds (LLM inference cycles take multiple seconds). | Unsuitable |
-| **Complete Beginners** | Unfamiliar with Python 3.11, PostgreSQL configuration, or MetaTrader 5 demo accounts. | Unsuitable |
+| **Complete Beginners** | Unfamiliar with Python 3.14, PostgreSQL configuration, or MetaTrader 5 demo accounts. | Unsuitable |
 
 ---
 
@@ -456,7 +456,7 @@ Clone or download this repository, then simply **double-click**:
 ```cmd
 start_monika.bat
 ```
-*The launcher automatically verifies Python (accepting Python >= 3.11, with automated winget fallback), prepares `venv`, and launches the interactive setup wizard.*
+*The launcher automatically verifies Python (accepting Python >= 3.14, with automated winget fallback), prepares `venv`, and launches the interactive setup wizard.*
 
 #### Linux / macOS / VPS (Ubuntu 22.04+)
 ```bash

@@ -262,11 +262,11 @@ class CostTracker:
         # 2. Limit validations
         is_daily_budget_exceeded = daily_budget_usd > 0 and daily_cost_usd >= daily_budget_usd
         alerts = []
-        if daily_anthropic >= limit_anthropic * 0.9:
+        if limit_anthropic > 0 and daily_anthropic >= limit_anthropic * 0.9:
             alerts.append(
                 f"Anthropic limit at {daily_anthropic / limit_anthropic * 100:.1f}% ({daily_anthropic}/{limit_anthropic})"
             )
-        if daily_gemini >= limit_gemini * 0.9:
+        if limit_gemini > 0 and daily_gemini >= limit_gemini * 0.9:
             alerts.append(f"Gemini limit at {daily_gemini / limit_gemini * 100:.1f}% ({daily_gemini}/{limit_gemini})")
         if is_daily_budget_exceeded:
             alerts.append(f"Daily dollar spend limit reached: ${daily_cost_usd:.2f} >= ${daily_budget_usd:.2f}")

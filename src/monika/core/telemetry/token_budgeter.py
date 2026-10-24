@@ -57,9 +57,18 @@ class TokenBudgetManager:
         with cls._lock:
             if cls._instance is None:
                 cls._instance = cls(settings)
-            elif settings and not cls._instance.settings:
+            elif settings:
                 cls._instance.settings = settings
+                llm_cfg = settings.get("llm", {})
+                if "daily_token_budget" in llm_cfg:
+                    cls._instance.daily_budget = int(llm_cfg["daily_token_budget"])
             return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        """Reset the singleton instance for hermetic test isolation."""
+        with cls._lock:
+            cls._instance = None
 
     def _maybe_reset_daily(self) -> None:
         today = datetime.now(UTC).date()
@@ -135,6 +144,15 @@ class TokenBudgetManager:
                     f"[TokenBudgeter] Subsystem '{norm}' consumed {sub_dict['total']}/{quota} tokens ({pct:.1f}% of quota). DEGRADED state."
                 )
 
+            # When a non-reserve subsystem exceeds its quota, debit the excess against emergency reserve
+            if norm != "reserve" and sub_dict["total"] > quota:
+                excess = min(total, sub_dict["total"] - quota)
+                if excess > 0:
+                    reserve_dict = self._usage_by_subsystem.setdefault(
+                        "reserve", {"prompt": 0, "completion": 0, "cached": 0, "total": 0}
+                    )
+                    reserve_dict["total"] += excess
+
     def can_spend(self, subsystem: str, estimated_tokens: int = 1000) -> bool:
         """Determines if the subsystem has enough quota remaining to perform the call."""
         with self._mu:
@@ -143,14 +161,15 @@ class TokenBudgetManager:
             quota = self.get_quota(norm)
             spent = self._usage_by_subsystem.get(norm, {}).get("total", 0)
 
-            # Can spend if within quota or if emergency reserve has room
+            # Can spend if within subsystem quota
             if spent + estimated_tokens <= quota:
                 return True
 
-            # Check if emergency reserve can buffer
+            # If exceeding subsystem quota, check if emergency reserve can buffer the deficit
+            deficit = (spent + estimated_tokens) - quota
             reserve_spent = self._usage_by_subsystem.get("reserve", {}).get("total", 0)
             reserve_quota = self.get_quota("reserve")
-            if reserve_spent + estimated_tokens <= reserve_quota:
+            if reserve_spent + deficit <= reserve_quota:
                 return True
 
             return False

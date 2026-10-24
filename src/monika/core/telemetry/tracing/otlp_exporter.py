@@ -33,6 +33,7 @@ class OTLPSpanExporter:
         self._flush_interval = flush_interval_s
         self._enabled = enabled
         self._buffer: deque = deque(maxlen=5000)
+        self._lock = threading.Lock()
         self._flush_thread: threading.Thread | None = None
 
         if self._enabled:
@@ -49,8 +50,13 @@ class OTLPSpanExporter:
         """Queue a span for export. No-op if disabled."""
         if not self._enabled:
             return
-        self._buffer.append(self._to_otlp_span(span_dict))
-        if len(self._buffer) >= self._batch_size:
+        otlp_item = self._to_otlp_span(span_dict)
+        should_flush = False
+        with self._lock:
+            self._buffer.append(otlp_item)
+            if len(self._buffer) >= self._batch_size:
+                should_flush = True
+        if should_flush:
             self._flush()
 
     def _to_otlp_span(self, span: dict[str, Any]) -> dict[str, Any]:
@@ -83,9 +89,10 @@ class OTLPSpanExporter:
         }
 
     def _flush(self):
-        if not self._buffer:
-            return
-        batch = [self._buffer.popleft() for _ in range(min(len(self._buffer), self._batch_size))]
+        with self._lock:
+            if not self._buffer:
+                return
+            batch = [self._buffer.popleft() for _ in range(min(len(self._buffer), self._batch_size))]
         try:
             import urllib.request
 
@@ -94,7 +101,7 @@ class OTLPSpanExporter:
                     {
                         "resource": {
                             "attributes": [
-                                {"key": "service.name", "value": {"stringValue": "tradeagent"}},
+                                {"key": "service.name", "value": {"stringValue": "monika"}},
                             ]
                         },
                         "scopeSpans": [{"spans": batch}],

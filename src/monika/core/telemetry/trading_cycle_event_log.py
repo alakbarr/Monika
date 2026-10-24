@@ -8,6 +8,7 @@ import hashlib
 import json
 import logging
 import re
+import threading
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone, UTC
 from pathlib import Path
@@ -82,6 +83,7 @@ class TradingCycleEventLog:
     def __init__(self, storage_dir: Path | None = None):
         self.storage_dir = Path(storage_dir) if storage_dir else (DATA_DIR / "cycle_events")
         self.storage_dir.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()
         # In-memory index: cycle_id -> list of CycleEvent
         self._cycle_stores: dict[str, list[CycleEvent]] = {}
         self._cycle_counters: dict[str, int] = {}
@@ -94,55 +96,56 @@ class TradingCycleEventLog:
         source_event_seqs: list[int] | None = None,
     ) -> CycleEvent:
         """Record an event with contiguous monotonic sequence numbering for the cycle."""
-        cid = str(cycle_id or "default_cycle")
-        if cid not in self._cycle_counters:
-            self._cycle_counters[cid] = 0
-            self._cycle_stores[cid] = []
+        with self._lock:
+            cid = str(cycle_id or "default_cycle")
+            if cid not in self._cycle_counters:
+                self._cycle_counters[cid] = 0
+                self._cycle_stores[cid] = []
 
-        self._cycle_counters[cid] += 1
-        seq = self._cycle_counters[cid]
-        source_seqs = list(source_event_seqs or [])
+            self._cycle_counters[cid] += 1
+            seq = self._cycle_counters[cid]
+            source_seqs = list(source_event_seqs or [])
 
-        # Determine previous event hash (genesis hash for seq 1, previous chain_hash thereafter)
-        prev_hash = ""
-        if self._cycle_stores[cid]:
-            prev_hash = self._cycle_stores[cid][-1].chain_hash or ""
-        if not prev_hash:
-            prev_hash = hashlib.sha256(f"genesis:{cid}".encode("utf-8")).hexdigest()
+            # Determine previous event hash (genesis hash for seq 1, previous chain_hash thereafter)
+            prev_hash = ""
+            if self._cycle_stores[cid]:
+                prev_hash = self._cycle_stores[cid][-1].chain_hash or ""
+            if not prev_hash:
+                prev_hash = hashlib.sha256(f"genesis:{cid}".encode("utf-8")).hexdigest()
 
-        ts = datetime.now(UTC).isoformat()
-        chain_hash = compute_event_hash(
-            prev_hash=prev_hash,
-            seq=seq,
-            cycle_id=cid,
-            event_type=event_type,
-            timestamp=ts,
-            payload=payload,
-            source_event_seqs=source_seqs,
-        )
+            ts = datetime.now(UTC).isoformat()
+            chain_hash = compute_event_hash(
+                prev_hash=prev_hash,
+                seq=seq,
+                cycle_id=cid,
+                event_type=event_type,
+                timestamp=ts,
+                payload=payload,
+                source_event_seqs=source_seqs,
+            )
 
-        event = CycleEvent(
-            seq=seq,
-            cycle_id=cid,
-            event_type=event_type,
-            timestamp=ts,
-            payload=payload,
-            source_event_seqs=source_seqs,
-            prev_hash=prev_hash,
-            chain_hash=chain_hash,
-        )
-        self._cycle_stores[cid].append(event)
+            event = CycleEvent(
+                seq=seq,
+                cycle_id=cid,
+                event_type=event_type,
+                timestamp=ts,
+                payload=payload,
+                source_event_seqs=source_seqs,
+                prev_hash=prev_hash,
+                chain_hash=chain_hash,
+            )
+            self._cycle_stores[cid].append(event)
 
-        # Persist append-only to disk JSONL
-        try:
-            safe_cid = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", cid)
-            log_file = self.storage_dir / f"{safe_cid}.jsonl"
-            with open(log_file, "a", encoding="utf-8") as f:
-                f.write(json.dumps(event.to_dict()) + "\n")
-        except Exception as e:
-            logger.error(f"[EventLog] Failed to persist event {seq} for cycle {cid}: {e}")
+            # Persist append-only to disk JSONL
+            try:
+                safe_cid = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", cid)
+                log_file = self.storage_dir / f"{safe_cid}.jsonl"
+                with open(log_file, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(event.to_dict()) + "\n")
+            except Exception as e:
+                logger.error(f"[EventLog] Failed to persist event {seq} for cycle {cid}: {e}")
 
-        return event
+            return event
 
     def get_events_for_cycle(self, cycle_id: str) -> list[CycleEvent]:
         """Return all contiguous events for a given cycle."""

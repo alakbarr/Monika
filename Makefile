@@ -1,4 +1,4 @@
-.PHONY: install run run-windows test lint typecheck clean
+.PHONY: install run run-windows test lint typecheck smoke docs-check clean
 
 install:
 	pip install -r requirements.txt && pip install -e .
@@ -11,7 +11,13 @@ run-windows:
 	start_monika.bat
 
 test:
-	PYTHONPATH=src pytest tests -v
+	PYTHONPATH=src pytest tests -q -m "not live and not network"
+
+smoke:
+	python -m monika.interfaces.cli.main doctor --offline
+
+docs-check:
+	python scripts/generate_ast_docs.py --check
 
 lint:
 	ruff check .

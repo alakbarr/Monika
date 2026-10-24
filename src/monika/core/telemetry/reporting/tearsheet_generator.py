@@ -377,6 +377,9 @@ class QuantTearsheetGenerator:
                 except Exception:
                     pass
 
+            if dt_closed is not None and dt_closed.tzinfo is None:
+                dt_closed = dt_closed.replace(tzinfo=UTC)
+
             pct = (
                 pnl_pct if pnl_pct != 0.0 else (round((pnl / initial_equity) * 100.0, 4) if initial_equity > 0 else 0.0)
             )
@@ -444,7 +447,9 @@ class QuantTearsheetGenerator:
 
         final_equity = running_equity
         total_net_pnl = final_equity - initial_equity
-        total_return_pct = round(((final_equity - initial_equity) / initial_equity) * 100.0, 2)
+        total_return_pct = (
+            round(((final_equity - initial_equity) / initial_equity) * 100.0, 2) if initial_equity > 0 else 0.0
+        )
 
         # 2. Win / Loss Profile & Expectancy
         wins = [t for t in parsed_trades if t["pnl"] > 0 or t["pnl_pct"] > 0]

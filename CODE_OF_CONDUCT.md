@@ -60,7 +60,7 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the project team by opening an issue or contacting the repository
-maintainers at saifulakbar@tradeagent.dev (or via GitHub private reporting).
+maintainers at asaifulakbarw@gmail.com (or via GitHub private reporting).
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

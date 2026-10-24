@@ -61,14 +61,21 @@ class InMemoryTraceStore:
         """Persist evicted spans to TradingEvent / ActivityLog in database."""
         if not self._evicted_buffer:
             return 0
-        to_flush = list(self._evicted_buffer)
+        to_flush: list[TraceRecord] = []
+        while self._evicted_buffer:
+            try:
+                to_flush.append(self._evicted_buffer.popleft())
+            except IndexError:
+                break
+        if not to_flush:
+            return 0
+
         try:
             from ..sinks import get_telemetry_sink
 
             sink = get_telemetry_sink()
             if sink is not None:
                 await sink.persist_spans(to_flush)
-                self._evicted_buffer.clear()
                 return len(to_flush)
         except Exception:
             pass
@@ -93,7 +100,6 @@ class InMemoryTraceStore:
                     session.add(event)
                     count += 1
                 await session.commit()
-            self._evicted_buffer.clear()
             logger.debug(f"[TraceStore] Persisted {count} evicted trace spans to DB.")
             return count
         except Exception as e:

@@ -10,6 +10,7 @@ memiliki positive edge atau sedang berjalan secara random/negative.
 import logging
 import math
 from datetime import datetime, timedelta, timezone, UTC
+from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,13 +55,23 @@ def is_trade_win(r) -> bool:
         pnl_usd = getattr(r, "realized_pnl", None)
         exit_reason = getattr(r, "exit_reason", "")
 
-    # 2. Cek pnl_pct (jika bukan nol & bukan NaN)
-    if isinstance(pnl, (int, float)) and not math.isnan(pnl) and pnl != 0:
-        return pnl > 0
+    # 2. Cek pnl_pct (mendukung int, float, dan Decimal)
+    if isinstance(pnl, (int, float, Decimal)):
+        try:
+            val = float(pnl)
+            if not math.isnan(val) and val != 0:
+                return val > 0
+        except ValueError, TypeError:
+            pass
 
-    # 3. Cek realized_pnl (jika bukan nol & bukan NaN)
-    if isinstance(pnl_usd, (int, float)) and not math.isnan(pnl_usd) and pnl_usd != 0:
-        return pnl_usd > 0
+    # 3. Cek realized_pnl (mendukung int, float, dan Decimal)
+    if isinstance(pnl_usd, (int, float, Decimal)):
+        try:
+            val_usd = float(pnl_usd)
+            if not math.isnan(val_usd) and val_usd != 0:
+                return val_usd > 0
+        except ValueError, TypeError:
+            pass
 
     # 4. Jika pnl bernilai 0.0 atau None, fallback ke exit_reason
     if isinstance(exit_reason, str):
@@ -208,16 +219,22 @@ async def compute_edge_status(session: AsyncSession) -> dict:
                 f"over {total} trades. Resume after strategy review."
             )
 
-            if existing_pause and existing_pause.value == "true":
+            is_already_paused = bool(
+                existing_pause
+                and existing_pause.value
+                and existing_pause.value.split(":", 1)[0].strip().lower() == "true"
+            )
+            if is_already_paused:
                 # Sudah paused — tidak perlu update, log saja
                 logger.info("[EdgeTracker] Trading already paused. No_edge condition persists.")
             else:
                 # Set pause
+                pause_val = f"true:{pause_reason[:200]}"
                 if existing_pause:
-                    existing_pause.value = "true"
+                    existing_pause.value = pause_val
                     existing_pause.description = pause_reason
                 else:
-                    session.add(SystemConfig(key="trading_paused", value=f"true:{pause_reason[:200]}"))
+                    session.add(SystemConfig(key="trading_paused", value=pause_val))
                 await session.commit()
 
                 logger.critical(

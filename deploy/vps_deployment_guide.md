@@ -14,7 +14,7 @@ Because the official MetaTrader 5 Python library is a Windows-specific C-extensi
 │                                                             │
 │  ┌────────────────┐    ┌─────────────────────────────────┐  │
 │  │   PostgreSQL   │    │          Monika Core            │  │
-│  │   + pgvector   │<──>│    (TradingAgent Orchestrator)  │  │
+│  │   + pgvector   │<──>│    (Monika Orchestrator)        │  │
 │  │   Port: 5432   │    │    Dashboard API & Schedulers   │  │
 │  └────────────────┘    └────────────────┬────────────────┘  │
 │                                         │                   │
@@ -29,7 +29,7 @@ Because the official MetaTrader 5 Python library is a Windows-specific C-extensi
 ```
 
 ### Architectural Benefits:
-1. **Transparent**: Monika injects compatibility shims (`execution/mt5_compat.py`) into `sys.modules["MetaTrader5"]`. All upstream modules (`mt5_client.py`, `position_synchronizer.py`, `self_healing_executor.py`, etc.) operate without code changes.
+1. **Transparent**: Monika injects compatibility shims (`src/monika/infrastructure/brokers/mt5_compat.py`) into `sys.modules["MetaTrader5"]`. All upstream modules (`mt5_client.py`, `position_synchronizer.py`, `self_healing_executor.py`, etc.) operate without code changes.
 2. **Dual-Environment Ready**:
    - **Windows**: Automatically utilizes the high-speed native `MetaTrader5` package.
    - **Linux VPS**: Automatically routes through the RPC proxy to Wine MT5 or a Remote Windows Gateway.
@@ -131,7 +131,7 @@ To run Monika natively on a Linux host without Docker:
    wine /path/to/terminal64.exe /portable &
 
    # Start RPyC server
-   wine python -m rpyc.cli.rpyc_classic --port 18812 &
+   wine python -m rpyc.cli.rpyc_classic --host 0.0.0.0 --port 18812 &
    ```
 
 4. **Launch Monika**:

@@ -95,6 +95,7 @@ class Span:
 
     def __enter__(self):
         self._token_span_id = _current_span_id.set(self.span_id)
+        self._token_trace_id = _current_trace_id.set(self.trace_id)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -103,6 +104,8 @@ class Span:
         self.end()
         if self._token_span_id:
             _current_span_id.reset(self._token_span_id)
+        if getattr(self, "_token_trace_id", None):
+            _current_trace_id.reset(self._token_trace_id)
 
     async def __aenter__(self):
         return self.__enter__()

@@ -51,7 +51,7 @@ jobs:
 
       - name: Verify Documentation Synchronization
         run: |
-          python scripts/update_index_toc.py --check
+          python scripts/generate_ast_docs.py --check
 
   python-typecheck:
     name: Type Analysis (Pyright)
@@ -125,6 +125,13 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/market_intelligence
         run: |
           alembic upgrade head
+
+      - name: Smoke Test (Doctor Offline)
+        env:
+          PYTHONPATH: src
+          DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/market_intelligence
+        run: |
+          python -m monika.interfaces.cli.main doctor --offline
 
       - name: Run Pytest
         env:

@@ -971,6 +971,7 @@
 - **Path**: [`src/monika/core/telemetry/metrics_exporter.py`](src/monika/core/telemetry/metrics_exporter.py)
 - **Classes**:
   - `class MetricsCollector`: Singleton thread-safe in-memory metric collector yang menghasilkan format Prometheus.
+    - `reset() -> None` - *Reset singleton and metrics state for test isolation.*
     - `inc_counter(name: str, value: float, labels: dict[str, str] | None)`
     - `set_gauge(name: str, value: float, labels: dict[str, str] | None)`
     - `record_histogram(name: str, value: float)`
@@ -1030,6 +1031,7 @@
   - `class TokenBudgetManager`: Thread-safe token budget orchestrator with subsystem partitioning and degradation gates.
     - `__init__(settings: dict | None)`
     - `get_instance(settings: dict | None) -> TokenBudgetManager`
+    - `reset() -> None` - *Reset the singleton instance for hermetic test isolation.*
     - `get_quota(subsystem: str) -> int` - *Returns the daily token quota for the given subsystem.*
     - `record_usage(subsystem: str, prompt_tokens: int, completion_tokens: int, ...) -> None` - *Records token spend for a given subsystem and model.*
     - `can_spend(subsystem: str, estimated_tokens: int) -> bool` - *Determines if the subsystem has enough quota remaining to perform the call.*

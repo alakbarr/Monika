@@ -18,6 +18,7 @@ from monika.core.telemetry.tracing.spans import (
     llm_span,
     node_span,
     tool_span,
+    trade_span,
 )
 from monika.core.telemetry.tracing.tracer import (
     AgentTracer,
@@ -37,6 +38,7 @@ __all__ = [
     "node_span",
     "llm_span",
     "tool_span",
+    "trade_span",
     "TraceRecord",
     "InMemoryTraceStore",
     "global_trace_store",

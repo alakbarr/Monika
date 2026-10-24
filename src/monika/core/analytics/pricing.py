@@ -131,6 +131,7 @@ PRICING: dict[str, Price] = {
     "deepseek-r1": Price(0.55, 0.14, 2.19, "DeepSeek R1 official API rate"),
     "deepseek/deepseek-r1": Price(0.55, 0.14, 2.19),
     "deepseek-reasoner": Price(0.55, 0.14, 2.19),
+    "deepseek-v4": Price(0.66, 0.022, 1.98),
     "deepseek-v4-pro": Price(0.66, 0.022, 1.98, "off-peak; peak=1.32/0.044/3.96"),
     "deepseek-v4-pro-0813": Price(0.66, 0.022, 1.98),
     "deepseek-v4.1-flash": Price(0.30, 0.006, 1.20),
@@ -194,6 +195,7 @@ OPENROUTER_PRICING_MAP: dict[str, str] = {
     "anthropic/claude-3-7-sonnet": "claude-3-7-sonnet",
     "anthropic/claude-3.5-sonnet": "claude-3-5-sonnet",
     # DeepSeek
+    "deepseek/deepseek-v4": "deepseek-v4",
     "deepseek/deepseek-v4-pro": "deepseek-v4-pro",
     "deepseek/deepseek-v4-pro-0813": "deepseek-v4-pro-0813",
     "deepseek/deepseek-v4.1-flash": "deepseek-v4.1-flash",
