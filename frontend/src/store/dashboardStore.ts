@@ -171,25 +171,25 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         ? `Warning: ${allFailures.length} dashboard feed(s) failed to load.`
         : null;
 
-      set({
-        overview: overview.status === 'fulfilled' ? overview.value : null,
-        positions: positions.status === 'fulfilled' ? positions.value : [],
-        activity: activity.status === 'fulfilled' ? activity.value : [],
-        analyses: analyses.status === 'fulfilled' ? analyses.value : [],
-        paperStats: paperStats.status === 'fulfilled' ? paperStats.value : null,
-        factorAnalysis: factorAnalysis.status === 'fulfilled' ? factorAnalysis.value : null,
-        edgeMetrics: edgeMetrics.status === 'fulfilled' ? edgeMetrics.value : null,
-        vixHistory: vixHistory.status === 'fulfilled' ? vixHistory.value : [],
-        brief: briefRes.status === 'fulfilled' ? briefRes.value.brief : null,
-        riskState: riskState.status === 'fulfilled' ? riskState.value : null,
-        geminiQuota: geminiQuota.status === 'fulfilled' ? geminiQuota.value : null,
-        decisionDist: decisionDist.status === 'fulfilled' ? decisionDist.value : null,
-        analysisQuality: analysisQuality.status === 'fulfilled' ? analysisQuality.value : null,
-        health: health.status === 'fulfilled' ? health.value : null,
+      set((state) => ({
+        overview: overview.status === 'fulfilled' ? overview.value : state.overview,
+        positions: positions.status === 'fulfilled' ? positions.value : state.positions,
+        activity: activity.status === 'fulfilled' ? activity.value : state.activity,
+        analyses: analyses.status === 'fulfilled' ? analyses.value : state.analyses,
+        paperStats: paperStats.status === 'fulfilled' ? paperStats.value : state.paperStats,
+        factorAnalysis: factorAnalysis.status === 'fulfilled' ? factorAnalysis.value : state.factorAnalysis,
+        edgeMetrics: edgeMetrics.status === 'fulfilled' ? edgeMetrics.value : state.edgeMetrics,
+        vixHistory: vixHistory.status === 'fulfilled' ? vixHistory.value : state.vixHistory,
+        brief: briefRes.status === 'fulfilled' ? briefRes.value.brief : state.brief,
+        riskState: riskState.status === 'fulfilled' ? riskState.value : state.riskState,
+        geminiQuota: geminiQuota.status === 'fulfilled' ? geminiQuota.value : state.geminiQuota,
+        decisionDist: decisionDist.status === 'fulfilled' ? decisionDist.value : state.decisionDist,
+        analysisQuality: analysisQuality.status === 'fulfilled' ? analysisQuality.value : state.analysisQuality,
+        health: health.status === 'fulfilled' ? health.value : state.health,
         loading: false,
         lastRefresh: new Date(),
         error: errorMessage,
-      });
+      }));
     } catch {
       set({ loading: false, error: 'Failed to load dashboard data.' });
     }
@@ -246,9 +246,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             ? rawChange
             : rawChange != null
               ? Number(rawChange) || 0
-              : existingQuote && existingQuote.price > 0
-                ? ((bid - existingQuote.price) / existingQuote.price) * 100
-                : 0;
+              : existingQuote?.changePct ?? 0;
 
         marketQuotes[s] = { price: bid, changePct };
       }
@@ -284,7 +282,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         : JSON.stringify(event));
 
     const activityLog: ActivityLog = {
-      id: typeof event.id === 'number' ? event.id : Date.now(),
+      id: typeof event.id === 'number' ? event.id : Date.now() + Math.random(),
       timestamp: (event.timestamp as string) || new Date().toISOString(),
       category: (event.category as ActivityLog['category']) || 'trading',
       description: desc,

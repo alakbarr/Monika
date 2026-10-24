@@ -85,8 +85,14 @@ async def preview_manual_order(payload: ManualOrderPreviewRequest, request: Requ
         except Exception:
             pass
 
-    if entry_price is None:
-        entry_price = 1.0
+    if entry_price is None or entry_price <= 0:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "status": "rejected",
+                "message": f"Market price quote unavailable for {sym}. Cannot evaluate trade proposal (Fail-Closed).",
+            },
+        )
 
     is_jpy = "JPY" in sym
     pip_factor = 0.01 if is_jpy else 0.0001
@@ -240,7 +246,13 @@ async def submit_manual_order(payload: ManualOrderSubmitRequest, request: Reques
         except Exception:
             pass
     if not entry_price or entry_price <= 0:
-        entry_price = payload.price or 1.0
+        return JSONResponse(
+            status_code=422,
+            content={
+                "status": "rejected",
+                "message": f"Valid market entry price unavailable for symbol {sym}. Order submission rejected.",
+            },
+        )
 
     from monika.application.services.trading_service import TradingService
 

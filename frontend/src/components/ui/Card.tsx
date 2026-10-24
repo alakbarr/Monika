@@ -17,13 +17,13 @@ interface CardProps {
   collapsible?: boolean;
 }
 
-const variantBgMap: Record<string, string> = {
-  blue: 'var(--color-win-blue)',
-  yellow: 'var(--color-win-yellow)',
-  salmon: 'var(--color-win-salmon)',
-  coral: 'var(--color-win-coral)',
-  green: 'var(--color-win-green)',
-  gray: 'var(--color-win-gray)',
+const variantClassMap: Record<string, string> = {
+  blue: 'win-titlebar--blue',
+  yellow: 'win-titlebar--yellow',
+  salmon: 'win-titlebar--salmon',
+  coral: 'win-titlebar--coral',
+  green: 'win-titlebar--green',
+  gray: 'win-titlebar--gray',
 };
 
 export const Card: React.FC<CardProps> = ({
@@ -42,7 +42,7 @@ export const Card: React.FC<CardProps> = ({
   collapsible = true,
 }) => {
   const isInteractive = !!onClick;
-  const titleBarColor = variantBgMap[variant] || 'var(--color-win-blue)';
+  const titleBarClass = variantClassMap[variant] || 'win-titlebar--blue';
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleMinimize = (e: React.MouseEvent) => {
@@ -74,10 +74,8 @@ export const Card: React.FC<CardProps> = ({
     >
       {(header || title) && (
         <div
-          className="win-titlebar"
+          className={`win-titlebar ${titleBarClass}`}
           style={{
-            background: titleBarColor,
-            color: 'var(--color-titlebar-text)',
             padding: '6px 12px',
             borderBottom: isCollapsed ? 'none' : '2px solid var(--color-rule)',
             display: 'flex',

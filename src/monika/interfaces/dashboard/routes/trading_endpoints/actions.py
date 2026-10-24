@@ -32,6 +32,7 @@ from monika.interfaces.dashboard.routes.common import (
 )
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Trading.Actions")
+_background_tasks: set[asyncio.Task[Any]] = set()
 
 actions_router = APIRouter()
 
@@ -75,7 +76,9 @@ async def action_trigger_cycle(request: Request, body: Optional[TriggerCycleRequ
         except Exception as e:
             logger.warning(f"Failed to record tactical directive for trigger-cycle: {e}")
 
-    asyncio.create_task(cycle_sched.run_once(forced=body.forced))
+    task = asyncio.create_task(cycle_sched.run_once(forced=body.forced))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
 
     try:
         async with AsyncSessionLocal() as session:
@@ -199,14 +202,32 @@ async def action_kill_symbol(symbol: str, request: Request):
 @actions_router.post("/api/v1/kill", tags=["Actions"])
 @require_role(Role.ADMIN)
 async def action_emergency_kill(request: Request):
-    """Trigger emergency kill switch and position liquidation safely via daemon."""
-    # Step 1: Engage in-memory kill switch immediately with zero latency
+    """Trigger emergency kill switch and position liquidation safely via daemon with timeout."""
     exec_svc = get_dashboard_dependency("execution_service")
     guardian = get_dashboard_dependency("position_guardian")
-    if exec_svc and hasattr(exec_svc, "kill_switch"):
-        await exec_svc.kill_switch("Dashboard emergency kill switch")
-    elif guardian and hasattr(guardian, "execution_service") and hasattr(guardian.execution_service, "kill_switch"):
-        await guardian.execution_service.kill_switch("Dashboard emergency kill switch")
+    liquidation_result: Dict[str, Any] = {}
+    executed = False
+
+    try:
+        async with asyncio.timeout(15.0):
+            if exec_svc and hasattr(exec_svc, "kill_switch"):
+                liquidation_result = await exec_svc.kill_switch("Dashboard emergency kill switch") or {}
+                executed = True
+            elif (
+                guardian
+                and hasattr(guardian, "execution_service")
+                and hasattr(guardian.execution_service, "kill_switch")
+            ):
+                liquidation_result = (
+                    await guardian.execution_service.kill_switch("Dashboard emergency kill switch") or {}
+                )
+                executed = True
+    except asyncio.TimeoutError:
+        logger.error("[KillSwitch] Broker liquidation timed out after 15 seconds")
+        raise HTTPException(
+            status_code=504,
+            detail="Emergency kill switch timed out after 15 seconds. Reconcile broker state immediately.",
+        )
 
     # Step 2: Persist state to database
     from monika.infrastructure.database.db import AsyncSessionLocal
@@ -233,7 +254,12 @@ async def action_emergency_kill(request: Request):
             "reason": "Emergency kill switch triggered",
         },
     )
-    return {"status": "success", "message": "Emergency kill switch activated. Position closures completed."}
+    return {
+        "status": "success",
+        "message": "Emergency kill switch activated.",
+        "executed": executed,
+        "liquidation": liquidation_result,
+    }
 
 
 @actions_router.post("/api/v1/actions/resume", tags=["Actions"])

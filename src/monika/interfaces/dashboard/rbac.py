@@ -43,21 +43,6 @@ ROLE_HIERARCHY: Dict[Role, int] = {
     Role.ADMIN: 2,
 }
 
-# Standard endpoint mappings for role requirements
-ENDPOINT_ROLES: Dict[str, Role] = {
-    "GET": Role.VIEWER,
-    "POST:/api/actions/trigger-cycle": Role.OPERATOR,
-    "POST:/api/actions/approve-trade": Role.OPERATOR,
-    "POST:/api/actions/close-position": Role.OPERATOR,
-    "POST:/api/actions/override-risk": Role.ADMIN,
-    "PUT:/api/config/settings": Role.ADMIN,
-    "POST:/api/actions/kill": Role.ADMIN,
-    "POST:/api/actions/emergency-kill": Role.ADMIN,
-    "POST:/api/actions/pause": Role.ADMIN,
-    "POST:/api/actions/resume": Role.ADMIN,
-    "POST:/api/actions/unsuspend": Role.ADMIN,
-}
-
 
 def resolve_role(api_key: str, is_localhost: bool = False) -> Role:
     """

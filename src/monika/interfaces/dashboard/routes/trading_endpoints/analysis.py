@@ -504,14 +504,10 @@ async def get_mt5_signals(limit: int = Query(default=50, ge=1, le=200)):
             .limit(limit)
         )
         raw_exec = await session.execute(stmt)
-        raw_rows = []
-        if hasattr(raw_exec, "_mock_return_value") or hasattr(raw_exec, "mock_calls"):
-            try:
-                s_all = raw_exec.scalars().all()
-                raw_rows = s_all if s_all and not hasattr(s_all, "_mock_return_value") else raw_exec.all()
-            except Exception:
-                raw_rows = raw_exec.all()
-        else:
+        try:
+            s_res = raw_exec.scalars().all() if hasattr(raw_exec, "scalars") else []
+            raw_rows = s_res if s_res else raw_exec.all()
+        except Exception:
             raw_rows = raw_exec.all()
 
         items = []

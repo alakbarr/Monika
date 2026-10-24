@@ -29,34 +29,32 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 API_TS_PATH = ROOT_DIR / "frontend" / "src" / "lib" / "api.ts"
 
 
-def extract_frontend_api_paths() -> Set[str]:
-    """Parse frontend/src/lib/api.ts and extract all relative URL paths called via get/post/put/delete."""
+def extract_frontend_api_paths() -> Set[tuple[str, str]]:
+    """Parse frontend/src/lib/api.ts and extract all (HTTP Method, relative URL path) tuples."""
     if not API_TS_PATH.exists():
         pytest.skip("frontend/src/lib/api.ts does not exist")
 
     content = API_TS_PATH.read_text(encoding="utf-8")
-    paths: Set[str] = set()
+    calls: Set[tuple[str, str]] = set()
 
     # 1. Plain strings: get<...>('/path...'), post<...>("/path...")
-    pattern_plain = re.compile(r"""(?:get|post|put|delete|patch)<[^>]*>\(\s*['"](/[^'"]+)['"]""")
-    for m in pattern_plain.findall(content):
+    pattern_plain = re.compile(r"""(get|post|put|delete|patch)<[^>]*>\(\s*['"](/[^'"]+)['"]""")
+    for verb, m in pattern_plain.findall(content):
         cleaned = m.split("?")[0].rstrip("/")
         if cleaned:
-            paths.add(cleaned)
+            calls.add((verb.upper(), cleaned))
 
     # 2. Template strings: get<...>(`/path...`)
-    pattern_template = re.compile(r"""(?:get|post|put|delete|patch)<[^>]*>\(\s*`(/[^`]+)`""")
-    for tm in pattern_template.findall(content):
-        # Strip conditional query expressions e.g. ${qs ? ...} or ${x !== undefined ? ...}
-        stripped = re.sub(r"\$\{[^}]*\?[^}]*\}", "", tm)
-        # Split on hardcoded query params if any
-        base = stripped.split("?")[0]
-        # Normalize dynamic path params like ${ticket} or ${encodeURIComponent(id)} to {param}
-        norm = re.sub(r"\$\{[^}]+\}", "{param}", base).rstrip("/")
+    pattern_template = re.compile(r"""(get|post|put|delete|patch)<[^>]*>\(\s*`(/[^`\n\r]+)""")
+    for verb, raw_line in pattern_template.findall(content):
+        base = raw_line.split("?")[0]
+        base = re.sub(r"\$\{[^}]*\?.*", "", base)
+        base = re.sub(r"\$\{qs.*", "", base)
+        norm = re.sub(r"\$\{[^}]+\}", "{param}", base).rstrip("`").rstrip("/")
         if norm:
-            paths.add(norm)
+            calls.add((verb.upper(), norm))
 
-    return paths
+    return calls
 
 
 def extract_all_app_routes(router_or_app: Any) -> list[APIRoute]:
@@ -124,27 +122,43 @@ def test_api_v1_route_prefix_compliance():
 
 
 def test_frontend_routes_exist_on_backend():
-    """Verify that every endpoint invoked in frontend/src/lib/api.ts maps to a registered backend route."""
-    frontend_raw_paths = extract_frontend_api_paths()
-    backend_normalized = get_backend_routes()
+    """Verify that every endpoint invoked in frontend/src/lib/api.ts maps to a registered backend route and method."""
+    frontend_calls = extract_frontend_api_paths()
 
-    unmatched_paths = []
-    for raw in frontend_raw_paths:
-        # Frontend BASE is /api/v1, so raw '/overview' maps to '/api/v1/overview'
+    # Collect registered (methods, normalized_path)
+    backend_routes: dict[str, set[str]] = {}
+    for route in extract_all_app_routes(app):
+        norm = re.sub(r"\{[a-zA-Z0-9_]+\}", "{param}", route.path).rstrip("/")
+        if norm not in backend_routes:
+            backend_routes[norm] = set()
+        backend_routes[norm].update(route.methods)
+
+    unmatched_calls = []
+    for verb, raw in frontend_calls:
         target = f"/api/v1{raw}".rstrip("/")
         target_norm = re.sub(r"\{[a-zA-Z0-9_]+\}", "{param}", target)
 
-        # Check exact or normalized match
-        if target_norm in backend_normalized:
+        if target_norm in backend_routes:
+            if verb in backend_routes[target_norm]:
+                continue
+            unmatched_calls.append(
+                (verb, raw, f"Method {verb} not allowed on route (Registered: {backend_routes[target_norm]})")
+            )
             continue
 
-        # If path ends with {param}, check if backend has matching prefix (ignoring root empty string)
-        if any(b and (b.startswith(target_norm) or target_norm.startswith(b)) for b in backend_normalized):
+        # Check if route with param matches
+        matched_prefix = False
+        for b_path, b_methods in backend_routes.items():
+            if b_path.endswith("{param}") and target_norm.startswith(b_path[:-7]):
+                if verb in b_methods:
+                    matched_prefix = True
+                    break
+        if matched_prefix:
             continue
 
-        unmatched_paths.append((raw, target_norm))
+        unmatched_calls.append((verb, raw, f"Route {target_norm} does not exist on backend"))
 
-    assert not unmatched_paths, f"Frontend calls endpoints that do not exist on backend: {unmatched_paths}"
+    assert not unmatched_calls, f"Frontend calls unmatched endpoints on backend: {unmatched_calls}"
 
 
 def test_openapi_contract_generation_check():

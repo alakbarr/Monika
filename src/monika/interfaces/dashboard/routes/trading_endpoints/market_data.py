@@ -250,6 +250,9 @@ async def get_market_candles(
     is_synthetic = False
     if not candles:
         is_synthetic = True
+        logger.warning(
+            f"[MarketData] Broker candles unavailable for {sym} ({timeframe}). Providing preview bars (is_synthetic=True)."
+        )
         import math
         import time
 

@@ -3,6 +3,7 @@
 # Description: System Health, Metrics, Overview & Diagnostics Endpoints
 # ==============================================================================
 
+import asyncio
 import json
 import logging
 import os
@@ -24,6 +25,7 @@ from monika.interfaces.dashboard.schemas import (
 )
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.System")
+_background_tasks: set[asyncio.Task[Any]] = set()
 
 router = APIRouter(prefix="/api/v1", tags=["System"])
 system_router = router
@@ -348,5 +350,7 @@ async def shutdown_system(request: Request):
 
             os.kill(os.getpid(), signal.SIGINT)
 
-    asyncio.create_task(_do_shutdown())
+    task = asyncio.create_task(_do_shutdown())
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
     return {"status": "shutting_down", "message": "Graceful shutdown initiated"}

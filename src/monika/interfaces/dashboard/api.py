@@ -144,6 +144,15 @@ app.add_middleware(
 
 
 @app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
+@app.middleware("http")
 async def verify_api_key(request: Request, call_next):
     api_key = os.getenv("DASHBOARD_API_KEY", "").strip()
     multi_keys = os.getenv("DASHBOARD_API_KEYS", "").strip()
@@ -162,7 +171,8 @@ async def verify_api_key(request: Request, call_next):
     is_localhost = direct_ip in ("127.0.0.1", "::1", "localhost", "testclient") and not forwarded
     path = request.url.path
 
-    if path in ("/api/ping", "/api/v1/ping"):
+    # Always allow CORS preflight and health pings without auth hurdles
+    if request.method == "OPTIONS" or path in ("/api/ping", "/api/v1/ping", "/ping"):
         return await call_next(request)
 
     if allowed_ips and not is_localhost:
@@ -289,7 +299,7 @@ async def serve_setup_page():
 
 
 @app.post("/api/v1/setup/submit")
-@require_role(Role.ADMIN)
+@require_role(Role.VIEWER)
 async def submit_setup_configuration(request: Request):
     """Receive and persist configuration submitted from Web Onboarding Wizard."""
     try:

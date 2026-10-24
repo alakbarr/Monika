@@ -14,25 +14,42 @@ class SoundEngine {
     }
   }
 
+  private masterGain: GainNode | null = null;
+
   private initContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.value = this.isMuted ? 0 : 0.8;
+        this.masterGain.connect(this.ctx.destination);
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
     return this.ctx;
   }
 
+  public unlock(): void {
+    const ctx = this.initContext();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+  }
+
   public toggleMute(): boolean {
     this.isMuted = !this.isMuted;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('monika_audio_muted', String(this.isMuted));
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.8, this.ctx.currentTime);
     }
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('monika_audio_muted', String(this.isMuted));
+      }
+    } catch {}
     return this.isMuted;
   }
 
@@ -64,7 +81,7 @@ class SoundEngine {
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
 
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(this.masterGain || ctx.destination);
 
         osc.start(now);
         osc.stop(now + 0.04);
@@ -81,7 +98,7 @@ class SoundEngine {
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
 
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(this.masterGain || ctx.destination);
 
         osc.start(now);
         osc.stop(now + 0.06);
@@ -97,7 +114,7 @@ class SoundEngine {
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
 
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(this.masterGain || ctx.destination);
 
         osc.start(now);
         osc.stop(now + 0.35);
@@ -135,7 +152,7 @@ class SoundEngine {
 
       osc1.connect(gain);
       osc2.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.masterGain || ctx.destination);
 
       osc1.start(now);
       osc2.start(now);
@@ -167,7 +184,7 @@ class SoundEngine {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.masterGain || ctx.destination);
 
       osc.start(now);
       osc.stop(now + 0.45);
@@ -178,3 +195,13 @@ class SoundEngine {
 }
 
 export const sounds = new SoundEngine();
+
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    sounds.unlock();
+    window.removeEventListener('pointerdown', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
+  };
+  window.addEventListener('pointerdown', unlockAudio, { once: true });
+  window.addEventListener('keydown', unlockAudio, { once: true });
+}

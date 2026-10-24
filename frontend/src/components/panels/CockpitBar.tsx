@@ -22,8 +22,8 @@ export const CockpitBar: React.FC = () => {
   const totalTrades = paperStats?.total_trades ?? 0;
   const winRate = paperStats?.win_rate_pct ?? 0;
   const winRateDisplay = totalTrades > 0 ? `${winRate.toFixed(1)}%` : '—';
-  const vix = overview?.vix ?? 16.5;
-  const vixS = vixSentiment(vix);
+  const vix = overview?.vix ?? null;
+  const vixS = vix != null ? vixSentiment(vix) : { label: 'N/A', color: 'var(--color-ink-soft)' };
 
   return (
     <div
@@ -155,7 +155,7 @@ export const CockpitBar: React.FC = () => {
           </span>
         </div>
         <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }} className="tabular-nums">
-          Avg R:R {paperStats?.avg_rr_achieved?.toFixed(2) ?? '1.50'}
+          Avg R:R {paperStats?.avg_rr_achieved != null ? paperStats.avg_rr_achieved.toFixed(2) : '—'}
         </div>
       </div>
 
@@ -192,7 +192,7 @@ export const CockpitBar: React.FC = () => {
             lineHeight: 1.1,
           }}
         >
-          {vix.toFixed(2)}
+          {vix != null ? vix.toFixed(2) : '—'}
         </div>
         <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>
           S&P 500 Implied Vol Regime

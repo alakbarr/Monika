@@ -1668,7 +1668,7 @@
     },
     "/api/v1/actions/emergency-kill": {
       "post": {
-        "description": "Trigger emergency kill switch and position liquidation safely via daemon.",
+        "description": "Trigger emergency kill switch and position liquidation safely via daemon with timeout.",
         "operationId": "action_emergency_kill_api_v1_actions_emergency_kill_post",
         "responses": {
           "200": {
@@ -3288,7 +3288,7 @@
     },
     "/api/v1/kill": {
       "post": {
-        "description": "Trigger emergency kill switch and position liquidation safely via daemon.",
+        "description": "Trigger emergency kill switch and position liquidation safely via daemon with timeout.",
         "operationId": "action_emergency_kill_api_v1_kill_post",
         "responses": {
           "200": {

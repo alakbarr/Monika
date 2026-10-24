@@ -27,25 +27,15 @@ const BIAS_COLOR: Record<string, string> = {
   neutral: 'var(--color-ink-muted)',
 };
 
-// Default high-liquidity watchlist assets (Live MT5 Market Quotes)
-const DEFAULT_WATCHLIST = [
-  { symbol: 'XAUUSD', name: 'Gold Spot / US Dollar', bid: 4360.31, ask: 4360.68, spread: 0.37, chgPct: +0.85, high: 4378.50, low: 4338.20 },
-  { symbol: 'EURUSD', name: 'Euro vs US Dollar', bid: 1.14766, ask: 1.14777, spread: 1.1, chgPct: -0.22, high: 1.15120, low: 1.14610 },
-  { symbol: 'GBPUSD', name: 'British Pound vs USD', bid: 1.33495, ask: 1.33506, spread: 1.1, chgPct: +0.14, high: 1.33850, low: 1.33280 },
-  { symbol: 'USDJPY', name: 'US Dollar vs Japanese Yen', bid: 155.998, ask: 156.008, spread: 1.0, chgPct: +0.48, high: 156.450, low: 155.320 },
-  { symbol: 'BTCUSD', name: 'Bitcoin Spot Index', bid: 76756.8, ask: 76776.45, spread: 19.65, chgPct: +1.85, high: 77400.0, low: 75280.0 },
-  { symbol: 'XTIUSD', name: 'WTI Crude Oil Spot', bid: 97.24, ask: 97.26, spread: 0.02, chgPct: +2.40, high: 98.60, low: 95.80 },
-  { symbol: 'XBRUSD', name: 'Brent Crude Oil Spot', bid: 101.05, ask: 101.07, spread: 0.02, chgPct: +2.15, high: 102.40, low: 99.50 },
-];
-
-const DEFAULT_MACRO_EVENTS = [
-  { time: '03:00 UTC', currency: 'JPY', event: 'Bank of Japan (BoJ) Interest Rate Decision', impact: 'high', forecast: '1.25%', previous: '1.00%' },
-  { time: '06:00 UTC', currency: 'GBP', event: 'UK Core Retail Sales (MoM)', impact: 'medium', forecast: '-0.2%', previous: '-0.9%' },
-  { time: '06:00 UTC', currency: 'EUR', event: 'German Producer Price Index (PPI MoM)', impact: 'medium', forecast: '0.6%', previous: '1.1%' },
-  { time: '10:30 UTC', currency: 'EUR', event: 'ECB President Christine Lagarde Speaks', impact: 'medium', forecast: '—', previous: '—' },
-  { time: '13:15 UTC', currency: 'USD', event: 'US Industrial Production (MoM)', impact: 'medium', forecast: '0.3%', previous: '0.2%' },
-  { time: '13:30 UTC', currency: 'USD', event: 'FOMC Member Bowman Speaks on Monetary Framework', impact: 'medium', forecast: '—', previous: '—' },
-  { time: '14:00 UTC', currency: 'USD', event: 'US Leading Economic Index (MoM)', impact: 'medium', forecast: '0.1%', previous: '0.2%' },
+// Default high-liquidity watchlist symbols
+const DEFAULT_SYMBOLS = [
+  { symbol: 'XAUUSD', name: 'Gold Spot / US Dollar' },
+  { symbol: 'EURUSD', name: 'Euro vs US Dollar' },
+  { symbol: 'GBPUSD', name: 'British Pound vs USD' },
+  { symbol: 'USDJPY', name: 'US Dollar vs Japanese Yen' },
+  { symbol: 'BTCUSD', name: 'Bitcoin Spot Index' },
+  { symbol: 'XTIUSD', name: 'WTI Crude Oil Spot' },
+  { symbol: 'XBRUSD', name: 'Brent Crude Oil Spot' },
 ];
 
 export const MarketDataPanel: React.FC = () => {
@@ -130,14 +120,32 @@ export const MarketDataPanel: React.FC = () => {
   const latest = vixHistory[vixHistory.length - 1];
   const vixS = latest ? vixSentiment(latest.close) : null;
 
-  const watchlist = DEFAULT_WATCHLIST.map((row) => {
-    const live = marketQuotes?.[row.symbol];
-    if (!live || !live.price) return { ...row, isFallback: true };
-    const bid = live.price;
-    const spreadDiff = row.ask - row.bid;
-    const ask = bid + (spreadDiff > 0 ? spreadDiff : 0.0001);
-    const chgPct = live.changePct != null ? live.changePct : row.chgPct;
-    return { ...row, bid, ask, chgPct, isFallback: false };
+  const watchlist = DEFAULT_SYMBOLS.map((item) => {
+    const live = marketQuotes?.[item.symbol] as any;
+    if (!live || (!live.price && !live.bid)) {
+      return {
+        ...item,
+        bid: null as number | null,
+        ask: null as number | null,
+        spread: null as number | null,
+        chgPct: null as number | null,
+        isFallback: true,
+      };
+    }
+    const bid = (live.bid ?? live.price ?? null) as number | null;
+    const ask = (live.ask ?? live.price ?? null) as number | null;
+    const spread = live.spread != null
+      ? live.spread
+      : (ask != null && bid != null ? Math.max(0, ask - bid) : null);
+    const chgPct = (live.changePct ?? live.change_pct ?? null) as number | null;
+    return {
+      ...item,
+      bid,
+      ask,
+      spread,
+      chgPct,
+      isFallback: false,
+    };
   });
 
   const macroEvents = liveCalendar.length > 0
@@ -173,7 +181,7 @@ export const MarketDataPanel: React.FC = () => {
         actual: null,
         surprise: null,
       }))
-    : DEFAULT_MACRO_EVENTS.map(e => ({ ...e, actual: null, surprise: null }));
+    : [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontFamily: 'var(--font-precision)' }}>
@@ -430,7 +438,12 @@ export const MarketDataPanel: React.FC = () => {
           variant="yellow"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {macroEvents.map((evt, idx) => (
+            {macroEvents.length === 0 ? (
+              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-ink-soft)', fontSize: '11px' }}>
+                — No high-impact macroeconomic releases scheduled for this session —
+              </div>
+            ) : (
+              macroEvents.map((evt, idx) => (
               <div
                 key={idx}
                 style={{
@@ -463,7 +476,7 @@ export const MarketDataPanel: React.FC = () => {
                   </Badge>
                 </div>
               </div>
-            ))}
+            )))}
           </div>
         </Card>
 

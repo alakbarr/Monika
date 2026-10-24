@@ -346,9 +346,14 @@ body {
   background: var(--color-brass);
 }
 
-/* High-Contrast Retro Focus Visible */
+/* High-Contrast Retro Focus Visible (WCAG 2.4.11 & 1.4.11) */
 *:focus-visible {
-  outline: 2px solid var(--color-win-blue) !important;
+  outline: 2px solid #1B365D !important;
+  outline-offset: 2px !important;
+}
+
+:root[data-theme="dark"] *:focus-visible {
+  outline: 2px solid #F5BD38 !important;
   outline-offset: 2px !important;
 }
 
@@ -405,10 +410,12 @@ body {
   align-self: stretch;
 }
 
+.win-titlebar--blue   { background: var(--color-win-blue);   color: var(--color-on-win-blue); }
 .win-titlebar--yellow { background: var(--color-win-yellow); color: var(--color-on-win-yellow); }
 .win-titlebar--salmon { background: var(--color-win-salmon); color: var(--color-on-win-salmon); }
 .win-titlebar--coral  { background: var(--color-win-coral);  color: var(--color-on-win-coral); }
 .win-titlebar--green  { background: var(--color-win-green);  color: var(--color-on-win-green); }
+.win-titlebar--moss   { background: var(--color-win-green);  color: var(--color-on-win-green); }
 .win-titlebar--gray   { background: var(--color-win-gray);   color: var(--color-on-win-gray); }
 
 /* Authentic Retro Focus Pinstripes & Elevation (UX-010) */
@@ -1098,5 +1105,3 @@ input::placeholder {
     scroll-behavior: auto !important;
   }
 }
-
-

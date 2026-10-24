@@ -1,10 +1,17 @@
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { useDashboardStore } from '../store/dashboardStore';
 
+function safeNum(val: unknown): number | null {
+  if (val === null || val === undefined || val === '') return null;
+  const n = typeof val === 'number' ? val : Number(val);
+  return Number.isFinite(n) ? n : null;
+}
+
 export const fmt = {
   // Currency
-  usd: (val: number | null | undefined, showSign = false) => {
-    if (val === null || val === undefined) return '—';
+  usd: (raw: unknown, showSign = false) => {
+    const val = safeNum(raw);
+    if (val === null) return '—';
     const formatted = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -17,33 +24,39 @@ export const fmt = {
   },
 
   // Percentage
-  pct: (val: number | null | undefined, showSign = false, decimals = 2) => {
-    if (val === null || val === undefined) return '—';
+  pct: (raw: unknown, showSign = false, decimals = 2) => {
+    const val = safeNum(raw);
+    if (val === null) return '—';
     if (Math.abs(val) < 0.005) return `${(0).toFixed(decimals)}%`;
     const sign = showSign && val > 0 ? '+' : '';
     return `${sign}${val.toFixed(decimals)}%`;
   },
 
   // Price (auto-decimals based on magnitude)
-  price: (val: number | null | undefined, symbol?: string) => {
-    if (val === null || val === undefined) return '—';
+  price: (raw: unknown, symbol?: string) => {
+    const val = safeNum(raw);
+    if (val === null) return '—';
     if (symbol?.includes('JPY') || val > 100) return val.toFixed(2);
     if (val > 1) return val.toFixed(4);
     return val.toFixed(5);
   },
 
-  // Large numbers (K, M, B)
-  compact: (val: number | null | undefined) => {
-    if (val === null || val === undefined) return '—';
-    if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(1)}B`;
-    if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
-    if (val >= 1_000) return `${(val / 1_000).toFixed(1)}K`;
-    return val.toFixed(0);
+  // Large numbers (K, M, B) supporting negative values
+  compact: (raw: unknown) => {
+    const val = safeNum(raw);
+    if (val === null) return '—';
+    const absVal = Math.abs(val);
+    const sign = val < 0 ? '−' : '';
+    if (absVal >= 1_000_000_000) return `${sign}${(absVal / 1_000_000_000).toFixed(1)}B`;
+    if (absVal >= 1_000_000) return `${sign}${(absVal / 1_000_000).toFixed(1)}M`;
+    if (absVal >= 1_000) return `${sign}${(absVal / 1_000).toFixed(1)}K`;
+    return `${sign}${absVal.toFixed(0)}`;
   },
 
   // Lots
-  lots: (val: number | null | undefined) => {
-    if (val === null || val === undefined) return '—';
+  lots: (raw: unknown) => {
+    const val = safeNum(raw);
+    if (val === null) return '—';
     return `${val.toFixed(2)}L`;
   },
 
@@ -98,13 +111,9 @@ export const fmt = {
       if (isNaN(d.getTime())) return '—';
       const tz = useDashboardStore.getState().timeZoneDisplay;
       if (tz === 'LOCAL') {
-        return `${format(d, 'dd MMM HH:mm')} LOC`;
+        return `${format(d, 'yyyy-MM-dd HH:mm')} LOC`;
       }
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const day = String(d.getUTCDate()).padStart(2, '0');
-      const mon = months[d.getUTCMonth()];
-      const timeStr = d.toISOString().slice(11, 16);
-      return `${day} ${mon} ${timeStr} UTC`;
+      return `${d.toISOString().slice(0, 16).replace('T', ' ')} UTC`;
     } catch {
       return '—';
     }
@@ -121,23 +130,48 @@ export const fmt = {
     }
   },
 
-  // R-ratio
-  r: (val: number | null | undefined) => {
-    if (val === null || val === undefined) return '—';
+  relativeTime: (iso: string | null | undefined) => {
+    if (!iso) return '—';
+    try {
+      const d = parseISO(iso);
+      if (isNaN(d.getTime())) return '—';
+      const diffSec = Math.floor((Date.now() - d.getTime()) / 1000);
+      if (diffSec < 60) return `${diffSec}s ago`;
+      if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+      if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+      return `${Math.floor(diffSec / 86400)}d ago`;
+    } catch {
+      return '—';
+    }
+  },
+
+  shortDate: (iso: string | null | undefined) => {
+    if (!iso) return '—';
+    try {
+      const d = parseISO(iso);
+      if (isNaN(d.getTime())) return '—';
+      return format(d, 'MMM dd');
+    } catch {
+      return '—';
+    }
+  },
+
+  r: (raw: unknown) => {
+    const val = safeNum(raw);
+    if (val === null) return '—';
     const sign = val >= 0 ? '+' : '';
     return `${sign}${val.toFixed(2)}R`;
   },
 
-  // Duration hours
-  hours: (h: number | null | undefined) => {
-    if (h === null || h === undefined) return '—';
+  hours: (raw: unknown) => {
+    const h = safeNum(raw);
+    if (h === null) return '—';
     if (h < 1) return `${Math.round(h * 60)}m`;
     if (h < 24) return `${h.toFixed(1)}h`;
     return `${(h / 24).toFixed(1)}d`;
   },
 };
 
-// Color helpers
 export function profitColor(val: number | null | undefined): string {
   if (!val) return '';
   return val > 0 ? 'text-profit' : val < 0 ? 'text-loss' : 'text-secondary';
@@ -157,9 +191,11 @@ export function assessmentColor(assessment: string): string {
   }
 }
 
-export function vixSentiment(vix: number): { label: string; color: string } {
-  if (vix < 15) return { label: 'Low', color: 'var(--color-profit)' };
-  if (vix < 20) return { label: 'Moderate', color: 'var(--color-primary)' };
-  if (vix < 30) return { label: 'Elevated', color: 'var(--color-warn)' };
+export function vixSentiment(vix: number | null | undefined): { label: string; color: string } {
+  const v = safeNum(vix);
+  if (v === null) return { label: 'Unknown', color: 'var(--color-ink-soft)' };
+  if (v < 15) return { label: 'Low', color: 'var(--color-profit)' };
+  if (v < 20) return { label: 'Moderate', color: 'var(--color-primary)' };
+  if (v < 30) return { label: 'Elevated', color: 'var(--color-warn)' };
   return { label: 'Extreme', color: 'var(--color-loss)' };
 }

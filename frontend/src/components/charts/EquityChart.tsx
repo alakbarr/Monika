@@ -40,12 +40,13 @@ export const EquityChart: React.FC<EquityChartProps> = ({
   startEquity,
   height = 120,
 }) => {
-  const isUp = data.length > 0 && data[data.length - 1].equity >= startEquity;
+  const safeData = Array.isArray(data) ? data : [];
+  const isUp = safeData.length > 0 && safeData[safeData.length - 1].equity >= startEquity;
   const lineColor = isUp ? 'var(--color-brass-bright)' : 'var(--color-ledger-red)';
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
+      <LineChart data={safeData} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
         {/* Paper graph grid */}
         <CartesianGrid stroke="var(--color-rule)" strokeDasharray="2 4" opacity={0.4} />
         <XAxis hide dataKey="index" />

@@ -32,7 +32,7 @@ export const FactorHeatmap: React.FC<FactorHeatmapProps> = ({ data }) => {
   const [viewMode, setViewMode] = useState<'matrix' | 'list'>('matrix');
   const [filterSignificantOnly, setFilterSignificantOnly] = useState<boolean>(false);
 
-  const rawEntries = Object.entries(data);
+  const rawEntries = Object.entries(data || {});
 
   const filtered = rawEntries.filter(([, stats]) => {
     if (filterSignificantOnly) {

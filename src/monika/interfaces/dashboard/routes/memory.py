@@ -14,6 +14,7 @@ from sqlalchemy import desc, or_, select
 from monika.infrastructure.database.db import AsyncSessionLocal
 from monika.infrastructure.database.models import CandidateLesson, DecisionReflection, PlaybookRuleAttribution
 from monika.interfaces.dashboard.rbac import Role, require_role
+from monika.interfaces.dashboard.routes.common import get_dashboard_dependency
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Memory")
 
@@ -187,13 +188,10 @@ async def search_memory(payload: MemorySearchRequest) -> Dict[str, Any]:
 
     try:
         async with AsyncSessionLocal() as session:
-            # 1. Attempt hybrid vector + BM25 search via SessionSearchEngine
-            is_mock_session = hasattr(session, "mock_calls") or hasattr(session, "_mock_return_value")
-            if not is_mock_session:
+            # 1. Attempt hybrid vector + BM25 search via registered SessionSearchEngine
+            engine = get_dashboard_dependency("session_search_engine")
+            if engine and hasattr(engine, "hybrid_search"):
                 try:
-                    from monika.application.analysis.memory.session_search import SessionSearchEngine
-
-                    engine = SessionSearchEngine()
                     hybrid_results = await engine.hybrid_search(
                         query=payload.query,
                         symbol=payload.symbol,

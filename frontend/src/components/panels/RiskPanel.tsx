@@ -57,7 +57,7 @@ export const RiskPanel: React.FC = () => {
   const openPositions = positions.filter((p) => p.status === 'open');
   const maxRiskPerTrade = riskState?.max_risk_pct ?? 1.0;
   const totalOpenRiskPct = riskState?.total_open_risk_pct ?? (openPositions.length * maxRiskPerTrade);
-  const dailyDrawdownPct = Math.abs(riskState?.daily_pnl_pct ?? overview?.daily_pnl_pct ?? (overview?.daily_pnl ? Math.min(5.0, Math.abs(overview.daily_pnl) / 100) : 0));
+  const dailyDrawdownPct = Math.abs(riskState?.daily_pnl_pct ?? overview?.daily_pnl_pct ?? 0.0);
   const marginUsagePct = riskState?.margin_usage_pct ?? null;
   const consecutiveLosses = riskState?.consecutive_losses ?? 0;
   const maxConsecutiveLosses = riskState?.max_consecutive_losses ?? 3;
@@ -237,7 +237,7 @@ export const RiskPanel: React.FC = () => {
 
           <VuMeter
             label="VOLATILITY (VIX)"
-            value={overview?.vix ?? 15.0}
+            value={overview?.vix ?? 0}
             min={10}
             max={40}
             unit=" pts"
@@ -379,20 +379,26 @@ export const RiskPanel: React.FC = () => {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-ink)' }}>
-                  <span>✓ Position Guardian (Trailing Stop & Breakeven)</span>
-                  <span className="tabular-nums" style={{ color: 'var(--color-ledger-green)' }}>ACTIVE (2m interval)</span>
+                  <span>{isPaused ? '×' : '✓'} Position Guardian (Trailing Stop & Breakeven)</span>
+                  <span className="tabular-nums" style={{ color: isPaused ? 'var(--color-ledger-red)' : 'var(--color-ledger-green)' }}>
+                    {isPaused ? 'HALTED / CIRCUIT BREAKER' : 'ACTIVE (2m interval)'}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-ink)' }}>
-                  <span>✓ Exposure Gatekeeper</span>
-                  <span className="tabular-nums" style={{ color: 'var(--color-ledger-green)' }}>VERIFIED / NOMINAL</span>
+                  <span>{isPaused ? '×' : '✓'} Exposure Gatekeeper</span>
+                  <span className="tabular-nums" style={{ color: isPaused ? 'var(--color-ledger-red)' : 'var(--color-ledger-green)' }}>
+                    {isPaused ? 'SUSPENDED' : 'VERIFIED / NOMINAL'}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-ink)' }}>
                   <span>✓ News Blackout Filter (High-Impact Events)</span>
                   <span className="tabular-nums" style={{ color: 'var(--color-brass)' }}>ARMED (T-15m release)</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-ink)' }}>
-                  <span>✓ Daily Drawdown Monitor (Hard Stop 3%)</span>
-                  <span className="tabular-nums" style={{ color: 'var(--color-ledger-green)' }}>NOMINAL</span>
+                  <span>{isPaused ? '×' : '✓'} Daily Drawdown Monitor (Hard Stop 3%)</span>
+                  <span className="tabular-nums" style={{ color: isPaused ? 'var(--color-ledger-red)' : 'var(--color-ledger-green)' }}>
+                    {isPaused ? 'CIRCUIT TRIPPED' : 'NOMINAL'}
+                  </span>
                 </div>
               </div>
             </div>

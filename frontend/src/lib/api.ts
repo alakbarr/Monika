@@ -115,8 +115,8 @@ async function put<T>(endpoint: string, body?: unknown): Promise<T> {
 export const api = {
   health: () => get<import('../types/api').HealthStatus>('/health/diagnostics'),
   overview: () => get<import('../types/api').Overview>('/overview'),
-  positions: (status: 'open' | 'closed' | 'all' = 'open') =>
-    get<import('../types/api').Position[]>(`/positions?status=${status}`),
+  positions: (status: 'open' | 'closed' | 'all' = 'open', limit = 200) =>
+    get<import('../types/api').Position[]>(`/positions?status=${status}&limit=${limit}`),
   activity: (limit = 50, category?: string) =>
     get<import('../types/api').ActivityLog[]>(
       `/activity?limit=${limit}${category ? `&category=${category}` : ''}`
@@ -428,10 +428,12 @@ export const api = {
   // Trajectories & Decision Lineage (FASE 5)
   tradeTrajectories: (limit = 50) =>
     get<import('../types/api').TrajectoriesResponse>(`/observability/trajectories?limit=${limit}`),
-  cycleLineage: (cycleId: string, targetSeq?: number) =>
-    get<import('../types/api').CycleLineageResponse>(
-      `/observability/cycles/${encodeURIComponent(cycleId)}/lineage${targetSeq !== undefined ? `?target_seq=${targetSeq}` : ''}`
-    ),
+  cycleLineage: (cycleId: string, targetSeq?: number) => {
+    const qs = targetSeq !== undefined ? `?target_seq=${targetSeq}` : '';
+    return get<import('../types/api').CycleLineageResponse>(
+      `/observability/cycles/${encodeURIComponent(cycleId)}/lineage${qs}`
+    );
+  },
 
   // Plugin Marketplace & Harness Lifecycle
   plugins: () =>
@@ -505,6 +507,3 @@ export const api = {
       `/analysis/decision-dossier/${encodeURIComponent(String(analysisId))}${ticket ? `?ticket=${ticket}` : ''}`
     ),
 };
-
-
-

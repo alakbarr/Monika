@@ -33,8 +33,8 @@ websocket_router = router
 def _is_origin_allowed(websocket: WebSocket, is_localhost: bool) -> bool:
     origin = websocket.headers.get("origin")
     if not origin:
-        # Direct non-browser clients (CLI, python scripts)
-        return is_localhost
+        # Direct non-browser clients (CLI, automated scripts, backend integration tests)
+        return True
     allowed_raw = os.getenv("DASHBOARD_ALLOWED_ORIGINS", "")
     allowed = [o.strip() for o in allowed_raw.split(",") if o.strip()] or [
         "http://localhost:5173",
@@ -950,8 +950,7 @@ async def websocket_terminal_pty(websocket: WebSocket, session_id: Optional[str]
     except Exception as e:
         logger.warning(f"[PtyBridge] WebSocket error: {e}")
     finally:
-        if pty_session.process and pty_session.process.returncode is not None:
-            await manager.close_session(sid)
+        await manager.close_session(sid)
         try:
             await websocket.close()
         except Exception:

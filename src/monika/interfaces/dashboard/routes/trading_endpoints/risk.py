@@ -109,17 +109,18 @@ async def get_risk():
         total_open_risk_pct = round(active_pos_count * max_risk_pct, 2)
 
         if not risk:
+            # Fail closed: missing risk state must reflect uninitialized state
             return {
                 "date": now_utc.date().isoformat(),
                 "daily_pnl": 0.0,
                 "daily_pnl_pct": 0.0,
                 "current_drawdown": 0.0,
-                "trading_paused": False,
-                "reason": None,
-                "margin_used": round(margin_used, 2),
-                "margin_free": round(margin_free, 2),
-                "margin_level_pct": round(margin_level_pct, 2),
-                "margin_usage_pct": round(margin_usage_pct, 2),
+                "trading_paused": True,
+                "reason": "RiskState uninitialized for current trading session (Fail-Closed)",
+                "margin_used": round(margin_used, 2) if account_info else None,
+                "margin_free": round(margin_free, 2) if account_info else None,
+                "margin_level_pct": round(margin_level_pct, 2) if account_info else None,
+                "margin_usage_pct": round(margin_usage_pct, 2) if account_info else None,
                 "total_open_risk_pct": total_open_risk_pct,
                 "consecutive_losses": consecutive_losses,
                 "max_consecutive_losses": 3,

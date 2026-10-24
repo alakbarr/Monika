@@ -14,7 +14,7 @@ const DECISION_COLORS: Record<string, string> = {
 };
 
 export const DecisionDistChart: React.FC<DecisionDistChartProps> = ({ data }) => {
-  const chartData = Object.entries(data).map(([symbol, stats]) => ({
+  const chartData = Object.entries(data || {}).map(([symbol, stats]) => ({
     symbol,
     buy: stats.buy || 0,
     sell: stats.sell || 0,

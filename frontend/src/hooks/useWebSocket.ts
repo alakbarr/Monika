@@ -30,9 +30,12 @@ export const useWebSocket = () => {
   const connect = useCallback(() => {
     if (typeof window === 'undefined') return;
 
-    // Clean up any existing connection
+    // Clean up any existing connection without triggering reconnection storm
     if (ws.current) {
       try {
+        ws.current.onclose = null;
+        ws.current.onerror = null;
+        ws.current.onmessage = null;
         ws.current.close();
       } catch {
         // ignore

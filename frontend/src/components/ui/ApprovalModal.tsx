@@ -4,6 +4,7 @@
 // ==============================================================================
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Badge } from './Badge';
 import { TypewriterButton } from './TypewriterButton';
 import { fmt } from '../../lib/formatters';
@@ -78,13 +79,23 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
   useEffect(() => {
     if (!isOpen || !request) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)
+      ) {
+        return;
+      }
       if (e.key === '1') {
+        e.preventDefault();
         sounds.playClick('bell');
         onAllowOnce(request.id);
       } else if (e.key === '2') {
+        e.preventDefault();
         sounds.playClick('bell');
         onAllowSession(request.id);
       } else if (e.key === '3' || e.key === 'Escape') {
+        e.preventDefault();
         sounds.playClick('toggle');
         onDeny(request.id);
       }
@@ -101,7 +112,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
   const rrRatio = slDist && tpDist && slDist > 0 ? (tpDist / slDist).toFixed(2) : null;
   const ttlProgress = Math.max(0, Math.min(100, (timeLeft / initialTTL) * 100));
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -357,6 +368,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
           </TypewriterButton>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

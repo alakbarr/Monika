@@ -13725,6 +13725,7 @@
 #### `api.py` - *Dashboard API: FastAPI Backend for Observability and Control Dashboard.*
 - **Path**: [`src/monika/interfaces/dashboard/api.py`](src/monika/interfaces/dashboard/api.py)
 - **Top-Level Functions**:
+  - `async add_security_headers(request: Request, call_next)`
   - `async verify_api_key(request: Request, call_next)`
   - `async global_exception_handler(request: Request, exc: Exception)`
   - `async serve_setup_page()`: Serve standalone Web Setup Wizard page.
@@ -13732,10 +13733,10 @@
   - `run_dashboard(host: Optional[str], port: Optional[int], reload: bool)`: Start API server dari script main (sync mode).
   - `async run_dashboard_async(host: Optional[str], port: Optional[int], shutdown_event: Optional[asyncio.Event])`: Start API server di event loop yang ada (async mode).
 
-#### `log_streamer.py` - *Asynchronous Incremental Log File Tailer & Streamer.*
+#### `log_streamer.py` - *Asynchronous Incremental Log File Tailer and Streamer.*
 - **Path**: [`src/monika/interfaces/dashboard/log_streamer.py`](src/monika/interfaces/dashboard/log_streamer.py)
 - **Classes**:
-  - `class LogStreamer`: Asynchronous file tailer for streaming runtime logs.
+  - `class LogStreamer`: Asynchronous file tailer for streaming runtime logs with secret redaction.
     - `__init__(log_path: Path, min_level: str)`
     - `stop() -> None`
     - `should_emit(line: str) -> bool`
@@ -13783,8 +13784,8 @@
 - **Classes**:
   - `class TicketPayload`
   - `class WsTicketManager`: Manages ephemeral, single-use tickets for secure WebSocket handshakes.
-    - `__init__(default_ttl: float)`
-    - `create_ticket(user_id: str, role: str, ttl_seconds: Optional[float]) -> str` - *Issues a single-use ticket string.*
+    - `__init__(default_ttl: float, max_tickets: int)`
+    - `create_ticket(user_id: str, role: str, ttl_seconds: Optional[float]) -> str` - *Issues a single-use ticket string with Least Privilege default role (viewer).*
     - `validate_and_consume(ticket_id: str) -> Optional[TicketPayload]` - *Validates and immediately consumes the ticket.*
     - `active_ticket_count() -> int`
 - **Top-Level Functions**:
@@ -13995,7 +13996,7 @@
   - `async action_trigger_cycle(request: Request, body: Optional[TriggerCycleRequest])`: Trigger the LangGraph analysis cycle immediately with optional symbol and context guidance.
   - `async action_steer(body: SteerRequest, request: Request)`: Inject operator steering instruction / directive into active or next cycle.
   - `async action_kill_symbol(symbol: str, request: Request)`: Emergency close all open positions for a single currency/symbol.
-  - `async action_emergency_kill(request: Request)`: Trigger emergency kill switch and position liquidation safely via daemon.
+  - `async action_emergency_kill(request: Request)`: Trigger emergency kill switch and position liquidation safely via daemon with timeout.
   - `async action_resume_trading(request: Request)`: Resume system trading operations, clearing kill switch, pause flags, and resetting EffectGate.
   - `async action_pause_trading(request: Request)`: Pause system trading operations.
   - `async action_unsuspend_symbols(request: Request)`: Lift trading suspension on all instruments or specific symbol.

@@ -161,20 +161,25 @@ export function useAgentChatWs() {
             });
             break;
 
-          case 'chart_image':
+          case 'chart_image': {
+            const rawChart = data.data || data.image_url || data.image_data;
+            const chartSrc = rawChart?.startsWith('data:') ? rawChart : rawChart ? `data:image/png;base64,${rawChart}` : undefined;
             setMessages((prev) => [
               ...prev,
               {
                 id: String(Date.now()),
                 role: 'assistant',
                 text: data.caption || '📊 Visualisasi Grafik Pasar',
-                chart_image: data.image_url || data.image_data,
+                chart_image: chartSrc,
                 timestamp: new Date().toISOString(),
               },
             ]);
             break;
+          }
 
-          case 'file_download':
+          case 'file_download': {
+            const rawFile = data.data || data.url || data.download_url;
+            const fileUrl = rawFile?.startsWith('data:') ? rawFile : rawFile ? `data:application/octet-stream;base64,${rawFile}` : undefined;
             setMessages((prev) => [
               ...prev,
               {
@@ -182,13 +187,14 @@ export function useAgentChatWs() {
                 role: 'assistant',
                 text: data.text || `📥 Berkas siap diunduh: ${data.filename || 'download'}`,
                 file_download: {
-                  url: data.url || data.download_url,
+                  url: fileUrl || '#',
                   filename: data.filename || 'report.pdf',
                 },
                 timestamp: new Date().toISOString(),
               },
             ]);
             break;
+          }
 
           case 'complete':
             setIsProcessing(false);
@@ -262,6 +268,11 @@ export function useAgentChatWs() {
       } catch (err) {
         console.error('Failed processing WebSocket message:', err);
       }
+    };
+
+    ws.onerror = (err) => {
+      console.warn('[AgentChatWS] Socket encountered error:', err);
+      setIsProcessing(false);
     };
 
     ws.onclose = () => {

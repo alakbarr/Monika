@@ -1,3 +1,4 @@
+import { ErrorBoundary } from './ErrorBoundary';
 // ==============================================================================
 // File: src/components/ui/WindowFrame.tsx
 // Description: Interactive Retro Window Frame with minimize, maximize, and sound
@@ -189,7 +190,9 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
               ...bodyStyle,
             }}
           >
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </div>
 
           {/* Window Status Bar */}

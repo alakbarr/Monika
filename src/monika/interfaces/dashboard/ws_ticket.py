@@ -17,7 +17,7 @@ import logging
 import secrets
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 logger = logging.getLogger("TradingAgent.Dashboard.WsTicket")
 
@@ -35,22 +35,33 @@ class TicketPayload:
 class WsTicketManager:
     """Manages ephemeral, single-use tickets for secure WebSocket handshakes."""
 
-    def __init__(self, default_ttl: float = DEFAULT_TICKET_TTL_SECONDS):
+    def __init__(self, default_ttl: float = DEFAULT_TICKET_TTL_SECONDS, max_tickets: int = 1000):
         self.default_ttl = default_ttl
+        self.max_tickets = max_tickets
         self._tickets: Dict[str, TicketPayload] = {}
 
     def _purge_expired(self) -> None:
         now = time.time()
-        self._tickets = {t: p for t, p in self._tickets.items() if p.expires_at > now}
+        # Thread-safe snapshot using list to prevent dictionary size mutation during iteration
+        self._tickets = {t: p for t, p in list(self._tickets.items()) if p.expires_at > now}
 
     def create_ticket(
         self,
         user_id: str = "operator",
-        role: str = "admin",
+        role: str = "viewer",
         ttl_seconds: Optional[float] = None,
     ) -> str:
-        """Issues a single-use ticket string."""
+        """Issues a single-use ticket string with Least Privilege default role (viewer)."""
         self._purge_expired()
+
+        # Enforce bounded capacity to prevent memory DoS
+        if len(self._tickets) >= self.max_tickets:
+            try:
+                oldest_key = min(self._tickets, key=lambda k: self._tickets[k].created_at)
+                self._tickets.pop(oldest_key, None)
+            except Exception:
+                pass
+
         ticket_id = secrets.token_urlsafe(32)
         ttl = ttl_seconds or self.default_ttl
         now = time.time()
@@ -74,7 +85,10 @@ class WsTicketManager:
             return None
 
         # Atomically pop to enforce single-use invariant
-        payload = self._tickets.pop(ticket_id)
+        payload = self._tickets.pop(ticket_id, None)
+        if payload is None:
+            return None
+
         if time.time() > payload.expires_at:
             return None
 

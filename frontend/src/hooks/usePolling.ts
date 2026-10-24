@@ -6,9 +6,9 @@ export const usePolling = (
   fullInterval = 60_000,   // 60s for all data
 ) => {
   const { fetchQuick, fetchAll, wsConnected } = useDashboardStore();
-  const quickTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
-  const fullTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const mounted = useRef(false);
+  const isFetchingQuick = useRef(false);
+  const isFetchingFull = useRef(false);
 
   // Initial load
   useEffect(() => {
@@ -20,20 +20,63 @@ export const usePolling = (
 
   // Full refresh (every fullInterval, e.g. 60s)
   useEffect(() => {
-    fullTimer.current = setInterval(fetchAll, fullInterval);
+    let timer: ReturnType<typeof setTimeout>;
+    let active = true;
+
+    const runFull = async () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        timer = setTimeout(runFull, 10_000);
+        return;
+      }
+      if (!isFetchingFull.current) {
+        isFetchingFull.current = true;
+        try {
+          await fetchAll();
+        } finally {
+          isFetchingFull.current = false;
+        }
+      }
+      if (active) {
+        timer = setTimeout(runFull, fullInterval);
+      }
+    };
+
+    timer = setTimeout(runFull, fullInterval);
     return () => {
-      if (fullTimer.current) clearInterval(fullTimer.current);
+      active = false;
+      clearTimeout(timer);
     };
   }, [fetchAll, fullInterval]);
 
   // Quick refresh (drops to 30s heartbeat when WS connected, 5s when disconnected)
   useEffect(() => {
-    const effectiveQuick = wsConnected ? 30_000 : quickInterval;
-    quickTimer.current = setInterval(fetchQuick, effectiveQuick);
+    let timer: ReturnType<typeof setTimeout>;
+    let active = true;
 
+    const runQuick = async () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        timer = setTimeout(runQuick, 10_000);
+        return;
+      }
+      const delay = wsConnected ? 30_000 : quickInterval;
+      if (!isFetchingQuick.current) {
+        isFetchingQuick.current = true;
+        try {
+          await fetchQuick();
+        } finally {
+          isFetchingQuick.current = false;
+        }
+      }
+      if (active) {
+        timer = setTimeout(runQuick, delay);
+      }
+    };
+
+    const initialDelay = wsConnected ? 30_000 : quickInterval;
+    timer = setTimeout(runQuick, initialDelay);
     return () => {
-      if (quickTimer.current) clearInterval(quickTimer.current);
+      active = false;
+      clearTimeout(timer);
     };
   }, [fetchQuick, quickInterval, wsConnected]);
 };
-
