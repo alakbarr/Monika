@@ -19,55 +19,36 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '' }) => {
     <button
       type="button"
       onClick={toggleTheme}
-      className={`win-btn ${className}`}
-      title={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+      className={`editorial-btn ${className}`}
+      title={isLight ? 'Switch to Graphite Dark Mode (T)' : 'Switch to Alabaster Light Mode (T)'}
+      aria-label={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        height: '30px',
+        height: '28px',
         boxSizing: 'border-box',
-        gap: '8px',
-        background: 'var(--color-paper-raised)',
-        border: '2px solid var(--color-rule)',
-        borderRadius: 'var(--radius-md)',
+        gap: '7px',
+        background: 'transparent',
+        border: '1px solid var(--color-rule)',
+        borderRadius: 'var(--radius-xs)',
         padding: '0 10px',
         cursor: 'pointer',
-        fontFamily: 'var(--font-precision)',
+        fontFamily: 'var(--font-mono)',
         fontSize: 'var(--text-xs)',
-        color: 'var(--color-ink)',
-        boxShadow: '2px 2px 0 var(--color-rule)',
+        color: 'var(--color-ink-secondary)',
         userSelect: 'none',
       }}
     >
-      {/* Retro slider track */}
       <span
         style={{
-          width: '28px',
-          height: '14px',
-          background: 'var(--color-paper)',
-          border: '1px solid var(--color-rule)',
-          borderRadius: '3px',
-          position: 'relative',
+          width: '7px',
+          height: '7px',
+          background: 'var(--color-ink)',
           display: 'inline-block',
         }}
-      >
-        {/* Retro knob */}
-        <span
-          style={{
-            position: 'absolute',
-            top: '0px',
-            left: isLight ? '0px' : '13px',
-            width: '11px',
-            height: '11px',
-            background: 'var(--color-win-yellow)',
-            border: '1px solid var(--color-rule)',
-            borderRadius: '2px',
-            transition: 'left 120ms ease-out',
-          }}
-        />
-      </span>
-      <span style={{ fontWeight: 'var(--weight-bold)', letterSpacing: '0.04em' }}>
-        {isLight ? 'LIGHT' : 'DARK'}
+      />
+      <span style={{ fontWeight: 600, letterSpacing: '0.06em' }}>
+        {isLight ? 'ALABASTER' : 'GRAPHITE'}
       </span>
     </button>
   );

@@ -1,5 +1,6 @@
 import React from 'react';
 import { TypewriterButton } from './TypewriterButton';
+import { X } from 'lucide-react';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -18,7 +19,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   title,
   actionSummary,
   details,
-  confirmLabel = 'OK',
+  confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   danger = false,
   onConfirm,
@@ -43,102 +44,91 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-modal-title"
-      className="retro-modal-scrim"
+      className="editorial-modal-scrim"
       style={{
         zIndex: 10000,
         padding: '16px',
-        fontFamily: 'var(--font-precision)',
       }}
+      onClick={onCancel}
     >
       <div
-        className="win-window"
+        onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
-          maxWidth: '460px',
-          background: 'var(--color-paper-raised)',
-          border: '2px solid var(--color-rule)',
-          boxShadow: '4px 4px 0 var(--color-rule)',
-          borderRadius: 'var(--radius-card)',
-          overflow: 'hidden',
+          maxWidth: '480px',
+          background: 'var(--color-canvas)',
+          border: `1px solid ${danger ? 'var(--color-loss)' : 'var(--color-rule-strong)'}`,
+          boxShadow: 'var(--shadow-modal)',
           display: 'flex',
           flexDirection: 'column',
         }}
       >
-        {/* Retro Dialog Title Bar */}
         <div
           id="confirm-modal-title"
-          className="win-titlebar"
           style={{
-            background: danger ? 'var(--color-win-coral)' : 'var(--color-win-blue)',
-            color: 'var(--color-titlebar-text)',
-            padding: '6px 10px',
-            borderBottom: '2px solid var(--color-rule)',
+            padding: '14px 20px',
+            borderBottom: '1px solid var(--color-rule)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            fontWeight: 'bold',
-            fontSize: 'var(--text-body-sm)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'var(--text-xs)',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: danger ? 'var(--color-loss)' : 'var(--color-ink)',
           }}
         >
           <span>{title}</span>
-          <div className="win-controls">
-            <button
-              type="button"
-              className="win-control-btn"
-              onClick={onCancel}
-              title="Close"
-            >
-              ×
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Close"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--color-ink-muted)',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+          >
+            <X size={15} />
+          </button>
         </div>
 
-        {/* Dialog Content */}
-        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-            {/* Retro icon circle */}
+        <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div
+            style={{
+              fontFamily: 'var(--font-editorial)',
+              fontSize: 'var(--text-display-sm)',
+              color: 'var(--color-ink)',
+              lineHeight: 1.25,
+            }}
+          >
+            {actionSummary}
+          </div>
+          {details && (
             <div
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                background: danger ? 'var(--color-win-coral)' : 'var(--color-win-yellow)',
-                border: '2px solid var(--color-rule)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                fontWeight: 900,
-                color: danger ? 'var(--color-on-win-coral)' : 'var(--color-on-win-yellow)',
-                flexShrink: 0,
-                boxShadow: '2px 2px 0 var(--color-rule)',
+                fontSize: 'var(--text-body-sm)',
+                color: 'var(--color-ink-secondary)',
+                lineHeight: 1.55,
               }}
             >
-              {danger ? '✕' : '!'}
+              {details}
             </div>
+          )}
 
-            <div style={{ flex: 1 }}>
-              <div
-                style={{
-                  fontSize: 'var(--text-body-md)',
-                  color: 'var(--color-ink)',
-                  lineHeight: 1.5,
-                  fontWeight: 'bold',
-                  marginBottom: '6px',
-                }}
-              >
-                {actionSummary}
-              </div>
-              {details && (
-                <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-ink-soft)', lineHeight: 1.4 }}>
-                  {details}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Action Buttons Row (OK / Cancel) */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '10px' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '10px',
+              paddingTop: '12px',
+              borderTop: '1px solid var(--color-rule)',
+            }}
+          >
             <TypewriterButton variant="secondary" onClick={onCancel}>
               {cancelLabel}
             </TypewriterButton>

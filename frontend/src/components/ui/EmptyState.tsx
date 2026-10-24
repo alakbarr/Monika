@@ -1,8 +1,3 @@
-// ==============================================================================
-// File: src/components/ui/EmptyState.tsx
-// Description: Reusable Dashboard Empty State with Teletype Stamp & Action Slot
-// ==============================================================================
-
 import React from 'react';
 import { TypewriterButton } from './TypewriterButton';
 
@@ -29,42 +24,38 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     return (
       <div
         style={{
-          padding: '14px 16px',
+          padding: '16px 0',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
+          justifyContent: 'space-between',
           gap: '12px',
-          fontFamily: 'var(--font-precision)',
-          background: 'var(--color-paper-subtle)',
-          borderBottom: '1px dashed var(--color-rule)',
+          fontFamily: 'var(--font-mono)',
+          borderBottom: '1px solid var(--color-rule)',
           boxSizing: 'border-box',
           ...style,
         }}
       >
-        {icon && (
-          <span style={{ display: 'inline-flex', color: 'var(--color-ink-soft)', flexShrink: 0 }}>
-            {icon}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {icon && (
+            <span style={{ display: 'inline-flex', color: 'var(--color-ink-muted)', flexShrink: 0 }}>
+              {icon}
+            </span>
+          )}
+          <span
+            style={{
+              fontSize: 'var(--text-xs)',
+              fontWeight: 600,
+              color: 'var(--color-ink)',
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+            }}
+          >
+            {title}
           </span>
-        )}
-        <span
-          style={{
-            fontSize: 'var(--text-xs)',
-            fontWeight: 800,
-            color: 'var(--color-ink)',
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-          }}
-        >
-          [ {title} ]
-        </span>
-        <span
-          style={{
-            fontSize: 'var(--text-xs)',
-            color: 'var(--color-ink-soft)',
-          }}
-        >
-          {message}
-        </span>
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-muted)' }}>
+            — {message}
+          </span>
+        </div>
         {actionLabel && onAction && (
           <TypewriterButton size="sm" onClick={onAction}>
             {actionLabel}
@@ -73,33 +64,26 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       </div>
     );
   }
+
   return (
     <div
       style={{
-        padding: '36px 20px',
+        padding: '48px 24px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         textAlign: 'center',
-        fontFamily: 'var(--font-precision)',
+        borderTop: '1px solid var(--color-rule)',
+        borderBottom: '1px solid var(--color-rule)',
         ...style,
       }}
     >
       {icon && (
         <div
           style={{
-            width: 44,
-            height: 44,
-            borderRadius: 'var(--radius-sm)',
-            background: 'var(--color-paper)',
-            border: '2px solid var(--color-rule)',
-            boxShadow: '2px 2px 0 var(--color-rule)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--color-ink-soft)',
-            marginBottom: '14px',
+            color: 'var(--color-ink-muted)',
+            marginBottom: '12px',
           }}
         >
           {icon}
@@ -108,23 +92,22 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
       <div
         style={{
-          fontSize: 'var(--text-body-sm)',
-          fontWeight: 800,
+          fontFamily: 'var(--font-editorial)',
+          fontSize: 'var(--text-title-lg)',
           color: 'var(--color-ink)',
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
           marginBottom: '6px',
         }}
       >
-        [ {title} ]
+        {title}
       </div>
 
       <div
         style={{
-          fontSize: 'var(--text-xs)',
-          color: 'var(--color-ink-soft)',
-          maxWidth: '360px',
-          lineHeight: 1.5,
+          fontFamily: 'var(--font-sans)',
+          fontSize: 'var(--text-body-sm)',
+          color: 'var(--color-ink-muted)',
+          maxWidth: '400px',
+          lineHeight: 1.55,
           marginBottom: actionLabel ? '16px' : '0',
         }}
       >

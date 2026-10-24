@@ -1,23 +1,83 @@
-// ==============================================================================
-// File: src/components/panels/CockpitBar.tsx
-// Description: Compact Cockpit Instrument Cluster (Replaces bulky MetricCard row)
-// ==============================================================================
-
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { SegmentedProgressBar } from '../ui/SegmentedProgressBar';
 import { fmt, vixSentiment } from '../../lib/formatters';
+import { api } from '../../lib/api';
 
-export const CockpitBar: React.FC = () => {
-  const { overview, paperStats, loading, wsConnected } = useDashboardStore();
+interface CockpitBarProps {
+  showSmcChart?: boolean;
+  onToggleSmcChart?: () => void;
+}
 
+interface ScrubPoint {
+  index: number;
+  equity: number;
+  returnPct: number;
+  label: string;
+}
+
+export const CockpitBar: React.FC<CockpitBarProps> = ({
+  showSmcChart = false,
+  onToggleSmcChart,
+}) => {
+  const { overview, paperStats, riskState, loading, wsConnected, fetchAll } = useDashboardStore();
+  const [scrubIndex, setScrubIndex] = useState<number | null>(null);
+  const [triggeringCycle, setTriggeringCycle] = useState(false);
+
+  const baseEquity = 10000;
   const dailyPnl = overview?.daily_pnl ?? 0;
-  const isZero = Math.abs(dailyPnl) < 0.005;
-  const isProfit = !isZero && dailyPnl > 0;
-  const badgeLabel = isZero ? 'FLAT' : isProfit ? 'PROFIT' : 'LOSS';
-  const badgeColor = isZero ? 'var(--color-ink-soft)' : isProfit ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)';
-  const badgeBg = isZero ? 'var(--color-paper)' : isProfit ? 'var(--color-profit-dim)' : 'var(--color-loss-dim)';
-  const pnlColor = isZero ? 'var(--color-ink)' : isProfit ? 'var(--color-ledger-green)' : 'var(--color-ledger-red)';
+  const totalPnlPct = paperStats?.total_pnl_pct ?? overview?.daily_pnl_pct ?? 0;
+
+  // Build interactive scrubbing equity series from recent paper trades + current live state
+  const series = useMemo<ScrubPoint[]>(() => {
+    const recent = paperStats?.recent_20 ?? [];
+    if (recent.length === 0) {
+      const currentEq = baseEquity + dailyPnl;
+      const pct = ((currentEq - baseEquity) / baseEquity) * 100;
+      return [
+        { index: 0, equity: baseEquity, returnPct: 0, label: 'SESSION OPEN' },
+        { index: 1, equity: currentEq, returnPct: pct, label: 'LIVE SNAPSHOT' },
+      ];
+    }
+
+    let eq = baseEquity;
+    const pts: ScrubPoint[] = [
+      { index: 0, equity: eq, returnPct: 0, label: 'INCEPTION BASELINE' },
+    ];
+    recent.forEach((t, idx) => {
+      eq = eq * (1 + (t.pnl_pct || 0) / 100);
+      const retPct = ((eq - baseEquity) / baseEquity) * 100;
+      pts.push({
+        index: idx + 1,
+        equity: Number(eq.toFixed(2)),
+        returnPct: Number(retPct.toFixed(2)),
+        label: `TRADE #${idx + 1} · ${t.symbol} (${t.exit_reason || 'CLOSED'})`,
+      });
+    });
+    return pts;
+  }, [paperStats, dailyPnl]);
+
+  const activePoint =
+    scrubIndex !== null && series[scrubIndex]
+      ? series[scrubIndex]
+      : series[series.length - 1];
+
+  const displayedEquity = activePoint?.equity ?? baseEquity + dailyPnl;
+  const displayedReturnPct = activePoint?.returnPct ?? totalPnlPct;
+  const displayedDeltaUsd = displayedEquity - baseEquity;
+
+  const wholeDollars = Math.floor(Math.abs(displayedEquity)).toLocaleString('en-US');
+  const cents = Math.round((Math.abs(displayedEquity) % 1) * 100)
+    .toString()
+    .padStart(2, '0');
+
+  const isPositive = displayedDeltaUsd >= 0;
+  const deltaColor =
+    Math.abs(displayedDeltaUsd) < 0.005
+      ? 'var(--color-ink-muted)'
+      : isPositive
+      ? 'var(--color-profit)'
+      : 'var(--color-loss)';
 
   const totalTrades = paperStats?.total_trades ?? 0;
   const winRate = paperStats?.win_rate_pct ?? 0;
@@ -25,207 +85,536 @@ export const CockpitBar: React.FC = () => {
   const vix = overview?.vix ?? null;
   const vixS = vix != null ? vixSentiment(vix) : { label: 'N/A', color: 'var(--color-ink-soft)' };
 
+  const ddPct = Math.abs(overview?.drawdown_pct ?? 0);
+  const maxDdCap = riskState?.max_daily_drawdown_pct ?? 3.0;
+
+  // Build SVG path for interactive scrubbing equity curve
+  const svgWidth = 1000;
+  const svgHeight = 148;
+  const { linePath, areaPath, coords } = useMemo(() => {
+    if (series.length < 2) {
+      return {
+        linePath: `M 0 ${svgHeight / 2} L ${svgWidth} ${svgHeight / 2}`,
+        areaPath: `M 0 ${svgHeight / 2} L ${svgWidth} ${svgHeight / 2} L ${svgWidth} ${svgHeight} L 0 ${svgHeight} Z`,
+        coords: [{ x: 0, y: svgHeight / 2 }, { x: svgWidth, y: svgHeight / 2 }],
+      };
+    }
+    const values = series.map((p) => p.equity);
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+    const range = Math.max(maxVal - minVal, 1);
+    const padTop = 18;
+    const padBottom = 18;
+    const usableH = svgHeight - padTop - padBottom;
+
+    const pts = series.map((p, i) => {
+      const x = (i / (series.length - 1)) * svgWidth;
+      const y = padTop + usableH - ((p.equity - minVal) / range) * usableH;
+      return { x, y };
+    });
+
+    const d = pts
+      .map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`)
+      .join(' ');
+    const area = `${d} L ${svgWidth} ${svgHeight} L 0 ${svgHeight} Z`;
+    return { linePath: d, areaPath: area, coords: pts };
+  }, [series]);
+
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (series.length < 2) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const idx = Math.round(relX * (series.length - 1));
+    setScrubIndex(idx);
+  };
+
+  const handleTriggerCycle = async () => {
+    if (triggeringCycle) return;
+    setTriggeringCycle(true);
+    try {
+      await api.triggerCycle(true, 'Manual cycle triggered from Capital Desk');
+      await fetchAll();
+    } catch {
+      // Handled by global error state
+    } finally {
+      setTriggeringCycle(false);
+    }
+  };
+
   return (
-    <div
-      className="win-window ledger-card"
+    <section
+      className="editorial-section"
+      aria-label="Portfolio Equity Monument & Telemetry Ribbon"
       style={{
-        background: 'var(--color-paper-raised)',
-        border: '2px solid var(--color-rule)',
-        borderRadius: 'var(--radius-card)',
-        boxShadow: 'var(--shadow-card)',
-        overflow: 'hidden',
-        fontFamily: 'var(--font-precision)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '18px',
+        paddingTop: '16px',
       }}
     >
+      {!wsConnected && (
+        <div
+          style={{
+            padding: '6px 12px',
+            background: 'var(--color-loss-soft)',
+            border: '1px solid var(--color-loss)',
+            borderRadius: '2px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '11px',
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 600,
+            color: 'var(--color-loss)',
+            letterSpacing: '0.06em',
+          }}
+        >
+          <span>STALE TELEMETRY — REALTIME STREAM DISCONNECTED · DISPLAYING LAST RECORDED SNAPSHOT</span>
+          <span>RECONNECTING…</span>
+        </div>
+      )}
+
+      {/* Sculptural Hero Equity Monument Row */}
       <div
-        className="win-titlebar win-titlebar--yellow"
         style={{
-          padding: '4px 10px',
-          borderBottom: '2px solid var(--color-rule)',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-end',
           justifyContent: 'space-between',
-          fontSize: '11px',
-          letterSpacing: '0.05em',
-          fontWeight: 800,
+          flexWrap: 'wrap',
+          gap: '20px',
         }}
       >
-        <span className="win-titlebar-title">INSTRUMENT CLUSTER // COCKPIT TELEMETRY</span>
-        <span style={{ fontSize: '11px', color: 'var(--color-on-win-yellow)', opacity: 0.85 }}>LIVE SENSORS</span>
-      </div>
-
-      <div style={{ padding: '10px 14px' }}>
-        {!wsConnected && (
+        <div>
           <div
             style={{
-              padding: '4px 10px',
-              marginBottom: '10px',
-              background: 'repeating-linear-gradient(45deg, var(--color-loss-dim) 0px, var(--color-loss-dim) 4px, transparent 4px, transparent 8px)',
-              border: '2px solid var(--color-ledger-red)',
-              borderRadius: 'var(--radius-xs)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              fontSize: '11px',
-              fontWeight: 800,
-              color: 'var(--color-ledger-red)',
-              letterSpacing: '0.04em',
+              gap: '10px',
+              marginBottom: '6px',
             }}
           >
-            <span>[ ⚠ STALE FEED — WEBSOCKET DISCONNECTED · VALUES REPRESENT LAST RECORDED SNAPSHOT ]</span>
-            <span style={{ fontSize: '11px', opacity: 0.8 }}>RECONNECTING...</span>
+            <span className="editorial-kicker">
+              {scrubIndex !== null ? `HISTORICAL SCRUB · ${activePoint.label}` : 'NET PORTFOLIO LIQUIDATION VALUE'}
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                color: 'var(--color-ink-soft)',
+                padding: '1px 6px',
+                border: '1px solid var(--color-border)',
+                borderRadius: '2px',
+              }}
+            >
+              {overview?.is_live ? 'LIVE BROKER LEDGER' : 'PAPER VALIDATION LEDGER'}
+            </span>
           </div>
-        )}
 
-        <div className="cockpit-bar">
-          {/* 1. Daily P&L & Drawdown Instrument (Elevated Visual Anchor) */}
-          <div className="cockpit-item cockpit-item--hero">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            NET DAILY P&L
-          </span>
-          <span
-            className="stamp-badge"
+          <div
             style={{
-              padding: '1px 6px',
-              fontSize: '11px',
-              fontWeight: 800,
-              background: badgeBg,
-              color: badgeColor,
-              border: `1px solid ${badgeColor}`,
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: '16px',
+              flexWrap: 'wrap',
             }}
           >
-            {badgeLabel}
-          </span>
+            <div className="equity-monument tabular-nums">
+              {loading ? (
+                '—'
+              ) : (
+                <>
+                  {displayedEquity < 0 ? '-$' : '$'}
+                  {wholeDollars}
+                  <span className="cents">.{cents}</span>
+                </>
+              )}
+            </div>
+
+            <div
+              className="tabular-nums"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: deltaColor,
+                padding: '3px 8px',
+                borderRadius: '2px',
+                background:
+                  Math.abs(displayedDeltaUsd) < 0.005
+                    ? 'var(--color-surface-well)'
+                    : isPositive
+                    ? 'var(--color-profit-soft)'
+                    : 'var(--color-loss-soft)',
+              }}
+            >
+              <span>
+                {isPositive ? '+' : ''}
+                {fmt.usd(displayedDeltaUsd, false)}
+              </span>
+              <span>
+                ({isPositive ? '+' : ''}
+                {displayedReturnPct.toFixed(2)}%)
+              </span>
+            </div>
+          </div>
         </div>
+
+        {/* Right KPI Strip + SMC Chart Toggle */}
         <div
-          className="tabular-nums"
           style={{
-            fontSize: 'var(--text-display-md)',
-            fontFamily: 'var(--font-precision)',
-            fontWeight: 800,
-            color: pnlColor,
-            lineHeight: 1.15,
-            letterSpacing: '-0.02em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '24px',
+            flexWrap: 'wrap',
           }}
         >
-          {loading ? '...' : fmt.usd(dailyPnl, true)}
-        </div>
-        <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }} className="tabular-nums">
-          Max DD: {fmt.usd(overview?.current_drawdown ?? 0)}
-          {overview?.drawdown_pct !== null && overview?.drawdown_pct !== undefined ? ` (${overview.drawdown_pct.toFixed(2)}%)` : ''}
+          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+            <div>
+              <div className="editorial-kicker">EXPECTANCY / TRADE</div>
+              <div
+                className="tabular-nums"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  color: paperStats?.has_positive_edge ? 'var(--color-profit)' : 'var(--color-ink)',
+                  marginTop: '2px',
+                }}
+              >
+                {fmt.pct(paperStats?.expectancy_per_trade_pct, true)}
+              </div>
+            </div>
+            <div>
+              <div className="editorial-kicker">AVG R:R ACHIEVED</div>
+              <div
+                className="tabular-nums"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  color: 'var(--color-ink)',
+                  marginTop: '2px',
+                }}
+              >
+                {paperStats?.avg_rr_achieved != null ? `${paperStats.avg_rr_achieved.toFixed(2)}R` : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="editorial-kicker">WIN RATE ({totalTrades}/50)</div>
+              <div
+                className="tabular-nums"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  color: winRate >= 55 ? 'var(--color-profit)' : 'var(--color-ink)',
+                  marginTop: '2px',
+                }}
+              >
+                {winRateDisplay}
+              </div>
+            </div>
+          </div>
+
+          {onToggleSmcChart && (
+            <button
+              type="button"
+              onClick={onToggleSmcChart}
+              style={{
+                padding: '6px 12px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                fontWeight: 600,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: showSmcChart ? 'var(--color-surface)' : 'var(--color-ink)',
+                background: showSmcChart ? 'var(--color-ink)' : 'transparent',
+                border: '1px solid var(--color-border-strong)',
+                borderRadius: '2px',
+                cursor: 'pointer',
+              }}
+            >
+              {showSmcChart ? 'HIDE SMC CHART' : 'INSPECT SMC & TIMESFM CHART'}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 2. Win Rate Instrument (Segmented Pill Block Bar) */}
-      <div className="cockpit-item" style={{ justifyContent: 'center' }}>
-        <SegmentedProgressBar
-          value={totalTrades > 0 ? winRate : 0}
-          max={100}
-          segments={10}
-          variant="salmon"
-          label="WIN RATE"
-          valueDisplay={winRateDisplay}
-        />
-        <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', marginTop: '3px' }}>
-          {totalTrades > 0
-            ? `SOP Benchmark: ≥ 55.0% (${totalTrades} Trades)`
-            : 'No closed trades recorded (—)'}
-        </div>
-      </div>
+      {/* Interactive Scrubbing Equity Curve SVG */}
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: `${svgHeight}px`,
+          borderTop: '1px solid var(--color-border)',
+          borderBottom: '1px solid var(--color-border)',
+          cursor: 'crosshair',
+        }}
+      >
+        <svg
+          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+          preserveAspectRatio="none"
+          style={{ width: '100%', height: '100%', display: 'block', overflow: 'visible' }}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setScrubIndex(null)}
+        >
+          <defs>
+            <linearGradient id="monika-equity-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop
+                offset="0%"
+                stopColor={isPositive ? 'var(--color-profit)' : 'var(--color-loss)'}
+                stopOpacity="0.14"
+              />
+              <stop
+                offset="100%"
+                stopColor={isPositive ? 'var(--color-profit)' : 'var(--color-loss)'}
+                stopOpacity="0.0"
+              />
+            </linearGradient>
+          </defs>
 
-      {/* 3. Edge Status & Expectancy Instrument */}
-      <div className="cockpit-item">
-        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--color-ink-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          EDGE STATUS & R:R
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
-          <span
-            style={{
-              fontWeight: 800,
-              fontSize: 'var(--text-body-sm)',
-              color: paperStats?.has_positive_edge ? 'var(--color-ledger-green)' : 'var(--color-brass)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {paperStats?.has_positive_edge ? '[ POSITIVE ]' : '[ NEUTRAL ]'}
-          </span>
-          <span style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-ink)', whiteSpace: 'nowrap' }} className="tabular-nums">
-            {fmt.pct(paperStats?.expectancy_per_trade_pct, true)}
-          </span>
-        </div>
-        <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }} className="tabular-nums">
-          Avg R:R {paperStats?.avg_rr_achieved != null ? paperStats.avg_rr_achieved.toFixed(2) : '—'}
-        </div>
-      </div>
+          {/* Subtle horizontal baseline */}
+          <line
+            x1={0}
+            y1={svgHeight / 2}
+            x2={svgWidth}
+            y2={svgHeight / 2}
+            stroke="var(--color-border)"
+            strokeDasharray="3 3"
+            strokeWidth={1}
+          />
 
-      {/* 4. VIX Volatility Instrument */}
-      <div className="cockpit-item">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--color-ink-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            VIX VOLATILITY
-          </span>
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontSize: '11px',
-              fontWeight: 800,
-              padding: '1px 5px',
-              borderRadius: '4px',
-              background: 'var(--color-paper)',
-              border: '1px solid var(--color-rule)',
-              color: vixS.color,
-            }}
-          >
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: vixS.color }} />
-            {vixS.label.toUpperCase()}
-          </span>
-        </div>
+          {/* Area fill */}
+          <path d={areaPath} fill="url(#monika-equity-fill)" />
+
+          {/* Crisp 1.75px equity trajectory */}
+          <path
+            d={linePath}
+            fill="none"
+            stroke={isPositive ? 'var(--color-profit)' : 'var(--color-loss)'}
+            strokeWidth={1.75}
+            vectorEffect="non-scaling-stroke"
+          />
+
+          {/* Active Scrub Crosshair Hairline & Pin */}
+          {scrubIndex !== null && coords[scrubIndex] && (
+            <g>
+              <line
+                x1={coords[scrubIndex].x}
+                y1={0}
+                x2={coords[scrubIndex].x}
+                y2={svgHeight}
+                stroke="var(--color-ink)"
+                strokeWidth={1}
+                strokeDasharray="2 2"
+                vectorEffect="non-scaling-stroke"
+              />
+              <circle
+                cx={coords[scrubIndex].x}
+                cy={coords[scrubIndex].y}
+                r={4}
+                fill="var(--color-surface)"
+                stroke="var(--color-ink)"
+                strokeWidth={2}
+              />
+            </g>
+          )}
+        </svg>
+
         <div
-          className="tabular-nums"
           style={{
-            fontSize: 'var(--text-title-md)',
-            fontWeight: 800,
-            color: 'var(--color-ink)',
-            lineHeight: 1.1,
+            position: 'absolute',
+            right: '8px',
+            bottom: '6px',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '11px',
+            color: 'var(--color-ink-soft)',
+            pointerEvents: 'none',
           }}
         >
-          {vix != null ? vix.toFixed(2) : '—'}
-        </div>
-        <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>
-          S&P 500 Implied Vol Regime
+          {scrubIndex !== null ? 'RELEASE CURSOR TO RETURN TO LIVE LEDGER' : 'HOVER CURVE TO SCRUB HISTORICAL EQUITY'}
         </div>
       </div>
 
-      {/* 5. Open Positions & System State Instrument */}
-      <div className="cockpit-item">
-        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--color-ink-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          ACTIVE POSITIONS
-        </span>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-          <span
+      {/* 6-Cell Continuous Telemetry Ribbon */}
+      <div className="cockpit-bar" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))' }}>
+        {/* 1. Net Daily P&L */}
+        <div className="cockpit-item swiss-crosshair">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="editorial-kicker">NET DAILY P&L</span>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                fontWeight: 600,
+                color:
+                  Math.abs(dailyPnl) < 0.005
+                    ? 'var(--color-ink-soft)'
+                    : dailyPnl > 0
+                    ? 'var(--color-profit)'
+                    : 'var(--color-loss)',
+              }}
+            >
+              {Math.abs(dailyPnl) < 0.005 ? 'FLAT' : dailyPnl > 0 ? 'PROFIT' : 'LOSS'}
+            </span>
+          </div>
+          <div
             className="tabular-nums"
             style={{
-              fontSize: 'var(--text-title-md)',
-              fontWeight: 800,
-              color: 'var(--color-win-blue)',
-              lineHeight: 1.1,
+              fontFamily: 'var(--font-mono)',
+              fontSize: '18px',
+              fontWeight: 600,
+              color:
+                Math.abs(dailyPnl) < 0.005
+                  ? 'var(--color-ink)'
+                  : dailyPnl > 0
+                  ? 'var(--color-profit)'
+                  : 'var(--color-loss)',
             }}
           >
-            {overview?.open_positions_count ?? 0}
-          </span>
-          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
-            OPEN POSITIONS
-          </span>
+            {loading ? '…' : fmt.usd(dailyPnl, true)}
+          </div>
+          <div className="tabular-nums" style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-soft)' }}>
+            Session Return: {overview?.daily_pnl_pct != null ? `${overview.daily_pnl_pct.toFixed(2)}%` : '0.00%'}
+          </div>
         </div>
-        <div style={{ fontSize: '11px', color: overview?.trading_paused ? 'var(--color-ledger-red)' : 'var(--color-ledger-green)', fontWeight: 'bold' }}>
-          {overview?.trading_paused ? '● PAUSED' : '● ACTIVE'}
+
+        {/* 2. Free Margin & Margin Level */}
+        <div className="cockpit-item swiss-crosshair">
+          <span className="editorial-kicker">MARGIN TELEMETRY</span>
+          <div
+            className="tabular-nums"
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '18px',
+              fontWeight: 600,
+              color: 'var(--color-ink)',
+            }}
+          >
+            {riskState?.margin_free != null ? fmt.usd(riskState.margin_free, false) : '$10,000.00'}
+          </div>
+          <div className="tabular-nums" style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-soft)' }}>
+            Level: {riskState?.margin_level_pct != null ? `${riskState.margin_level_pct.toFixed(0)}%` : '100%'} · Used:{' '}
+            {riskState?.margin_usage_pct != null ? `${riskState.margin_usage_pct.toFixed(1)}%` : '0.0%'}
+          </div>
+        </div>
+
+        {/* 3. Daily Drawdown vs Mechanical RiskGate Cap */}
+        <div className="cockpit-item swiss-crosshair">
+          <SegmentedProgressBar
+            value={ddPct}
+            max={maxDdCap}
+            label="DRAWDOWN VS CAP"
+            valueDisplay={`${ddPct.toFixed(2)}% / ${maxDdCap.toFixed(1)}%`}
+          />
+          <div className="tabular-nums" style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-soft)' }}>
+            Max DD: {fmt.usd(overview?.current_drawdown ?? 0)} (Hard Gate {maxDdCap.toFixed(1)}%)
+          </div>
+        </div>
+
+        {/* 4. Win Rate & Graduation Gate */}
+        <div className="cockpit-item swiss-crosshair">
+          <SegmentedProgressBar
+            value={totalTrades > 0 ? winRate : 0}
+            max={100}
+            label="WIN RATE BENCHMARK"
+            valueDisplay={winRateDisplay}
+          />
+          <div className="tabular-nums" style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-soft)' }}>
+            SOP Gate: ≥55.0% ({totalTrades}/50 Paper Trades)
+          </div>
+        </div>
+
+        {/* 5. VIX Volatility Regime */}
+        <div className="cockpit-item swiss-crosshair">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="editorial-kicker">VIX REGIME</span>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: vixS.color,
+              }}
+            >
+              <span style={{ width: 5, height: 5, background: vixS.color, display: 'inline-block' }} />
+              {vixS.label.toUpperCase()}
+            </span>
+          </div>
+          <div
+            className="tabular-nums"
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '18px',
+              fontWeight: 600,
+              color: 'var(--color-ink)',
+            }}
+          >
+            {vix != null ? vix.toFixed(2) : '—'}
+          </div>
+          <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-soft)' }}>
+            S&P 500 Implied Volatility
+          </div>
+        </div>
+
+        {/* 6. Active Positions & Cycle Execution */}
+        <div className="cockpit-item swiss-crosshair">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="editorial-kicker">EXECUTION ENGINE</span>
+            <button
+              type="button"
+              onClick={handleTriggerCycle}
+              disabled={triggeringCycle}
+              style={{
+                padding: '2px 6px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: 'var(--color-ink)',
+                background: 'transparent',
+                border: '1px solid var(--color-border-strong)',
+                borderRadius: '2px',
+                cursor: triggeringCycle ? 'wait' : 'pointer',
+              }}
+              title="Trigger immediate autonomous analysis cycle"
+            >
+              {triggeringCycle ? 'RUNNING…' : '+ RUN CYCLE'}
+            </button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <span
+              className="tabular-nums"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '18px',
+                fontWeight: 600,
+                color: 'var(--color-ink)',
+              }}
+            >
+              {overview?.open_positions_count ?? 0}
+            </span>
+            <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-soft)' }}>
+              OPEN POSITIONS
+            </span>
+          </div>
+          <div
+            style={{
+              fontSize: '11px',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 600,
+              color: overview?.trading_paused ? 'var(--color-loss)' : 'var(--color-profit)',
+            }}
+          >
+            {overview?.trading_paused ? '■ HALTED' : '■ ACTIVE ENGINE'}
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
+    </section>
   );
 };

@@ -94,7 +94,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       },
       {
         id: 'act-kill',
-        title: '🚨 Emergency Kill Switch (Liquidate & Halt)',
+        title: 'Emergency Kill Switch (Liquidate & Halt)',
         category: 'Action',
         run: () => {
           setShowKillConfirm(true);
@@ -159,13 +159,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       onClick={onClose}
     >
       <div
-        className="win-window ledger-card"
         style={{
           width: '90%',
-          maxWidth: '560px',
-          background: 'var(--color-paper-raised)',
-          border: '2px solid var(--color-rule)',
-          borderRadius: 'var(--radius-card)',
+          maxWidth: '580px',
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border-strong)',
+          borderRadius: '2px',
           boxShadow: 'var(--shadow-modal)',
           overflow: 'hidden',
           display: 'flex',
@@ -174,26 +173,26 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="win-titlebar"
           style={{
-            padding: '6px 14px',
-            borderBottom: '2px solid var(--color-rule)',
-            background: 'var(--color-paper-raised)',
+            padding: '10px 16px',
+            borderBottom: '1px solid var(--color-border)',
+            background: 'var(--color-surface-well)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            fontFamily: 'var(--font-precision)',
-            fontSize: 'var(--text-body-sm)',
-            fontWeight: 'bold',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'var(--color-ink)',
           }}
         >
-          <span>⚡ Monika Command Palette</span>
-          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
-            ESC to close
-          </span>
+          <span>MONIKA COMMAND PALETTE</span>
+          <span style={{ color: 'var(--color-ink-soft)' }}>ESC TO CLOSE</span>
         </div>
 
-        <div style={{ padding: '12px', borderBottom: '1px solid var(--color-rule)' }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>
           <input
             ref={inputRef}
             type="text"
@@ -202,21 +201,21 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
             aria-expanded={filteredCommands.length > 0}
             aria-controls="command-palette-listbox"
             aria-activedescendant={filteredCommands[selectedIndex] ? `cmd-${filteredCommands[selectedIndex].id}` : undefined}
-            aria-label="Cari perintah atau tab navigasi"
+            aria-label="Search commands or navigation views"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a command or navigate to tab..."
+            placeholder="Type a command or navigate to view…"
             style={{
               width: '100%',
-              padding: '10px 14px',
-              fontSize: 'var(--text-body-md)',
-              background: 'var(--color-paper-sunken)',
+              padding: '10px 12px',
+              fontSize: '13px',
+              background: 'var(--color-surface-well)',
               color: 'var(--color-ink)',
-              border: '1px solid var(--color-rule)',
-              borderRadius: 'var(--radius-control)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '2px',
               outline: 'none',
-              fontFamily: 'var(--font-precision)',
+              fontFamily: 'var(--font-sans)',
               boxSizing: 'border-box',
             }}
           />
@@ -232,7 +231,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
             padding: '6px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '3px',
+            gap: '2px',
           }}
         >
           {filteredCommands.length === 0 ? (
@@ -241,8 +240,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                 padding: '24px',
                 textAlign: 'center',
                 color: 'var(--color-ink-soft)',
-                fontSize: 'var(--text-body-sm)',
-                fontFamily: 'var(--font-precision)',
+                fontSize: '12px',
+                fontFamily: 'var(--font-mono)',
               }}
             >
               No matching commands or navigation targets found.
@@ -259,41 +258,41 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                   onClick={item.run}
                   style={{
                     padding: '8px 12px',
-                    borderRadius: 'var(--radius-control)',
-                    background: isSelected ? 'var(--color-primary)' : 'transparent',
-                    color: isSelected ? 'var(--color-on-primary)' : 'var(--color-ink)',
+                    borderRadius: '2px',
+                    background: isSelected ? 'var(--color-ink)' : 'transparent',
+                    color: isSelected ? 'var(--color-surface)' : 'var(--color-ink)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    fontFamily: 'var(--font-precision)',
-                    fontSize: 'var(--text-body-sm)',
-                    transition: 'background 0.1s ease',
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '13px',
                   }}
                   onMouseEnter={() => setSelectedIndex(idx)}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span
                       style={{
-                        fontSize: 'var(--text-xs)',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        background: isSelected ? 'rgba(255,255,255,0.2)' : 'var(--color-paper-sunken)',
-                        color: isSelected ? 'inherit' : 'var(--color-ink-soft)',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '11px',
+                        padding: '1px 6px',
+                        borderRadius: '2px',
+                        border: '1px solid currentColor',
+                        opacity: 0.75,
                       }}
                     >
-                      {item.category}
+                      {item.category.toUpperCase()}
                     </span>
                     <span>{item.title}</span>
                   </div>
                   {item.shortcut && (
                     <kbd
                       style={{
-                        padding: '2px 6px',
+                        padding: '1px 6px',
                         fontSize: '11px',
-                        background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--color-paper-sunken)',
-                        borderRadius: '3px',
-                        border: '1px solid var(--color-rule)',
+                        fontFamily: 'var(--font-mono)',
+                        borderRadius: '2px',
+                        border: '1px solid currentColor',
                       }}
                     >
                       {item.shortcut}

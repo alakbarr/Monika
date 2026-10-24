@@ -6,24 +6,27 @@ export type BadgeVariant =
   | 'buy' | 'sell' | 'wait' | 'avoid'
   | 'trading' | 'analysis' | 'risk' | 'system' | 'scraping';
 
-const variantColorMap: Record<BadgeVariant, { color: string; bg: string; border: string }> = {
-  active:   { color: 'var(--color-on-win-green)', bg: 'var(--color-win-green)', border: 'var(--color-rule)' },
-  paused:   { color: 'var(--color-on-win-yellow)', bg: 'var(--color-win-yellow)', border: 'var(--color-rule)' },
-  error:    { color: 'var(--color-on-win-coral)', bg: 'var(--color-win-coral)', border: 'var(--color-rule)' },
-  neutral:  { color: 'var(--color-ink-soft)', bg: 'var(--color-paper-raised)', border: 'var(--color-rule)' },
-  profit:   { color: 'var(--color-on-win-green)', bg: 'var(--color-win-green)', border: 'var(--color-rule)' },
-  loss:     { color: 'var(--color-on-win-coral)', bg: 'var(--color-win-coral)', border: 'var(--color-rule)' },
-  warn:     { color: 'var(--color-on-win-yellow)', bg: 'var(--color-win-yellow)', border: 'var(--color-rule)' },
-  info:     { color: 'var(--color-on-win-blue)', bg: 'var(--color-win-blue)', border: 'var(--color-rule)' },
-  buy:      { color: 'var(--color-on-win-green)', bg: 'var(--color-win-green)', border: 'var(--color-rule)' },
-  sell:     { color: 'var(--color-on-win-coral)', bg: 'var(--color-win-coral)', border: 'var(--color-rule)' },
-  wait:     { color: 'var(--color-ink-soft)', bg: 'var(--color-paper-raised)', border: 'var(--color-rule)' },
-  avoid:    { color: 'var(--color-ink-soft)', bg: 'var(--color-paper-raised)', border: 'var(--color-rule)' },
-  trading:  { color: 'var(--color-on-win-yellow)', bg: 'var(--color-win-yellow)', border: 'var(--color-rule)' },
-  analysis: { color: 'var(--color-on-win-salmon)', bg: 'var(--color-win-salmon)', border: 'var(--color-rule)' },
-  risk:     { color: 'var(--color-on-win-coral)', bg: 'var(--color-win-coral)', border: 'var(--color-rule)' },
-  system:   { color: 'var(--color-ink-soft)', bg: 'var(--color-paper-raised)', border: 'var(--color-rule)' },
-  scraping: { color: 'var(--color-ink-soft)', bg: 'var(--color-paper-raised)', border: 'var(--color-rule)' },
+const variantColorMap: Record<BadgeVariant, { color: string; dotColor: string; border: string; bg: string }> = {
+  active:   { color: 'var(--color-gain)', dotColor: 'var(--color-gain)', border: 'var(--color-gain-border)', bg: 'transparent' },
+  profit:   { color: 'var(--color-gain)', dotColor: 'var(--color-gain)', border: 'var(--color-gain-border)', bg: 'transparent' },
+  buy:      { color: 'var(--color-gain)', dotColor: 'var(--color-gain)', border: 'var(--color-gain-border)', bg: 'transparent' },
+
+  error:    { color: 'var(--color-loss)', dotColor: 'var(--color-loss)', border: 'var(--color-loss-border)', bg: 'transparent' },
+  loss:     { color: 'var(--color-loss)', dotColor: 'var(--color-loss)', border: 'var(--color-loss-border)', bg: 'transparent' },
+  sell:     { color: 'var(--color-loss)', dotColor: 'var(--color-loss)', border: 'var(--color-loss-border)', bg: 'transparent' },
+  risk:     { color: 'var(--color-loss)', dotColor: 'var(--color-loss)', border: 'var(--color-loss-border)', bg: 'transparent' },
+
+  paused:   { color: 'var(--color-warn)', dotColor: 'var(--color-warn)', border: 'var(--color-warn-border)', bg: 'transparent' },
+  warn:     { color: 'var(--color-warn)', dotColor: 'var(--color-warn)', border: 'var(--color-warn-border)', bg: 'transparent' },
+  trading:  { color: 'var(--color-warn)', dotColor: 'var(--color-warn)', border: 'var(--color-warn-border)', bg: 'transparent' },
+
+  info:     { color: 'var(--color-ink)', dotColor: 'var(--color-ink)', border: 'var(--color-rule)', bg: 'transparent' },
+  analysis: { color: 'var(--color-ink-secondary)', dotColor: 'var(--color-ink-secondary)', border: 'var(--color-rule)', bg: 'transparent' },
+  neutral:  { color: 'var(--color-ink-muted)', dotColor: 'var(--color-ink-muted)', border: 'var(--color-rule)', bg: 'transparent' },
+  wait:     { color: 'var(--color-ink-muted)', dotColor: 'var(--color-ink-muted)', border: 'var(--color-rule)', bg: 'transparent' },
+  avoid:    { color: 'var(--color-ink-muted)', dotColor: 'var(--color-ink-muted)', border: 'var(--color-rule)', bg: 'transparent' },
+  system:   { color: 'var(--color-ink-muted)', dotColor: 'var(--color-ink-muted)', border: 'var(--color-rule)', bg: 'transparent' },
+  scraping: { color: 'var(--color-ink-muted)', dotColor: 'var(--color-ink-muted)', border: 'var(--color-rule)', bg: 'transparent' },
 };
 
 interface BadgeProps {
@@ -33,7 +36,7 @@ interface BadgeProps {
   dot?: boolean;
 }
 
-export const Badge: React.FC<BadgeProps> = ({ variant = 'neutral', children, size = 'sm', dot = false }) => {
+export const Badge: React.FC<BadgeProps> = ({ variant = 'neutral', children, size = 'sm', dot = true }) => {
   const v = variantColorMap[variant] || variantColorMap.neutral;
 
   return (
@@ -42,33 +45,32 @@ export const Badge: React.FC<BadgeProps> = ({ variant = 'neutral', children, siz
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: '5px',
-        height: size === 'sm' ? '26px' : '30px',
+        gap: '6px',
+        height: size === 'sm' ? '22px' : '26px',
         boxSizing: 'border-box',
-        padding: size === 'sm' ? '0 8px' : '0 10px',
-        borderRadius: 'var(--radius-sm)',
+        padding: size === 'sm' ? '0 7px' : '0 9px',
+        borderRadius: 'var(--radius-xs)',
         background: v.bg,
         color: v.color,
         border: `1px solid ${v.border}`,
-        fontSize: size === 'sm' ? 'var(--text-xs)' : 'var(--text-body-sm)',
-        fontWeight: 'var(--weight-bold)',
-        fontFamily: 'var(--font-precision)',
-        letterSpacing: '0.05em',
+        fontSize: 'var(--text-xs)',
+        fontWeight: 600,
+        fontFamily: 'var(--font-mono)',
+        letterSpacing: '0.06em',
         textTransform: 'uppercase',
         whiteSpace: 'nowrap',
         lineHeight: 1,
-        boxShadow: '1px 1px 0 var(--color-rule)',
       }}
     >
       {dot && (
         <span
           style={{
-            width: 6,
-            height: 6,
-            borderRadius: 1,
-            backgroundColor: v.color,
+            width: 5,
+            height: 5,
+            borderRadius: 0,
+            backgroundColor: v.dotColor,
             display: 'inline-block',
-            border: '1px solid var(--color-rule)',
+            flexShrink: 0,
           }}
         />
       )}

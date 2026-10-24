@@ -4,8 +4,22 @@ import type {
   HealthStatus, Overview, Position, ActivityLog,
   Analysis, PaperTradingStats, FactorAnalysis,
   EdgeMetrics, VixDataPoint, Brief, RiskState,
-  DecisionDistribution, GeminiQuota, AnalysisQualityRealtime
+  DecisionDistribution, GeminiQuota, AnalysisQualityRealtime,
 } from '../types/api';
+
+const CHAPTER_DEFAULTS: Record<string, string> = {
+  capital: 'overview',
+  journal: 'debates',
+  risk: 'risk',
+  lab: 'backtest',
+  atelier: 'config',
+};
+
+const resolveTab = (raw: string | null | undefined): string => {
+  if (!raw) return 'overview';
+  if (CHAPTER_DEFAULTS[raw]) return CHAPTER_DEFAULTS[raw];
+  return raw;
+};
 
 interface DashboardState {
   // Data
@@ -31,6 +45,7 @@ interface DashboardState {
   lastRefresh: Date | null;
   selectedSymbol: string | null;
   activeTab: string;
+  agentSheetOpen: boolean;
   wsConnected: boolean;
   userRole: import('../types/api').UserRole | null;
   theme: 'light' | 'dark';
@@ -40,9 +55,11 @@ interface DashboardState {
   setTheme: (theme: 'light' | 'dark') => void;
   setTimeZoneDisplay: (tz: 'UTC' | 'LOCAL') => void;
   fetchAll: () => Promise<void>;
-  fetchQuick: () => Promise<void>; // fast-refresh subset
+  fetchQuick: () => Promise<void>;
   fetchUserRole: () => Promise<void>;
   setActiveTab: (tab: string) => void;
+  setAgentSheetOpen: (open: boolean) => void;
+  toggleAgentSheet: () => void;
   setSelectedSymbol: (symbol: string | null) => void;
   setWsConnected: (connected: boolean) => void;
   updateTickPrice: (tick: Record<string, unknown>) => void;
@@ -72,7 +89,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   error: null,
   lastRefresh: null,
   selectedSymbol: null,
-  activeTab: (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab')) || 'overview',
+  activeTab: resolveTab(typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('tab') : 'overview'),
+  agentSheetOpen: false,
   wsConnected: false,
   userRole: null,
   theme: (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('theme') as 'light' | 'dark' || localStorage.getItem('monika_theme') as 'light' | 'dark')) || 'light',
@@ -98,13 +116,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         set({ userRole: res.role });
       }
     } catch {
-      // Default to viewer if unable to resolve
       set({ userRole: 'viewer' });
     }
   },
 
   fetchQuick: async () => {
-    // 5-second refresh: only critical live data
     try {
       const [overview, positions, activity, health] = await Promise.allSettled([
         api.overview(),
@@ -195,9 +211,19 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     }
   },
 
-  setActiveTab: (tab) => set({ activeTab: tab }),
-  setSelectedSymbol: (symbol) => set({ selectedSymbol: symbol }),
+  setActiveTab: (tab) => {
+    const resolved = resolveTab(tab);
+    set({ activeTab: resolved });
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', resolved);
+      window.history.replaceState({}, '', url.toString());
+    }
+  },
 
+  setAgentSheetOpen: (open) => set({ agentSheetOpen: open }),
+  toggleAgentSheet: () => set((state) => ({ agentSheetOpen: !state.agentSheetOpen })),
+  setSelectedSymbol: (symbol) => set({ selectedSymbol: symbol }),
   setWsConnected: (connected) => set({ wsConnected: connected }),
 
   updateTickPrice: (tick) => {
@@ -212,7 +238,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
       pendingTicks = {};
 
       let positions = get().positions;
-      let marketQuotes = { ...get().marketQuotes };
+      const marketQuotes = { ...get().marketQuotes };
 
       for (const [s, t] of Object.entries(ticksToApply)) {
         const bid = typeof t.bid === 'number' ? t.bid : Number(t.bid) || 0;

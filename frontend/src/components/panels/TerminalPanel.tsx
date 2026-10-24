@@ -1,59 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { Terminal, type ITheme } from '@xterm/xterm';
+import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { api, getStoredToken } from '../../lib/api';
 import { useDashboardStore } from '../../store/dashboardStore';
-
-const DARK_TERMINAL_THEME: ITheme = {
-  background: '#0B0906',
-  foreground: '#E8B94A',
-  cursor: '#F5BD38',
-  cursorAccent: '#0B0906',
-  selectionBackground: 'rgba(232, 185, 74, 0.3)',
-  selectionForeground: '#FAF7F2',
-  black: '#0B0906',
-  red: '#E25B45',
-  green: '#4CAF50',
-  yellow: '#F5BD38',
-  blue: '#3BA4C4',
-  magenta: '#D3869B',
-  cyan: '#48A9A6',
-  white: '#FAF7F2',
-  brightBlack: '#5C544C',
-  brightRed: '#F46A6A',
-  brightGreen: '#66BB6A',
-  brightYellow: '#F5BD38',
-  brightBlue: '#5BC3E0',
-  brightMagenta: '#E5A4B8',
-  brightCyan: '#64C5B1',
-  brightWhite: '#FFFFFF',
-};
-
-const LIGHT_TERMINAL_THEME: ITheme = {
-  background: '#FAF7F2',
-  foreground: '#1C1917',
-  cursor: '#1C1917',
-  cursorAccent: '#FAF7F2',
-  selectionBackground: 'rgba(59, 164, 196, 0.3)',
-  selectionForeground: '#1C1917',
-  black: '#1C1917',
-  red: '#B71C1C',
-  green: '#1B5E20',
-  yellow: '#92400E',
-  blue: '#1B365D',
-  magenta: '#7B1FA2',
-  cyan: '#0F5E77',
-  white: '#EFE9DF',
-  brightBlack: '#5C544C',
-  brightRed: '#D32F2F',
-  brightGreen: '#2E7D32',
-  brightYellow: '#A16207',
-  brightBlue: '#2A7991',
-  brightMagenta: '#8E24AA',
-  brightCyan: '#00897B',
-  brightWhite: '#FFFFFF',
-};
+import { DARK_TERMINAL_THEME, LIGHT_TERMINAL_THEME } from '../../theme/tokens';
 
 interface TerminalPanelProps {
   className?: string;
@@ -193,50 +144,50 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({ className, style }
   }, [isLight]);
 
   return (
-    <div
-      className={className}
+    <section
+      className={`editorial-section ${className ?? ''}`.trim()}
       style={{
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
         minHeight: '520px',
-        background: isLight ? 'var(--color-paper-raised)' : 'var(--color-console-bg)',
-        border: '2px solid var(--color-rule)',
-        borderRadius: 'var(--radius-card)',
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: '2px',
         overflow: 'hidden',
-        boxShadow: 'var(--shadow-card)',
         ...style,
       }}
     >
       <div
-        className="win-titlebar"
         style={{
-          padding: '6px 12px',
-          background: isLight ? 'var(--color-paper)' : 'var(--color-paper-raised)',
-          borderBottom: '2px solid var(--color-rule)',
+          padding: '8px 14px',
+          background: 'var(--color-surface-well)',
+          borderBottom: '1px solid var(--color-border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          fontFamily: 'var(--font-precision)',
-          fontSize: 'var(--text-body-sm)',
-          fontWeight: 'bold',
+          fontFamily: 'var(--font-mono)',
+          fontSize: '11px',
+          fontWeight: 600,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
           color: 'var(--color-ink)',
         }}
       >
-        <span>🖥️ System Terminal PTY</span>
-        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)' }}>
-          Direct OS Shell Subprocess
+        <span>SYSTEM TERMINAL PTY</span>
+        <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>
+          DIRECT OS SHELL SUBPROCESS
         </span>
       </div>
       <div
         ref={containerRef}
         style={{
           flex: 1,
-          padding: '8px',
+          padding: '10px',
           overflow: 'hidden',
-          background: isLight ? 'var(--color-paper-raised)' : 'var(--color-console-bg)',
+          background: isLight ? 'var(--color-surface-well)' : 'var(--color-console-bg)',
         }}
       />
-    </div>
+    </section>
   );
 };

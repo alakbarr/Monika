@@ -49,70 +49,69 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       style={{
         zIndex: 10000,
         padding: '16px',
-        fontFamily: 'var(--font-precision)',
+        fontFamily: 'var(--font-sans)',
       }}
     >
       <div
-        className="win-window"
         style={{
           width: '100%',
           maxWidth: '480px',
-          background: 'var(--color-paper-raised)',
-          border: '2px solid var(--color-rule)',
-          boxShadow: '4px 4px 0 var(--color-rule)',
-          borderRadius: 'var(--radius-card)',
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border-strong)',
+          boxShadow: 'var(--shadow-modal)',
+          borderRadius: '2px',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
         }}
       >
-        {/* Title Bar */}
         <div
           id="auth-modal-title"
-          className="win-titlebar"
           style={{
-            padding: '6px 12px',
-            borderBottom: '2px solid var(--color-rule)',
+            padding: '10px 16px',
+            borderBottom: '1px solid var(--color-border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'var(--color-win-titlebar)',
-            color: 'var(--color-on-titlebar)',
-            fontWeight: 'bold',
-            fontSize: 'var(--text-body-sm)',
+            background: 'var(--color-surface-well)',
+            color: 'var(--color-ink)',
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 600,
+            fontSize: '11px',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
           }}
         >
-          <span>Monika Security — Dashboard Authentication</span>
+          <span>MONIKA SECURITY — DASHBOARD AUTHENTICATION</span>
           {onClose && (
             <button
               type="button"
-              className="win-control-btn"
               onClick={onClose}
               aria-label="Close authentication modal"
               style={{
                 background: 'transparent',
-                border: 'none',
-                color: 'inherit',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-ink)',
                 cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: '14px',
+                padding: '2px 6px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
               }}
             >
-              ✕
+              ESC
             </button>
           )}
         </div>
 
-        {/* Content Body */}
         <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-ink)', lineHeight: 1.5 }}>
-            Access to this Monika trading node is protected. Enter your <strong>DASHBOARD_API_KEY</strong> to authenticate telemetry feeds, risk controls, and automated trading charts.
+          <div style={{ fontSize: '13px', color: 'var(--color-ink)', lineHeight: 1.5 }}>
+            Access to this Monika trading node is protected. Enter your <strong>DASHBOARD_API_KEY</strong> to authenticate telemetry feeds, risk controls, and execution surfaces.
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label
               htmlFor="dashboard-api-key-input"
-              style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold', color: 'var(--color-ink-soft)' }}
+              style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}
             >
               API Key / Access Token
             </label>
@@ -129,12 +128,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 autoFocus
                 style={{
                   width: '100%',
-                  padding: '8px 40px 8px 10px',
-                  fontFamily: 'monospace',
-                  fontSize: 'var(--text-body-sm)',
-                  border: errorMsg ? '2px solid var(--color-negative)' : '1px solid var(--color-rule)',
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'var(--color-paper)',
+                  padding: '8px 48px 8px 10px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '12px',
+                  border: errorMsg ? '1px solid var(--color-loss)' : '1px solid var(--color-border)',
+                  borderRadius: '2px',
+                  background: 'var(--color-surface-well)',
                   color: 'var(--color-ink)',
                 }}
               />
@@ -148,15 +147,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   border: 'none',
                   cursor: 'pointer',
                   color: 'var(--color-ink-soft)',
-                  fontSize: 'var(--text-xs)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '11px',
                   padding: '4px',
                 }}
               >
-                {showKey ? 'Hide' : 'Show'}
+                {showKey ? 'HIDE' : 'SHOW'}
               </button>
             </div>
             {errorMsg && (
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-negative)' }}>
+              <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-loss)' }}>
                 {errorMsg}
               </span>
             )}
@@ -172,7 +172,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             />
             <label
               htmlFor="remember-token"
-              style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink)', cursor: 'pointer' }}
+              style={{ fontSize: '12px', color: 'var(--color-ink)', cursor: 'pointer' }}
             >
               Remember key on this browser (localStorage)
             </label>
@@ -181,18 +181,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div
             style={{
               padding: '10px 12px',
-              background: 'var(--color-paper-sunken)',
-              border: '1px dashed var(--color-rule)',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: 'var(--text-xs)',
+              background: 'var(--color-surface-well)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '2px',
+              fontSize: '12px',
               color: 'var(--color-ink-soft)',
               lineHeight: 1.4,
             }}
           >
-            <strong>Where is this key?</strong> Found in your VPS root directory inside the <code>.env</code> file under <code>DASHBOARD_API_KEY</code>.
+            <strong>Where is this key?</strong> Configured in your host environment under <code>DASHBOARD_API_KEY</code>.
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '4px' }}>
             {onClose && (
               <TypewriterButton type="button" variant="secondary" onClick={onClose}>
                 Cancel

@@ -1,3 +1,8 @@
+// ==============================================================================
+// File: src/components/layout/navigation.ts
+// Description: 5 Swiss Editorial Chapters + Complete 23-View Mapping
+// ==============================================================================
+
 import React from 'react';
 import {
   CrtMonitorIcon,
@@ -9,9 +14,11 @@ import {
 
 export interface WorkspaceItem {
   id: string;
+  roman: string;
   code: string;
   keyNum: string;
   label: string;
+  subtitle: string;
   icon: React.ElementType;
   defaultTab: string;
   subTabs: { id: string; label: string }[];
@@ -19,87 +26,104 @@ export interface WorkspaceItem {
 
 export const WORKSPACES: WorkspaceItem[] = [
   {
-    id: 'desk',
-    code: 'TRD',
+    id: 'capital',
+    roman: 'I',
+    code: 'CAP',
     keyNum: '1',
-    label: 'Trading Desk',
+    label: 'Capital',
+    subtitle: 'Sculptural Equity Monument, SMC Charts & Position Ledger',
     icon: CrtMonitorIcon,
     defaultTab: 'overview',
     subTabs: [
-      { id: 'overview', label: 'Overview' },
+      { id: 'overview', label: 'Capital Desk' },
       { id: 'positions', label: 'Position Ledger' },
       { id: 'signals', label: 'Signals & Triggers' },
-      { id: 'market', label: 'Market Data' },
+      { id: 'market', label: 'Macro & Watchlist' },
     ],
   },
   {
-    id: 'intel',
-    code: 'INT',
+    id: 'journal',
+    roman: 'II',
+    code: 'JRN',
     keyNum: '2',
-    label: 'Market Intelligence',
+    label: 'Journal',
+    subtitle: 'Bull vs Bear Dialectics, LangGraph DAG & Autonomous Memory',
     icon: FolderDeskIcon,
-    defaultTab: 'graph',
+    defaultTab: 'debates',
     subTabs: [
-      { id: 'graph', label: 'Pipeline DAG Flow' },
-      { id: 'debates', label: 'Debate Arbitration' },
-      { id: 'analysis', label: 'Market Analysis' },
-      { id: 'brief', label: 'Macroeconomic Intelligence Brief' },
-      { id: 'memory', label: 'Memory Vault & Lessons' },
+      { id: 'debates', label: 'Bull vs Bear Dialectics' },
+      { id: 'analysis', label: 'Market Dispatches' },
+      { id: 'brief', label: 'Macro Intelligence Brief' },
+      { id: 'graph', label: 'Pipeline DAG & Steering' },
+      { id: 'memory', label: 'Memory Vault & Playbooks' },
       { id: 'skills', label: 'Crystallized Skills' },
-      { id: 'benchmark', label: 'LLM Model Lab & Benchmark' },
     ],
   },
   {
-    id: 'ledger',
-    code: 'LED',
+    id: 'risk',
+    roman: 'III',
+    code: 'RSK',
     keyNum: '3',
-    label: 'Ledger & Risk',
+    label: 'Risk',
+    subtitle: 'Mechanical Fortress, Circuit Breakers & Graduation Gate',
     icon: NotebookDeskIcon,
-    defaultTab: 'performance',
+    defaultTab: 'risk',
     subTabs: [
-      { id: 'performance', label: 'P&L Performance' },
-      { id: 'edge', label: 'Edge & Expectancy' },
-      { id: 'risk', label: 'Risk & Limits' },
-      { id: 'tokens', label: 'LLM Token Audit' },
-      { id: 'backtest', label: 'Historical Backtest' },
+      { id: 'risk', label: 'Mechanical Fortress' },
+      { id: 'performance', label: 'Graduation & Attribution' },
+      { id: 'edge', label: 'Rolling Expectancy' },
     ],
   },
   {
-    id: 'console',
-    code: 'TEL',
+    id: 'lab',
+    roman: 'IV',
+    code: 'LAB',
     keyNum: '4',
-    label: 'Telegraph & Desk Console',
+    label: 'Lab',
+    subtitle: 'Point-in-Time Historical Backtest & Multi-Model Benchmark',
     icon: TelegraphDeskIcon,
-    defaultTab: 'chat',
+    defaultTab: 'backtest',
     subTabs: [
-      { id: 'chat', label: 'Chat' },
-      { id: 'terminal', label: 'Terminal (PTY)' },
-      { id: 'sessions', label: 'Session History' },
-      { id: 'observability', label: 'Dispatch Audit Log' },
+      { id: 'backtest', label: 'Historical Backtest' },
+      { id: 'benchmark', label: 'LLM Benchmark Lab' },
+      { id: 'tokens', label: 'Token & Cost Ledger' },
     ],
   },
   {
-    id: 'system',
-    code: 'SYS',
+    id: 'atelier',
+    roman: 'V',
+    code: 'ATL',
     keyNum: '5',
-    label: 'System Configuration',
+    label: 'Atelier',
+    subtitle: 'System Configuration, SHA-256 Lineage & PTY Terminal',
     icon: FloppyDiskIcon,
     defaultTab: 'config',
     subTabs: [
-      { id: 'config', label: 'Configuration Settings' },
-      { id: 'plugins', label: 'Plugin Marketplace & Harness' },
+      { id: 'config', label: 'Configuration & Schema' },
+      { id: 'observability', label: 'Traces & SHA-256 Lineage' },
+      { id: 'plugins', label: 'Plugin Marketplace' },
       { id: 'system', label: 'Host Diagnostics' },
+      { id: 'terminal', label: 'PTY OS Terminal' },
+      { id: 'sessions', label: 'Session Transcripts' },
+      { id: 'chat', label: 'Agent Dialogue' },
     ],
   },
 ];
 
-// Flat export for backwards compatibility
 export interface NavItem {
   id: string;
   label: string;
+  chapterId?: string;
+  chapterRoman?: string;
   icon?: React.ElementType;
 }
 
 export const NAV_ITEMS: NavItem[] = WORKSPACES.flatMap((w) =>
-  w.subTabs.map((s) => ({ id: s.id, label: s.label, icon: w.icon }))
+  w.subTabs.map((s) => ({
+    id: s.id,
+    label: `${w.roman}. ${w.label} — ${s.label}`,
+    chapterId: w.id,
+    chapterRoman: w.roman,
+    icon: w.icon,
+  }))
 );

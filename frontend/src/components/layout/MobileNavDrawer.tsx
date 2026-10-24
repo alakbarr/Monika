@@ -40,13 +40,13 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Navigation Menu"
+      className="retro-modal-scrim"
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 9000,
-        background: 'rgba(28, 25, 23, 0.75)',
         display: 'flex',
-        fontFamily: 'var(--font-precision)',
+        fontFamily: 'var(--font-sans)',
       }}
       onClick={onClose}
     >
@@ -54,9 +54,9 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
         style={{
           width: '280px',
           height: '100%',
-          background: 'var(--color-paper-raised)',
-          borderRight: '2px solid var(--color-rule)',
-          boxShadow: '4px 0 0 var(--color-rule)',
+          background: 'var(--color-surface)',
+          borderRight: '1px solid var(--color-border-strong)',
+          boxShadow: 'var(--shadow-modal)',
           display: 'flex',
           flexDirection: 'column',
           overflowY: 'auto',
@@ -64,39 +64,39 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="win-titlebar"
           style={{
-            padding: '8px 12px',
-            borderBottom: '2px solid var(--color-rule)',
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--color-border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'var(--color-win-blue)',
-            color: 'var(--color-titlebar-text)',
-            fontWeight: 'bold',
+            background: 'var(--color-surface-well)',
+            color: 'var(--color-ink)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '0.08em',
           }}
         >
-          <span>NAVIGATION // WORKSPACES</span>
+          <span>MONIKA // CHAPTER VIEWS</span>
           <button
             onClick={onClose}
-            aria-label="Tutup menu navigasi"
-            className="win-control-btn"
+            aria-label="Close navigation menu"
             style={{
-              minWidth: '44px',
-              minHeight: '44px',
-              padding: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '18px',
+              background: 'transparent',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-ink)',
+              padding: '2px 8px',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
               cursor: 'pointer',
             }}
           >
-            ×
+            ESC
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', padding: '8px 0', gap: '4px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '8px', gap: '2px' }}>
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
@@ -107,27 +107,24 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   onSelectTab(tab.id);
                   onClose();
                 }}
-                className={`folder-tab ${isActive ? '-active' : ''}`}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
-                  padding: '12px 14px',
-                  minHeight: '44px',
-                  margin: '1px 8px',
-                  borderRadius: 'var(--radius-md)',
-                  background: isActive ? 'var(--color-paper)' : 'transparent',
-                  color: isActive ? 'var(--color-ink)' : 'var(--color-ink-soft)',
-                  border: isActive ? '2px solid var(--color-rule)' : '2px solid transparent',
-                  borderLeft: isActive ? '5px solid var(--color-win-yellow)' : '2px solid transparent',
-                  boxShadow: isActive ? '2px 2px 0 var(--color-rule)' : 'none',
+                  padding: '10px 12px',
+                  borderRadius: '2px',
+                  background: isActive ? 'var(--color-ink)' : 'transparent',
+                  color: isActive ? 'var(--color-surface)' : 'var(--color-ink-muted)',
+                  border: 'none',
                   textAlign: 'left',
                   cursor: 'pointer',
-                  fontSize: 'var(--text-body-sm)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '12px',
+                  fontWeight: isActive ? 600 : 500,
                 }}
               >
-                {Icon && <Icon size={16} strokeWidth={isActive ? 2.2 : 1.7} color={isActive ? 'var(--color-ink)' : 'currentColor'} />}
-                <span style={{ fontWeight: isActive ? 'bold' : 'normal' }}>{tab.label}</span>
+                {Icon && <Icon size={15} strokeWidth={1.5} color="currentColor" />}
+                <span>{tab.label}</span>
               </button>
             );
           })}

@@ -23,15 +23,16 @@ export const TypewriterButton: React.FC<TypewriterButtonProps> = ({
 }) => {
   const sizeStyles: Record<ButtonSize, React.CSSProperties> = {
     sm: { padding: '0 10px', fontSize: 'var(--text-xs)', height: '26px', boxSizing: 'border-box' },
-    md: { padding: '0 14px', fontSize: 'var(--text-body-sm)', height: '32px', boxSizing: 'border-box' },
-    lg: { padding: '0 20px', fontSize: 'var(--text-body-md)', height: '40px', boxSizing: 'border-box' },
+    md: { padding: '0 14px', fontSize: 'var(--text-xs)', height: '32px', boxSizing: 'border-box' },
+    lg: { padding: '0 20px', fontSize: 'var(--text-body-sm)', height: '38px', boxSizing: 'border-box' },
   };
 
-  const variantClass = variant === 'primary' 
-    ? 'win-btn-primary typewriter-btn-brass' 
-    : variant === 'danger' 
-    ? 'win-btn-danger typewriter-btn-danger' 
-    : '';
+  const variantClass =
+    variant === 'primary'
+      ? 'win-btn-primary editorial-btn-primary'
+      : variant === 'danger'
+      ? 'win-btn-danger editorial-btn-danger'
+      : '';
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     sounds.playClick('typewriter');
@@ -40,7 +41,7 @@ export const TypewriterButton: React.FC<TypewriterButtonProps> = ({
 
   return (
     <button
-      className={`win-btn typewriter-btn ${variantClass} ${className}`}
+      className={`win-btn typewriter-btn editorial-btn ${variantClass} ${className}`}
       disabled={disabled}
       onClick={handleClick}
       style={{
@@ -49,11 +50,9 @@ export const TypewriterButton: React.FC<TypewriterButtonProps> = ({
         justifyContent: 'center',
         gap: '6px',
         boxSizing: 'border-box',
-        opacity: disabled ? 0.5 : 1,
+        opacity: disabled ? 0.45 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
-        border: '2px solid var(--color-rule)',
-        borderRadius: 'var(--radius-md)',
-        boxShadow: 'var(--shadow-btn)',
+        borderRadius: 'var(--radius-control)',
         ...sizeStyles[size],
         ...style,
       }}

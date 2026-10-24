@@ -1,8 +1,3 @@
-// ==============================================================================
-// File: src/components/ui/ApprovalModal.tsx
-// Description: Interactive HITL Trade Approval Modal with Visual R:R Ladder & TTL Timer
-// ==============================================================================
-
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Badge } from './Badge';
@@ -50,14 +45,12 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
   const onDenyRef = React.useRef(onDeny);
   onDenyRef.current = onDeny;
 
-  // Reset timer on new request
   useEffect(() => {
     if (isOpen && request) {
       setTimeLeft(request.ttl_seconds ?? 120);
     }
   }, [isOpen, request]);
 
-  // Countdown TTL loop
   useEffect(() => {
     if (!isOpen || !request) return;
     timerRef.current = setInterval(() => {
@@ -75,7 +68,6 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
     };
   }, [isOpen, request]);
 
-  // Keyboard shortcut listener (1: Allow Once, 2: Allow Session, 3/Esc: Deny)
   useEffect(() => {
     if (!isOpen || !request) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -117,52 +109,50 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="approval-modal-title"
+      className="retro-modal-scrim"
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 10000,
-        background: 'rgba(20, 18, 14, 0.82)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '16px',
-        fontFamily: 'var(--font-precision)',
+        fontFamily: 'var(--font-sans)',
       }}
     >
       <div
-        className="win-window"
         style={{
           width: '100%',
           maxWidth: '560px',
-          background: 'var(--color-paper-raised)',
-          border: '2px solid var(--color-rule)',
-          boxShadow: '6px 6px 0 rgba(0, 0, 0, 0.45)',
-          borderRadius: 'var(--radius-card)',
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border-strong)',
+          boxShadow: 'var(--shadow-modal)',
+          borderRadius: '2px',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
         }}
       >
-        {/* Retro Dialog Title Bar */}
         <div
           id="approval-modal-title"
-          className="win-titlebar"
           style={{
-            background: 'var(--color-win-yellow)',
-            color: 'var(--color-on-win-yellow)',
-            padding: '6px 12px',
+            background: 'var(--color-surface-well)',
+            color: 'var(--color-ink)',
+            padding: '10px 16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: '2px solid var(--color-rule)',
-            fontWeight: 700,
-            fontSize: 'var(--text-xs)',
-            letterSpacing: '0.05em',
+            borderBottom: '1px solid var(--color-border)',
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 600,
+            fontSize: '11px',
+            letterSpacing: '0.08em',
             userSelect: 'none',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ShieldAlert size={16} />
+            <ShieldAlert size={14} />
             <span>OPERATOR HUMAN-IN-THE-LOOP APPROVAL REQUIRED</span>
           </div>
           <button
@@ -172,22 +162,22 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              color: 'var(--color-on-win-yellow)',
+              color: 'var(--color-ink-muted)',
               display: 'flex',
               alignItems: 'center',
             }}
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         </div>
 
         {/* TTL Dynamic Progress Bar */}
-        <div style={{ width: '100%', height: '4px', background: 'var(--color-rule)', position: 'relative' }}>
+        <div style={{ width: '100%', height: '3px', background: 'var(--color-border)', position: 'relative' }}>
           <div
             style={{
               width: `${ttlProgress}%`,
               height: '100%',
-              background: timeLeft < 30 ? 'var(--color-ledger-red)' : 'var(--color-ledger-green)',
+              background: timeLeft < 30 ? 'var(--color-loss)' : 'var(--color-profit)',
               transition: 'width 1s linear',
             }}
           />
@@ -195,28 +185,27 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
 
         {/* Modal Body */}
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Header proposal overview */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-ink)' }}>
+                <span style={{ fontSize: '20px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--color-ink)' }}>
                   {request.symbol}
                 </span>
                 <Badge variant={isBuy ? 'buy' : 'sell'}>
                   {request.direction.toUpperCase()}
                 </Badge>
-                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-ink-muted)', fontWeight: 600 }}>
+                <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-muted)', fontWeight: 600 }}>
                   {fmt.lots(request.volume)} Lots
                 </span>
               </div>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-muted)', marginTop: '4px' }}>
+              <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-soft)', marginTop: '4px' }}>
                 Action Ticket #{request.id}
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--text-xs)', color: timeLeft < 30 ? 'var(--color-ledger-red)' : 'var(--color-ink-muted)' }}>
-              <Clock size={14} />
-              <span className="tabular-nums" style={{ fontWeight: 700 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontFamily: 'var(--font-mono)', color: timeLeft < 30 ? 'var(--color-loss)' : 'var(--color-ink-muted)' }}>
+              <Clock size={13} />
+              <span className="tabular-nums" style={{ fontWeight: 600 }}>
                 Expires in {timeLeft}s
               </span>
             </div>
@@ -225,70 +214,69 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
           {/* Visual Order Risk/Reward Ladder */}
           <div
             style={{
-              background: 'var(--color-surface-card)',
-              border: '1px solid var(--color-rule)',
-              borderRadius: '3px',
+              background: 'var(--color-surface-well)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '2px',
               padding: '14px',
               display: 'flex',
               flexDirection: 'column',
               gap: '10px',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', textTransform: 'uppercase', color: 'var(--color-ink-muted)', letterSpacing: '0.04em' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', color: 'var(--color-ink-muted)', letterSpacing: '0.06em' }}>
               <span>Stop Loss (SL)</span>
               <span>Proposed Entry</span>
               <span>Take Profit (TP)</span>
             </div>
 
-            {/* Ladder Bar */}
             <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
                 gap: '4px',
                 alignItems: 'center',
-                background: 'var(--color-paper)',
+                background: 'var(--color-surface)',
                 padding: '8px 12px',
-                border: '1px solid var(--color-rule)',
-                borderRadius: '3px',
+                border: '1px solid var(--color-border)',
+                borderRadius: '2px',
+                fontFamily: 'var(--font-mono)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ color: 'var(--color-ledger-red)', fontWeight: 700, fontSize: '13px' }}>
+                <span style={{ color: 'var(--color-loss)', fontWeight: 600, fontSize: '13px' }}>
                   {fmt.price(request.sl, request.symbol)}
                 </span>
                 <ArrowRight size={12} color="var(--color-ink-muted)" />
-                <span style={{ color: 'var(--color-ink)', fontWeight: 700, fontSize: '13px' }}>
+                <span style={{ color: 'var(--color-ink)', fontWeight: 600, fontSize: '13px' }}>
                   {fmt.price(request.entry_price, request.symbol)}
                 </span>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
                 <ArrowRight size={12} color="var(--color-ink-muted)" />
-                <span style={{ color: 'var(--color-ledger-green)', fontWeight: 700, fontSize: '13px' }}>
+                <span style={{ color: 'var(--color-profit)', fontWeight: 600, fontSize: '13px' }}>
                   {fmt.price(request.tp, request.symbol)}
                 </span>
               </div>
             </div>
 
-            {/* Key Ratios */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--text-xs)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
               <div>
                 <span style={{ color: 'var(--color-ink-muted)' }}>Risk: </span>
-                <span style={{ fontWeight: 700, color: 'var(--color-ledger-red)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--color-loss)' }}>
                   {request.risk_usd ? fmt.usd(request.risk_usd) : '—'}
                   {request.risk_pct ? ` (${request.risk_pct.toFixed(2)}%)` : ''}
                 </span>
               </div>
               {rrRatio && (
-                <div style={{ fontWeight: 700, color: 'var(--color-ink)' }}>
-                  R:R Ratio <span style={{ color: 'var(--color-ledger-green)' }}>1 : {rrRatio}</span>
+                <div style={{ fontWeight: 600, color: 'var(--color-ink)' }}>
+                  R:R Ratio <span style={{ color: 'var(--color-profit)' }}>1 : {rrRatio}</span>
                 </div>
               )}
               {request.confluence_score !== undefined && (
                 <div>
                   <span style={{ color: 'var(--color-ink-muted)' }}>Confluence: </span>
-                  <span style={{ fontWeight: 700, color: 'var(--color-brass)' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--color-ink)' }}>
                     {request.confluence_score}%
                   </span>
                 </div>
@@ -296,38 +284,35 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
             </div>
           </div>
 
-          {/* AI Reasoning / Debate Verdict */}
           {(request.debate_verdict || request.reason) && (
             <div
               style={{
-                fontSize: 'var(--text-xs)',
+                fontSize: '12px',
                 color: 'var(--color-ink)',
-                background: 'var(--color-paper)',
-                border: '1px solid var(--color-rule)',
-                borderRadius: '3px',
+                background: 'var(--color-surface-well)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '2px',
                 padding: '10px 12px',
                 lineHeight: 1.5,
               }}
             >
-              <div style={{ fontWeight: 700, marginBottom: '4px', color: 'var(--color-brass)' }}>
-                [ AI SPECIALIST DEBATE VERDICT ]
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, marginBottom: '4px', color: 'var(--color-ink-muted)' }}>
+                SPECIALIST DEBATE VERDICT
               </div>
               <div>{request.debate_verdict || request.reason}</div>
             </div>
           )}
 
-          {/* Drift Guard Notice */}
-          <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textAlign: 'center' }}>
-            ⚠ Price drift guard active: Execution will auto-abort if market drifts &gt;0.15% before submission.
+          <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--color-ink-soft)', textAlign: 'center' }}>
+            Price drift guard active: Execution auto-aborts if market drifts &gt;0.15% before submission.
           </div>
         </div>
 
-        {/* Action Buttons Bar */}
         <div
           style={{
-            background: 'var(--color-paper)',
-            padding: '14px 20px',
-            borderTop: '2px solid var(--color-rule)',
+            background: 'var(--color-surface-well)',
+            padding: '12px 20px',
+            borderTop: '1px solid var(--color-border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',

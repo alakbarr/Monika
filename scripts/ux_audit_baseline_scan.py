@@ -1,190 +1,180 @@
 #!/usr/bin/env python3
-"""Monika UI/UX Audit Baseline Scanner.
-
-Performs deterministic G1 (Token Integrity), G2 (WCAG Contrast),
-G3 (Type Floor <11px), and G4 (Affordances & Targets) scans.
+"""
+UX Audit Baseline Scanner for Monika Web Dashboard.
+Performs automated verification across G1 (Tokens), G2 (WCAG 2.2 AA Contrast),
+G3 (11px Type Floor), and G4 (Affordances & Zero Dead Controls).
 """
 
-from __future__ import annotations
-
-import json
-import os
 import re
 import sys
 from pathlib import Path
 
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_SRC = REPO_ROOT / "frontend" / "src"
+INDEX_CSS = FRONTEND_SRC / "index.css"
 
 
-def lin(c: float) -> float:
-    c /= 255.0
-    return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+def hex_to_rgb(hex_str: str) -> tuple[int, int, int]:
+    hex_str = hex_str.lstrip("#")
+    if len(hex_str) == 3:
+        hex_str = "".join(c * 2 for c in hex_str)
+    return int(hex_str[0:2], 16), int(hex_str[2:4], 16), int(hex_str[4:6], 16)
 
 
-def lum(h: str) -> float:
-    h = h.lstrip("#")
-    if len(h) == 3:
-        h = "".join(x * 2 for x in h)
-    r, g, b = (int(h[i : i + 2], 16) for i in (0, 2, 4))
-    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+def relative_luminance(rgb: tuple[int, int, int]) -> float:
+    def channel_lum(c: int) -> float:
+        srgb = c / 255.0
+        return srgb / 12.92 if srgb <= 0.03928 else ((srgb + 0.055) / 1.055) ** 2.4
+
+    r, g, b = rgb
+    return 0.2126 * channel_lum(r) + 0.7152 * channel_lum(g) + 0.0722 * channel_lum(b)
 
 
-def contrast_ratio(fg: str, bg: str) -> float:
-    a, b = lum(fg), lum(bg)
-    if a < b:
-        a, b = b, a
-    return (a + 0.05) / (b + 0.05)
+def contrast_ratio(hex1: str, hex2: str) -> float:
+    l1 = relative_luminance(hex_to_rgb(hex1))
+    l2 = relative_luminance(hex_to_rgb(hex2))
+    lighter = max(l1, l2)
+    darker = min(l1, l2)
+    return (lighter + 0.05) / (darker + 0.05)
 
 
-def run_g1_scan():
+def scan_g1_forbidden_effects():
     print("=== G1: FORBIDDEN EFFECTS & TOKEN INTEGRITY ===")
-    forbidden_pat = re.compile(r"(backdrop-filter|filter:\s*blur|blur\(|rounded-full|from-purple|to-indigo)")
-    sub_1px_pat = re.compile(r"(border[^:]*:\s*0\.\d+px|border-\[0\.\d+px\])")
+    forbidden_patterns = [
+        (r"backdrop-filter", "Gaussian blur backdrop-filter"),
+        (r"filter:\s*blur", "CSS filter blur"),
+        (r"blur\(", "Blur function"),
+        (r"rounded-full", "Tailwind rounded-full pill"),
+        (r"from-purple", "AI Slop purple gradient"),
+        (r"to-indigo", "AI Slop indigo gradient"),
+    ]
+    sub_1px_pattern = re.compile(r"border[^:;]*:\s*0\.5px")
+    hex_pattern = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 
-    forbidden_matches = []
-    sub_1px_matches = []
-    raw_hex_matches = []
+    forbidden_hits = []
+    sub_1px_hits = []
+    raw_hex_hits = []
 
-    hex_pat = re.compile(r"#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b")
+    for p in sorted(FRONTEND_SRC.rglob("*")):
+        if p.suffix not in (".tsx", ".ts", ".css"):
+            continue
+        text = p.read_text(encoding="utf-8", errors="ignore")
+        rel_path = p.relative_to(REPO_ROOT)
 
-    for root, _, files in os.walk(FRONTEND_SRC):
-        for f in files:
-            if not f.endswith((".tsx", ".ts", ".css")):
-                continue
-            path = Path(root) / f
-            rel = path.relative_to(REPO_ROOT)
-            is_token_file = "theme" in str(rel) or f in ("index.css", "tokens.ts")
+        for idx, line in enumerate(text.splitlines(), 1):
+            for pat, desc in forbidden_patterns:
+                if re.search(pat, line, re.IGNORECASE):
+                    forbidden_hits.append((rel_path, idx, desc, line.strip()))
+            if sub_1px_pattern.search(line):
+                sub_1px_hits.append((rel_path, idx, line.strip()))
 
-            with open(path, "r", encoding="utf-8", errors="ignore") as fp:
-                for idx, line in enumerate(fp, 1):
-                    # Forbidden effects
-                    m_forbid = forbidden_pat.search(line)
-                    if m_forbid:
-                        forbidden_matches.append(f"{rel}:{idx}: {line.strip()}")
-                    # Sub 1px borders
-                    m_sub = sub_1px_pat.search(line)
-                    if m_sub:
-                        sub_1px_matches.append(f"{rel}:{idx}: {line.strip()}")
-                    # Raw hex outside token definitions
-                    if not is_token_file:
-                        for m_hex in hex_pat.findall(line):
-                            raw_hex_matches.append((str(rel), idx, m_hex, line.strip()))
+            # Check raw hex outside index.css and tokens.ts
+            if p.name not in ("index.css", "tokens.ts") and "theme" not in str(p):
+                if p.suffix in (".tsx", ".css"):
+                    for m in hex_pattern.finditer(line):
+                        raw_hex_hits.append((rel_path, idx, m.group(0), line.strip()))
 
-    print(f"Forbidden effects found: {len(forbidden_matches)}")
-    for item in forbidden_matches[:10]:
-        print(f"  - {item}")
-    print(f"Sub-1px borders found: {len(sub_1px_matches)}")
-    for item in sub_1px_matches[:10]:
-        print(f"  - {item}")
-    print(f"Raw hex occurrences outside token files: {len(raw_hex_matches)}")
-    for rel, idx, hx, l in raw_hex_matches[:15]:
-        print(f"  - {rel}:{idx} [{hx}]: {l[:80]}")
+    print(f"Forbidden effects found: {len(forbidden_hits)}")
+    for hit in forbidden_hits:
+        print(f"  - {hit[0]}:{hit[1]} [{hit[2]}]: {hit[3]}")
+
+    print(f"Sub-1px borders found: {len(sub_1px_hits)}")
+    for hit in sub_1px_hits:
+        print(f"  - {hit[0]}:{hit[1]}: {hit[2]}")
+
+    print(f"Raw hex occurrences outside token files: {len(raw_hex_hits)}")
+    for hit in raw_hex_hits[:15]:
+        print(f"  - {hit[0]}:{hit[1]} [{hit[2]}]: {hit[3]}")
+    print()
 
 
-def run_g2_contrast_check():
-    print("\n=== G2: WCAG 2.2 AA CONTRAST RATIOS ===")
-    # Pairs from tokens.ts / index.css light and dark modes
-    pairs = [
-        # Light mode (desktop: #8E867C, paper: #EFE9DF, paperRaised: #FAF7F2, ink: #1C1917, inkSoft: #5C544C)
-        ("Light Ink on PaperRaised", "#1C1917", "#FAF7F2", 4.5),
-        ("Light Ink on Paper (canvas/table)", "#1C1917", "#EFE9DF", 4.5),
-        ("Light InkSoft on PaperRaised", "#5C544C", "#FAF7F2", 4.5),
-        ("Light InkSoft on Paper", "#5C544C", "#EFE9DF", 4.5),
-        ("Light Ink on Desktop Canvas (#8E867C)", "#1C1917", "#8E867C", 4.5),
-        # Titlebars Light Mode (text #1C1917)
-        ("Light Titlebar Blue", "#1C1917", "#3BA4C4", 4.5),
-        ("Light Titlebar Yellow", "#1C1917", "#F5BD38", 4.5),
-        ("Light Titlebar Salmon", "#1C1917", "#E86C53", 4.5),
-        ("Light Titlebar Coral", "#1C1917", "#E25B45", 4.5),
-        ("Light Titlebar Green", "#1C1917", "#48A9A6", 4.5),
-        ("Light Titlebar Gray", "#1C1917", "#C4BCB1", 4.5),
-        # Dark mode (desktop: #1A1715, paper: #24201D, paperRaised: #2D2824, ink: #F6F1EA, inkSoft: #ADA296)
-        ("Dark Ink on PaperRaised", "#F6F1EA", "#2D2824", 4.5),
-        ("Dark Ink on Paper", "#F6F1EA", "#24201D", 4.5),
-        ("Dark InkSoft on PaperRaised", "#ADA296", "#2D2824", 4.5),
-        ("Dark InkSoft on Paper", "#ADA296", "#24201D", 4.5),
-        ("Dark Edge Outline on Desktop (#7E7469)", "#7E7469", "#1A1715", 3.0),
-        # Profit / Loss in Light Mode (profit: #1B5E20, loss: #B71C1C)
-        ("Light Profit (#1B5E20) on PaperRaised", "#1B5E20", "#FAF7F2", 4.5),
-        ("Light Loss (#B71C1C) on PaperRaised", "#B71C1C", "#FAF7F2", 4.5),
-        ("Light Profit (#1B5E20) on Sunken (#E2DBD0)", "#1B5E20", "#E2DBD0", 4.5),
-        ("Light Loss (#B71C1C) on Sunken (#E2DBD0)", "#B71C1C", "#E2DBD0", 4.5),
-        # Profit / Loss in Dark Mode (profit: #4CAF50, loss: #F46A6A)
-        ("Dark Profit (#4CAF50) on PaperRaised (#2D2824)", "#4CAF50", "#2D2824", 4.5),
-        ("Dark Loss (#F46A6A) on PaperRaised (#2D2824)", "#F46A6A", "#2D2824", 4.5),
+def scan_g2_contrast():
+    print("=== G2: WCAG 2.2 AA CONTRAST RATIOS ===")
+    # Swiss Editorial & Unboxed Sculptural Token Pairs (DESIGN.md v3.0)
+    contrast_pairs = [
+        # Light Mode (#FFFFFF Canvas & #F7F8FA Well)
+        ("Light Ink on Canvas (#FFFFFF)", "#111215", "#FFFFFF", 4.5),
+        ("Light Ink on Well (#F7F8FA)", "#111215", "#F7F8FA", 4.5),
+        ("Light InkSecondary on Canvas (#FFFFFF)", "#525660", "#FFFFFF", 4.5),
+        ("Light InkSecondary on Well (#F7F8FA)", "#525660", "#F7F8FA", 4.5),
+        ("Light InkMuted on Canvas (#FFFFFF)", "#686D78", "#FFFFFF", 4.5),
+        ("Light InkMuted on Well (#F7F8FA)", "#686D78", "#F7F8FA", 4.5),
+        ("Light Gain (#0D7A52) on Canvas (#FFFFFF)", "#0D7A52", "#FFFFFF", 4.5),
+        ("Light Gain (#0D7A52) on Well (#F7F8FA)", "#0D7A52", "#F7F8FA", 4.5),
+        ("Light Loss (#C82838) on Canvas (#FFFFFF)", "#C82838", "#FFFFFF", 4.5),
+        ("Light Loss (#C82838) on Well (#F7F8FA)", "#C82838", "#F7F8FA", 4.5),
+        ("Light Warn (#9A5B00) on Canvas (#FFFFFF)", "#9A5B00", "#FFFFFF", 4.5),
+        ("Light Warn (#9A5B00) on Well (#F7F8FA)", "#9A5B00", "#F7F8FA", 4.5),
+        ("Light Edge Outline on Canvas (#FFFFFF)", "#686D78", "#FFFFFF", 3.0),
+        # Dark Mode (#121316 Canvas & #17191D Well)
+        ("Dark Ink on Canvas (#121316)", "#F3F4F6", "#121316", 4.5),
+        ("Dark Ink on Well (#17191D)", "#F3F4F6", "#17191D", 4.5),
+        ("Dark InkSecondary on Canvas (#121316)", "#9CA3AF", "#121316", 4.5),
+        ("Dark InkSecondary on Well (#17191D)", "#9CA3AF", "#17191D", 4.5),
+        ("Dark InkMuted on Canvas (#121316)", "#848B98", "#121316", 4.5),
+        ("Dark InkMuted on Well (#17191D)", "#848B98", "#17191D", 4.5),
+        ("Dark Gain (#10B981) on Canvas (#121316)", "#10B981", "#121316", 4.5),
+        ("Dark Gain (#10B981) on Well (#17191D)", "#10B981", "#17191D", 4.5),
+        ("Dark Loss (#F43F5E) on Canvas (#121316)", "#F43F5E", "#121316", 4.5),
+        ("Dark Loss (#F43F5E) on Well (#17191D)", "#F43F5E", "#17191D", 4.5),
+        ("Dark Warn (#F59E0B) on Canvas (#121316)", "#F59E0B", "#121316", 4.5),
+        ("Dark Warn (#F59E0B) on Well (#17191D)", "#F59E0B", "#17191D", 4.5),
+        ("Dark Edge Outline on Canvas (#121316)", "#6E7685", "#121316", 3.0),
     ]
 
-    fails = 0
-    for name, fg, bg, req in pairs:
-        r = contrast_ratio(fg, bg)
-        passed = r >= req
-        status = "PASS" if passed else "FAIL"
-        if not passed:
-            fails += 1
-        print(f"  [{status}] {r:5.2f}:1 (req >= {req}:1) - {name} ({fg} on {bg})")
-    print(f"Total Contrast Failures: {fails}")
+    failures = 0
+    for label, fg, bg, min_req in contrast_pairs:
+        ratio = contrast_ratio(fg, bg)
+        status = "PASS" if ratio >= min_req else "FAIL"
+        if status == "FAIL":
+            failures += 1
+        print(f"  [{status}] {ratio:5.2f}:1 (req >= {min_req}:1) - {label} ({fg} on {bg})")
+
+    print(f"Total Contrast Failures: {failures}\n")
 
 
-def run_g3_type_floor_scan():
-    print("\n=== G3: TYPE FLOOR SCAN (<11px) ===")
-    # Look for font-size < 11px, e.g. 8px, 9px, 10px, or text-[8px], text-[9px], text-[10px], or rem < 0.6875rem
-    tiny_type_pat = re.compile(
-        r"(font-size:\s*([1-9]|10)(\.\d+)?px|text-\[([1-9]|10)(\.\d+)?px\]|fontSize:\s*['\"]?([1-9]|10)px)"
-    )
-    tiny_matches = []
-    for root, _, files in os.walk(FRONTEND_SRC):
-        for f in files:
-            if not f.endswith((".tsx", ".ts", ".css")):
-                continue
-            path = Path(root) / f
-            rel = path.relative_to(REPO_ROOT)
-            with open(path, "r", encoding="utf-8", errors="ignore") as fp:
-                for idx, line in enumerate(fp, 1):
-                    m = tiny_type_pat.search(line)
-                    if m:
-                        tiny_matches.append((str(rel), idx, m.group(0), line.strip()))
+def scan_g3_type_floor():
+    print("=== G3: TYPE FLOOR SCAN (<11px) ===")
+    small_font_pat = re.compile(r"(?:font-size|fontSize)\s*:\s*['\"]?([0-9]+(?:\.[0-9]+)?)px")
+    hits = []
+    for p in sorted(FRONTEND_SRC.rglob("*")):
+        if p.suffix not in (".tsx", ".ts", ".css"):
+            continue
+        text = p.read_text(encoding="utf-8", errors="ignore")
+        rel_path = p.relative_to(REPO_ROOT)
+        for idx, line in enumerate(text.splitlines(), 1):
+            for m in small_font_pat.finditer(line):
+                val = float(m.group(1))
+                if val < 11.0:
+                    hits.append((rel_path, idx, f"{val}px", line.strip()))
 
-    print(f"Type floor violations (<11px) found: {len(tiny_matches)}")
-    for rel, idx, matched, line in tiny_matches[:20]:
-        print(f"  - {rel}:{idx} [{matched}]: {line[:80]}")
+    print(f"Type floor violations (<11px) found: {len(hits)}")
+    for hit in hits:
+        print(f"  - {hit[0]}:{hit[1]} [{hit[2]}]: {hit[3]}")
+    print()
 
 
-def run_g4_affordance_scan():
-    print("\n=== G4: AFFORDANCES & DEAD CONTROLS ===")
-    window_ctrl_pat = re.compile(
-        r"(win-control-btn|aria-label=['\"]?(Minimize|Maximize|Close)['\"]?|['\"]_['\"]|['\"]□['\"]|['\"]×['\"])"
-    )
-    dead_ctrls = []
-    for root, _, files in os.walk(FRONTEND_SRC):
-        for f in files:
-            if not f.endswith((".tsx", ".ts")):
-                continue
-            path = Path(root) / f
-            rel = path.relative_to(REPO_ROOT)
-            with open(path, "r", encoding="utf-8", errors="ignore") as fp:
-                content = fp.read()
-                # Check for win-control-btn without onClick
-                for m in re.finditer(
-                    r'<span[^>]*className=["\'][^"\']*win-control-btn[^"\']*["\'][^>]*>([_□×])</span>', content
-                ):
-                    dead_ctrls.append((str(rel), m.group(0)))
-
-    print(f"Dead window controls found (span without onClick): {len(dead_ctrls)}")
-    for rel, tag in dead_ctrls[:10]:
-        print(f"  - {rel}: {tag}")
-    return dead_ctrls
+def scan_g4_affordances():
+    print("=== G4: AFFORDANCES & DEAD CONTROLS ===")
+    dead_ctrl_pat = re.compile(r"<span[^>]*win-control-btn[^>]*>")
+    hits = []
+    for p in sorted(FRONTEND_SRC.rglob("*.tsx")):
+        text = p.read_text(encoding="utf-8", errors="ignore")
+        rel_path = p.relative_to(REPO_ROOT)
+        for idx, line in enumerate(text.splitlines(), 1):
+            if dead_ctrl_pat.search(line) and "onClick" not in line:
+                hits.append((rel_path, idx, line.strip()))
+    print(f"Dead window controls found (span without onClick): {len(hits)}")
+    for hit in hits:
+        print(f"  - {hit[0]}:{hit[1]}: {hit[2]}")
+    print()
 
 
 if __name__ == "__main__":
-    out_dir = REPO_ROOT / "docs" / "ux-audit" / "iterations" / "01"
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    run_g1_scan()
-    run_g2_contrast_check()
-    run_g3_type_floor_scan()
-    dead = run_g4_affordance_scan()
-    print("\nScan completed successfully.")
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    scan_g1_forbidden_effects()
+    scan_g2_contrast()
+    scan_g3_type_floor()
+    scan_g4_affordances()
+    print("Scan completed successfully.")

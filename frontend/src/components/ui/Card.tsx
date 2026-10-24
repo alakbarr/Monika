@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { sounds } from '../../lib/soundEffects';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 
 interface CardProps {
   children: React.ReactNode;
@@ -17,15 +17,6 @@ interface CardProps {
   collapsible?: boolean;
 }
 
-const variantClassMap: Record<string, string> = {
-  blue: 'win-titlebar--blue',
-  yellow: 'win-titlebar--yellow',
-  salmon: 'win-titlebar--salmon',
-  coral: 'win-titlebar--coral',
-  green: 'win-titlebar--green',
-  gray: 'win-titlebar--gray',
-};
-
 export const Card: React.FC<CardProps> = ({
   children,
   className = '',
@@ -35,117 +26,146 @@ export const Card: React.FC<CardProps> = ({
   icon,
   variant = 'blue',
   footer,
-  padding = '16px',
+  padding = '20px 0',
   onClick,
   onClose,
-  elevated = false,
-  collapsible = true,
+  collapsible = false,
 }) => {
   const isInteractive = !!onClick;
-  const titleBarClass = variantClassMap[variant] || 'win-titlebar--blue';
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const handleMinimize = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    sounds.playClick('shutter');
-    setIsCollapsed((prev) => !prev);
-  };
-
-  const handleClose = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    sounds.playClick('toggle');
-    onClose?.();
-  };
+  const accentBorder =
+    variant === 'coral'
+      ? 'var(--color-loss)'
+      : variant === 'green'
+      ? 'var(--color-gain)'
+      : 'var(--color-rule)';
 
   return (
-    <div
-      className={`win-window ledger-card ${className}`}
+    <section
+      className={`editorial-section swiss-crosshair ${className}`}
       onClick={onClick}
       style={{
         position: 'relative',
-        background: 'var(--color-paper-raised)',
-        border: '2px solid var(--color-rule)',
-        borderRadius: 'var(--radius-card)',
-        boxShadow: elevated ? 'var(--shadow-elevated)' : 'var(--shadow-card)',
+        background: 'transparent',
+        borderTop: `1px solid ${accentBorder}`,
         cursor: isInteractive ? 'pointer' : 'default',
-        overflow: 'hidden',
         ...style,
       }}
     >
       {(header || title) && (
-        <div
-          className={`win-titlebar ${titleBarClass}`}
+        <header
+          className="editorial-section-header"
           style={{
-            padding: '6px 12px',
-            borderBottom: isCollapsed ? 'none' : '2px solid var(--color-rule)',
+            padding: '12px 0',
+            borderBottom: isCollapsed ? 'none' : '1px solid var(--color-rule)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            fontSize: 'var(--text-body-sm)',
-            fontWeight: 700,
-            width: '100%',
-            boxSizing: 'border-box',
-            alignSelf: 'stretch',
+            gap: '12px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-            {icon && <span>{icon}</span>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+            {icon && (
+              <span style={{ color: 'var(--color-ink-muted)', display: 'inline-flex', alignItems: 'center' }}>
+                {icon}
+              </span>
+            )}
             {title ? (
-              <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <h3
+                style={{
+                  margin: 0,
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-xs)',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.09em',
+                  color: 'var(--color-ink-secondary)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {title}
-              </div>
+              </h3>
             ) : (
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {header}
-              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>{header}</div>
             )}
           </div>
-          <div className="win-controls" style={{ marginLeft: '8px' }}>
-            {collapsible && (
-              <button
-                type="button"
-                className="win-control-btn"
-                onClick={handleMinimize}
-                title={isCollapsed ? 'Expand Card' : 'Collapse Card'}
-                aria-label={isCollapsed ? 'Expand Card' : 'Collapse Card'}
-              >
-                {isCollapsed ? '□' : '_'}
-              </button>
-            )}
-            {onClose && (
-              <button
-                type="button"
-                className="win-control-btn"
-                onClick={handleClose}
-                title="Close Card"
-                aria-label="Close Card"
-              >
-                ×
-              </button>
-            )}
-          </div>
-        </div>
+
+          {(collapsible || onClose) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {collapsible && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCollapsed((prev) => !prev);
+                  }}
+                  aria-label={isCollapsed ? 'Expand Section' : 'Collapse Section'}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid var(--color-rule)',
+                    color: 'var(--color-ink-muted)',
+                    width: '24px',
+                    height: '24px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    borderRadius: 'var(--radius-xs)',
+                  }}
+                >
+                  {isCollapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+                </button>
+              )}
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClose();
+                  }}
+                  aria-label="Close Section"
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid var(--color-rule)',
+                    color: 'var(--color-ink-muted)',
+                    width: '24px',
+                    height: '24px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    borderRadius: 'var(--radius-xs)',
+                  }}
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          )}
+        </header>
       )}
 
       {!isCollapsed && (
         <>
           <div style={{ padding }}>{children}</div>
-
           {footer && (
-            <div
+            <footer
               style={{
-                padding: `8px ${padding}`,
-                borderTop: '2px solid var(--color-rule)',
-                background: 'var(--color-paper)',
+                padding: '10px 0',
+                borderTop: '1px solid var(--color-rule)',
                 fontSize: 'var(--text-xs)',
-                color: 'var(--color-ink-soft)',
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--color-ink-muted)',
               }}
             >
               {footer}
-            </div>
+            </footer>
           )}
         </>
       )}
-    </div>
+    </section>
   );
 };

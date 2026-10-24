@@ -1,261 +1,336 @@
-@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&family=Special+Elite&display=swap');
-
 /* ==============================================================================
-   DESIGN TOKENS — Monika AI Trading Agent (Retro-Vintage · Typewriter · Dual Mode)
-   Follows DESIGN.md specifications
+   MONIKA DESIGN SYSTEM v3.0 — Swiss Editorial & Unboxed Sculptural Architecture
+   Original Monika Visual & Typographic Specification
+   Follows DESIGN.md specifications · WCAG 2.2 AA Verified · Minimum 11px Floor
    ============================================================================== */
 
 :root[data-theme="light"] {
-  /* Mode Terang — Vintage OS (vintage-ui.jpg desktop aesthetic) */
-  --color-desktop: #8E867C;
-  --color-paper: #EFE9DF;
-  --color-paper-raised: #FAF7F2;
-  --color-ink: #1C1917;
-  --color-ink-soft: #5C544C;
-  --color-rule: #1C1917;
-  --color-edge: #1C1917;
-  --color-border-thick: #1C1917;
+  /* Light Mode — Clean Pure Alabaster & Carbon Ink */
+  --color-canvas: #FFFFFF;
+  --color-well: #F7F8FA;
+  --color-well-hover: #F0F2F5;
+  --color-well-sunken: #ECEEF2;
+  --color-surface-elevated: #FFFFFF;
+  --color-dock-bg: #111215;
+  --color-dock-fg: #FFFFFF;
+  --color-dock-muted: #9CA3AF;
+  --color-dock-rule: #272A30;
 
-  /* Vintage OS Titlebar Palette */
-  --color-win-blue: #3BA4C4;
-  --color-win-yellow: #F5BD38;
-  --color-win-salmon: #E86C53;
-  --color-win-coral: #E25B45;
-  --color-win-green: #48A9A6;
-  --color-win-gray: #C4BCB1;
-  --color-titlebar: #3BA4C4;
-  --color-titlebar-text: #1C1917;
-  --color-on-win-blue: #1C1917;
-  --color-on-win-yellow: #1C1917;
-  --color-on-win-salmon: #1C1917;
-  --color-on-win-coral: #1C1917;
-  --color-on-win-green: #1C1917;
-  --color-on-win-gray: #1C1917;
+  /* Ink Hierarchy (WCAG 2.2 AA >= 4.5:1 against #FFFFFF and #F7F8FA) */
+  --color-ink: #111215;            /* 18.8:1 on #FFFFFF */
+  --color-ink-secondary: #525660;  /* 7.3:1 on #FFFFFF, 6.8:1 on #F7F8FA */
+  --color-ink-muted: #686D78;      /* 5.1:1 on #FFFFFF, 4.8:1 on #F7F8FA */
+  --color-on-inverted: #FFFFFF;
 
-  /* Accents & Status (WCAG 2.2 AA compliant across raised, paper, and sunken surfaces) */
-  --color-brass: #E0962B;
-  --color-brass-bright: #F5BD38;
-  --color-ledger-green: #1B5E20;
-  --color-ledger-red: #B71C1C;
+  /* Architectural Hairline Rules (1px solid) */
+  --color-rule: #E5E7EB;
+  --color-rule-strong: #111215;
+  --color-edge: #686D78;           /* 4.8:1 outline contrast */
 
-  /* Aliases & Backward Compatibility */
-  --color-canvas: var(--color-desktop);
-  --color-canvas-raised: var(--color-paper-raised);
-  --color-surface: var(--color-paper-raised);
-  --color-surface-card: var(--color-paper-raised);
-  --color-surface-elevated: var(--color-paper-raised);
-  --color-surface-hover: #F0E8DC;
-  --color-surface-subtle: #EFE9DF;
-  --color-primary: var(--color-win-blue);
-  --color-primary-active: #2D93B3;
-  --color-primary-dim: rgba(59, 164, 196, 0.2);
-  --color-on-primary: #1C1917;
-  --color-text-white: var(--color-ink);
-  --color-ink-muted: var(--color-ink-soft);
+  /* Semantic Financial Truth (Strictly Reserved for Data & Safety) */
+  --color-gain: #0D7A52;           /* 5.4:1 on #FFFFFF, 5.1:1 on #F7F8FA */
+  --color-gain-bg: rgba(13, 122, 82, 0.08);
+  --color-gain-border: rgba(13, 122, 82, 0.28);
+
+  --color-loss: #C82838;           /* 5.6:1 on #FFFFFF, 5.2:1 on #F7F8FA */
+  --color-loss-bg: rgba(200, 40, 56, 0.08);
+  --color-loss-border: rgba(200, 40, 56, 0.28);
+
+  --color-warn: #9A5B00;           /* 5.3:1 on #FFFFFF, 4.9:1 on #F7F8FA */
+  --color-warn-bg: rgba(154, 91, 0, 0.08);
+  --color-warn-border: rgba(154, 91, 0, 0.28);
+
+  --color-info: #1D4ED8;           /* 6.7:1 on #FFFFFF */
+  --color-info-bg: rgba(29, 78, 216, 0.07);
+  --color-info-border: rgba(29, 78, 216, 0.25);
+
+  /* Semantic Component Aliases (100% Harmony Across All 20 Domain Panels) */
+  --color-desktop: var(--color-canvas);
+  --color-paper: var(--color-well);
+  --color-paper-raised: var(--color-canvas);
+  --color-paper-subtle: var(--color-well);
+  --color-paper-sunken: var(--color-well-sunken);
+  --color-paper-highlight: var(--color-canvas);
+  --color-paper-dark: var(--color-well-sunken);
+  --color-canvas-raised: var(--color-canvas);
+  --color-surface: var(--color-well);
+  --color-surface-card: var(--color-canvas);
+  --color-surface-hover: var(--color-well-hover);
+  --color-surface-subtle: var(--color-well);
+  --color-surface-active: var(--color-well-hover);
+  --color-table-header: var(--color-well);
+  --color-bg: var(--color-canvas);
+
+  --color-ink-soft: var(--color-ink-secondary);
   --color-text-primary: var(--color-ink);
-  --color-text-secondary: var(--color-ink-soft);
-  --color-text-muted: var(--color-ink-soft);
+  --color-text-secondary: var(--color-ink-secondary);
+  --color-text-muted: var(--color-ink-muted);
+  --color-text-white: var(--color-ink);
+
   --color-border: var(--color-rule);
-  --color-border-strong: var(--color-ink);
-  --color-border-focus: var(--color-win-blue);
-  --color-profit: var(--color-ledger-green);
-  --color-profit-dim: rgba(46, 125, 50, 0.18);
-  --color-profit-bg: rgba(46, 125, 50, 0.12);
-  --color-loss: var(--color-ledger-red);
-  --color-loss-dim: rgba(211, 47, 47, 0.18);
-  --color-loss-bg: rgba(211, 47, 47, 0.12);
-  --color-warn: var(--color-win-yellow);
-  --color-warning: var(--color-win-yellow);
-  --color-warn-dim: rgba(245, 189, 56, 0.25);
-  --color-paper-dark: #E4DDD0;
-  --color-win-dim: rgba(59, 164, 196, 0.15);
-  --color-active: var(--color-ledger-green);
-  --color-paused: var(--color-win-yellow);
-  --color-error: var(--color-ledger-red);
-  --color-info: var(--color-win-blue);
-  --color-info-dim: rgba(59, 164, 196, 0.18);
-  --color-dag-grid: rgba(28, 25, 23, 0.12);
-  --color-subgraph-bg: rgba(245, 189, 56, 0.06);
-  --color-telegraph-line: rgba(28, 25, 23, 0.05);
-
-  /* Missing Aliases & Harmonized Vintage Variables */
-  --color-navy: #1B365D;
-  --color-moss: #2E5A36;
-  --color-moss-subtle: rgba(46, 90, 54, 0.12);
-  --color-coral: #C0392B;
-  --color-coral-subtle: rgba(192, 57, 43, 0.12);
-  --color-ochre: #B8860B;
-  --color-ochre-subtle: rgba(184, 134, 11, 0.12);
-  --color-paper-subtle: #E8E2D5;
-  --color-paper-sunken: #E2DBD0;
-  --color-paper-highlight: #FFFFFF;
-  --color-surface-active: #E4DDD0;
-  --color-table-header: #E8E2D5;
-  --color-rule-soft: rgba(28, 25, 23, 0.2);
+  --color-border-strong: var(--color-rule-strong);
+  --color-border-thick: var(--color-rule-strong);
+  --color-border-focus: var(--color-ink);
+  --color-rule-soft: rgba(17, 18, 21, 0.12);
   --color-win-border: var(--color-rule);
-  --color-bg: var(--color-desktop);
-  --color-green: var(--color-ledger-green);
-  --color-accent-subtle: rgba(59, 164, 196, 0.15);
 
-  /* High-Contrast Text Tokens (WCAG 2.1 AA >= 4.5:1 against light paper #FAF7F2) */
-  --color-text-warn: #8A5200;       /* 5.14:1 */
-  --color-text-info: #0F5E77;       /* 5.21:1 */
-  --color-text-accent: #1B365D;     /* 8.92:1 */
-  --color-text-profit: #1B5E20;     /* 5.28:1 */
-  --color-text-loss: #B71C1C;       /* 5.56:1 */
+  --color-primary: var(--color-ink);
+  --color-primary-active: #272A30;
+  --color-primary-dim: rgba(17, 18, 21, 0.06);
+  --color-on-primary: var(--color-on-inverted);
 
-  /* Hard Vintage Drop Shadows (zero blur) */
-  --shadow-card: 3px 3px 0 var(--color-rule);
-  --shadow-elevated: 4px 4px 0 var(--color-rule);
-  --shadow-btn: 2px 2px 0 var(--color-rule);
-  --shadow-dropdown: 4px 4px 0 var(--color-ink);
+  --color-ledger-green: var(--color-gain);
+  --color-profit: var(--color-gain);
+  --color-profit-dim: var(--color-gain-bg);
+  --color-profit-bg: var(--color-gain-bg);
+  --color-green: var(--color-gain);
+  --color-active: var(--color-gain);
+  --color-moss: var(--color-gain);
+  --color-moss-subtle: var(--color-gain-bg);
+
+  --color-ledger-red: var(--color-loss);
+  --color-error: var(--color-loss);
+  --color-negative: var(--color-loss);
+  --color-loss-dim: var(--color-loss-bg);
+  --color-coral: var(--color-loss);
+  --color-coral-subtle: var(--color-loss-bg);
+
+  --color-brass: var(--color-warn);
+  --color-brass-bright: var(--color-warn);
+  --color-warning: var(--color-warn);
+  --color-warn-dim: var(--color-warn-bg);
+  --color-paused: var(--color-warn);
+  --color-ochre: var(--color-warn);
+  --color-ochre-subtle: var(--color-warn-bg);
+
+  --color-navy: var(--color-info);
+  --color-info-dim: var(--color-info-bg);
+  --color-accent-subtle: rgba(17, 18, 21, 0.05);
+  --color-win-dim: rgba(17, 18, 21, 0.05);
+
+  /* Editorialized Legacy Accent Tokens (Zero Retro Toy Colors) */
+  --color-win-blue: var(--color-well);
+  --color-win-yellow: var(--color-well);
+  --color-win-salmon: var(--color-well);
+  --color-win-coral: var(--color-loss);
+  --color-win-green: var(--color-gain);
+  --color-win-gray: var(--color-well);
+  --color-titlebar: var(--color-canvas);
+  --color-win-titlebar: var(--color-canvas);
+  --color-titlebar-text: var(--color-ink);
+  --color-on-titlebar: var(--color-ink);
+  --color-on-win-blue: var(--color-ink);
+  --color-on-win-yellow: var(--color-ink);
+  --color-on-win-salmon: var(--color-ink);
+  --color-on-win-coral: #FFFFFF;
+  --color-on-win-green: #FFFFFF;
+  --color-on-win-gray: var(--color-ink);
+
+  --color-text-warn: var(--color-warn);
+  --color-text-info: var(--color-info);
+  --color-text-accent: var(--color-ink);
+  --color-text-profit: var(--color-gain);
+  --color-text-loss: var(--color-loss);
+
+  --color-dag-grid: rgba(17, 18, 21, 0.08);
+  --color-subgraph-bg: rgba(17, 18, 21, 0.03);
+  --color-telegraph-line: rgba(17, 18, 21, 0.04);
+
+  /* Architectural Elevation (Subtle & Unboxed) */
+  --shadow-card: none;
+  --shadow-elevated: 0 8px 24px rgba(17, 18, 21, 0.06);
+  --shadow-btn: none;
+  --shadow-dropdown: 0 12px 32px rgba(17, 18, 21, 0.12);
+  --shadow-modal: 0 24px 64px rgba(17, 18, 21, 0.18);
+  --shadow-dock: 0 16px 40px rgba(17, 18, 21, 0.14);
 }
 
 :root,
 :root[data-theme="dark"] {
-  /* Mode Gelap — Vintage OS Dark Station */
-  --color-desktop: #1A1715;
-  --color-paper: #24201D;
-  --color-paper-raised: #2D2824;
-  --color-ink: #F6F1EA;
-  --color-ink-soft: #ADA296;
-  --color-rule: #0F0D0C;
-  --color-edge: #7E7469;
-  --color-border-thick: #0F0D0C;
+  /* Dark Mode — Neutral Architectural Graphite Obsidian */
+  --color-canvas: #121316;
+  --color-well: #17191D;
+  --color-well-hover: #1E2026;
+  --color-well-sunken: #0E0F12;
+  --color-surface-elevated: #1B1D22;
+  --color-dock-bg: #1B1D22;
+  --color-dock-fg: #F3F4F6;
+  --color-dock-muted: #9CA3AF;
+  --color-dock-rule: #2D3139;
 
-  /* Vintage OS Titlebar Palette Dark */
-  --color-win-blue: #2A7991;
-  --color-win-yellow: #B8851B;
-  --color-win-salmon: #B04A36;
-  --color-win-coral: #A83A27;
-  --color-win-green: #2E6F6D;
-  --color-win-gray: #4A433D;
-  --color-titlebar: #2A7991;
-  --color-titlebar-text: #FAF7F2;
-  --color-on-win-blue: #FAF7F2;
-  --color-on-win-yellow: #1C1917;
-  --color-on-win-salmon: #FAF7F2;
-  --color-on-win-coral: #FAF7F2;
-  --color-on-win-green: #FAF7F2;
-  --color-on-win-gray: #FAF7F2;
+  /* Ink Hierarchy (WCAG 2.2 AA >= 4.5:1 against #121316 and #17191D) */
+  --color-ink: #F3F4F6;            /* 16.4:1 on #121316 */
+  --color-ink-secondary: #9CA3AF;  /* 7.4:1 on #121316, 6.8:1 on #17191D */
+  --color-ink-muted: #848B98;      /* 5.2:1 on #121316, 4.8:1 on #17191D */
+  --color-on-inverted: #121316;
 
-  /* Accents & Status */
-  --color-brass: #D98C28;
-  --color-brass-bright: #F5BD38;
-  --color-ledger-green: #4CAF50;
-  --color-ledger-red: #F46A6A;
+  /* Architectural Hairline Rules (1px solid) */
+  --color-rule: #23262D;
+  --color-rule-strong: #F3F4F6;
+  --color-edge: #6E7685;           /* 3.8:1 outline contrast on #121316 */
 
-  /* Aliases & Backward Compatibility */
-  --color-canvas: var(--color-desktop);
-  --color-canvas-raised: var(--color-paper-raised);
-  --color-surface: var(--color-paper-raised);
-  --color-surface-card: var(--color-paper-raised);
-  --color-surface-elevated: var(--color-paper-raised);
-  --color-surface-hover: #38322D;
-  --color-surface-subtle: #24201D;
-  --color-primary: var(--color-win-blue);
-  --color-primary-active: #3BA4C4;
-  --color-primary-dim: rgba(42, 121, 145, 0.25);
-  --color-on-primary: #F6F1EA;
-  --color-text-white: var(--color-ink);
-  --color-ink-muted: var(--color-ink-soft);
+  /* Semantic Financial Truth */
+  --color-gain: #10B981;           /* 7.6:1 on #121316, 7.0:1 on #17191D */
+  --color-gain-bg: rgba(16, 185, 129, 0.12);
+  --color-gain-border: rgba(16, 185, 129, 0.32);
+
+  --color-loss: #F43F5E;           /* 5.1:1 on #121316, 4.7:1 on #17191D */
+  --color-loss-bg: rgba(244, 63, 94, 0.12);
+  --color-loss-border: rgba(244, 63, 94, 0.32);
+
+  --color-warn: #F59E0B;           /* 8.9:1 on #121316, 8.2:1 on #17191D */
+  --color-warn-bg: rgba(245, 158, 11, 0.12);
+  --color-warn-border: rgba(245, 158, 11, 0.32);
+
+  --color-info: #60A5FA;           /* 7.3:1 on #121316 */
+  --color-info-bg: rgba(96, 165, 250, 0.12);
+  --color-info-border: rgba(96, 165, 250, 0.32);
+
+  /* Semantic Component Aliases */
+  --color-desktop: var(--color-canvas);
+  --color-paper: var(--color-well);
+  --color-paper-raised: var(--color-canvas);
+  --color-paper-subtle: var(--color-well);
+  --color-paper-sunken: var(--color-well-sunken);
+  --color-paper-highlight: var(--color-well-hover);
+  --color-paper-dark: var(--color-well-sunken);
+  --color-canvas-raised: var(--color-canvas);
+  --color-surface: var(--color-well);
+  --color-surface-card: var(--color-canvas);
+  --color-surface-hover: var(--color-well-hover);
+  --color-surface-subtle: var(--color-well);
+  --color-surface-active: var(--color-well-hover);
+  --color-table-header: var(--color-well);
+  --color-bg: var(--color-canvas);
+
+  --color-ink-soft: var(--color-ink-secondary);
   --color-text-primary: var(--color-ink);
-  --color-text-secondary: var(--color-ink-soft);
-  --color-text-muted: var(--color-ink-soft);
-  --color-border: #443D36;
-  --color-border-strong: #0F0D0C;
-  --color-border-focus: var(--color-win-blue);
-  --color-profit: var(--color-ledger-green);
-  --color-profit-dim: rgba(76, 175, 80, 0.2);
-  --color-profit-bg: rgba(76, 175, 80, 0.12);
-  --color-loss: var(--color-ledger-red);
-  --color-loss-dim: rgba(239, 83, 80, 0.2);
-  --color-loss-bg: rgba(239, 83, 80, 0.12);
-  --color-warn: var(--color-win-yellow);
-  --color-warning: var(--color-win-yellow);
-  --color-warn-dim: rgba(184, 133, 27, 0.25);
-  --color-paper-dark: #1E1A17;
-  --color-win-dim: rgba(42, 121, 145, 0.2);
-  --color-active: var(--color-ledger-green);
-  --color-paused: var(--color-win-yellow);
-  --color-error: var(--color-ledger-red);
-  --color-info: var(--color-win-blue);
-  --color-info-dim: rgba(42, 121, 145, 0.2);
-  --color-dag-grid: rgba(246, 241, 234, 0.08);
-  --color-subgraph-bg: rgba(184, 133, 27, 0.08);
-  --color-telegraph-line: rgba(246, 241, 234, 0.04);
+  --color-text-secondary: var(--color-ink-secondary);
+  --color-text-muted: var(--color-ink-muted);
+  --color-text-white: var(--color-ink);
 
-  /* Missing Aliases & Harmonized Vintage Variables */
-  --color-navy: #3D6B9E;
-  --color-moss: #4E8A5A;
-  --color-moss-subtle: rgba(78, 138, 90, 0.18);
-  --color-coral: #E05345;
-  --color-coral-subtle: rgba(224, 83, 69, 0.18);
-  --color-ochre: #D4A017;
-  --color-ochre-subtle: rgba(212, 160, 23, 0.18);
-  --color-paper-subtle: #24201D;
-  --color-paper-sunken: #181513;
-  --color-paper-highlight: #38322D;
-  --color-surface-active: #38322D;
-  --color-table-header: #201D1A;
-  --color-rule-soft: rgba(246, 241, 234, 0.2);
-  --color-win-border: #443D36;
-  --color-bg: var(--color-desktop);
-  --color-green: var(--color-ledger-green);
-  --color-accent-subtle: rgba(42, 121, 145, 0.25);
+  --color-border: var(--color-rule);
+  --color-border-strong: var(--color-rule-strong);
+  --color-border-thick: var(--color-rule-strong);
+  --color-border-focus: var(--color-ink);
+  --color-rule-soft: rgba(243, 244, 246, 0.12);
+  --color-win-border: var(--color-rule);
 
-  /* High-Contrast Text Tokens (WCAG 2.1 AA >= 4.5:1 against dark paper #24201D) */
-  --color-text-warn: #F0B33A;       /* 7.12:1 */
-  --color-text-info: #5BC3E0;       /* 7.45:1 */
-  --color-text-accent: #7FAEE3;     /* 6.89:1 */
-  --color-text-profit: #66BB6A;     /* 7.02:1 */
-  --color-text-loss: #F46A6A;       /* 4.94:1 against #2D2824, 5.47:1 against #24201D */
+  --color-primary: var(--color-ink);
+  --color-primary-active: #D1D5DB;
+  --color-primary-dim: rgba(243, 244, 246, 0.08);
+  --color-on-primary: var(--color-on-inverted);
 
-  /* Hard Vintage Drop Shadows */
-  --shadow-card: 3px 3px 0 var(--color-rule);
-  --shadow-elevated: 4px 4px 0 var(--color-rule);
-  --shadow-btn: 2px 2px 0 var(--color-rule);
-  --shadow-dropdown: 4px 4px 0 #000000;
+  --color-ledger-green: var(--color-gain);
+  --color-profit: var(--color-gain);
+  --color-profit-dim: var(--color-gain-bg);
+  --color-profit-bg: var(--color-gain-bg);
+  --color-green: var(--color-gain);
+  --color-active: var(--color-gain);
+  --color-moss: var(--color-gain);
+  --color-moss-subtle: var(--color-gain-bg);
+
+  --color-ledger-red: var(--color-loss);
+  --color-error: var(--color-loss);
+  --color-negative: var(--color-loss);
+  --color-loss-dim: var(--color-loss-bg);
+  --color-coral: var(--color-loss);
+  --color-coral-subtle: var(--color-loss-bg);
+
+  --color-brass: var(--color-warn);
+  --color-brass-bright: var(--color-warn);
+  --color-warning: var(--color-warn);
+  --color-warn-dim: var(--color-warn-bg);
+  --color-paused: var(--color-warn);
+  --color-ochre: var(--color-warn);
+  --color-ochre-subtle: var(--color-warn-bg);
+
+  --color-navy: var(--color-info);
+  --color-info-dim: var(--color-info-bg);
+  --color-accent-subtle: rgba(243, 244, 246, 0.06);
+  --color-win-dim: rgba(243, 244, 246, 0.06);
+
+  /* Editorialized Legacy Accent Tokens */
+  --color-win-blue: var(--color-well);
+  --color-win-yellow: var(--color-well);
+  --color-win-salmon: var(--color-well);
+  --color-win-coral: var(--color-loss);
+  --color-win-green: var(--color-gain);
+  --color-win-gray: var(--color-well);
+  --color-titlebar: var(--color-canvas);
+  --color-win-titlebar: var(--color-canvas);
+  --color-titlebar-text: var(--color-ink);
+  --color-on-titlebar: var(--color-ink);
+  --color-on-win-blue: var(--color-ink);
+  --color-on-win-yellow: var(--color-ink);
+  --color-on-win-salmon: var(--color-ink);
+  --color-on-win-coral: #121316;
+  --color-on-win-green: #121316;
+  --color-on-win-gray: var(--color-ink);
+
+  --color-text-warn: var(--color-warn);
+  --color-text-info: var(--color-info);
+  --color-text-accent: var(--color-ink);
+  --color-text-profit: var(--color-gain);
+  --color-text-loss: var(--color-loss);
+
+  --color-dag-grid: rgba(243, 244, 246, 0.07);
+  --color-subgraph-bg: rgba(243, 244, 246, 0.03);
+  --color-telegraph-line: rgba(243, 244, 246, 0.04);
+
+  /* Architectural Elevation */
+  --shadow-card: none;
+  --shadow-elevated: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-btn: none;
+  --shadow-dropdown: 0 16px 40px rgba(0, 0, 0, 0.6);
+  --shadow-modal: 0 28px 72px rgba(0, 0, 0, 0.72);
+  --shadow-dock: 0 20px 48px rgba(0, 0, 0, 0.65);
 }
 
 :root {
-  /* Konsol Sang Mesin — Konstan di kedua mode per DESIGN.md §4.3 */
-  --color-console-bg: #0B0906;
-  --color-console-phosphor: #E8B94A;
-  --color-console-dim: rgba(232, 185, 74, 0.45);
-  --color-console-border: rgba(232, 185, 74, 0.25);
+  /* Console Constants */
+  --color-console-bg: #0E0F12;
+  --color-console-phosphor: #F3F4F6;
+  --color-console-dim: rgba(243, 244, 246, 0.45);
+  --color-console-border: #23262D;
 
-  /* Tipografi Dwi-Suara per DESIGN.md §5 */
-  --font-precision: "Courier Prime", ui-monospace, "IBM Plex Mono", monospace;
-  --font-narrative: "Courier Prime", ui-monospace, "IBM Plex Mono", "Courier New", monospace;
+  /* Tri-Font Swiss Editorial System */
+  --font-editorial: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 
-  /* Aliases font backward compatibility */
-  --font-display: var(--font-precision);
-  --font-mono: var(--font-precision);
-  --font-sans: var(--font-precision);
-  --font-number: var(--font-precision);
+  /* Backward-compatible font aliases */
+  --font-precision: var(--font-mono);
+  --font-narrative: var(--font-sans);
+  --font-display: var(--font-editorial);
+  --font-number: var(--font-mono);
+  --font-body: var(--font-sans);
+  --font-heading: var(--font-editorial);
 
-  /* Skala Ukuran Tipografi Monospace (line-height proporsional monospace) */
+  /* Sculptural Typography Scale (Strict 11px Floor per WCAG 2.2) */
+  --text-monument: 64px;
   --text-hero: 44px;
   --text-display-lg: 36px;
   --text-display-md: 28px;
   --text-display-sm: 22px;
-  --text-title-lg: 19px;
+  --text-title-lg: 20px;
   --text-title-md: 17px;
   --text-title-sm: 15px;
-  --text-title-xs: 13.5px;
-  --text-body-lg: 14px;
-  --text-body-md: 13px;
+  --text-title-xs: 13px;
+  --text-body-lg: 15px;
+  --text-body-md: 13.5px;
+  --text-body: 13.5px;
   --text-body-sm: 12px;
+  --text-sm: 12px;
   --text-caption: 11px;
-  --text-xs: 11px; /* Floor minimum 11px per WCAG 2.2 */
+  --text-xs: 11px;
 
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
 
-  /* Spacing Grid 8px (skala: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64) */
+  /* 8px Architectural Spatial System */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -267,40 +342,31 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  /* Border-radius — Meniru frame jendela vintage OS (vintage-ui.jpg) */
+  /* Sharp Geometric Radii */
   --radius-xs: 2px;
-  --radius-sm: 3px;
+  --radius-sm: 2px;
   --radius-md: 4px;
-  --radius-lg: 6px;
-  --radius-xl: 8px;
-  --radius-2xl: 10px;
-  --radius-pill: 4px; /* Eliminating 9999px pill anti-pattern */
-  --radius-card: 6px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --radius-2xl: 8px;
+  --radius-pill: 4px;
+  --radius-card: 0px;
+  --radius-control: 2px;
 
-  /* Layout */
-  --header-height: 54px;
-  --sidebar-width: 240px;
-  --sidebar-collapsed: 60px;
+  /* Layout Dimensions */
+  --header-height: 48px;
+  --sidebar-width: 0px;
+  --sidebar-collapsed: 0px;
 
-  /* Focus */
+  /* Focus & Transitions */
   --shadow-focus: 0 0 0 2px var(--color-ink);
-
-  /* Micro transitions */
-  --transition-fast: 80ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* Missing Font, Typography, Radius & Shadow Aliases */
-  --font-body: var(--font-narrative);
-  --font-heading: var(--font-precision);
-  --text-body: var(--text-body-md);
-  --text-sm: var(--text-body-sm);
-  --radius-control: var(--radius-sm);
-  --shadow-modal: 6px 6px 0 var(--color-rule);
+  --transition-fast: 100ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-base: 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-slow: 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* ==============================================================================
-   RESET & BASE
+   RESET & BASE CANVAS
    ============================================================================== */
 
 *, *::before, *::after {
@@ -313,295 +379,258 @@ html {
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  font-family: var(--font-precision);
+  font-family: var(--font-sans);
   font-size: var(--text-body-md);
   font-weight: var(--weight-regular);
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--color-ink);
-  background-color: var(--color-desktop);
+  background-color: var(--color-canvas);
   min-height: 100vh;
   overflow-x: hidden;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.011em;
   position: relative;
 }
 
-/* Web Dashboard Scrollbar (Chunky with solid outline) */
+/* Minimalist Architectural Scrollbar */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-paper);
-  border: 1px solid var(--color-rule);
+  background: var(--color-canvas);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-win-yellow);
-  border: 2px solid var(--color-rule);
-  border-radius: 4px;
+  background: var(--color-rule);
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-brass);
+  background: var(--color-ink-muted);
 }
 
-/* High-Contrast Retro Focus Visible (WCAG 2.4.11 & 1.4.11) */
+/* High-Contrast Achromatic Focus Ring (WCAG 2.4.11) */
 *:focus-visible {
-  outline: 2px solid #1B365D !important;
+  outline: 2px solid var(--color-ink) !important;
   outline-offset: 2px !important;
 }
-
-:root[data-theme="dark"] *:focus-visible {
-  outline: 2px solid #F5BD38 !important;
-  outline-offset: 2px !important;
-}
-
-/* Tabular Monospace Financial Figures */
-.num,
-.tabular-nums {
-  font-family: var(--font-precision);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-/* Semantic Ledger Text Colors */
-.text-profit { color: var(--color-ledger-green); }
-.text-loss   { color: var(--color-ledger-red); }
-.text-warn   { color: var(--color-brass); }
-.text-primary{ color: var(--color-win-blue); }
-.text-muted  { color: var(--color-ink-soft); }
-.text-secondary { color: var(--color-ink-soft); }
 
 /* ==============================================================================
-   VINTAGE OS COMPONENT UTILITIES (vintage-ui.jpg)
+   SWISS EDITORIAL TYPOGRAPHY & TABULAR NUMERICS
    ============================================================================== */
 
-/* Vintage OS Window (The Retro Window & Ledger Card) */
+.font-editorial {
+  font-family: var(--font-editorial);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.font-sans {
+  font-family: var(--font-sans);
+}
+
+.font-mono,
+.num,
+.tabular-nums {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
+  letter-spacing: -0.015em;
+}
+
+.section-kicker {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-muted);
+}
+
+.editorial-headline {
+  font-family: var(--font-editorial);
+  font-size: var(--text-display-sm);
+  font-weight: 400;
+  color: var(--color-ink);
+  line-height: 1.2;
+}
+
+/* Semantic Text Utilities */
+.text-profit { color: var(--color-gain); }
+.text-loss   { color: var(--color-loss); }
+.text-warn   { color: var(--color-warn); }
+.text-primary{ color: var(--color-ink); }
+.text-muted  { color: var(--color-ink-muted); }
+.text-secondary { color: var(--color-ink-secondary); }
+
+/* ==============================================================================
+   UNBOXED ARCHITECTURAL SURFACES & SWISS HAIRLINES
+   ============================================================================== */
+
+/* Replaces legacy boxy windows with unboxed Swiss editorial sections */
 .win-window,
-.ledger-card {
-  background: var(--color-paper-raised);
-  border: 2px solid var(--color-rule);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+.ledger-card,
+.editorial-section {
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--color-rule);
+  border-radius: 0;
+  box-shadow: none;
+  position: relative;
 }
 
-.win-window:hover,
-.ledger-card:hover {
-  box-shadow: var(--shadow-elevated);
-}
-
-/* Vintage OS Titlebar */
-.win-titlebar {
-  background: var(--color-win-blue);
-  color: var(--color-on-win-blue);
-  border-bottom: 2px solid var(--color-rule);
-  padding: 6px 12px;
+.win-titlebar,
+.editorial-section-header {
+  background: transparent;
+  color: var(--color-ink);
+  border-bottom: 1px solid var(--color-rule);
+  padding: 12px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-weight: 700;
+  font-family: var(--font-sans);
+  font-weight: 600;
   font-size: var(--text-body-sm);
-  letter-spacing: 0.04em;
-  user-select: none;
+  letter-spacing: -0.01em;
   width: 100%;
   box-sizing: border-box;
-  align-self: stretch;
 }
 
-.win-titlebar--blue   { background: var(--color-win-blue);   color: var(--color-on-win-blue); }
-.win-titlebar--yellow { background: var(--color-win-yellow); color: var(--color-on-win-yellow); }
-.win-titlebar--salmon { background: var(--color-win-salmon); color: var(--color-on-win-salmon); }
-.win-titlebar--coral  { background: var(--color-win-coral);  color: var(--color-on-win-coral); }
-.win-titlebar--green  { background: var(--color-win-green);  color: var(--color-on-win-green); }
-.win-titlebar--moss   { background: var(--color-win-green);  color: var(--color-on-win-green); }
-.win-titlebar--gray   { background: var(--color-win-gray);   color: var(--color-on-win-gray); }
-
-/* Authentic Retro Focus Pinstripes & Elevation (UX-010) */
-.win-window--active,
-.win-window[data-focused="true"] {
-  box-shadow: var(--shadow-elevated) !important;
-  border-color: var(--color-rule) !important;
-}
-
-.win-window--active .win-titlebar,
-.win-window[data-focused="true"] .win-titlebar {
+/*Swiss Crosshair (+) Intersection Marker */
+.swiss-crosshair {
   position: relative;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 1px,
-    rgba(28, 25, 23, 0.22) 1px,
-    rgba(28, 25, 23, 0.22) 2px
-  );
 }
-
-:root[data-theme="dark"] .win-window--active .win-titlebar,
-:root[data-theme="dark"] .win-window[data-focused="true"] .win-titlebar {
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 1px,
-    rgba(246, 241, 234, 0.18) 1px,
-    rgba(246, 241, 234, 0.18) 2px
-  );
-}
-
-.win-titlebar-title {
-  background: inherit;
-  padding: 0 4px;
-  position: relative;
-  z-index: 1;
-}
-
-/* Window Control Buttons (o _ X) */
-.win-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.win-control-btn {
-  width: 26px;
-  height: 26px;
-  position: relative;
-  touch-action: manipulation;
-  box-sizing: border-box;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-rule);
-  background: var(--color-paper-raised);
-  color: var(--color-ink);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.swiss-crosshair::before {
+  content: "+";
+  position: absolute;
+  top: -7px;
+  left: -4px;
+  font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1;
-  font-weight: bold;
-  cursor: pointer;
-  padding: 0;
-  box-shadow: 1px 1px 0 var(--color-rule);
-}
-
-.win-control-btn::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  min-width: 44px;
-  min-height: 44px;
-  pointer-events: auto;
-}
-
-.win-control-btn:active {
-  transform: translate(1px, 1px);
-  box-shadow: 0 0 0 transparent;
-}
-
-/* The Machine's Console Panel */
-.console-panel {
-  background: var(--color-console-bg) !important;
-  color: var(--color-console-phosphor) !important;
-  border: 2px solid var(--color-rule) !important;
-  border-radius: var(--radius-card);
-  position: relative;
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
-}
-
-.console-text-narrative {
-  font-family: var(--font-narrative) !important;
-  line-height: 1.7;
-}
-
-/* XTerm Terminal Dual-Theme Viewport */
-:root[data-theme="light"] .xterm .xterm-viewport {
-  background-color: var(--color-paper-raised) !important;
-}
-
-:root[data-theme="dark"] .xterm .xterm-viewport {
-  background-color: var(--color-console-bg) !important;
-}
-
-/* Web Dashboard Tactile Buttons */
-.win-btn,
-.typewriter-btn {
-  font-family: var(--font-precision);
-  font-size: var(--text-body-sm);
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 6px 14px;
-  background: var(--color-paper-raised);
-  color: var(--color-ink);
-  border: 2px solid var(--color-rule);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  box-shadow: var(--shadow-btn);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+  color: var(--color-ink-muted);
+  pointer-events: none;
   user-select: none;
 }
 
-.win-btn:hover,
-.typewriter-btn:hover {
-  background: var(--color-win-yellow);
-  color: #1C1917;
+/* Tactile Architectural Paper Grain Overlay */
+.paper-grain-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.028;
 }
 
-.win-btn:active,
-.typewriter-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: 0 0 0 transparent;
+/* ==============================================================================
+   ACHROMATIC CONTROLS & TACTILE BUTTONS
+   ============================================================================== */
+
+.win-btn,
+.typewriter-btn,
+.editorial-btn {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 14px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  user-select: none;
+}
+
+.win-btn:hover:not(:disabled),
+.typewriter-btn:hover:not(:disabled),
+.editorial-btn:hover:not(:disabled) {
+  background: var(--color-well-hover);
+  border-color: var(--color-ink);
 }
 
 .win-btn-primary,
-.typewriter-btn-brass {
-  background: var(--color-win-yellow);
-  color: #1C1917;
+.typewriter-btn-brass,
+.editorial-btn-primary {
+  background: var(--color-ink);
+  color: var(--color-on-inverted);
+  border-color: var(--color-ink);
 }
-.win-btn-primary:hover,
-.typewriter-btn-brass:hover {
-  background: var(--color-brass);
+
+.win-btn-primary:hover:not(:disabled),
+.typewriter-btn-brass:hover:not(:disabled),
+.editorial-btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+  background: var(--color-ink);
+  color: var(--color-on-inverted);
 }
 
 .win-btn-danger,
-.typewriter-btn-danger {
-  background: var(--color-win-coral);
-  color: #FAF7F2;
-}
-.win-btn-danger:hover,
-.typewriter-btn-danger:hover {
-  background: var(--color-ledger-red);
+.typewriter-btn-danger,
+.editorial-btn-danger {
+  background: var(--color-loss-bg);
+  color: var(--color-loss);
+  border-color: var(--color-loss-border);
 }
 
-/* Greenbar / Tabular Listview Table Rows */
-.greenbar-row:nth-child(even) {
-  background: var(--color-profit-dim) !important;
+.win-btn-danger:hover:not(:disabled),
+.typewriter-btn-danger:hover:not(:disabled),
+.editorial-btn-danger:hover:not(:disabled) {
+  background: var(--color-loss);
+  color: #FFFFFF;
+  border-color: var(--color-loss);
 }
 
-/* Authentic Retro Inverted Row Selection (UX-016) */
+/* ==============================================================================
+   UNBOXED TABULAR LEDGERS & HIGH-DENSITY TABLES
+   ============================================================================== */
+
+.ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-body-sm);
+}
+
+.ledger-table th {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-muted);
+  border-bottom: 1px solid var(--color-rule);
+  padding: 10px 12px;
+  background: transparent;
+}
+
+.ledger-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--color-rule);
+  color: var(--color-ink);
+  vertical-align: middle;
+}
+
+.ledger-table tbody tr {
+  transition: background-color var(--transition-fast);
+}
+
+.ledger-table tbody tr:hover,
+.greenbar-row:hover {
+  background: var(--color-well) !important;
+}
+
 tr.retro-row-selected,
 tr[aria-selected="true"] {
-  background: var(--color-ink) !important;
-  color: var(--color-paper-raised) !important;
+  background: var(--color-well-hover) !important;
 }
 
-tr.retro-row-selected td,
-tr[aria-selected="true"] td,
-tr.retro-row-selected td .tabular-nums,
-tr[aria-selected="true"] td .tabular-nums,
-tr.retro-row-selected td span,
-tr[aria-selected="true"] td span {
-  color: var(--color-paper-raised) !important;
-}
-
-tr.retro-row-selected .table-action-btn,
-tr[aria-selected="true"] .table-action-btn {
-  border-color: var(--color-paper-raised) !important;
-}
-
-/* Fitts's Law Hit-Slop Utility (Invisible touch box >= 44x44px for compact desktop UI) */
+/* Fitts's Law Hit-Slop Utility (>= 44x44px invisible touch target) */
 .touch-target-expand,
 .table-action-btn {
   position: relative;
@@ -610,7 +639,7 @@ tr[aria-selected="true"] .table-action-btn {
 
 .touch-target-expand::after,
 .table-action-btn::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -620,125 +649,179 @@ tr[aria-selected="true"] .table-action-btn {
   pointer-events: auto;
 }
 
-/* Touch Device Row Padding Expansion */
-@media (pointer: coarse) {
-  .table-responsive tr td {
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
-  }
-}
-
-/* Rubber Stamp Badges */
+/* Typographic Micro-Indicators (Replacing 10%-Opacity Slop Pills) */
 .stamp-badge,
 .win-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-family: var(--font-precision);
+  gap: 6px;
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 2px 6px;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
   border: 1px solid var(--color-rule);
-  border-radius: var(--radius-sm);
-  box-shadow: 1px 1px 0 var(--color-rule);
+  border-radius: var(--radius-xs);
+  background: transparent;
   line-height: 1.3;
 }
 
-/* Vintage Stock Ticker Tape */
-.ticker-tape-container {
-  background: var(--color-paper-raised);
-  border-bottom: 2px solid var(--color-rule);
-  color: var(--color-ink);
-  font-family: var(--font-precision);
-  white-space: nowrap;
+/* ==============================================================================
+   FLOATING COMMAND DOCK & DIALOGUE SHEET
+   ============================================================================== */
+
+.floating-dock-wrapper {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(92vw, 880px);
+  pointer-events: none;
+}
+
+.floating-dock-bar {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--color-dock-bg);
+  color: var(--color-dock-fg);
+  border: 1px solid var(--color-dock-rule);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-dock);
+  width: 100%;
+}
+
+.floating-dock-sheet {
+  pointer-events: auto;
+  width: 100%;
+  margin-bottom: 10px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-modal);
   overflow: hidden;
 }
 
-/* Vintage OS Sidebar Folder Tabs */
-.folder-tab {
-  font-family: var(--font-precision);
-  font-size: var(--text-body-sm);
-  letter-spacing: 0.02em;
-  border: 2px solid transparent;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+/* ==============================================================================
+   MODAL SCRIM & XTERM OVERRIDES
+   ============================================================================== */
+
+.retro-modal-scrim,
+.editorial-modal-scrim {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(17, 18, 21, 0.68);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.folder-tab.-active {
-  background: var(--color-paper-raised);
-  color: var(--color-ink);
-  border-color: var(--color-rule);
-  border-left: 4px solid var(--color-win-yellow);
-  box-shadow: 2px 2px 0 var(--color-rule);
+
+:root[data-theme="light"] .xterm .xterm-viewport {
+  background-color: var(--color-canvas) !important;
+}
+
+:root[data-theme="dark"] .xterm .xterm-viewport {
+  background-color: var(--color-console-bg) !important;
+}
+
+textarea::placeholder,
+input::placeholder {
+  color: var(--color-ink-muted) !important;
+  opacity: 0.85;
+}
+
+/* DAG Architectural Drafting Canvas */
+.dag-drafting-canvas {
+  background-color: var(--color-well);
+  background-image: radial-gradient(circle, var(--color-dag-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.telegraph-viewport {
+  background-color: var(--color-canvas);
 }
 
 /* ==============================================================================
-   ANIMATION KEYFRAMES (§9 Disciplined Motion)
+   CONTINUOUS TELEMETRY RIBBON & COCKPIT BAR
    ============================================================================== */
 
-/* CRT Console Boot Sequence (< 600ms) */
-@keyframes crtFlicker {
-  0%   { opacity: 0.1; filter: brightness(0.5); }
-  25%  { opacity: 0.8; filter: brightness(1.2); }
-  35%  { opacity: 0.3; filter: brightness(0.6); }
-  60%  { opacity: 0.95; filter: brightness(1.1); }
-  100% { opacity: 1; filter: brightness(1); }
+.cockpit-bar {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  border-top: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-canvas);
 }
 
-@keyframes scanlineSweep {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
+.cockpit-item {
+  border-right: 1px solid var(--color-rule);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
 }
 
-/* Typewriter / Teleprinter Blinking Cursor */
-@keyframes typewriterCursor {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
+.cockpit-item:last-child {
+  border-right: none;
 }
 
-/* Live Price Flash (150ms bounce-free) */
-@keyframes priceFlashGreen {
-  0% { background-color: var(--color-ledger-green); color: #FFF; }
-  100% { background-color: transparent; }
-}
-@keyframes priceFlashRed {
-  0% { background-color: var(--color-ledger-red); color: #FFF; }
-  100% { background-color: transparent; }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.animate-crt-boot {
-  animation: crtFlicker 500ms ease-out forwards;
-}
-
-.typewriter-cursor {
-  display: inline-block;
-  width: 8px;
-  height: 14px;
-  background-color: var(--color-console-phosphor);
-  vertical-align: middle;
-  animation: typewriterCursor 1s steps(2, start) infinite;
-}
-
-/* Accessibility: Respect prefers-reduced-motion */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
+@media (max-width: 1200px) {
+  .cockpit-bar {
+    grid-template-columns: repeat(3, 1fr);
   }
-  .typewriter-cursor {
-    animation: none;
-    opacity: 1;
+  .cockpit-item:nth-child(3n) {
+    border-right: none;
+  }
+  .cockpit-item:nth-child(-n+3) {
+    border-bottom: 1px solid var(--color-rule);
   }
 }
 
-/* Utility Flexbox / Grid */
+@media (max-width: 768px) {
+  .cockpit-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* L0 Safety Mode Indicator */
+.monika-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-xs);
+  user-select: none;
+}
+
+.monika-mode-pill--paper {
+  background: var(--color-warn-bg);
+  color: var(--color-warn);
+  border-color: var(--color-warn-border);
+}
+
+.monika-mode-pill--live {
+  background: var(--color-loss);
+  color: #FFFFFF;
+  border-color: var(--color-loss);
+}
+
+/* Utility Classes */
 .flex { display: flex; }
 .flex-col { flex-direction: column; }
 .items-center { align-items: center; }
@@ -751,357 +834,15 @@ tr[aria-selected="true"] .table-action-btn {
 .gap-6 { gap: var(--space-6); }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ==============================================================================
-   COCKPIT RESPONSIVE INSTRUMENT CLUSTER
-   ============================================================================== */
-.cockpit-bar {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr 0.9fr 0.9fr;
-  gap: var(--space-3);
-  align-items: center;
-}
-
-.cockpit-item {
-  border-right: 1px dashed var(--color-rule);
-  padding-right: var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.cockpit-item:last-child {
-  border-right: none;
-  padding-right: 0;
-}
-
-@media (max-width: 1200px) {
-  .cockpit-bar {
-    grid-template-columns: repeat(3, 1fr);
-    row-gap: var(--space-3);
-  }
-  .cockpit-item:nth-child(3) {
-    border-right: none;
-    padding-right: 0;
-  }
-}
-
-@media (max-width: 768px) {
-  .cockpit-bar {
-    grid-template-columns: 1fr;
-  }
-  .cockpit-item {
-    border-right: none;
-    border-bottom: 1px dashed var(--color-rule);
-    padding-right: 0;
-    padding-bottom: var(--space-2);
-  }
-  .cockpit-item:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-  }
-}
-
-/* ==============================================================================
-   BREADCRUMB BAR (Workspace > Tab Context)
-   ============================================================================== */
-.breadcrumb-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 6px var(--space-4);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  color: var(--color-ink-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border-bottom: 2px solid var(--color-rule);
-  background: var(--color-paper);
-  font-family: var(--font-precision);
-  user-select: none;
-}
-
-.breadcrumb-bar .breadcrumb-separator {
-  color: var(--color-win-yellow);
-  font-weight: 900;
-}
-
-/* ==============================================================================
-   GLOBAL STATUS BAR (Win95/98 Bottom Taskbar)
-   ============================================================================== */
-.status-bar-global {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 26px;
-  background: var(--color-paper);
-  border-top: 2px solid var(--color-rule);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--space-4);
-  font-size: var(--text-xs);
-  font-family: var(--font-precision);
-  color: var(--color-ink);
-  z-index: 100;
-  box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.1);
-  user-select: none;
-}
-
-@media (max-width: 768px) {
-  .status-bar-global {
-    padding: 0 var(--space-2);
-    font-size: 11px;
-  }
-  .status-bar-global .status-bar-secondary {
-    display: none !important;
-  }
-}
-
-/* ==============================================================================
-   CRT SCANLINE OVERLAY & VINTAGE HARDWARE CHASSIS
-   ============================================================================== */
-.console-scanline {
-  position: relative;
-}
-
-.console-scanline::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.15) 2px,
-    rgba(0, 0, 0, 0.15) 4px
-  );
-  pointer-events: none;
-  z-index: 10;
-}
-
-/* Vintage CRT Monitor Beige Chassis for Chat Panel in Light Mode */
-.crt-chassis {
-  background: #D9D2C5;
-  border: 3px solid #1C1917;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 4px 4px 0 #1C1917, inset 1px 1px 0 rgba(255, 255, 255, 0.6);
-  position: relative;
-}
-
-[data-theme="dark"] .crt-chassis {
-  background: #1C1917;
-  border-color: #0F0D0C;
-  box-shadow: 4px 4px 0 #0F0D0C;
-}
-
-.crt-bezel {
-  background: #181512;
-  border: 4px solid #3A352A;
-  border-radius: 8px;
-  padding: 10px;
-  box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.8);
-}
-
-/* Textarea / Input Retro Placeholder High-Contrast */
-textarea::placeholder,
-input::placeholder {
-  color: var(--color-ink-soft) !important;
-  opacity: 0.85;
-}
-
-/* Tabular numbers default for financial stats */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-/* ==============================================================================
-   DAG ARCHITECTURAL DRAFTING CANVAS & TELEGRAPH VIEWPORT
-   ============================================================================== */
-.dag-drafting-canvas {
-  background-color: var(--color-paper);
-  background-image: radial-gradient(circle, var(--color-dag-grid) 1.2px, transparent 1.2px);
-  background-size: 24px 24px;
-}
-
-.telegraph-viewport {
-  background-color: var(--color-paper);
-  background-image: linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 23px,
-    var(--color-telegraph-line) 23px,
-    var(--color-telegraph-line) 24px
-  );
-  background-size: 100% 24px;
-}
-
-
-/* ==============================================================================
-   TICKER TAPE CONTINUOUS SCROLL
-   ============================================================================== */
-@keyframes tickerScroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-.ticker-scroll-track {
-  display: inline-flex;
-  align-items: center;
-  gap: 24px;
-  white-space: nowrap;
-  animation: tickerScroll 35s linear infinite;
-  width: max-content;
-}
-
-.ticker-scroll-track:hover,
-.ticker-tape-container:hover .ticker-scroll-track {
-  animation-play-state: paused;
-}
-
-/* ==============================================================================
-   SIDEBAR COLLAPSED
-   ============================================================================== */
-.sidebar--collapsed {
-  width: var(--sidebar-collapsed) !important;
-}
-
-.sidebar--collapsed .sidebar-label,
-.sidebar--collapsed .sidebar-subtabs {
-  display: none !important;
-}
-
-/* ==============================================================================
-   BRAND HEADER LOCKUP TYPOGRAPHY (LIGHT & DARK ADAPTIVE)
-   ============================================================================== */
-.monika-brand-stamp {
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: box-shadow 0.2s ease;
-}
-
-[data-theme="light"] .monika-brand-stamp {
-  box-shadow: 1px 1px 0 var(--color-rule), 0 0 8px rgba(184, 117, 3, 0.2);
-}
-
-[data-theme="dark"] .monika-brand-stamp {
-  box-shadow: 0 0 10px rgba(245, 189, 56, 0.35);
-}
-
-.monika-brand-title {
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: 0.07em;
-  line-height: 1;
-  transition: color 0.2s ease, text-shadow 0.2s ease;
-}
-
-[data-theme="light"] .monika-brand-title {
-  color: #1A1510;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 0 1px rgba(0, 0, 0, 0.2);
-}
-
-[data-theme="dark"] .monika-brand-title {
-  color: #FFF8E7;
-  text-shadow: 0 0 12px rgba(245, 189, 56, 0.4), 0 1px 2px rgba(0, 0, 0, 0.9);
-}
-
-.monika-brand-os {
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: 0.07em;
-  line-height: 1;
-  margin-left: 6px;
-  transition: color 0.2s ease, text-shadow 0.2s ease;
-}
-
-[data-theme="light"] .monika-brand-os {
-  color: #B26A00;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 8px rgba(224, 150, 43, 0.3);
-}
-
-[data-theme="dark"] .monika-brand-os {
-  color: var(--color-brass-bright, #F5BD38);
-  text-shadow: 0 0 14px rgba(245, 189, 56, 0.65), 0 1px 2px rgba(0, 0, 0, 0.9);
-}
-
-/* ==============================================================================
-   RETRO OS WORKSTATION UTILITIES & SAFETY CHROME
-   ============================================================================== */
-
-/* Dedicated Window Toolbar */
-.win-toolbar {
-  padding: 6px 10px;
-  background: var(--color-paper);
-  border-bottom: 1px solid var(--color-rule);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-family: var(--font-precision);
-  font-size: var(--text-body-sm);
-  box-sizing: border-box;
-}
-
-/* L0 Safety Mode Pill */
-.monika-mode-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 800;
-  font-family: var(--font-precision);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-sm);
-  user-select: none;
-}
-
-.monika-mode-pill--paper {
-  background: var(--color-paper);
-  color: var(--color-text-warn);
-}
-
-.monika-mode-pill--live {
-  background: var(--color-win-coral);
-  color: #FAF7F2;
-  border-color: #A83A27;
-  animation: pulse-live 2s infinite ease-in-out;
-}
-
-@keyframes pulse-live {
+@keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.85; }
+  50% { opacity: 0.45; }
 }
 
-/* Retro Dither Scrim (Zero Gaussian Blur Replacement) */
-.retro-modal-scrim {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(28, 25, 23, 0.65);
-  background-image: radial-gradient(rgba(0, 0, 0, 0.4) 1px, transparent 0);
-  background-size: 4px 4px;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* A11y Preference: Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
   }
 }

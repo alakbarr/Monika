@@ -1,11 +1,11 @@
-import { ErrorBoundary } from './ErrorBoundary';
 // ==============================================================================
 // File: src/components/ui/WindowFrame.tsx
-// Description: Interactive Retro Window Frame with minimize, maximize, and sound
+// Description: Unboxed Swiss Editorial Section Container with Toolbar & ErrorBoundary
 // ==============================================================================
 
 import React, { useState } from 'react';
-import { sounds } from '../../lib/soundEffects';
+import { ErrorBoundary } from './ErrorBoundary';
+import { Maximize2, Minimize2, X } from 'lucide-react';
 
 export type WindowVariant = 'blue' | 'yellow' | 'salmon' | 'coral' | 'green' | 'gray';
 
@@ -28,104 +28,73 @@ interface WindowFrameProps {
   onFocus?: () => void;
 }
 
-const variantClassMap: Record<WindowVariant, string> = {
-  blue: '',
-  yellow: 'win-titlebar--yellow',
-  salmon: 'win-titlebar--salmon',
-  coral: 'win-titlebar--coral',
-  green: 'win-titlebar--green',
-  gray: 'win-titlebar--gray',
-};
-
 export const WindowFrame: React.FC<WindowFrameProps> = ({
   title,
   icon,
-  variant = 'blue',
   children,
   className = '',
   style,
   bodyStyle,
-  showControls = true,
   onClose,
   actions,
   toolbar,
   statusBar,
-  padding = '16px',
+  padding = '16px 0',
   defaultCollapsed = false,
-  isFocused,
   onFocus,
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+  const [isCollapsed] = useState(defaultCollapsed);
   const [isMaximized, setIsMaximized] = useState(false);
 
-  const handleMinimize = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    sounds.playClick('shutter');
-    setIsCollapsed(!isCollapsed);
-  };
-
-  const handleMaximize = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    sounds.playClick('shutter');
-    setIsMaximized(!isMaximized);
-    if (isCollapsed) setIsCollapsed(false);
-  };
-
-  const handleClose = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    sounds.playClick('toggle');
-    if (onClose) onClose();
-  };
-
   return (
-    <div
-      data-focused={isFocused ? 'true' : 'false'}
-      className={`win-window ${isFocused ? 'win-window--active' : isFocused === false ? 'win-window--inactive' : ''} ${className}`}
+    <section
+      className={`editorial-section swiss-crosshair ${className}`}
       onClick={onFocus}
       style={{
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden',
-        background: 'var(--color-paper-raised)',
-        border: '2px solid var(--color-rule)',
-        borderRadius: 'var(--radius-card)',
-        boxShadow: isMaximized ? '8px 8px 0 var(--color-rule)' : 'var(--shadow-card)',
-        transition: 'box-shadow 0.2s ease',
+        background: isMaximized ? 'var(--color-canvas)' : 'transparent',
+        borderTop: '1px solid var(--color-rule)',
         ...(isMaximized
           ? {
               position: 'fixed',
-              top: '16px',
-              left: '16px',
-              right: '16px',
-              bottom: '16px',
+              inset: '16px',
               zIndex: 999,
-              maxHeight: 'calc(100vh - 32px)',
+              padding: '24px',
+              border: '1px solid var(--color-rule-strong)',
+              boxShadow: 'var(--shadow-modal)',
             }
           : {}),
         ...style,
       }}
     >
-      {/* Title bar */}
-      <div
-        className={`win-titlebar ${variantClassMap[variant]}`}
+      {/* Editorial Section Header */}
+      <header
+        className="editorial-section-header"
         style={{
-          userSelect: 'none',
-          cursor: 'default',
+          padding: '12px 0',
+          borderBottom: '1px solid var(--color-rule)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          flexWrap: 'wrap',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
           {icon && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--color-ink-muted)' }}>
               {icon}
             </span>
           )}
           <span
-            className="win-titlebar-title"
             style={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              fontWeight: 'bold',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-xs)',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.09em',
+              color: 'var(--color-ink)',
             }}
           >
             {title}
@@ -134,86 +103,107 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           {actions}
-          {showControls && (
-            <div className="win-controls">
-              <button
-                type="button"
-                className="win-control-btn"
-                onClick={handleMinimize}
-                title={isCollapsed ? 'Restore Window' : 'Minimize Window'}
-                aria-label={isCollapsed ? 'Restore Window' : 'Minimize Window'}
-              >
-                _
-              </button>
-              <button
-                type="button"
-                className="win-control-btn"
-                onClick={handleMaximize}
-                title={isMaximized ? 'Restore Size' : 'Maximize Window'}
-                aria-label={isMaximized ? 'Restore Size' : 'Maximize Window'}
-              >
-                □
-              </button>
-              {onClose && (
-                <button
-                  type="button"
-                  className="win-control-btn"
-                  onClick={handleClose}
-                  title="Close Window"
-                  aria-label="Close Window"
-                  style={{ color: 'var(--color-ink)' }}
-                >
-                  ×
-                </button>
-              )}
-            </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMaximized((prev) => !prev);
+            }}
+            title={isMaximized ? 'Exit Fullscreen' : 'Expand Section'}
+            aria-label={isMaximized ? 'Exit Fullscreen' : 'Expand Section'}
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--color-rule)',
+              color: 'var(--color-ink-muted)',
+              width: '24px',
+              height: '24px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 'var(--radius-xs)',
+              cursor: 'pointer',
+            }}
+          >
+            {isMaximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+          </button>
+          {onClose && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              title="Close"
+              aria-label="Close"
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--color-rule)',
+                color: 'var(--color-ink-muted)',
+                width: '24px',
+                height: '24px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 'var(--radius-xs)',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={12} />
+            </button>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* Window Dedicated Toolbar */}
+      {/* Optional Toolbar */}
       {toolbar && !isCollapsed && (
-        <div className="win-toolbar">
+        <div
+          style={{
+            padding: '10px 0',
+            borderBottom: '1px solid var(--color-rule)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            flexWrap: 'wrap',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'var(--text-xs)',
+          }}
+        >
           {toolbar}
         </div>
       )}
 
-      {/* Window Body (collapsible) */}
+      {/* Body */}
       {!isCollapsed && (
         <>
           <div
             style={{
               padding,
               flex: 1,
-              background: 'var(--color-paper-raised)',
               overflowY: isMaximized ? 'auto' : undefined,
               ...bodyStyle,
             }}
           >
-            <ErrorBoundary>
-              {children}
-            </ErrorBoundary>
+            <ErrorBoundary>{children}</ErrorBoundary>
           </div>
 
-          {/* Window Status Bar */}
           {statusBar && (
-            <div
+            <footer
               style={{
-                padding: '4px 10px',
-                borderTop: '2px solid var(--color-rule)',
-                background: 'var(--color-paper)',
+                padding: '8px 0',
+                borderTop: '1px solid var(--color-rule)',
                 fontSize: 'var(--text-xs)',
-                color: 'var(--color-ink-soft)',
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--color-ink-muted)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
               }}
             >
               {statusBar}
-            </div>
+            </footer>
           )}
         </>
       )}
-    </div>
+    </section>
   );
 };

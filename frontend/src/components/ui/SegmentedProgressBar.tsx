@@ -1,12 +1,7 @@
-// ==============================================================================
-// File: src/components/ui/SegmentedProgressBar.tsx
-// Description: Retro 90s Segmented Pill Block Progress Bar (vintage-ui.jpg)
-// ==============================================================================
-
 import React from 'react';
 
 interface SegmentedProgressBarProps {
-  value: number; // 0 to 100
+  value: number;
   max?: number;
   segments?: number;
   label?: string;
@@ -16,10 +11,10 @@ interface SegmentedProgressBarProps {
 }
 
 const colorMap = {
-  salmon: 'var(--color-win-salmon)',
-  yellow: 'var(--color-win-yellow)',
-  blue: 'var(--color-win-blue)',
-  green: 'var(--color-win-green)',
+  salmon: 'var(--color-loss)',
+  yellow: 'var(--color-warn)',
+  blue: 'var(--color-ink)',
+  green: 'var(--color-gain)',
 };
 
 export const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
@@ -28,34 +23,36 @@ export const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
   segments = 12,
   label,
   valueDisplay,
-  variant = 'salmon',
+  variant = 'green',
   style,
 }) => {
   const clamped = Math.max(0, Math.min(max, value));
   const ratio = clamped / (max || 1);
   const activeSegments = Math.round(ratio * segments);
-  const fillColor = colorMap[variant] || colorMap.salmon;
+  const fillColor = colorMap[variant] || colorMap.green;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontFamily: 'var(--font-precision)', ...style }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontFamily: 'var(--font-mono)', ...style }}>
       {(label || valueDisplay) && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--text-xs)', fontWeight: 'bold' }}>
-          {label && <span style={{ color: 'var(--color-ink-soft)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>}
-          {valueDisplay && <span style={{ color: 'var(--color-ink)' }} className="tabular-nums">{valueDisplay}</span>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--text-xs)' }}>
+          {label && (
+            <span style={{ color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
+              {label}
+            </span>
+          )}
+          {valueDisplay && (
+            <span style={{ color: 'var(--color-ink)', fontWeight: 600 }} className="tabular-nums">
+              {valueDisplay}
+            </span>
+          )}
         </div>
       )}
 
-      {/* Retro Outer Capsule Track */}
       <div
         style={{
-          background: 'var(--color-paper-raised)',
-          border: '2px solid var(--color-rule)',
-          borderRadius: '8px',
-          padding: '3px 4px',
           display: 'flex',
           gap: '3px',
-          boxShadow: 'inset 1px 1px 0 rgba(0,0,0,0.15)',
-          height: '24px',
+          height: '8px',
           alignItems: 'center',
         }}
         role="progressbar"
@@ -71,12 +68,9 @@ export const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
               style={{
                 flex: 1,
                 height: '100%',
-                borderRadius: '4px',
-                background: isActive ? fillColor : 'transparent',
-                border: isActive ? '1px solid var(--color-rule)' : '1px dashed var(--color-rule)',
-                opacity: isActive ? 1 : 0.25,
-                transition: 'all 0.15s ease-out',
-                boxShadow: isActive ? '1px 1px 0 rgba(0,0,0,0.1)' : 'none',
+                background: isActive ? fillColor : 'var(--color-well)',
+                border: '1px solid var(--color-rule)',
+                transition: 'background-color 150ms ease-out',
               }}
             />
           );
