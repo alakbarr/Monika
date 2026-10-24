@@ -265,7 +265,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenAuthModal}
-              title={`Authenticated Role: ${userRole.toUpperCase()} — Click to configure API key`}
+              title={`Authenticated Role: ${(userRole || 'viewer').toUpperCase()} — Click to configure API key`}
               style={{
                 height: '28px',
                 padding: '0 9px',
@@ -285,7 +285,7 @@ export const Header: React.FC<HeaderProps> = ({
               }}
             >
               <KeyRound size={12} />
-              <span>{userRole}</span>
+              <span>{userRole || 'viewer'}</span>
             </button>
           )}
 

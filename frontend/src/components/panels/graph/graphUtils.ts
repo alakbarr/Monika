@@ -41,20 +41,20 @@ export const getStageKicker = (id: string, fallbackStage?: string): string => {
   switch (id) {
     case 'prefetch_data':
     case 'fundamental_brief':
-      return 'STAGE I — MACRO';
+      return 'I · MACRO';
     case 'per_asset_analysis':
-      return 'STAGE II — SYNTHESIS';
+      return 'II · SYNTHESIS';
     case 'bull_advocate':
     case 'bear_dissent':
     case 'debate_judge':
-      return 'STAGE III — DIALECTIC';
+      return 'III · DIALECTIC';
     case 'reflection':
     case 'risk_gate':
-      return 'STAGE IV — FORTRESS';
+      return 'IV · FORTRESS';
     case 'execution':
-      return 'STAGE V — EXECUTION';
+      return 'V · EXECUTION';
     default:
-      return fallbackStage ? `STAGE — ${fallbackStage.toUpperCase()}` : 'STAGE — NODE';
+      return fallbackStage ? `STAGE · ${fallbackStage.toUpperCase()}` : 'STAGE · NODE';
   }
 };
 
@@ -75,15 +75,15 @@ export const getStatusColor = (status: GraphNodeStatus) => {
 };
 
 export const COMPACT_POSITIONS: Record<string, { x: number; y: number }> = {
-  prefetch_data: { x: 40, y: 100 },
-  fundamental_brief: { x: 40, y: 265 },
-  per_asset_analysis: { x: 290, y: 190 },
+  prefetch_data: { x: 40, y: 120 },
+  fundamental_brief: { x: 40, y: 290 },
+  per_asset_analysis: { x: 290, y: 205 },
   bull_advocate: { x: 540, y: 80 },
-  bear_dissent: { x: 540, y: 300 },
-  debate_judge: { x: 790, y: 190 },
+  bear_dissent: { x: 540, y: 330 },
+  debate_judge: { x: 790, y: 205 },
   reflection: { x: 1045, y: 80 },
-  risk_gate: { x: 1045, y: 245 },
-  execution: { x: 1045, y: 410 },
+  risk_gate: { x: 1045, y: 205 },
+  execution: { x: 1045, y: 330 },
 };
 
 export const WIDE_POSITIONS: Record<string, { x: number; y: number }> = {

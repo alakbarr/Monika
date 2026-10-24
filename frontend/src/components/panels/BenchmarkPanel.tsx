@@ -204,7 +204,7 @@ export const BenchmarkPanel: React.FC = () => {
       };
 
       const res = await api.benchmarkRunTrigger(req);
-      setStatusMsg(`⚡ ${res.message}`);
+      setStatusMsg(res.message);
       sounds.playAlert();
 
       // Poll task comparisons to pick up results live
@@ -255,7 +255,7 @@ export const BenchmarkPanel: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 'var(--text-title-md)', fontFamily: 'var(--font-heading)', color: 'var(--color-ink)' }}>
-              🧪 LLM Role Benchmark &amp; Model Comparison Lab
+              LLM Role Benchmark &amp; Model Comparison Lab
             </h2>
             <p style={{ margin: '4px 0 0', fontSize: 'var(--text-body-sm)', color: 'var(--color-ink-soft)' }}>
               Uji model-model pilihanmu pada task_role spesifik secara nyata. Bandingkan skor kualitas, latensi, serta biaya dengan atau tanpa KV-cache hit.
@@ -277,7 +277,7 @@ export const BenchmarkPanel: React.FC = () => {
                 color: activeTab === 'task_compare' ? 'var(--color-paper-raised)' : 'var(--color-ink)',
               }}
             >
-              🎯 Per-Role Lab
+              Per-Role Lab
             </button>
             <button
               onClick={() => setActiveTab('global_leaderboard')}
@@ -292,7 +292,7 @@ export const BenchmarkPanel: React.FC = () => {
                 color: activeTab === 'global_leaderboard' ? 'var(--color-paper-raised)' : 'var(--color-ink)',
               }}
             >
-              🏆 Global Leaderboard
+              Global Leaderboard
             </button>
             <button
               onClick={() => setActiveTab('run_history')}
@@ -307,7 +307,7 @@ export const BenchmarkPanel: React.FC = () => {
                 color: activeTab === 'run_history' ? 'var(--color-paper-raised)' : 'var(--color-ink)',
               }}
             >
-              📜 Run History
+              Run History
             </button>
           </div>
         </div>
@@ -406,7 +406,7 @@ export const BenchmarkPanel: React.FC = () => {
               >
                 {filteredTasksByCategory.map((t) => (
                   <option key={t.id} value={t.id}>
-                    [{t.category.toUpperCase()}] {t.id} ({t.mode.toUpperCase()})
+                    {t.category.toUpperCase()} — {t.id} ({t.mode.toUpperCase()})
                   </option>
                 ))}
               </select>
@@ -563,7 +563,7 @@ export const BenchmarkPanel: React.FC = () => {
                     checked={useFixtures}
                     onChange={(e) => setUseFixtures(e.target.checked)}
                   />
-                  <span>📦 Gunakan Mock Payload Realistis (250 Berita + Full Multi-Asset Context)</span>
+                  <span>Gunakan Mock Payload Realistis (250 Berita + Full Multi-Asset Context)</span>
                 </label>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -584,7 +584,7 @@ export const BenchmarkPanel: React.FC = () => {
                 onClick={handleStartBenchmark}
                 disabled={isExecuting || selectedModels.length === 0}
               >
-                {isExecuting ? '⚡ Sedang Mengeksekusi...' : `▶ Mulai Benchmark (${selectedModels.length} Model)`}
+                {isExecuting ? 'Sedang Mengeksekusi...' : `▶ Mulai Benchmark (${selectedModels.length} Model)`}
               </TypewriterButton>
             </div>
           </div>
@@ -604,8 +604,8 @@ export const BenchmarkPanel: React.FC = () => {
             >
               <div>
                 <strong style={{ fontSize: 'var(--text-body-md)' }}>
-                  ⚡ Eksekusi Benchmark Sedang Berjalan...
-                  {liveProgress?.activeModel ? ` [Menguji: ${liveProgress.activeModel}]` : ''}
+                  Eksekusi Benchmark Sedang Berjalan...
+                  {liveProgress?.activeModel ? ` — Menguji: ${liveProgress.activeModel}` : ''}
                 </strong>
                 <div style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-ink-soft)', marginTop: '2px' }}>
                   Task: <strong>{selectedTask}</strong> · Router: <strong>{selectedProvider.toUpperCase()}</strong> · Models: {selectedModels.join(', ')}
@@ -629,7 +629,7 @@ export const BenchmarkPanel: React.FC = () => {
                 }}
               >
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-ink-soft)' }}>
-                  👑 TERTINGGI AKURASI / KUALITAS
+                  TERTINGGI AKURASI / KUALITAS
                 </div>
                 <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 'bold', margin: '4px 0', color: 'var(--color-moss)' }}>
                   {bestScoreModel ? bestScoreModel.model_name : '-'}
@@ -650,7 +650,7 @@ export const BenchmarkPanel: React.FC = () => {
                 }}
               >
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-ink-soft)' }}>
-                  ⚡ TERCEPAT / LATENSI TERENDAH
+                  TERCEPAT / LATENSI TERENDAH
                 </div>
                 <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 'bold', margin: '4px 0', color: 'var(--color-ochre)' }}>
                   {fastestModel ? fastestModel.model_name : '-'}
@@ -671,7 +671,7 @@ export const BenchmarkPanel: React.FC = () => {
                 }}
               >
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-ink-soft)' }}>
-                  💰 BIAYA TERHEMAT (CACHE HIT)
+                  BIAYA TERHEMAT (CACHE HIT)
                 </div>
                 <div style={{ fontSize: 'var(--text-title-sm)', fontWeight: 'bold', margin: '4px 0', color: 'var(--color-ink)' }}>
                   {cheapestModel ? cheapestModel.model_name : '-'}
@@ -704,7 +704,7 @@ export const BenchmarkPanel: React.FC = () => {
                 fontWeight: 'bold',
               }}
             >
-              <span>📊 Hasil Komparasi Model untuk Role: <code>{selectedTask}</code></span>
+              <span>Hasil Komparasi Model untuk Role: <code>{selectedTask}</code></span>
               <span style={{ fontSize: 'var(--text-xs)' }}>
                 {taskComparisons.length} Evaluasi Tersimpan di DB
               </span>
@@ -761,7 +761,7 @@ export const BenchmarkPanel: React.FC = () => {
                             )}
                             {isFastest && (
                               <span style={{ marginLeft: '6px', fontSize: '11px', background: 'var(--color-ochre-subtle)', color: 'var(--color-ochre)', padding: '2px 4px', borderRadius: '3px' }}>
-                                ⚡ TERCEPAT
+                                TERCEPAT
                               </span>
                             )}
                           </td>
@@ -866,7 +866,7 @@ export const BenchmarkPanel: React.FC = () => {
               fontWeight: 'bold',
             }}
           >
-            <span>🏆 Model Leaderboard Agregat (Semua Task)</span>
+            <span>Model Leaderboard Agregat (Semua Task)</span>
             <span style={{ fontSize: 'var(--text-xs)' }}>{leaderboard.length} Kandidat Terdaftar</span>
           </div>
 

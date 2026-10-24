@@ -298,7 +298,7 @@ Latest Hash: ${dossier.stage5_execution.sha256_chain_hash || 'N/A'}
             {loading && (
               <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--color-ink-soft)' }}>
                 <p style={{ fontFamily: 'var(--font-precision)', fontSize: 'var(--text-body-sm)' }}>
-                  ⏳ Menyintesis silsilah keputusan dan merekonstruksi rantai audit...
+                  Menyintesis silsilah keputusan dan merekonstruksi rantai audit...
                 </p>
               </div>
             )}
@@ -482,7 +482,7 @@ Latest Hash: ${dossier.stage5_execution.sha256_chain_hash || 'N/A'}
                         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', fontWeight: 700 }}>FAKTOR ALPHA:</span>
                         {dossier.stage2_tactical.factors.map((factor, idx) => (
                           <span key={idx} style={badgeStyle('var(--color-paper-raised)', 'var(--color-ink)')}>
-                            ⚡ {factor}
+                            {factor}
                           </span>
                         ))}
                       </div>
@@ -521,7 +521,7 @@ Latest Hash: ${dossier.stage5_execution.sha256_chain_hash || 'N/A'}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                       <div style={{ padding: '10px', background: 'var(--color-profit-bg)', border: '1px solid var(--color-ledger-green)', borderRadius: 'var(--radius-xs)' }}>
                         <span style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-profit)', marginBottom: '4px' }}>
-                          🐂 TESIS BULL ADVOCATE
+                          I. TESIS BULL ADVOCATE
                         </span>
                         <p style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-ink)', lineHeight: 1.45 }}>
                           {dossier.stage3_debate.bull_thesis || 'Tidak ada catatan tesis bull.'}
@@ -529,7 +529,7 @@ Latest Hash: ${dossier.stage5_execution.sha256_chain_hash || 'N/A'}
                       </div>
                       <div style={{ padding: '10px', background: 'var(--color-loss-bg)', border: '1px solid var(--color-ledger-red)', borderRadius: 'var(--radius-xs)' }}>
                         <span style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-loss)', marginBottom: '4px' }}>
-                          🐻 SANGGAHAN BEAR DISSENT
+                          II. SANGGAHAN BEAR DISSENT
                         </span>
                         <p style={{ fontSize: 'var(--text-body-sm)', color: 'var(--color-ink)', lineHeight: 1.45 }}>
                           {dossier.stage3_debate.bear_dissent || 'Tidak ada catatan sanggahan bear.'}
@@ -538,7 +538,7 @@ Latest Hash: ${dossier.stage5_execution.sha256_chain_hash || 'N/A'}
                     </div>
                     {dossier.stage3_debate.judge_reason && (
                       <div style={{ padding: '8px 10px', background: 'var(--color-paper-sunken)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-xs)', fontSize: 'var(--text-body-sm)', lineHeight: 1.5 }}>
-                        <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', marginBottom: '4px', fontWeight: 700 }}>⚖️ PERTIMBANGAN HAKIM</span>
+                        <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', marginBottom: '4px', fontWeight: 700 }}>III. PERTIMBANGAN HAKIM</span>
                         {dossier.stage3_debate.judge_reason}
                       </div>
                     )}

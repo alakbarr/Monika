@@ -129,7 +129,7 @@ const TraceWaterfallTimeline: React.FC<{ data: any }> = ({ data }) => {
             cursor: 'pointer',
           }}
         >
-          {showJson ? '📊 SWITCH TO WATERFALL' : '{ } VIEW RAW JSON'}
+          {showJson ? 'SWITCH TO WATERFALL' : 'VIEW RAW JSON'}
         </button>
       </div>
 
@@ -386,45 +386,45 @@ export const ObservabilityPanel: React.FC = () => {
             variant={activeTab === 'overview' ? 'primary' : 'secondary'}
             onClick={() => setActiveTab('overview')}
           >
-            <Zap size={12} /> [ METRICS & PLAYBOOKS ]
+            <Zap size={12} /> METRICS & PLAYBOOKS
           </TypewriterButton>
           <TypewriterButton
             size="sm"
             variant={activeTab === 'traces' ? 'primary' : 'secondary'}
             onClick={() => setActiveTab('traces')}
           >
-            <Search size={12} /> [ TRACE INSPECTOR ({traces.length}) ]
+            <Search size={12} /> TRACE INSPECTOR ({traces.length})
           </TypewriterButton>
           <TypewriterButton
             size="sm"
             variant={activeTab === 'trajectories' ? 'primary' : 'secondary'}
             onClick={() => setActiveTab('trajectories')}
           >
-            <FileText size={12} /> [ TRAJECTORY BROWSER ({trajectories.length}) ]
+            <FileText size={12} /> TRAJECTORY BROWSER ({trajectories.length})
           </TypewriterButton>
           <TypewriterButton
             size="sm"
             variant={activeTab === 'lineage' ? 'primary' : 'secondary'}
             onClick={() => setActiveTab('lineage')}
           >
-            <ShieldCheck size={12} /> [ DECISION LINEAGE & SHA-256 ]
+            <ShieldCheck size={12} /> DECISION LINEAGE & SHA-256
           </TypewriterButton>
         </div>
 
         <div style={{ display: 'flex', gap: '8px' }}>
           {activeTab === 'traces' && (
             <TypewriterButton size="sm" onClick={fetchTraces} disabled={tracesLoading}>
-              <RotateCw size={12} className={tracesLoading ? 'animate-spin' : ''} /> [ REFRESH TRACES ]
+              <RotateCw size={12} className={tracesLoading ? 'animate-spin' : ''} /> REFRESH TRACES
             </TypewriterButton>
           )}
           {activeTab === 'trajectories' && (
             <TypewriterButton size="sm" onClick={fetchTrajectories} disabled={trajLoading}>
-              <RotateCw size={12} className={trajLoading ? 'animate-spin' : ''} /> [ REFRESH TRAJECTORIES ]
+              <RotateCw size={12} className={trajLoading ? 'animate-spin' : ''} /> REFRESH TRAJECTORIES
             </TypewriterButton>
           )}
           {activeTab === 'lineage' && (
             <TypewriterButton size="sm" onClick={() => fetchLineage(lineageCycleId, selectedSeq || undefined)} disabled={lineageLoading}>
-              <RotateCw size={12} className={lineageLoading ? 'animate-spin' : ''} /> [ REFRESH LINEAGE ]
+              <RotateCw size={12} className={lineageLoading ? 'animate-spin' : ''} /> REFRESH LINEAGE
             </TypewriterButton>
           )}
         </div>
@@ -434,7 +434,7 @@ export const ObservabilityPanel: React.FC = () => {
         /* TRACE INSPECTOR TAB */
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Filters Bar */}
-          <Card header={<span>[ TRACE SPAN SEARCH & FILTER ]</span>}>
+          <Card header={<span>TRACE SPAN SEARCH & FILTER</span>}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
               <div>
                 <label style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-ink-muted)' }}>SPAN KIND</label>
@@ -513,7 +513,7 @@ export const ObservabilityPanel: React.FC = () => {
               header={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <AlertTriangle size={14} color="var(--color-brass)" />
-                  <span>[ SLOW LLM INVOCATION ALERTS (&gt;15s) — {slowLlm.length} SPANS ]</span>
+                  <span>SLOW LLM INVOCATION ALERTS (&gt;15s) — {slowLlm.length} SPANS</span>
                 </div>
               }
             >
@@ -537,7 +537,7 @@ export const ObservabilityPanel: React.FC = () => {
           )}
 
           {/* Traces Search Results Table */}
-          <Card header={<span>[ TRACE SPANS ({traces.length}) ]</span>}>
+          <Card header={<span>TRACE SPANS ({traces.length})</span>}>
             {tracesLoading ? (
               <Skeleton height="160px" />
             ) : traces.length === 0 ? (
@@ -597,7 +597,7 @@ export const ObservabilityPanel: React.FC = () => {
             <Card
               header={
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>[ TRACE HIERARCHY TREE — {selectedTraceId} ]</span>
+                  <span>TRACE HIERARCHY TREE — {selectedTraceId}</span>
                   <TypewriterButton size="sm" onClick={() => setSelectedTraceId(null)}>✕ Close</TypewriterButton>
                 </div>
               }
@@ -610,7 +610,7 @@ export const ObservabilityPanel: React.FC = () => {
         /* TRADE TRAJECTORIES BROWSER (FASE 5A) */
         <div style={{ display: 'grid', gridTemplateColumns: selectedTraj ? '1fr 1.2fr' : '1fr', gap: '16px' }}>
           {/* List of trajectories */}
-          <Card header={<span>[ RECORDED TRADE TRAJECTORIES ({trajectories.length}) ]</span>}>
+          <Card header={<span>RECORDED TRADE TRAJECTORIES ({trajectories.length})</span>}>
             {trajLoading ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <Skeleton height="60px" />
@@ -695,7 +695,7 @@ export const ObservabilityPanel: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <FileText size={16} color="var(--color-brass)" />
-                  <span>[ TRAJECTORY TRACE: {selectedTraj.symbol} #{selectedTraj.ticket || 'UNFILLED'} ]</span>
+                  <span>TRAJECTORY TRACE: {selectedTraj.symbol} #{selectedTraj.ticket || 'UNFILLED'}</span>
                 </div>
                 <Badge variant={selectedTraj.decision.includes('BUY') ? 'profit' : 'loss'}>
                   {selectedTraj.decision}
@@ -768,7 +768,7 @@ export const ObservabilityPanel: React.FC = () => {
         /* DECISION LINEAGE & SHA-256 HASH CHAIN (FASE 5B) */
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Header controls & Verification Banner */}
-          <Card header={<span>[ TRADING CYCLE EVENT LOG & CRYPTOGRAPHIC PROVENANCE ]</span>}>
+          <Card header={<span>TRADING CYCLE EVENT LOG & CRYPTOGRAPHIC PROVENANCE</span>}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-ink-muted)' }}>CYCLE ID:</span>
@@ -815,11 +815,11 @@ export const ObservabilityPanel: React.FC = () => {
                   />
                 )}
                 <TypewriterButton size="sm" onClick={() => fetchLineage(lineageCycleId)} disabled={lineageLoading}>
-                  <Search size={12} /> [ TRACE LINEAGE ]
+                  <Search size={12} /> TRACE LINEAGE
                 </TypewriterButton>
                 {selectedSeq !== null && (
                   <TypewriterButton size="sm" variant="secondary" onClick={() => { setSelectedSeq(null); fetchLineage(lineageCycleId); }}>
-                    [ CLEAR ANCESTOR FILTER ]
+                    CLEAR ANCESTOR FILTER
                   </TypewriterButton>
                 )}
               </div>
@@ -845,7 +845,7 @@ export const ObservabilityPanel: React.FC = () => {
                     )}
                     <div>
                       <div style={{ fontWeight: 800, fontSize: '13px', color: lineageData.integrity_valid ? 'var(--color-profit)' : 'var(--color-loss)' }}>
-                        {lineageData.integrity_valid ? '[CRYPTO INTEGRITY VERIFIED] SHA-256 Hash Chain Unbroken' : '[INTEGRITY ALERT] Hash Chain Tampered or Broken'}
+                        {lineageData.integrity_valid ? 'CRYPTO INTEGRITY VERIFIED — SHA-256 Hash Chain Unbroken' : 'INTEGRITY ALERT — Hash Chain Tampered or Broken'}
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)' }}>
                         {lineageData.integrity_valid
@@ -868,7 +868,7 @@ export const ObservabilityPanel: React.FC = () => {
           {/* Event Stream & Ancestor Lineage Tree */}
           <Card header={
             <span>
-              [ {selectedSeq !== null ? `ANCESTOR PROVENANCE CHAIN FOR EVENT #${selectedSeq}` : `MONOTONIC EVENT CHAIN (${lineageData?.events?.length || 0})`} ]
+              {selectedSeq !== null ? `ANCESTOR PROVENANCE CHAIN FOR EVENT #${selectedSeq}` : `MONOTONIC EVENT CHAIN (${lineageData?.events?.length || 0})`}
             </span>
           }>
             {lineageLoading ? (
@@ -939,7 +939,7 @@ export const ObservabilityPanel: React.FC = () => {
                                 fetchLineage(lineageCycleId, ev.seq);
                               }}
                             >
-                              [ TRACE ]
+                              TRACE
                             </TypewriterButton>
                           </td>
                         </tr>
@@ -959,7 +959,7 @@ export const ObservabilityPanel: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Zap size={18} color="var(--color-profit)" />
               <span style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-body-md)', fontFamily: 'var(--font-precision)' }}>
-                [ PROMPT CACHE EFFICIENCY & HIT RATE LEDGER ]
+                PROMPT CACHE EFFICIENCY & HIT RATE LEDGER
               </span>
             </div>
           }>
@@ -997,7 +997,7 @@ export const ObservabilityPanel: React.FC = () => {
               {cacheMetrics?.cycles && cacheMetrics.cycles.length > 0 && (
                 <div>
                   <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'var(--font-precision)' }}>
-                    [ RECENT CYCLE HIT RATE TREND ]
+                    RECENT CYCLE HIT RATE TREND
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {cacheMetrics.cycles.slice(0, 5).map(c => (
@@ -1022,7 +1022,7 @@ export const ObservabilityPanel: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <GitBranch size={18} color="var(--color-brass)" />
               <span style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-body-md)', fontFamily: 'var(--font-precision)' }}>
-                [ AUTONOMOUS MICRO-PLAYBOOK LINEAGE TREE ]
+                AUTONOMOUS MICRO-PLAYBOOK LINEAGE TREE
               </span>
             </div>
           }>
@@ -1066,7 +1066,7 @@ export const ObservabilityPanel: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Clock size={18} color="var(--color-brass)" />
               <span style={{ fontWeight: 'var(--weight-bold)', fontSize: 'var(--text-body-md)', fontFamily: 'var(--font-precision)' }}>
-                [ TOOL HANDLER EXECUTION LATENCY DISTRIBUTION ]
+                TOOL HANDLER EXECUTION LATENCY DISTRIBUTION
               </span>
             </div>
           }>

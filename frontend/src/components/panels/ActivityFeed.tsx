@@ -109,7 +109,7 @@ export const ActivityFeed: React.FC = () => {
               }}
               title="Pause or resume live incoming dispatch stream (WCAG 2.2.2)"
             >
-              {isPaused ? `▶ RESUME (${pendingCount > 0 ? `+${pendingCount}` : 'LIVE'})` : '⏸ PAUSE'}
+              {isPaused ? `RESUME (${pendingCount > 0 ? `+${pendingCount}` : 'LIVE'})` : 'PAUSE'}
             </button>
           </div>
 
@@ -127,7 +127,7 @@ export const ActivityFeed: React.FC = () => {
                   border: '1px solid var(--color-rule)',
                 }}
               >
-                ⏸ STREAM FROZEN
+                STREAM FROZEN
               </span>
             )}
             <Badge variant="neutral">
@@ -197,7 +197,7 @@ const ActivityRow: React.FC<{ item: any; idx: number }> = ({ item, idx }) => {
                   cursor: 'pointer',
                 }}
               >
-                {showJson ? '[HIDE RAW]' : '[PAYLOAD]'}
+                {showJson ? 'HIDE RAW' : 'PAYLOAD'}
               </button>
             )}
           </div>

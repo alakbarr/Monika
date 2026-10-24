@@ -230,7 +230,7 @@ export const MarketDataPanel: React.FC = () => {
                           <span style={{ fontWeight: 800, color: 'var(--color-ink)' }}>{row.symbol}</span>
                           {row.isFallback && (
                             <Badge variant="warn" size="sm">
-                              [DEMO]
+                              DEMO
                             </Badge>
                           )}
                         </div>

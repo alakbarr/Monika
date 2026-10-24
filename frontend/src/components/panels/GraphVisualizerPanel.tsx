@@ -17,7 +17,7 @@ import { computeGraphLayout, COMPACT_POSITIONS, WIDE_POSITIONS } from './graph/g
 
 // Visual canvas dimensions & node geometry
 const NODE_WIDTH = 220;
-const NODE_HEIGHT = 120;
+const NODE_HEIGHT = 104;
 
 export const GraphVisualizerPanel: React.FC = () => {
   const [graphData, setGraphData] = useState<GraphStateResponse | null>(null);
@@ -86,13 +86,13 @@ export const GraphVisualizerPanel: React.FC = () => {
     });
 
     if (mode === 'compact') {
-      minX = Math.min(minX, 40);
-      minY = Math.min(minY, 50);
-      maxX = Math.max(maxX, 1275);
-      maxY = Math.max(maxY, 550);
+      minX = Math.min(minX, 30);
+      minY = Math.min(minY, 35);
+      maxX = Math.max(maxX, 1290);
+      maxY = Math.max(maxY, 495);
     }
 
-    const padding = 28;
+    const padding = 24;
     const graphWidth = (maxX - minX) + padding * 2;
     const graphHeight = (maxY - minY) + padding * 2;
 
@@ -463,7 +463,7 @@ export const GraphVisualizerPanel: React.FC = () => {
           display: 'grid',
           gridTemplateColumns: selectedNode ? '1fr 380px' : '1fr',
           gap: '14px',
-          height: '680px',
+          height: '510px',
           transition: 'all 0.2s ease-out',
         }}
       >
@@ -557,7 +557,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                     x={layoutMode === 'compact' ? '515' : '865'}
                     y={layoutMode === 'compact' ? '45' : '75'}
                     width={layoutMode === 'compact' ? '495' : '555'}
-                    height={layoutMode === 'compact' ? '400' : '440'}
+                    height={layoutMode === 'compact' ? '408' : '440'}
                     rx="0"
                     fill="var(--color-subgraph-bg)"
                     stroke="var(--color-rule-strong)"
@@ -585,7 +585,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                     x="1025"
                     y="45"
                     width="255"
-                    height="505"
+                    height="408"
                     rx="0"
                     fill="transparent"
                     stroke="var(--color-rule-strong)"

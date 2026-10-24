@@ -30,7 +30,7 @@ export const TokenCharts: React.FC<TokenChartsProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Cpu size={18} color="var(--color-brass)" />
             <span style={{ fontWeight: 600, fontFamily: 'var(--font-precision)' }}>
-              [ SUBSYSTEM TOKEN & COST BREAKDOWN ]
+              SUBSYSTEM TOKEN & COST BREAKDOWN
             </span>
           </div>
         }

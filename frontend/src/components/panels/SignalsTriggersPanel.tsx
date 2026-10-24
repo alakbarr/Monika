@@ -535,14 +535,14 @@ export const SignalsTriggersPanel: React.FC = () => {
           variant={panelTab === 'signals' ? 'primary' : 'secondary'}
           onClick={() => setPanelTab('signals')}
         >
-          <Radio size={12} /> [ SIGNALS & TRIGGERS ({signals.length + triggers.length}) ]
+          <Radio size={12} /> SIGNALS & TRIGGERS ({signals.length + triggers.length})
         </TypewriterButton>
         <TypewriterButton
           size="sm"
           variant={panelTab === 'orders' ? 'primary' : 'secondary'}
           onClick={() => setPanelTab('orders')}
         >
-          <CheckCircle2 size={12} /> [ ORDER AUDIT TRAIL ({orders.length}) ]
+          <CheckCircle2 size={12} /> ORDER AUDIT TRAIL ({orders.length})
         </TypewriterButton>
       </div>
 
@@ -551,7 +551,7 @@ export const SignalsTriggersPanel: React.FC = () => {
         <Card
           header={
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>[ ORDER LOG AUDIT TRAIL ({orders.length}) ]</span>
+              <span>ORDER LOG AUDIT TRAIL ({orders.length})</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '11px', color: 'var(--color-ink-muted)' }}>ACTION:</span>
                 <select
@@ -840,7 +840,7 @@ export const SignalsTriggersPanel: React.FC = () => {
                               }}
                               title="Inspect Decision Dossier"
                             >
-                              🔍 DOSSIER
+                              DOSSIER
                             </button>
                           ) : null}
                         </div>
@@ -1112,7 +1112,7 @@ export const SignalsTriggersPanel: React.FC = () => {
                             }}
                             title="Inspect Decision Dossier for this signal"
                           >
-                            🔍 DOSSIER
+                            DOSSIER
                           </button>
                         </div>
                       </td>

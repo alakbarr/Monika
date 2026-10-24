@@ -81,20 +81,20 @@ export const MemoryBrowserPanel: React.FC = () => {
     if (!classification) return null;
     const c = classification.toLowerCase();
     if (c.includes('good_process_good_outcome') || c === 'deserved_win') {
-      return <Badge variant="active">🟢 EARNED WIN (Good Process + Win)</Badge>;
+      return <Badge variant="active">EARNED WIN (Good Process + Win)</Badge>;
     }
     if (c.includes('good_process_bad_outcome') || c === 'bad_luck') {
-      return <Badge variant="warn">🟡 BAD BREAK (Good Process + Loss)</Badge>;
+      return <Badge variant="warn">BAD BREAK (Good Process + Loss)</Badge>;
     }
     if (c.includes('bad_process_good_outcome') || c === 'dumb_luck') {
-      return <Badge variant="warn">🟠 DUMB LUCK (Flawed Process + Win)</Badge>;
+      return <Badge variant="warn">DUMB LUCK (Flawed Process + Win)</Badge>;
     }
     if (c.includes('bad_process_bad_outcome') || c === 'deserved_loss') {
-      return <Badge variant="neutral">🔴 DESERVED LOSS (Flawed Process + Loss)</Badge>;
+      return <Badge variant="neutral">DESERVED LOSS (Flawed Process + Loss)</Badge>;
     }
     return (
       <span className="stamp-badge" style={{ fontSize: '11px' }}>
-        [{classification.toUpperCase()}]
+        {classification.toUpperCase()}
       </span>
     );
   };
@@ -192,7 +192,7 @@ export const MemoryBrowserPanel: React.FC = () => {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <TypewriterButton size="sm" onClick={fetchMemory} disabled={loading} title="Refresh memory records">
-              <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> [ REFRESH ]
+              <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> REFRESH
             </TypewriterButton>
           </div>
         </div>
@@ -220,7 +220,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                 clearSearch();
               }}
             >
-              [ ALL REFLECTIONS ]
+              ALL REFLECTIONS
             </TypewriterButton>
 
             <TypewriterButton
@@ -231,7 +231,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                 clearSearch();
               }}
             >
-              [ WINNERS ]
+              WINNERS
             </TypewriterButton>
 
             <TypewriterButton
@@ -242,7 +242,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                 clearSearch();
               }}
             >
-              [ LOSERS & LESSONS ]
+              LOSERS & LESSONS
             </TypewriterButton>
 
             <TypewriterButton
@@ -253,7 +253,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                 clearSearch();
               }}
             >
-              [ WHAT-IFS ]
+              WHAT-IFS
             </TypewriterButton>
 
             <TypewriterButton
@@ -264,7 +264,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                 clearSearch();
               }}
             >
-              <Lightbulb size={12} /> [ CANDIDATE LESSONS ]
+              <Lightbulb size={12} /> CANDIDATE LESSONS
             </TypewriterButton>
 
             <TypewriterButton
@@ -275,7 +275,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                 clearSearch();
               }}
             >
-              <BookOpen size={12} /> [ PLAYBOOK RULES ]
+              <BookOpen size={12} /> PLAYBOOK RULES
             </TypewriterButton>
           </div>
 
@@ -510,7 +510,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                         onClick={() => openPlaybookHistory(rule.symbol)}
                         title="View mutation history and 1-click rollback"
                       >
-                        <History size={12} /> [ REVISIONS / ROLLBACK ]
+                        <History size={12} /> REVISIONS / ROLLBACK
                       </TypewriterButton>
                     </div>
                   </div>
@@ -601,7 +601,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                               <div>
                                 {idx === 0 ? (
                                   <span style={{ fontSize: '11px', color: 'var(--color-ledger-green)', fontWeight: 800 }}>
-                                    [ ACTIVE HEAD ]
+                                    ACTIVE HEAD
                                   </span>
                                 ) : (
                                   <TypewriterButton
@@ -610,7 +610,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                                     onClick={() => setPendingRollback({ symbol: rule.symbol, hash: h.sha256_hash })}
                                     title="Roll back playbook rule to this historical snapshot"
                                   >
-                                    <RotateCcw size={10} /> [ ROLLBACK TO THIS ]
+                                    <RotateCcw size={10} /> ROLLBACK TO THIS
                                   </TypewriterButton>
                                 )}
                               </div>
@@ -650,7 +650,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                       </Badge>
 
                       {ref.is_paper_whatif ? (
-                        <Badge variant="warn">[ WHAT-IF: {ref.whatif_reason || 'UNEXECUTED'} ]</Badge>
+                        <Badge variant="warn">WHAT-IF: {ref.whatif_reason || 'UNEXECUTED'}</Badge>
                       ) : (
                         <span
                           style={{
@@ -721,7 +721,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                     {ref.reflection_text && <div>{ref.reflection_text}</div>}
                     {ref.specific_lesson && (
                       <div style={{ marginTop: ref.reflection_text ? '6px' : 0, fontWeight: 600 }}>
-                        <span style={{ color: 'var(--color-brass)' }}>💡 LESSON:</span> {ref.specific_lesson}
+                        <span style={{ color: 'var(--color-brass)' }}>LESSON:</span> {ref.specific_lesson}
                       </div>
                     )}
                   </div>

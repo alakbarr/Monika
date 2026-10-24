@@ -29,18 +29,18 @@ export const SystemPanel: React.FC = () => {
           letterSpacing: '0.1em',
           fontFamily: 'var(--font-precision)'
         }}>
-          [ SYSTEM HEALTH & DIAGNOSTICS ]
+          SYSTEM HEALTH & DIAGNOSTICS
         </div>
       }>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '12px', 
-            background: 'var(--color-surface)', 
-            padding: '16px', 
-            borderRadius: '2px', 
-            border: '1px solid var(--color-rule)' 
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            background: 'var(--color-surface)',
+            padding: '16px',
+            borderRadius: '2px',
+            border: '1px solid var(--color-rule)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <Database size={16} color="var(--color-ink-muted)" />
@@ -71,7 +71,7 @@ export const SystemPanel: React.FC = () => {
                 fontFamily: 'var(--font-precision)'
               }}>
                 <Activity size={14} />
-                <span>[ DATA FRESHNESS ]</span>
+                <span>DATA FRESHNESS</span>
                 <div style={{ flex: 1, height: '1px', background: 'var(--color-rule)' }} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -84,7 +84,7 @@ export const SystemPanel: React.FC = () => {
                   const isOld = value !== null && value > limit;
                   const isWarn = value !== null && value > limit * 0.6 && !isOld;
                   const pct = value !== null ? Math.min(100, (value / limit) * 100) : 0;
-                  
+
                   return (
                     <div key={label} style={{
                       display: 'grid',
@@ -157,7 +157,7 @@ export const SystemPanel: React.FC = () => {
             letterSpacing: '0.1em',
             fontFamily: 'var(--font-precision)'
           }}>
-            [ GEMINI API QUOTA (DAILY METRICS) ]
+            GEMINI API QUOTA (DAILY METRICS)
           </div>
         }>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -215,9 +215,9 @@ export const SystemPanel: React.FC = () => {
 
       {/* API Cost & Analysis Quality */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-        
+
         {health?.api_cost_ytd_usd !== undefined && (
-          <Card style={{ 
+          <Card style={{
             background: 'var(--color-surface)',
             border: '1px solid var(--color-brass)',
             borderRadius: '2px',
@@ -231,7 +231,7 @@ export const SystemPanel: React.FC = () => {
               marginBottom: '8px',
               fontFamily: 'var(--font-precision)'
             }}>
-              [ API COST ACCUMULATION (YTD) ]
+              API COST ACCUMULATION (YTD)
             </div>
             <div style={{
               fontSize: '30px',
@@ -258,7 +258,7 @@ export const SystemPanel: React.FC = () => {
                 letterSpacing: '0.1em',
                 fontFamily: 'var(--font-precision)'
               }}>
-                [ ANALYSIS QUALITY METRICS (7D) ]
+                ANALYSIS QUALITY METRICS (7D)
               </div>
               {analysisQuality.alert && (
                 <AlertTriangle size={16} color="var(--color-brass)" />
@@ -266,9 +266,9 @@ export const SystemPanel: React.FC = () => {
             </div>
           }>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: '1fr 1fr', 
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
                 gap: '12px',
                 background: 'var(--color-surface)',
                 padding: '16px',
@@ -331,7 +331,7 @@ export const SystemPanel: React.FC = () => {
                   fontWeight: 'var(--weight-bold)',
                   fontFamily: 'var(--font-precision)'
                 }}>
-                  [ CONFLUENCE TIER DISTRIBUTION ]
+                  CONFLUENCE TIER DISTRIBUTION
                 </div>
                 <div style={{ display: 'flex', gap: '2px', alignItems: 'center', height: '8px', borderRadius: '2px', overflow: 'hidden', border: '1px solid var(--color-rule)' }}>
                   {(['high', 'medium', 'low'] as const).map(tier => {
@@ -388,7 +388,7 @@ export const SystemPanel: React.FC = () => {
               gap: '8px'
             }}>
               <ShieldCheck size={16} color="var(--color-profit)" />
-              <span>[ SSVP & CDS CALIBRATION TELEMETRY ]</span>
+              <span>SSVP & CDS CALIBRATION TELEMETRY</span>
             </div>
             <Badge variant={ssvpHealth.status === 'healthy' ? 'profit' : 'warn'}>
               {ssvpHealth.status.toUpperCase()}
@@ -454,4 +454,3 @@ export const SystemPanel: React.FC = () => {
     </div>
   );
 };
-

@@ -221,7 +221,7 @@ export const BacktestPanel: React.FC = () => {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <TypewriterButton size="sm" onClick={() => fetchRuns()} disabled={loading}>
-            <RotateCw size={12} className={loading ? 'animate-spin' : ''} /> [ REFRESH RUNS ]
+            <RotateCw size={12} className={loading ? 'animate-spin' : ''} /> REFRESH RUNS
           </TypewriterButton>
         </div>
       </div>
@@ -233,7 +233,7 @@ export const BacktestPanel: React.FC = () => {
           header={
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Play size={14} color="var(--color-profit)" />
-              <span>[ LAUNCH NEW SIMULATION ]</span>
+              <span>LAUNCH NEW SIMULATION</span>
             </div>
           }
         >
@@ -349,7 +349,7 @@ export const BacktestPanel: React.FC = () => {
             )}
 
             <TypewriterButton type="submit" variant="primary" disabled={launching} style={{ marginTop: '8px' }}>
-              <Play size={12} /> {launching ? '[ QUEUING BACKTEST... ]' : '[ START BACKTEST RUN ]'}
+              <Play size={12} /> {launching ? 'QUEUING BACKTEST...' : 'START BACKTEST RUN'}
             </TypewriterButton>
           </form>
         </Card>
@@ -358,7 +358,7 @@ export const BacktestPanel: React.FC = () => {
         <Card
           header={
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>[ HISTORICAL BACKTEST RUNS ({runs.length}) ]</span>
+              <span>HISTORICAL BACKTEST RUNS ({runs.length})</span>
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-muted)' }}>
                 Click a run to inspect trade ledger
               </span>
@@ -448,7 +448,7 @@ export const BacktestPanel: React.FC = () => {
             header={
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <TrendingUp size={14} color="var(--color-profit)" />
-                <span>[ SIMULATED EQUITY CURVE — RUN #{selectedRunId} ]</span>
+                <span>SIMULATED EQUITY CURVE — RUN #{selectedRunId}</span>
               </div>
             }
           >
@@ -463,7 +463,7 @@ export const BacktestPanel: React.FC = () => {
               header={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <BarChart2 size={14} color="var(--color-profit)" />
-                  <span>[ INSTITUTIONAL QUANT METRICS ]</span>
+                  <span>INSTITUTIONAL QUANT METRICS</span>
                 </div>
               }
             >

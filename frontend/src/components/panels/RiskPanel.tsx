@@ -168,7 +168,7 @@ export const RiskPanel: React.FC = () => {
           }}
         >
           <Power size={16} />
-          {isPaused ? '[ RESUME TRADE EXECUTION ]' : '[ EMERGENCY KILL SWITCH ]'}
+          {isPaused ? 'RESUME TRADE EXECUTION' : 'EMERGENCY KILL SWITCH'}
         </TypewriterButton>
       </div>
 
@@ -364,7 +364,7 @@ export const RiskPanel: React.FC = () => {
 
             <div style={{ marginTop: '6px' }}>
               <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px', color: 'var(--color-ink)' }}>
-                [ ACTIVE GUARDIAN SURVEILLANCE LOG ]
+                ACTIVE GUARDIAN SURVEILLANCE LOG
               </div>
               <div
                 style={{
@@ -441,16 +441,16 @@ export const RiskPanel: React.FC = () => {
               {scorecard && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>
-                    Pass Rate: <strong>{scorecard.passed_count}/{scorecard.total_checks} ({scorecard.pass_rate_pct}%)</strong>
+                    Pass Rate: <strong>{scorecard.passed_count ?? 0}/{scorecard.total_checks ?? 0} ({scorecard.pass_rate_pct ?? 100}%)</strong>
                   </span>
-                  <Badge variant={scorecard.pass_rate_pct >= 90 ? 'profit' : scorecard.pass_rate_pct >= 70 ? 'warn' : 'error'} size="sm">
-                    {scorecard.pass_rate_pct >= 90 ? 'CLEAR' : scorecard.pass_rate_pct >= 70 ? 'CAUTION' : 'BLOCKED'}
+                  <Badge variant={(scorecard.pass_rate_pct ?? 100) >= 90 ? 'profit' : (scorecard.pass_rate_pct ?? 100) >= 70 ? 'warn' : 'error'} size="sm">
+                    {(scorecard.pass_rate_pct ?? 100) >= 90 ? 'CLEAR' : (scorecard.pass_rate_pct ?? 100) >= 70 ? 'CAUTION' : 'BLOCKED'}
                   </Badge>
                 </div>
               )}
             </div>
 
-            {scorecard ? (
+            {scorecard && scorecard.checks ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px', maxHeight: '340px', overflowY: 'auto' }}>
                 {Object.entries(scorecard.checks).map(([checkName, checkVal]) => (
                   <div
@@ -458,14 +458,14 @@ export const RiskPanel: React.FC = () => {
                     style={{
                       padding: '6px 8px',
                       background: 'var(--color-paper)',
-                      border: `1px solid ${checkVal.passed ? 'var(--color-rule)' : 'var(--color-loss)'}`,
+                      border: `1px solid ${checkVal?.passed ? 'var(--color-rule)' : 'var(--color-loss)'}`,
                       borderRadius: '2px',
                       fontSize: '11px',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
                       <span style={{ fontWeight: 700, color: 'var(--color-ink)' }}>{checkName}</span>
-                      {checkVal.passed ? (
+                      {checkVal?.passed ? (
                         <span style={{ color: 'var(--color-ledger-green)', display: 'flex', alignItems: 'center', gap: '2px' }}>
                           <CheckCircle size={12} /> PASS
                         </span>
@@ -475,8 +475,8 @@ export const RiskPanel: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={checkVal.reason}>
-                      {checkVal.reason}
+                    <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={checkVal?.reason || ''}>
+                      {checkVal?.reason || ''}
                     </div>
                   </div>
                 ))}
@@ -495,12 +495,12 @@ export const RiskPanel: React.FC = () => {
           variant="yellow"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {correlation ? (
+            {correlation && Array.isArray(correlation.symbols) ? (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
-                  <span>Portfolio Heat: <strong className="tabular-nums">{correlation.portfolio_heat.toFixed(2)}</strong></span>
-                  <Badge variant={correlation.status === 'normal' ? 'profit' : 'warn'} size="sm">
-                    {correlation.status.toUpperCase()}
+                  <span>Portfolio Heat: <strong className="tabular-nums">{(correlation.portfolio_heat ?? 0).toFixed(2)}</strong></span>
+                  <Badge variant={(correlation.status || 'normal') === 'normal' ? 'profit' : 'warn'} size="sm">
+                    {(correlation.status || 'normal').toUpperCase()}
                   </Badge>
                 </div>
 
@@ -520,7 +520,7 @@ export const RiskPanel: React.FC = () => {
                         <tr key={rSym} style={{ borderBottom: '1px solid var(--color-rule)' }}>
                           <td style={{ textAlign: 'left', padding: '4px', fontWeight: 'bold' }}>{rSym}</td>
                           {correlation.symbols.map((cSym) => {
-                            const val = correlation.matrix[rSym]?.[cSym] ?? 0;
+                            const val = correlation.matrix?.[rSym]?.[cSym] ?? 0;
                             const isSelf = rSym === cSym;
                             const isHigh = Math.abs(val) >= 0.65;
                             const isMed = Math.abs(val) >= 0.40;
@@ -540,7 +540,7 @@ export const RiskPanel: React.FC = () => {
                               : 'var(--color-ink)';
                             return (
                               <td key={cSym} style={{ padding: '4px', background: bg, color, fontWeight: isHigh ? 'bold' : 'normal' }}>
-                                {isSelf ? '1.0' : val.toFixed(2)}
+                                {isSelf ? '1.0' : Number(val).toFixed(2)}
                               </td>
                             );
                           })}
@@ -551,13 +551,13 @@ export const RiskPanel: React.FC = () => {
                 </div>
 
                 {/* Correlated pairs warning list */}
-                {correlation.correlated_pairs.length > 0 && (
+                {Array.isArray(correlation.correlated_pairs) && correlation.correlated_pairs.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px' }}>
-                    <span style={{ fontWeight: 'bold', color: 'var(--color-brass)' }}>[ CORRELATED RISK PAIRS ]</span>
+                    <span style={{ fontWeight: 'bold', color: 'var(--color-brass)' }}>CORRELATED RISK PAIRS</span>
                     {correlation.correlated_pairs.slice(0, 3).map((cp, idx) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 4px', background: 'var(--color-paper)', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
                         <span>{cp.pair}</span>
-                        <span className="tabular-nums" style={{ color: 'var(--color-ledger-red)', fontWeight: 'bold' }}>r = {cp.correlation.toFixed(2)}</span>
+                        <span className="tabular-nums" style={{ color: 'var(--color-ledger-red)', fontWeight: 'bold' }}>r = {(cp.correlation ?? 0).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>

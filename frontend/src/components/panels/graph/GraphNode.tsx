@@ -79,13 +79,14 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
         >
           {/* Stage Kicker + Status */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px', marginBottom: '4px' }}>
               <span
                 style={{
                   fontSize: '11px',
-                  letterSpacing: '0.1em',
+                  letterSpacing: '0.04em',
                   color: 'var(--color-ink-muted)',
                   textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {stageKicker}
@@ -98,8 +99,9 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
                   fontSize: '11px',
                   fontWeight: 600,
                   textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0.04em',
                   color: statusColor,
+                  whiteSpace: 'nowrap',
                 }}
               >
                 <span

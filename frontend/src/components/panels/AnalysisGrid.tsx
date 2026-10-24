@@ -220,7 +220,7 @@ const AnalysisCard: React.FC<{
               fontWeight: 'bold',
             }}
           >
-            {isExpanded ? '[COLLAPSE]' : '[EXPAND THESIS]'}
+            {isExpanded ? 'COLLAPSE' : 'EXPAND THESIS'}
           </button>
         )}
       </div>
@@ -264,7 +264,7 @@ const AnalysisCard: React.FC<{
               }}
               title="Inspect Decision Dossier (Why was this trade proposed?)"
             >
-              🔍 DOSSIER
+              DOSSIER
             </button>
           </div>
         </div>
@@ -293,7 +293,7 @@ const AnalysisCard: React.FC<{
             }}
             title="Inspect Decision Dossier (Why was this trade proposed?)"
           >
-            🔍 DOSSIER
+            DOSSIER
           </button>
         </div>
       )}

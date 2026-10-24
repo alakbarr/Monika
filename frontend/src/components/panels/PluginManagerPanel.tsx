@@ -160,7 +160,7 @@ export const PluginManagerPanel: React.FC = () => {
               gap: '10px',
             }}
           >
-            <span>🔌</span> PLUGIN MARKETPLACE &amp; HARNESS HOST
+            PLUGIN MARKETPLACE &amp; HARNESS HOST
           </div>
           <div
             style={{
@@ -202,7 +202,7 @@ export const PluginManagerPanel: React.FC = () => {
               cursor: loading ? 'not-allowed' : 'pointer',
             }}
           >
-            {loading ? 'Refreshing...' : '🔄 Refresh'}
+            {loading ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>
@@ -423,7 +423,7 @@ export const PluginManagerPanel: React.FC = () => {
                             }`,
                           }}
                         >
-                          {isDegraded ? 'DEGRADED' : isActive ? '🟢 ACTIVE' : '⚪ DISABLED'}
+                          {isDegraded ? 'DEGRADED' : isActive ? 'ACTIVE' : 'DISABLED'}
                         </span>
 
                         <span
@@ -466,7 +466,7 @@ export const PluginManagerPanel: React.FC = () => {
                           color: 'var(--color-text-warn)',
                         }}
                       >
-                        ⚠️ {plugin.status_message}
+                        {plugin.status_message}
                       </div>
                     )}
                   </div>
@@ -526,7 +526,7 @@ export const PluginManagerPanel: React.FC = () => {
                       }}
                       title={!plugin.can_toggle ? 'Core invariant cannot be toggled off' : 'Click to toggle ON/OFF'}
                     >
-                      <span>{isPending ? '⏳' : isActive ? '●' : '○'}</span>
+                      <span>{isPending ? '...' : isActive ? '●' : '○'}</span>
                       <span>{isPending ? 'Updating...' : isActive ? 'ON (Active)' : 'OFF (Standby)'}</span>
                     </button>
                   </div>
@@ -551,7 +551,7 @@ export const PluginManagerPanel: React.FC = () => {
               color: 'var(--color-ink)',
             }}
           >
-            📦 <strong>Curated Community Marketplace</strong>: Official plugins and verified extensions for Monika.
+            <strong>Curated Community Marketplace</strong>: Official plugins and verified extensions for Monika.
             Click <strong>1-Click Install</strong> to fetch via pip into Monika virtual environment.
           </div>
 
@@ -668,7 +668,7 @@ export const PluginManagerPanel: React.FC = () => {
                         color: isInstalled ? 'var(--color-ink-soft)' : 'var(--color-ink)',
                       }}
                     >
-                      {isInstalled ? '✓ Reinstall / Update' : '📥 1-Click Install'}
+                      {isInstalled ? '✓ Reinstall / Update' : '1-Click Install'}
                     </button>
                   </div>
                 </div>
@@ -815,7 +815,7 @@ export const PluginManagerPanel: React.FC = () => {
               }}
             >
               <span id="plugin-console-title" style={{ fontFamily: 'var(--font-precision)', fontSize: 'var(--text-body-sm)', fontWeight: 700, letterSpacing: '0.05em' }}>
-                {installing ? '⏳ [INSTALLING PLUGIN VIA PIP...]' : '[TERMINAL INSTALLATION OUTPUT]'}
+                {installing ? 'INSTALLING PLUGIN VIA PIP...' : 'TERMINAL INSTALLATION OUTPUT'}
               </span>
               <button
                 type="button"
