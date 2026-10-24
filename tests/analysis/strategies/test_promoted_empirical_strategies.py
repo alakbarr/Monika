@@ -89,11 +89,11 @@ async def test_asian_range_fade_evaluation():
 
     sig_active = await strat.evaluate(session, "GBPUSD", {}, as_of=as_of_asian)
     assert isinstance(sig_active, EdgeSignal)
-    if sig_active.valid:
-        assert sig_active.direction in ("buy", "sell")
-        assert sig_active.take_profit is not None
-        assert sig_active.stop_loss is not None
-        assert sig_active.confidence >= 0.70
+    assert sig_active.valid is True
+    assert sig_active.direction in ("buy", "sell")
+    assert sig_active.take_profit is not None
+    assert sig_active.stop_loss is not None
+    assert sig_active.confidence >= 0.70
 
 
 @pytest.mark.asyncio

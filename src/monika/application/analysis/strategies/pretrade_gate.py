@@ -26,7 +26,13 @@ async def evaluate_pretrade_gate(
     rollover_enabled = settings.get("trading", {}).get("risk", {}).get("rollover_protection_enabled", True)
     is_crypto = is_crypto_symbol(symbol)
     if rollover_enabled and not is_crypto:
-        now_utc = as_of or clock.now()
+        if as_of is not None:
+            if as_of.tzinfo is None:
+                now_utc = as_of.replace(tzinfo=timezone.utc)
+            else:
+                now_utc = as_of.astimezone(timezone.utc)
+        else:
+            now_utc = clock.now()
         cur_h = now_utc.hour
         cur_m = now_utc.minute
         if (cur_h == 21 and cur_m >= 55) or (cur_h == 22 and cur_m < 15):
@@ -57,12 +63,14 @@ async def evaluate_pretrade_gate(
         if vp.get("regime") == "balanced" and is_trend_like:
             return False, "balanced volume regime blocks pure trend-following / breakout"
 
-    # 4. ADX Trend Confirmation
+    # 4. ADX Trend Confirmation (fail-closed if adx is unavailable for trend-following)
     regime = await classify_market_regime(session, symbol, settings, as_of=as_of)
     min_adx = settings.get("trading", {}).get("edge_strategy", {}).get("min_adx_for_trend", 20)
     if is_trend_like:
         adx_val = regime.get("adx")
-        if adx_val is not None and adx_val < min_adx:
+        if adx_val is None:
+            return False, "adx_unavailable: cannot confirm trend strength"
+        if adx_val < min_adx:
             return False, f"ADX={adx_val:.1f} < {min_adx}"
 
     return True, "ok"

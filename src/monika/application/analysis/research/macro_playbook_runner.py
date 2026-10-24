@@ -90,7 +90,7 @@ class MacroPlaybookRunner:
         if not path.is_file():
             raise FileNotFoundError(f"Playbook file not found: {path}")
 
-        raw_content = path.read_text(encoding="utf-8")
+        raw_content = path.read_text(encoding="utf-8-sig").strip()
         if not raw_content.startswith("---"):
             raise ValueError(f"Playbook {path.name} missing YAML frontmatter opening '---'")
 
@@ -218,13 +218,16 @@ class MacroPlaybookRunner:
             f"Generate structured verdicts for all target symbols ({symbols_str}):"
         )
 
+        import asyncio
+
         client = get_client_for_task("stage1_fundamental", settings=self.settings)
-        response = await client.generate(
-            prompt=user_prompt,
-            system=system_prompt,
-            temperature=0.2,
-            max_tokens=600,
-        )
+        async with asyncio.timeout(30.0):
+            response = await client.generate(
+                prompt=user_prompt,
+                system=system_prompt,
+                temperature=0.2,
+                max_tokens=600,
+            )
         return response or ""
 
     async def compute_and_persist_deltas(

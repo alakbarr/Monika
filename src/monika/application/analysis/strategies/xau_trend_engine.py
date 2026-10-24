@@ -113,11 +113,12 @@ class XAUTrendEngine(EdgeStrategy):
         entry_p = float(latest.close)
         ch_mid = (ch_high + ch_low) / 2.0
 
+        # Enforce minimum volatility buffer on Gold ($3.00) to avoid broker spread suicide
+        min_gold_sl = max(3.0, (ch_high - ch_low) * 0.15)
         if ema_bull and breakout_up:
-            sl_p = round(float(ch_mid), 2)
-            if sl_p >= entry_p:
-                sl_p = round(entry_p * 0.99, 2)
-            tp_p = round(entry_p + (entry_p - sl_p) * 1.5, 2)
+            sl_dist = max(min_gold_sl, entry_p - ch_mid)
+            sl_p = round(entry_p - sl_dist, 2)
+            tp_p = round(entry_p + sl_dist * 1.5, 2)
             return EdgeSignal(
                 self.strategy_id,
                 symbol,
@@ -134,10 +135,9 @@ class XAUTrendEngine(EdgeStrategy):
                 meta={"size_multiplier": size_mult},
             )
         if ema_bear and breakout_down:
-            sl_p = round(float(ch_mid), 2)
-            if sl_p <= entry_p:
-                sl_p = round(entry_p * 1.01, 2)
-            tp_p = round(entry_p - (sl_p - entry_p) * 1.5, 2)
+            sl_dist = max(min_gold_sl, ch_mid - entry_p)
+            sl_p = round(entry_p + sl_dist, 2)
+            tp_p = round(entry_p - sl_dist * 1.5, 2)
             return EdgeSignal(
                 self.strategy_id,
                 symbol,

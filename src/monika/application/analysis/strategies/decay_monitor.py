@@ -182,20 +182,33 @@ class StrategyDecayMonitor:
         self, strategy_id: str, win: bool, is_paper: bool = False, profit: Optional[float] = None
     ) -> StrategyHealth:
         """Update state upon individual trade completion (paper or live)."""
+        if strategy_id in QUARANTINED_STRATEGY_IDS:
+            health = self.get_health(strategy_id)
+            health.state = DecayState.DISABLED
+            health.is_incubation_passed = False
+            health.reason = "Quarantined strategy cannot record trade outcomes or pass incubation"
+            return health
+
         health = self.get_health(strategy_id)
         if is_paper:
             health.paper_trades_count += 1
             if win:
                 health.paper_wins_count += 1
-                gain = profit if (profit is not None and profit > 0) else 1.5
+                gain = float(profit) if (profit is not None and profit > 0) else 0.0
                 health.paper_gross_profit += gain
             else:
-                loss = abs(profit) if (profit is not None and profit < 0) else 1.0
+                loss = abs(float(profit)) if (profit is not None and profit < 0) else 0.0
                 health.paper_gross_loss += loss
 
             if not health.is_incubation_passed and health.paper_trades_count >= self.min_incubation_trades:
                 paper_wr = health.paper_wins_count / max(1, health.paper_trades_count)
-                pf = health.paper_gross_profit / max(1e-6, health.paper_gross_loss)
+                if health.paper_gross_loss > 0:
+                    pf = health.paper_gross_profit / health.paper_gross_loss
+                elif health.paper_gross_profit > 0:
+                    pf = 999.0
+                else:
+                    pf = 1.0
+
                 if paper_wr >= self.MIN_INCUBATION_WIN_RATE and pf >= self.MIN_INCUBATION_PROFIT_FACTOR:
                     health.is_incubation_passed = True
                     health.reason = (

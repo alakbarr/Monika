@@ -849,10 +849,19 @@ class StrategySynthesisScheduler:
 
             # Robust evaluate error boundary: prevents runtime exceptions in synthesized quant code from bubbling to evaluate_all
             orig_evaluate = strat_cls.evaluate
+            import inspect
 
-            async def safe_evaluate(self, session, symbol, settings):
+            eval_params = inspect.signature(orig_evaluate).parameters
+            accepts_as_of = "as_of" in eval_params or any(
+                p.kind == inspect.Parameter.VAR_KEYWORD for p in eval_params.values()
+            )
+
+            async def safe_evaluate(self, session, symbol, settings, as_of: Optional[datetime] = None):
                 try:
-                    res = await orig_evaluate(self, session, symbol, settings)
+                    if accepts_as_of:
+                        res = await orig_evaluate(self, session, symbol, settings, as_of=as_of)
+                    else:
+                        res = await orig_evaluate(self, session, symbol, settings)
                     if res is None:
                         sid = getattr(self, "strategy_id", class_name)
                         return EdgeSignal(
@@ -881,7 +890,7 @@ class StrategySynthesisScheduler:
                         tags=["evaluation_error"],
                     )
 
-            strat_cls.evaluate = safe_evaluate
+            setattr(strat_cls, "evaluate", safe_evaluate)
             # Explicitly clear __abstractmethods__ so ABCMeta allows clean instantiation
             strat_cls.__abstractmethods__ = frozenset()
             return strat_cls

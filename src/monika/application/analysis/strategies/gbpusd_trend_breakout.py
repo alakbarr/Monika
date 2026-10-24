@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from typing import Any, Dict, Optional
 
@@ -40,7 +41,9 @@ class GBPUSDTrendBreakoutStrategy(EdgeStrategy):
         self.sl_mult: float = float(self.settings.get("sl_mult", 2.0))
         self.tp_mult: float = float(self.settings.get("tp_mult", 4.0))
 
-    async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:
+    async def evaluate(
+        self, session: AsyncSession, symbol: str, settings: Dict[str, Any], as_of: Optional[datetime] = None
+    ) -> EdgeSignal:
         if symbol not in self.applicable_symbols:
             return EdgeSignal(
                 strategy_id=self.strategy_id,
@@ -58,7 +61,7 @@ class GBPUSDTrendBreakoutStrategy(EdgeStrategy):
         tp_mult = float(self.cfg.get("tp_mult", self.tp_mult))
 
         candles = await self.get_historical_candles(
-            session=session, symbol=symbol, timeframe="H1", limit=max(period, ema_filter) + 30
+            session=session, symbol=symbol, timeframe="H1", limit=max(period, ema_filter) + 30, as_of=as_of
         )
         if not candles or len(candles) < max(period, ema_filter) + 10:
             return EdgeSignal(

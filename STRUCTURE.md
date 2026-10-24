@@ -2465,6 +2465,7 @@ Monika/
 │   │   ├── test_execution_order_invariants.py
 │   │   ├── test_execution_safety_guards.py
 │   │   ├── test_execution_service.py
+│   │   ├── test_fase14_execution_invariants.py
 │   │   ├── test_fase5_mt5_watchdog_scrapers.py
 │   │   ├── test_flake_tolerant_health.py
 │   │   ├── test_heartbeat_writer.py
@@ -3082,4 +3083,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 265 | **Total Tracked Files**: 2787
+**Total Tracked Directories**: 265 | **Total Tracked Files**: 2788

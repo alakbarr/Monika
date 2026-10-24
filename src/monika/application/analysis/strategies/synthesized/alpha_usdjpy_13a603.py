@@ -238,6 +238,9 @@ class SynthesizedStrategy_alpha_usdjpy_13a603(EdgeStrategy):
                     direction=direction,
                     valid=valid,
                     confidence=float(confidence),
+                    entry_price=round(float(entry), 5),
+                    stop_loss=round(float(sl), 5),
+                    take_profit=round(float(tp), 5),
                     rationale=rationale,
                     tags=tags,
                 )

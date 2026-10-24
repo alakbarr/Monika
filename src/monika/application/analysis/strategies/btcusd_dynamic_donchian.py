@@ -1,5 +1,5 @@
+from datetime import datetime
 import logging
-import math
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -38,7 +38,9 @@ class BTCUSDDynamicDonchianStrategy(EdgeStrategy):
         self.atr_multiplier_sl: float = float(self.settings.get("atr_multiplier_sl", 1.8))
         self.risk_reward_ratio: float = float(self.settings.get("risk_reward_ratio", 2.0))
 
-    async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:
+    async def evaluate(
+        self, session: AsyncSession, symbol: str, settings: Dict[str, Any], as_of: Optional[datetime] = None
+    ) -> EdgeSignal:
         if symbol not in self.applicable_symbols:
             return EdgeSignal(
                 strategy_id=self.strategy_id,
@@ -52,7 +54,7 @@ class BTCUSDDynamicDonchianStrategy(EdgeStrategy):
 
         lookback_fetch = max(self.max_lookback + self.volume_ma_period + 10, 100)
         candles = await self.get_historical_candles(
-            session=session, symbol=symbol, timeframe="H1", limit=lookback_fetch
+            session=session, symbol=symbol, timeframe="H1", limit=lookback_fetch, as_of=as_of
         )
         if not candles or len(candles) < lookback_fetch * 0.8:
             return EdgeSignal(

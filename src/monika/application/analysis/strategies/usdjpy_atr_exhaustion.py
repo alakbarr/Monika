@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
@@ -30,7 +31,9 @@ class USDJPYATRExhaustionStrategy(EdgeStrategy):
         self.rsi_ob: float = float(self.settings.get("rsi_ob", 68.0))
         self.rsi_os: float = float(self.settings.get("rsi_os", 32.0))
 
-    async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:
+    async def evaluate(
+        self, session: AsyncSession, symbol: str, settings: Dict[str, Any], as_of: Optional[datetime] = None
+    ) -> EdgeSignal:
         try:
             if symbol not in self.applicable_symbols:
                 return EdgeSignal(
@@ -43,7 +46,9 @@ class USDJPYATRExhaustionStrategy(EdgeStrategy):
                     tags=["unsupported_symbol"],
                 )
 
-            candles = await self.get_historical_candles(session=session, symbol=symbol, timeframe="H1", limit=120)
+            candles = await self.get_historical_candles(
+                session=session, symbol=symbol, timeframe="H1", limit=120, as_of=as_of
+            )
             if not candles or len(candles) < max(self.baseline_period, self.atr_period, self.rsi_period) + 15:
                 return EdgeSignal(
                     strategy_id=self.strategy_id,

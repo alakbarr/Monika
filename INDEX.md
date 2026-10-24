@@ -6866,13 +6866,13 @@
     - `async get_historical_candles(session: AsyncSession, symbol: str, timeframe: str, ...) -> list[CandleDict]` - *Built-in helper for quantitative strategies to retrieve historical OHLCV candles.*
     - `derive_atr_brackets(entry_price: float, candles: list[CandleDict], direction: str, ...) -> tuple[float, float]` - *Compute robust ATR-based Stop Loss and Take Profit levels.*
     - `build_bracket(entry_price: float, direction: str, atr: float, ...) -> tuple[float, float]` - *Compute robust, geometrically sound Stop Loss and Take Profit levels.*
-    - `async evaluate(session: AsyncSession, symbol: str, settings: dict) -> EdgeSignal`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: dict, ...) -> EdgeSignal`
 
 #### `bb_volume_profile.py`
 - **Path**: [`src/monika/application/analysis/strategies/bb_volume_profile.py`](src/monika/application/analysis/strategies/bb_volume_profile.py)
 - **Classes**:
   - `class BBVolumeProfileMeanReversion(EdgeStrategy)`: Bollinger Bands + Volume Profile Mean Reversion Strategy.
-    - `async evaluate(session: AsyncSession, symbol: str, settings: dict) -> EdgeSignal`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: dict, ...) -> EdgeSignal`
 
 #### `bollinger_reversion.py` - *Bollinger Band Mean Reversion Strategy.*
 - **Path**: [`src/monika/application/analysis/strategies/bollinger_reversion.py`](src/monika/application/analysis/strategies/bollinger_reversion.py)
@@ -6884,7 +6884,7 @@
 - **Path**: [`src/monika/application/analysis/strategies/btc_donchian_breakout.py`](src/monika/application/analysis/strategies/btc_donchian_breakout.py)
 - **Classes**:
   - `class BTCDonchianBreakout(EdgeStrategy)`
-    - `async evaluate(session, symbol, settings) -> EdgeSignal`
+    - `async evaluate(session, symbol, settings, ...) -> EdgeSignal`
   - `class DonchianBreakoutStrategy(BTCDonchianBreakout)`
 
 #### `btc_us_momentum.py`
@@ -6899,7 +6899,7 @@
 - **Classes**:
   - `class BTCUSDDynamicDonchianStrategy(EdgeStrategy)`: Empirically Promoted Dynamic Donchian Breakout Strategy for Bitcoin (BTCUSD).
     - `__init__(settings: Optional[Dict[str, Any]]) -> None`
-    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any], ...) -> EdgeSignal`
 
 #### `crude_london_breakout.py`
 - **Path**: [`src/monika/application/analysis/strategies/crude_london_breakout.py`](src/monika/application/analysis/strategies/crude_london_breakout.py)
@@ -6962,7 +6962,7 @@
 - **Classes**:
   - `class GBPUSDTrendBreakoutStrategy(EdgeStrategy)`: Empirically Promoted Trend Breakout Strategy for GBPUSD.
     - `__init__(settings: Optional[Dict[str, Any]]) -> None`
-    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any], ...) -> EdgeSignal`
 
 #### `hypothesis_registry.py` - *Durable Strategy Hypothesis Lifecycle Registry.*
 - **Path**: [`src/monika/application/analysis/strategies/hypothesis_registry.py`](src/monika/application/analysis/strategies/hypothesis_registry.py)
@@ -7025,7 +7025,7 @@
 - **Path**: [`src/monika/application/analysis/strategies/smc_fvg.py`](src/monika/application/analysis/strategies/smc_fvg.py)
 - **Classes**:
   - `class SMCFairValueGapStrategy(EdgeStrategy)`: SMC Fair Value Gap (FVG) Strategy.
-    - `async evaluate(session: AsyncSession, symbol: str, settings: dict) -> EdgeSignal`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: dict, ...) -> EdgeSignal`
 
 #### `smt_divergence.py` - *Smart Money Tool (SMT) & Oscillator Divergence Strategy.*
 - **Path**: [`src/monika/application/analysis/strategies/smt_divergence.py`](src/monika/application/analysis/strategies/smt_divergence.py)
@@ -7055,18 +7055,18 @@
   - `class TokyoSweepStrategy(EdgeStrategy)`
     - `async evaluate(session, symbol: str, settings: dict, ...) -> EdgeSignal`
 
-#### `tri_convergent_alpha.py` - *Tri-Convergent Alpha Strategy:*
+#### `tri_convergent_alpha.py`
 - **Path**: [`src/monika/application/analysis/strategies/tri_convergent_alpha.py`](src/monika/application/analysis/strategies/tri_convergent_alpha.py)
 - **Classes**:
   - `class TriConvergentAlphaStrategy(EdgeStrategy)`
     - `__init__(settings: Optional[dict])`
-    - `async evaluate(session: AsyncSession, symbol: str, settings: dict) -> EdgeSignal`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: dict, ...) -> EdgeSignal`
 
 #### `tsm_momentum.py`
 - **Path**: [`src/monika/application/analysis/strategies/tsm_momentum.py`](src/monika/application/analysis/strategies/tsm_momentum.py)
 - **Classes**:
   - `class TimeSeriesMomentum(EdgeStrategy)`
-    - `async evaluate(session, symbol, settings) -> EdgeSignal`
+    - `async evaluate(session, symbol, settings, ...) -> EdgeSignal`
   - `class TrendTrailingMomentum(TimeSeriesMomentum)`
 
 #### `usdjpy_atr_exhaustion.py`
@@ -7074,7 +7074,7 @@
 - **Classes**:
   - `class USDJPYATRExhaustionStrategy(EdgeStrategy)`: Empirically Promoted Mean-Reversion Strategy for USDJPY.
     - `__init__(settings: Optional[Dict[str, Any]]) -> None`
-    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any], ...) -> EdgeSignal`
 
 #### `vwap_reversion.py` - *VWAP Mean Reversion Stretch Strategy.*
 - **Path**: [`src/monika/application/analysis/strategies/vwap_reversion.py`](src/monika/application/analysis/strategies/vwap_reversion.py)
@@ -7093,20 +7093,20 @@
 - **Classes**:
   - `class XAUUSDATRExhaustionStrategy(EdgeStrategy)`: Empirically Promoted Mean-Reversion Strategy for Gold (XAUUSD).
     - `__init__(settings: Optional[Dict[str, Any]]) -> None`
-    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any], ...) -> EdgeSignal`
 
 #### `xti_pairs_readiness.py`
 - **Path**: [`src/monika/application/analysis/strategies/xti_pairs_readiness.py`](src/monika/application/analysis/strategies/xti_pairs_readiness.py)
 - **Classes**:
   - `class XTIPairsReadiness(EdgeStrategy)`
-    - `async evaluate(session, symbol, settings) -> EdgeSignal`
+    - `async evaluate(session, symbol, settings, ...) -> EdgeSignal`
 
 #### `xtiusd_atr_exhaustion.py`
 - **Path**: [`src/monika/application/analysis/strategies/xtiusd_atr_exhaustion.py`](src/monika/application/analysis/strategies/xtiusd_atr_exhaustion.py)
 - **Classes**:
   - `class XTIUSDATRExhaustionStrategy(EdgeStrategy)`: Empirically Promoted Mean-Reversion Strategy for WTI Crude (XTIUSD).
     - `__init__(settings: Optional[Dict[str, Any]]) -> None`
-    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal`
+    - `async evaluate(session: AsyncSession, symbol: str, settings: Dict[str, Any], ...) -> EdgeSignal`
 
 ### Folder: `src/monika/application/analysis/subagent` <a id="folder-srcmonikaapplicationanalysissubagent"></a>
 

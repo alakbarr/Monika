@@ -152,7 +152,7 @@ class SynthesizedStrategy_alpha_gbpusd_867953(EdgeStrategy):
                 strategy_id=self.strategy_id,
                 symbol=symbol,
                 direction=None,
-                valid=True,
+                valid=False,
                 confidence=0.0,
                 rationale=(
                     f"No exhaustion setup: Stretch={current_stretch:.2f} within thresholds "

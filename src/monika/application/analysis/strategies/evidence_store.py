@@ -170,6 +170,8 @@ class StrategyEvidenceStore:
         try:
             window_end = datetime.strptime(str(ev.data_window_end)[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
         except Exception:
+            ev.evidence_age_days = 9999
+            ev.status = EvidenceStatus.STALE
             return ev
 
         age_days = max(0, (datetime.now(timezone.utc) - window_end).days)
@@ -209,13 +211,13 @@ class StrategyEvidenceStore:
         """
         if isinstance(data_window_end, datetime):
             window_end_str = data_window_end.strftime("%Y-%m-%d")
-            window_end_dt = data_window_end
+            window_end_dt = data_window_end if data_window_end.tzinfo else data_window_end.replace(tzinfo=timezone.utc)
         else:
             window_end_str = str(data_window_end)
             try:
                 window_end_dt = datetime.strptime(window_end_str[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
             except Exception:
-                window_end_dt = datetime.now(timezone.utc)
+                raise ValueError(f"Invalid data_window_end date format: {data_window_end}")
 
         be_bps = compute_sizing_corrected_breakeven_bps(
             gross_return=gross_return,
@@ -305,9 +307,10 @@ class StrategyEvidenceStore:
         """
         ev = self._store.get(strategy_id)
         if not ev:
-            if strategy_id in ("general", "default"):
-                return True, f"Strategy {strategy_id} allowed under baseline evidence"
             return False, f"No verified backtest evidence on file for {strategy_id}"
+
+        # Recalculate status against current wall-clock date before evaluating gate
+        ev = self._refresh_status(ev)
 
         if ev.status == EvidenceStatus.STALE:
             return (

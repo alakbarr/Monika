@@ -1,3 +1,4 @@
+import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -16,6 +17,7 @@ class StrategyTier(str, Enum):
 QUARANTINED_STRATEGY_IDS: set[str] = {
     "smc_fvg",
     "btc_donchian_breakout",
+    "donchian_breakout",
     "bollinger_reversion",
     "asian_range_fade",
     "xti_pairs_readiness",
@@ -72,6 +74,8 @@ class EdgeSignal:
         """Validate physical geometry and completeness of executable trading signal."""
         if not self.valid or self.direction not in ("buy", "sell"):
             return False
+        if math.isnan(self.confidence) or self.confidence <= 0.0:
+            return False
         if self.entry_price is None or self.entry_price <= 0:
             return False
         if self.stop_loss is None or self.stop_loss <= 0:
@@ -90,8 +94,14 @@ class EdgeSignal:
             risk = self.stop_loss - self.entry_price
             reward = self.entry_price - self.take_profit
 
-        if risk <= 0 or (reward / risk) < min_rr:
+        # Fail closed on sub-pip infinitesimal risk (< 1e-4) or insufficient risk-reward ratio
+        if risk < 1e-4 or (reward / risk) < min_rr:
             return False
+
+        # Validate hedge leg recursively for pairs/stat-arb strategies
+        if self.paired_leg is not None and not self.paired_leg.is_executable(min_rr=min_rr):
+            return False
+
         return True
 
 
@@ -224,11 +234,15 @@ class EdgeStrategy(ABC):
         risk_reward_ratio: float = 1.5,
     ) -> tuple[float, float]:
         """Compute robust ATR-based Stop Loss and Take Profit levels."""
-        if not candles or len(candles) < 2 or entry_price <= 0:
-            if direction.lower() == "buy":
-                return round(entry_price * 0.99, 5), round(entry_price * 1.015, 5)
-            else:
-                return round(entry_price * 1.01, 5), round(entry_price * 0.985, 5)
+        if entry_price <= 0:
+            raise ValueError(f"Invalid non-positive entry_price: {entry_price}")
+        if not candles or len(candles) < 2:
+            raise ValueError(f"Insufficient candles ({len(candles) if candles else 0}) for ATR derivation")
+        norm_dir = direction.lower()
+        if norm_dir not in ("buy", "sell"):
+            raise ValueError(f"Invalid direction: {direction}")
+        if atr_multiplier_sl <= 0 or risk_reward_ratio <= 0:
+            raise ValueError("atr_multiplier_sl and risk_reward_ratio must be strictly positive")
 
         tr_list = []
         for i in range(1, min(len(candles), atr_period + 1)):
@@ -238,16 +252,21 @@ class EdgeStrategy(ABC):
             tr = max(h - l, abs(h - prev_c), abs(l - prev_c))
             tr_list.append(tr)
         atr = sum(tr_list) / len(tr_list) if tr_list else (entry_price * 0.005)
+        if atr <= 0:
+            atr = entry_price * 0.005
 
         sl_dist = atr * atr_multiplier_sl
         tp_dist = sl_dist * risk_reward_ratio
 
-        if direction.lower() == "buy":
+        if norm_dir == "buy":
             sl = entry_price - sl_dist
             tp = entry_price + tp_dist
         else:
             sl = entry_price + sl_dist
             tp = entry_price - tp_dist
+
+        if sl <= 0 or tp <= 0:
+            raise ValueError(f"Calculated bracket non-positive: sl={sl}, tp={tp}")
 
         return round(sl, 5), round(tp, 5)
 
@@ -263,6 +282,8 @@ class EdgeStrategy(ABC):
         """Compute robust, geometrically sound Stop Loss and Take Profit levels."""
         if entry_price <= 0 or atr <= 0:
             raise ValueError(f"Invalid entry ({entry_price}) or ATR ({atr}) for bracket calculation")
+        if atr_multiplier_sl <= 0 or risk_reward_ratio <= 0:
+            raise ValueError("atr_multiplier_sl and risk_reward_ratio must be strictly positive")
 
         sl_dist = atr * atr_multiplier_sl
         tp_dist = sl_dist * risk_reward_ratio
@@ -277,6 +298,9 @@ class EdgeStrategy(ABC):
         else:
             raise ValueError(f"Invalid direction: {direction}")
 
+        if sl <= 0 or tp <= 0:
+            raise ValueError(f"Calculated bracket non-positive: sl={sl}, tp={tp}")
+
         return round(sl, 5), round(tp, 5)
 
     @abstractmethod
@@ -285,4 +309,5 @@ class EdgeStrategy(ABC):
         session: AsyncSession,
         symbol: str,
         settings: dict,
+        as_of: Optional[datetime] = None,
     ) -> EdgeSignal: ...

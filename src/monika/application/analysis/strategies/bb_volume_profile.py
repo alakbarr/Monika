@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -19,16 +20,18 @@ class BBVolumeProfileMeanReversion(EdgeStrategy):
 
     strategy_id = "bb_volume_profile"
     applicable_symbols = {"EURUSD", "AUDUSD"}
-    compatible_regimes = {"RANGING", "CHOP", "MEAN_REVERTING", "COMPRESSED", "ALL"}
+    compatible_regimes = {"RANGING", "CHOP", "MEAN_REVERTING", "COMPRESSED"}
     factor_family = "mean_reversion"
 
-    async def evaluate(self, session: AsyncSession, symbol: str, settings: dict) -> EdgeSignal:
+    async def evaluate(
+        self, session: AsyncSession, symbol: str, settings: dict, as_of: Optional[datetime] = None
+    ) -> EdgeSignal:
         timeframe = self.cfg.get("timeframe", "H1")
         bb_period = int(self.cfg.get("bb_period", 20))
         bb_std = float(self.cfg.get("bb_std", 2.0))
         lookback = int(self.cfg.get("lookback", 60))
 
-        candles = await self.get_historical_candles(session, symbol, timeframe=timeframe, limit=lookback)
+        candles = await self.get_historical_candles(session, symbol, timeframe=timeframe, limit=lookback, as_of=as_of)
         if len(candles) < bb_period + 5:
             return EdgeSignal(
                 strategy_id=self.strategy_id,
@@ -69,7 +72,7 @@ class BBVolumeProfileMeanReversion(EdgeStrategy):
         )
 
         try:
-            vp = await compute_volume_profile(session, symbol, settings=settings, timeframe=timeframe)
+            vp = await compute_volume_profile(session, symbol, settings=settings, timeframe=timeframe, as_of=as_of)
             vah = vp.get("vah", upper_bb)
             val = vp.get("val", lower_bb)
             poc = vp.get("poc", sma)

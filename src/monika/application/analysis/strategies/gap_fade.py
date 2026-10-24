@@ -29,7 +29,7 @@ class DailyReopenGapFade(EdgeStrategy):
 
     strategy_id = "gap_fade"
     applicable_symbols = {"AUDUSD", "GBPUSD", "EURUSD"}
-    compatible_regimes = {"RANGE", "WEAK_TREND", "VOLATILE_CHOP", "ALL"}
+    compatible_regimes = {"RANGE", "WEAK_TREND", "VOLATILE_CHOP"}
     factor_family = "mean_reversion"
     min_sample_size = 30
 

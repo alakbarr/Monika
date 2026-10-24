@@ -113,14 +113,21 @@ def extract_synthesized_strategy(file_path: Path) -> Optional[Dict[str, Any]]:
     for node in tree.body:
         if isinstance(node, ast.ClassDef):
             for item in node.body:
-                if isinstance(item, ast.Assign):
-                    for target in item.targets:
+                if isinstance(item, (ast.Assign, ast.AnnAssign)):
+                    targets = item.targets if isinstance(item, ast.Assign) else [item.target]
+                    val_node = item.value
+                    for target in targets:
                         if isinstance(target, ast.Name):
-                            if target.id == "strategy_id" and isinstance(item.value, ast.Constant):
-                                strategy_id = str(item.value.value)
-                            elif target.id == "applicable_symbols":
+                            if target.id == "strategy_id" and isinstance(val_node, ast.Constant):
+                                strategy_id = str(val_node.value)
+                            elif target.id == "applicable_symbols" and val_node is not None:
                                 try:
-                                    applicable_symbols = list(ast.literal_eval(item.value))
+                                    evaluated = ast.literal_eval(val_node)
+                                    applicable_symbols = (
+                                        list(evaluated)
+                                        if isinstance(evaluated, (set, list, tuple))
+                                        else [str(evaluated)]
+                                    )
                                 except Exception:
                                     pass
                 elif isinstance(item, ast.FunctionDef) and item.name == "__init__":
@@ -194,6 +201,12 @@ def compile_catalogs() -> None:
     }
     strategies_out.write_text(json.dumps(strategies_payload, indent=2), encoding="utf-8")
     logger.info(f"Saved {len(strategies)} synthesized strategies to {strategies_out}")
+    domain_cat = (
+        ROOT_DIR / "src" / "monika" / "domain" / "indicators" / "alpha_zoo" / "catalog" / "synthesized_strategies.json"
+    )
+    if domain_cat.parent.exists():
+        domain_cat.write_text(json.dumps(strategies_payload, indent=2), encoding="utf-8")
+        logger.info(f"Synced synthesized strategies to {domain_cat}")
 
 
 if __name__ == "__main__":

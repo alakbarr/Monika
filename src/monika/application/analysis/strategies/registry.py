@@ -36,12 +36,20 @@ class StrategyRegistry:
             return StrategyTier.QUARANTINED
         try:
             from monika.domain.risk.ports import get_default_evidence_store
+            from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
+
+            decay_mon = get_strategy_decay_monitor()
+            if decay_mon.is_monitored(strategy_id) and not decay_mon.is_tradeable(strategy_id):
+                return StrategyTier.QUARANTINED
 
             evidence_store = get_default_evidence_store()
             if evidence_store is None:
                 return StrategyTier.EXPERIMENTAL
             eligible, reason = evidence_store.is_strategy_eligible_to_trade(strategy_id)
             if eligible:
+                if decay_mon.is_monitored(strategy_id) and not decay_mon.is_live_ready(strategy_id):
+                    logger.debug(f"[StrategyRegistry] {strategy_id} has evidence but pending paper incubation")
+                    return StrategyTier.EXPERIMENTAL
                 return StrategyTier.VALIDATED
             logger.debug(f"[StrategyRegistry] {strategy_id} remains experimental: {reason}")
         except Exception as exc:
@@ -102,20 +110,37 @@ class StrategyRegistry:
     @classmethod
     def _validate_dynamic_params(cls, parameters: dict) -> dict:
         """Validates parameter boundaries before dynamic override injection."""
+        protected_methods = {
+            "evaluate",
+            "is_enabled",
+            "is_regime_compatible",
+            "get_historical_candles",
+            "derive_atr_brackets",
+            "build_bracket",
+            "set_parameters",
+        }
         valid: dict[str, Any] = {}
         for k, v in parameters.items():
+            k_str = str(k).strip()
+            if not k_str or k_str.startswith("_") or k_str in protected_methods:
+                logger.warning(f"[StrategyRegistry] Discarded protected/private param key '{k_str}'")
+                continue
+            # Guard against boolean trap: bool is subclass of int in Python
+            if isinstance(v, bool):
+                valid[k_str] = v
+                continue
             if isinstance(v, (int, float)):
                 if math.isnan(v) or math.isinf(v):
-                    logger.warning(f"[StrategyRegistry] Discarded invalid param '{k}'={v} (NaN/Inf)")
+                    logger.warning(f"[StrategyRegistry] Discarded invalid param '{k_str}'={v} (NaN/Inf)")
                     continue
-                k_lower = str(k).lower()
+                k_lower = k_str.lower()
                 if any(k_lower.endswith(s) for s in ("_period", "_window", "_lookback", "_length", "_bars")) and v <= 0:
-                    logger.warning(f"[StrategyRegistry] Discarded non-positive period '{k}'={v}")
+                    logger.warning(f"[StrategyRegistry] Discarded non-positive period '{k_str}'={v}")
                     continue
                 if any(k_lower.endswith(s) for s in ("_mult", "_multiplier", "_threshold", "_std")) and v < 0:
-                    logger.warning(f"[StrategyRegistry] Discarded negative multiplier '{k}'={v}")
+                    logger.warning(f"[StrategyRegistry] Discarded negative multiplier '{k_str}'={v}")
                     continue
-            valid[k] = v
+            valid[k_str] = v
         return valid
 
     @classmethod
@@ -126,7 +151,7 @@ class StrategyRegistry:
         strat.cfg = dict(getattr(strat, "cfg", {}))
         strat.cfg.update(dyn_params)
         for k, v in dyn_params.items():
-            if hasattr(strat, k):
+            if hasattr(strat, k) and not callable(getattr(strat, k)):
                 try:
                     setattr(strat, k, v)
                 except Exception as attr_err:
@@ -183,7 +208,7 @@ class StrategyRegistry:
                 sym = None
                 strat_id = raw_key
                 parts = raw_key.rsplit("_", 1)
-                if len(parts) == 2 and len(parts[1]) in (6, 7) and parts[1].isupper():
+                if len(parts) == 2 and 3 <= len(parts[1]) <= 8 and parts[1].isupper() and parts[1].isalnum():
                     strat_id = parts[0]
                     sym = parts[1]
 

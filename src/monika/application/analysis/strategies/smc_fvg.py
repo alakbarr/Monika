@@ -1,3 +1,4 @@
+from datetime import datetime
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -29,15 +30,17 @@ class SMCFairValueGapStrategy(EdgeStrategy):
         "ETHUSD",
         "US30",
     }
-    compatible_regimes = {"TREND", "STRONG_TREND", "RANGING", "EXPANDING_FAST", "ALL"}
+    compatible_regimes = {"TREND", "STRONG_TREND", "RANGING", "EXPANDING_FAST"}
     factor_family = "trend"
 
-    async def evaluate(self, session: AsyncSession, symbol: str, settings: dict) -> EdgeSignal:
+    async def evaluate(
+        self, session: AsyncSession, symbol: str, settings: dict, as_of: Optional[datetime] = None
+    ) -> EdgeSignal:
         timeframe = self.cfg.get("timeframe", "H1")
         min_rr = float(self.cfg.get("min_rr", 2.0))
         lookback = int(self.cfg.get("lookback", 60))
 
-        candles = await self.get_historical_candles(session, symbol, timeframe=timeframe, limit=lookback)
+        candles = await self.get_historical_candles(session, symbol, timeframe=timeframe, limit=lookback, as_of=as_of)
         if len(candles) < 15:
             return EdgeSignal(
                 strategy_id=self.strategy_id,
@@ -99,10 +102,15 @@ class SMCFairValueGapStrategy(EdgeStrategy):
                     )
 
         # Evaluate if current price is within or testing the most recent unmitigated Bullish FVG
+        # Robust ATR baseline to prevent microscopic stop losses
+        trs = [max(float(candles[-j].high) - float(candles[-j].low), 0.0001) for j in range(1, min(len(candles), 15))]
+        atr_fl = sum(trs) / len(trs) if trs else (current_price * 0.005)
+
         if bullish_fvgs:
             latest_fvg = bullish_fvgs[-1]
             if latest_fvg["gap_low"] <= current_price <= latest_fvg["gap_high"] * 1.002:
-                sl = latest_fvg["gap_low"] - (latest_fvg["gap_high"] - latest_fvg["gap_low"]) * 0.2
+                sl_dist = max(atr_fl * 0.75, (latest_fvg["gap_high"] - latest_fvg["gap_low"]) * 0.5)
+                sl = current_price - sl_dist
                 risk = current_price - sl
                 if risk > 0:
                     tp = current_price + (risk * min_rr)
@@ -127,7 +135,8 @@ class SMCFairValueGapStrategy(EdgeStrategy):
         if bearish_fvgs:
             latest_fvg = bearish_fvgs[-1]
             if latest_fvg["gap_low"] * 0.998 <= current_price <= latest_fvg["gap_high"]:
-                sl = latest_fvg["gap_high"] + (latest_fvg["gap_high"] - latest_fvg["gap_low"]) * 0.2
+                sl_dist = max(atr_fl * 0.75, (latest_fvg["gap_high"] - latest_fvg["gap_low"]) * 0.5)
+                sl = current_price + sl_dist
                 risk = sl - current_price
                 if risk > 0:
                     tp = current_price - (risk * min_rr)

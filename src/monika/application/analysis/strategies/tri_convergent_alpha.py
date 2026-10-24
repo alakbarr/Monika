@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from datetime import datetime
 # ==============================================================================
 # File: analysis/strategies/tri_convergent_alpha.py
 # Monika Tri-Convergent Alpha Strategy Engine
@@ -18,9 +21,9 @@ Execution Flow:
 5. Derive structural Stop-Loss and Take-Profit respecting minimum 1.5 R:R ratio.
 """
 
-from __future__ import annotations
 
 import logging
+import math
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -112,7 +115,9 @@ class TriConvergentAlphaStrategy(EdgeStrategy):
             return 0.0, scores
         return float(np.clip(composite, -1.0, 1.0)), scores
 
-    async def evaluate(self, session: AsyncSession, symbol: str, settings: dict) -> EdgeSignal:
+    async def evaluate(
+        self, session: AsyncSession, symbol: str, settings: dict, as_of: Optional[datetime] = None
+    ) -> EdgeSignal:
         if not self.is_enabled(symbol):
             return EdgeSignal(
                 strategy_id=self.strategy_id,
@@ -123,7 +128,7 @@ class TriConvergentAlphaStrategy(EdgeStrategy):
                 rationale="Strategy disabled for this symbol in configuration.",
             )
 
-        candles = await self.get_historical_candles(session, symbol, timeframe="H1", limit=120)
+        candles = await self.get_historical_candles(session, symbol, timeframe="H1", limit=120, as_of=as_of)
         if len(candles) < self.min_sample_size:
             return EdgeSignal(
                 strategy_id=self.strategy_id,
@@ -213,8 +218,16 @@ class TriConvergentAlphaStrategy(EdgeStrategy):
         rr_ratio = optimal_levels.get("rr_ratio", 1.5)
 
         if not stop_loss or not take_profit or rr_ratio < 1.3:
-            # Fallback level derivation using ATR
-            atr_approx = (df["high"] - df["low"]).rolling(14).mean().iloc[-1]
+            # Fallback level derivation using robust True Range ATR (no NaN)
+            tr_list = []
+            for i in range(1, min(len(candles), 15)):
+                h = float(candles[-i].high)
+                l = float(candles[-i].low)
+                prev_c = float(candles[-i - 1].close)
+                tr_list.append(max(h - l, abs(h - prev_c), abs(l - prev_c)))
+            atr_approx = sum(tr_list) / len(tr_list) if tr_list else (entry_price * 0.005)
+            if math.isnan(atr_approx) or atr_approx <= 0:
+                atr_approx = entry_price * 0.005
             if intended_dir == "buy":
                 stop_loss = round(entry_price - 1.5 * atr_approx, 4)
                 take_profit = round(entry_price + 2.5 * atr_approx, 4)

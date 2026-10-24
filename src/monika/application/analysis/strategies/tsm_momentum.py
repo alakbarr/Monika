@@ -1,3 +1,5 @@
+from datetime import datetime
+from typing import Optional
 import logging
 from typing import Any
 
@@ -24,8 +26,8 @@ class TimeSeriesMomentum(EdgeStrategy):
     factor_family = "trend"
     min_sample_size = 30
 
-    async def evaluate(self, session, symbol, settings) -> EdgeSignal:
-        now = clock.now()
+    async def evaluate(self, session, symbol, settings, as_of: Optional[datetime] = None) -> EdgeSignal:
+        now = as_of or clock.now()
         lookbacks = (
             int(self.cfg.get("lookback_short", LOOKBACKS[0])),
             int(self.cfg.get("lookback_med", LOOKBACKS[1])),
@@ -171,12 +173,24 @@ class TimeSeriesMomentum(EdgeStrategy):
 
         # Directional bias only — no entry/SL/TP; consumed either as a confluence_factor
         # by the LLM stage, or as a veto gate for other edges via meta['direction'].
+        entry_p = float(rows[0]) if rows else 0.0
+        sl_p, tp_p = None, None
+        if entry_p > 0 and direction:
+            # Standard ATR/volatility bracket for TSM trend following
+            sl_dist = entry_p * 0.015
+            tp_dist = sl_dist * 1.5
+            sl_p = round(entry_p - sl_dist if direction == "buy" else entry_p + sl_dist, 5)
+            tp_p = round(entry_p + tp_dist if direction == "buy" else entry_p - tp_dist, 5)
+
         return EdgeSignal(
             self.strategy_id,
             symbol,
             direction,
             True,
             confidence=agreement,
+            entry_price=entry_p,
+            stop_loss=sl_p,
+            take_profit=tp_p,
             rationale=f"TSM agreement={agreement:.2f}/{len(votes)}, HTF-confirmed.",
             tags=["tsm", "trend_continuation", "trend"],
             exit_style="trend_trailing",

@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -34,7 +35,9 @@ class XTIUSDATRExhaustionStrategy(EdgeStrategy):
         self.rsi_oversold: float = float(self.settings.get("rsi_oversold", 30.0))
         self.rsi_overbought: float = float(self.settings.get("rsi_overbought", 70.0))
 
-    async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:
+    async def evaluate(
+        self, session: AsyncSession, symbol: str, settings: Dict[str, Any], as_of: Optional[datetime] = None
+    ) -> EdgeSignal:
         if symbol not in self.applicable_symbols:
             return EdgeSignal(
                 strategy_id=self.strategy_id,
@@ -47,7 +50,9 @@ class XTIUSDATRExhaustionStrategy(EdgeStrategy):
             )
 
         try:
-            candles = await self.get_historical_candles(session=session, symbol=symbol, timeframe="H1", limit=100)
+            candles = await self.get_historical_candles(
+                session=session, symbol=symbol, timeframe="H1", limit=100, as_of=as_of
+            )
             if not candles or len(candles) < max(self.atr_period, self.ema_period, self.rsi_period) + 5:
                 return EdgeSignal(
                     strategy_id=self.strategy_id,

@@ -5,49 +5,63 @@
     "alpha_audusd_5f9ce8": {
       "strategy_id": "alpha_audusd_5f9ce8",
       "file_name": "alpha_audusd_5f9ce8.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "AUDUSD"
+      ],
       "parameters": {},
-      "code_lines": 208
+      "code_lines": 207
     },
     "alpha_btcusd_96feb9": {
       "strategy_id": "alpha_btcusd_96feb9",
       "file_name": "alpha_btcusd_96feb9.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "BTCUSD"
+      ],
       "parameters": {},
-      "code_lines": 191
+      "code_lines": 219
     },
     "alpha_btcusd_b22661": {
       "strategy_id": "alpha_btcusd_b22661",
       "file_name": "alpha_btcusd_b22661.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "BTCUSD"
+      ],
       "parameters": {},
-      "code_lines": 176
+      "code_lines": 174
     },
     "alpha_eurusd_6d622a": {
       "strategy_id": "alpha_eurusd_6d622a",
       "file_name": "alpha_eurusd_6d622a.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "EURUSD"
+      ],
       "parameters": {},
-      "code_lines": 215
+      "code_lines": 206
     },
     "alpha_eurusd_8060ed": {
       "strategy_id": "alpha_eurusd_8060ed",
       "file_name": "alpha_eurusd_8060ed.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "EURUSD"
+      ],
       "parameters": {},
-      "code_lines": 117
+      "code_lines": 120
     },
     "alpha_gbpusd_867953": {
       "strategy_id": "alpha_gbpusd_867953",
       "file_name": "alpha_gbpusd_867953.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "GBPUSD"
+      ],
       "parameters": {},
-      "code_lines": 167
+      "code_lines": 173
     },
     "alpha_usdjpy_13a603": {
       "strategy_id": "alpha_usdjpy_13a603",
       "file_name": "alpha_usdjpy_13a603.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "USDJPY"
+      ],
       "parameters": {
         "htf_ema_fast": 21,
         "htf_ema_slow": 55,
@@ -63,75 +77,95 @@
         "mtf_limit": 200,
         "ltf_limit": 100
       },
-      "code_lines": 241
+      "code_lines": 276
     },
     "alpha_usdjpy_7c9264": {
       "strategy_id": "alpha_usdjpy_7c9264",
       "file_name": "alpha_usdjpy_7c9264.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "USDJPY"
+      ],
       "parameters": {},
-      "code_lines": 155
+      "code_lines": 165
     },
     "alpha_usdjpy_e3c1b2": {
       "strategy_id": "alpha_usdjpy_e3c1b2",
       "file_name": "alpha_usdjpy_e3c1b2.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "USDJPY"
+      ],
       "parameters": {},
-      "code_lines": 162
+      "code_lines": 167
     },
     "alpha_xauusd_5044bf": {
       "strategy_id": "alpha_xauusd_5044bf",
       "file_name": "alpha_xauusd_5044bf.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "XAUUSD"
+      ],
       "parameters": {},
-      "code_lines": 158
+      "code_lines": 156
     },
     "alpha_xauusd_7358c1": {
       "strategy_id": "alpha_xauusd_7358c1",
       "file_name": "alpha_xauusd_7358c1.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "XAUUSD"
+      ],
       "parameters": {},
-      "code_lines": 177
+      "code_lines": 199
     },
     "alpha_xauusd_78210e": {
       "strategy_id": "alpha_xauusd_78210e",
       "file_name": "alpha_xauusd_78210e.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "XAUUSD"
+      ],
       "parameters": {},
-      "code_lines": 130
+      "code_lines": 131
     },
     "alpha_xauusd_94ad53": {
       "strategy_id": "alpha_xauusd_94ad53",
       "file_name": "alpha_xauusd_94ad53.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "XAUUSD"
+      ],
       "parameters": {},
-      "code_lines": 240
+      "code_lines": 255
     },
     "alpha_xauusd_96d26b": {
       "strategy_id": "alpha_xauusd_96d26b",
       "file_name": "alpha_xauusd_96d26b.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "XAUUSD"
+      ],
       "parameters": {},
-      "code_lines": 176
+      "code_lines": 172
     },
     "alpha_xauusd_a6d004": {
       "strategy_id": "alpha_xauusd_a6d004",
       "file_name": "alpha_xauusd_a6d004.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "XAUUSD"
+      ],
       "parameters": {},
       "code_lines": 152
     },
     "alpha_xauusd_a84e8d": {
       "strategy_id": "alpha_xauusd_a84e8d",
       "file_name": "alpha_xauusd_a84e8d.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "XAUUSD"
+      ],
       "parameters": {},
       "code_lines": 184
     },
     "alpha_xbrusd_e55dbf": {
       "strategy_id": "alpha_xbrusd_e55dbf",
       "file_name": "alpha_xbrusd_e55dbf.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "XBRUSD"
+      ],
       "parameters": {
         "swing_window": 10,
         "atr_period": 14,
@@ -141,35 +175,43 @@
         "htf_limit": 200,
         "ltf_limit": 200
       },
-      "code_lines": 197
+      "code_lines": 211
     },
     "alpha_xtiusd_374fa7": {
       "strategy_id": "alpha_xtiusd_374fa7",
       "file_name": "alpha_xtiusd_374fa7.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "XTIUSD"
+      ],
       "parameters": {},
-      "code_lines": 170
+      "code_lines": 172
     },
     "alpha_xtiusd_83031c": {
       "strategy_id": "alpha_xtiusd_83031c",
       "file_name": "alpha_xtiusd_83031c.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "XTIUSD"
+      ],
       "parameters": {},
-      "code_lines": 196
+      "code_lines": 190
     },
     "alpha_xtiusd_f30ff5": {
       "strategy_id": "alpha_xtiusd_f30ff5",
       "file_name": "alpha_xtiusd_f30ff5.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "XTIUSD"
+      ],
       "parameters": {},
       "code_lines": 180
     },
     "alpha_xtiusd_fd5506": {
       "strategy_id": "alpha_xtiusd_fd5506",
       "file_name": "alpha_xtiusd_fd5506.py",
-      "applicable_symbols": [],
+      "applicable_symbols": [
+        "XTIUSD"
+      ],
       "parameters": {},
-      "code_lines": 200
+      "code_lines": 203
     }
   }
 }

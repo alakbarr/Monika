@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import math
 from typing import Any, Dict, Optional
@@ -34,7 +35,9 @@ class XAUUSDATRExhaustionStrategy(EdgeStrategy):
         self.rsi_period: int = int(self.settings.get("rsi_period", 14))
         self.min_history_required: int = max(self.atr_period, self.ma_period, self.rsi_period) + 10
 
-    async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:
+    async def evaluate(
+        self, session: AsyncSession, symbol: str, settings: Dict[str, Any], as_of: Optional[datetime] = None
+    ) -> EdgeSignal:
         if symbol not in self.applicable_symbols:
             return EdgeSignal(
                 strategy_id=self.strategy_id,
@@ -46,7 +49,9 @@ class XAUUSDATRExhaustionStrategy(EdgeStrategy):
                 tags=["unsupported_symbol"],
             )
 
-        candles = await self.get_historical_candles(session=session, symbol=symbol, timeframe="H1", limit=100)
+        candles = await self.get_historical_candles(
+            session=session, symbol=symbol, timeframe="H1", limit=100, as_of=as_of
+        )
         if not candles or len(candles) < self.min_history_required:
             return EdgeSignal(
                 strategy_id=self.strategy_id,

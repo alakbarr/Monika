@@ -86,24 +86,22 @@ class SynthesizedStrategy_alpha_eurusd_8060ed(EdgeStrategy):
 
             if buy_trigger:
                 direction = "buy"
-                confidence = float(
-                    np.clip(0.6 + (current_volume / current_vol_ma - volume_trigger_threshold) * 0.1, 0.6, 0.95)
-                )
-                rationale = f"Bullish dynamic Donchian breakout above {channel_high:.5f} with volume expansion ratio {(current_volume / current_vol_ma):.2f}."
+                vol_ratio = (current_volume / current_vol_ma) if current_vol_ma > 0 else 1.0
+                confidence = float(np.clip(0.6 + (vol_ratio - volume_trigger_threshold) * 0.1, 0.6, 0.95))
+                rationale = f"Bullish dynamic Donchian breakout above {channel_high:.5f} with volume expansion ratio {vol_ratio:.2f}."
                 tags = ["bullish", "breakout", "volume_expansion"]
             elif sell_trigger:
                 direction = "sell"
-                confidence = float(
-                    np.clip(0.6 + (current_volume / current_vol_ma - volume_trigger_threshold) * 0.1, 0.6, 0.95)
-                )
-                rationale = f"Bearish dynamic Donchian breakout below {channel_low:.5f} with volume expansion ratio {(current_volume / current_vol_ma):.2f}."
+                vol_ratio = (current_volume / current_vol_ma) if current_vol_ma > 0 else 1.0
+                confidence = float(np.clip(0.6 + (vol_ratio - volume_trigger_threshold) * 0.1, 0.6, 0.95))
+                rationale = f"Bearish dynamic Donchian breakout below {channel_low:.5f} with volume expansion ratio {vol_ratio:.2f}."
                 tags = ["bearish", "breakout", "volume_expansion"]
 
             return EdgeSignal(
                 strategy_id=self.strategy_id,
                 symbol=symbol,
                 direction=direction,
-                valid=True,
+                valid=bool(direction is not None and confidence >= 0.50),
                 confidence=confidence,
                 rationale=rationale,
                 tags=tags,

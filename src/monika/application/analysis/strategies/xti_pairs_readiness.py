@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -22,12 +23,12 @@ class XTIPairsReadiness(EdgeStrategy):
     compatible_regimes = {"RANGE", "WEAK_TREND", "VOLATILE_CHOP"}
     factor_family = "stat_arb"
 
-    async def evaluate(self, session, symbol, settings) -> EdgeSignal:
+    async def evaluate(self, session, symbol, settings, as_of: Optional[datetime] = None) -> EdgeSignal:
+        now = as_of or clock.now()
         cfg = settings.get("trading", {}).get("edge_strategy", {}).get("xti_pairs_readiness", {})
         if not cfg.get("enabled", False):
             return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale="strategy disabled in settings")
 
-        now = clock.now()
         brent_symbol = cfg.get("brent_symbol", BRENT_MT5_SYMBOL)
         lookback_bars = int(cfg.get("lookback_bars", 60))
         z_entry = float(cfg.get("z_entry_threshold", 2.0))
@@ -197,25 +198,25 @@ class XTIPairsReadiness(EdgeStrategy):
         except Exception as tfm_err:
             logger.debug(f"TimesFM check failed in xti_pairs (non-fatal): {tfm_err}")
 
-        # Calculate spread-based SL/TP for both legs
+        # Calculate spread-based SL/TP for both legs (with minimum distance floor to prevent SL == Entry)
+        min_sl_dist = max(0.50, float(std_spread) * 0.5)
         if direction == "buy":  # WTI undervalued, spread too wide
             # TP: spread narrows toward mean → WTI rises, Brent falls (or both converge)
-            tp_spread_change = spread - (mean_spread + z_tp * std_spread)
-            sl_spread_change = (mean_spread + z_sl * std_spread) - spread
-            # Split change 50/50 between legs
-            wti_tp = last_xti + tp_spread_change / 2
-            wti_sl = last_xti - abs(sl_spread_change) / 2
-            brn_tp = brent - tp_spread_change / 2
-            brn_sl = brent + abs(sl_spread_change) / 2
+            tp_spread_change = max(min_sl_dist * 1.5, abs(spread - (mean_spread + z_tp * std_spread)) / 2)
+            sl_spread_change = max(min_sl_dist, abs((mean_spread + z_sl * std_spread) - spread) / 2)
+            wti_tp = round(last_xti + tp_spread_change, 2)
+            wti_sl = round(last_xti - sl_spread_change, 2)
+            brn_tp = round(brent - tp_spread_change, 2)
+            brn_sl = round(brent + sl_spread_change, 2)
             brn_direction = "sell"
         else:  # WTI overvalued, spread too tight
             # TP: spread widens toward mean → Brent rises, WTI falls (or both converge)
-            tp_spread_change = (mean_spread - z_tp * std_spread) - spread
-            sl_spread_change = spread - (mean_spread - z_sl * std_spread)
-            wti_tp = last_xti - tp_spread_change / 2
-            wti_sl = last_xti + abs(sl_spread_change) / 2
-            brn_tp = brent + tp_spread_change / 2
-            brn_sl = brent - abs(sl_spread_change) / 2
+            tp_spread_change = max(min_sl_dist * 1.5, abs((mean_spread - z_tp * std_spread) - spread) / 2)
+            sl_spread_change = max(min_sl_dist, abs(spread - (mean_spread - z_sl * std_spread)) / 2)
+            wti_tp = round(last_xti - tp_spread_change, 2)
+            wti_sl = round(last_xti + sl_spread_change, 2)
+            brn_tp = round(brent + tp_spread_change, 2)
+            brn_sl = round(brent - sl_spread_change, 2)
             brn_direction = "buy"
 
         # Dollar-neutral sizing multiplier for the hedge leg

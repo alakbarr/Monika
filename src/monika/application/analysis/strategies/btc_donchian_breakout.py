@@ -1,4 +1,6 @@
+from datetime import datetime
 import statistics
+from typing import Optional
 
 from sqlalchemy import select
 
@@ -15,8 +17,8 @@ class BTCDonchianBreakout(EdgeStrategy):
     compatible_regimes = {"TREND", "STRONG_TREND", "EXPANDING_FAST"}
     factor_family = "breakout"
 
-    async def evaluate(self, session, symbol, settings) -> EdgeSignal:
-        now = clock.now()
+    async def evaluate(self, session, symbol, settings, as_of: Optional[datetime] = None) -> EdgeSignal:
+        now = as_of or clock.now()
         n = int(self.cfg.get("donchian_period", 20))
         bars = (
             (

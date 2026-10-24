@@ -188,7 +188,7 @@ class SynthesizedStrategy_alpha_eurusd_6d622a(EdgeStrategy):
                 strategy_id=self.strategy_id,
                 symbol=symbol,
                 direction=direction,
-                valid=True,
+                valid=bool(direction is not None and confidence >= 0.50),
                 confidence=confidence,
                 rationale=rationale,
                 tags=tags,
