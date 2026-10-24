@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from collections import deque
 from typing import Any, Callable, Dict, List, Optional
 
 import httpx
@@ -35,7 +36,7 @@ class DiscordPlatformAdapter(BasePlatformAdapter):
         super().__init__(platform_name="discord")
         self.bot_token = bot_token or os.getenv("DISCORD_BOT_TOKEN")
         self.webhook_url = webhook_url or os.getenv("DISCORD_WEBHOOK_URL")
-        self.sent_messages: List[Dict[str, Any]] = []
+        self.sent_messages: deque[Dict[str, Any]] = deque(maxlen=100)
         self._http_client: Optional[httpx.AsyncClient] = None
 
     async def start(self) -> None:

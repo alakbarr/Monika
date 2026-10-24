@@ -120,6 +120,7 @@ class TelegramBot(
         self._last_send_global: float = 0.0
         self._last_send_per_chat: dict[int, float] = {}
         self._offline_queue_file: str = os.path.join("data", "telegram_offline_queue.jsonl")
+        self._background_tasks: set[asyncio.Task[Any]] = set()
 
         if not self.token or self.token.startswith("your_"):
             logger.warning("TELEGRAM_BOT_TOKEN not set — bot will not connect")
@@ -404,7 +405,7 @@ class TelegramBot(
                 if not is_critical:
                     await self._outbound_queue.put(item)
             except Exception as send_err:
-                if parse_mode == ParseMode.HTML and "can't parse entities" in str(send_err).lower():
+                if "can't parse entities" in str(send_err).lower() or "parsing entity" in str(send_err).lower():
                     try:
                         if self._app and self._app.bot and chat_id is not None:
                             await self._app.bot.send_message(
@@ -484,14 +485,25 @@ class TelegramBot(
     ) -> None:
         """Mengirim pesan notifikasi ke admin atau chat spesifik melalui outbound queue."""
         target_chat_id = chat_id or self.admin_chat_id
+        critical_alert = is_critical or any(
+            k in text for k in ("RiskGate", "KILL", "DARURAT", "EMERGENCY", "Breach", "Liquidation", "DRAWDOW")
+        )
         if not self._app or not target_chat_id or not self._is_running:
+            if critical_alert and target_chat_id:
+                self._save_to_offline_buffer(
+                    {
+                        "chat_id": target_chat_id,
+                        "text": text,
+                        "parse_mode": parse_mode,
+                        "message_thread_id": message_thread_id,
+                        "is_critical": True,
+                        "enqueued_at": time.time(),
+                    }
+                )
             return
 
         is_html = parse_mode == ParseMode.HTML
         chunks = self._chunk_text(text, max_len=4000, sanitize_format=False, is_html=is_html)
-        critical_alert = is_critical or any(
-            k in text for k in ("RiskGate", "KILL", "DARURAT", "EMERGENCY", "Breach", "Liquidation", "DRAWDOW")
-        )
 
         for chunk in chunks:
             if not self._is_running:

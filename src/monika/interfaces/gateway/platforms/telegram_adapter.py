@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections import deque
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from monika.interfaces.gateway.bot_loop_guard import BotLoopGuard
@@ -43,7 +44,7 @@ class TelegramPlatformAdapter(BasePlatformAdapter):
     ):
         super().__init__(platform_name="telegram")
         self.bot_token = bot_token
-        self.sent_messages: List[Dict[str, Any]] = []
+        self.sent_messages: deque[Dict[str, Any]] = deque(maxlen=100)
         self.turn_lease_mgr = turn_lease_manager or TurnLeaseManager()
         self.loop_guard = bot_loop_guard or BotLoopGuard()
         self.debounce_window_s = debounce_window_s

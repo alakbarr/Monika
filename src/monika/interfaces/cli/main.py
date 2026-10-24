@@ -190,7 +190,9 @@ async def _dispatch_cli(args: Any) -> None:
         elif args.command == "plugin":
             from monika.interfaces.cli.plugins import handle_plugin_command
 
-            handle_plugin_command(args)
+            code = handle_plugin_command(args)
+            if code is not None and isinstance(code, int) and code != 0:
+                sys.exit(code)
         elif args.command == "benchmark":
             await _cmd_benchmark(args)
         elif args.command in ("stress-test", "stresstest"):
@@ -210,7 +212,7 @@ async def _dispatch_cli(args: Any) -> None:
                     if code is not None and isinstance(code, int) and code != 0:
                         sys.exit(code)
                     break
-        else:
+        elif args.command in ("run", None, ""):
             # First-run interceptor for daemon execution
             from monika.core.config.env_file_manager import EnvFileManager
 
@@ -240,6 +242,13 @@ async def _dispatch_cli(args: Any) -> None:
 
             print(f"Starting Monika (MT5 Trading Agent) in {getattr(args, 'mode', 'paper').upper()} mode...")
             await _acli_run(args)
+        else:
+            from monika.interfaces.cli.theme import get_console, stamp_err
+
+            console = get_console()
+            console.print(f"\n{stamp_err('COMMAND')} Unrecognized command: '{args.command}'.")
+            console.print("Run 'python -m monika.interfaces.cli.main --help' to see available commands.\n")
+            sys.exit(2)
     finally:
         try:
             await close_db()

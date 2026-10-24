@@ -119,7 +119,16 @@ class AcpServer:
         if method == "initialize":
             self._handle_initialize(req_id, params)
         elif method == "authenticate":
-            self.send_response(req_id, result={"authenticated": True})
+            import os
+            import secrets
+
+            expected_token = os.getenv("DASHBOARD_API_KEY") or os.getenv("ACP_AUTH_TOKEN", "")
+            provided = str(params.get("token") or params.get("api_key") or "")
+            if expected_token:
+                is_auth = secrets.compare_digest(provided, expected_token)
+            else:
+                is_auth = True
+            self.send_response(req_id, result={"authenticated": is_auth})
         elif method == "new_session":
             self._handle_new_session(req_id, params)
         elif method == "load_session":

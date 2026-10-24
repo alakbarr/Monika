@@ -131,6 +131,7 @@ class TradingDashboard(
         self._start_time = time.time()
         self._seen_activity_ids: Set[Any] = set()
         self._seen_analysis_ids: Set[Any] = set()
+        self._background_tasks: Set[asyncio.Task[Any]] = set()
         self._ws_status = "[OFFLINE] Disconnected"
         self._ws_task: Optional[asyncio.Task[Any]] = None
         self._quotes: Dict[str, float] = {}
@@ -173,7 +174,7 @@ class TradingDashboard(
                         yield DataTable(id="positions_table", zebra_stripes=True)
                     with Vertical(id="activity_container"):
                         yield Static("TELEGRAPH DISPATCH & AUDIT LOG", classes="panel_title")
-                        yield RichLog(id="activity_log", wrap=True, highlight=True, markup=True)
+                        yield RichLog(id="activity_log", wrap=True, highlight=True, markup=True, max_lines=1000)
             with TabPane("Analysis", id="tab_analysis"):
                 with Horizontal(id="analysis_horizontal"):
                     with Vertical(id="analysis_container"):
@@ -181,7 +182,7 @@ class TradingDashboard(
                         yield AnalysisCycleTree(id="cycle_tree")
                     with Vertical(id="analysis_log_container"):
                         yield Static("ANALYSIS PIPELINE & ARBITRATION AUDIT", classes="panel_title")
-                        yield RichLog(id="analysis_detail_log", wrap=True, highlight=True, markup=True)
+                        yield RichLog(id="analysis_detail_log", wrap=True, highlight=True, markup=True, max_lines=1000)
             with TabPane("Signals", id="tab_signals"):
                 with Vertical(id="signals_container"):
                     yield Static("REAL-TIME MT5 SIGNALS & REASONING AUDIT", classes="panel_title")
@@ -223,7 +224,7 @@ class TradingDashboard(
             with TabPane("Chat", id="tab_chat"):
                 with Vertical(id="chat_tab_container"):
                     yield Static("INTERACTIVE DESK CONSOLE (Press 'c' for full screen)", classes="panel_title")
-                    yield RichLog(id="inline_chat_log", wrap=True, highlight=True, markup=True)
+                    yield RichLog(id="inline_chat_log", wrap=True, highlight=True, markup=True, max_lines=1000)
         yield Input(
             id="cmd_input",
             placeholder="Commands: [s]tatus [p]ause [res]ume [k]ill [c]hat [r]efresh [plugin] [config] [theme] [steer] [queue] [help] [q]uit",

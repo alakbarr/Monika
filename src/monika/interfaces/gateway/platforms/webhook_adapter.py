@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections import deque
 from typing import Any, Callable, Dict, Optional
 
 from monika.interfaces.gateway.platform_base import BasePlatformAdapter
@@ -26,7 +27,7 @@ class WebhookPlatformAdapter(BasePlatformAdapter):
 
     def __init__(self, platform_name: str = "webhook"):
         super().__init__(platform_name=platform_name)
-        self.sent_messages: list[Dict[str, Any]] = []
+        self.sent_messages: deque[Dict[str, Any]] = deque(maxlen=100)
 
     async def start(self) -> None:
         self.is_connected = True

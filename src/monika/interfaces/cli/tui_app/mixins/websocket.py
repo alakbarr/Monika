@@ -52,7 +52,7 @@ class WebSocketMixin(_TuiMixinBase):
                             elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
                                 break
             except asyncio.CancelledError:
-                break
+                raise
             except Exception as e:
                 logger.debug(f"[TUI WS] Connection error: {e}")
                 self._ws_status = "[ERROR] Offline (Polling)"

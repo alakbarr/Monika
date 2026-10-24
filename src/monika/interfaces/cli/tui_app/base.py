@@ -27,6 +27,7 @@ if TYPE_CHECKING:
         _start_time: float
         _seen_activity_ids: Set[Any]
         _seen_analysis_ids: Set[Any]
+        _background_tasks: Set[asyncio.Task[Any]]
         _ws_status: str
         _ws_task: Optional[asyncio.Task[Any]]
         _quotes: Dict[str, float]

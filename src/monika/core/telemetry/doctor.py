@@ -657,21 +657,13 @@ class SystemDoctor:
         self.check_database_url_and_offline_integrity(settings)
         self.check_wal_integrity_and_repair()
         if self.live_probes:
-            try:
-                await asyncio.gather(
-                    self.check_database_migrations(),
-                    self.check_price_data_integrity(),
-                    self.check_redis(settings),
-                    self.check_startup_checker_suite(settings),
-                    return_exceptions=True,
-                )
-            finally:
-                try:
-                    from monika.infrastructure.database.db import close_db
-
-                    await close_db()
-                except Exception:
-                    pass
+            await asyncio.gather(
+                self.check_database_migrations(),
+                self.check_price_data_integrity(),
+                self.check_redis(settings),
+                self.check_startup_checker_suite(settings),
+                return_exceptions=True,
+            )
         return self.diagnostics
 
 

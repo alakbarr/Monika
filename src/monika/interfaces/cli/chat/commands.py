@@ -633,7 +633,7 @@ class ChatCommandRouter:
             return
 
         if target.lower() == "all":
-            ok, msg = await self._post_api("/api/actions/close-batch", {"reason": "Manual close all from CLI"})
+            ok, msg = await self._post_api("/api/v1/actions/close-batch", {"reason": "Manual close all from CLI"})
             if ok:
                 self.renderer.render_notice("All active positions queued for closure.", level="success")
             else:
@@ -641,7 +641,7 @@ class ChatCommandRouter:
         elif target.isdigit():
             ticket = int(target)
             ok, msg = await self._post_api(
-                "/api/actions/close-position", {"ticket": ticket, "reason": "Manual close from CLI"}
+                "/api/v1/actions/close-position", {"ticket": ticket, "reason": "Manual close from CLI"}
             )
             if ok:
                 self.renderer.render_notice(f"Position ticket #{ticket} closed successfully.", level="success")
@@ -649,7 +649,7 @@ class ChatCommandRouter:
                 self.renderer.render_notice(f"Failed to close ticket #{ticket}: {msg}", level="error")
         else:
             symbol = target.upper()
-            ok, msg = await self._post_api(f"/api/actions/kill-symbol/{symbol}", {})
+            ok, msg = await self._post_api(f"/api/v1/actions/kill-symbol/{symbol}", {})
             if ok:
                 self.renderer.render_notice(f"All positions for {symbol} liquidated.", level="success")
             else:
@@ -659,14 +659,14 @@ class ChatCommandRouter:
         """Apply breakeven stop loss for ticket or all profitable positions."""
         target = arg.strip()
         if not target or target.lower() == "all":
-            ok, msg = await self._post_api("/api/actions/bulk-breakeven", {"only_profit": True})
+            ok, msg = await self._post_api("/api/v1/actions/bulk-breakeven", {"only_profit": True})
             if ok:
                 self.renderer.render_notice("Bulk breakeven applied to all profitable positions.", level="success")
             else:
                 self.renderer.render_notice(f"Bulk breakeven failed: {msg}", level="error")
         elif target.isdigit():
             ticket = int(target)
-            ok, msg = await self._post_api(f"/api/positions/{ticket}/breakeven", {})
+            ok, msg = await self._post_api(f"/api/v1/positions/{ticket}/breakeven", {})
             if ok:
                 self.renderer.render_notice(f"Stop loss moved to breakeven for ticket #{ticket}.", level="success")
             else:
@@ -676,7 +676,7 @@ class ChatCommandRouter:
 
     async def _handle_unsuspend_command(self) -> None:
         """Resume trading operations and clear emergency kill/pause flags."""
-        ok, msg = await self._post_api("/api/actions/resume", {})
+        ok, msg = await self._post_api("/api/v1/actions/resume", {})
         if ok:
             self.renderer.render_notice("Trading desk resumed. Emergency pause/kill flags cleared.", level="success")
         else:
@@ -688,7 +688,7 @@ class ChatCommandRouter:
         payload: Dict[str, Any] = {"force": True, "context": "Triggered via CLI /cycle"}
         if symbol:
             payload["symbol"] = symbol
-        ok, msg = await self._post_api("/api/actions/trigger-cycle", payload)
+        ok, msg = await self._post_api("/api/v1/actions/trigger-cycle", payload)
         if ok:
             sym_desc = f" for {symbol}" if symbol else ""
             self.renderer.render_notice(f"Analysis & trading cycle triggered{sym_desc}.", level="success")

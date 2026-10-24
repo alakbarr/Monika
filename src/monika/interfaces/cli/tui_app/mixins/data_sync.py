@@ -37,7 +37,10 @@ class DataSyncMixin(_TuiMixinBase):
             try:
                 loop = asyncio.get_running_loop()
                 if not loop.is_closed():
-                    asyncio.create_task(self.refresh_data())
+                    task = asyncio.create_task(self.refresh_data())
+                    if hasattr(self, "_background_tasks"):
+                        self._background_tasks.add(task)
+                        task.add_done_callback(self._background_tasks.discard)
             except RuntimeError:
                 pass
 
@@ -440,6 +443,8 @@ class DataSyncMixin(_TuiMixinBase):
         for act in activities:
             act_id = act.get("id") or act.get("timestamp") or str(act)
             if act_id not in self._seen_activity_ids:
+                if len(self._seen_activity_ids) >= 2000:
+                    self._seen_activity_ids = set(list(self._seen_activity_ids)[-1000:])
                 self._seen_activity_ids.add(act_id)
                 ts_str = act.get("timestamp", "")
                 if ts_str and "T" in ts_str:

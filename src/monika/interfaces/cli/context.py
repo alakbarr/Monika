@@ -108,7 +108,8 @@ def spawn_daemon_background(mode: str = "paper", config_path: Optional[str] = No
     """Spawn the Monika trading daemon as a persistent background process."""
     cmd = [sys.executable, "-m", "monika.interfaces.cli.main", "run", "--mode", mode]
     if mode == "live":
-        cmd.append("--confirm-live")
+        # Fail-closed: Never auto-confirm live mode in background spawn
+        pass
     if config_path:
         cmd.extend(["--config", config_path])
 
@@ -171,6 +172,12 @@ def ensure_daemon_running(args: Any, console: Any = None) -> bool:
 
     mode = getattr(args, "mode", "paper")
     cfg_path = getattr(args, "config", None)
+    if mode == "live":
+        console.print(f"{stamp_err('SAFETY')} Monika daemon cannot be auto-spawned in LIVE trading mode.")
+        console.print(
+            f"[{MUTED}]Please run explicitly with confirmation: python -m monika.interfaces.cli.main run --mode live[/]\n"
+        )
+        return False
 
     console.print(f"{stamp_info('DAEMON')} Monika trading daemon is not running.")
     console.print(f"[{MUTED}]Starting Monika daemon in background (mode: {mode.upper()})...[/]")

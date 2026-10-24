@@ -208,6 +208,7 @@ async def _cmd_stress_test(args: Any) -> None:
         console.print(
             f"\n[{BEAR_LOSS}][FAIL] VULNERABILITY DETECTED: {res['total_tested'] - res['passed_count']} scenarios passed through filters![/]\n"
         )
+        sys.exit(1)
 
 
 async def _cmd_backup(args: Any) -> None:

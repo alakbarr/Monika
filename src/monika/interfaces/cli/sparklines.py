@@ -106,7 +106,14 @@ def bar_gauge(
         (bar_string, color_hex) tuple.
     """
     if colors is None:
-        if theme is not None and hasattr(theme, "green") and hasattr(theme, "yellow") and hasattr(theme, "red"):
+        if (
+            theme is not None
+            and hasattr(theme, "gauge_ok")
+            and hasattr(theme, "gauge_warn")
+            and hasattr(theme, "gauge_critical")
+        ):
+            colors = (theme.gauge_ok, theme.gauge_warn, theme.gauge_critical)
+        elif theme is not None and hasattr(theme, "green") and hasattr(theme, "yellow") and hasattr(theme, "red"):
             colors = (theme.green, theme.yellow, theme.red)
         else:
             colors = ("#2D5A27", "#C49A45", "#8B261E")

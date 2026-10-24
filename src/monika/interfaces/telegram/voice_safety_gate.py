@@ -52,7 +52,7 @@ class VoiceSafetyGate:
     """Safely parses voice transcripts and converts trade requests into interactive approval cards."""
 
     @staticmethod
-    def extract_trade_intent(transcript: str) -> VoiceTradeProposal:
+    def extract_trade_intent(transcript: str, strict: bool = False) -> VoiceTradeProposal:
         text = transcript.lower().strip()
 
         # Check action
@@ -133,7 +133,15 @@ class VoiceSafetyGate:
             )
 
         if not lots and action != "CLOSE":
-            lots = 0.01  # Default minimum lot size safe fallback
+            if strict:
+                return VoiceTradeProposal(
+                    is_trade_command=True,
+                    action=action,
+                    symbol=symbol,
+                    raw_transcript=transcript,
+                    error="Volume lot tidak terdeteksi atau tidak valid dari perintah suara. Wajib sebutkan jumlah lot secara eksplisit (contoh: 0.05 lot).",
+                )
+            lots = 0.01  # Safe fallback for non-strict legacy evaluation
 
         return VoiceTradeProposal(
             is_trade_command=True,

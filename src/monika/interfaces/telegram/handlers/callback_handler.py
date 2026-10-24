@@ -57,6 +57,9 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
             return
 
         if data.startswith("closeall:confirm:"):
+            if not self._is_admin(update):
+                await query.answer("[AKSES DITOLAK] Likuidasi portofolio hanya diizinkan untuk Admin.", show_alert=True)
+                return
             nonce = data.split(":", 2)[2]
             stored = getattr(self, "_active_nonces", {}).pop(nonce, None)
 
@@ -79,6 +82,9 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
             return
 
         if data.startswith("unsuspend_all:confirm:"):
+            if not self._is_admin(update):
+                await query.answer("[AKSES DITOLAK] Unsuspend hanya diizinkan untuk Admin.", show_alert=True)
+                return
             nonce = data.split(":", 2)[2]
             stored = getattr(self, "_active_nonces", {}).pop(nonce, None)
 
@@ -98,6 +104,9 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
             return
 
         if data.startswith("override:confirm:"):
+            if not self._is_admin(update):
+                await query.answer("[AKSES DITOLAK] Override risiko hanya diizinkan untuk Admin.", show_alert=True)
+                return
             nonce = data.split(":", 2)[2]
             stored = getattr(self, "_active_nonces", {}).pop(nonce, None)
             if not stored or time.time() > stored.get("expires", 0):
@@ -295,7 +304,10 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
             reason = "Paused via Telegram"
             duration_hours = None
             duration_desc = ""
-            if nonce and hasattr(self, "_active_nonces"):
+            if not nonce or not hasattr(self, "_active_nonces"):
+                await query.edit_message_text("[PERINGATAN] Konfirmasi jeda trading tidak valid atau token absen.")
+                return
+            if True:
                 entry = self._active_nonces.get(nonce)
                 exp = (
                     entry
@@ -330,7 +342,10 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
 
             parts = data.split(":")
             nonce = parts[2] if len(parts) >= 3 else ""
-            if nonce and hasattr(self, "_active_nonces"):
+            if not nonce or not hasattr(self, "_active_nonces"):
+                await query.edit_message_text("[PERINGATAN] Konfirmasi kill switch tidak valid atau token absen.")
+                return
+            if True:
                 entry = self._active_nonces.get(nonce)
                 if not entry:
                     await query.edit_message_text(
@@ -488,6 +503,9 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
             return
 
         if data.startswith("mdl:s:"):
+            if not self._is_admin(update):
+                await query.answer("[AKSES DITOLAK] Penggantian model hanya diizinkan untuk Admin.", show_alert=True)
+                return
             parts = data.split(":", 3)
             role = parts[2]
             model_name = parts[3]
@@ -501,6 +519,9 @@ class TelegramCallbackHandlerMixin(_TelegramBotMixinBase):
             return
 
         if data == "mdl:reset_all":
+            if not self._is_admin(update):
+                await query.answer("[AKSES DITOLAK] Reset model hanya diizinkan untuk Admin.", show_alert=True)
+                return
             from monika.infrastructure.providers.runtime_model_registry import RuntimeModelRegistry
 
             RuntimeModelRegistry.get_instance().clear_overrides()

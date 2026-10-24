@@ -177,7 +177,7 @@ class UpgradeSubcommand(Subcommand):
         # ── 2. Dashboard Frontend (Node.js & npm install) ──
         console.print(f"\n{stamp_info('DASHBOARD')} [bold {BRASS}]Phase 2: React 19 Web Dashboard[/]")
         skip_npm = getattr(args, "skip_npm", False)
-        frontend_dir = os.path.join(base_dir, "logging_observability", "dashboard", "frontend")
+        frontend_dir = os.path.join(base_dir, "frontend")
         node_bin = shutil.which("node")
         npm_bin = shutil.which("npm")
 

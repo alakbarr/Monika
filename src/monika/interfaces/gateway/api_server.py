@@ -214,11 +214,8 @@ async def execute_query(session_id: str, user_text: str, metadata: Dict[str, Any
             reply += f"\n\n[Action Proposed]: {action_desc}"
         return reply
     except Exception as e:
-        logger.warning(f"[ApiServer] Fallback to system status response (ChatAgent error: {e})")
-        return (
-            f"Monika Trading Intelligence: Processed query '{user_text[:60]}'. "
-            f"Two-Plane Fortress invariants active. All quantitative parameters nominal."
-        )
+        logger.warning(f"[ApiServer] ChatAgent error for query '{user_text[:60]}': {e}")
+        return f"Monika Trading Intelligence: Error processing query '{user_text[:60]}': {e}"
 
 
 @gateway_router.post("/v1/chat/completions")
@@ -327,6 +324,8 @@ async def tradingview_webhook(request: Request):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to read request body: {e}")
 
+    import secrets
+
     expected_passphrase = os.getenv("TRADINGVIEW_PASSPHRASE", "").strip()
 
     try:
@@ -336,7 +335,7 @@ async def tradingview_webhook(request: Request):
         raise HTTPException(status_code=400, detail=str(val_err))
     if expected_passphrase:
         provided = normalized.get("passphrase") or request.headers.get("X-Passphrase", "")
-        if provided != expected_passphrase:
+        if not secrets.compare_digest(provided, expected_passphrase):
             logger.warning("[ApiServer] TradingView webhook rejected: invalid passphrase.")
             raise HTTPException(status_code=403, detail="Forbidden: Invalid webhook passphrase.")
 

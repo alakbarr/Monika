@@ -148,9 +148,18 @@ class WebhookIngressRouter:
     _instance: Optional["WebhookIngressRouter"] = None
 
     @classmethod
-    def get_instance(cls, enforce_signature: bool = False, enforce_timestamp: bool = False) -> "WebhookIngressRouter":
+    def get_instance(
+        cls,
+        verifier: Optional[WebhookSignatureVerifier] = None,
+        enforce_signature: bool = False,
+        enforce_timestamp: bool = False,
+    ) -> "WebhookIngressRouter":
         if cls._instance is None:
-            cls._instance = cls(enforce_signature=enforce_signature, enforce_timestamp=enforce_timestamp)
+            cls._instance = cls(
+                verifier=verifier,
+                enforce_signature=enforce_signature,
+                enforce_timestamp=enforce_timestamp,
+            )
         return cls._instance
 
     @classmethod
@@ -247,7 +256,7 @@ class WebhookIngressRouter:
             norm_headers.get("x-nonce")
             or norm_headers.get("x-delivery-id")
             or norm_headers.get("x-request-id")
-            or hashlib.sha256(raw_body + str(round(current_time, 1)).encode()).hexdigest()
+            or hashlib.sha256(raw_body + norm_headers.get("x-timestamp", "").encode()).hexdigest()
         )
         is_fresh = await self._check_and_record_nonce(nonce, current_time)
         if not is_fresh:
@@ -368,14 +377,16 @@ def normalize_tradingview_payload(raw_data: Union[dict, str, bytes]) -> dict:
         return default
 
     # 1. Symbol extraction & normalization
-    raw_symbol = str(_get_val("ticker", "symbol", "pair", "instrument", default="EURUSD")).strip()
+    raw_symbol = str(_get_val("ticker", "symbol", "pair", "instrument", default="")).strip()
+    if not raw_symbol:
+        raise ValueError("Missing ticker/symbol in webhook alert payload.")
     if ":" in raw_symbol:
         # Strip exchange prefix: 'OANDA:EURUSD' -> 'EURUSD'
         raw_symbol = raw_symbol.split(":", 1)[1]
     symbol = raw_symbol.upper()
 
     # 2. Direction normalization
-    raw_dir = str(_get_val("action", "order", "side", "signal", "direction", default="BUY")).strip().lower()
+    raw_dir = str(_get_val("action", "order", "side", "signal", "direction", default="")).strip().lower()
     if any(c in raw_dir for c in ["close", "exit", "flat"]):
         direction = "CLOSE"
         event_type = "close_signal"
@@ -390,14 +401,20 @@ def normalize_tradingview_payload(raw_data: Union[dict, str, bytes]) -> dict:
             f"Unknown alert action '{raw_dir}'. Rejecting unverified action under Mechanical Fortress Principle."
         )
 
-    # 3. Volume normalization
-    raw_vol = _get_val("volume", "contracts", "lots", "qty", "amount", "order_contracts", default=0.01)
-    try:
-        volume = float(raw_vol)
+    # 3. Volume normalization (Fail-Closed)
+    raw_vol = _get_val("volume", "contracts", "lots", "qty", "amount", "order_contracts", default=None)
+    if raw_vol is not None:
+        try:
+            volume = float(raw_vol)
+        except (ValueError, TypeError) as val_err:
+            raise ValueError(f"Invalid volume in alert payload: {raw_vol}") from val_err
         if volume <= 0:
+            raise ValueError("Volume order harus berupa angka positif.")
+    else:
+        if direction != "CLOSE":
             volume = 0.01
-    except ValueError, TypeError:
-        volume = 0.01
+        else:
+            volume = None
 
     # 4. Price normalization
     raw_price = _get_val("price", "entry_price", "close", default=None)
@@ -453,4 +470,9 @@ def normalize_tradingview_payload(raw_data: Union[dict, str, bytes]) -> dict:
 
 def get_webhook_router() -> WebhookIngressRouter:
     """Singleton getter for the global WebhookIngressRouter."""
-    return WebhookIngressRouter.get_instance(enforce_signature=False, enforce_timestamp=False)
+    import os
+
+    secret = os.getenv("WEBHOOK_SECRET") or os.getenv("GATEWAY_WEBHOOK_SECRET")
+    verifier = WebhookSignatureVerifier(primary_secret=secret) if secret else None
+    enforce = bool(secret)
+    return WebhookIngressRouter.get_instance(verifier=verifier, enforce_signature=enforce, enforce_timestamp=enforce)

@@ -14221,7 +14221,7 @@
     - `verify_signature(payload: bytes, signature_header: str) -> bool` - *Constant-time verification of HMAC-SHA256 signature.*
     - `verify_timestamp(timestamp_str: str, now: Optional[float]) -> Tuple[bool, str]` - *Validates timestamp against allowed drift window to prevent replay attacks.*
   - `class WebhookIngressRouter`: High-reliability webhook ingress processor with idempotency cache and async dispatch.
-    - `get_instance(enforce_signature: bool, enforce_timestamp: bool) -> 'WebhookIngressRouter'`
+    - `get_instance(verifier: Optional[WebhookSignatureVerifier], enforce_signature: bool, enforce_timestamp: bool) -> 'WebhookIngressRouter'`
     - `reset() -> None`
     - `__init__(verifier: Optional[WebhookSignatureVerifier], enforce_signature: bool, enforce_timestamp: bool)`
     - `register_handler(event_type: str, handler: WebhookHandler) -> None` - *Registers an asynchronous event handler for a given event type.*
@@ -14384,7 +14384,7 @@
 - **Classes**:
   - `class VoiceTradeProposal`
   - `class VoiceSafetyGate`: Safely parses voice transcripts and converts trade requests into interactive approval cards.
-    - `extract_trade_intent(transcript: str) -> VoiceTradeProposal`
+    - `extract_trade_intent(transcript: str, strict: bool) -> VoiceTradeProposal`
 
 ### Folder: `src/monika/interfaces/telegram/formatters` <a id="folder-srcmonikainterfacestelegramformatters"></a>
 

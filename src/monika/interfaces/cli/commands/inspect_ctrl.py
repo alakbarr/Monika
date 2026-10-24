@@ -220,7 +220,11 @@ async def _cmd_logs(args: Any) -> None:
                             "description": item.description,
                         }
                     )
-    except asyncio.CancelledError, KeyboardInterrupt:
+    except KeyboardInterrupt:
+        console.print(f"\n[{MUTED}]Log stream terminated by operator.[/]")
+    except asyncio.CancelledError:
+        console.print(f"\n[{MUTED}]Log stream terminated by operator.[/]")
+        raise
         console.print(f"\n[{MUTED}]Log stream terminated by operator.[/]")
 
 
@@ -234,7 +238,7 @@ async def _cmd_doctor(args: Any) -> None:
     )
     await doc.run_diagnostics()
     code = doc.render_report()
-    if code != 0 and not getattr(args, "fix", False):
+    if code != 0:
         sys.exit(code)
 
 

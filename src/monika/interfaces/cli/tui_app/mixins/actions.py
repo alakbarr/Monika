@@ -34,7 +34,9 @@ class ActionsMixin(_TuiMixinBase):
             try:
                 timeout = aiohttp.ClientTimeout(total=2.0)
                 async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
-                    res = await session.post(f"{self.api_url}/api/actions/steer", json={"message": msg, "mode": mode})
+                    res = await session.post(
+                        f"{self.api_url}/api/v1/actions/steer", json={"message": msg, "mode": mode}
+                    )
                     if res.status == 200:
                         dispatched = True
             except Exception:
@@ -104,7 +106,7 @@ class ActionsMixin(_TuiMixinBase):
             port = settings.get("dashboard", {}).get("port", 8000)
             async with aiohttp.ClientSession() as http_sess:
                 await http_sess.post(
-                    f"http://127.0.0.1:{port}/api/actions/pause",
+                    f"http://127.0.0.1:{port}/api/v1/actions/pause",
                     timeout=aiohttp.ClientTimeout(total=1.0),
                 )
         except Exception:
@@ -139,7 +141,7 @@ class ActionsMixin(_TuiMixinBase):
             port = settings.get("dashboard", {}).get("port", 8000)
             async with aiohttp.ClientSession() as http_sess:
                 await http_sess.post(
-                    f"http://127.0.0.1:{port}/api/actions/kill",
+                    f"http://127.0.0.1:{port}/api/v1/kill",
                     timeout=aiohttp.ClientTimeout(total=1.0),
                 )
         except Exception:
@@ -281,7 +283,7 @@ class ActionsMixin(_TuiMixinBase):
                 port = settings.get("dashboard", {}).get("port", 8000)
                 async with aiohttp.ClientSession() as http_sess:
                     await http_sess.post(
-                        f"http://127.0.0.1:{port}/api/actions/resume",
+                        f"http://127.0.0.1:{port}/api/v1/actions/resume",
                         timeout=aiohttp.ClientTimeout(total=1.0),
                     )
             except Exception:

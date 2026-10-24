@@ -13,6 +13,7 @@ No new API keys needed — reuses existing GEMINI_API_KEY.
 
 import asyncio
 import base64
+import html
 import logging
 import os
 from typing import Any, Optional
@@ -75,7 +76,7 @@ class VoiceHandler:
             # ── Deterministic Voice Safety Gate ──
             from monika.interfaces.telegram.voice_safety_gate import VoiceSafetyGate
 
-            proposal = VoiceSafetyGate.extract_trade_intent(transcript)
+            proposal = VoiceSafetyGate.extract_trade_intent(transcript, strict=True)
             if proposal.is_trade_command:
                 if proposal.error:
                     if status_msg:
@@ -104,8 +105,9 @@ class VoiceHandler:
                 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
                 from telegram.constants import ParseMode
 
-                sl_str = f" | SL: `{proposal.stop_loss}`" if proposal.stop_loss else ""
-                tp_str = f" | TP: `{proposal.take_profit}`" if proposal.take_profit else ""
+                escaped_transcript = html.escape(transcript)
+                sl_str = f" | SL: <code>{proposal.stop_loss}</code>" if proposal.stop_loss else ""
+                tp_str = f" | TP: <code>{proposal.take_profit}</code>" if proposal.take_profit else ""
                 kb = InlineKeyboardMarkup(
                     [
                         [
@@ -118,16 +120,22 @@ class VoiceHandler:
                     ]
                 )
                 card_text = (
-                    f"*Perintah Suara Terdeteksi*\n"
-                    f'• *Transkrip*: "{transcript}"\n'
-                    f"• *Tindakan*: `{proposal.action}` *{proposal.symbol}*\n"
-                    f"• *Volume*: `{proposal.lots} Lot`{sl_str}{tp_str}\n\n"
-                    f"*Konfirmasi*: Tekan tombol di bawah untuk menyetujui atau membatalkan eksekusi order."
+                    f"<b>Perintah Suara Terdeteksi</b>\n"
+                    f'• <b>Transkrip</b>: <i>"{escaped_transcript}"</i>\n'
+                    f"• <b>Tindakan</b>: <code>{proposal.action}</code> <b>{proposal.symbol}</b>\n"
+                    f"• <b>Volume</b>: <code>{proposal.lots} Lot</code>{sl_str}{tp_str}\n\n"
+                    f"<b>Konfirmasi</b>: Tekan tombol di bawah untuk menyetujui atau membatalkan eksekusi order."
                 )
+                sent_card = None
                 if status_msg:
-                    await status_msg.edit_text(card_text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+                    sent_card = await status_msg.edit_text(card_text, parse_mode=ParseMode.HTML, reply_markup=kb)
                 else:
-                    await update.message.reply_text(card_text, parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+                    sent_card = await update.message.reply_text(card_text, parse_mode=ParseMode.HTML, reply_markup=kb)
+                if self.bot and hasattr(self.bot, "_monitor_pending_expiry") and sent_card:
+                    task = asyncio.create_task(self.bot._monitor_pending_expiry(sent_card, req_id, None, timeout=180.0))
+                    if hasattr(self.bot, "_background_tasks"):
+                        self.bot._background_tasks.add(task)
+                        task.add_done_callback(self.bot._background_tasks.discard)
                 return
 
             # Brief transcription acknowledgment for conversational text
@@ -211,11 +219,18 @@ class VoiceHandler:
                         from monika.interfaces.telegram.command_router import CommandRouter
 
                         keyboard = CommandRouter.build_confirm_keyboard(pending.action_id)
-                        await update.message.reply_text(
+                        sent_msg = await update.message.reply_text(
                             f"*AI Mengusulkan Tindakan:*\n\n{pending.description}\n\n_Berlaku selama 90 detik._",
                             parse_mode=ParseMode.MARKDOWN,
                             reply_markup=keyboard,
                         )
+                        if self.bot and hasattr(self.bot, "_monitor_pending_expiry") and sent_msg:
+                            task = asyncio.create_task(
+                                self.bot._monitor_pending_expiry(sent_msg, pending.action_id, agent, timeout=90.0)
+                            )
+                            if hasattr(self.bot, "_background_tasks"):
+                                self.bot._background_tasks.add(task)
+                                task.add_done_callback(self.bot._background_tasks.discard)
             elif self.bot and hasattr(self.bot, "_handle_chat"):
                 update.message.text = transcript
                 await self.bot._handle_chat(update, context)
