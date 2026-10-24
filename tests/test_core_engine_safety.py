@@ -332,7 +332,7 @@ class TestDeterministicTriggerEngine:
 
         assert res.risk_approved is True
         assert res.executed is True
-        assert res.executed_lots == 0.1
+        assert res.executed_lots == 0.03  # Fortress risk-capped from 0.1
         assert res.decision == "buy"
         assert res.elapsed_ms < 500  # Sub-second execution check
 

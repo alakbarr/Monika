@@ -302,9 +302,10 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
         try:
             from monika.domain.risk.ports import get_default_evidence_store
 
-            strat_id = (
-                getattr(analysis, "source_strategy_id", None) or getattr(analysis, "strategy_id", None) or "general"
-            )
+            strat_id = getattr(analysis, "source_strategy_id", None) or getattr(analysis, "strategy_id", None)
+            if not strat_id or strat_id in ("general", "default"):
+                return True, "Evidence gate: discretionary analysis permitted without quant backtest"
+
             regime = (
                 getattr(analysis, "market_regime_at_analysis", None)
                 or getattr(analysis, "market_regime", "UNKNOWN")

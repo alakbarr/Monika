@@ -171,9 +171,19 @@ def test_modify_position_endpoint():
 
             mock_pos = MagicMock()
             mock_pos.id = 1
+            mock_pos.order_id = "ORD-99999"
             mock_pos.mt5_ticket = 99999
+            mock_pos.symbol = "EURUSD"
+            mock_pos.direction = "buy"
+            mock_pos.status = "open"
+            mock_pos.entry_price = 1.0500
+            mock_pos.volume = 0.1
             mock_pos.sl = 1.0500
             mock_pos.tp = 1.0800
+            mock_pos.pair_group_id = None
+            mock_pos.trailing_override_json = None
+            mock_pos.entry_session = None
+            mock_pos.market_regime = None
 
             mock_res = MagicMock()
             mock_res.scalar_one_or_none.return_value = mock_pos

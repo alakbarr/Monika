@@ -226,6 +226,10 @@ async def test_edge_strategy_runner_ensemble_conflict_suppression():
             "monika.application.scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all",
             AsyncMock(return_value=[sig_buy, sig_sell]),
         ),
+        patch(
+            "monika.application.scheduler.edge_strategy_runner.evaluate_pretrade_gate",
+            AsyncMock(return_value=(True, "ok")),
+        ),
         patch("monika.application.scheduler.edge_strategy_runner.get_session") as mock_get_session,
         patch.object(runner, "_materialize_and_route", AsyncMock()) as mock_route,
     ):
@@ -289,6 +293,10 @@ async def test_edge_strategy_runner_ensemble_concordance_boost():
             patch(
                 "monika.application.scheduler.edge_strategy_runner.StrategyRegistry.evaluate_all",
                 AsyncMock(return_value=[sig_buy1, sig_buy2]),
+            ),
+            patch(
+                "monika.application.scheduler.edge_strategy_runner.evaluate_pretrade_gate",
+                AsyncMock(return_value=(True, "ok")),
             ),
             patch("monika.application.scheduler.edge_strategy_runner.get_session") as mock_get_session,
             patch.object(runner, "_materialize_and_route", AsyncMock()) as mock_route,

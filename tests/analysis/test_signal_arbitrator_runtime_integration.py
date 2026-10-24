@@ -17,7 +17,7 @@ async def test_signal_arbitrator_with_vix_and_regime():
 
     mock_session = create_mock_async_session()
     sig = EdgeSignal(
-        strategy_id="donchian_breakout",
+        strategy_id="tsm_momentum",
         symbol="BTCUSD",
         direction="buy",
         valid=True,
@@ -25,7 +25,7 @@ async def test_signal_arbitrator_with_vix_and_regime():
         entry_price=65000.0,
         stop_loss=64000.0,
         take_profit=68000.0,
-        rationale="Donchian upper channel breakout",
+        rationale="TSM momentum breakout",
     )
 
     llm_decision = {"decision": "sell", "confidence": 0.70, "risk_multiplier": 1.0, "decision_source": "llm_stage2"}
@@ -89,7 +89,7 @@ async def test_signal_arbitrator_single_quant_signal_normal_vix():
     mock_session = create_mock_async_session()
 
     sig = EdgeSignal(
-        strategy_id="donchian_breakout",
+        strategy_id="tsm_momentum",
         symbol="EURUSD",
         direction="buy",
         valid=True,
@@ -107,8 +107,8 @@ async def test_signal_arbitrator_single_quant_signal_normal_vix():
     assert res.decision == "buy"
     assert res.selected_source == "quant"
     assert res.risk_multiplier == 1.0
-    assert res.arbitration_reason == "Quant donchian_breakout single signal approved"
-    assert res.meta.get("strategy_id") == "donchian_breakout"
+    assert res.arbitration_reason == "Quant tsm_momentum single signal approved"
+    assert res.meta.get("strategy_id") == "tsm_momentum"
 
 
 @pytest.mark.asyncio

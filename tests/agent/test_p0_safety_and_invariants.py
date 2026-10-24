@@ -29,9 +29,10 @@ def test_evidence_store_fail_closed_on_empty_store(tmp_path):
     store = StrategyEvidenceStore(tmp_path / "strategy_evidence_store.json")
     assert len(store._store) == 0
 
-    # General baseline allowed
-    ok_gen, _ = store.is_strategy_eligible_to_trade("general")
-    assert ok_gen is True
+    # General baseline without evidence file backing is rejected (fail-closed, Phase 15 FR-3.5)
+    ok_gen, reason_gen = store.is_strategy_eligible_to_trade("general")
+    assert ok_gen is False
+    assert "general" in reason_gen
 
     # Specific strategy ID without verified backtest must be REJECTED (fail-closed)
     ok_strat, reason = store.is_strategy_eligible_to_trade("custom_breakout_alpha")
