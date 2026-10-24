@@ -1436,7 +1436,8 @@ class StrategySynthesisScheduler:
                 import subprocess
                 import sys
 
-                res = subprocess.run(
+                res = await asyncio.to_thread(
+                    subprocess.run,
                     [sys.executable, "-m", "ruff", "format", "-"],
                     input=code_str,
                     text=True,

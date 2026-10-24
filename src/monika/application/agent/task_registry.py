@@ -170,7 +170,7 @@ def _extract_task_owner(func: Any) -> Optional[Any]:
                 val = cell.cell_contents
                 if hasattr(val, "_running") or hasattr(val, "is_running") or hasattr(val, "status"):
                     return val
-            except ValueError, Exception:
+            except Exception:
                 continue
     return None
 

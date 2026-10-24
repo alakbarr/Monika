@@ -42,9 +42,15 @@ class PositionGuardian:
     Memeriksa kalender ekonomi untuk event high-impact dan melindungi posisi.
     """
 
-    def __init__(self, settings: dict, execution_service=None):
+    def __init__(
+        self,
+        settings: dict,
+        execution_service=None,
+        recovery_event: Optional[asyncio.Event] = None,
+    ):
         self.settings = settings
         self.execution_service = execution_service
+        self.recovery_event: Optional[asyncio.Event] = recovery_event
         guardian_cfg = settings.get("trading", {}).get("position_guardian", {})
         self.enabled = guardian_cfg.get("enabled", True)
         # Options: "alert_only", "close_before_news"
@@ -519,6 +525,9 @@ class PositionGuardian:
         if not self.enabled:
             return
 
+        if self.recovery_event and not self.recovery_event.is_set():
+            return
+
         symbol = getattr(event, "symbol", "")
         if not symbol:
             return
@@ -536,25 +545,29 @@ class PositionGuardian:
 
         from sqlalchemy import select
 
+        from monika.core.paths import DATA_DIR
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import Position, SystemConfig
 
         try:
             async with get_session() as session:
-                # Fast check for DB emergency kill switch
+                # Fast check for DB and Disk emergency kill switch
+                disk_flag = DATA_DIR / "kill_switch.flag"
+                disk_kill_active = disk_flag.exists()
+
                 cfg_kill = (
                     await session.execute(select(SystemConfig).where(SystemConfig.key == "kill_switch"))
                 ).scalar_one_or_none()
-                kill_active = bool(cfg_kill and str(cfg_kill.value).lower() in ("true", "1", "yes"))
+                kill_active = disk_kill_active or bool(cfg_kill and str(cfg_kill.value).lower() in ("true", "1", "yes"))
                 if kill_active:
                     if not getattr(self, "_kill_switch_triggered", False):
                         self._kill_switch_triggered = True
                         logger.critical(
-                            f"[PositionGuardian][on_tick] Emergency kill switch ACTIVE on tick {sym_clean}! Liquidating."
+                            f"[PositionGuardian][on_tick] Emergency kill switch ACTIVE (disk={disk_kill_active}) on tick {sym_clean}! Liquidating."
                         )
                         if self.execution_service:
                             await self.execution_service.kill_switch(
-                                "Database emergency kill switch triggered via tick"
+                                "Emergency kill switch triggered via tick surveillance"
                             )
                     return
                 else:
@@ -576,10 +589,18 @@ class PositionGuardian:
                 if not positions:
                     return
 
-                # Retry orphan closes immediately
+                # Retry orphan closes with bounded attempts and backoff
+                if not hasattr(self, "_orphan_retries"):
+                    self._orphan_retries = {}
+
                 for pos in positions:
                     if pos.status == "orphan_pending_close" and pos.mt5_ticket:
+                        ticket = pos.mt5_ticket
+                        retries, last_attempt = self._orphan_retries.get(ticket, (0, 0.0))
+                        if retries >= 3 or (now_ts - last_attempt < 5.0):
+                            continue
                         if self.execution_service:
+                            self._orphan_retries[ticket] = (retries + 1, now_ts)
                             res = await self.execution_service.close_position_by_ticket(
                                 pos.mt5_ticket,
                                 requested_by="position_guardian_tick",
@@ -588,6 +609,7 @@ class PositionGuardian:
                             if res and res.get("success"):
                                 pos.status = "closed"
                                 pos.closed_at = clock.now()
+                                self._orphan_retries.pop(ticket, None)
                                 await session.commit()
         except Exception as e:
             logger.debug(f"[PositionGuardian] on_tick error for {sym_clean}: {e}")

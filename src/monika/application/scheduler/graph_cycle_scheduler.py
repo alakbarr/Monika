@@ -1183,7 +1183,10 @@ class GraphCycleScheduler(CycleScheduler):
 
             logger.info(f"=== Graph Analysis Cycle Finished in {elapsed:.1f}s ===")
             for sym in leased_symbols:
-                await lease_mgr.release_lease(sym, holder_id=cycle_holder_id)
+                try:
+                    await lease_mgr.release_lease(sym, holder_id=cycle_holder_id)
+                except Exception as rel_err:
+                    logger.debug(f"Failed releasing lease for {sym}: {rel_err}")
             return final_state.get("summary", summary)
 
     async def _check_system_health_trend(self, session) -> None:

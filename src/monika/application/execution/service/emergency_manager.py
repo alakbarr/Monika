@@ -71,6 +71,16 @@ logger = logging.getLogger("TradingAgent.ExecutionService.EmergencyManager")
 class EmergencyManagerMixin(_ExecutionServiceMixinBase):
     """Mixin untuk penutupan posisi darurat dan kill-switch proteksi modal."""
 
+    def get_ticket_lock(self, ticket: int) -> asyncio.Lock:
+        """Get or create canonical per-ticket mutex lock to synchronize order actions."""
+        if not hasattr(self, "_ticket_locks"):
+            self._ticket_locks = {}
+        if len(self._ticket_locks) >= 500:
+            unlocked = [t for t, lk in self._ticket_locks.items() if not lk.locked()]
+            for t in unlocked[:250]:
+                self._ticket_locks.pop(t, None)
+        return self._ticket_locks.setdefault(ticket, asyncio.Lock())
+
     async def close_position_by_ticket(
         self,
         ticket: int,
@@ -81,16 +91,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
     ) -> dict:
         """Menutup posisi spesifik berdasarkan tiket MT5 (penuh atau sebagian)."""
         close_lots = volume if volume is not None else lots
-        if not hasattr(self, "_ticket_locks"):
-            self._ticket_locks = {}
-
-        # M-2: LRU Eviction of unlocked ticket locks to prevent memory leak
-        if len(self._ticket_locks) >= 500:
-            unlocked = [t for t, lk in self._ticket_locks.items() if not lk.locked()]
-            for t in unlocked[:250]:
-                self._ticket_locks.pop(t, None)
-
-        ticket_lock = self._ticket_locks.setdefault(ticket, asyncio.Lock())
+        ticket_lock = self.get_ticket_lock(ticket)
 
         if ticket_lock.locked():
             logger.warning(
@@ -98,136 +99,147 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
             )
             return {"success": False, "error": f"Close already in progress for ticket {ticket}"}
 
-        async with ticket_lock:
-            # Check DB state first — prevent redundant close if already closed
-            async with get_session() as session:
-                db_pos = (
-                    await session.execute(select(Position).where(Position.mt5_ticket == ticket))
-                ).scalar_one_or_none()
-                if db_pos and db_pos.status == "closed":
-                    logger.info(f"Position {ticket} is already marked closed in DB.")
-                    return {"success": True, "already_closed": True, "ticket": ticket}
-                if db_pos and getattr(db_pos, "is_paper", False):
-                    return await self._close_paper_position(session, db_pos, requested_by, reason, volume=close_lots)
+        if not hasattr(self, "_closing_tickets"):
+            self._closing_tickets = set()
+        self._closing_tickets.add(ticket)
 
-            logger.info(
-                f"Closing position {ticket} (requested_by={requested_by}, reason={reason}, volume={close_lots})"
-            )
-            try:
-                if hasattr(self, "broker_adapter") and self.broker_adapter:
-                    result = await asyncio.wait_for(
-                        self.broker_adapter.close_position(ticket=ticket, lots=close_lots),
-                        timeout=15.0,
-                    )
-                    if result.get("profit") is None and result.get("pnl") is not None:
-                        result["profit"] = result["pnl"]
-                else:
-                    result = await asyncio.wait_for(
-                        self.mt5.close_position(
-                            ticket=ticket,
-                            volume=close_lots,
-                            lots=close_lots,
-                            comment=f"Close:{requested_by}"[:31],
-                        ),
-                        timeout=15.0,
-                    )
-            except TimeoutError, asyncio.TimeoutError:
-                logger.critical(f"Liquidation timed out after 15.0s for ticket {ticket}")
-                result = {"success": False, "error": f"Liquidation timed out after 15.0s for ticket {ticket}"}
-
-            async with get_session() as session:
-                # Update DB position record
-                db_pos = (
-                    await session.execute(select(Position).where(Position.mt5_ticket == ticket))
-                ).scalar_one_or_none()
-
-                if db_pos and result.get("success"):
-                    is_partial = False
-                    if close_lots is not None and db_pos.volume and db_pos.volume > (float(close_lots) + 1e-4):
-                        is_partial = True
-                        db_pos.volume = round(float(db_pos.volume) - float(close_lots), 4)
-                        db_pos.pnl = (db_pos.pnl or 0.0) + (result.get("profit") or 0.0)
-                    else:
-                        db_pos.status = "closed"
-                        db_pos.closed_at = datetime.now(timezone.utc)
-                        db_pos.pnl = (db_pos.pnl or 0.0) + (result.get("profit") or 0.0)
-
-                    # Update risk state
-                    if result.get("profit") is not None:
-                        equity = await self._get_equity()
-                        if asyncio.iscoroutine(equity):
-                            equity = await equity
-                        try:
-                            equity = float(equity) if equity is not None else None
-                        except TypeError, ValueError:
-                            equity = None
-                        if not equity or equity <= 0:
-                            if self.dry_run:
-                                equity = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
-                            else:
-                                equity = None
-                        await self.gate.update_risk_state(
-                            session=session,
-                            pnl_delta=result["profit"],
-                            equity=equity,
+        try:
+            async with ticket_lock:
+                # Check DB state first — prevent redundant close if already closed
+                async with get_session() as session:
+                    db_pos = (
+                        await session.execute(select(Position).where(Position.mt5_ticket == ticket))
+                    ).scalar_one_or_none()
+                    if db_pos and db_pos.status == "closed":
+                        logger.info(f"Position {ticket} is already marked closed in DB.")
+                        return {"success": True, "already_closed": True, "ticket": ticket}
+                    if db_pos and getattr(db_pos, "is_paper", False):
+                        return await self._close_paper_position(
+                            session, db_pos, requested_by, reason, volume=close_lots
                         )
 
-                    if db_pos.analysis_id and not is_partial:
-                        try:
-                            from monika.application.analysis.memory.outcome_linker import OutcomeLinker
+                logger.info(
+                    f"Closing position {ticket} (requested_by={requested_by}, reason={reason}, volume={close_lots})"
+                )
+                try:
+                    if hasattr(self, "broker_adapter") and self.broker_adapter:
+                        result = await asyncio.wait_for(
+                            self.broker_adapter.close_position(ticket=ticket, lots=close_lots),
+                            timeout=15.0,
+                        )
+                        if result.get("profit") is None and result.get("pnl") is not None:
+                            result["profit"] = result["pnl"]
+                    else:
+                        result = await asyncio.wait_for(
+                            self.mt5.close_position(
+                                ticket=ticket,
+                                volume=close_lots,
+                                lots=close_lots,
+                                comment=f"Close:{requested_by}"[:31],
+                            ),
+                            timeout=15.0,
+                        )
+                except TimeoutError, asyncio.TimeoutError:
+                    logger.critical(f"Liquidation timed out after 15.0s for ticket {ticket}")
+                    result = {"success": False, "error": f"Liquidation timed out after 15.0s for ticket {ticket}"}
 
-                            holding_hours = 0.0
-                            c_dt = db_pos.closed_at
-                            o_dt = db_pos.opened_at
-                            if c_dt is not None and o_dt is not None:
-                                c_time = c_dt if c_dt.tzinfo is not None else c_dt.replace(tzinfo=timezone.utc)
-                                o_time = o_dt if o_dt.tzinfo is not None else o_dt.replace(tzinfo=timezone.utc)
-                                holding_hours = max(0.0, (c_time - o_time).total_seconds() / 3600.0)
-                            await OutcomeLinker().process_closed_position(
-                                session,
-                                analysis_id=int(db_pos.analysis_id),
-                                pnl=db_pos.pnl or 0.0,
-                                holding_hours=holding_hours,
-                                exit_reason=reason or "unknown",
-                                defer_reflection=True,
+                async with get_session() as session:
+                    # Update DB position record
+                    db_pos = (
+                        await session.execute(select(Position).where(Position.mt5_ticket == ticket))
+                    ).scalar_one_or_none()
+
+                    if db_pos and result.get("success"):
+                        is_partial = False
+                        if close_lots is not None and db_pos.volume and db_pos.volume > (float(close_lots) + 1e-4):
+                            is_partial = True
+                            db_pos.volume = round(float(db_pos.volume) - float(close_lots), 4)
+                            db_pos.pnl = (db_pos.pnl or 0.0) + (result.get("profit") or 0.0)
+                        else:
+                            db_pos.status = "closed"
+                            db_pos.closed_at = datetime.now(timezone.utc)
+                            db_pos.pnl = (db_pos.pnl or 0.0) + (result.get("profit") or 0.0)
+
+                        # Update risk state
+                        if result.get("profit") is not None:
+                            equity = await self._get_equity()
+                            if asyncio.iscoroutine(equity):
+                                equity = await equity
+                            try:
+                                equity = float(equity) if equity is not None else None
+                            except TypeError, ValueError:
+                                equity = None
+                            if not equity or equity <= 0:
+                                if self.dry_run:
+                                    equity = float(
+                                        self.settings.get("paper_trading", {}).get("initial_balance", 10000.0)
+                                    )
+                                else:
+                                    equity = None
+                            await self.gate.update_risk_state(
+                                session=session,
+                                pnl_delta=result["profit"],
+                                equity=equity,
                             )
-                        except Exception as e:
-                            logger.debug(f"OutcomeLinker failed for real trade (non-fatal): {e}")
 
-                # Log to orders_log
-                session.add(
-                    OrderLog(
-                        action="close"
-                        if not (close_lots and db_pos and db_pos.status != "closed")
-                        else "partial_close",
-                        symbol=db_pos.symbol if db_pos else "UNKNOWN",
-                        params_json=json.dumps({"ticket": ticket, "reason": reason, "volume": close_lots}),
-                        requested_by=requested_by,
-                        approved_by="execution_service",
-                        result=json.dumps(result),
+                        if db_pos.analysis_id and not is_partial:
+                            try:
+                                from monika.application.analysis.memory.outcome_linker import OutcomeLinker
+
+                                holding_hours = 0.0
+                                c_dt = db_pos.closed_at
+                                o_dt = db_pos.opened_at
+                                if c_dt is not None and o_dt is not None:
+                                    c_time = c_dt if c_dt.tzinfo is not None else c_dt.replace(tzinfo=timezone.utc)
+                                    o_time = o_dt if o_dt.tzinfo is not None else o_dt.replace(tzinfo=timezone.utc)
+                                    holding_hours = max(0.0, (c_time - o_time).total_seconds() / 3600.0)
+                                await OutcomeLinker().process_closed_position(
+                                    session,
+                                    analysis_id=int(db_pos.analysis_id),
+                                    pnl=db_pos.pnl or 0.0,
+                                    holding_hours=holding_hours,
+                                    exit_reason=reason or "unknown",
+                                    defer_reflection=True,
+                                )
+                            except Exception as e:
+                                logger.debug(f"OutcomeLinker failed for real trade (non-fatal): {e}")
+
+                    # Log to orders_log
+                    session.add(
+                        OrderLog(
+                            action="close"
+                            if not (close_lots and db_pos and db_pos.status != "closed")
+                            else "partial_close",
+                            symbol=db_pos.symbol if db_pos else "UNKNOWN",
+                            params_json=json.dumps({"ticket": ticket, "reason": reason, "volume": close_lots}),
+                            requested_by=requested_by,
+                            approved_by="execution_service",
+                            result=json.dumps(result),
+                        )
                     )
-                )
 
-                # Log to activity_log
-                session.add(
-                    ActivityLog(
-                        category="trading",
-                        description=(
-                            f"Position {ticket} closed: profit={result.get('profit')} "
-                            f"| reason={reason} | requested_by={requested_by} | volume={close_lots}"
-                        ),
-                        related_id=ticket,
-                        actor="execution_service",
+                    # Log to activity_log
+                    session.add(
+                        ActivityLog(
+                            category="trading",
+                            description=(
+                                f"Position {ticket} closed: profit={result.get('profit')} "
+                                f"| reason={reason} | requested_by={requested_by} | volume={close_lots}"
+                            ),
+                            related_id=ticket,
+                            actor="execution_service",
+                        )
                     )
-                )
-                await session.commit()
+                    await session.commit()
 
-            if result.get("success"):
-                logger.info(f"Position {ticket} closed: profit={result.get('profit')} volume={close_lots}")
-            else:
-                logger.error(f"Close position {ticket} failed: {result.get('error')}")
+                if result.get("success"):
+                    logger.info(f"Position {ticket} closed: profit={result.get('profit')} volume={close_lots}")
+                else:
+                    logger.error(f"Close position {ticket} failed: {result.get('error')}")
 
-            return result
+                return result
+        finally:
+            self._closing_tickets.discard(ticket)
 
     async def _close_paper_position(
         self,

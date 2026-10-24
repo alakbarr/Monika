@@ -12,8 +12,26 @@ from monika.infrastructure.database.models import Position, Order
 @pytest.mark.asyncio
 async def test_portfolio_service_get_open_positions():
     mock_session = create_mock_async_session()
-    mock_pos1 = MagicMock(spec=Position, id=1, symbol="EURUSD", status="open", is_paper=True)
-    mock_pos2 = MagicMock(spec=Position, id=2, symbol="GBPUSD", status="open", is_paper=False)
+    mock_pos1 = MagicMock(
+        spec=Position,
+        id=1,
+        symbol="EURUSD",
+        status="open",
+        is_paper=True,
+        entry_price=1.0850,
+        volume=0.1,
+        direction="buy",
+    )
+    mock_pos2 = MagicMock(
+        spec=Position,
+        id=2,
+        symbol="GBPUSD",
+        status="open",
+        is_paper=False,
+        entry_price=1.2650,
+        volume=0.2,
+        direction="sell",
+    )
 
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [mock_pos1, mock_pos2]

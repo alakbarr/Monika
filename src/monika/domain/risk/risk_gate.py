@@ -278,6 +278,22 @@ class RiskGate(
         effective_is_paper = (
             is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)
         )
+
+        if not is_backtest:
+            from monika.core.paths import DATA_DIR
+
+            flag_file = DATA_DIR / "kill_switch.flag"
+            if flag_file.exists():
+                return RiskVerdict(
+                    approved=False,
+                    symbol=symbol,
+                    proposed_lots=sizing.recommended_lots if sizing else 0.0,
+                    checks_passed=[],
+                    checks_failed=["disk_kill_switch_active"],
+                    rejection_reasons=[
+                        "Emergency disk kill switch active (data/kill_switch.flag); all trading rejected (Fail-Closed)"
+                    ],
+                )
         if not effective_is_paper and not is_backtest:
             if account_equity is None or account_equity <= 0:
                 return RiskVerdict(

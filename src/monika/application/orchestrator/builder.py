@@ -157,11 +157,13 @@ class AgentBuilderMixin:
             )
 
         if broker_adapter is not None or not container.has("execution_service"):
+            shared_risk_gate = container.get("risk_gate") if container.has("risk_gate") else None
             self.execution_service = ExecutionService(
                 self.settings,
                 mt5_client=self.mt5_client,
                 dry_run=self.dry_run,
                 broker_adapter=broker_adapter,
+                risk_gate=shared_risk_gate,
             )
             container.register_instance("execution_service", self.execution_service)
         else:
@@ -193,7 +195,11 @@ class AgentBuilderMixin:
             recovery_event=self._recovery_complete,
         )
 
-        self.position_guardian = PositionGuardian(self.settings, execution_service=self.execution_service)
+        self.position_guardian = PositionGuardian(
+            self.settings,
+            execution_service=self.execution_service,
+            recovery_event=self._recovery_complete,
+        )
         from monika.application.scheduler.order_reconciler import OrderReconciler
 
         self.order_reconciler = OrderReconciler(
@@ -223,15 +229,23 @@ class AgentBuilderMixin:
             )
             if self.position_guardian is not None and hasattr(self.position_guardian, "check_and_protect"):
                 guardian = self.position_guardian
+
+                async def _guardian_eval(pos: Any, acct: Any) -> None:
+                    await guardian.check_and_protect()
+
                 self.position_supervisor.register_evaluator(
                     "position_guardian",
-                    lambda pos, acct: guardian.check_and_protect(),
+                    _guardian_eval,
                 )
             if self.trailing_stop_manager is not None and hasattr(self.trailing_stop_manager, "run_once"):
                 trailing_mgr = self.trailing_stop_manager
+
+                async def _trailing_eval(pos: Any, acct: Any) -> None:
+                    await trailing_mgr.run_once()
+
                 self.position_supervisor.register_evaluator(
                     "trailing_stop_manager",
-                    lambda pos, acct: trailing_mgr.run_once(),
+                    _trailing_eval,
                 )
         except Exception as e:
             logger.warning(f"PositionSupervisor initialization failed: {e}")
@@ -333,8 +347,9 @@ class AgentBuilderMixin:
 
         # Hot-Reload Risk Parameters (M-4)
         from monika.core.config.hot_reload import RiskParameterReloader
+        from monika.core.paths import get_repo_root
 
-        settings_yaml_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "config", "settings.yaml")
+        settings_yaml_path = os.path.join(get_repo_root(), "config", "settings.yaml")
         rg = getattr(self.execution_service, "risk_gate", None)
         if rg:
             self.risk_parameter_reloader = RiskParameterReloader(
@@ -413,20 +428,23 @@ class AgentBuilderMixin:
 
             async def _on_risk_breach(evt: RiskBreachEvent):
                 logger.warning(f"[EventBus] Risk breach received: {evt.breach_type} (severity={evt.severity})")
+                if getattr(evt, "severity", "").lower() in ("critical", "emergency") and self.execution_service:
+                    try:
+                        await self.execution_service.trigger_circuit_breaker(
+                            f"Risk breach {evt.breach_type}: {getattr(evt, 'details', '')}"
+                        )
+                    except Exception as rb_err:
+                        logger.error(f"[EventBus] Failed to trip circuit breaker on risk breach: {rb_err}")
 
             self.event_bus.subscribe(CircuitBreakerEvent, _on_circuit_breaker, priority=10)
             self.event_bus.subscribe(RiskBreachEvent, _on_risk_breach, priority=10)
             logger.info("  [OK] EventBus CircuitBreakerEvent and RiskBreachEvent subscribed for safety protection")
 
-        # Berikan recovery_complete event ke cycle_scheduler agar bisa menunggu
-        if hasattr(self, "cycle_scheduler") and self.cycle_scheduler is not None:
-            self.cycle_scheduler._recovery_complete_event = self._recovery_complete
-
         from monika.application.scheduler.alpha_discovery_scheduler import AlphaDiscoveryScheduler
 
         self.alpha_discovery_scheduler = AlphaDiscoveryScheduler(
             self.settings,
-            recovery_event=self._recovery_complete,
+            recovery_event=warmup_evt,
             notifier=self.notifier,
             edge_strategy_runner=self.edge_strategy_runner,
         )
@@ -435,7 +453,7 @@ class AgentBuilderMixin:
 
         self.strategy_synthesis_scheduler = StrategySynthesisScheduler(
             self.settings,
-            recovery_event=self._recovery_complete,
+            recovery_event=warmup_evt,
             notifier=self.notifier,
             edge_strategy_runner=self.edge_strategy_runner,
         )

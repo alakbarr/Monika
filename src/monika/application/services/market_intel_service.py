@@ -12,6 +12,7 @@ and economic calendar intelligence for quantitative strategies and Special Counc
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -26,6 +27,29 @@ from monika.domain.indicators.alpha_zoo.vector_factor_engine import (
 from monika.infrastructure.database.models import EconomicCalendar, PriceOHLCV
 
 logger = logging.getLogger("Monika.Application.MarketIntelService")
+
+
+@dataclass(frozen=True)
+class CandleDTO:
+    symbol: str
+    timeframe: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+    timestamp: Any = None
+
+
+@dataclass(frozen=True)
+class EconomicEventDTO:
+    event_name: str
+    currency: str
+    impact: str
+    actual: Optional[str] = None
+    forecast: Optional[str] = None
+    previous: Optional[str] = None
+    event_time: Any = None
 
 
 class MarketIntelService:
@@ -53,8 +77,8 @@ class MarketIntelService:
         symbol: str,
         timeframe: str = "H1",
         limit: int = 100,
-    ) -> List[PriceOHLCV]:
-        """Fetch latest cached OHLCV candles from persistence store."""
+    ) -> List[CandleDTO]:
+        """Fetch latest cached OHLCV candles from persistence store as detached DTOs."""
         stmt = (
             select(PriceOHLCV)
             .where(PriceOHLCV.symbol == symbol.upper(), PriceOHLCV.timeframe == timeframe.upper())
@@ -62,7 +86,24 @@ class MarketIntelService:
             .limit(limit)
         )
         result = await session.execute(stmt)
-        return list(reversed(list(result.scalars().all())))
+        rows = list(result.scalars().all())
+        return list(
+            reversed(
+                [
+                    CandleDTO(
+                        symbol=r.symbol,
+                        timeframe=r.timeframe,
+                        open=float(r.open),
+                        high=float(r.high),
+                        low=float(r.low),
+                        close=float(r.close),
+                        volume=float(r.volume or 0.0),
+                        timestamp=r.timestamp,
+                    )
+                    for r in rows
+                ]
+            )
+        )
 
     @classmethod
     async def get_upcoming_economic_events(
@@ -71,8 +112,8 @@ class MarketIntelService:
         currencies: Optional[List[str]] = None,
         impact_levels: Optional[List[str]] = None,
         limit: int = 20,
-    ) -> List[EconomicCalendar]:
-        """Fetch upcoming economic calendar news events to inform news safety filters."""
+    ) -> List[EconomicEventDTO]:
+        """Fetch upcoming economic calendar news events as detached DTOs."""
         stmt = select(EconomicCalendar)
         if currencies:
             upper_curr = [c.upper() for c in currencies]
@@ -82,4 +123,16 @@ class MarketIntelService:
             stmt = stmt.where(EconomicCalendar.impact.in_(lower_impact))
         stmt = stmt.order_by(EconomicCalendar.event_time.asc()).limit(limit)
         result = await session.execute(stmt)
-        return list(result.scalars().all())
+        rows = list(result.scalars().all())
+        return [
+            EconomicEventDTO(
+                event_name=r.event_name,
+                currency=r.currency,
+                impact=r.impact,
+                actual=r.actual,
+                forecast=r.forecast,
+                previous=r.previous,
+                event_time=r.event_time,
+            )
+            for r in rows
+        ]

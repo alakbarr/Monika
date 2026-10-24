@@ -537,7 +537,15 @@ class AgentRecoveryMixin:
                     )
                 except Exception as e:
                     logger.debug(f"Recovery notification failed: {e}")
-        finally:
+        except Exception as recovery_fatal_err:
+            logger.critical(
+                f"[Recovery] Unhandled crash during post-restart recovery (Fail-Closed): {recovery_fatal_err}",
+                exc_info=True,
+            )
+            if hasattr(self, "shutdown_event") and self.shutdown_event is not None:
+                self.shutdown_event.set()
+            return
+        else:
             logger.info("[Recovery] Post-restart recovery complete")
             # Signal to position guards and cycle schedulers that startup recovery is complete.
             self._recovery_complete.set()

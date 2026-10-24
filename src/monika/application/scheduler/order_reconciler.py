@@ -631,7 +631,11 @@ class OrderReconciler:
                 except Exception:
                     pass
 
-                if db_pos.pnl is not None and self.execution_service:
+                # Guard against double drawdown: skip if position is being closed by local execution service
+                closing_active = hasattr(self.execution_service, "_closing_tickets") and db_pos.mt5_ticket in getattr(
+                    self.execution_service, "_closing_tickets", set()
+                )
+                if db_pos.pnl is not None and self.execution_service and not closing_active:
                     try:
                         gate = getattr(self.execution_service, "gate", None)
                         if gate and hasattr(gate, "update_risk_state"):

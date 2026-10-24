@@ -342,36 +342,50 @@ class PositionSynchronizerMixin(_ExecutionServiceMixinBase):
         requested_by: str = "system",
     ) -> dict:
         """Modifikasi SL/TP pada posisi yang terbuka."""
-        # P1-1: Paper positions — update DB only, no real MT5 call
-        async with get_session() as session:
-            db_pos = (await session.execute(select(Position).where(Position.mt5_ticket == ticket))).scalar_one_or_none()
-            if db_pos and getattr(db_pos, "is_paper", False):
-                if sl is not None:
-                    db_pos.sl = sl
-                if tp is not None:
-                    db_pos.tp = tp
-                if db_pos.analysis_id and sl is not None:
-                    from monika.core.analytics.paper_tracker import PaperTracker
+        if hasattr(self, "_closing_tickets") and ticket in self._closing_tickets:
+            logger.warning(f"Position {ticket} modification rejected: close in progress")
+            return {"success": False, "error": f"Position {ticket} is currently closing"}
 
-                    await PaperTracker(self.settings).update_paper_trade_sl(session, db_pos.analysis_id, sl)
-                await session.commit()
-                return {"success": True, "paper": True}
+        ticket_lock = self.get_ticket_lock(ticket) if hasattr(self, "get_ticket_lock") else None
+        async with ticket_lock if ticket_lock is not None else asyncio.Lock():
+            if hasattr(self, "_closing_tickets") and ticket in self._closing_tickets:
+                logger.warning(f"Position {ticket} modification rejected: close in progress")
+                return {"success": False, "error": f"Position {ticket} is currently closing"}
 
-        throttler = getattr(self, "rate_throttler", None)
-        if throttler is not None:
-            throttle_verdict = await throttler.acquire()
-            if not throttle_verdict.allowed:
-                logger.warning(
-                    f"[RateThrottler] Position modification throttled for ticket {ticket}: {throttle_verdict.reason}"
-                )
-                return {
-                    "success": False,
-                    "error": f"Position modification rate throttled: {throttle_verdict.reason}",
-                    "retcode": 10027,
-                    "retry_after": throttle_verdict.retry_after,
-                }
+            # P1-1: Paper positions — update DB only, no real MT5 call
+            async with get_session() as session:
+                db_pos = (
+                    await session.execute(select(Position).where(Position.mt5_ticket == ticket))
+                ).scalar_one_or_none()
+                if db_pos and db_pos.status == "closed":
+                    return {"success": False, "error": f"Position {ticket} already closed"}
+                if db_pos and getattr(db_pos, "is_paper", False):
+                    if sl is not None:
+                        db_pos.sl = sl
+                    if tp is not None:
+                        db_pos.tp = tp
+                    if db_pos.analysis_id and sl is not None:
+                        from monika.core.analytics.paper_tracker import PaperTracker
 
-        result = await self.mt5.modify_position(ticket, sl=sl, tp=tp)
+                        await PaperTracker(self.settings).update_paper_trade_sl(session, db_pos.analysis_id, sl)
+                    await session.commit()
+                    return {"success": True, "paper": True}
+
+            throttler = getattr(self, "rate_throttler", None)
+            if throttler is not None:
+                throttle_verdict = await throttler.acquire()
+                if not throttle_verdict.allowed:
+                    logger.warning(
+                        f"[RateThrottler] Position modification throttled for ticket {ticket}: {throttle_verdict.reason}"
+                    )
+                    return {
+                        "success": False,
+                        "error": f"Position modification rate throttled: {throttle_verdict.reason}",
+                        "retcode": 10027,
+                        "retry_after": throttle_verdict.retry_after,
+                    }
+
+            result = await self.mt5.modify_position(ticket, sl=sl, tp=tp)
         async with get_session() as session:
             pos_symbol = "UNKNOWN"
             if result.get("success"):

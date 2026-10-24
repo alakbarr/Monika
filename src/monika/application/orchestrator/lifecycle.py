@@ -17,7 +17,7 @@ import sys
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional
 
 import monika.core.primitives.clock as clock
-from monika.application.agent.task_registry import mark_clean_shutdown
+from monika.application.agent.task_registry import mark_clean_shutdown, set_emergency_exit_code
 from monika.infrastructure.database.db import close_db
 
 if TYPE_CHECKING:
@@ -133,8 +133,7 @@ class AgentLifecycleMixin:
             loop = None
 
         def _signal_handler(sig_name: str):
-            logger.info(f"Signal {sig_name} received — initiating graceful shutdown...")
-            mark_clean_shutdown()
+            logger.info(f"Signal {sig_name} received - initiating graceful shutdown...")
             try:
                 if loop and not loop.is_closed():
                     loop.call_soon_threadsafe(self.shutdown_event.set)
@@ -265,8 +264,17 @@ class AgentLifecycleMixin:
                 f"positions_reconciled={preflight.get('positions_reconciled')}, "
                 f"ready={preflight.get('ready')}"
             )
+            if not preflight.get("ready") and not self.dry_run:
+                logger.critical("[Preflight] Cold-start verification FAILED. Aborting startup (Fail-Closed).")
+                set_emergency_exit_code(1)
+                self.shutdown_event.set()
+                return
         except Exception as preflight_err:
-            logger.warning(f"[Preflight] Cold-start pre-flight note (non-fatal): {preflight_err}")
+            logger.error(f"[Preflight] Cold-start pre-flight error: {preflight_err}")
+            if not self.dry_run:
+                set_emergency_exit_code(1)
+                self.shutdown_event.set()
+                return
 
         # Launch all concurrent tasks
         logger.info("Launching concurrent tasks...")
@@ -456,8 +464,10 @@ class AgentLifecycleMixin:
                 except Exception as es_err:
                     logger.debug(f"Event store emit system.shutdown error: {es_err}")
 
-                # Save snapshot to file
-                os.makedirs("data", exist_ok=True)
+                # Save snapshot to file via async thread
+                from monika.core.paths import DATA_DIR
+
+                snapshot_dir = DATA_DIR
                 snapshot = {
                     "shutdown_at": datetime.now(timezone.utc).isoformat(),
                     "open_positions": [
@@ -473,8 +483,12 @@ class AgentLifecycleMixin:
                     ],
                 }
 
-                with open("data/last_shutdown_snapshot.json", "w", encoding="utf-8") as f:
-                    json.dump(snapshot, f, indent=2)
+                def _write_snapshot() -> None:
+                    os.makedirs(str(snapshot_dir), exist_ok=True)
+                    with open(str(snapshot_dir / "last_shutdown_snapshot.json"), "w", encoding="utf-8") as f:
+                        json.dump(snapshot, f, indent=2)
+
+                await asyncio.to_thread(_write_snapshot)
                 logger.info(f"Shutdown snapshot saved: {len(open_positions)} open positions")
 
                 if open_positions:

@@ -42,6 +42,9 @@ class DetachedCronWorker:
         self._handlers: Dict[str, Callable[[Dict[str, Any]], Any]] = {}
         self._running: bool = False
         self._worker_task: Optional[asyncio.Task] = None
+        logger.warning(
+            "[DEPRECATION] DetachedCronWorker is deprecated. Prefer UnifiedCronEngine for canonical scheduling."
+        )
         self._init_db()
 
     def get_connection(self) -> sqlite3.Connection:

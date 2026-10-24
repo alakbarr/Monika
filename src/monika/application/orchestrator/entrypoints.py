@@ -102,14 +102,14 @@ def acquire_single_instance_lock() -> bool:
         atexit.register(release_single_instance_lock)
         return True
     except Exception as e:
-        logger.warning(f"[LOCK] Failed to write PID file: {e}")
-        return True
+        logger.error(f"[LOCK] Failed to write PID file (Fail-Closed): {e}")
+        return False
 
 
 async def _amain() -> None:
     """Async main — sets up DB then runs the agent."""
     if not acquire_single_instance_lock():
-        sys.exit(0)
+        sys.exit(75)
 
     # Single composition root: bootstrap runtime and service container
     from monika.application.bootstrap import bootstrap_application

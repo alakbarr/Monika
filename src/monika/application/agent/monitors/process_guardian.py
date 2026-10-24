@@ -225,6 +225,20 @@ def _run_guardian_loop(
                             f"Triggering emergency kill switch!"
                         )
                         trigger_emergency_kill(source=f"HeartbeatStale_{age:.0f}s")
+                        if primary_pid:
+                            try:
+                                import psutil
+
+                                if psutil.pid_exists(primary_pid):
+                                    proc = psutil.Process(primary_pid)
+                                    logger.critical(
+                                        f"[GuardianProcess] Terminating frozen primary PID {primary_pid}..."
+                                    )
+                                    proc.terminate()
+                            except Exception as term_err:
+                                logger.error(
+                                    f"[GuardianProcess] Failed terminating primary PID {primary_pid}: {term_err}"
+                                )
                 except Exception as hb_err:
                     logger.debug(f"[GuardianProcess] Error reading heartbeat: {hb_err}")
 

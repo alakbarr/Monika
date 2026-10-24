@@ -141,7 +141,7 @@ async def test_sync_positions_from_mt5_syncs_paper_record():
     mock_deal = MagicMock()
     mock_deal.profit = 150.0
     mock_deal.price = 1.0900
-    mock_deal.reason = 4  # tp_hit
+    mock_deal.reason = 5  # DEAL_REASON_TP (tp_hit)
     client._run = AsyncMock(return_value=[mock_deal])
 
     db_pos = MagicMock(spec=Position)

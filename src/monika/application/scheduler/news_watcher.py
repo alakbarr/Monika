@@ -277,7 +277,11 @@ class NewsWatcher:
                 # Quick batch classification via AI / LLM classifier
                 processor = NewsDigestProcessor(self.settings)
                 async with get_session() as session:
-                    await processor.classify_unscored_news(session, hours_back=1)
+                    try:
+                        async with asyncio.timeout(30.0):
+                            await processor.classify_unscored_news(session, hours_back=1)
+                    except asyncio.TimeoutError:
+                        logger.warning("[NewsWatcher] News classification timed out after 30s")
 
             # Re-query dengan impact filter (Fix 5.9: by ID instead of URL)
             async with get_session() as session:
@@ -997,14 +1001,15 @@ class NewsWatcher:
                     should_tighten = False
                     new_sl: Optional[float] = None
                     if current_price is not None:
+                        decimals = 2 if any(c in pos.symbol.upper() for c in ("XAU", "BTC", "ETH", "JPY")) else 5
                         # Only tighten to BE+buffer if position has moved enough into profit
                         if direction == "buy" and current_price > (entry + spread_buffer):
-                            target_sl = round(entry + spread_buffer, 5)
+                            target_sl = round(entry + spread_buffer, decimals)
                             if current_sl is None or current_sl < target_sl:
                                 should_tighten = True
                                 new_sl = target_sl
                         elif direction == "sell" and current_price < (entry - spread_buffer):
-                            target_sl = round(entry - spread_buffer, 5)
+                            target_sl = round(entry - spread_buffer, decimals)
                             if current_sl is None or current_sl > target_sl:
                                 should_tighten = True
                                 new_sl = target_sl

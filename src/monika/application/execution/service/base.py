@@ -49,7 +49,10 @@ class _ExecutionServiceMixinBase:
         rate_throttler: RateThrottler
         effect_gate: EffectGate
         _ticket_locks: Dict[int, Any]
+        _closing_tickets: set[int]
         _kill_lock: Any
+
+        def get_ticket_lock(self, ticket: int) -> asyncio.Lock: ...
 
         # Cross-mixin methods provided by sibling mixins
         async def _count_open_positions(self, session: Any, symbol: Optional[str] = None) -> int: ...

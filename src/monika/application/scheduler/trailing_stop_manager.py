@@ -379,32 +379,45 @@ class TrailingStopManager:
                 )
                 plan_record = (await session.execute(tp_stmt)).scalar_one_or_none()
                 if plan_record:
-                    plan_record.status = "PARTIAL_TP1_HIT"
                     probe_lots_to_close = 0.0
                     for leg in plan_record.legs:
                         if leg.leg_type == "probe" and leg.status == "filled":
-                            leg.status = "tp_hit"
                             probe_vol = getattr(leg, "volume", None)
                             if probe_vol is None:
                                 probe_vol = getattr(leg, "allocated_lots", None)
                             probe_lots_to_close += float(probe_vol or (pos.volume * 0.3 if pos.volume else 0.0))
-                    await session.commit()
-                    logger.info(f"[{pos.symbol}] TradePlan #{plan_record.id} advanced to PARTIAL_TP1_HIT")
 
-                    # Execute actual partial close on MT5/broker
+                    # Execute actual partial close via ExecutionService with proper ticket mutex
+                    close_success = False
                     if probe_lots_to_close > 0 and pos.mt5_ticket and self.execution_service:
-                        adapter = getattr(self.execution_service, "broker_adapter", None)
-                        mt5_client = getattr(self.execution_service, "mt5", None)
                         try:
-                            if adapter and hasattr(adapter, "close_position"):
-                                await adapter.close_position(ticket=pos.mt5_ticket, lots=probe_lots_to_close)
-                            elif mt5_client and hasattr(mt5_client, "close_position"):
-                                await mt5_client.close_position(ticket=pos.mt5_ticket, lots=probe_lots_to_close)
+                            close_res = await self.execution_service.close_position_by_ticket(
+                                pos.mt5_ticket,
+                                lots=probe_lots_to_close,
+                                requested_by="trailing_stop_manager_tp1",
+                                reason="Trailing stop TP1 probe partial scale-out",
+                            )
+                            if isinstance(close_res, dict):
+                                close_success = bool(close_res.get("success"))
+                            elif hasattr(close_res, "get"):
+                                raw_success = close_res.get("success")
+                                if asyncio.iscoroutine(raw_success):
+                                    raw_success.close()
+                                close_success = bool(raw_success)
                             logger.info(
-                                f"[{pos.symbol}] Executed MT5 partial close for TP1: ticket={pos.mt5_ticket}, lots={probe_lots_to_close}"
+                                f"[{pos.symbol}] Executed MT5 partial close for TP1: ticket={pos.mt5_ticket}, lots={probe_lots_to_close}, result={close_res}"
                             )
                         except Exception as close_err:
                             logger.error(f"[{pos.symbol}] Failed MT5 partial close on TP1: {close_err}")
+
+                    # Only advance TradePlan status if close succeeded or paper trading
+                    if close_success or getattr(pos, "is_paper", False):
+                        plan_record.status = "PARTIAL_TP1_HIT"
+                        for leg in plan_record.legs:
+                            if leg.leg_type == "probe" and leg.status == "filled":
+                                leg.status = "tp_hit"
+                        await session.commit()
+                        logger.info(f"[{pos.symbol}] TradePlan #{plan_record.id} advanced to PARTIAL_TP1_HIT")
             except Exception as tp_stat_err:
                 logger.debug(f"TradePlan status update non-fatal: {tp_stat_err}")
 
@@ -434,8 +447,23 @@ class TrailingStopManager:
                 f"TrailingStop: adjusting {pos.symbol} ticket={pos.mt5_ticket} "
                 f"SL from {current_sl:.4f} to {new_sl:.4f} — {reason}"
             )
+            ticket_lock = None
+            if hasattr(self.execution_service, "get_ticket_lock"):
+                try:
+                    raw_lock = self.execution_service.get_ticket_lock(pos.mt5_ticket)
+                    if hasattr(raw_lock, "__aenter__") and hasattr(raw_lock, "__aexit__"):
+                        ticket_lock = raw_lock
+                    elif asyncio.iscoroutine(raw_lock):
+                        raw_lock.close()
+                except Exception:
+                    pass
+
             emulator_lock = getattr(self.order_emulator, "_lock", None)
-            async with emulator_lock if emulator_lock is not None else asyncio.Lock():
+            async with (
+                ticket_lock
+                if ticket_lock is not None
+                else (emulator_lock if emulator_lock is not None else asyncio.Lock())
+            ):
                 if tracked:
                     tracked.is_modifying = True
                 try:

@@ -9346,6 +9346,7 @@
 - **Path**: [`src/monika/application/execution/service/emergency_manager.py`](src/monika/application/execution/service/emergency_manager.py)
 - **Classes**:
   - `class EmergencyManagerMixin(_ExecutionServiceMixinBase)`: Mixin untuk penutupan posisi darurat dan kill-switch proteksi modal.
+    - `get_ticket_lock(ticket: int) -> asyncio.Lock` - *Get or create canonical per-ticket mutex lock to synchronize order actions.*
     - `async close_position_by_ticket(ticket: int, requested_by: str, reason: str, ...) -> dict` - *Menutup posisi spesifik berdasarkan tiket MT5 (penuh atau sebagian).*
     - `async trigger_circuit_breaker(reason: str, cooldown_seconds: int) -> dict` - *Mengaktifkan karantina trading otomatis saat circuit breaker (mis. FlashCrash) terpicu.*
     - `async kill_switch(reason: str) -> dict` - *DARURAT: Tutup SEMUA posisi terbuka segera (baik MT5 live maupun DB paper/synthetic).*
@@ -10331,7 +10332,7 @@
 - **Path**: [`src/monika/application/scheduler/position_guardian.py`](src/monika/application/scheduler/position_guardian.py)
 - **Classes**:
   - `class PositionGuardian`: Memeriksa kalender ekonomi untuk event high-impact dan melindungi posisi.
-    - `__init__(settings: dict, execution_service)`
+    - `__init__(settings: dict, execution_service, recovery_event: Optional[asyncio.Event])`
     - `async check_and_protect(emergency: bool) -> dict` - *Cek kalender dan eksekusi proteksi posisi terbuka.*
     - `async check_friday_close_protection() -> dict` - *Executed between 20:00-21:30 UTC every Friday.*
     - `async on_tick(event: Any) -> None` - *EventBus subscriber handler for TickPriceEvent.*
@@ -10500,10 +10501,12 @@
 #### `market_intel_service.py` - *Market Intelligence Application Service.*
 - **Path**: [`src/monika/application/services/market_intel_service.py`](src/monika/application/services/market_intel_service.py)
 - **Classes**:
+  - `class CandleDTO`
+  - `class EconomicEventDTO`
   - `class MarketIntelService`: Canonical Application Service orchestrating market telemetry and Alpha Factor flows.
     - `evaluate_alpha_factors(symbol: str, df: pd.DataFrame, regime: str, ...) -> VectorFactorResult` - *Evaluate quantitative alpha factor library on asset OHLCV bars using*
-    - `async get_recent_candles(session: AsyncSession, symbol: str, timeframe: str, ...) -> List[PriceOHLCV]` - *Fetch latest cached OHLCV candles from persistence store.*
-    - `async get_upcoming_economic_events(session: AsyncSession, currencies: Optional[List[str]], impact_levels: Optional[List[str]], ...) -> List[EconomicCalendar]` - *Fetch upcoming economic calendar news events to inform news safety filters.*
+    - `async get_recent_candles(session: AsyncSession, symbol: str, timeframe: str, ...) -> List[CandleDTO]` - *Fetch latest cached OHLCV candles from persistence store as detached DTOs.*
+    - `async get_upcoming_economic_events(session: AsyncSession, currencies: Optional[List[str]], impact_levels: Optional[List[str]], ...) -> List[EconomicEventDTO]` - *Fetch upcoming economic calendar news events as detached DTOs.*
 
 #### `market_structure_service.py` - *Market Structure Application Service.*
 - **Path**: [`src/monika/application/services/market_structure_service.py`](src/monika/application/services/market_structure_service.py)

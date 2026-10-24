@@ -124,16 +124,18 @@ class RunManifestGenerator:
             meta["paper_trading"] = settings.get("paper_trading", {}).get("enabled", True)
             meta["market_pairs"] = list(settings.get("trading", {}).get("symbols", []))
 
+        os_str = f"{platform.system()} {platform.release()} ({platform.machine()})"
+
         payload = {
             "timestamp_utc": now_utc,
             "git_commit_hash": git_hash,
             "python_version": platform.python_version(),
-            "os_platform": f"{platform.system()} {platform.release()} ({platform.machine()})",
+            "os_platform": os_str,
             "dependency_versions": deps,
             "system_prompt_sha256": prompt_hash,
             "registered_strategies": strategies,
             "active_skills": skills,
-            "metadata": extra_metadata or {},
+            "metadata": meta,
         }
 
         # Deterministic manifest content-hash
@@ -145,20 +147,25 @@ class RunManifestGenerator:
             timestamp_utc=now_utc,
             git_commit_hash=git_hash,
             python_version=platform.python_version(),
-            os_platform=f"{platform.system()} {platform.release()}",
+            os_platform=os_str,
             dependency_versions=deps,
             system_prompt_sha256=prompt_hash,
             registered_strategies=strategies,
             active_skills=skills,
-            metadata=extra_metadata or {},
+            metadata=meta,
         )
 
     @classmethod
     def save_manifest(cls, manifest: RunManifest, directory: Optional[Path] = None) -> Path:
-        target_dir = directory or (Path(__file__).resolve().parent.parent / "data" / "manifests")
+        from monika.core.paths import DATA_DIR
+
+        target_dir = directory or (DATA_DIR / "manifests")
         target_dir.mkdir(parents=True, exist_ok=True)
         file_path = target_dir / f"run_manifest_{manifest.manifest_id[:16]}.json"
-        with open(file_path, "w", encoding="utf-8") as f:
+        temp_path = target_dir / f"run_manifest_{manifest.manifest_id[:16]}.tmp"
+
+        with open(temp_path, "w", encoding="utf-8") as f:
             f.write(manifest.to_json())
+        os.replace(temp_path, file_path)
         logger.info(f"Saved RunManifest: {file_path}")
         return file_path

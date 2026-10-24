@@ -29,6 +29,7 @@ class MacroDataScheduler:
     """
 
     _global_sync_locks: dict[Any, asyncio.Lock] = {}
+    FETCH_TIMEOUT_SECS: float = 45.0
 
     @classmethod
     def _get_global_lock(cls) -> asyncio.Lock:
@@ -68,11 +69,12 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.coinglass_funding import CoinglasFundingFetcher
 
-                async with get_session() as session:
-                    fetcher = CoinglasFundingFetcher(session)
-                    fg = await fetcher.fetch()
-                    results["btc_funding"] = fg
-                    logger.info("MacroDataScheduler: Coinglass funding refreshed")
+                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with get_session() as session:
+                        fetcher = CoinglasFundingFetcher(session)
+                        fg = await fetcher.fetch()
+                        results["btc_funding"] = fg
+                        logger.info("MacroDataScheduler: Coinglass funding refreshed")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Coinglass funding fetch failed: {e}")
                 results["btc_funding"] = {"error": str(e)}
@@ -83,11 +85,12 @@ class MacroDataScheduler:
                     BinanceSentimentFetcher,
                 )
 
-                async with get_session() as session:
-                    fetcher = BinanceSentimentFetcher(session)
-                    sentiment = await fetcher.fetch()
-                    results["binance_sentiment"] = sentiment
-                    logger.info("MacroDataScheduler: Binance retail sentiment refreshed")
+                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with get_session() as session:
+                        fetcher = BinanceSentimentFetcher(session)
+                        sentiment = await fetcher.fetch()
+                        results["binance_sentiment"] = sentiment
+                        logger.info("MacroDataScheduler: Binance retail sentiment refreshed")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Binance sentiment fetch failed: {e}")
                 results["binance_sentiment"] = {"error": str(e)}
@@ -98,11 +101,12 @@ class MacroDataScheduler:
                     MyFxBookSentimentFetcher,
                 )
 
-                async with get_session() as session:
-                    fetcher = MyFxBookSentimentFetcher(session)
-                    sentiment = await fetcher.fetch()
-                    results["myfxbook_sentiment"] = sentiment
-                    logger.info("MacroDataScheduler: MyFxBook retail sentiment refreshed")
+                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with get_session() as session:
+                        fetcher = MyFxBookSentimentFetcher(session)
+                        sentiment = await fetcher.fetch()
+                        results["myfxbook_sentiment"] = sentiment
+                        logger.info("MacroDataScheduler: MyFxBook retail sentiment refreshed")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: MyFxBook sentiment fetch failed: {e}")
                 results["myfxbook_sentiment"] = {"error": str(e)}
@@ -113,11 +117,12 @@ class MacroDataScheduler:
                     FXSSISentimentFetcher,
                 )
 
-                async with get_session() as session:
-                    fetcher = FXSSISentimentFetcher(session)
-                    sentiment = await fetcher.fetch()
-                    results["fxssi_sentiment"] = sentiment
-                    logger.info("MacroDataScheduler: FXSSI retail sentiment refreshed")
+                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with get_session() as session:
+                        fetcher = FXSSISentimentFetcher(session)
+                        sentiment = await fetcher.fetch()
+                        results["fxssi_sentiment"] = sentiment
+                        logger.info("MacroDataScheduler: FXSSI retail sentiment refreshed")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: FXSSI sentiment fetch failed: {e}")
                 results["fxssi_sentiment"] = {"error": str(e)}
@@ -127,11 +132,12 @@ class MacroDataScheduler:
                 from monika.infrastructure.data_ingestion.sources.vix_yfinance import VIXFetcher
 
                 fred_key = self.settings.get("data_sources", {}).get("fred", {}).get("api_key")
-                async with get_session() as session:
-                    fetcher = VIXFetcher(session, fred_api_key=fred_key)
-                    n = await fetcher.fetch(period="5d")
-                    results["vix"] = {"saved": n}
-                    logger.info(f"MacroDataScheduler: VIX refreshed ({n} records)")
+                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with get_session() as session:
+                        fetcher = VIXFetcher(session, fred_api_key=fred_key)
+                        n = await fetcher.fetch(period="5d")
+                        results["vix"] = {"saved": n}
+                        logger.info(f"MacroDataScheduler: VIX refreshed ({n} records)")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: VIX refresh failed: {e}")
                 results["vix"] = {"error": str(e)}
@@ -140,11 +146,12 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.fred_treasury_yield import FREDDataFetcher
 
-                async with get_session() as session:
-                    fetcher = FREDDataFetcher(session, self.settings.get("data_sources", {}).get("fred", {}))
-                    r = await fetcher.fetch_all()
-                    results["fred"] = r
-                    logger.info(f"MacroDataScheduler: FRED refreshed: {r}")
+                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with get_session() as session:
+                        fetcher = FREDDataFetcher(session, self.settings.get("data_sources", {}).get("fred", {}))
+                        r = await fetcher.fetch_all()
+                        results["fred"] = r
+                        logger.info(f"MacroDataScheduler: FRED refreshed: {r}")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: FRED refresh failed: {e}")
                 results["fred"] = {"error": str(e)}
@@ -153,11 +160,12 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.cftc_cot import CFTCCOTFetcher
 
-                async with get_session() as session:
-                    fetcher = CFTCCOTFetcher(session, self.settings.get("data_sources", {}).get("cftc_cot", {}))
-                    n = await fetcher.fetch_all()
-                    results["cftc"] = {"saved": n}
-                    logger.info(f"MacroDataScheduler: CFTC COT refreshed ({n} records)")
+                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with get_session() as session:
+                        fetcher = CFTCCOTFetcher(session, self.settings.get("data_sources", {}).get("cftc_cot", {}))
+                        n = await fetcher.fetch_all()
+                        results["cftc"] = {"saved": n}
+                        logger.info(f"MacroDataScheduler: CFTC COT refreshed ({n} records)")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: CFTC refresh failed: {e}")
                 results["cftc"] = {"error": str(e)}
@@ -166,11 +174,12 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.dxy_yfinance import DXYFetcher
 
-                async with get_session() as session:
-                    fetcher = DXYFetcher(session)
-                    n = await fetcher.fetch(period="15d")
-                    results["dxy"] = {"saved": n}
-                    logger.info(f"MacroDataScheduler: DXY refreshed ({n} records)")
+                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with get_session() as session:
+                        fetcher = DXYFetcher(session)
+                        n = await fetcher.fetch(period="15d")
+                        results["dxy"] = {"saved": n}
+                        logger.info(f"MacroDataScheduler: DXY refreshed ({n} records)")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: DXY refresh failed: {e}")
                 results["dxy"] = {"error": str(e)}
@@ -179,11 +188,12 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.bond_yields_fetcher import BondYieldFetcher
 
-                async with get_session() as session:
-                    fetcher = BondYieldFetcher(session)
-                    r = await fetcher.fetch(period="15d")
-                    results["bond_yields"] = r
-                    logger.info(f"MacroDataScheduler: Bond yields refreshed: {r}")
+                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with get_session() as session:
+                        fetcher = BondYieldFetcher(session)
+                        r = await fetcher.fetch(period="15d")
+                        results["bond_yields"] = r
+                        logger.info(f"MacroDataScheduler: Bond yields refreshed: {r}")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Bond yields refresh failed: {e}")
                 results["bond_yields"] = {"error": str(e)}
@@ -192,14 +202,15 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.fear_greed import FearGreedFetcher
 
-                async with get_session() as session:
-                    fetcher = FearGreedFetcher(session)
-                    fg = await fetcher.fetch()
-                    results["fear_greed"] = {
-                        "value": fg.get("current_value"),
-                        "classification": fg.get("classification"),
-                    }
-                    logger.info(f"MacroDataScheduler: Fear & Greed refreshed ({fg.get('current_value')})")
+                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with get_session() as session:
+                        fetcher = FearGreedFetcher(session)
+                        fg = await fetcher.fetch()
+                        results["fear_greed"] = {
+                            "value": fg.get("current_value"),
+                            "classification": fg.get("classification"),
+                        }
+                        logger.info(f"MacroDataScheduler: Fear & Greed refreshed ({fg.get('current_value')})")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Fear & Greed fetch failed: {e}")
                 results["fear_greed"] = {"error": str(e)}
@@ -210,11 +221,12 @@ class MacroDataScheduler:
 
                 is_wednesday = datetime.now(timezone.utc).weekday() == 2
                 if is_wednesday:
-                    async with get_session() as session:
-                        fetcher = EIAInventoryFetcher(session)
-                        eia = await fetcher.fetch()
-                        results["eia_oil"] = eia
-                        logger.info("MacroDataScheduler: EIA Oil inventory refreshed")
+                    async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                        async with get_session() as session:
+                            fetcher = EIAInventoryFetcher(session)
+                            eia = await fetcher.fetch()
+                            results["eia_oil"] = eia
+                            logger.info("MacroDataScheduler: EIA Oil inventory refreshed")
                 else:
                     results["eia_oil"] = {"status": "skipped_not_wednesday"}
             except Exception as e:
@@ -225,16 +237,17 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.central_bank_watch import CentralBankWatchFetcher
 
-                async with get_session() as session:
-                    fetcher = CentralBankWatchFetcher(session)
-                    cbw = await fetcher.fetch_all()
-                    results["central_bank_watch"] = {
-                        "expectations_count": len(cbw.get("expectations", {})),
-                        "yields_count": len(cbw.get("yields", {})),
-                    }
-                    logger.info(
-                        f"MacroDataScheduler: Central Bank Watch refreshed ({len(cbw.get('expectations', {}))} banks, {len(cbw.get('yields', {}))} curves)"
-                    )
+                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with get_session() as session:
+                        fetcher = CentralBankWatchFetcher(session)
+                        cbw = await fetcher.fetch_all()
+                        results["central_bank_watch"] = {
+                            "expectations_count": len(cbw.get("expectations", {})),
+                            "yields_count": len(cbw.get("yields", {})),
+                        }
+                        logger.info(
+                            f"MacroDataScheduler: Central Bank Watch refreshed ({len(cbw.get('expectations', {}))} banks, {len(cbw.get('yields', {}))} curves)"
+                        )
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Central Bank Watch fetch failed: {e}")
                 results["central_bank_watch"] = {"error": str(e)}
@@ -248,20 +261,21 @@ class MacroDataScheduler:
                     MarketStressAuctionFetcher,
                 )
 
-                async with get_session() as session:
-                    fed_fetcher = FedLiquidityH41Fetcher(session)
-                    stress_fetcher = MarketStressAuctionFetcher(session)
-                    fed_res = await fed_fetcher.fetch_and_store_liquidity()
-                    auc_res = await stress_fetcher.fetch_and_store_treasury_auction(tenor="10Y")
-                    stress_res = await stress_fetcher.fetch_and_store_credit_and_money_market()
-                    results["systemic_liquidity_and_stress"] = {
-                        "net_liquidity_b": fed_res.get("net_liquidity_billions"),
-                        "auction_yield": auc_res.get("value"),
-                        "stress_metrics": len(stress_res),
-                    }
-                    logger.info(
-                        f"MacroDataScheduler: Fed Net Liquidity (${fed_res.get('net_liquidity_billions'):,.1f}B) and Treasury Auction refreshed"
-                    )
+                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with get_session() as session:
+                        fed_fetcher = FedLiquidityH41Fetcher(session)
+                        stress_fetcher = MarketStressAuctionFetcher(session)
+                        fed_res = await fed_fetcher.fetch_and_store_liquidity()
+                        auc_res = await stress_fetcher.fetch_and_store_treasury_auction(tenor="10Y")
+                        stress_res = await stress_fetcher.fetch_and_store_credit_and_money_market()
+                        results["systemic_liquidity_and_stress"] = {
+                            "net_liquidity_b": fed_res.get("net_liquidity_billions"),
+                            "auction_yield": auc_res.get("value"),
+                            "stress_metrics": len(stress_res),
+                        }
+                        logger.info(
+                            f"MacroDataScheduler: Fed Net Liquidity (${fed_res.get('net_liquidity_billions'):,.1f}B) and Treasury Auction refreshed"
+                        )
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Systemic liquidity refresh failed: {e}")
                 results["systemic_liquidity_and_stress"] = {"error": str(e)}
@@ -270,16 +284,17 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.scrapers.macro.macro_trigger_router import MacroTriggerRouter
 
-                async with get_session() as session:
-                    router = MacroTriggerRouter(session)
-                    await router.ensure_cb_document_available(bank="FED", doc_type="MINUTES")
-                    await router.ensure_cb_document_available(bank="FED", doc_type="STATEMENT")
-                    await router.ensure_cb_document_available(bank="ECB", doc_type="STATEMENT")
-                    await router.ensure_cb_document_available(bank="BOJ", doc_type="STATEMENT")
-                    await router.ensure_report_available(report_type="CPI")
-                    await router.ensure_report_available(report_type="NFP")
-                    results["macro_docs_and_decomposition"] = {"status": "verified_and_warmed"}
-                    logger.info("MacroDataScheduler: Central bank documents and macro decomposition cache warmed")
+                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with get_session() as session:
+                        router = MacroTriggerRouter(session)
+                        await router.ensure_cb_document_available(bank="FED", doc_type="MINUTES")
+                        await router.ensure_cb_document_available(bank="FED", doc_type="STATEMENT")
+                        await router.ensure_cb_document_available(bank="ECB", doc_type="STATEMENT")
+                        await router.ensure_cb_document_available(bank="BOJ", doc_type="STATEMENT")
+                        await router.ensure_report_available(report_type="CPI")
+                        await router.ensure_report_available(report_type="NFP")
+                        results["macro_docs_and_decomposition"] = {"status": "verified_and_warmed"}
+                        logger.info("MacroDataScheduler: Central bank documents and macro decomposition cache warmed")
             except Exception as e:
                 logger.warning(f"MacroDataScheduler: Central bank docs warm failed: {e}")
                 results["macro_docs_and_decomposition"] = {"error": str(e)}

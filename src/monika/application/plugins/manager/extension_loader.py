@@ -147,10 +147,63 @@ def teardown_single_plugin(plugin_dir: str, manager: Optional[PluginManager] = N
     try:
         with open(manifest_path, "r", encoding="utf-8") as f:
             manifest = yaml.safe_load(f) or {}
+
+        name = manifest.get("name", os.path.basename(plugin_dir))
+
+        # 1. Unload registered tools
         for tool_def in manifest.get("tools", []):
             tool_name = tool_def.get("name")
             if tool_name:
                 mgr.unregister_tool(tool_name)
+
+        # 2. Unregister hooks
+        hooks = manifest.get("hooks", {})
+        if isinstance(hooks, dict):
+            hook_items = list(hooks.items())
+        elif isinstance(hooks, list):
+            hook_items = [(h.get("event"), h.get("handler")) for h in hooks if isinstance(h, dict)]
+        else:
+            hook_items = []
+
+        for hook_event, hook_target in hook_items:
+            if not hook_event or not hook_target:
+                continue
+            try:
+                mod_name, func_name = hook_target.split(":")
+                mod_file = os.path.join(plugin_dir, *mod_name.split(".")) + ".py"
+                if not os.path.isfile(mod_file):
+                    mod_file = os.path.join(plugin_dir, f"{mod_name}.py")
+                if os.path.isfile(mod_file):
+                    module = _import_from_path(f"plugin_{name}_{mod_name.replace('.', '_')}", mod_file)
+                else:
+                    module = importlib.import_module(mod_name)
+                handler = getattr(module, func_name, None)
+                if handler:
+                    mgr.unregister_hook(hook_event, handler)
+            except Exception as hook_err:
+                logger.warning(f"[PluginLoader] Error unregistering hook '{hook_event}' for '{name}': {hook_err}")
+
+        # 3. Call teardown on BasePlugin entrypoint if implemented
+        entrypoint = manifest.get("entrypoint")
+        if entrypoint:
+            try:
+                mod_name, func_name = entrypoint.split(":")
+                mod_file = os.path.join(plugin_dir, *mod_name.split(".")) + ".py"
+                if not os.path.isfile(mod_file):
+                    mod_file = os.path.join(plugin_dir, f"{mod_name}.py")
+                if os.path.isfile(mod_file):
+                    module = _import_from_path(f"plugin_{name}_{mod_name.replace('.', '_')}", mod_file)
+                else:
+                    module = importlib.import_module(mod_name)
+                target = getattr(module, func_name, None)
+                from monika.application.plugins.manager.manager import BasePlugin
+
+                if isinstance(target, type) and issubclass(target, BasePlugin):
+                    inst = target(config=manifest.get("config", {}))
+                    inst.teardown(mgr)
+            except Exception as entry_err:
+                logger.warning(f"[PluginLoader] Error tearing down entrypoint for '{name}': {entry_err}")
+
         return True
     except Exception as e:
         logger.error(f"[PluginLoader] Error tearing down plugin {plugin_dir}: {e}")

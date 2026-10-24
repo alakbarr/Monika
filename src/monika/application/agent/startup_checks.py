@@ -386,11 +386,13 @@ class StartupChecker:
                             )
                             try:
                                 import subprocess
+                                from monika.core.paths import get_repo_root
 
-                                agent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                                res_mig = subprocess.run(
+                                repo_root = str(get_repo_root())
+                                res_mig = await asyncio.to_thread(
+                                    subprocess.run,
                                     [sys.executable, "-m", "alembic", "upgrade", "head"],
-                                    cwd=agent_dir,
+                                    cwd=repo_root,
                                     capture_output=True,
                                     text=True,
                                     timeout=60,

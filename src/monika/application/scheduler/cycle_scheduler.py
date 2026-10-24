@@ -249,7 +249,8 @@ class CycleScheduler:
                     logger.debug(f"Paper performance gate initial session error ({e}), retrying in 1.0s...")
                     await asyncio.sleep(1.0)
                     continue
-                logger.debug(f"Paper performance gate check failed (non-fatal): {e}")
+                logger.error(f"Paper performance gate check failed: {e}. Forcing fail-closed auto_execute=False")
+                result["effective_auto_execute"] = False
         if not forced:
             start = datetime.now(timezone.utc)
             weekday = start.weekday()
