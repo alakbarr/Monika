@@ -87,8 +87,12 @@ class XTIUSDATRExhaustionStrategy(EdgeStrategy):
 
             # RSI
             delta = df["close"].diff()
-            gain = (delta.where(delta > 0, 0.0)).rolling(window=self.rsi_period, min_periods=1).mean()
-            loss = (-delta.where(delta < 0, 0.0)).rolling(window=self.rsi_period, min_periods=1).mean()
+            gain = pd.Series(
+                (delta.where(delta > 0, 0.0)).rolling(window=self.rsi_period, min_periods=1).mean(), index=df.index
+            )
+            loss = pd.Series(
+                (-delta.where(delta < 0, 0.0)).rolling(window=self.rsi_period, min_periods=1).mean(), index=df.index
+            )
             rs = gain / (loss + 1e-9)
             df["rsi"] = 100.0 - (100.0 / (1.0 + rs))
 

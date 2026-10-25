@@ -84,7 +84,7 @@ class SeasonalityCalculator:
             count = len(sub)
             if count > 0:
                 avg_ret = float(np.mean(np.asarray(sub["return"], dtype=float)))
-                pos_count = int((sub["return"] > 0).sum())
+                pos_count = int(np.sum(np.asarray(sub["return"], dtype=float) > 0))
                 win_rate = (pos_count / count) * 100.0
                 monthly_summary[MONTH_NAMES[m]] = {
                     "month_number": m,
@@ -140,7 +140,7 @@ class SeasonalityCalculator:
             count = len(sub)
             if count > 0:
                 avg_ret = float(np.mean(np.asarray(sub["return"], dtype=float)))
-                pos_count = int((sub["return"] > 0).sum())
+                pos_count = int(np.sum(np.asarray(sub["return"], dtype=float) > 0))
                 win_rate = (pos_count / count) * 100.0
                 dow_summary[DAY_NAMES[d]] = {
                     "avg_return_pct": round(avg_ret, 3),

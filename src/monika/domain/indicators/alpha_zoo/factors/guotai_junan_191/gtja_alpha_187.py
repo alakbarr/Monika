@@ -27,6 +27,7 @@ from monika.domain.indicators.factor_primitives import (
     ts_min,
     ts_rank,
     ts_std,
+    ts_sum,
 )
 
 ALPHA_ID = "gtja191_187"
@@ -62,5 +63,5 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     arr_b = (o - prev).to_numpy(dtype=np.float64, na_value=np.nan)
     mx = pd.DataFrame(np.maximum(arr_a, arr_b), index=o.index, columns=o.columns)
     val = mx * (1.0 - cond)
-    out = val.rolling(20).sum()
+    out = ts_sum(val, 20)
     return out

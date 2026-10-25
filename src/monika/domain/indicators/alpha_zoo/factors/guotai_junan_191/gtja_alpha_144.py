@@ -27,6 +27,7 @@ from monika.domain.indicators.factor_primitives import (
     ts_min,
     ts_rank,
     ts_std,
+    ts_sum,
 )
 
 ALPHA_ID = "gtja191_144"
@@ -59,7 +60,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     dc = c - c.shift(1)
     cond = (dc < 0).astype("float64")
     x = safe_div((safe_div(c, c.shift(1)) - 1.0).abs(), amt)
-    sumif = (x * cond).rolling(20).sum()
-    cnt = cond.rolling(20).sum().where(lambda d: d > 0)
+    sumif = ts_sum(x * cond, 20)
+    cnt = ts_sum(cond, 20).where(lambda d: d > 0)
     out = safe_div(sumif, cnt)
     return out

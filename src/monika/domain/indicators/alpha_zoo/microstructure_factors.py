@@ -50,14 +50,14 @@ from monika.domain.indicators.factor_primitives import (
     )
 )
 def microstructure_volume_price_rank_divergence(df: pd.DataFrame) -> pd.Series:
-    delta_log_vol = np.log(df["volume"] + 1.0) - np.log(df["volume"].shift(1) + 1.0)
+    delta_log_vol = pd.Series(np.log(df["volume"] + 1.0) - np.log(df["volume"].shift(1) + 1.0), index=df.index)
     intraday_ret = safe_div(df["close"] - df["open"], df["open"])
 
     # Rolling correlation between volume change and price change
     r_vol = delta_log_vol.rolling(6).apply(lambda x: pd.Series(x).rank(pct=True).iloc[-1], raw=False)
     r_ret = intraday_ret.rolling(6).apply(lambda x: pd.Series(x).rank(pct=True).iloc[-1], raw=False)
 
-    corr = r_vol.rolling(6).corr(r_ret)
+    corr = pd.Series(r_vol.rolling(6).corr(r_ret), index=df.index)
     return -corr
 
 

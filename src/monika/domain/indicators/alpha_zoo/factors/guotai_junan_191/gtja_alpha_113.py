@@ -27,6 +27,7 @@ from monika.domain.indicators.factor_primitives import (
     ts_min,
     ts_rank,
     ts_std,
+    ts_sum,
 )
 
 ALPHA_ID = "gtja191_113"
@@ -56,8 +57,8 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     """
     c = panel["close"]
     v = panel["volume"]
-    m1 = rank(c.shift(5).rolling(20).sum() / 20.0)
+    m1 = rank(ts_sum(c.shift(5), 20) / 20.0)
     m2 = ts_corr(c, v, 2)
-    m3 = rank(ts_corr(c.rolling(5).sum(), c.rolling(20).sum(), 2))
+    m3 = rank(ts_corr(ts_sum(c, 5), ts_sum(c, 20), 2))
     out = -1.0 * (m1 * m2) * m3
     return out

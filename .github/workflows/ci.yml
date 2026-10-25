@@ -80,7 +80,8 @@ jobs:
 
       - name: Run Pyright
         run: |
-          npx --yes pyright@1.1.396
+          ln -sfn "$(python -c 'import sys; print(sys.prefix)')" venv
+          npx --yes pyright@1.1.414
 
   python-test:
     name: Test Suite (Pytest)

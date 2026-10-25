@@ -368,7 +368,9 @@ class TimesFMEngine:
             high_s = target_df["high"].astype(float)
             low_s = target_df["low"].astype(float)
             diff_s = (high_s - low_s).tail(14)
-            baseline_atr = float(diff_s.mean()) if not diff_s.empty else float(current_price * 0.005)
+            baseline_atr = (
+                float(np.mean(np.asarray(diff_s, dtype=float))) if not diff_s.empty else float(current_price * 0.005)
+            )
 
         from unittest.mock import MagicMock
 

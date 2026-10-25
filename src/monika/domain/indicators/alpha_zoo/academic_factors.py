@@ -140,6 +140,6 @@ def academic_amihud_illiquidity_premium(df: pd.DataFrame) -> pd.Series:
 )
 def academic_idiosyncratic_volatility(df: pd.DataFrame) -> pd.Series:
     ret = df["close"].pct_change()
-    trend = ret.rolling(20).mean()
+    trend = pd.Series(ret.rolling(20).mean(), index=df.index)
     residual = ret - trend
-    return residual.rolling(30, min_periods=10).std()
+    return pd.Series(residual.rolling(30, min_periods=10).std(), index=df.index)

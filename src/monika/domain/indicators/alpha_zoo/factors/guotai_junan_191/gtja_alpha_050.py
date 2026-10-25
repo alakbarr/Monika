@@ -23,6 +23,7 @@ from monika.domain.indicators.factor_primitives import (
     ts_min,
     ts_rank,
     ts_std,
+    ts_sum,
 )
 
 __alpha_meta__ = {
@@ -54,7 +55,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     valid = hl.notna() & phl.notna() & move.notna()
     dn = move.where(hl < phl, 0.0).where(valid)
     up = move.where(hl > phl, 0.0).where(valid)
-    s_dn = dn.rolling(12, min_periods=12).sum()
-    s_up = up.rolling(12, min_periods=12).sum()
+    s_dn = ts_sum(dn, 12)
+    s_up = ts_sum(up, 12)
     total = s_up + s_dn
     return safe_div(s_up, total) - safe_div(s_dn, total)

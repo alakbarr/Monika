@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from monika.domain.indicators.factor_primitives import ts_mean
+
 __alpha_meta__ = {
     "id": "qlib158_cntd5",
     "theme": ["reversal"],
@@ -25,6 +27,6 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     prev = c.shift(1)
     up = (c > prev).astype("float64").where(c.notna() & prev.notna())  # a missing close is not an up day
     dn = (c < prev).astype("float64").where(c.notna() & prev.notna())  # ...nor a down day
-    up_w = up.rolling(window=5, min_periods=5).mean()
-    dn_w = dn.rolling(window=5, min_periods=5).mean()
+    up_w = ts_mean(up, 5)
+    dn_w = ts_mean(dn, 5)
     return up_w - dn_w

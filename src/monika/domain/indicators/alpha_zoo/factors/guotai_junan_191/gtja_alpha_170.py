@@ -27,6 +27,7 @@ from monika.domain.indicators.factor_primitives import (
     ts_min,
     ts_rank,
     ts_std,
+    ts_sum,
     vwap,
 )
 
@@ -61,7 +62,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     vw = vwap(panel, "equity_cn")
 
     a = safe_div(rank(safe_div(pd.DataFrame(1.0, index=c.index, columns=c.columns), c)) * v, ts_mean(v, 20))
-    b = safe_div(h * rank(h - c), c.rolling(5).sum() / 5.0)
+    b = safe_div(h * rank(h - c), ts_sum(c, 5) / 5.0)
     d = rank(vw - vw.shift(5))
     out = a * b - d
     return out

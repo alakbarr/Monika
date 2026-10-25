@@ -23,6 +23,7 @@ from monika.domain.indicators.factor_primitives import (
     ts_min,
     ts_rank,
     ts_std,
+    ts_sum,
 )
 
 __alpha_meta__ = {
@@ -44,4 +45,4 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]
     # A missing close or prior close is not a down day (#1463).
     up = (c > c.shift(1)).astype(float).where(c.notna() & c.shift(1).notna())
-    return up.rolling(12, min_periods=12).sum() / 12.0 * 100.0
+    return ts_sum(up, 12) / 12.0 * 100.0

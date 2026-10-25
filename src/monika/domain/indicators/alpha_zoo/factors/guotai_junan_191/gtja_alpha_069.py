@@ -23,6 +23,7 @@ from monika.domain.indicators.factor_primitives import (
     ts_min,
     ts_rank,
     ts_std,
+    ts_sum,
 )
 
 __alpha_meta__ = {
@@ -51,8 +52,8 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     dbm = pd.DataFrame(
         np.where(o >= po, 0.0, np.maximum((o - l).to_numpy(), (o - po).to_numpy())), index=o.index, columns=o.columns
     )
-    sd = dtm.rolling(20, min_periods=20).sum()
-    sb = dbm.rolling(20, min_periods=20).sum()
+    sd = ts_sum(dtm, 20)
+    sb = ts_sum(dbm, 20)
     res = pd.DataFrame(
         np.where(
             sd > sb, (safe_div(sd - sb, sd)).to_numpy(), np.where(sd < sb, (safe_div(sd - sb, sb)).to_numpy(), 0.0)

@@ -63,7 +63,7 @@ def wq_alpha_001(df: pd.DataFrame) -> pd.Series:
     )
 )
 def wq_alpha_006(df: pd.DataFrame) -> pd.Series:
-    corr = df["open"].rolling(10, min_periods=10).corr(df["volume"].astype(float))
+    corr = pd.Series(df["open"].rolling(10, min_periods=10).corr(df["volume"].astype(float)), index=df.index)
     return -1.0 * corr
 
 
@@ -100,13 +100,13 @@ def wq_alpha_012(df: pd.DataFrame) -> pd.Series:
     )
 )
 def wq_alpha_041(df: pd.DataFrame) -> pd.Series:
-    geo_mean = np.sqrt(df["high"] * df["low"])
+    geo_mean = pd.Series(np.sqrt(df["high"] * df["low"]), index=df.index)
     vol = df["volume"].astype(float)
     typical_price = (df["high"] + df["low"] + df["close"]) / 3.0
     cum_tp_vol = (typical_price * vol).cumsum()
     cum_vol = vol.cumsum().replace(0, np.nan)
     vwap = cum_tp_vol / cum_vol
-    return geo_mean - vwap
+    return pd.Series(geo_mean - vwap, index=df.index)
 
 
 @FactorRegistry.register(

@@ -64,16 +64,16 @@ def compute_yang_zhang_volatility(df: pd.DataFrame, window: int = 20) -> pd.Seri
     log_lc = pd.Series(np.log(low_p / (close_p + 1e-12)), index=df.index)
 
     # Rogers-Satchell component
-    rs = (log_ho * log_hc + log_lo * log_lc).rolling(n).mean()
+    rs = pd.Series((log_ho * log_hc + log_lo * log_lc).rolling(n).mean(), index=df.index)
 
     # Overnight & open-to-close variances
-    overnight_var = log_co_prev.rolling(n).var()
-    oc_var = log_oc.rolling(n).var()
+    overnight_var = pd.Series(log_co_prev.rolling(n).var(), index=df.index)
+    oc_var = pd.Series(log_oc.rolling(n).var(), index=df.index)
 
     k = 0.34 / (1.34 + ((n + 1) / (n - 1)))
-    yz_var = overnight_var + (oc_var * k) + (rs * (1.0 - k))
+    yz_var = pd.Series(overnight_var + (oc_var * k) + (rs * (1.0 - k)), index=df.index)
 
-    return yz_var.apply(lambda x: float(np.sqrt(max(0.0, x))) if pd.notna(x) else 0.0)
+    return pd.Series(yz_var.apply(lambda x: float(np.sqrt(max(0.0, x))) if pd.notna(x) else 0.0), index=df.index)
 
 
 def compute_lag1_autocorrelation(close: pd.Series, window: int = 20) -> pd.Series:
@@ -256,10 +256,22 @@ def compute_ichimoku(
     low = df["low"]
     close = df["close"]
 
-    tenkan = (high.rolling(tenkan_period).max() + low.rolling(tenkan_period).min()) / 2.0
-    kijun = (high.rolling(kijun_period).max() + low.rolling(kijun_period).min()) / 2.0
+    tenkan = (
+        pd.Series(high.rolling(tenkan_period).max(), index=df.index)
+        + pd.Series(low.rolling(tenkan_period).min(), index=df.index)
+    ) / 2.0
+    kijun = (
+        pd.Series(high.rolling(kijun_period).max(), index=df.index)
+        + pd.Series(low.rolling(kijun_period).min(), index=df.index)
+    ) / 2.0
     senkou_a = ((tenkan + kijun) / 2.0).shift(kijun_period)
-    senkou_b = ((high.rolling(senkou_b_period).max() + low.rolling(senkou_b_period).min()) / 2.0).shift(kijun_period)
+    senkou_b = (
+        (
+            pd.Series(high.rolling(senkou_b_period).max(), index=df.index)
+            + pd.Series(low.rolling(senkou_b_period).min(), index=df.index)
+        )
+        / 2.0
+    ).shift(kijun_period)
     chikou = close.shift(-kijun_period)
 
     last_ts = df.index[-1]

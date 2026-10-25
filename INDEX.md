@@ -1448,6 +1448,10 @@
   - `ts_mean(df: pd.DataFrame, n: int) -> pd.DataFrame`
   - `ts_mean(df: Any, n: int) -> Any`
   - `ts_mean(df: Any, n: int) -> Any`: Rolling arithmetic mean with strict warmup -> NaN.
+  - `ts_sum(df: pd.Series, n: int) -> pd.Series`
+  - `ts_sum(df: pd.DataFrame, n: int) -> pd.DataFrame`
+  - `ts_sum(df: Any, n: int) -> Any`
+  - `ts_sum(df: Any, n: int) -> Any`: Rolling sum with strict warmup -> NaN.
   - `ts_std(df: pd.Series, n: int) -> pd.Series`
   - `ts_std(df: pd.DataFrame, n: int) -> pd.DataFrame`
   - `ts_std(df: Any, n: int) -> Any`

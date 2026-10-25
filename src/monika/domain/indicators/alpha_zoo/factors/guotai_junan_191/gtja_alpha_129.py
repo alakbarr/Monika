@@ -27,6 +27,7 @@ from monika.domain.indicators.factor_primitives import (
     ts_min,
     ts_rank,
     ts_std,
+    ts_sum,
 )
 
 ALPHA_ID = "gtja191_129"
@@ -57,5 +58,5 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     c = panel["close"]
     dc = c - c.shift(1)
     # A missing close change is not a zero loss (#1463).
-    out = (-dc).where(dc < 0, 0.0).where(dc.notna()).rolling(12).sum()
+    out = ts_sum((-dc).where(dc < 0, 0.0).where(dc.notna()), 12)
     return out

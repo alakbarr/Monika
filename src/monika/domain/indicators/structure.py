@@ -272,7 +272,7 @@ def find_liquidity_zones(
             price = float(np.asarray(row["price"]).item())
             buffer = (atr_val * 0.15) if atr_val > 0 else (price * 0.001)
             subsequent_df = df[df.index > ts]
-            if subsequent_df.empty or subsequent_df["high"].max() <= price:
+            if subsequent_df.empty or float(np.max(np.asarray(subsequent_df["high"], dtype=float))) <= price:
                 zones.append(
                     LiquidityZoneData(
                         symbol=symbol,
@@ -291,7 +291,7 @@ def find_liquidity_zones(
             price = float(np.asarray(row["price"]).item())
             buffer = (atr_val * 0.15) if atr_val > 0 else (price * 0.001)
             subsequent_df = df[df.index > ts]
-            if subsequent_df.empty or subsequent_df["low"].min() >= price:
+            if subsequent_df.empty or float(np.min(np.asarray(subsequent_df["low"], dtype=float))) >= price:
                 zones.append(
                     LiquidityZoneData(
                         symbol=symbol,
@@ -350,7 +350,7 @@ def find_fvg(
 
     # Compute ATR (14-period rolling mean of true range)
     high_low = df["high"] - df["low"]
-    atr = high_low.rolling(window=14, min_periods=1).mean().bfill().reset_index(drop=True)
+    atr = pd.Series(high_low.rolling(window=14, min_periods=1).mean(), index=df.index).bfill().reset_index(drop=True)
 
     # Check if existing old FVGs are filled by current dataframe
     if existing_fvgs:
@@ -364,8 +364,8 @@ def find_fvg(
                 # Find if any candle strictly after formed_at in df fills it
                 ts_formed = pd.Timestamp(formed_at)
                 after_mask = ohlcv["timestamp"] > ts_formed
-                if after_mask.any():
-                    start_idx = int(after_mask.idxmax())
+                if bool(after_mask.any()):
+                    start_idx = int(np.argmax(np.asarray(after_mask, dtype=bool)))
                     check_filled = check_fvg_filled(ohlcv, start_idx, g_high, g_low, direction)
                     if check_filled:
                         filled_at = check_filled
@@ -570,10 +570,10 @@ def find_order_blocks(
         for _, bar in future_bars.iterrows():
             bar_ts = pd.Timestamp(str(bar["timestamp"])).to_pydatetime()
             if isinstance(bar_ts, datetime):
-                if ob.direction == "bullish" and bar["low"] <= ob_mid:
+                if ob.direction == "bullish" and float(np.asarray(bar["low"]).item()) <= ob_mid:
                     ob.mitigated_at = bar_ts
                     break
-                elif ob.direction == "bearish" and bar["high"] >= ob_mid:
+                elif ob.direction == "bearish" and float(np.asarray(bar["high"]).item()) >= ob_mid:
                     ob.mitigated_at = bar_ts
                     break
 

@@ -85,7 +85,7 @@ class TriConvergentAlphaStrategy(EdgeStrategy):
 
         # Factor 3: Amihud illiquidity shock
         dollar_vol = close * (volume + 1.0)
-        illiq = (ret.abs() / (dollar_vol + 1e-9)).rolling(10).mean()
+        illiq = pd.Series((ret.abs() / (dollar_vol + 1e-9)).rolling(10).mean(), index=close.index)
         illiq_std = float(np.asarray(illiq.rolling(20).std())[-1])
         illiq_mean = float(np.asarray(illiq.rolling(20).mean())[-1])
         illiq_z = (

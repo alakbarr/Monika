@@ -27,6 +27,7 @@ from monika.domain.indicators.factor_primitives import (
     ts_min,
     ts_rank,
     ts_std,
+    ts_sum,
 )
 
 ALPHA_ID = "gtja191_182"
@@ -73,5 +74,5 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     dn = (c < o) & (bench < bench.shift(1))
     # A bar with a missing open/close is neither up nor down (#1463).
     cond = (up | dn).astype("float64").where(c.notna() & o.notna())
-    out = cond.rolling(20).sum() / 20.0
+    out = ts_sum(cond, 20) / 20.0
     return out

@@ -120,8 +120,8 @@ async def handle_export_trades_to_excel(
         losses = df[df["PnL ($)"] < 0]
         win_rate = round((len(wins) / total_trades) * 100.0, 1) if total_trades > 0 else 0.0
         tot_pnl = round(df["PnL ($)"].sum(), 2)
-        gross_profit = wins["PnL ($)"].sum()
-        gross_loss = abs(losses["PnL ($)"].sum())
+        gross_profit = float(sum(wins["PnL ($)"]))
+        gross_loss = abs(float(sum(losses["PnL ($)"])))
         profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else 999.0
         avg_win = round(wins["PnL ($)"].mean(), 2) if len(wins) > 0 else 0.0
         avg_loss = round(losses["PnL ($)"].mean(), 2) if len(losses) > 0 else 0.0

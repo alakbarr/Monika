@@ -358,7 +358,7 @@ async def handle_optimize_strategy_parameters(args: dict, **ctx) -> dict:
         )
         if len(tr) < p:
             continue
-        atr_series = pd.Series(tr).rolling(p).mean().dropna().to_numpy()
+        atr_series = pd.Series(pd.Series(tr).rolling(p).mean()).dropna().to_numpy()
         returns = np.diff(closes)[-len(atr_series) :]
         sig = returns / (atr_series + 1e-12)
         mean_sig = float(np.mean(sig))

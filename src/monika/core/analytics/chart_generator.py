@@ -97,7 +97,7 @@ def generate_candlestick_chart(
             raise ValueError(f"Missing required OHLC column '{req_col}' in dataset")
         df[req_col] = pd.to_numeric(df[req_col], errors="coerce")
 
-    if "Volume" not in df.columns or df["Volume"].dropna().empty or (df["Volume"] == 0).all():
+    if "Volume" not in df.columns or df["Volume"].dropna().empty or bool((df["Volume"] == 0).all()):
         df["Volume"] = 0
         has_volume = False
     else:

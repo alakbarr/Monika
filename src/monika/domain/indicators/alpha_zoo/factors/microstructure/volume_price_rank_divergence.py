@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from monika.domain.indicators.factor_primitives import safe_div
+from monika.domain.indicators.factor_primitives import delta, safe_div
 
 __alpha_meta__ = {
     "id": "microstructure_volume_price_rank_divergence",
@@ -32,7 +32,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     op = panel["open"]
     vol = panel["volume"]
 
-    delta_log_vol = np.log(vol + 1.0) - np.log(vol.shift(1) + 1.0)
+    delta_log_vol = delta(np.log(vol + 1.0), 1)
     intraday_ret = safe_div(cl - op, op)
 
     # Rolling correlation between volume change rank and price change rank

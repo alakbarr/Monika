@@ -27,6 +27,7 @@ from monika.domain.indicators.factor_primitives import (
     ts_min,
     ts_rank,
     ts_std,
+    ts_sum,
 )
 
 ALPHA_ID = "gtja191_172"
@@ -66,9 +67,9 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     TR = pd.DataFrame(np.maximum(np.maximum(a, b), d), index=c.index, columns=c.columns)
     ld_cond = ((LD > 0) & (LD > HD)).astype("float64")
     hd_cond = ((HD > 0) & (HD > LD)).astype("float64")
-    dm_plus = (LD * ld_cond).rolling(14).sum() * 100.0
-    dm_minus = (HD * hd_cond).rolling(14).sum() * 100.0
-    tr14 = TR.rolling(14).sum()
+    dm_plus = ts_sum(LD * ld_cond, 14) * 100.0
+    dm_minus = ts_sum(HD * hd_cond, 14) * 100.0
+    tr14 = ts_sum(TR, 14)
     di_p = safe_div(dm_plus, tr14)
     di_m = safe_div(dm_minus, tr14)
     dx = safe_div((di_p - di_m).abs(), di_p + di_m) * 100.0

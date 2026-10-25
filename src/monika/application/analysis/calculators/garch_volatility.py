@@ -79,7 +79,7 @@ class GarchVolatilityEngine:
         if not is_returns:
             if len(series) < 30:
                 return cls._create_error_result("Insufficient price bars (minimum 30 required)")
-            returns = np.log(series / series.shift(1)).dropna()
+            returns = pd.Series(np.log(series / series.shift(1)), index=series.index).dropna()
         else:
             returns = series.dropna()
 

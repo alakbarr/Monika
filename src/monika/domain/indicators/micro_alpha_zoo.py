@@ -120,7 +120,7 @@ def alpha_001(df: pd.DataFrame) -> pd.Series:
     ret_df = pd.DataFrame({"r": ret})
     sq = signed_power(ret_df, 2.0)
     am = ts_argmax(sq, 5)
-    return am["r"] - 2.5
+    return pd.Series(am["r"] - 2.5, index=df.index)
 
 
 @MicroAlphaZoo.register(
@@ -137,7 +137,7 @@ def alpha_002(df: pd.DataFrame) -> pd.Series:
     df_vol = pd.DataFrame({"v": vol_delta})
     df_body = pd.DataFrame({"v": body_ratio})
     corr = ts_corr(df_vol, df_body, 6)
-    return -1.0 * corr["v"]
+    return pd.Series(-1.0 * corr["v"], index=df.index)
 
 
 @MicroAlphaZoo.register(
@@ -152,7 +152,7 @@ def alpha_003(df: pd.DataFrame) -> pd.Series:
     df_open = pd.DataFrame({"s": df["open"]})
     df_vol = pd.DataFrame({"s": df["volume"]})
     corr = ts_corr(df_open, df_vol, 10)
-    return -1.0 * corr["s"]
+    return pd.Series(-1.0 * corr["s"], index=df.index)
 
 
 @MicroAlphaZoo.register(

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from monika.domain.indicators.factor_primitives import safe_div
+from monika.domain.indicators.factor_primitives import safe_div, ts_sum
 
 __alpha_meta__ = {
     "id": "qlib158_vsumd60",
@@ -27,7 +27,7 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     pos = diff.where(diff > 0, 0.0)
     neg = (-diff).where(diff < 0, 0.0)
     absd = diff.abs()
-    num_p = pos.rolling(window=60, min_periods=60).sum()
-    num_n = neg.rolling(window=60, min_periods=60).sum()
-    den = absd.rolling(window=60, min_periods=60).sum()
+    num_p = ts_sum(pos, 60)
+    num_n = ts_sum(neg, 60)
+    den = ts_sum(absd, 60)
     return safe_div(num_p - num_n, den)

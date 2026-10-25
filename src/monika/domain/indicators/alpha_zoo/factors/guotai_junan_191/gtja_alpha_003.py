@@ -23,6 +23,7 @@ from monika.domain.indicators.factor_primitives import (
     ts_min,
     ts_rank,
     ts_std,
+    ts_sum,
 )
 
 __alpha_meta__ = {
@@ -57,4 +58,4 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     # sum's own min_periods correctly turns NaN for every window still
     # touching the gap, instead of silently summing a fabricated 0.0.
     move = move.mask(c.isna() | pc.isna())
-    return move.rolling(6, min_periods=6).sum()
+    return ts_sum(move, 6)

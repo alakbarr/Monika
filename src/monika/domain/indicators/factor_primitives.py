@@ -215,8 +215,8 @@ def zscore(df: Any) -> Any:
     """
     df_f = _as_float(df) if isinstance(df, (pd.DataFrame, pd.Series)) else pd.Series(df, dtype=np.float64)
     if isinstance(df_f, pd.Series):
-        mean = df_f.mean(skipna=True)
-        std = df_f.std(ddof=1, skipna=True)
+        mean = float(np.asarray(df_f.mean(skipna=True)).item())
+        std = float(np.asarray(df_f.std(ddof=1, skipna=True)).item())
         if std == 0 or np.isnan(std):
             return pd.Series(np.nan, index=df_f.index, dtype=float, name=df_f.name)
         res = (df_f - mean) / std
@@ -247,7 +247,7 @@ def scale(df: Any, a: float = 1.0) -> Any:
     """
     df_f = _as_float(df) if isinstance(df, (pd.DataFrame, pd.Series)) else pd.Series(df, dtype=np.float64)
     if isinstance(df_f, pd.Series):
-        abs_sum = df_f.abs().sum(skipna=True)
+        abs_sum = float(df_f.abs().sum(skipna=True))
         if abs_sum == 0 or np.isnan(abs_sum):
             return pd.Series(np.nan, index=df_f.index, dtype=float, name=df_f.name)
         res = (df_f * a) / abs_sum
@@ -437,6 +437,22 @@ def ts_mean(df: Any, n: int) -> Any:
         return df.rolling(window=n, min_periods=n).mean()
     s = pd.Series(df)
     return np.asarray(s.rolling(window=n, min_periods=n).mean())
+
+
+@overload
+def ts_sum(df: pd.Series, n: int) -> pd.Series: ...
+@overload
+def ts_sum(df: pd.DataFrame, n: int) -> pd.DataFrame: ...
+@overload
+def ts_sum(df: Any, n: int) -> Any: ...
+def ts_sum(df: Any, n: int) -> Any:
+    """Rolling sum with strict warmup -> NaN."""
+    if n < 1:
+        raise ValueError(f"ts_sum window must be >= 1, got {n}")
+    if hasattr(df, "rolling"):
+        return df.rolling(window=n, min_periods=n).sum()
+    s = pd.Series(df)
+    return np.asarray(s.rolling(window=n, min_periods=n).sum())
 
 
 @overload

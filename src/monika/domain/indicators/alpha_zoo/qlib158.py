@@ -187,8 +187,8 @@ for w in (5, 10, 20, 60):
 
 
 def _calc_rsv(df: pd.DataFrame, window: int) -> pd.Series:
-    lowest = df["low"].rolling(window, min_periods=window).min()
-    highest = df["high"].rolling(window, min_periods=window).max()
+    lowest = pd.Series(df["low"].rolling(window, min_periods=window).min(), index=df.index)
+    highest = pd.Series(df["high"].rolling(window, min_periods=window).max(), index=df.index)
     num = df["close"] - lowest
     den = highest - lowest
     return safe_div(num, den)

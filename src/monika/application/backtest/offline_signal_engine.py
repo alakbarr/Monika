@@ -54,8 +54,8 @@ class OfflineSignalEngine:
     def _calculate_rsi(self, df: pd.DataFrame, period: int = 14) -> pd.Series:
         df = self._normalize_df(df)
         delta = df["Close"].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        gain = pd.Series((delta.where(delta > 0, 0)).rolling(window=period).mean(), index=df.index)
+        loss = pd.Series((-delta.where(delta < 0, 0)).rolling(window=period).mean(), index=df.index)
         rs = gain / loss
         res = 100 - (100 / (1 + rs))
         return pd.Series(res, index=df.index)

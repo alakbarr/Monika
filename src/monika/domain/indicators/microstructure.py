@@ -153,7 +153,7 @@ def compute_amihud_illiquidity(
 
     safe_vol = dollar_volume.where(dollar_volume > 0, np.nan)
     ratio = returns.abs() / safe_vol
-    return ratio.rolling(window, min_periods=1).mean().fillna(0.0)
+    return pd.Series(ratio.rolling(window, min_periods=1).mean(), index=returns.index).fillna(0.0)
 
 
 def compute_kyle_lambda(
@@ -226,7 +226,7 @@ def get_microstructure_metrics(
     # 1. VPIN for Crypto & Precious Metals
     is_vpin = sym in VPIN_SYMBOLS or any(k in clean_sym for k in ("BTC", "ETH", "SOL", "XAU", "GOLD"))
     if is_vpin and trades_df is not None and len(trades_df) >= 10:
-        bucket_vol = float(trades_df["volume"].sum() / 50.0)
+        bucket_vol = float(np.sum(np.asarray(trades_df["volume"], dtype=float)) / 50.0)
         metrics["vpin"] = round(compute_vpin(trades_df, bucket_volume=bucket_vol), 3)
 
     # 2. Kyle's Lambda for Forex pairs

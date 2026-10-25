@@ -58,7 +58,7 @@ def compute_forward_returns(prices: pd.Series, horizon: int = 1) -> pd.Series:
     Computes lookahead forward returns: (P_{t+h} - P_t) / P_t.
     Note: Must be lagged appropriately when evaluated in live inference.
     """
-    return (prices.shift(-horizon) - prices) / prices
+    return pd.Series((prices.shift(-horizon) - prices) / prices, index=prices.index)
 
 
 def compute_factor_ic(

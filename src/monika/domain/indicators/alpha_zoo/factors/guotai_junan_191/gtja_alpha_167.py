@@ -27,6 +27,7 @@ from monika.domain.indicators.factor_primitives import (
     ts_min,
     ts_rank,
     ts_std,
+    ts_sum,
 )
 
 ALPHA_ID = "gtja191_167"
@@ -55,5 +56,5 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
         pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
     """
     c = panel["close"]
-    out = (c - c.shift(1)).clip(lower=0.0).rolling(12).sum()
+    out = ts_sum((c - c.shift(1)).clip(lower=0.0), 12)
     return out
