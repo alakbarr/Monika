@@ -323,6 +323,8 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                     ).strip()
             elif req_key == "rationale":
                 args["rationale"] = "Model rationale omitted; evaluated under fail-closed safety policy."
+            elif req_key == "invalidation":
+                args["invalidation"] = "Invalidated on price structure shift or extreme reversal."
             elif req_key == "confluence_score":
                 args["confluence_score"] = 0
                 if str(args.get("decision", "")).lower() in ("buy", "sell"):

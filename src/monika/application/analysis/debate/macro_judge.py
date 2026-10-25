@@ -102,6 +102,16 @@ Evaluate the merits, assign scores (1-10), declare the winner ('RISK_ON_USD_BEAR
         res = await client.classify_json(prompt=prompt, schema=JUDGE_SCHEMA, system_prompt=system_prompt)
         if not res or not isinstance(res, dict):
             raise ValueError("classify_json returned empty/None result")
+        # Fail-closed escalation if either upstream analyst returned degraded fallback
+        bull_degraded = isinstance(bull_thesis, dict) and (
+            bull_thesis.get("degraded_fallback") or bull_thesis.get("is_fallback")
+        )
+        bear_degraded = isinstance(bear_thesis, dict) and (
+            bear_thesis.get("degraded_fallback") or bear_thesis.get("is_fallback")
+        )
+        if bull_degraded or bear_degraded:
+            res["escalation_required"] = True
+            logger.warning("[MacroJudge] Upstream macro debate participant degraded; escalation_required enforced.")
         return res
     except Exception as e:
         logger.error(f"Macro Judge failed: {e}")

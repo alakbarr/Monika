@@ -609,6 +609,57 @@ class BaseLLMClient(LlmPort, ABC):
         """Generate validated structured JSON output (delegates to classify_json)."""
         return await self.classify_json(prompt=prompt, system_prompt=system, schema=schema, **kwargs)
 
+    async def classify_json_with_diagnostic_retry(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        schema: Optional[Dict[str, Any]] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        max_retries: int = 1,
+        **kwargs: Any,
+    ) -> Optional[Dict[str, Any]]:
+        """Execute classify_json with a diagnostic self-correction retry if output is missing required schema keys."""
+        current_prompt = prompt
+        result: Optional[Dict[str, Any]] = None
+        for attempt in range(max_retries + 1):
+            result = await self.classify_json(
+                current_prompt,
+                system_prompt=system_prompt,
+                schema=schema,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                **kwargs,
+            )
+            if isinstance(result, dict):
+                req_keys = (
+                    [str(r) for r in schema.get("required", [])]
+                    if isinstance(schema, dict) and isinstance(schema.get("required"), list)
+                    else []
+                )
+                missing = [k for k in req_keys if k not in result or result.get(k) is None]
+                if not missing:
+                    return result
+                err_reason = f"Missing required schema keys: {missing}. Provided keys: {sorted(result.keys())}"
+            else:
+                err_reason = "Output was None or could not be parsed as a JSON object."
+
+            if attempt < max_retries:
+                req_summary = (
+                    f"Required keys: {schema.get('required', [])}"
+                    if isinstance(schema, dict) and schema.get("required")
+                    else "Must return a valid JSON object."
+                )
+                current_prompt = (
+                    f"{prompt}\n\n"
+                    f"[TURN FAILURE DIAGNOSTIC — ATTEMPT {attempt + 1} SELF-CORRECTION REQUIRED]\n"
+                    f"• What Failed: Structured JSON validation failed.\n"
+                    f"• Root Cause: {err_reason}\n"
+                    f"• Expected Schema Contract: {req_summary}\n"
+                    f"• Required Remediation: Return ONLY a valid JSON object containing all required keys."
+                )
+        return result if isinstance(result, dict) else None
+
     # --- Compatibility wrappers (generasi lama) ---
 
     async def generate_text(

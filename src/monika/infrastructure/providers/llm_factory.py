@@ -26,16 +26,29 @@ _UNSUPPORTED_SCHEMA_ROUTES: set[tuple[str, str]] = set()
 HOT_PATH_ROLES: set[str] = {
     "debate",
     "debate_judge",
+    "debate_bull",
+    "debate_bear",
     "bull_debater",
     "bear_debater",
     "bull_analyst",
     "bear_analyst",
+    "macro_bull",
+    "macro_bear",
+    "macro_judge",
     "judge",
     "investment_judge",
     "risk_gate",
+    "risk_gate_aggressive",
+    "risk_gate_conservative",
+    "risk_gate_neutral",
+    "aggressive_risk",
+    "conservative_risk",
+    "neutral_risk",
     "pre_commit_gate",
     "execution_verifier",
     "position_guardian",
+    "jev_position_guard",
+    "jev_trigger_validator",
     "trailing_stop",
     "trigger_evaluator",
     "reactive_graph",
@@ -579,16 +592,32 @@ class LLMFactory:
         # SOTA Dynamic Thinking Budget Wiring
         if client is not None:
             try:
-                from monika.infrastructure.llm.adaptive_thinking import PerSymbolAdaptiveThinkingAllocator
+                from monika.infrastructure.llm.adaptive_thinking import (
+                    PerSymbolAdaptiveThinkingAllocator,
+                    clamp_thinking_budget_to_answer_room,
+                )
 
                 if thinking_level and thinking_level != "none":
-                    level_to_budget = {"low": 1024, "medium": 4096, "high": 10000, "max": 16000, "xhigh": 16000}
+                    level_to_budget = {
+                        "minimal": 1024,
+                        "low": 1024,
+                        "medium": 4096,
+                        "high": 10000,
+                        "max": 16000,
+                        "xhigh": 16000,
+                        "extended": 16000,
+                    }
                     base_b = level_to_budget.get(thinking_level.lower(), 4000)
                     adaptive_budget = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(
                         task_role or "", base_budget=base_b
                     )
                 else:
                     adaptive_budget = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(task_role or "")
+
+                if isinstance(max_tokens, int) and max_tokens > 1024:
+                    adaptive_budget = clamp_thinking_budget_to_answer_room(
+                        adaptive_budget, max_tokens=max_tokens, min_answer_tokens=1024
+                    )
 
                 if hasattr(client, "set_thinking_budget"):
                     client.set_thinking_budget(adaptive_budget)
@@ -679,14 +708,30 @@ class FallbackClientWrapper(BaseLLMClient):
             from monika.infrastructure.llm.adaptive_thinking import (
                 PerSymbolAdaptiveThinkingAllocator,
                 QuantizedThinkingAllocator,
+                clamp_thinking_budget_to_answer_room,
             )
 
-            raw_b = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(task_role)
-            self._dynamic_thinking_budget = QuantizedThinkingAllocator.quantize(raw_b)
-            self.thinking_budget = self._dynamic_thinking_budget
+            level_to_budget = {
+                "none": 0,
+                "minimal": 1024,
+                "low": 1024,
+                "medium": 4096,
+                "high": 10000,
+                "max": 16000,
+                "xhigh": 16000,
+                "extended": 16000,
+            }
+            base_b = (
+                level_to_budget.get(str(primary_thinking).lower(), 4096)
+                if primary_thinking and str(primary_thinking).lower() != "none"
+                else None
+            )
+            raw_b = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(task_role, base_budget=base_b)
+            if isinstance(self.max_tokens, int) and self.max_tokens > 1024 and raw_b > 0:
+                raw_b = clamp_thinking_budget_to_answer_room(raw_b, max_tokens=self.max_tokens, min_answer_tokens=1024)
+            self.thinking_budget = QuantizedThinkingAllocator.quantize(raw_b) if raw_b > 0 else 0
         except Exception:
             self.thinking_budget = 4096
-            self._dynamic_thinking_budget = 4096
 
     @property
     def provider_name(self) -> str:
@@ -753,6 +798,8 @@ class FallbackClientWrapper(BaseLLMClient):
                     self.fallbacks[i] = hot_fb
         except Exception:
             pass
+
+        self._maybe_restore_primary()
 
         if self._primary_cooldown_until or "primary" in self._slot_cooldowns:
             models_to_try = [(f"fallback_{i + 1}", model) for i, model in enumerate(self.fallbacks)]
@@ -1124,6 +1171,13 @@ class FallbackClientWrapper(BaseLLMClient):
                         logger.warning(
                             f"[{self.task_role}] Memoized unsupported response_format for {provider}/{model}"
                         )
+                        if "response_format" in kwargs and slot_retries < 1:
+                            slot_retries += 1
+                            kwargs.pop("response_format", None)
+                            logger.info(
+                                f"[{self.task_role}] Retrying {slot_name}/{model} in-place without response_format"
+                            )
+                            continue
 
                     # ── C4: STRUCTURED ERROR CLASSIFICATION ──
                     from monika.infrastructure.providers.provider_failover_classifier import (

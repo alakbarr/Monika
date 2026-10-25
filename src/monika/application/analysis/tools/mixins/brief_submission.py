@@ -187,12 +187,22 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
             )
 
         non_neutral_currencies = [c for c, b in bias.items() if b != "neutral"]
+        neutral_currencies = [c for c, b in bias.items() if b == "neutral"]
         invalidation_map = inp.get("invalidation_conditions", {})
         missing_invalidation = [c for c in non_neutral_currencies if c not in invalidation_map]
         if missing_invalidation:
             errors.append(
                 f"MISSING_INVALIDATION: currency dengan bias terarah (bukan neutral) WAJIB punya invalidation_conditions. Kurang untuk: {missing_invalidation}"
             )
+        is_weekend_now = clock.now().weekday() >= 5
+        if not is_weekend_now and len(neutral_currencies) >= 6:
+            missing_neutral_inv = [c for c in neutral_currencies if c not in invalidation_map]
+            if len(missing_neutral_inv) > 2:
+                errors.append(
+                    f"LAZY_NEUTRAL_BIAS_EVASION: Anda menetapkan >=6 currency sebagai 'neutral' ({neutral_currencies}) "
+                    f"tanpa menyertakan invalidation_conditions (batas range breakout) untuk {missing_neutral_inv}. "
+                    f"Neutral bukan jalan pintas untuk melewati validasi: sertakan boundary range eksplisit di invalidation_conditions."
+                )
 
         weak_invalidation = []
         for c in non_neutral_currencies:
@@ -696,32 +706,17 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
 
         if completeness_errors:
             self.submit_attempts += 1
-            if self.submit_attempts <= 2:
-                logger.warning(f"Brief rejected (incomplete): {completeness_errors}")
-                return {
-                    "status": "rejected",
-                    "errors": completeness_errors,
-                    "error_classification": "INCOMPLETE_ANALYSIS",
-                    "guidance": "Your brief is incomplete. Fix the errors above and resubmit. Do NOT ignore this.",
-                }
-            else:
-                logger.warning(
-                    f"Brief accepted with unresolved errors after {self.submit_attempts} attempts: {completeness_errors}"
-                )
-                inp["macro_narrative"] = inp.get("macro_narrative", "") + (
-                    f"\n\n[SYSTEM FLAG: Brief force-accepted with unresolved errors: "
-                    f"{'; '.join(completeness_errors)}. Stage 2 MUST escalate if this affects the trading decision.]"
-                )
-                inp["confidence"] = min(float(inp.get("confidence", 0.5)), 0.35)
-                inp["_data_quality_degraded"] = True
-                inp["_degradation_reasons"] = completeness_errors
-                cb_degraded = inp.get("currency_bias")
-                if not isinstance(cb_degraded, dict):
-                    cb_degraded = {}
-                    inp["currency_bias"] = cb_degraded
-                for ccy in ("USD", "EUR", "GBP", "JPY", "AUD", "XAU", "OIL", "BTC"):
-                    if ccy not in cb_degraded:
-                        cb_degraded[ccy] = "neutral"
+            logger.warning(f"Brief rejected (incomplete, attempt {self.submit_attempts}): {completeness_errors}")
+            return {
+                "status": "rejected",
+                "errors": completeness_errors,
+                "error_classification": "INCOMPLETE_ANALYSIS",
+                "attempt": self.submit_attempts,
+                "guidance": (
+                    "Your brief is incomplete and CANNOT be force-accepted. "
+                    "Fix EVERY listed error above and resubmit via submit_fundamental_brief."
+                ),
+            }
 
         from monika.application.protocol.brief_contamination_guard import BriefContaminationGuard
 
@@ -737,29 +732,22 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
 
         if not is_safe and contamination_risk >= CONTAMINATION_HARD_BLOCK_THRESHOLD:
             self.submit_attempts += 1
-            if self.submit_attempts <= 2:
-                logger.warning(f"Brief REJECTED (contamination_risk={contamination_risk:.2f}): {contamination_issues}")
-                return {
-                    "status": "rejected",
-                    "errors": contamination_issues,
-                    "error_classification": "INTERNAL_CONTRADICTION",
-                    "guidance": (
-                        "Brief Anda mengandung kontradiksi internal yang belum diselesaikan "
-                        "(lihat errors di atas). Anda WAJIB secara eksplisit menyatakan di "
-                        "macro_narrative: sumber mana yang Anda percaya dan MENGAPA, sebelum "
-                        "submit ulang. Jangan hanya menyebut kedua sisi tanpa memilih."
-                    ),
-                }
-            else:
-                logger.warning(
-                    f"Brief accepted despite contamination_risk={contamination_risk:.2f} "
-                    f"(max retries reached): {contamination_issues}"
-                )
-                inp["macro_narrative"] = inp.get("macro_narrative", "") + (
-                    f"\n\n[SYSTEM FLAG: Brief disimpan meski contamination_risk={contamination_risk:.2f} "
-                    f"setelah {self.submit_attempts} percobaan. Isu belum terselesaikan: "
-                    f"{'; '.join(contamination_issues)}. Stage 2 harus ekstra hati-hati.]"
-                )
+            logger.warning(
+                f"Brief REJECTED (contamination_risk={contamination_risk:.2f}, attempt {self.submit_attempts}): "
+                f"{contamination_issues}"
+            )
+            return {
+                "status": "rejected",
+                "errors": contamination_issues,
+                "error_classification": "INTERNAL_CONTRADICTION",
+                "attempt": self.submit_attempts,
+                "guidance": (
+                    "Brief Anda mengandung kontradiksi internal yang belum diselesaikan "
+                    "(lihat errors di atas) dan TIDAK AKAN dipaksa masuk (fail-closed). "
+                    "Anda WAJIB menyelaraskan currency_bias/risk_sentiment atau secara eksplisit "
+                    "menyatakan di macro_narrative sumber mana yang Anda percaya dan MENGAPA, sebelum submit ulang."
+                ),
+            }
         elif not is_safe:
             inp["macro_narrative"] = inp.get("macro_narrative", "") + (
                 f"\n\n[SYSTEM NOTE: contamination_risk={contamination_risk:.2f} (warning zone). "

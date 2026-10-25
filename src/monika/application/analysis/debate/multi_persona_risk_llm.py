@@ -85,7 +85,7 @@ async def analyze_risk_multi_persona_llm(
             if not isinstance(role_data, dict):
                 role_data = {}
             if "veto_trade" not in role_data:
-                role_data["veto_trade"] = False
+                role_data["veto_trade"] = True
             if "recommended_multiplier" not in role_data:
                 role_data["recommended_multiplier"] = default_mult
             if "risk_profile_assessment" not in role_data:

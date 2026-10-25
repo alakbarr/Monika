@@ -108,11 +108,12 @@ class CodeVerifyStopGate:
 
     @classmethod
     def evaluate(cls, context: StopGateContext) -> Tuple[bool, Optional[str]]:
-        if context.has_unverified_file_edits and context.mutated_files:
+        if context.mutated_files and (context.has_unverified_file_edits or not context.verification_commands_run):
             files_str = ", ".join(context.mutated_files[:3])
             return False, (
-                f"Verification Invariant: Files ({files_str}) were modified during this turn. "
-                "Please verify that the changes are syntactically valid and free of errors before finishing."
+                f"Verification Invariant: Files ({files_str}) were modified during this turn without passing "
+                "syntax/test verification. You must run 'run_verification_gate' or 'verify_syntax' and ensure "
+                "it succeeds (exit code 0) before concluding this turn."
             )
         return True, None
 

@@ -134,6 +134,7 @@ Respond in valid JSON format ONLY conforming to the schema."""
         "strength_score": 0,
         "evidence_cited": [f"Fallback: LLM generation error ({last_err})"],
         "parse_error": True,
+        "degraded_fallback": True,
     }
 
 
@@ -233,4 +234,5 @@ Respond in valid JSON format ONLY conforming to the schema."""
         "rebuttal_evidence": ["Fact Sheet verified via fallback"],
         "conceded_points": [],
         "parse_error": True,
+        "degraded_fallback": True,
     }

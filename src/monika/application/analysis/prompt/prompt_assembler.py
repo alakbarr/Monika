@@ -247,7 +247,7 @@ class PromptAssembler:
             except Exception:
                 pass
         tier2_sections = [
-            PromptSection(name="TOOL_STUBS", content=STAGE2_TOOL_STUBS),
+            PromptSection(name="TOOL_STUBS", content=TIER2_TOOL_STUBS),
         ]
         if discipline:
             tier2_sections.append(PromptSection(name="MODEL_DISCIPLINE", content=discipline))

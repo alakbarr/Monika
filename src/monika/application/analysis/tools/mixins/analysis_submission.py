@@ -1172,23 +1172,26 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 "check later",
                 "wait for update",
             ]
+            has_price = trigger.get("price") is not None
+            has_digits = any(ch.isdigit() for ch in trigger_detail)
             is_vague = (
-                len(trigger_detail) < 20
-                or any(phrase in trigger_detail.lower() for phrase in vague_phrases)
-                and trigger_type != "time"
+                trigger_type != "time"
+                and not has_price
+                and (
+                    len(trigger_detail) < 15
+                    or (any(phrase in trigger_detail.lower() for phrase in vague_phrases) and not has_digits)
+                )
             )
 
-            if is_vague and trigger_type != "time":
+            if is_vague:
                 logger.warning(
-                    f'[{symbol}] Vague WAIT trigger detected: "{trigger_detail[:80]}". '
-                    f"AI should specify exact price level or event for re-evaluation."
+                    f'[{symbol}] Vague WAIT trigger rejected: "{trigger_detail[:80]}". '
+                    f"AI must specify exact price level or concrete event for re-evaluation."
                 )
-                # Don't block, but log for quality tracking
-                rationale = rationale + (
-                    f"\n[QUALITY NOTE: Reevaluation trigger could be more specific. "
-                    f"Ideal: specific price level or named event.]"
+                errors.append(
+                    f"VAGUE_WAIT_TRIGGER: Reevaluation trigger untuk WAIT tidak spesifik ('{trigger_detail[:60]}'). "
+                    f"Untuk trigger non-time, WAJIB sertakan field 'price' numerik atau 'detail' konkret (>=15 karakter dengan level harga/event terukur)."
                 )
-                inp["rationale"] = rationale
 
         if decision in ("buy", "sell"):
             if not inp.get("confluence_score"):

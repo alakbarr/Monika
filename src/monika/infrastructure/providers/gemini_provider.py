@@ -1364,7 +1364,21 @@ class GeminiProvider(BaseLLMClient):
                             "monika.application.analysis.tools.tool_executor"
                         ).ToolExecutor
                         bound_executor = tool_executor_cls(session, settings=self.settings, model_name=self.model)
-                    result = await bound_executor.execute(tool_name, tool_input)
+                    try:
+                        result = await bound_executor.execute(tool_name, tool_input)
+                    except Exception as exec_err:
+                        logger.error(f"Gemini chat tool execution error ({tool_name}): {exec_err}", exc_info=True)
+                        from monika.application.agent.harness.turn_failure_diagnostics import (
+                            TurnFailureDiagnosticBuilder,
+                        )
+
+                        diag = TurnFailureDiagnosticBuilder.from_tool_execution_error(
+                            turn_number=turns,
+                            tool_name=tool_name,
+                            tool_input=tool_input if isinstance(tool_input, dict) else {},
+                            error_msg=str(exec_err),
+                        )
+                        result = {"status": "error", "error": str(exec_err), "_turn_failure_diagnostic": diag.to_dict()}
                 raw_payload = json.dumps(result, ensure_ascii=False, default=str)
                 pruned_payload = compactor.micro_prune(raw_payload, tool_name=tool_name)
                 tool_results.append({"type": "tool_result", "tool_use_id": tool_use_id, "content": pruned_payload})

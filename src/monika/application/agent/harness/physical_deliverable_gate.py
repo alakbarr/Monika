@@ -212,4 +212,12 @@ class PhysicalDeliverableGate:
                 except Exception:
                     pass
             verdict.git_confirmed_paths = git_confirmed
+            if ledger is not None and hasattr(ledger, "record_general_evidence"):
+                for p in verdict.verified_paths:
+                    ledger.record_general_evidence(
+                        category="file_mutation",
+                        target=str(p),
+                        status="passed",
+                        details={"git_confirmed": p in git_confirmed},
+                    )
         return verdict

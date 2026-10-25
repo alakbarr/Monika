@@ -1020,6 +1020,11 @@ class AgentHarness:
                 self.guardrail_controller.read_before_act.record_call(p_tool)
         self.stall_guard.reset()
         self.verification_ledger.reset_turn()
+        if hasattr(self, "todo_state") and self.todo_state is not None:
+            self.todo_state.reset()
+        _emergency_recovery_turns_used = 0
+        _max_emergency_recovery_turns = int(self.settings.get("max_emergency_recovery_turns", 2))
+        unverified_stop_gate_error: Optional[str] = None
 
         current_messages = list(messages)
 
@@ -1310,18 +1315,22 @@ class AgentHarness:
 
                         turn_state.current_phase = TurnPhase.API_CALL
                         t_api_start = asyncio.get_event_loop().time()
+                        _watchdog_ref: Optional[TurnLivenessWatchdog] = None
                         try:
                             async with TurnLivenessWatchdog(
                                 turn_id=f"{stage_name}_{turns}",
                                 timeout_seconds=turn_timeout,
                                 stall_timeout_seconds=min(30.0, max(5.0, turn_timeout / 2.0)),
+                                abort_on_hang=True,
                             ) as watchdog:
+                                _watchdog_ref = watchdog
                                 api_coro = run_bounded_async(
                                     self.llm_client.run_tool_agent(send_messages, effective_tools, effective_sys),
                                     timeout_seconds=turn_timeout,
                                     timeout_message=f"Turn {turns} LLM call timed out after {turn_timeout:.0f}s",
                                 )
                                 self._active_turn_task = asyncio.create_task(api_coro)
+                                watchdog.set_task_to_cancel(self._active_turn_task)
                                 try:
                                     response = await self._active_turn_task
                                 finally:
@@ -1329,7 +1338,11 @@ class AgentHarness:
                                 watchdog.record_activity("api_response_received")
                         except (asyncio.TimeoutError, TimeoutError) as to_err:
                             raise TimeoutError(f"Turn {turns} LLM call timed out after {turn_timeout:.0f}s") from to_err
-                        except asyncio.CancelledError:
+                        except asyncio.CancelledError as cancel_err:
+                            if _watchdog_ref is not None and _watchdog_ref.hang_detected:
+                                raise TimeoutError(
+                                    f"Turn {turns} deadlocked and was aborted by TurnLivenessWatchdog after {turn_timeout:.0f}s"
+                                ) from cancel_err
                             logger.warning(
                                 f"[{stage_name}][AgentHarness] Active LLM call cancelled on turn {turns} (in-flight steering or abort)."
                             )
@@ -1339,7 +1352,13 @@ class AgentHarness:
                                 asyncio.get_event_loop().time() - t_api_start
                             )
                         break
+                    except StopIteration as stop_iter_exc:
+                        last_exc = stop_iter_exc
+                        break
                     except Exception as exc:
+                        if _emergency_recovery_turns_used > 0 and "StopIteration" in str(exc):
+                            last_exc = exc
+                            break
                         last_exc = exc
 
                         # ── Structured Error Recovery Pipeline (Phase 3) ──
@@ -1419,6 +1438,13 @@ class AgentHarness:
                 )
 
                 if response is None:
+                    if _emergency_recovery_turns_used > 0 and (
+                        isinstance(last_exc, StopIteration) or "StopIteration" in str(last_exc)
+                    ):
+                        current_messages = pre_turn_checkpoint
+                        turns -= 1
+                        break
+
                     if self._try_fallback_swap(stage_name, last_exc):
                         from monika.application.agent.harness.message_repair import transform_messages_for_target_model
 
@@ -1701,27 +1727,63 @@ class AgentHarness:
                 if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None)) == "tool_use"
             ]
 
+            if not (final_text or "").strip() and not tool_use_blocks:
+                prov_name = str(getattr(self.llm_client, "provider", "unknown"))
+                mdl_name = str(getattr(self.llm_client, "model", "unknown"))
+                emp_count = self.empty_response_guard.record_empty_response(
+                    prov_name, mdl_name, str(stop_reason or "stop")
+                )
+                ladder_act = self.empty_response_guard.get_recovery_ladder_action(
+                    prov_name,
+                    mdl_name,
+                    attempt=emp_count,
+                    raw_response=reasoning_content or "",
+                    task_role=stage_name,
+                )
+                if turns < effective_max_turns:
+                    if ladder_act.action_type == "failover":
+                        self._try_fallback_swap(stage_name, RuntimeError(ladder_act.instruction))
+                    logger.warning(
+                        f"[{stage_name}][AgentHarness] Empty response recovery ladder step {ladder_act.step} "
+                        f"({ladder_act.action_type}): {ladder_act.instruction}"
+                    )
+                    current_messages.append(
+                        {"role": "user", "content": f"[SYSTEM RECOVERY DIRECTIVE]: {ladder_act.instruction}"}
+                    )
+                    continue
+                elif not called_tools:
+                    unverified_stop_gate_error = (
+                        f"Empty response after {emp_count} attempt(s) with zero tool calls ({ladder_act.instruction})"
+                    )
+            else:
+                self.empty_response_guard.record_successful_response(
+                    str(getattr(self.llm_client, "provider", "unknown")),
+                    str(getattr(self.llm_client, "model", "unknown")),
+                )
+
             if not tool_use_blocks:
+                from monika.application.agent.harness.anti_slop_gate import AntiSlopQualityGate
+                from monika.application.agent.harness.turn_failure_diagnostics import TurnFailureDiagnosticBuilder
+
                 mandatory_tool = self.get_mandatory_tool_for_stage(stage_name)
-                if mandatory_tool and mandatory_tool not in called_tools:
-                    if turns < effective_max_turns:
-                        target_sym = stage_symbol or "this asset"
-                        nudge_text = (
-                            f"CRITICAL MANDATORY INSTRUCTION: You concluded your turn without invoking '{mandatory_tool}'. "
-                            f"You MUST call '{mandatory_tool}' now with your final structured analysis and decision for {target_sym}. "
-                            f"Plain text conclusions without invoking '{mandatory_tool}' cannot be processed."
-                        )
-                        logger.info(
-                            f"[{stage_name}][AgentHarness] Mandatory tool '{mandatory_tool}' missing "
-                            f"on turn {turns}/{effective_max_turns}. Nudging agent..."
-                        )
-                        current_messages.append({"role": "user", "content": nudge_text})
-                        continue
-                    else:
-                        logger.warning(
-                            f"[{stage_name}][AgentHarness] Reached max turns ({effective_max_turns}) "
-                            f"without calling mandatory tool '{mandatory_tool}'."
-                        )
+                if mandatory_tool and mandatory_tool not in called_tools and turns < effective_max_turns:
+                    target_sym = stage_symbol or "this asset"
+                    nudge_text = (
+                        f"CRITICAL MANDATORY INSTRUCTION: You concluded your turn without invoking '{mandatory_tool}'. "
+                        f"You MUST call '{mandatory_tool}' now with your final structured analysis and decision for {target_sym}. "
+                        f"Plain text conclusions without invoking '{mandatory_tool}' cannot be processed."
+                    )
+                    logger.info(
+                        f"[{stage_name}][AgentHarness] Mandatory tool '{mandatory_tool}' missing "
+                        f"on turn {turns}/{effective_max_turns}. Nudging agent..."
+                    )
+                    current_messages.append({"role": "user", "content": nudge_text})
+                    continue
+                elif mandatory_tool and mandatory_tool not in called_tools:
+                    logger.warning(
+                        f"[{stage_name}][AgentHarness] Reached max turns ({effective_max_turns}) "
+                        f"without calling mandatory tool '{mandatory_tool}'."
+                    )
                 turn_state.current_phase = TurnPhase.FINALIZE
                 turn_state.stop_gate_context.pending_response = final_text
 
@@ -1759,9 +1821,21 @@ class AgentHarness:
                 # ── Modular Financial & Verification Stop Gates (TradingRiskStopGate + CodeVerifyStopGate) ──
                 can_stop_modular, modular_nudge = apply_stop_gates(final_text, turn_state.stop_gate_context)
                 if not can_stop_modular and modular_nudge:
+                    unverified_stop_gate_error = modular_nudge
+                    if turns >= effective_max_turns and _emergency_recovery_turns_used < _max_emergency_recovery_turns:
+                        effective_max_turns += 1
+                        _emergency_recovery_turns_used += 1
                     if turns < effective_max_turns:
+                        diag = TurnFailureDiagnosticBuilder.from_stop_gate_rejection(
+                            turn_number=turns,
+                            gate_name="ModularStopGate",
+                            reason=modular_nudge,
+                            remaining_turns=max(1, effective_max_turns - turns),
+                        )
                         logger.info(f"[{stage_name}][AgentHarness] Modular Stop Gate intercepted: {modular_nudge}")
-                        current_messages.append({"role": "user", "content": modular_nudge})
+                        current_messages.append(
+                            {"role": "user", "content": f"{modular_nudge}\n\n{diag.format_directive()}"}
+                        )
                         continue
 
                 # ── Physical Deliverable Gate (Anti-Hallucination & File Integrity Audit) ──
@@ -1771,33 +1845,96 @@ class AgentHarness:
                     ledger=self.verification_ledger,
                 )
                 if not deliverable_verdict.is_valid and deliverable_verdict.message:
+                    unverified_stop_gate_error = deliverable_verdict.message
+                    if turns >= effective_max_turns and _emergency_recovery_turns_used < _max_emergency_recovery_turns:
+                        effective_max_turns += 1
+                        _emergency_recovery_turns_used += 1
                     if turns < effective_max_turns:
+                        diag = TurnFailureDiagnosticBuilder.from_stop_gate_rejection(
+                            turn_number=turns,
+                            gate_name="PhysicalDeliverableGate",
+                            reason=deliverable_verdict.message,
+                            remaining_turns=max(1, effective_max_turns - turns),
+                        )
                         logger.info(
                             f"[{stage_name}][AgentHarness] Physical deliverable stop gate intercepted: "
                             f"{deliverable_verdict.message}"
                         )
-                        current_messages.append({"role": "user", "content": deliverable_verdict.message})
+                        current_messages.append(
+                            {"role": "user", "content": f"{deliverable_verdict.message}\n\n{diag.format_directive()}"}
+                        )
                         continue
 
                 # ── Interactive TODO List Audit (Ensure no unfinished tasks before exit) ──
                 if hasattr(self, "todo_state") and self.todo_state and self.todo_state.has_items():
                     all_done, todo_audit_msg = self.todo_state.audit_completion()
-                    if not all_done and turns < effective_max_turns:
-                        logger.info(
-                            f"[{stage_name}][AgentHarness] Active TODOs incomplete: {todo_audit_msg}. "
-                            f"Nudging agent on turn {turns}/{effective_max_turns}..."
-                        )
-                        current_messages.append(
-                            {
-                                "role": "user",
-                                "content": (
-                                    f"[CRITICAL TODO AUDIT]: You have unfinished items in your TODO list:\n"
-                                    f"{todo_audit_msg}\n"
-                                    f"Please finish the in-progress tasks or mark them completed/cancelled using 'todo_write'."
-                                ),
-                            }
-                        )
-                        continue
+                    if not all_done:
+                        unverified_stop_gate_error = f"Unfinished TODO items: {todo_audit_msg}"
+                        if (
+                            turns >= effective_max_turns
+                            and _emergency_recovery_turns_used < _max_emergency_recovery_turns
+                        ):
+                            effective_max_turns += 1
+                            _emergency_recovery_turns_used += 1
+                        if turns < effective_max_turns:
+                            diag = TurnFailureDiagnosticBuilder.from_stop_gate_rejection(
+                                turn_number=turns,
+                                gate_name="InteractiveTodoAudit",
+                                reason=todo_audit_msg,
+                                remaining_turns=max(1, effective_max_turns - turns),
+                            )
+                            logger.info(
+                                f"[{stage_name}][AgentHarness] Active TODOs incomplete: {todo_audit_msg}. "
+                                f"Nudging agent on turn {turns}/{effective_max_turns}..."
+                            )
+                            current_messages.append(
+                                {
+                                    "role": "user",
+                                    "content": (
+                                        f"[CRITICAL TODO AUDIT]: You have unfinished items in your TODO list:\n"
+                                        f"{todo_audit_msg}\n"
+                                        f"Please finish the in-progress tasks or mark them completed/cancelled using 'todo_write'.\n\n"
+                                        f"{diag.format_directive()}"
+                                    ),
+                                }
+                            )
+                            continue
+
+                # ── Anti-Slop Quality Gate (Enforce Professional Zero-Slop Output) ──
+                if final_text and len(final_text.strip()) >= 80:
+                    slop_verdict = AntiSlopQualityGate.evaluate(
+                        final_text,
+                        stage_name=stage_name,
+                        require_quantitative_grounding=False,
+                    )
+                    if not slop_verdict.passed:
+                        if turns < effective_max_turns:
+                            diag = TurnFailureDiagnosticBuilder.from_slop_rejection(
+                                turn_number=turns,
+                                violations=slop_verdict.violations,
+                                stage_name=stage_name,
+                            )
+                            logger.info(
+                                f"[{stage_name}][AgentHarness] AntiSlopQualityGate intercepted final response on turn {turns}: "
+                                f"{slop_verdict.violations}"
+                            )
+                            current_messages.append({"role": "user", "content": diag.format_directive()})
+                            continue
+                        else:
+                            final_text = AntiSlopQualityGate.sanitize_surface_slop(final_text)
+
+                if (
+                    can_stop_modular
+                    and deliverable_verdict.is_valid
+                    and (
+                        not hasattr(self, "todo_state")
+                        or not self.todo_state
+                        or not self.todo_state.has_items()
+                        or self.todo_state.audit_completion()[0]
+                    )
+                    and ((final_text or "").strip() or called_tools)
+                ):
+                    unverified_stop_gate_error = None
 
                 logger.info(
                     f"[{stage_name}][AgentHarness] Agent completed in {turns} turns with "
@@ -1887,6 +2024,17 @@ class AgentHarness:
                             )
                             schema_err = None
                         else:
+                            from monika.application.agent.harness.turn_failure_diagnostics import (
+                                TurnFailureDiagnosticBuilder,
+                            )
+
+                            diag = TurnFailureDiagnosticBuilder.from_schema_validation_error(
+                                turn_number=turns,
+                                tool_name=t_name,
+                                tool_input=t_input if isinstance(t_input, dict) else {},
+                                error_msg=str(schema_err),
+                                schema=input_schema,
+                            )
                             logger.warning(f"[{stage_name}] Schema validation failed for {t_name}: {schema_err}")
                             call_item["_schema_error"] = {
                                 "type": "tool_result",
@@ -1896,6 +2044,9 @@ class AgentHarness:
                                     {
                                         "status": "schema_validation_error",
                                         "error": f"Invalid arguments for {t_name}: {schema_err}. Fix and re-call.",
+                                        "expected_schema": diag.expected_schema_summary,
+                                        "diagnostic_directive": diag.format_directive(),
+                                        "_turn_failure_diagnostic": diag.to_dict(),
                                     }
                                 ),
                                 "is_error": True,
@@ -1990,18 +2141,31 @@ class AgentHarness:
                         if guard_verdict.guard_name == "AntiOscillationGuard"
                         else f"guardrail_{guard_verdict.action}"
                     )
+                    guard_payload: Dict[str, Any] = {
+                        "status": status_val,
+                        "guard": guard_verdict.guard_name,
+                        "notice" if guard_verdict.action == "suppress" else "error": guard_verdict.reason,
+                        "suggested_fix": guard_verdict.suggested_fix,
+                    }
+                    if guard_verdict.action in ("reject", "nudge"):
+                        from monika.application.agent.harness.turn_failure_diagnostics import (
+                            TurnFailureDiagnosticBuilder,
+                        )
+
+                        guard_diag = TurnFailureDiagnosticBuilder.from_guardrail_verdict(
+                            turn_number=turns,
+                            tool_name=c_name,
+                            guard_name=guard_verdict.guard_name,
+                            reason=guard_verdict.reason,
+                            suggested_fix=guard_verdict.suggested_fix,
+                        )
+                        guard_payload["diagnostic_directive"] = guard_diag.format_directive()
+                        guard_payload["_turn_failure_diagnostic"] = guard_diag.to_dict()
                     return {
                         "type": "tool_result",
                         "tool_use_id": c_id,
                         "name": c_name,
-                        "content": json.dumps(
-                            {
-                                "status": status_val,
-                                "guard": guard_verdict.guard_name,
-                                "notice" if guard_verdict.action == "suppress" else "error": guard_verdict.reason,
-                                "suggested_fix": guard_verdict.suggested_fix,
-                            }
-                        ),
+                        "content": json.dumps(guard_payload),
                         "is_error": guard_verdict.action in ("reject", "nudge"),
                     }
 
@@ -2279,9 +2443,41 @@ class AgentHarness:
 
                 await self._log_tool_call(session, stage_name, c_name, c_input, res_obj)
                 self.guardrail_controller.record_tool_call(c_name, c_input, res_obj)
-                self.guardrail_controller.record_success()
+                is_tool_err = bool(
+                    isinstance(res_obj, dict)
+                    and (
+                        bool(res_obj.get("error"))
+                        or res_obj.get("status") in ("error", "failed", "rejected", "blocked", "validation_error")
+                        or res_obj.get("valid") is False
+                    )
+                )
+                if not is_tool_err:
+                    self.guardrail_controller.record_success()
                 self.stall_guard.record_call(c_name, res_obj, turn_idx=turns)
                 self.verification_ledger.record_tool_execution(c_name, c_input, res_obj)
+
+                if is_tool_err and isinstance(res_obj, dict) and "_turn_failure_diagnostic" not in res_obj:
+                    from monika.application.agent.harness.turn_failure_diagnostics import (
+                        TurnFailureDiagnosticBuilder,
+                    )
+
+                    err_msg_val = str(
+                        res_obj.get("error")
+                        or res_obj.get("errors")
+                        or res_obj.get("message")
+                        or res_obj.get("reason")
+                        or res_obj.get("status")
+                        or "Tool execution failed"
+                    )
+                    err_diag = TurnFailureDiagnosticBuilder.from_tool_execution_error(
+                        turn_number=turns,
+                        tool_name=c_name,
+                        tool_input=c_input if isinstance(c_input, dict) else {},
+                        error_msg=err_msg_val,
+                    )
+                    res_obj = dict(res_obj)
+                    res_obj["_turn_failure_diagnostic"] = err_diag.to_dict()
+                    res_obj.setdefault("diagnostic_directive", err_diag.format_directive())
 
                 if c_name == "load_tool_category" and isinstance(res_obj, dict):
                     new_schemas = res_obj.get("schemas", [])
@@ -2314,8 +2510,17 @@ class AgentHarness:
                     "execute_code",
                     "run_command",
                 ):
-                    turn_state.stop_gate_context.verification_commands_run.append(c_name)
-                    turn_state.stop_gate_context.has_unverified_file_edits = False
+                    cmd_str = str(c_input.get("command") or c_input.get("cmd") or "").strip().lower()
+                    is_trivial_echo = c_name in ("run_terminal_command", "run_command") and (
+                        cmd_str in ("true", "echo", "echo ok", "rem") or cmd_str.startswith("echo ")
+                    )
+                    rc_ok = not is_tool_err and (
+                        not isinstance(res_obj, dict)
+                        or (res_obj.get("returncode", 0) == 0 and res_obj.get("exit_code", 0) == 0)
+                    )
+                    if rc_ok and not is_trivial_echo:
+                        turn_state.stop_gate_context.verification_commands_run.append(c_name)
+                        turn_state.stop_gate_context.has_unverified_file_edits = False
 
                 if c_name in ("propose_action", "propose_trade"):
                     turn_state.stop_gate_context.proposed_actions.append(c_input)
@@ -2449,6 +2654,7 @@ class AgentHarness:
                     "tool_use_id": c_id,
                     "name": c_name,
                     "content": tool_res_content,
+                    "is_error": is_tool_err,
                 }
 
             # Plan segments into [Parallel Safe] -> [Barrier] -> [Parallel Safe]
@@ -2573,7 +2779,7 @@ class AgentHarness:
 
         clear_socket_graveyard()
         return {
-            "success": True,
+            "success": unverified_stop_gate_error is None,
             "final_text": final_text,
             "tool_calls_made": tool_calls_made,
             "turns": turns,
@@ -2583,7 +2789,7 @@ class AgentHarness:
             "cached_tokens": total_cached_tokens,
             "total_cost_usd": round(total_cost_usd, 6),
             "context_messages": current_messages,
-            "error": None,
+            "error": unverified_stop_gate_error,
             "is_paid": is_paid,
             "is_billing_error": False,
             "length_truncated": length_truncated,

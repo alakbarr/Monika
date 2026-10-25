@@ -187,6 +187,10 @@ class SubagentWorker:
                 )
                 content = truncate_to_budget(content, max_tokens=self.spec.max_distilled_tokens)
 
+            from monika.application.agent.harness.anti_slop_gate import AntiSlopQualityGate
+
+            content = AntiSlopQualityGate.sanitize_surface_slop(content)
+
             return SubagentResult(
                 worker_id=self.spec.worker_id,
                 role=self.spec.role,

@@ -462,16 +462,19 @@ class SpecialistPipelineMixin:
                 logger.debug(f"[{symbol}] Failed to persist specialist biases for trust tracking: {e}")
 
             # Specialist Distillation Contract: compact reports to prevent context bloat
+            from monika.application.agent.harness.anti_slop_gate import smart_distill_text
+
             def _distill_specialist_report(rep: Any, max_chars: int = 400) -> str:
                 if not isinstance(rep, dict):
-                    return str(rep)[:max_chars]
+                    return smart_distill_text(str(rep), max_chars=max_chars)
+                raw_summary = str(rep.get("analysis") or rep.get("summary") or rep.get("rationale") or "")
                 distilled = {
                     "bias": rep.get("directional_bias", "NEUTRAL"),
                     "conf": rep.get("confidence", "LOW"),
                     "zone": rep.get("recommended_entry_zone") or rep.get("nearest_entry_zone"),
                     "sl": rep.get("structural_sl"),
                     "signals": (rep.get("key_signals") or rep.get("signals") or rep.get("key_evidence") or [])[:3],
-                    "summary": str(rep.get("analysis") or rep.get("summary") or rep.get("rationale") or "")[:200],
+                    "summary": smart_distill_text(raw_summary, max_chars=240),
                 }
                 # Drop None / empty entries to minimize tokens
                 compact = {k: v for k, v in distilled.items() if v}

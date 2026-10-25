@@ -1454,84 +1454,10 @@ INSTRUCTIONS:
 
             currencies = ["BTC"] if weekend_btc_only_mode else ["USD", "EUR", "GBP", "JPY", "AUD", "XAU", "OIL", "BTC"]
             currency_bias = {c: "neutral" for c in currencies}
-            currency_confidence = {c: 0.55 for c in currencies}
-
-            # Synthesize directional proxy from DXY trend
+            currency_confidence = {c: 0.0 for c in currencies}
             dxy_info = data_dict.get("dxy") or {}
             dxy_trend = str(dxy_info.get("trend_5d", "")).lower() if isinstance(dxy_info, dict) else ""
-            if any(t in dxy_trend for t in ["bullish", "up", "strengthening", "rising"]):
-                currency_bias["USD"] = "bullish"
-                currency_confidence["USD"] = 0.60
-                if "EUR" in currency_bias:
-                    currency_bias["EUR"] = "bearish"
-                    currency_confidence["EUR"] = 0.60
-                if "XAU" in currency_bias and sentiment != "risk-off":
-                    currency_bias["XAU"] = "bearish"
-                    currency_confidence["XAU"] = 0.58
-                if "OIL" in currency_bias and sentiment != "risk-on":
-                    currency_bias["OIL"] = "bearish"
-                    currency_confidence["OIL"] = 0.58
-            elif any(t in dxy_trend for t in ["bearish", "down", "weakening", "falling"]):
-                currency_bias["USD"] = "bearish"
-                currency_confidence["USD"] = 0.60
-                if "EUR" in currency_bias:
-                    currency_bias["EUR"] = "bullish"
-                    currency_confidence["EUR"] = 0.60
-                if "XAU" in currency_bias:
-                    currency_bias["XAU"] = "bullish"
-                    currency_confidence["XAU"] = 0.60
-                if "OIL" in currency_bias:
-                    currency_bias["OIL"] = "bullish"
-                    currency_confidence["OIL"] = 0.58
-
-            # EIA crude inventory data integration for OIL synthesis
-            eia_data = data_dict.get("eia") or data_dict.get("crude_inventory")
-            if eia_data and isinstance(eia_data, dict):
-                crude_change = eia_data.get("crude_inventory_change_bbl") or eia_data.get("value")
-                if crude_change is not None:
-                    try:
-                        crude_float = float(crude_change)
-                        if crude_float < -2000000:  # Big inventory draw -> bullish OIL
-                            currency_bias["OIL"] = "bullish"
-                            currency_confidence["OIL"] = 0.65
-                        elif crude_float > 2000000:  # Big inventory build -> bearish OIL
-                            currency_bias["OIL"] = "bearish"
-                            currency_confidence["OIL"] = 0.65
-                    except ValueError, TypeError:
-                        pass
-
-            # Synthesize risk-asset bias from sentiment
-            if sentiment == "risk-on":
-                if "AUD" in currency_bias:
-                    currency_bias["AUD"] = "bullish"
-                    currency_confidence["AUD"] = 0.60
-                if "JPY" in currency_bias:
-                    currency_bias["JPY"] = "bearish"
-                    currency_confidence["JPY"] = 0.60
-                if "BTC" in currency_bias:
-                    currency_bias["BTC"] = "bullish"
-                    currency_confidence["BTC"] = 0.60
-                if "OIL" in currency_bias:
-                    currency_bias["OIL"] = "bullish"
-                    currency_confidence["OIL"] = 0.58
-            elif sentiment == "risk-off":
-                if "AUD" in currency_bias:
-                    currency_bias["AUD"] = "bearish"
-                    currency_confidence["AUD"] = 0.60
-                if "JPY" in currency_bias:
-                    currency_bias["JPY"] = "bullish"
-                    currency_confidence["JPY"] = 0.60
-                if "XAU" in currency_bias:
-                    currency_bias["XAU"] = "bullish"
-                    currency_confidence["XAU"] = 0.60
-                if "BTC" in currency_bias:
-                    currency_bias["BTC"] = "bearish"
-                    currency_confidence["BTC"] = 0.60
-                if "OIL" in currency_bias:
-                    currency_bias["OIL"] = "bearish"
-                    currency_confidence["OIL"] = 0.58
-
-            baseline_confidence = 0.60
+            baseline_confidence = 0.0
 
             # FIX 5.11: Generate concrete macro-specific invalidation conditions
             invalidation_conditions = {}

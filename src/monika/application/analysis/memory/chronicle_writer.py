@@ -478,6 +478,8 @@ class ChronicleWriter:
         if not chronicles:
             return "• No extraordinary structural macro milestones recorded in the past 30 days."
 
+        from monika.application.agent.harness.anti_slop_gate import smart_distill_text
+
         lines = [f"--- PERSISTENT MARKET CHRONICLE (Ongoing Regimes & Macro Milestones) ---"]
         for c in chronicles:
             dt_str = c.event_date.strftime("%Y-%m-%d")
@@ -486,7 +488,8 @@ class ChronicleWriter:
             cur = f" [Affects: {c.currencies_affected}]" if c.currencies_affected else ""
             lines.append(f"• [{dt_str}] [{c.category.upper()} | {sev} | {status}]{cur} {c.headline}")
             if c.narrative and len(c.narrative) > 20:
-                lines.append(f"  Context: {c.narrative.strip()[:180]}")
+                distilled = smart_distill_text(c.narrative.strip(), max_chars=180)
+                lines.append(f"  Context: {distilled}")
 
         return "\n".join(lines)
 
@@ -494,6 +497,7 @@ class ChronicleWriter:
         self, session: AsyncSession, symbol: str, days_back: int = 30, limit: int = 6
     ) -> str:
         """Fetch ongoing and recent macro chronicles relevant to a specific currency pair/asset."""
+        from monika.application.agent.harness.anti_slop_gate import smart_distill_text
         from monika.application.protocol.context_coherence import get_base_quote_tags
 
         tags = get_base_quote_tags(symbol).split(",")
@@ -532,7 +536,8 @@ class ChronicleWriter:
             status = "ACTIVE" if c.is_ongoing else "RESOLVED"
             lines.append(f"• [{dt_str}] [{c.category.upper()} | {status}] {c.headline}")
             if c.narrative:
-                lines.append(f"  Context: {c.narrative.strip()[:160]}")
+                distilled = smart_distill_text(c.narrative.strip(), max_chars=160)
+                lines.append(f"  Context: {distilled}")
         return "\n".join(lines)
 
     async def get_condensed_chronicle_bullets(

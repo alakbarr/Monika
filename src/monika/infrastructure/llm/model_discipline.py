@@ -4,8 +4,40 @@ Model-family gated execution discipline and verification prompts.
 
 from typing import Optional
 
-TOOL_USE_ENFORCEMENT_MODELS = ("gpt", "codex", "gemini", "gemma", "deepseek", "qwen", "glm")
-TRADING_VERIFICATION_MODELS = ("gpt", "deepseek", "qwen", "glm")
+TOOL_USE_ENFORCEMENT_MODELS = (
+    "gpt",
+    "codex",
+    "gemini",
+    "gemma",
+    "deepseek",
+    "qwen",
+    "glm",
+    "kimi",
+    "moonshot",
+    "grok",
+    "llama",
+    "mistral",
+    "minimax",
+    "claude",
+    "anthropic",
+)
+TRADING_VERIFICATION_MODELS = (
+    "gpt",
+    "codex",
+    "gemini",
+    "gemma",
+    "deepseek",
+    "qwen",
+    "glm",
+    "kimi",
+    "moonshot",
+    "grok",
+    "llama",
+    "mistral",
+    "minimax",
+    "claude",
+    "anthropic",
+)
 
 TOOL_USE_ENFORCEMENT_GUIDANCE = """# Mandatory Tool Execution Discipline
 You MUST use your tools to query real market quotes, news, and indicators — NEVER estimate or answer from memory.

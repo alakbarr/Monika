@@ -788,7 +788,21 @@ class AnthropicProvider(BaseLLMClient):
                         )
                         continue
 
-                    res = await executor.execute(tool_name, tool_input)
+                    try:
+                        res = await executor.execute(tool_name, tool_input)
+                    except Exception as exec_err:
+                        logger.error(f"Claude chat tool execution error ({tool_name}): {exec_err}", exc_info=True)
+                        from monika.application.agent.harness.turn_failure_diagnostics import (
+                            TurnFailureDiagnosticBuilder,
+                        )
+
+                        diag = TurnFailureDiagnosticBuilder.from_tool_execution_error(
+                            turn_number=turns,
+                            tool_name=tool_name,
+                            tool_input=tool_input if isinstance(tool_input, dict) else {},
+                            error_msg=str(exec_err),
+                        )
+                        res = {"status": "error", "error": str(exec_err), "_turn_failure_diagnostic": diag.to_dict()}
                     raw_res = json.dumps(res, default=str, ensure_ascii=False)
                     pruned_res = compactor.micro_prune(raw_res, tool_name=tool_name)
                     tool_results.append({"type": "tool_result", "tool_use_id": tool_use_id, "content": pruned_res})

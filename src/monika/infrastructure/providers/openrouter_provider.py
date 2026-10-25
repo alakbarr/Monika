@@ -397,6 +397,27 @@ class OpenRouterProvider(OpenAIProvider):
         )
         return None
 
+    def set_thinking_budget(self, budget: int) -> None:
+        """Sets quantized thinking token budget and synchronizes OpenRouter reasoning effort level."""
+        from monika.infrastructure.llm.adaptive_thinking import QuantizedThinkingAllocator
+
+        if budget <= 0:
+            self.thinking_budget = 0
+            self.thinking_level = "none"
+            return
+
+        quantized = QuantizedThinkingAllocator.quantize(budget)
+        self.thinking_budget = quantized
+        if not self.thinking_level or self.thinking_level == "none":
+            if quantized >= 13000:
+                self.thinking_level = "max"
+            elif quantized >= 7000:
+                self.thinking_level = "high"
+            elif quantized >= 2500:
+                self.thinking_level = "medium"
+            else:
+                self.thinking_level = "low"
+
     def _apply_reasoning_params(self, kwargs: dict) -> None:
         """
         OpenRouter reasoning parameters format.

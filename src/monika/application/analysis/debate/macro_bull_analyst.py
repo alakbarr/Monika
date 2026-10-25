@@ -85,6 +85,8 @@ Provide your structured evaluation in JSON matching the schema."""
             "strength_score": 5,
             "evidence_cited": ["Context data analyzed via fallback"],
             "primary_catalysts": ["Fallback macro evaluation"],
+            "is_fallback": True,
+            "degraded_fallback": True,
         }
     except Exception as e:
         logger.error(f"Macro Bull analyst failed completely: {e}")

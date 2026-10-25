@@ -5274,7 +5274,7 @@
     - `format_scaffold() -> str` - *Renders markdown checklist scaffold for prompt context.*
     - `to_dict_list() -> List[Dict[str, str]]`
     - `audit_completion() -> Tuple[bool, str]` - *Audits whether all tasks in the TODO list are completed or cancelled.*
-    - `reset() -> None`
+    - `reset() -> None` - *Clear all tracked todo items at the start of a new agent run.*
 
 #### `message_repair.py` - *Four-pass message history alternation cleaner and repair engine for provider API dispatch.*
 - **Path**: [`src/monika/application/agent/harness/message_repair.py`](src/monika/application/agent/harness/message_repair.py)
@@ -12449,6 +12449,7 @@
 - **Path**: [`src/monika/infrastructure/llm/prompt_disciplines.py`](src/monika/infrastructure/llm/prompt_disciplines.py)
 - **Top-Level Functions**:
   - `get_universal_execution_discipline() -> str`: Returns the standardized execution discipline XML block.
+  - `get_universal_anti_slop_and_effort_rubric() -> str`: Returns the universal effort, completeness, and anti-slop rubric block.
 
 #### `prompt_tiering.py` - *Backward-compatibility re-export shim for 3-tier prompt architecture.*
 - **Path**: [`src/monika/infrastructure/llm/prompt_tiering.py`](src/monika/infrastructure/llm/prompt_tiering.py)
@@ -12876,6 +12877,7 @@
     - `async generate_content_stream(system_prompt: str, user_message: str, conversation_history: Optional[list])` - *Stream content generation token-by-token or chunk-by-chunk.*
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]` - *Generate + parse JSON response.*
     - `async generate_json(prompt: str, system: str, schema: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]` - *Generate validated structured JSON output (delegates to classify_json).*
+    - `async classify_json_with_diagnostic_retry(prompt: str, system_prompt: Optional[str], schema: Optional[Dict[str, Any]], ...) -> Optional[Dict[str, Any]]` - *Execute classify_json with a diagnostic self-correction retry if output is missing required schema keys.*
     - `async generate_text(user_prompt: str, system_prompt: str, max_tokens: Optional[int], ...) -> str` - *Single-turn text generation (ClaudeClient compatibility).*
     - `async ask(prompt: str, system: str) -> str` - *Alias for generate_text (ClaudeClient compatibility).*
     - `async run_tool_agent(messages: list, tools: list, system_prompt: Any) -> Any` - *Low-level multi-turn tool-calling. Returns MockResponse or native Message.*
@@ -13022,6 +13024,7 @@
 - **Classes**:
   - `class OpenRouterProvider(OpenAIProvider)`: Provider untuk OpenRouter API (https://openrouter.ai/api/v1).
     - `__init__(model: str, max_tokens: int, max_tool_turns: int, ...)`
+    - `set_thinking_budget(budget: int) -> None` - *Sets quantized thinking token budget and synchronizes OpenRouter reasoning effort level.*
     - `reset_cooldowns(api_key: Optional[str], model: Optional[str]) -> int` - *Mereset status cooldown untuk seluruh atau kombinasi API key dan model tertentu.*
     - `get_cooldown_status() -> dict[str, float]` - *Mengembalikan sisa detik cooldown aktif per key dan per model.*
     - `async generate(prompt: str, system: Optional[Any], temperature: Optional[float], ...) -> Optional[str]`

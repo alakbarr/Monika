@@ -126,40 +126,14 @@ class RecoveryMixin(_RunnerMixinBase):
                         "invalidation": f"Extracted via heuristic text recovery for {symbol} - structural invalidation",
                     }
                     if extracted_decision in ("buy", "sell"):
-                        m_sl = re.search(r"(?:stop[-_\s]*loss|sl)\s*[:=]\s*([0-9.]+)", text_lower)
-                        m_tp = re.search(r"(?:take[-_\s]*profit|tp)\s*[:=]\s*([0-9.]+)", text_lower)
-                        parsed_sl = None
-                        parsed_tp = None
-                        if m_sl and m_tp:
-                            try:
-                                parsed_sl = float(m_sl.group(1))
-                                parsed_tp = float(m_tp.group(1))
-                            except ValueError:
-                                pass
-
-                        if parsed_sl is not None and parsed_tp is not None:
-                            fallback_payload["stop_loss"] = parsed_sl
-                            fallback_payload["take_profit"] = parsed_tp
-                            fallback_payload["entry_condition"] = {"type": "market", "detail": "Extracted market entry"}
-                            fallback_payload["invalidation_price"] = parsed_sl
-                            fallback_payload["invalidation_direction"] = (
-                                "below" if extracted_decision == "buy" else "above"
-                            )
-                            fallback_payload["reevaluation_trigger"] = {
-                                "type": "price_level",
-                                "symbol": symbol,
-                                "price": parsed_sl,
-                                "detail": f"Re-evaluate if SL breached at {parsed_sl}",
-                            }
-                            fallback_payload["confluence_score"] = 0
-                            fallback_payload["priced_in_score"] = 5
-                        else:
-                            extracted_decision = "wait"
-                            fallback_payload["decision"] = "wait"
-                            fallback_payload["rationale"] = (
-                                f"[HEURISTIC DOWNGRADE]: Text indicated directional trade but lacked valid SL/TP geometry. "
-                                f"Downgraded to WAIT under fail-closed safety policy.\n\n" + (final_text[:800] or "")
-                            )
+                        extracted_decision = "wait"
+                        fallback_payload["decision"] = "wait"
+                        fallback_payload["confidence"] = 0.0
+                        fallback_payload["rationale"] = (
+                            f"[HEURISTIC DOWNGRADE]: Text indicated directional trade ({fallback_payload['decision']}) "
+                            f"without verified tool submission. Downgraded to WAIT under fail-closed safety policy.\n\n"
+                            + (final_text[:800] or "")
+                        )
 
                     from monika.application.analysis.tools.tool_executor import ToolExecutor
 

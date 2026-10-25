@@ -9,6 +9,12 @@ Enforces strict mandatory tool usage, prohibits mental math calculations,
 demands parallel read dispatch, and prevents ungrounded hallucinations.
 """
 
+UNIVERSAL_ANTI_SLOP_AND_EFFORT_RUBRIC = """<effort_and_anti_slop_rubric>
+- MAXIMUM EFFORT & COMPLETENESS: Exhaustively verify every required dimension before concluding. If a turn or tool call fails, read the [TURN FAILURE DIAGNOSTIC], diagnose the exact root cause, fix the parameter/precondition, and continue until the task is 100% complete.
+- ZERO AI SLOP: Never emit stock AI filler ('delve into', 'testament to', 'rich tapestry', 'Certainly! Here is...'), sycophantic preamble, unfinished placeholders ('TODO', '[insert ...]'), or Unicode emojis.
+- QUANTITATIVE DENSITY: Every analytical claim must cite concrete prices, percentages, timeframes, or structural levels from verified tool outputs.
+</effort_and_anti_slop_rubric>"""
+
 UNIVERSAL_EXECUTION_DISCIPLINE = """<execution_discipline>
 <mandatory_tool_use>
 NEVER answer, deliberate, or calculate these from memory, training priors, or mental math — ALWAYS verify via tools:
@@ -40,9 +46,20 @@ NEVER answer, deliberate, or calculate these from memory, training priors, or me
 - Laziness or superficial refusal to inspect available charts and indicators is prohibited.
 - A WAIT decision MUST be justified by identifying the specific missing condition and specifying a concrete numerical re-evaluation trigger.
 </anti_laziness_and_unjustified_wait>
+
+<effort_and_anti_slop_rubric>
+- MAXIMUM EFFORT & COMPLETENESS: Exhaustively verify every required dimension before concluding. If a turn or tool call fails, read the [TURN FAILURE DIAGNOSTIC], diagnose the exact root cause, fix the parameter/precondition, and continue until the task is 100% complete.
+- ZERO AI SLOP: Never emit stock AI filler ('delve into', 'testament to', 'rich tapestry', 'Certainly! Here is...'), sycophantic preamble, unfinished placeholders ('TODO', '[insert ...]'), or Unicode emojis.
+- QUANTITATIVE DENSITY: Every analytical claim must cite concrete prices, percentages, timeframes, or structural levels from verified tool outputs.
+</effort_and_anti_slop_rubric>
 </execution_discipline>"""
 
 
 def get_universal_execution_discipline() -> str:
     """Returns the standardized execution discipline XML block."""
     return UNIVERSAL_EXECUTION_DISCIPLINE
+
+
+def get_universal_anti_slop_and_effort_rubric() -> str:
+    """Returns the universal effort, completeness, and anti-slop rubric block."""
+    return UNIVERSAL_ANTI_SLOP_AND_EFFORT_RUBRIC

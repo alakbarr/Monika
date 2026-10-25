@@ -2455,6 +2455,7 @@ Monika/
 │   │   └── test_simulation_and_oracles.py
 │   ├── execution/
 │   │   ├── __init__.py
+│   │   ├── test_application_execution_full_coverage.py
 │   │   ├── test_audit_execution_path_remediation.py
 │   │   ├── test_broker_plugins.py
 │   │   ├── test_broker_registry.py
@@ -2597,6 +2598,7 @@ Monika/
 │   │   ├── test_bounded_mandate_and_runcard.py
 │   │   ├── test_calendar_freshness.py
 │   │   ├── test_daily_rollover_ny_close.py
+│   │   ├── test_domain_risk_full_coverage.py
 │   │   ├── test_evidence_gate_fail_closed.py
 │   │   ├── test_execution_simulator.py
 │   │   ├── test_flash_crash_risk_gate.py
@@ -3092,4 +3094,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 265 | **Total Tracked Files**: 2797
+**Total Tracked Directories**: 265 | **Total Tracked Files**: 2799

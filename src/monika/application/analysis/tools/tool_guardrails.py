@@ -742,3 +742,4 @@ class ToolGuardrailController:
         self.read_before_act.reset()
         self.read_before_mutate.reset()
         self.category_turn_cap.reset()
+        self.denial_breaker.reset()

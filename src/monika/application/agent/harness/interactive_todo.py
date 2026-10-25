@@ -149,4 +149,5 @@ class TodoListState:
         return True, "All tasks in TODO list are finished."
 
     def reset(self) -> None:
+        """Clear all tracked todo items at the start of a new agent run."""
         self.todos.clear()

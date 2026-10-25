@@ -1527,10 +1527,9 @@ class OpenAIProvider(BaseLLMClient):
 
                 for tool_call in message.tool_calls:
                     tool_name = tool_call.function.name
-                    try:
-                        tool_input = json.loads(tool_call.function.arguments)
-                    except json.JSONDecodeError:
-                        tool_input = {}
+                    from monika.application.agent.harness.tool_repair import repair_tool_arguments
+
+                    tool_input = repair_tool_arguments(tool_call.function.arguments)
 
                     # Anti-Oscillation Tool Loop Guard (Hash-based)
                     try:
@@ -1577,7 +1576,21 @@ class OpenAIProvider(BaseLLMClient):
                         )
                         continue
 
-                    res = await executor.execute(tool_name, tool_input)
+                    try:
+                        res = await executor.execute(tool_name, tool_input)
+                    except Exception as exec_err:
+                        logger.error(f"OpenAI chat tool execution error ({tool_name}): {exec_err}", exc_info=True)
+                        from monika.application.agent.harness.turn_failure_diagnostics import (
+                            TurnFailureDiagnosticBuilder,
+                        )
+
+                        diag = TurnFailureDiagnosticBuilder.from_tool_execution_error(
+                            turn_number=turns,
+                            tool_name=tool_name,
+                            tool_input=tool_input if isinstance(tool_input, dict) else {},
+                            error_msg=str(exec_err),
+                        )
+                        res = {"status": "error", "error": str(exec_err), "_turn_failure_diagnostic": diag.to_dict()}
                     raw_content = json.dumps(res, default=str, ensure_ascii=False)
                     pruned_content = compactor.micro_prune(raw_content, tool_name=tool_name)
                     tool_content = pruned_content

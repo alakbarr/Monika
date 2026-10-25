@@ -57,6 +57,41 @@ class PerSymbolAdaptiveThinkingAllocator:
 
     DEFAULT_WEIGHT: float = 1.0
 
+    # Role-calibrated base thinking budgets (tokens) aligned with DEFAULT_TASK_THINKING
+    ROLE_BASE_BUDGETS: Dict[str, int] = {
+        "fundamental_stage": 16000,
+        "per_asset_stage": 16000,
+        "investment_judge": 16000,
+        "judge": 16000,
+        "macro_judge": 16000,
+        "portfolio_manager": 16000,
+        "skill_crystallizer": 16000,
+        "code_modification": 16000,
+        "self_improver": 16000,
+        "debate_bull": 10000,
+        "debate_bear": 10000,
+        "bull_analyst": 10000,
+        "bear_analyst": 10000,
+        "macro_bull": 10000,
+        "macro_bear": 10000,
+        "risk_gate_conservative": 10000,
+        "risk_gate_aggressive": 10000,
+        "risk_gate_neutral": 10000,
+        "conservative_risk": 10000,
+        "aggressive_risk": 10000,
+        "neutral_risk": 10000,
+        "specialist_technical": 4096,
+        "specialist_sentiment": 4096,
+        "specialist_macro": 4096,
+        "sentiment_analyst": 4096,
+        "lesson_consolidator": 10000,
+        "chronicle_writer": 10000,
+        "reflection": 10000,
+        "trade_reflection": 10000,
+        "chat_telegram": 10000,
+        "chat_telegram_lite": 1024,
+    }
+
     @classmethod
     def compute_symbol_budget(
         cls, symbol: str, context: Optional[Dict[str, Any]] = None, base_budget: int = 4000, quantized: bool = True
@@ -151,32 +186,30 @@ class PerSymbolAdaptiveThinkingAllocator:
         task_role: Optional[str] = None,
         symbol: str = "",
         context: Optional[Dict[str, Any]] = None,
-        base_budget: int = 4000,
+        base_budget: Optional[int] = None,
     ) -> int:
         """
         Determines the appropriate thinking token budget based on task role and symbol context.
         Enforces:
         - 0 tokens for fast prescreen / filters
-        - Low bounded tokens (1024-2048) for narrow domain specialists
-        - Adaptive full dynamic tokens for primary decision and debate adjudicators
+        - Calibrated role budgets (4096-16000) for domain specialists, analysts, and adjudicators
+        - Adaptive full dynamic tokens when symbol microstructure context is provided
         """
         role_clean = (task_role or "").lower()
         if "prescreen" in role_clean:
             return 0
 
-        if any(
-            sp in role_clean
-            for sp in ("specialist_technical", "specialist_sentiment", "specialist_macro", "sentiment_analyst")
-        ):
-            return 1024
-
         if "fast" in role_clean or "quick" in role_clean or "classification" in role_clean:
             return 0
 
-        if not symbol:
-            return base_budget
+        resolved_base = base_budget if base_budget is not None else cls.ROLE_BASE_BUDGETS.get(role_clean, 4000)
+        if resolved_base <= 0:
+            return 0
 
-        return cls.compute_symbol_budget(symbol, context, base_budget=base_budget)
+        if not symbol:
+            return resolved_base
+
+        return cls.compute_symbol_budget(symbol, context, base_budget=resolved_base)
 
 
 def clamp_thinking_budget_to_answer_room(

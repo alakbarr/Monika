@@ -44,8 +44,10 @@ def _sanitize_telegram_format_impl(text: str) -> str:
     # 1. Hapus emoji Unicode dan text emoticons secara mutlak
     try:
         from monika.core.streaming.sanitizer import strip_emojis_and_emoticons
+        from monika.application.agent.harness.anti_slop_gate import AntiSlopQualityGate
 
         text = strip_emojis_and_emoticons(text)
+        text = AntiSlopQualityGate.sanitize_surface_slop(text)
     except Exception:
         pass
 
