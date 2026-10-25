@@ -1,10 +1,12 @@
 import json
 import logging
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import monika.core.primitives.clock as clock
 from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 from monika.infrastructure.database.models import (
     FVGZone,
@@ -23,17 +25,17 @@ ZONE_WEIGHTS = {"order_block": 3.0, "fvg": 2.5, "sr_zone": 2.0, "liquidity": 1.5
 from monika.core.validation.indicator_sanitizer import safe_float
 
 
-async def _get_atr(session: AsyncSession, symbol: str) -> float:
-    row = (
-        await session.execute(
-            select(TechnicalIndicator)
-            .where(TechnicalIndicator.symbol == symbol)
-            .where(TechnicalIndicator.timeframe == "H4")
-            .where(TechnicalIndicator.indicator_name == "ATR_14")
-            .order_by(TechnicalIndicator.timestamp.desc())
-            .limit(1)
-        )
-    ).scalar_one_or_none()
+async def _get_atr(session: AsyncSession, symbol: str, as_of: Optional[datetime] = None) -> float:
+    effective_as_of = as_of or clock.get_simulated_now()
+    stmt = (
+        select(TechnicalIndicator)
+        .where(TechnicalIndicator.symbol == symbol)
+        .where(TechnicalIndicator.timeframe == "H4")
+        .where(TechnicalIndicator.indicator_name == "ATR_14")
+    )
+    if effective_as_of is not None:
+        stmt = stmt.where(TechnicalIndicator.timestamp <= effective_as_of)
+    row = (await session.execute(stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1))).scalar_one_or_none()
     if not row:
         return 0.0
     try:
@@ -45,19 +47,18 @@ async def _get_atr(session: AsyncSession, symbol: str) -> float:
         return 0.0
 
 
-async def _collect_zones(session: AsyncSession, symbol: str) -> list[dict]:
+async def _collect_zones(session: AsyncSession, symbol: str, as_of: Optional[datetime] = None) -> list[dict]:
+    effective_as_of = as_of or clock.get_simulated_now()
     zones = []
-    obs = (
-        (
-            await session.execute(
-                select(OrderBlock).where(
-                    OrderBlock.symbol == symbol, OrderBlock.timeframe == "H4", OrderBlock.mitigated_at.is_(None)
-                )
-            )
+    ob_stmt = select(OrderBlock).where(OrderBlock.symbol == symbol, OrderBlock.timeframe == "H4")
+    if effective_as_of is not None:
+        ob_stmt = ob_stmt.where(
+            OrderBlock.formed_at <= effective_as_of,
+            or_(OrderBlock.mitigated_at.is_(None), OrderBlock.mitigated_at > effective_as_of),
         )
-        .scalars()
-        .all()
-    )
+    else:
+        ob_stmt = ob_stmt.where(OrderBlock.mitigated_at.is_(None))
+    obs = (await session.execute(ob_stmt)).scalars().all()
     for ob in obs:
         zones.append(
             {
@@ -69,15 +70,15 @@ async def _collect_zones(session: AsyncSession, symbol: str) -> list[dict]:
             }
         )
 
-    fvgs = (
-        (
-            await session.execute(
-                select(FVGZone).where(FVGZone.symbol == symbol, FVGZone.timeframe == "H4", FVGZone.filled_at.is_(None))
-            )
+    fvg_stmt = select(FVGZone).where(FVGZone.symbol == symbol, FVGZone.timeframe == "H4")
+    if effective_as_of is not None:
+        fvg_stmt = fvg_stmt.where(
+            FVGZone.formed_at <= effective_as_of,
+            or_(FVGZone.filled_at.is_(None), FVGZone.filled_at > effective_as_of),
         )
-        .scalars()
-        .all()
-    )
+    else:
+        fvg_stmt = fvg_stmt.where(FVGZone.filled_at.is_(None))
+    fvgs = (await session.execute(fvg_stmt)).scalars().all()
     for fvg in fvgs:
         zones.append(
             {
@@ -89,24 +90,18 @@ async def _collect_zones(session: AsyncSession, symbol: str) -> list[dict]:
             }
         )
 
-    srs = (
-        (await session.execute(select(SRZone).where(SRZone.symbol == symbol, SRZone.timeframe.in_(["H4", "D1"]))))
-        .scalars()
-        .all()
-    )
+    sr_stmt = select(SRZone).where(SRZone.symbol == symbol, SRZone.timeframe.in_(["H4", "D1"]))
+    if effective_as_of is not None:
+        sr_stmt = sr_stmt.where(or_(SRZone.last_touched.is_(None), SRZone.last_touched <= effective_as_of))
+    srs = (await session.execute(sr_stmt)).scalars().all()
     for sr in srs:
         w = ZONE_WEIGHTS["sr_zone"] * min(1.5, sr.strength / 2.0)
         zones.append({"type": "sr_zone", "direction": None, "low": sr.price_low, "high": sr.price_high, "weight": w})
 
-    liqs = (
-        (
-            await session.execute(
-                select(LiquidityZone).where(LiquidityZone.symbol == symbol, LiquidityZone.timeframe == "H4")
-            )
-        )
-        .scalars()
-        .all()
-    )
+    liq_stmt = select(LiquidityZone).where(LiquidityZone.symbol == symbol, LiquidityZone.timeframe == "H4")
+    if effective_as_of is not None:
+        liq_stmt = liq_stmt.where(LiquidityZone.identified_at <= effective_as_of)
+    liqs = (await session.execute(liq_stmt)).scalars().all()
     for lz in liqs:
         zones.append(
             {
@@ -118,18 +113,10 @@ async def _collect_zones(session: AsyncSession, symbol: str) -> list[dict]:
             }
         )
 
-    swings = (
-        (
-            await session.execute(
-                select(SwingPoint)
-                .where(SwingPoint.symbol == symbol, SwingPoint.timeframe == "H4")
-                .order_by(SwingPoint.timestamp.desc())
-                .limit(12)
-            )
-        )
-        .scalars()
-        .all()
-    )
+    sw_stmt = select(SwingPoint).where(SwingPoint.symbol == symbol, SwingPoint.timeframe == "H4")
+    if effective_as_of is not None:
+        sw_stmt = sw_stmt.where(SwingPoint.timestamp <= effective_as_of)
+    swings = (await session.execute(sw_stmt.order_by(SwingPoint.timestamp.desc()).limit(12))).scalars().all()
     for sw in swings:
         zones.append(
             {"type": "swing", "direction": sw.type, "low": sw.price, "high": sw.price, "weight": ZONE_WEIGHTS["swing"]}

@@ -541,6 +541,9 @@ class GeminiProvider(BaseLLMClient):
                 return {"thinkingBudget": 0}
             return {"thinkingBudget": max(0, self.thinking_budget or 0)}
 
+        if "3.8" in resolved and is_thinking_off:
+            return None
+
         if is_thinking_off:
             return {"thinkingLevel": "MINIMAL"}
         return {"thinkingLevel": self.resolved_thinking_level}

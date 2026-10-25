@@ -110,3 +110,79 @@ async def test_signal_arbitrator_neutral_timesfm_preserves_llm_wait():
         f"Arbitration reason: {res.arbitration_reason}, selected: {res.selected_source}, meta: {res.meta}"
     )
     assert res.risk_multiplier == 0.0
+
+
+@pytest.mark.asyncio
+async def test_confluence_calculator_h4_structure_overrides_stale_d1_and_separates_directions():
+    """Verify H4 structure break overrides lagging opposite D1 structure break and separates pre-hoc buy/sell scores."""
+    mock_session = AsyncMock()
+    as_of = datetime(2026, 10, 15, 13, 0, tzinfo=timezone.utc)
+
+    class _SB:
+        def __init__(self, direction: str):
+            self.direction = direction
+
+    def _exec_side_effect(stmt):
+        q = str(stmt)
+        res = MagicMock()
+        res.scalar_one_or_none.return_value = None
+        res.scalars.return_value.all.return_value = []
+        res.scalars.return_value.first.return_value = None
+        if "structure_breaks" in q:
+            if not getattr(_exec_side_effect, "sb_called", False):
+                _exec_side_effect.sb_called = True
+                # First StructureBreak query is D1 (stale bearish)
+                res.scalars.return_value.first.return_value = _SB("bearish")
+            else:
+                # Second StructureBreak query is H4 (fresh bullish shift)
+                res.scalars.return_value.first.return_value = _SB("bullish")
+        return res
+
+    mock_session.execute = AsyncMock(side_effect=_exec_side_effect)
+
+    sig_buy = EdgeSignal(
+        strategy_id="smc_fvg_trend_confluence",
+        symbol="GBPUSD",
+        direction="buy",
+        valid=True,
+        confidence=0.88,
+    )
+    sig_sell_weak = EdgeSignal(
+        strategy_id="minor_counter",
+        symbol="GBPUSD",
+        direction="sell",
+        valid=True,
+        confidence=0.58,
+    )
+
+    with (
+        patch(
+            "monika.application.analysis.calculators.daily_range_calculator.compute_daily_range_context",
+            new_callable=AsyncMock,
+            return_value={
+                "target_tp_min_distance": 0.0030,
+                "target_tp_max_distance": 0.0080,
+                "target_sl_max_distance": 0.0035,
+            },
+        ),
+        patch(
+            "monika.application.analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep",
+            new_callable=AsyncMock,
+            return_value={"structure_confirmed": False},
+        ),
+        patch(
+            "monika.application.analysis.strategies.registry.StrategyRegistry.evaluate_all",
+            new_callable=AsyncMock,
+            return_value=[sig_buy, sig_sell_weak],
+        ),
+    ):
+        res = await calculate_confluence(
+            session=mock_session,
+            symbol="GBPUSD",
+            entry_price=1.3250,
+            settings={},
+            as_of=as_of,
+        )
+        assert res["buy_potential_score"] > res["sell_potential_score"]
+        assert res["directional_separation"] >= 3
+        assert res["dominant_direction"] == "buy"

@@ -6,8 +6,9 @@
 Market structure, swing points, structure breaks, SMC zones (OB, FVG), Fibonacci levels, and patterns.
 """
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, or_, select
 
+import monika.core.primitives.clock as clock
 from monika.application.analysis.tools.handlers.market_data_handlers.base import _get_session_and_symbol, logger
 from monika.infrastructure.database.models import (
     FVGZone,
@@ -27,18 +28,11 @@ async def handle_get_swing_points(args: dict, **ctx) -> dict:
     if not session:
         return {"symbol": symbol, "timeframe": timeframe, "swing_points": []}
 
-    rows = (
-        (
-            await session.execute(
-                select(SwingPoint)
-                .where(SwingPoint.symbol == symbol, SwingPoint.timeframe == timeframe)
-                .order_by(SwingPoint.timestamp.desc())
-                .limit(10)
-            )
-        )
-        .scalars()
-        .all()
-    )
+    as_of = clock.get_simulated_now()
+    stmt = select(SwingPoint).where(SwingPoint.symbol == symbol, SwingPoint.timeframe == timeframe)
+    if as_of is not None:
+        stmt = stmt.where(SwingPoint.timestamp <= as_of)
+    rows = (await session.execute(stmt.order_by(SwingPoint.timestamp.desc()).limit(10))).scalars().all()
     return {
         "symbol": symbol,
         "timeframe": timeframe,
@@ -61,18 +55,11 @@ async def handle_get_structure_breaks(args: dict, **ctx) -> dict:
     if not session:
         return {"symbol": symbol, "timeframe": timeframe, "breaks": []}
 
-    breaks = (
-        (
-            await session.execute(
-                select(StructureBreak)
-                .where(StructureBreak.symbol == symbol, StructureBreak.timeframe == timeframe)
-                .order_by(StructureBreak.formed_at.desc())
-                .limit(5)
-            )
-        )
-        .scalars()
-        .all()
-    )
+    as_of = clock.get_simulated_now()
+    stmt = select(StructureBreak).where(StructureBreak.symbol == symbol, StructureBreak.timeframe == timeframe)
+    if as_of is not None:
+        stmt = stmt.where(StructureBreak.formed_at <= as_of)
+    breaks = (await session.execute(stmt.order_by(StructureBreak.formed_at.desc()).limit(5))).scalars().all()
     return {
         "symbol": symbol,
         "timeframe": timeframe,
@@ -98,18 +85,11 @@ async def handle_get_sr_zones(args: dict, **ctx) -> dict:
     if not session:
         return {"symbol": symbol, "timeframe": timeframe, "zones": []}
 
-    rows = (
-        (
-            await session.execute(
-                select(SRZone)
-                .where(SRZone.symbol == symbol, SRZone.timeframe == timeframe)
-                .order_by(desc(SRZone.strength))
-                .limit(10)
-            )
-        )
-        .scalars()
-        .all()
-    )
+    as_of = clock.get_simulated_now()
+    stmt = select(SRZone).where(SRZone.symbol == symbol, SRZone.timeframe == timeframe)
+    if as_of is not None:
+        stmt = stmt.where(or_(SRZone.last_touched.is_(None), SRZone.last_touched <= as_of))
+    rows = (await session.execute(stmt.order_by(desc(SRZone.strength)).limit(10))).scalars().all()
     return {
         "symbol": symbol,
         "timeframe": timeframe,
@@ -135,29 +115,24 @@ async def handle_get_smc_zones(args: dict, **ctx) -> dict:
     if not session:
         return {"symbol": symbol, "timeframe": timeframe, "status": "no_session"}
 
-    sr_rows = (
-        (await session.execute(select(SRZone).where(SRZone.symbol == symbol, SRZone.timeframe == timeframe).limit(10)))
-        .scalars()
-        .all()
-    )
-    ob_rows = (
-        (
-            await session.execute(
-                select(OrderBlock).where(OrderBlock.symbol == symbol, OrderBlock.timeframe == timeframe).limit(10)
-            )
+    as_of = clock.get_simulated_now()
+    sr_stmt = select(SRZone).where(SRZone.symbol == symbol, SRZone.timeframe == timeframe)
+    ob_stmt = select(OrderBlock).where(OrderBlock.symbol == symbol, OrderBlock.timeframe == timeframe)
+    fvg_stmt = select(FVGZone).where(FVGZone.symbol == symbol, FVGZone.timeframe == timeframe)
+    if as_of is not None:
+        sr_stmt = sr_stmt.where(or_(SRZone.last_touched.is_(None), SRZone.last_touched <= as_of))
+        ob_stmt = ob_stmt.where(
+            OrderBlock.formed_at <= as_of,
+            or_(OrderBlock.mitigated_at.is_(None), OrderBlock.mitigated_at > as_of),
         )
-        .scalars()
-        .all()
-    )
-    fvg_rows = (
-        (
-            await session.execute(
-                select(FVGZone).where(FVGZone.symbol == symbol, FVGZone.timeframe == timeframe).limit(10)
-            )
+        fvg_stmt = fvg_stmt.where(
+            FVGZone.formed_at <= as_of,
+            or_(FVGZone.filled_at.is_(None), FVGZone.filled_at > as_of),
         )
-        .scalars()
-        .all()
-    )
+
+    sr_rows = (await session.execute(sr_stmt.limit(10))).scalars().all()
+    ob_rows = (await session.execute(ob_stmt.order_by(OrderBlock.formed_at.desc()).limit(10))).scalars().all()
+    fvg_rows = (await session.execute(fvg_stmt.order_by(FVGZone.formed_at.desc()).limit(10))).scalars().all()
 
     return {
         "symbol": symbol,
@@ -168,7 +143,9 @@ async def handle_get_smc_zones(args: dict, **ctx) -> dict:
                 "price_high": r.price_high,
                 "price_low": r.price_low,
                 "direction": getattr(r, "direction", "bullish"),
-                "mitigated": bool(getattr(r, "mitigated_at", None)),
+                "mitigated": bool(
+                    getattr(r, "mitigated_at", None) and (as_of is None or getattr(r, "mitigated_at") <= as_of)
+                ),
                 "formed_at": r.formed_at.isoformat() if hasattr(r.formed_at, "isoformat") else str(r.formed_at),
             }
             for r in ob_rows
@@ -178,7 +155,10 @@ async def handle_get_smc_zones(args: dict, **ctx) -> dict:
                 "gap_high": r.gap_high,
                 "gap_low": r.gap_low,
                 "direction": getattr(r, "direction", "bullish"),
-                "mitigated": bool(getattr(r, "mitigated_at", None)),
+                "mitigated": bool(
+                    (getattr(r, "filled_at", None) or getattr(r, "mitigated_at", None))
+                    and (as_of is None or (getattr(r, "filled_at", None) or getattr(r, "mitigated_at")) <= as_of)
+                ),
                 "formed_at": r.formed_at.isoformat() if hasattr(r.formed_at, "isoformat") else str(r.formed_at),
             }
             for r in fvg_rows

@@ -309,3 +309,51 @@ async def test_compute_optimal_levels_default_min_rr_1_8_and_limit_entry():
         assert "pullback_entry_price" in res
         # Pullback entry for BUY should be below market entry price
         assert res["pullback_entry_price"] < 1.1000
+
+
+@pytest.mark.asyncio
+async def test_collect_zones_point_in_time_filters_future_and_mitigated_zones(db_session):
+    """Verify _collect_zones respects Point-in-Time as_of filtering for OrderBlock and FVGZone."""
+    from datetime import datetime, timedelta, timezone
+    import monika.core.primitives.clock as clock
+    from monika.application.analysis.calculators.intraday_level_optimizer import _collect_zones
+    from monika.infrastructure.database.models import FVGZone, OrderBlock
+
+    as_of = datetime(2026, 10, 7, 13, 0, tzinfo=timezone.utc)
+    past_ob = OrderBlock(
+        symbol="EURUSD",
+        timeframe="H4",
+        direction="bullish",
+        price_low=1.0950,
+        price_high=1.0965,
+        formed_at=as_of - timedelta(hours=8),
+        mitigated_at=as_of + timedelta(hours=12),  # Not yet mitigated as of 13:00 UTC!
+    )
+    future_ob = OrderBlock(
+        symbol="EURUSD",
+        timeframe="H4",
+        direction="bearish",
+        price_low=1.1080,
+        price_high=1.1095,
+        formed_at=as_of + timedelta(hours=4),  # Formed in the future -> must be excluded!
+        mitigated_at=None,
+    )
+    past_fvg = FVGZone(
+        symbol="EURUSD",
+        timeframe="H4",
+        direction="bullish",
+        gap_low=1.0970,
+        gap_high=1.0985,
+        formed_at=as_of - timedelta(hours=4),
+        filled_at=None,
+    )
+    db_session.add_all([past_ob, future_ob, past_fvg])
+    await db_session.commit()
+
+    with clock.frozen_time(as_of):
+        zones = await _collect_zones(db_session, "EURUSD")
+
+    lows = [z["low"] for z in zones]
+    assert 1.0950 in lows
+    assert 1.0970 in lows
+    assert 1.1080 not in lows

@@ -106,3 +106,40 @@ async def test_compute_daily_range_context_today_bar_not_written():
 
     res = await compute_daily_range_context(mock_session, "EURUSD", {})
     assert res["room_remaining_pct"] == 1.0
+
+
+@pytest.mark.asyncio
+async def test_compute_daily_range_context_point_in_time_h1_prevents_d1_lookahead():
+    """Verify that when as_of is passed mid-day, today_range_so_far uses H1 bars up to as_of instead of leaking the full 24h D1 bar."""
+    as_of = datetime(2026, 10, 7, 13, 0, tzinfo=timezone.utc)
+    d1_rows = [
+        # Full-day D1 bar has huge 0.0200 range (leaking future NY session move after 13:00 UTC)
+        DummyRow("2026-10-07T00:00:00", 1.1000, 1.1200, 1.1000, 1.1180),
+        DummyRow("2026-10-06T00:00:00", 1.1000, 1.1100, 1.1000, 1.1050),
+        DummyRow("2026-10-05T00:00:00", 1.1000, 1.1100, 1.1000, 1.1050),
+        DummyRow("2026-10-04T00:00:00", 1.1000, 1.1100, 1.1000, 1.1050),
+        DummyRow("2026-10-03T00:00:00", 1.1000, 1.1100, 1.1000, 1.1050),
+        DummyRow("2026-10-02T00:00:00", 1.1000, 1.1100, 1.1000, 1.1050),
+    ]
+    h1_bar_1 = DummyRow("2026-10-07T08:00:00", 1.1000, 1.1020, 1.1000, 1.1015)
+    h1_bar_1.timeframe = "H1"
+    h1_bar_2 = DummyRow("2026-10-07T12:00:00", 1.1015, 1.1030, 1.1005, 1.1025)
+    h1_bar_2.timeframe = "H1"
+
+    def _exec_side_effect(stmt):
+        res = MagicMock()
+        q_str = str(stmt)
+        if "H1" in q_str or "timestamp >=" in q_str:
+            res.scalars().all.return_value = [h1_bar_1, h1_bar_2]
+        else:
+            res.scalars().all.return_value = d1_rows
+        return res
+
+    mock_session = create_mock_async_session()
+    mock_session.execute = AsyncMock(side_effect=_exec_side_effect)
+
+    res = await compute_daily_range_context(mock_session, "EURUSD", {}, as_of=as_of)
+    assert res["adr"] == pytest.approx(0.0100)
+    assert res["today_range_so_far"] == pytest.approx(0.0030)
+    assert res["room_remaining_pct"] == pytest.approx(0.70)
+    assert res["entry_allowed"] is True

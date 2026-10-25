@@ -191,6 +191,7 @@ async def calculate_confluence(
     from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
     settings = settings or {}
+    as_of = as_of or clock.get_simulated_now()
     risk_cfg = settings.get("trading", {}).get("risk", {})
     min_rr_ratio = float(risk_cfg.get("min_rr_ratio", 1.5))
     intraday_min_sl_atr_mult = float(risk_cfg.get("intraday_min_sl_atr_multiplier", 1.0))
@@ -285,12 +286,18 @@ async def calculate_confluence(
         (await session.execute(recent_h4_stmt.order_by(PriceOHLCV.timestamp.desc()).limit(20))).scalars().all()
     )
 
-    # D1 Structure
+    # D1 & H4 Structure
     d1_stmt = select(StructureBreak).where(StructureBreak.symbol == symbol, StructureBreak.timeframe == "D1")
     if d1_cutoff:
         d1_stmt = d1_stmt.where(StructureBreak.formed_at <= d1_cutoff)
     d1_stmt = d1_stmt.order_by(StructureBreak.formed_at.desc()).limit(1)
     d1_breaks = (await session.execute(d1_stmt)).scalars().first()
+
+    h4_sb_stmt = select(StructureBreak).where(StructureBreak.symbol == symbol, StructureBreak.timeframe == "H4")
+    if h4_cutoff:
+        h4_sb_stmt = h4_sb_stmt.where(StructureBreak.formed_at <= h4_cutoff)
+    h4_sb_stmt = h4_sb_stmt.order_by(StructureBreak.formed_at.desc()).limit(1)
+    h4_breaks = (await session.execute(h4_sb_stmt)).scalars().first()
 
     # FVG (H4)
     fvg_stmt = select(FVGZone).where(FVGZone.symbol == symbol, FVGZone.timeframe == "H4")
@@ -415,13 +422,25 @@ async def calculate_confluence(
         ):
             score += 2
 
-        # Quant Alpha Strategy Edge Bonus
+        # Quant Alpha Strategy Edge Bonus (Directionally Separated)
+        opp_dir = "sell" if test_dir == "buy" else "buy"
+        best_dir_quant = 0.0
+        best_opp_quant = 0.0
         if quant_signals:
-            has_quant_concordance = any(
-                getattr(s, "valid", False) and str(getattr(s, "direction", "")).lower() == test_dir
-                for s in quant_signals
-            )
-            if has_quant_concordance:
+            for s in quant_signals:
+                if not getattr(s, "valid", False):
+                    continue
+                s_dir = str(getattr(s, "direction", "")).lower()
+                s_conf = max(
+                    float(getattr(s, "edge_strength", 0.0) or 0.0),
+                    float(getattr(s, "confidence", 0.0) or 0.0),
+                    0.50,
+                )
+                if s_dir == test_dir and s_conf > best_dir_quant:
+                    best_dir_quant = s_conf
+                elif s_dir == opp_dir and s_conf > best_opp_quant:
+                    best_opp_quant = s_conf
+            if best_dir_quant > 0.0 and best_dir_quant >= best_opp_quant:
                 score += 2
 
         # === MECHANICAL VERIFICATION: RSI ===
@@ -492,13 +511,22 @@ async def calculate_confluence(
                 if sl_dist > sl_adr_max * 1.1:
                     issues.append(f"SL exceeds intraday-range max ({sl_dist:.5f} > {sl_adr_max:.5f}, 35% ADR).")
 
-        # D1 Structure
-        if d1_breaks:
-            aligned = (test_direction == "buy" and d1_breaks.direction == "bullish") or (
-                test_direction == "sell" and d1_breaks.direction == "bearish"
-            )
-            if aligned:
-                score += 2
+        # H4 & D1 Structure Alignment (H4 takes priority over lagging D1)
+        h4_dir = str(getattr(h4_breaks, "direction", "") or "").lower() if h4_breaks else ""
+        d1_dir = str(getattr(d1_breaks, "direction", "") or "").lower() if d1_breaks else ""
+        h4_aligned = (test_direction == "buy" and h4_dir == "bullish") or (
+            test_direction == "sell" and h4_dir == "bearish"
+        )
+        h4_opposed = (test_direction == "buy" and h4_dir == "bearish") or (
+            test_direction == "sell" and h4_dir == "bullish"
+        )
+        d1_aligned = (test_direction == "buy" and d1_dir == "bullish") or (
+            test_direction == "sell" and d1_dir == "bearish"
+        )
+        if h4_aligned:
+            score += 2
+        if d1_aligned and not h4_opposed:
+            score += 1 if h4_aligned else 2
 
         # FVG/OB Proximity (Directionally Aligned)
         if test_entry and atr_val > 0:
@@ -615,12 +643,13 @@ async def calculate_confluence(
             prior_bars = recent_h4_bars[1:]
             prior_highs = [float(b.high) for b in prior_bars]
             prior_lows = [float(b.low) for b in prior_bars]
+            allow_d1_break_fallback = bool(confluence_factors) and not h4_opposed
             if test_dir == "buy" and (
-                test_entry >= max(prior_highs) or (d1_breaks and d1_breaks.direction == "bullish")
+                test_entry >= max(prior_highs) or h4_aligned or (allow_d1_break_fallback and d1_aligned)
             ):
                 breakout_ok = True
             elif test_dir == "sell" and (
-                test_entry <= min(prior_lows) or (d1_breaks and d1_breaks.direction == "bearish")
+                test_entry <= min(prior_lows) or h4_aligned or (allow_d1_break_fallback and d1_aligned)
             ):
                 breakout_ok = True
 
@@ -637,11 +666,8 @@ async def calculate_confluence(
                 trend_ok = True
             elif test_dir == "sell" and ema20_val <= ema50_val:
                 trend_ok = True
-        elif d1_breaks:
-            if (test_dir == "buy" and d1_breaks.direction == "bullish") or (
-                test_dir == "sell" and d1_breaks.direction == "bearish"
-            ):
-                trend_ok = True
+        elif h4_aligned or (d1_aligned and not h4_opposed):
+            trend_ok = True
 
         if rsi_val is not None:
             if test_dir == "buy" and rsi_val >= 55.0:
@@ -675,10 +701,14 @@ async def calculate_confluence(
                         f"momentum_expansion factor claimed but RSI={rsi_val} does not indicate momentum expansion"
                     )
         else:
-            # Pre-hoc potential score evaluation: if setup is in expansion rather than resting at zone
+            # Pre-hoc potential score evaluation: volume_ok only boosts a direction with directional confirmation
             zone_pts = (2 if near_fvg else 0) + (2 if near_ob else 0) + (1 if near_sr else 0) + (1 if in_ote else 0)
+            dir_volume_ok = volume_ok and (breakout_ok or trend_ok or momentum_ok)
             breakout_pts = (
-                (2 if breakout_ok else 0) + (2 if volume_ok else 0) + (2 if trend_ok else 0) + (1 if momentum_ok else 0)
+                (2 if breakout_ok else 0)
+                + (2 if dir_volume_ok else 0)
+                + (2 if trend_ok else 0)
+                + (1 if momentum_ok else 0)
             )
             if breakout_pts > zone_pts:
                 score += breakout_pts - zone_pts
@@ -777,10 +807,16 @@ async def calculate_confluence(
 
         # cot_aligned scoring
         if cot_alignment_val is not None:
+            is_favor = (test_direction == "buy" and cot_alignment_val == -1) or (
+                test_direction == "sell" and cot_alignment_val == 1
+            )
             is_against = (test_direction == "buy" and cot_alignment_val == 1) or (
                 test_direction == "sell" and cot_alignment_val == -1
             )
-            if not is_against:
+            if direction is not None:
+                if not is_against:
+                    score += 1
+            elif is_favor:
                 score += 1
 
         # F11: Microstructure confirmation
@@ -803,8 +839,8 @@ async def calculate_confluence(
             if (test_direction == "buy" and p_bias == "bullish") or (test_direction == "sell" and p_bias == "bearish"):
                 score += 1
 
-        # Quantitative Factor Zoo Consensus (+1 point)
-        if quant_signals:
+        # Quantitative Factor Zoo Consensus (+1 point, directionally separated)
+        if quant_signals and best_dir_quant >= best_opp_quant:
             concordant_edges = sum(
                 1
                 for sig in quant_signals
@@ -836,5 +872,13 @@ async def calculate_confluence(
 
         buy_s, _ = _compute_for_direction("buy", price_to_test, None, None)
         sell_s, _ = _compute_for_direction("sell", price_to_test, None, None)
+        sep = abs(buy_s - sell_s)
+        dom_dir = "buy" if buy_s >= sell_s + 2 else ("sell" if sell_s >= buy_s + 2 else "neutral")
 
-        return {"buy_potential_score": buy_s, "sell_potential_score": sell_s, "reference_price": price_to_test}
+        return {
+            "buy_potential_score": buy_s,
+            "sell_potential_score": sell_s,
+            "directional_separation": sep,
+            "dominant_direction": dom_dir,
+            "reference_price": price_to_test,
+        }

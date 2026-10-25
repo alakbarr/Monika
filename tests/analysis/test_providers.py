@@ -198,6 +198,10 @@ async def test_gemini_token_allocation_with_thinking(mock_limiter, mock_fetch):
         assert call_payload_none["generationConfig"]["maxOutputTokens"] == 65536
         assert call_payload_none["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "MINIMAL"
 
+        # 4. gemini-3.8-flash with thinking_level="none" omits thinkingConfig to prevent HTTP 400
+        provider_38 = GeminiProvider(model="gemini-3.8-flash", thinking_level="none")
+        assert provider_38._build_thinking_config() is None
+
 
 @pytest.mark.asyncio
 @patch("monika.infrastructure.providers.gemini_provider.fetch_with_retry")

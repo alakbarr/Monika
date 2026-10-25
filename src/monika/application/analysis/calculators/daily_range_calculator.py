@@ -96,16 +96,17 @@ async def compute_daily_range_context(
         lookback_days = _resolve_lookback_days(symbol, settings)
     else:
         lookback_days = max(3, int(lookback_days))
+    effective_as_of = as_of or clock.get_simulated_now()
     stmt = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol).where(PriceOHLCV.timeframe == "D1")
-    if as_of:
-        stmt = stmt.where(PriceOHLCV.timestamp <= as_of)
+    if effective_as_of:
+        stmt = stmt.where(PriceOHLCV.timestamp <= effective_as_of)
     stmt = stmt.order_by(PriceOHLCV.timestamp.desc()).limit(lookback_days + 2)
     rows = (await session.execute(stmt)).scalars().all()
     if len(rows) < 3:
         return {"error": f"Insufficient D1 history for {symbol} ({len(rows)} bars, need >= 3)"}
 
     rows = list(rows)
-    now = as_of or clock.now()
+    now = effective_as_of or clock.now()
     today_bar = rows[0]
     today_ts = (
         today_bar.timestamp.replace(tzinfo=timezone.utc) if today_bar.timestamp.tzinfo is None else today_bar.timestamp
@@ -115,6 +116,25 @@ async def compute_daily_range_context(
     if is_today_forming:
         today_open, today_high, today_low = today_bar.open, today_bar.high, today_bar.low
         history_rows = rows[1 : 1 + lookback_days]
+        if effective_as_of is not None:
+            day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            h1_stmt = (
+                select(PriceOHLCV)
+                .where(
+                    PriceOHLCV.symbol == symbol,
+                    PriceOHLCV.timeframe == "H1",
+                    PriceOHLCV.timestamp >= day_start,
+                    PriceOHLCV.timestamp <= now,
+                )
+                .order_by(PriceOHLCV.timestamp.asc())
+            )
+            h1_res = await session.execute(h1_stmt)
+            h1_scalars = h1_res.scalars().all() if h1_res is not None else []
+            h1_bars = [b for b in h1_scalars if getattr(b, "timeframe", None) == "H1"]
+            if h1_bars:
+                today_open = float(h1_bars[0].open)
+                today_high = max(float(b.high) for b in h1_bars)
+                today_low = min(float(b.low) for b in h1_bars)
     else:
         today_open = today_high = today_low = today_bar.close
         history_rows = rows[0:lookback_days]
