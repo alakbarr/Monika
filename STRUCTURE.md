@@ -23,6 +23,7 @@ Monika/
 │       │   │   ├── harness/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── agent_harness.py
+│       │   │   │   ├── anti_slop_gate.py
 │       │   │   │   ├── context_compressor.py
 │       │   │   │   ├── error_classifier.py
 │       │   │   │   ├── general_tool_pruner.py
@@ -37,6 +38,7 @@ Monika/
 │       │   │   │   ├── tool_batch_planner.py
 │       │   │   │   ├── tool_repair.py
 │       │   │   │   ├── trade_stop_gates.py
+│       │   │   │   ├── turn_failure_diagnostics.py
 │       │   │   │   └── verification_evidence_ledger.py
 │       │   │   ├── monitors/
 │       │   │   │   ├── __init__.py
@@ -2084,6 +2086,7 @@ Monika/
 │   │   ├── test_chat_memory_budget.py
 │   │   ├── test_core_and_error_taxonomy.py
 │   │   ├── test_file_write_approval.py
+│   │   ├── test_harness_effort_recovery_and_antislop.py
 │   │   ├── test_mcp_write_approval.py
 │   │   ├── test_memory_skills_and_traps.py
 │   │   ├── test_moa_loop.py
@@ -3094,4 +3097,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 265 | **Total Tracked Files**: 2799
+**Total Tracked Directories**: 265 | **Total Tracked Files**: 2802

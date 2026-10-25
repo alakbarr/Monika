@@ -5204,6 +5204,16 @@
 - **Top-Level Functions**:
   - `calculate_turn_cost_usd(model_name: str, input_tokens: int, output_tokens: int, ...) -> float`
 
+#### `anti_slop_gate.py` - *Deterministic Anti-Slop Quality Gate & Sentence-Boundary Text Distiller.*
+- **Path**: [`src/monika/application/agent/harness/anti_slop_gate.py`](src/monika/application/agent/harness/anti_slop_gate.py)
+- **Classes**:
+  - `class AntiSlopVerdict`: Result of evaluating agent output against the AntiSlopQualityGate.
+  - `class AntiSlopQualityGate`: Deterministic quality gate preventing AI slop, placeholders, and ungrounded fluff.
+    - `evaluate(text: str) -> AntiSlopVerdict` - *Evaluate text for banned AI slop phrases, unfinished placeholders, and grounding density.*
+    - `sanitize_surface_slop(text: str) -> str` - *Clean sycophantic openers, closers, and forbidden emojis from user-facing text without altering numbers.*
+- **Top-Level Functions**:
+  - `smart_distill_text(text: Optional[str], max_chars: int, max_sentences: int) -> str`: Distill text to complete sentences or clauses within max_chars without mid-word truncation.
+
 #### `context_compressor.py` - *Multi-Phase Hierarchical Context Compressor (HIGH-4).*
 - **Path**: [`src/monika/application/agent/harness/context_compressor.py`](src/monika/application/agent/harness/context_compressor.py)
 - **Classes**:
@@ -5346,6 +5356,20 @@
   - `class TradeStopVerdict`
   - `class TradeStopGate`: Evaluates whether an agent's conclusion meets verification evidence criteria.
     - `evaluate(text_content: str, ledger: VerificationEvidenceLedger, stage_name: str, ...) -> TradeStopVerdict`
+
+#### `turn_failure_diagnostics.py` - *Structured Turn Failure Diagnostics & Error-as-Input Self-Correction Builder.*
+- **Path**: [`src/monika/application/agent/harness/turn_failure_diagnostics.py`](src/monika/application/agent/harness/turn_failure_diagnostics.py)
+- **Classes**:
+  - `class TurnFailureDiagnostic`: Structured diagnostic describing what failed in a turn, why, and how to fix it.
+    - `format_directive() -> str` - *Render a high-signal self-correction block for injection into the agent context.*
+    - `to_dict() -> Dict[str, object]` - *Serialize diagnostic for inclusion in structured tool_result payloads.*
+  - `class TurnFailureDiagnosticBuilder`: Factory methods constructing TurnFailureDiagnostic objects from runtime failures.
+    - `summarize_schema(schema: Optional[Dict[str, object]], focus_fields: Optional[List[str]]) -> str` - *Build a compact human- and LLM-readable summary of required fields, types, and enums.*
+    - `from_schema_validation_error(turn_number: int, tool_name: str, tool_input: Optional[Dict[str, object]], ...) -> TurnFailureDiagnostic` - *Create a diagnostic for pre-execution JSON schema validation failures.*
+    - `from_tool_execution_error(turn_number: int, tool_name: str, tool_input: Optional[Dict[str, object]], ...) -> TurnFailureDiagnostic` - *Create a diagnostic for runtime tool execution errors or domain validation rejections.*
+    - `from_guardrail_verdict(turn_number: int, tool_name: str, guard_name: str, ...) -> TurnFailureDiagnostic` - *Create a diagnostic when a tool call is blocked or suppressed by ToolGuardrailController.*
+    - `from_stop_gate_rejection(turn_number: int, gate_name: str, reason: str, ...) -> TurnFailureDiagnostic` - *Create a diagnostic when a turn attempts to finish but is blocked by a stop gate.*
+    - `from_slop_rejection(turn_number: int, violations: List[str], stage_name: str) -> TurnFailureDiagnostic` - *Create a diagnostic when final text or submission violates the Anti-Slop Quality Gate.*
 
 #### `verification_evidence_ledger.py` - *Verification Evidence Ledger for Trading Agent Harness.*
 - **Path**: [`src/monika/application/agent/harness/verification_evidence_ledger.py`](src/monika/application/agent/harness/verification_evidence_ledger.py)
