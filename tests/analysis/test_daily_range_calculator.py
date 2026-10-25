@@ -143,3 +143,108 @@ async def test_compute_daily_range_context_point_in_time_h1_prevents_d1_lookahea
     assert res["today_range_so_far"] == pytest.approx(0.0030)
     assert res["room_remaining_pct"] == pytest.approx(0.70)
     assert res["entry_allowed"] is True
+
+
+def test_trimmed_average_and_volatility_regime_edges():
+    from monika.application.analysis.calculators.daily_range_calculator import (
+        _classify_volatility_regime,
+        _trimmed_average,
+    )
+
+    assert _trimmed_average([]) == 0.0
+    assert _trimmed_average([-5.0, "invalid"]) == 0.0
+    assert _trimmed_average([10.0, 20.0, 30.0]) == pytest.approx(20.0)
+
+    assert _classify_volatility_regime(1.0, 0.0) == ("normal", 1.0)
+    assert _classify_volatility_regime(1.40, 1.0) == ("expanding_fast", 1.4)
+    assert _classify_volatility_regime(1.20, 1.0) == ("expanding", 1.2)
+    assert _classify_volatility_regime(0.60, 1.0) == ("contracting_fast", 0.6)
+    assert _classify_volatility_regime(0.80, 1.0) == ("contracting", 0.8)
+    assert _classify_volatility_regime(1.00, 1.0) == ("normal", 1.0)
+
+
+@pytest.mark.asyncio
+async def test_compute_baseline_adr_insufficient_valid_ranges():
+    from monika.application.analysis.calculators.daily_range_calculator import _compute_baseline_adr
+
+    # 10 rows total, but flat high == low so valid ranges < 8
+    rows = [DummyRow(f"2026-09-{i:02d}T00:00:00", 1.1, 1.1, 1.1, 1.1) for i in range(1, 12)]
+    mock_session = create_mock_async_session()
+    mock_res = MagicMock()
+    mock_res.scalars().all.return_value = rows
+    mock_session.execute.return_value = mock_res
+
+    res = await _compute_baseline_adr(mock_session, "EURUSD", 20, as_of=datetime(2026, 9, 20, tzinfo=timezone.utc))
+    assert res is None
+
+
+@pytest.mark.asyncio
+async def test_compute_daily_range_context_error_and_room_branches():
+    from unittest.mock import patch
+
+    now = datetime(2026, 10, 7, 15, 0, tzinfo=timezone.utc)
+    today_str = now.isoformat()
+
+    # 1. Insufficient completed D1 history (3 rows total, today forming -> history_rows has 2 bars)
+    rows_short_hist = [
+        DummyRow(today_str, 1.10, 1.11, 1.10, 1.105),
+        DummyRow("2026-10-06T00:00:00", 1.10, 1.11, 1.10, 1.105),
+        DummyRow("2026-10-05T00:00:00", 1.10, 1.11, 1.10, 1.105),
+    ]
+    mock_session = create_mock_async_session()
+    mock_res = MagicMock()
+    mock_res.scalars().all.return_value = rows_short_hist
+    mock_session.execute.return_value = mock_res
+
+    err1 = await compute_daily_range_context(mock_session, "EURUSD", {}, as_of=now, lookback_days=4)
+    assert "Insufficient completed D1 history" in err1["error"]
+
+    # 2. No valid D1 ranges (high == low)
+    rows_invalid_ranges = [
+        DummyRow("2026-10-05T00:00:00", 1.10, 1.10, 1.10, 1.10),
+        DummyRow("2026-10-04T00:00:00", 1.10, 1.10, 1.10, 1.10),
+        DummyRow("2026-10-03T00:00:00", 1.10, 1.10, 1.10, 1.10),
+    ]
+    mock_res.scalars().all.return_value = rows_invalid_ranges
+    err2 = await compute_daily_range_context(mock_session, "EURUSD", {}, as_of=now)
+    assert "No valid D1 ranges" in err2["error"]
+
+    # 3. Computed ADR <= 0 guard
+    rows_valid = [
+        DummyRow(today_str, 1.1000, 1.1080, 1.1000, 1.1070),  # 0.0080 (80% of ADR -> room 0.20)
+        DummyRow("2026-10-06T00:00:00", 1.10, 1.11, 1.10, 1.105),
+        DummyRow("2026-10-05T00:00:00", 1.10, 1.11, 1.10, 1.105),
+        DummyRow("2026-10-04T00:00:00", 1.10, 1.11, 1.10, 1.105),
+    ]
+    mock_res.scalars().all.return_value = rows_valid
+    with patch("monika.application.analysis.calculators.daily_range_calculator._trimmed_average", return_value=0.0):
+        err3 = await compute_daily_range_context(mock_session, "EURUSD", {}, as_of=now)
+        assert "Computed ADR <= 0" in err3["error"]
+
+    # 4. TimesFM exception + room_remaining_pct = 0.20 ("reduced_target")
+    with patch(
+        "monika.infrastructure.ml.timesfm_engine.TimesFMEngine.get_latest_forecast",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("tfm unavailable"),
+    ):
+        res_reduced = await compute_daily_range_context(mock_session, "EURUSD", {}, as_of=now)
+        assert res_reduced["session_recommendation"] == "reduced_target"
+        assert res_reduced["entry_allowed"] is True
+
+    # 5. TimesFM contracting ratio <= 0.75 + room_remaining_pct = 0.10 ("avoid_new_entry_low_room")
+    rows_exhausted = [
+        DummyRow(today_str, 1.1000, 1.1090, 1.1000, 1.1085),  # 0.0090 (90% of ADR -> room 0.10)
+        DummyRow("2026-10-06T00:00:00", 1.10, 1.11, 1.10, 1.105),
+        DummyRow("2026-10-05T00:00:00", 1.10, 1.11, 1.10, 1.105),
+        DummyRow("2026-10-04T00:00:00", 1.10, 1.11, 1.10, 1.105),
+    ]
+    mock_res.scalars().all.return_value = rows_exhausted
+    with patch(
+        "monika.infrastructure.ml.timesfm_engine.TimesFMEngine.get_latest_forecast",
+        new_callable=AsyncMock,
+        return_value={"expected_range": 0.0070, "volatility_expansion_ratio": 0.65},
+    ):
+        res_avoid = await compute_daily_range_context(mock_session, "EURUSD", {}, as_of=now)
+        assert res_avoid["volatility_regime"] == "contracting"
+        assert res_avoid["session_recommendation"] == "avoid_new_entry_low_room"
+        assert res_avoid["entry_allowed"] is False

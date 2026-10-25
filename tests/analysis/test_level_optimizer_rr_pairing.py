@@ -357,3 +357,477 @@ async def test_collect_zones_point_in_time_filters_future_and_mitigated_zones(db
     assert 1.0950 in lows
     assert 1.0970 in lows
     assert 1.1080 not in lows
+
+
+@pytest.mark.asyncio
+async def test_intraday_level_optimizer_full_branch_coverage(db_session):
+    """Cover _get_atr, _collect_zones (SR/Liquidity/Swing + non-PiT), _score_candidate, TimesFM sell/overextended, and prescribed TP/SL edges."""
+    from datetime import datetime, timedelta, timezone
+    from monika.application.analysis.calculators.intraday_level_optimizer import (
+        _collect_zones,
+        _get_atr,
+        _score_candidate,
+        compute_optimal_levels,
+    )
+    from monika.infrastructure.database.models import (
+        LiquidityZone,
+        SRZone,
+        SwingPoint,
+        TechnicalIndicator,
+    )
+
+    assert _score_candidate(10.0, 10.0, 0.0, 2.0) == 1.0
+
+    as_of = datetime(2026, 10, 7, 13, 0, tzinfo=timezone.utc)
+    # 1. _get_atr with valid JSON and invalid JSON
+    ind_valid = TechnicalIndicator(
+        symbol="EURUSD",
+        timeframe="H4",
+        indicator_name="ATR_14",
+        timestamp=as_of - timedelta(hours=1),
+        value_json='{"atr": 0.0025}',
+    )
+    db_session.add(ind_valid)
+    await db_session.commit()
+    assert await _get_atr(db_session, "EURUSD", as_of=as_of) == pytest.approx(0.0025)
+
+    ind_corrupt = TechnicalIndicator(
+        symbol="GBPUSD",
+        timeframe="H4",
+        indicator_name="ATR_14",
+        timestamp=as_of - timedelta(hours=1),
+        value_json="{bad_json",
+    )
+    db_session.add(ind_corrupt)
+    await db_session.commit()
+    assert await _get_atr(db_session, "GBPUSD", as_of=as_of) == 0.0
+
+    # 2. _collect_zones with SRZone, LiquidityZone, SwingPoint (both with as_of and without as_of)
+    sr = SRZone(
+        symbol="EURUSD",
+        timeframe="H4",
+        price_low=1.0900,
+        price_high=1.0910,
+        strength=3,
+        last_touched=as_of - timedelta(hours=2),
+    )
+    lz = LiquidityZone(
+        symbol="EURUSD",
+        timeframe="H4",
+        type="below_swing_low",
+        zone_low=1.0880,
+        zone_high=1.0890,
+        identified_at=as_of - timedelta(hours=2),
+    )
+    sw = SwingPoint(
+        symbol="EURUSD",
+        timeframe="H4",
+        type="low",
+        price=1.0870,
+        timestamp=as_of - timedelta(hours=3),
+    )
+    db_session.add_all([sr, lz, sw])
+    await db_session.commit()
+
+    zones_pit = await _collect_zones(db_session, "EURUSD", as_of=as_of)
+    zone_types = {z["type"] for z in zones_pit}
+    assert {"sr_zone", "liquidity", "swing"}.issubset(zone_types)
+
+    zones_live = await _collect_zones(db_session, "EURUSD", as_of=None)
+    assert len(zones_live) >= 3
+
+    # 3. compute_optimal_levels when compute_daily_range_context returns error
+    with patch(
+        "monika.application.analysis.calculators.intraday_level_optimizer.compute_daily_range_context",
+        new_callable=AsyncMock,
+        return_value={"error": "no d1 bars"},
+    ):
+        err_res = await compute_optimal_levels(db_session, "EURUSD", "buy", 1.1000, {})
+        assert err_res == {"error": "no d1 bars"}
+
+    # 4. compute_optimal_levels with sweep detected, TimesFM overextended BUY & SELL, and invalid/valid existing_sl/tp
+    mock_adr_ctx = {
+        "adr": 100.0,
+        "target_tp_min_distance": 20.0,
+        "target_tp_max_distance": 80.0,
+        "target_sl_max_distance": 50.0,
+        "room_remaining_pct": 0.80,
+        "entry_allowed": True,
+        "volatility_regime": "normal",
+    }
+    with (
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer.compute_daily_range_context",
+            new_callable=AsyncMock,
+            return_value=mock_adr_ctx,
+        ),
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer._get_atr",
+            new_callable=AsyncMock,
+            return_value=0.0,
+        ),
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer._collect_zones",
+            new_callable=AsyncMock,
+            return_value=[
+                {"type": "order_block", "direction": "bullish", "low": 2030.0, "high": 2035.0, "weight": 3.0},
+                {"type": "fvg", "direction": "bullish", "low": 2070.0, "high": 2075.0, "weight": 2.5},
+                {"type": "order_block", "direction": "bearish", "low": 1965.0, "high": 1970.0, "weight": 3.0},
+                {"type": "fvg", "direction": "bearish", "low": 1925.0, "high": 1930.0, "weight": 2.5},
+            ],
+        ),
+        patch(
+            "monika.application.analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep",
+            new_callable=AsyncMock,
+            return_value={"sweep_detected": True, "sweep_price": 1980.0, "valid_for_direction": "buy"},
+        ),
+        patch(
+            "monika.infrastructure.ml.timesfm_engine.TimesFMEngine.get_latest_forecast",
+            new_callable=AsyncMock,
+            return_value={"quantiles": {"q10": [1950.0], "q90": [2050.0]}},
+        ),
+    ):
+        # BUY with invalid existing_sl/tp strings & TimesFM q90 (2030 <= 2050 boosted, 2070 > 2050 penalized)
+        bad_val = getattr(str, "nonexistent", "bad_value")
+        res_buy = await compute_optimal_levels(
+            db_session,
+            "XAUUSD",
+            "buy",
+            entry_price=2000.0,
+            settings={},
+            existing_sl=bad_val,
+            existing_tp=bad_val,
+        )
+        assert "error" not in res_buy
+
+        # SELL with valid existing_tp & TimesFM q10 (1970 >= 1950 boosted, 1930 < 1950 penalized)
+        res_sell = await compute_optimal_levels(
+            db_session,
+            "XAUUSD",
+            "sell",
+            entry_price=2000.0,
+            settings={},
+            existing_tp=1940.0,
+        )
+        assert "error" not in res_sell
+        assert any(c["basis"] == "signal_prescribed_tp" for c in res_sell["top_tp_candidates"])
+
+    # 5. Sweep detector exception, TimesFM exception, and sl["distance"] <= 0 continue guard
+    mock_zero_sl_ctx = {
+        "adr": 100.0,
+        "target_tp_min_distance": 20.0,
+        "target_tp_max_distance": 80.0,
+        "target_sl_max_distance": -10.0,
+        "room_remaining_pct": 0.80,
+        "entry_allowed": True,
+        "volatility_regime": "normal",
+    }
+    with (
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer.compute_daily_range_context",
+            new_callable=AsyncMock,
+            return_value=mock_zero_sl_ctx,
+        ),
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer._get_atr",
+            new_callable=AsyncMock,
+            return_value=10.0,
+        ),
+        patch(
+            "monika.application.analysis.calculators.intraday_level_optimizer._collect_zones",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
+        patch(
+            "monika.application.analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("sweep err"),
+        ),
+        patch(
+            "monika.infrastructure.ml.timesfm_engine.TimesFMEngine.get_latest_forecast",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("tfm err"),
+        ),
+    ):
+        res_zero = await compute_optimal_levels(db_session, "XAUUSD", "buy", entry_price=2000.0, settings={})
+        assert "error" not in res_zero
+
+
+@pytest.mark.asyncio
+async def test_structures_smc_handlers_full_coverage(db_session):
+    """Comprehensive tests for all handlers in structures_smc.py to achieve 100% coverage."""
+    from datetime import datetime, timedelta, timezone
+    import monika.core.primitives.clock as clock
+    from monika.application.analysis.tools.handlers.market_data_handlers.structures_smc import (
+        handle_detect_candlestick_patterns,
+        handle_get_fibonacci_levels,
+        handle_get_optimal_intraday_levels,
+        handle_get_smc_zones,
+        handle_get_sr_zones,
+        handle_get_structure_breaks,
+        handle_get_swing_points,
+        handle_scan_chart_patterns,
+    )
+    from monika.infrastructure.database.models import (
+        FVGZone,
+        OrderBlock,
+        PriceOHLCV,
+        SRZone,
+        StructureBreak,
+        SwingPoint,
+    )
+
+    as_of = datetime(2026, 10, 7, 13, 0, tzinfo=timezone.utc)
+
+    # 1. Missing symbol and no_session guards for swing_points, structure_breaks, sr_zones, smc_zones
+    assert "error" in await handle_get_swing_points({})
+    assert (await handle_get_swing_points({"symbol": "EURUSD"}))["swing_points"] == []
+
+    assert "error" in await handle_get_structure_breaks({})
+    assert (await handle_get_structure_breaks({"symbol": "EURUSD"}))["breaks"] == []
+
+    assert "error" in await handle_get_sr_zones({})
+    assert (await handle_get_sr_zones({"symbol": "EURUSD"}))["zones"] == []
+
+    assert "error" in await handle_get_smc_zones({})
+    assert (await handle_get_smc_zones({"symbol": "EURUSD"}))["status"] == "no_session"
+
+    # 2. Seed DB rows for swing_points, structure_breaks, sr_zones, smc_zones
+    sb = StructureBreak(
+        symbol="EURUSD",
+        timeframe="H4",
+        type="BOS",
+        direction="bullish",
+        price=1.1000,
+        formed_at=as_of - timedelta(hours=2),
+    )
+    sr_row = SRZone(
+        symbol="EURUSD",
+        timeframe="H4",
+        price_low=1.0900,
+        price_high=1.0910,
+        strength=4,
+        last_touched=as_of - timedelta(hours=1),
+    )
+    ob_row = OrderBlock(
+        symbol="EURUSD",
+        timeframe="H4",
+        direction="bullish",
+        price_low=1.0920,
+        price_high=1.0930,
+        formed_at=as_of - timedelta(hours=3),
+        mitigated_at=None,
+    )
+    fvg_row = FVGZone(
+        symbol="EURUSD",
+        timeframe="H4",
+        direction="bullish",
+        gap_low=1.0940,
+        gap_high=1.0950,
+        formed_at=as_of - timedelta(hours=2),
+        filled_at=None,
+    )
+    sw_low = SwingPoint(
+        symbol="EURUSD",
+        timeframe="H4",
+        type="low",
+        price=1.0800,
+        timestamp=as_of - timedelta(hours=10),
+    )
+    sw_high = SwingPoint(
+        symbol="EURUSD",
+        timeframe="H4",
+        type="high",
+        price=1.1000,
+        timestamp=as_of - timedelta(hours=5),
+    )
+    bar = PriceOHLCV(
+        symbol="EURUSD",
+        timeframe="H1",
+        timestamp=as_of - timedelta(hours=1),
+        open=1.0890,
+        high=1.0910,
+        low=1.0880,
+        close=1.0900,
+        volume=100.0,
+    )
+    db_session.add_all([sb, sr_row, ob_row, fvg_row, sw_low, sw_high, bar])
+    await db_session.commit()
+
+    with clock.frozen_time(as_of):
+        sp_res = await handle_get_swing_points({"symbol": "EURUSD"}, session=db_session)
+        assert len(sp_res["swing_points"]) >= 2
+
+        sb_res = await handle_get_structure_breaks({"symbol": "EURUSD"}, session=db_session)
+        assert len(sb_res["breaks"]) == 1
+
+        sr_res = await handle_get_sr_zones({"symbol": "EURUSD"}, session=db_session)
+        assert len(sr_res["zones"]) >= 1
+
+        smc_res = await handle_get_smc_zones({"symbol": "EURUSD"}, session=db_session)
+        assert smc_res["total_order_blocks"] >= 1
+        assert smc_res["total_fvg_zones"] >= 1
+
+    # 3. handle_get_fibonacci_levels: manual inputs (invalid bounds, bullish, bearish, invalid float)
+    assert "error" in await handle_get_fibonacci_levels({"high": 1.0, "low": 2.0})
+    fib_man_bull = await handle_get_fibonacci_levels({"high": 1.1000, "low": 1.0800, "trend": "bullish"})
+    assert fib_man_bull["source"] == "manual_input"
+    assert fib_man_bull["trend"] == "bullish"
+
+    fib_man_bear = await handle_get_fibonacci_levels({"high": 1.1000, "low": 1.0800, "trend": "bearish"})
+    assert fib_man_bear["trend"] == "bearish"
+
+    assert "error" in await handle_get_fibonacci_levels({"high": "not_a_float", "low": 1.0})
+    assert "error" in await handle_get_fibonacci_levels({})
+    assert "error" in await handle_get_fibonacci_levels({"symbol": "EURUSD"})
+
+    # 4. handle_get_fibonacci_levels: DB swing points (bullish EQUILIBRIUM, PREMIUM, DISCOUNT, bearish, errors)
+    # Bullish with DB latest_bar close == 1.0900 (EQUILIBRIUM) and invalid current_price arg
+    fib_db_eq = await handle_get_fibonacci_levels(
+        {"symbol": "EURUSD", "current_price": "invalid_float"}, session=db_session
+    )
+    assert fib_db_eq["trend_context"] == "bullish"
+    assert fib_db_eq["current_zone"] == "EQUILIBRIUM"
+
+    # Bullish with explicit current_price in PREMIUM
+    fib_db_prem = await handle_get_fibonacci_levels({"symbol": "EURUSD", "current_price": 1.0950}, session=db_session)
+    assert fib_db_prem["current_zone"] == "PREMIUM"
+
+    # Bearish trend (add newer low swing) + DISCOUNT zone + OTE zone
+    sw_newer_low = SwingPoint(
+        symbol="EURUSD",
+        timeframe="H4",
+        type="low",
+        price=1.0800,
+        timestamp=as_of - timedelta(hours=1),
+    )
+    db_session.add(sw_newer_low)
+    await db_session.commit()
+    fib_db_bear = await handle_get_fibonacci_levels({"symbol": "EURUSD", "current_price": 1.0860}, session=db_session)
+    assert fib_db_bear["trend_context"] == "bearish"
+    assert fib_db_bear["current_zone"] == "DISCOUNT"
+    assert fib_db_bear["in_ote_zone"] is True
+
+    # Insufficient swing points (< 2)
+    assert "error" in await handle_get_fibonacci_levels({"symbol": "EMPTY_SYM"}, session=db_session)
+
+    # All swings same type ("Not enough swing points found")
+    db_session.add_all(
+        [
+            SwingPoint(
+                symbol="ONLY_HIGH", timeframe="H4", type="high", price=1.10, timestamp=as_of - timedelta(hours=2)
+            ),
+            SwingPoint(
+                symbol="ONLY_HIGH", timeframe="H4", type="high", price=1.12, timestamp=as_of - timedelta(hours=1)
+            ),
+        ]
+    )
+    await db_session.commit()
+    assert (
+        "Not enough swing points found"
+        in (await handle_get_fibonacci_levels({"symbol": "ONLY_HIGH"}, session=db_session))["error"]
+    )
+
+    # Invalid swing pair: high <= low (fallback path where best_range == 0 and diff <= 0)
+    # Also test DB exception on PriceOHLCV lookup
+    db_session.add_all(
+        [
+            SwingPoint(
+                symbol="BAD_PAIR", timeframe="H4", type="high", price=1.05, timestamp=as_of - timedelta(hours=2)
+            ),
+            SwingPoint(symbol="BAD_PAIR", timeframe="H4", type="low", price=1.10, timestamp=as_of - timedelta(hours=1)),
+        ]
+    )
+    await db_session.commit()
+    assert (
+        "Invalid swing pair" in (await handle_get_fibonacci_levels({"symbol": "BAD_PAIR"}, session=db_session))["error"]
+    )
+
+    # Non-coherent valid pair when last 8 swings are all high, but 9th older swing is low, plus PriceOHLCV query error
+    mock_sess = create_mock_async_session()
+    swings_9 = [
+        SwingPoint(symbol="NON_COH", timeframe="H4", type="low", price=1.00, timestamp=as_of - timedelta(hours=20)),
+        *[
+            SwingPoint(
+                symbol="NON_COH",
+                timeframe="H4",
+                type="high",
+                price=1.10,
+                timestamp=as_of - timedelta(hours=10 - i),
+            )
+            for i in range(8)
+        ],
+    ]
+    call_count = {"n": 0}
+
+    def _fib_exec(stmt):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            r = MagicMock()
+            r.scalars().all.return_value = swings_9
+            return r
+        raise RuntimeError("db bar query failed")
+
+    mock_sess.execute = AsyncMock(side_effect=_fib_exec)
+    fib_non_coh = await handle_get_fibonacci_levels({"symbol": "NON_COH"}, session=mock_sess)
+    assert fib_non_coh["coherent_pair"] is False
+    assert fib_non_coh["current_zone"] == "UNKNOWN"
+
+    # 5. handle_get_optimal_intraday_levels
+    assert "error" in await handle_get_optimal_intraday_levels({})
+    assert (await handle_get_optimal_intraday_levels({"symbol": "EURUSD", "entry_price": 0.0}))["levels"] == {}
+    with patch(
+        "monika.application.analysis.calculators.intraday_level_optimizer.compute_optimal_levels",
+        new_callable=AsyncMock,
+        return_value={"tp1": 1.11, "sl": 1.09},
+    ):
+        opt_ok = await handle_get_optimal_intraday_levels({"symbol": "EURUSD", "entry_price": 1.10}, session=db_session)
+        assert opt_ok["tp1"] == 1.11
+
+    with patch(
+        "monika.application.analysis.calculators.intraday_level_optimizer.compute_optimal_levels",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("calc failed"),
+    ):
+        opt_err = await handle_get_optimal_intraday_levels(
+            {"symbol": "EURUSD", "entry_price": 1.10}, session=db_session
+        )
+        assert opt_err["levels"] == {}
+
+    # 6. handle_detect_candlestick_patterns
+    assert "error" in await handle_detect_candlestick_patterns({})
+    c_res = await handle_detect_candlestick_patterns({"symbol": "EURUSD", "timeframe": "H1"}, session=db_session)
+    assert c_res["symbol"] == "EURUSD"
+
+    # 7. handle_scan_chart_patterns
+    with patch(
+        "monika.application.services.market_data_service.MarketDataService.ensure_bars",
+        new_callable=AsyncMock,
+        return_value=[],
+    ):
+        scan_err = await handle_scan_chart_patterns({}, session=db_session)
+        assert "Insufficient bars" in scan_err["error"]
+
+    fake_bars = [
+        {
+            "open": 1.10 + i * 0.0001,
+            "high": 1.11 + i * 0.0001,
+            "low": 1.09 + i * 0.0001,
+            "close": 1.10 + i * 0.0001,
+            "volume": 100.0,
+        }
+        for i in range(30)
+    ]
+    with (
+        patch(
+            "monika.application.services.market_data_service.MarketDataService.ensure_bars",
+            new_callable=AsyncMock,
+            return_value=fake_bars,
+        ),
+        patch(
+            "monika.domain.indicators.chart_patterns.scan_all_chart_patterns",
+            return_value={"patterns": []},
+        ),
+    ):
+        scan_ok = await handle_scan_chart_patterns({"symbol": "EURUSD"}, session=db_session)
+        assert scan_ok["symbol"] == "EURUSD"
