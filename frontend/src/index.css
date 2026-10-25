@@ -136,13 +136,45 @@
   --color-subgraph-bg: rgba(17, 18, 21, 0.03);
   --color-telegraph-line: rgba(17, 18, 21, 0.04);
 
-  /* Architectural Elevation (Subtle & Unboxed) */
-  --shadow-card: none;
-  --shadow-elevated: 0 8px 24px rgba(17, 18, 21, 0.06);
-  --shadow-btn: none;
-  --shadow-dropdown: 0 12px 32px rgba(17, 18, 21, 0.12);
-  --shadow-modal: 0 24px 64px rgba(17, 18, 21, 0.18);
-  --shadow-dock: 0 16px 40px rgba(17, 18, 21, 0.14);
+  /* Architectural Elevation & Swiss Liquid Glass v4.0 (Frosted Optical Quartz) */
+  --color-glass-surface: linear-gradient(135deg, rgba(255, 255, 255, 0.84) 0%, rgba(247, 248, 250, 0.72) 100%);
+  --color-glass-surface-elevated: linear-gradient(135deg, rgba(255, 255, 255, 0.94) 0%, rgba(247, 248, 250, 0.84) 100%);
+  --color-glass-chrome: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(247, 248, 250, 0.78) 100%);
+  --color-glass-dock: linear-gradient(135deg, rgba(17, 18, 21, 0.86) 0%, rgba(27, 29, 34, 0.78) 100%);
+  --color-glass-border: rgba(17, 18, 21, 0.11);
+  --color-glass-border-strong: rgba(17, 18, 21, 0.22);
+  --color-glass-specular-top: rgba(255, 255, 255, 0.96);
+  --color-glass-specular-side: rgba(255, 255, 255, 0.65);
+  --color-glass-specular-bottom: rgba(17, 18, 21, 0.05);
+  --glass-blur-panel: blur(16px) saturate(175%);
+  --glass-blur-chrome: blur(24px) saturate(200%);
+  --glass-ambient-canvas:
+    radial-gradient(circle at 14% 8%, rgba(13, 122, 82, 0.045) 0%, transparent 42%),
+    radial-gradient(circle at 86% 14%, rgba(29, 78, 216, 0.04) 0%, transparent 45%),
+    radial-gradient(circle at 50% 92%, rgba(154, 91, 0, 0.035) 0%, transparent 48%);
+
+  --shadow-glass-panel:
+    inset 0 1px 0 0 var(--color-glass-specular-top),
+    inset 1px 0 0 0 var(--color-glass-specular-side),
+    inset 0 -1px 0 0 var(--color-glass-specular-bottom),
+    0 10px 28px -8px rgba(17, 18, 21, 0.06);
+  --shadow-glass-chrome:
+    inset 0 1px 0 0 var(--color-glass-specular-top),
+    inset 0 -1px 0 0 rgba(17, 18, 21, 0.08),
+    0 12px 32px -8px rgba(17, 18, 21, 0.09);
+  --shadow-glass-dock:
+    inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.45),
+    0 20px 48px -6px rgba(17, 18, 21, 0.28);
+
+  --shadow-card: var(--shadow-glass-panel);
+  --shadow-elevated: 0 12px 32px rgba(17, 18, 21, 0.08);
+  --shadow-btn: inset 0 1px 0 0 rgba(255, 255, 255, 0.85);
+  --shadow-dropdown: 0 16px 36px rgba(17, 18, 21, 0.14);
+  --shadow-modal:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95),
+    0 28px 68px -8px rgba(17, 18, 21, 0.22);
+  --shadow-dock: var(--shadow-glass-dock);
 }
 
 :root,
@@ -278,13 +310,45 @@
   --color-subgraph-bg: rgba(243, 244, 246, 0.03);
   --color-telegraph-line: rgba(243, 244, 246, 0.04);
 
-  /* Architectural Elevation */
-  --shadow-card: none;
-  --shadow-elevated: 0 12px 32px rgba(0, 0, 0, 0.45);
-  --shadow-btn: none;
-  --shadow-dropdown: 0 16px 40px rgba(0, 0, 0, 0.6);
-  --shadow-modal: 0 28px 72px rgba(0, 0, 0, 0.72);
-  --shadow-dock: 0 20px 48px rgba(0, 0, 0, 0.65);
+  /* Architectural Elevation & Swiss Liquid Glass v4.0 (Smoked Obsidian Crystal) */
+  --color-glass-surface: linear-gradient(135deg, rgba(27, 29, 35, 0.78) 0%, rgba(19, 21, 26, 0.64) 100%);
+  --color-glass-surface-elevated: linear-gradient(135deg, rgba(32, 35, 42, 0.88) 0%, rgba(22, 24, 29, 0.78) 100%);
+  --color-glass-chrome: linear-gradient(180deg, rgba(22, 24, 29, 0.84) 0%, rgba(18, 19, 22, 0.76) 100%);
+  --color-glass-dock: linear-gradient(135deg, rgba(27, 29, 35, 0.84) 0%, rgba(18, 19, 22, 0.76) 100%);
+  --color-glass-border: rgba(243, 244, 246, 0.11);
+  --color-glass-border-strong: rgba(243, 244, 246, 0.24);
+  --color-glass-specular-top: rgba(255, 255, 255, 0.16);
+  --color-glass-specular-side: rgba(255, 255, 255, 0.08);
+  --color-glass-specular-bottom: rgba(0, 0, 0, 0.45);
+  --glass-blur-panel: blur(16px) saturate(180%);
+  --glass-blur-chrome: blur(24px) saturate(200%);
+  --glass-ambient-canvas:
+    radial-gradient(circle at 14% 8%, rgba(16, 185, 129, 0.055) 0%, transparent 42%),
+    radial-gradient(circle at 86% 14%, rgba(96, 165, 250, 0.045) 0%, transparent 45%),
+    radial-gradient(circle at 50% 92%, rgba(245, 158, 11, 0.04) 0%, transparent 48%);
+
+  --shadow-glass-panel:
+    inset 0 1px 0 0 var(--color-glass-specular-top),
+    inset 1px 0 0 0 var(--color-glass-specular-side),
+    inset 0 -1px 0 0 var(--color-glass-specular-bottom),
+    0 14px 36px -8px rgba(0, 0, 0, 0.48);
+  --shadow-glass-chrome:
+    inset 0 1px 0 0 var(--color-glass-specular-top),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.06),
+    0 14px 36px -6px rgba(0, 0, 0, 0.55);
+  --shadow-glass-dock:
+    inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.65),
+    0 24px 56px -6px rgba(0, 0, 0, 0.72);
+
+  --shadow-card: var(--shadow-glass-panel);
+  --shadow-elevated: 0 14px 36px rgba(0, 0, 0, 0.5);
+  --shadow-btn: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  --shadow-dropdown: 0 18px 44px rgba(0, 0, 0, 0.65);
+  --shadow-modal:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
+    0 32px 76px -8px rgba(0, 0, 0, 0.78);
+  --shadow-dock: var(--shadow-glass-dock);
 }
 
 :root {
@@ -351,16 +415,16 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  /* Sharp Geometric Radii */
-  --radius-xs: 2px;
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 4px;
-  --radius-xl: 6px;
-  --radius-2xl: 8px;
-  --radius-pill: 4px;
-  --radius-card: 0px;
-  --radius-control: 2px;
+  /* Machined Crystal Geometric Radii (Swiss Liquid Glass v4.0) */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-pill: 6px;
+  --radius-card: 8px;
+  --radius-control: 4px;
 
   /* Layout Dimensions */
   --header-height: 48px;
@@ -398,6 +462,8 @@ body {
   line-height: 1.55;
   color: var(--color-ink);
   background-color: var(--color-canvas);
+  background-image: var(--glass-ambient-canvas);
+  background-attachment: fixed;
   min-height: 100vh;
   overflow-x: hidden;
   letter-spacing: -0.011em;
@@ -494,19 +560,28 @@ body {
 .text-secondary { color: var(--color-ink-secondary); }
 
 /* ==============================================================================
-   UNBOXED ARCHITECTURAL SURFACES & SWISS HAIRLINES
+   SWISS LIQUID GLASS SURFACES & SPECULAR RIM ARCHITECTURE
    ============================================================================== */
 
-/* Replaces legacy boxy windows with unboxed Swiss editorial sections */
+.liquid-glass-panel,
 .win-window,
 .ledger-card,
 .editorial-section {
-  background: transparent;
-  border: none;
-  border-top: 1px solid var(--color-rule);
-  border-radius: 0;
-  box-shadow: none;
+  background: var(--color-glass-surface);
+  backdrop-filter: var(--glass-blur-panel);
+  -webkit-backdrop-filter: var(--glass-blur-panel);
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-glass-panel);
   position: relative;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.liquid-glass-chrome {
+  background: var(--color-glass-chrome);
+  backdrop-filter: var(--glass-blur-chrome);
+  -webkit-backdrop-filter: var(--glass-blur-chrome);
+  box-shadow: var(--shadow-glass-chrome);
 }
 
 .win-titlebar,
@@ -514,7 +589,7 @@ body {
   background: transparent;
   color: var(--color-ink);
   border-bottom: 1px solid var(--color-rule);
-  padding: 12px 0;
+  padding: 12px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -565,12 +640,15 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 6px 14px;
-  background: var(--color-canvas);
+  background: var(--color-glass-surface-elevated);
+  backdrop-filter: var(--glass-blur-panel);
+  -webkit-backdrop-filter: var(--glass-blur-panel);
   color: var(--color-ink);
-  border: 1px solid var(--color-rule);
+  border: 1px solid var(--color-glass-border);
   border-radius: var(--radius-control);
+  box-shadow: var(--shadow-btn);
   cursor: pointer;
-  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
   user-select: none;
 }
 
@@ -706,14 +784,15 @@ tr[aria-selected="true"] {
 
 .floating-dock-wrapper {
   position: fixed;
-  bottom: 20px;
+  bottom: 14px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 900;
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: min(92vw, 880px);
+  width: auto;
+  max-width: min(94vw, 860px);
   pointer-events: none;
 }
 
@@ -721,23 +800,28 @@ tr[aria-selected="true"] {
   pointer-events: auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  justify-content: center;
+  gap: 8px;
   padding: 6px 10px;
-  background: var(--color-dock-bg);
-  color: var(--color-dock-fg);
-  border: 1px solid var(--color-dock-rule);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-dock);
-  width: 100%;
+  background: var(--color-glass-chrome);
+  backdrop-filter: var(--glass-blur-chrome);
+  -webkit-backdrop-filter: var(--glass-blur-chrome);
+  color: var(--color-ink);
+  border: 1px solid var(--color-glass-border-strong);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-glass-dock);
+  width: fit-content;
+  max-width: 100%;
 }
 
 .floating-dock-sheet {
   pointer-events: auto;
-  width: 100%;
+  width: min(92vw, 840px);
   margin-bottom: 10px;
-  background: var(--color-canvas);
-  border: 1px solid var(--color-rule-strong);
+  background: var(--color-glass-surface-elevated);
+  backdrop-filter: var(--glass-blur-chrome);
+  -webkit-backdrop-filter: var(--glass-blur-chrome);
+  border: 1px solid var(--color-glass-border-strong);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-modal);
   overflow: hidden;
@@ -751,7 +835,9 @@ tr[aria-selected="true"] {
 .editorial-modal-scrim {
   position: fixed;
   inset: 0;
-  background-color: rgba(17, 18, 21, 0.68);
+  background-color: rgba(11, 13, 17, 0.56);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -790,9 +876,13 @@ input::placeholder {
 .cockpit-bar {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  border-top: 1px solid var(--color-rule);
-  border-bottom: 1px solid var(--color-rule);
-  background: var(--color-canvas);
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-card);
+  background: var(--color-glass-surface);
+  backdrop-filter: var(--glass-blur-panel);
+  -webkit-backdrop-filter: var(--glass-blur-panel);
+  box-shadow: var(--shadow-glass-panel);
+  overflow: hidden;
 }
 
 .cockpit-item {

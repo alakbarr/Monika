@@ -675,14 +675,19 @@ export const GraphVisualizerPanel: React.FC = () => {
             </div>
           )}
 
-          {/* Architectural Legend Hairline Strip */}
+          {/* Architectural Legend Hairline Strip (Top-Right Liquid Glass Pill) */}
           <div
+            className="liquid-glass-chrome"
             style={{
               position: 'absolute',
-              bottom: 14,
-              left: 14,
-              background: 'var(--color-paper-raised)',
-              border: '1px solid var(--color-rule)',
+              top: 14,
+              right: 14,
+              background: 'var(--color-glass-chrome)',
+              backdropFilter: 'var(--glass-blur-panel)',
+              WebkitBackdropFilter: 'var(--glass-blur-panel)',
+              border: '1px solid var(--color-glass-border)',
+              borderRadius: 'var(--radius-pill)',
+              boxShadow: 'var(--shadow-glass-panel)',
               padding: '6px 12px',
               display: 'flex',
               alignItems: 'center',

@@ -559,27 +559,72 @@ export const DebateOutcomesPanel: React.FC = () => {
 
                       {/* Specialist Adjudication breakdown */}
                       {adj && (
-                        <div style={{ paddingTop: '10px', borderTop: '1px solid var(--color-rule)' }}>
-                          <div className="editorial-kicker" style={{ marginBottom: '6px' }}>
+                        <div style={{ paddingTop: '12px', borderTop: '1px solid var(--color-rule)' }}>
+                          <div className="editorial-kicker" style={{ marginBottom: '10px' }}>
                             IV. SPECIALIST DIALECTIC ADJUDICATION MATRIX
                           </div>
                           {typeof adj === 'object' ? (
-                            <pre
+                            <div
                               style={{
-                                margin: 0,
-                                padding: '10px 12px',
-                                background: 'var(--color-paper-raised)',
-                                border: '1px solid var(--color-rule)',
-                                fontSize: '11px',
-                                fontFamily: 'var(--font-precision)',
-                                color: 'var(--color-ink-soft)',
-                                overflowX: 'auto',
-                                whiteSpace: 'pre-wrap',
-                                wordBreak: 'break-word',
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                                gap: '10px',
                               }}
                             >
-                              {JSON.stringify(adj, null, 2)}
-                            </pre>
+                              {Object.entries(adj as Record<string, unknown>).map(([k, v]) => {
+                                const label = k.replace(/_/g, ' ').toUpperCase();
+                                const strVal =
+                                  v !== null && typeof v === 'object'
+                                    ? Object.entries(v as Record<string, unknown>)
+                                        .map(([sk, sv]) => `${sk.replace(/_/g, ' ')}: ${String(sv)}`)
+                                        .join(' · ')
+                                    : String(v ?? '—');
+                                const valUpper = strVal.toUpperCase();
+                                const isBull =
+                                  valUpper.includes('BULL') ||
+                                  valUpper.includes('PASS') ||
+                                  valUpper.includes('BUY') ||
+                                  valUpper.includes('APPROV') ||
+                                  valUpper.includes('FAVOR');
+                                const isBear =
+                                  valUpper.includes('BEAR') ||
+                                  valUpper.includes('REJECT') ||
+                                  valUpper.includes('SELL') ||
+                                  valUpper.includes('FAIL');
+
+                                return (
+                                  <div
+                                    key={k}
+                                    className="liquid-glass-panel"
+                                    style={{
+                                      padding: '10px 12px',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: '4px',
+                                    }}
+                                  >
+                                    <span className="editorial-kicker" style={{ fontSize: '11px' }}>
+                                      {label}
+                                    </span>
+                                    <span
+                                      style={{
+                                        fontFamily: 'var(--font-precision)',
+                                        fontSize: '12px',
+                                        fontWeight: 600,
+                                        color: isBull
+                                          ? 'var(--color-profit)'
+                                          : isBear
+                                          ? 'var(--color-loss)'
+                                          : 'var(--color-ink)',
+                                        wordBreak: 'break-word',
+                                      }}
+                                    >
+                                      {strVal}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           ) : (
                             <div style={{ fontSize: '12px', color: 'var(--color-ink-soft)', lineHeight: 1.6 }}>
                               {String(adj)}

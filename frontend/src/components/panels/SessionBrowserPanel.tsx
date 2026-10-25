@@ -4,7 +4,6 @@ import { Badge } from '../ui/Badge';
 import { api } from '../../lib/api';
 import type { ConversationSession, ConversationMessage } from '../../types/api';
 import {
-  History,
   MessageSquare,
   Bot,
   User,
@@ -99,30 +98,24 @@ export const SessionBrowserPanel: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: 'calc(100vh - 120px)' }}>
-      {/* Top Header Card */}
-      <Card className="ledger-card" padding="14px 20px" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: 36,
-            height: 36,
-            borderRadius: '2px',
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--color-brass)',
-          }}>
-            <History size={18} />
-          </div>
-          <div>
-            <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--color-ink)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Session History & Transcript Archive
-            </h2>
-            <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '2px', fontFamily: 'var(--font-precision)' }}>
-              Inspect Telegram dispatch logs, interactive terminal sessions, and executed transcripts.
-            </div>
-          </div>
+      {/* Swiss Liquid Glass Masthead */}
+      <Card className="ledger-card" padding="16px 20px" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, borderLeft: '3px solid var(--color-brass)' }}>
+        <div>
+          <span className="editorial-kicker">
+            I. OPERATOR &amp; TELEGRAM TRANSCRIPT VAULT
+          </span>
+          <h2
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'var(--text-title-lg)',
+              fontWeight: 400,
+              margin: '2px 0 0 0',
+              color: 'var(--color-ink)',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            Session History &amp; Transcript Archive
+          </h2>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

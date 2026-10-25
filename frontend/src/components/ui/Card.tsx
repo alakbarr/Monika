@@ -26,7 +26,7 @@ export const Card: React.FC<CardProps> = ({
   icon,
   variant = 'blue',
   footer,
-  padding = '20px 0',
+  padding = '16px 18px',
   onClick,
   onClose,
   collapsible = false,
@@ -36,19 +36,23 @@ export const Card: React.FC<CardProps> = ({
 
   const accentBorder =
     variant === 'coral'
-      ? 'var(--color-loss)'
+      ? 'var(--color-loss-border)'
       : variant === 'green'
-      ? 'var(--color-gain)'
-      : 'var(--color-rule)';
+      ? 'var(--color-gain-border)'
+      : 'var(--color-glass-border)';
 
   return (
     <section
-      className={`editorial-section swiss-crosshair ${className}`}
+      className={`liquid-glass-panel editorial-section swiss-crosshair ${className}`}
       onClick={onClick}
       style={{
         position: 'relative',
-        background: 'transparent',
-        borderTop: `1px solid ${accentBorder}`,
+        background: 'var(--color-glass-surface)',
+        backdropFilter: 'var(--glass-blur-panel)',
+        WebkitBackdropFilter: 'var(--glass-blur-panel)',
+        border: `1px solid ${accentBorder}`,
+        borderRadius: 'var(--radius-card)',
+        boxShadow: 'var(--shadow-glass-panel)',
         cursor: isInteractive ? 'pointer' : 'default',
         ...style,
       }}
@@ -57,7 +61,7 @@ export const Card: React.FC<CardProps> = ({
         <header
           className="editorial-section-header"
           style={{
-            padding: '12px 0',
+            padding: '12px 18px',
             borderBottom: isCollapsed ? 'none' : '1px solid var(--color-rule)',
             display: 'flex',
             alignItems: 'center',

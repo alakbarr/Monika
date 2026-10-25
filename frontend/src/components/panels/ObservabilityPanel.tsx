@@ -233,6 +233,103 @@ const TraceWaterfallTimeline: React.FC<{ data: any }> = ({ data }) => {
   );
 };
 
+const renderTrajectoryStage = (stageData: Record<string, any> | undefined | null) => {
+  const entries = stageData && typeof stageData === 'object' ? Object.entries(stageData) : [];
+  if (entries.length === 0) {
+    return (
+      <div
+        style={{
+          padding: '10px 12px',
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-rule)',
+          borderRadius: '2px',
+          fontSize: '11px',
+          color: 'var(--color-ink-muted)',
+        }}
+      >
+        — No structured telemetry recorded for this stage —
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+          gap: '8px',
+        }}
+      >
+        {entries.map(([k, v]) => {
+          const isObj = typeof v === 'object' && v !== null;
+          return (
+            <div
+              key={k}
+              style={{
+                padding: '8px 10px',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-rule)',
+                borderRadius: '2px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  color: 'var(--color-ink-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                }}
+              >
+                {k.replace(/_/g, ' ')}
+              </span>
+              {isObj ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '11px', color: 'var(--color-ink)' }}>
+                  {Object.entries(v).map(([sk, sv]) => (
+                    <div key={sk} style={{ display: 'flex', justifyContent: 'space-between', gap: '6px' }}>
+                      <span style={{ color: 'var(--color-ink-soft)' }}>{sk}:</span>
+                      <span style={{ fontWeight: 700, textAlign: 'right', wordBreak: 'break-word' }}>
+                        {typeof sv === 'object' && sv !== null ? JSON.stringify(sv) : String(sv ?? '—')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-ink)', wordBreak: 'break-word' }}>
+                  {String(v ?? '—')}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <details style={{ fontSize: '11px', color: 'var(--color-ink-muted)' }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 700, color: 'var(--color-ink-soft)' }}>
+          [INSPECT RAW JSON PAYLOAD ▸]
+        </summary>
+        <pre
+          style={{
+            margin: '6px 0 0 0',
+            padding: '8px 10px',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-rule)',
+            borderRadius: '2px',
+            fontSize: '11px',
+            whiteSpace: 'pre-wrap',
+            maxHeight: '140px',
+            overflowY: 'auto',
+          }}
+        >
+          <code>{JSON.stringify(stageData, null, 2)}</code>
+        </pre>
+      </details>
+    </div>
+  );
+};
+
 export const ObservabilityPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'traces' | 'trajectories' | 'lineage'>('overview');
   const [playbookTree, setPlaybookTree] = useState<PlaybookNode | null>(null);
@@ -378,6 +475,39 @@ export const ObservabilityPanel: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontFamily: 'var(--font-precision)' }}>
+      {/* Swiss Liquid Glass Masthead */}
+      <div
+        className="liquid-glass-panel"
+        style={{
+          padding: '16px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          borderLeft: '3px solid var(--color-brass)',
+        }}
+      >
+        <div>
+          <span className="editorial-kicker">
+            I. TELEMETRY WATERFALL &amp; CRYPTOGRAPHIC LINEAGE
+          </span>
+          <h2
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'var(--text-title-lg)',
+              fontWeight: 400,
+              margin: '2px 0 0 0',
+              color: 'var(--color-ink)',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            Span Telemetry, Trade Trajectories &amp; SHA-256 Provenance
+          </h2>
+        </div>
+        <Badge variant="neutral">CRYPTOGRAPHIC AUDIT CHAIN</Badge>
+      </div>
+
       {/* Sub-tab Navigation Bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--color-rule)', paddingBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -723,42 +853,37 @@ export const ObservabilityPanel: React.FC = () => {
 
                 {/* Milestone 1: Fundamental Macro Brief */}
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: 'var(--color-brass)', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: 'var(--color-brass)', marginBottom: '6px' }}>
                     <CornerDownRight size={13} /> STAGE 1: FUNDAMENTAL MACRO BRIEF
                   </div>
-                  <pre style={{ margin: 0, padding: '10px', background: 'var(--color-surface)', border: '1px solid var(--color-rule)', borderRadius: '2px', fontSize: '11px', whiteSpace: 'pre-wrap', maxHeight: '140px', overflowY: 'auto' }}>
-                    <code>{JSON.stringify(selectedTraj.fundamental_brief || {}, null, 2)}</code>
-                  </pre>
+                  {renderTrajectoryStage(selectedTraj.fundamental_brief)}
                 </div>
 
                 {/* Milestone 2: Specialist Pipeline Outputs */}
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: 'var(--color-brass)', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: 'var(--color-brass)', marginBottom: '6px' }}>
                     <CornerDownRight size={13} /> STAGE 2: SPECIALIST PIPELINE OUTPUTS
                   </div>
-                  <pre style={{ margin: 0, padding: '10px', background: 'var(--color-surface)', border: '1px solid var(--color-rule)', borderRadius: '2px', fontSize: '11px', whiteSpace: 'pre-wrap', maxHeight: '140px', overflowY: 'auto' }}>
-                    <code>{JSON.stringify(selectedTraj.specialist_outputs || {}, null, 2)}</code>
-                  </pre>
+                  {renderTrajectoryStage(selectedTraj.specialist_outputs)}
                 </div>
 
                 {/* Milestone 3: Dialectic Debate Verdict */}
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: 'var(--color-brass)', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: 'var(--color-brass)', marginBottom: '6px' }}>
                     <CornerDownRight size={13} /> STAGE 3: DIALECTIC DEBATE VERDICT
                   </div>
-                  <pre style={{ margin: 0, padding: '10px', background: 'var(--color-surface)', border: '1px solid var(--color-rule)', borderRadius: '2px', fontSize: '11px', whiteSpace: 'pre-wrap', maxHeight: '140px', overflowY: 'auto' }}>
-                    <code>{JSON.stringify(selectedTraj.debate_verdict || {}, null, 2)}</code>
-                  </pre>
+                  {renderTrajectoryStage(selectedTraj.debate_verdict)}
                 </div>
 
                 {/* Milestone 4: Risk Gate Verification & Execution */}
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: 'var(--color-brass)', marginBottom: '4px' }}>
-                    <CornerDownRight size={13} /> STAGE 4 & 5: RISK GATE & EXECUTION
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, color: 'var(--color-brass)', marginBottom: '6px' }}>
+                    <CornerDownRight size={13} /> STAGE 4 &amp; 5: RISK GATE &amp; EXECUTION
                   </div>
-                  <pre style={{ margin: 0, padding: '10px', background: 'var(--color-surface)', border: '1px solid var(--color-rule)', borderRadius: '2px', fontSize: '11px', whiteSpace: 'pre-wrap', maxHeight: '140px', overflowY: 'auto' }}>
-                    <code>{JSON.stringify({ risk: selectedTraj.risk_decision, execution: selectedTraj.execution_details }, null, 2)}</code>
-                  </pre>
+                  {renderTrajectoryStage({
+                    risk: selectedTraj.risk_decision,
+                    execution: selectedTraj.execution_details,
+                  })}
                 </div>
               </div>
             </Card>

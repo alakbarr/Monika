@@ -131,6 +131,38 @@ export const SkillManagerPanel: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {/* Swiss Liquid Glass Masthead */}
+      <div
+        className="liquid-glass-panel"
+        style={{
+          padding: '16px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          borderLeft: '3px solid var(--color-brass)',
+        }}
+      >
+        <div>
+          <span className="editorial-kicker">
+            I. AUTONOMOUS STRATEGY CRYSTALLIZATION
+          </span>
+          <h2
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'var(--text-title-lg)',
+              fontWeight: 400,
+              margin: '2px 0 0 0',
+              color: 'var(--color-ink)',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            Skill Crystallizer &amp; Lifecycle Ledger
+          </h2>
+        </div>
+      </div>
+
       {/* Overview Metric Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
         <Card variant="gray" style={{ padding: '12px' }}>

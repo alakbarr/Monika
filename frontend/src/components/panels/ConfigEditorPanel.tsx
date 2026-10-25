@@ -216,22 +216,35 @@ export const ConfigEditorPanel: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header Toolbar */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        background: 'var(--color-surface-card)',
-        padding: '16px 20px',
-        borderRadius: '2px',
-        border: '1px solid var(--color-border)',
-        flexWrap: 'wrap',
-        gap: '12px',
-      }}>
+      {/* Swiss Liquid Glass Masthead */}
+      <div
+        className="liquid-glass-panel"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '16px 20px',
+          flexWrap: 'wrap',
+          gap: '12px',
+          borderLeft: '3px solid var(--color-brass)',
+        }}
+      >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--color-text-white)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              System Configuration Manager
+          <span className="editorial-kicker">
+            I. HOT-RELOADABLE GOVERNANCE · SYSTEM SETTINGS
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px' }}>
+            <h2
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 'var(--text-title-lg)',
+                fontWeight: 400,
+                margin: 0,
+                color: 'var(--color-ink)',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              System Configuration &amp; Parameter Vault
             </h2>
             <Badge variant={isAdmin ? 'profit' : 'neutral'} size="sm">
               ROLE: {(userRole || 'VIEWER').toUpperCase()}

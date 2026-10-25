@@ -95,13 +95,13 @@ export const GlobalStatusBar: React.FC<GlobalStatusBarProps> = ({ onOpenCommandP
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '7px',
-                  height: '34px',
-                  padding: '0 12px',
-                  background: isActive ? 'var(--color-dock-fg)' : 'transparent',
-                  color: isActive ? 'var(--color-dock-bg)' : 'var(--color-dock-fg)',
-                  border: 'none',
-                  borderRadius: 'var(--radius-md)',
+                  gap: '6px',
+                  height: '32px',
+                  padding: '0 11px',
+                  background: isActive ? 'var(--color-ink)' : 'transparent',
+                  color: isActive ? 'var(--color-on-inverted)' : 'var(--color-ink-secondary)',
+                  border: isActive ? '1px solid var(--color-ink)' : '1px solid transparent',
+                  borderRadius: 'var(--radius-lg)',
                   fontFamily: 'var(--font-mono)',
                   fontSize: 'var(--text-xs)',
                   fontWeight: isActive ? 600 : 500,
@@ -111,7 +111,7 @@ export const GlobalStatusBar: React.FC<GlobalStatusBarProps> = ({ onOpenCommandP
                   transition: 'background-color 120ms ease, color 120ms ease',
                 }}
               >
-                <span style={{ opacity: isActive ? 0.75 : 0.55 }}>{w.roman}.</span>
+                <span style={{ opacity: isActive ? 0.85 : 0.65 }}>{w.roman}.</span>
                 <span>{w.label}</span>
                 {w.id === 'capital' && openPositionsCount > 0 && (
                   <span
@@ -120,8 +120,8 @@ export const GlobalStatusBar: React.FC<GlobalStatusBarProps> = ({ onOpenCommandP
                       padding: '1px 5px',
                       fontSize: 'var(--text-xs)',
                       fontWeight: 700,
-                      background: isActive ? 'var(--color-dock-bg)' : 'var(--color-gain)',
-                      color: isActive ? 'var(--color-dock-fg)' : 'var(--color-dock-bg)',
+                      background: isActive ? 'var(--color-on-inverted)' : 'var(--color-gain)',
+                      color: isActive ? 'var(--color-ink)' : 'var(--color-on-inverted)',
                       borderRadius: 'var(--radius-xs)',
                     }}
                   >
@@ -134,7 +134,7 @@ export const GlobalStatusBar: React.FC<GlobalStatusBarProps> = ({ onOpenCommandP
         </div>
 
         {/* Right: Expandable Agent Dialogue Trigger + Command Palette Trigger */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, paddingLeft: '6px', borderLeft: '1px solid var(--color-rule)' }}>
           <button
             type="button"
             onClick={() => {
@@ -144,13 +144,14 @@ export const GlobalStatusBar: React.FC<GlobalStatusBarProps> = ({ onOpenCommandP
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '8px',
-              height: '34px',
-              padding: '0 14px',
-              background: agentSheetOpen ? 'var(--color-gain)' : 'rgba(255, 255, 255, 0.08)',
-              color: 'var(--color-dock-fg)',
-              border: '1px solid var(--color-dock-rule)',
-              borderRadius: 'var(--radius-md)',
+              gap: '7px',
+              height: '32px',
+              padding: '0 12px',
+              background: agentSheetOpen ? 'var(--color-gain)' : 'var(--color-well)',
+              color: agentSheetOpen ? 'var(--color-on-inverted)' : 'var(--color-ink)',
+              border: '1px solid var(--color-glass-border)',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: 'var(--shadow-btn)',
               fontFamily: 'var(--font-sans)',
               fontSize: 'var(--text-body-sm)',
               fontWeight: 500,
@@ -173,12 +174,12 @@ export const GlobalStatusBar: React.FC<GlobalStatusBarProps> = ({ onOpenCommandP
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
-                height: '34px',
-                padding: '0 10px',
-                background: 'transparent',
-                color: 'var(--color-dock-muted)',
-                border: '1px solid var(--color-dock-rule)',
-                borderRadius: 'var(--radius-md)',
+                height: '32px',
+                padding: '0 9px',
+                background: 'var(--color-well)',
+                color: 'var(--color-ink-secondary)',
+                border: '1px solid var(--color-glass-border)',
+                borderRadius: 'var(--radius-lg)',
                 fontFamily: 'var(--font-mono)',
                 fontSize: 'var(--text-xs)',
                 fontWeight: 600,

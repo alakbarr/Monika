@@ -14,7 +14,7 @@ import { fmt } from '../../lib/formatters';
 import { sounds } from '../../lib/soundEffects';
 import { api } from '../../lib/api';
 import type { RiskScorecardItem, CorrelationMatrixItem } from '../../types/api';
-import { ShieldCheck, AlertOctagon, Power, CheckCircle, XCircle } from 'lucide-react';
+import { Power, CheckCircle, XCircle } from 'lucide-react';
 
 export const RiskPanel: React.FC = () => {
   const { overview, riskState, positions, fetchAll } = useDashboardStore();
@@ -104,15 +104,15 @@ export const RiskPanel: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontFamily: 'var(--font-precision)' }}>
-      {/* Top Kill-Switch / Circuit Breaker Banner */}
+      {/* Top Swiss Liquid Glass Masthead & Circuit Breaker Console */}
       <div
-        className="win-window"
+        className="liquid-glass-panel swiss-crosshair"
         style={{
-          padding: '16px 20px',
-          background: isPaused ? 'var(--color-loss-dim)' : 'var(--color-paper-raised)',
-          border: `1px solid ${isPaused ? 'var(--color-ledger-red)' : 'var(--color-rule)'}`,
+          padding: '18px 22px',
+          background: isPaused ? 'var(--color-loss-dim)' : 'var(--color-glass-surface)',
+          border: `1px solid ${isPaused ? 'var(--color-ledger-red)' : 'var(--color-glass-border)'}`,
           borderRadius: 'var(--radius-card)',
-          boxShadow: 'var(--shadow-card)',
+          boxShadow: 'var(--shadow-glass-panel)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -120,41 +120,32 @@ export const RiskPanel: React.FC = () => {
           gap: '16px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+            <span className="editorial-kicker">I. MECHANICAL FORTRESS &amp; CIRCUIT BREAKERS</span>
+            <Badge variant={isPaused ? 'error' : 'profit'}>
+              {isPaused ? 'CIRCUIT TRIPPED · HALTED' : 'GUARDIAN ARMED · NOMINAL'}
+            </Badge>
+          </div>
+          <h2
             style={{
-              width: 42,
-              height: 42,
-              borderRadius: '6px',
-              background: isPaused ? 'var(--color-ledger-red)' : 'var(--color-ledger-green)',
-              color: 'var(--color-paper-raised)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '1px solid var(--color-rule)',
-              boxShadow: '2px 2px 0 var(--color-rule)',
+              margin: 0,
+              fontFamily: 'var(--font-display)',
+              fontSize: '24px',
+              fontWeight: 400,
+              color: 'var(--color-ink)',
             }}
           >
-            {isPaused ? <AlertOctagon size={24} /> : <ShieldCheck size={24} />}
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ margin: 0, fontSize: 'var(--text-title-sm)', fontWeight: 800, color: 'var(--color-ink)' }}>
-                {isPaused ? 'CIRCUIT BREAKER ACTIVE // TRADING SUSPENDED' : 'RISK GUARDIAN NOMINAL // TRADING ACTIVE'}
-              </h3>
-              <Badge variant={isPaused ? 'error' : 'profit'}>
-                {isPaused ? 'HALTED' : 'ARMED'}
-              </Badge>
-            </div>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', marginTop: 3 }}>
-              {isPaused
-                ? overview?.pause_reason || 'Order execution halted by emergency risk mitigation protocol.'
-                : 'All risk tolerance parameters (VaR, Consecutive Drawdown, Slippage) within nominal thresholds.'}
-            </div>
+            Autonomous Risk Gate &amp; Exposure Surveillance
+          </h2>
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', marginTop: 4 }}>
+            {isPaused
+              ? overview?.pause_reason || 'Order execution halted by emergency risk mitigation protocol.'
+              : 'All deterministic risk gates (VaR, Consecutive Drawdown, Slippage, Margin) enforcing fail-closed protection.'}
           </div>
         </div>
 
-        {/* Physical Missile Switch Button */}
+        {/* Synchronized Circuit Breaker Action Button */}
         <TypewriterButton
           variant={isPaused ? 'primary' : 'danger'}
           onClick={handleToggleKillSwitch}
@@ -167,8 +158,8 @@ export const RiskPanel: React.FC = () => {
             fontSize: '12px',
           }}
         >
-          <Power size={16} />
-          {isPaused ? 'RESUME TRADE EXECUTION' : 'EMERGENCY KILL SWITCH'}
+          <Power size={15} />
+          {isPaused ? 'RESUME TRADING' : 'EMERGENCY HALT'}
         </TypewriterButton>
       </div>
 
@@ -410,7 +401,7 @@ export const RiskPanel: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '20px' }}>
         {/* Risk Gate Scorecard */}
         <Card
-          title={`22-POINT DETERMINISTIC RISK GATE SCORECARD // ${scorecardSymbol}`}
+          title={`22-POINT DETERMINISTIC RISK GATE SCORECARD · ${scorecardSymbol}`}
           variant="salmon"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -424,11 +415,11 @@ export const RiskPanel: React.FC = () => {
                     className="touch-target-expand"
                     onClick={() => setScorecardSymbol(s)}
                     style={{
-                      padding: '2px 6px',
-                      background: scorecardSymbol === s ? 'var(--color-brass)' : 'transparent',
-                      color: scorecardSymbol === s ? 'var(--color-on-win-yellow)' : 'var(--color-ink)',
+                      padding: '2px 7px',
+                      background: scorecardSymbol === s ? 'var(--color-ink)' : 'transparent',
+                      color: scorecardSymbol === s ? 'var(--color-on-inverted)' : 'var(--color-ink)',
                       border: '1px solid var(--color-rule)',
-                      borderRadius: '2px',
+                      borderRadius: 'var(--radius-xs)',
                       fontSize: '11px',
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -441,10 +432,31 @@ export const RiskPanel: React.FC = () => {
               {scorecard && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>
-                    Pass Rate: <strong>{scorecard.passed_count ?? 0}/{scorecard.total_checks ?? 0} ({scorecard.pass_rate_pct ?? 100}%)</strong>
+                    Pass Rate:{' '}
+                    <strong>
+                      {scorecard.passed_count ?? 0}/{scorecard.total_checks ?? 0} (
+                      {scorecard.pass_rate_pct != null ? `${scorecard.pass_rate_pct}%` : 'UNVERIFIED'})
+                    </strong>
                   </span>
-                  <Badge variant={(scorecard.pass_rate_pct ?? 100) >= 90 ? 'profit' : (scorecard.pass_rate_pct ?? 100) >= 70 ? 'warn' : 'error'} size="sm">
-                    {(scorecard.pass_rate_pct ?? 100) >= 90 ? 'CLEAR' : (scorecard.pass_rate_pct ?? 100) >= 70 ? 'CAUTION' : 'BLOCKED'}
+                  <Badge
+                    variant={
+                      scorecard.pass_rate_pct == null
+                        ? 'error'
+                        : scorecard.pass_rate_pct >= 90
+                        ? 'profit'
+                        : scorecard.pass_rate_pct >= 70
+                        ? 'warn'
+                        : 'error'
+                    }
+                    size="sm"
+                  >
+                    {scorecard.pass_rate_pct == null
+                      ? 'BLOCKED (UNVERIFIED)'
+                      : scorecard.pass_rate_pct >= 90
+                      ? 'CLEAR'
+                      : scorecard.pass_rate_pct >= 70
+                      ? 'CAUTION'
+                      : 'BLOCKED'}
                   </Badge>
                 </div>
               )}

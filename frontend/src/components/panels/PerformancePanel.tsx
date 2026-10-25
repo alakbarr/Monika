@@ -11,11 +11,16 @@ import { fmt } from '../../lib/formatters';
 import { Lock, Unlock, CheckCircle2, AlertTriangle, GraduationCap } from 'lucide-react';
 
 export const PerformancePanel: React.FC = () => {
-  const { paperStats, factorAnalysis, decisionDist, loading } = useDashboardStore();
+  const { paperStats, factorAnalysis, decisionDist, overview, loading } = useDashboardStore();
+
+  const verifiedPaperBaseEquity =
+    overview?.account_balance != null && overview.account_balance > 0
+      ? overview.account_balance
+      : 100;
 
   const equityPoints = React.useMemo(() => {
     if (!paperStats?.recent_20 || paperStats.recent_20.length === 0) return [];
-    let eq = 10000;
+    let eq = verifiedPaperBaseEquity;
     const points: Array<{ index: number; equity: number; symbol?: string; exit_reason?: string }> = [
       { index: 0, equity: eq, symbol: 'START' },
     ];
@@ -29,7 +34,7 @@ export const PerformancePanel: React.FC = () => {
       });
     });
     return points;
-  }, [paperStats]);
+  }, [paperStats, verifiedPaperBaseEquity]);
 
   if (loading) return (
     <div style={{ display: 'grid', gap: '16px' }}>
@@ -57,6 +62,42 @@ export const PerformancePanel: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Swiss Liquid Glass Masthead */}
+      <div
+        className="liquid-glass-panel"
+        style={{
+          padding: '16px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          borderLeft: `3px solid ${isGraduated ? 'var(--color-profit)' : 'var(--color-brass)'}`,
+        }}
+      >
+        <div>
+          <span className="editorial-kicker">
+            I. PAPER TRADING GRADUATION &amp; QUANTITATIVE EDGE
+          </span>
+          <h2
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'var(--text-title-lg)',
+              fontWeight: 400,
+              margin: '2px 0 0 0',
+              color: 'var(--color-ink)',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            Out-of-Sample Validation &amp; Factor Attribution
+          </h2>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Badge variant={isGraduated ? 'profit' : 'warn'}>
+            {isGraduated ? 'GRADUATION READY (55%+ WR & 50+ TRADES)' : `LOCKED (${Math.max(0, targetTrades - totalTrades)} TRADES REMAINING)`}
+          </Badge>
+        </div>
+      </div>
 
       {/* Graduation Gate Progress Card */}
       <Card
@@ -298,11 +339,15 @@ export const PerformancePanel: React.FC = () => {
       {/* Paper Trading Simulated Equity Curve */}
       {equityPoints.length > 1 && (
         <Card
-          title="OUT-OF-SAMPLE SIMULATED EQUITY CURVE (LAST 20 PAPER TRADES)"
+          title={`OUT-OF-SAMPLE SIMULATED EQUITY CURVE (LAST 20 PAPER TRADES · ${
+            overview?.account_balance != null && overview.account_balance > 0
+              ? 'VERIFIED ACCOUNT BASE'
+              : 'NORMALIZED INDEX BASE 100.0'
+          })`}
           variant="green"
         >
           <div style={{ padding: '8px 0' }}>
-            <EquityChart data={equityPoints} startEquity={10000} height={140} />
+            <EquityChart data={equityPoints} startEquity={verifiedPaperBaseEquity} height={140} />
           </div>
         </Card>
       )}
@@ -506,4 +551,3 @@ export const PerformancePanel: React.FC = () => {
     </div>
   );
 };
-

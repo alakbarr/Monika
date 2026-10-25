@@ -67,10 +67,11 @@ export const BacktestPanel: React.FC = () => {
     }
   }, [selectedRunId, fetchRunDetails]);
 
-  // Cumulative Equity Curve
+  // Cumulative Equity Curve (Fail-Closed if initial_equity is invalid/missing)
   const equityCurve = React.useMemo(() => {
     if (!runDetails || !runDetails.trades || runDetails.trades.length === 0) return [];
-    const startEq = runDetails.run.initial_equity || 10000;
+    const startEq = runDetails.run.initial_equity;
+    if (startEq == null || startEq <= 0) return [];
     let curr = startEq;
     const points: Array<{ index: number; equity: number; symbol?: string; exit_reason?: string }> = [
       { index: 0, equity: curr, symbol: 'START' },
@@ -93,9 +94,12 @@ export const BacktestPanel: React.FC = () => {
     return points;
   }, [runDetails]);
 
-  // Institutional Quant Metrics calculation
+  // Institutional Quant Metrics calculation (Fail-Closed if initial_equity is invalid/missing)
   const quantMetrics = React.useMemo(() => {
     if (!runDetails || !runDetails.trades || runDetails.trades.length === 0) return null;
+    const run = runDetails.run;
+    const initialEq = run.initial_equity;
+    if (initialEq == null || initialEq <= 0) return null;
     const trades = runDetails.trades;
     const returns = trades.map(t => (t.pnl_pct || 0) / 100);
     const n = trades.length;
@@ -108,8 +112,6 @@ export const BacktestPanel: React.FC = () => {
     const downsideDev = Math.sqrt(downsideVariance);
     const sortino = downsideDev > 0 ? (meanReturn / downsideDev) * Math.sqrt(252) : null;
 
-    const run = runDetails.run;
-    const initialEq = run.initial_equity || 10000;
     const finalEq = run.final_equity != null ? run.final_equity : initialEq;
     const totalReturnPct = initialEq > 0 ? (finalEq - initialEq) / initialEq : 0;
     const maxDdPct = run.max_drawdown_pct != null && run.max_drawdown_pct > 0 ? run.max_drawdown_pct : 0.001;
@@ -168,55 +170,35 @@ export const BacktestPanel: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontFamily: 'var(--font-precision)' }}>
-      {/* Header Bar */}
+      {/* Swiss Liquid Glass Masthead */}
       <div
-        className="win-window ledger-card"
+        className="liquid-glass-panel"
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'var(--color-paper-raised)',
-          padding: '12px 18px',
-          border: '1px solid var(--color-rule)',
-          borderRadius: 'var(--radius-card)',
-          boxShadow: 'var(--shadow-card)',
+          padding: '16px 20px',
           flexWrap: 'wrap',
           gap: '12px',
+          borderLeft: '3px solid var(--color-brass)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div
+        <div>
+          <span className="editorial-kicker">
+            I. QUANTITATIVE SIMULATION LAB · ZERO LOOK-AHEAD REPLAY
+          </span>
+          <h2
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: '4px',
-              background: 'var(--color-win-yellow)',
-              border: '1px solid var(--color-rule)',
-              boxShadow: '1px 1px 0 var(--color-rule)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--color-on-win-yellow)',
+              fontFamily: 'var(--font-display)',
+              fontSize: 'var(--text-title-lg)',
+              fontWeight: 400,
+              margin: '2px 0 0 0',
+              color: 'var(--color-ink)',
+              letterSpacing: '-0.02em',
             }}
           >
-            <Layers size={20} />
-          </div>
-          <div>
-            <h2
-              style={{
-                fontSize: 'var(--text-title-sm)',
-                fontWeight: 800,
-                margin: 0,
-                color: 'var(--color-ink)',
-                letterSpacing: '0.04em',
-              }}
-            >
-              POINT-IN-TIME BACKTEST ENGINE // HISTORICAL REPLAY
-            </h2>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', marginTop: '2px' }}>
-              Simulate full multi-agent cycles against historical tick data with zero lookahead bias.
-            </div>
-          </div>
+            Point-in-Time Historical Replay Engine
+          </h2>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -368,8 +350,103 @@ export const BacktestPanel: React.FC = () => {
           {loading ? (
             <Skeleton height="180px" />
           ) : runs.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--color-ink-soft)' }}>
-              — No backtest runs recorded. Launch your first simulation above —
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '10px',
+                  paddingBottom: '12px',
+                  borderBottom: '1px solid var(--color-rule)',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-brass)', letterSpacing: '0.08em' }}>
+                    ARCHITECTURAL SIMULATION BLUEPRINT · STANDBY
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-ink-soft)', marginTop: '4px' }}>
+                    No historical replay runs recorded yet. Select an institutional preset below or configure custom parameters on the left.
+                  </div>
+                </div>
+                <Badge variant="neutral">0 RUNS IN LEDGER</Badge>
+              </div>
+
+              {/* 4-Stage Pipeline Architecture Strip */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                  gap: '10px',
+                }}
+              >
+                {[
+                  { step: '01 · PIT INGESTION', title: 'Causal Bar & Tick Slice', desc: 'Strict bar-close cutoffs prevent future leak.' },
+                  { step: '02 · DIALECTIC GRAPH', title: 'Multi-Agent Committee', desc: 'Bull/Bear debate + Judge thesis synthesis.' },
+                  { step: '03 · MECHANICAL FORTRESS', title: 'Deterministic RiskGate', desc: 'Decimal lot sizing, drawdown & RoR guard.' },
+                  { step: '04 · QUANT TEARSHEET', title: 'Out-of-Sample Attribution', desc: 'Sortino, Calmar, CVaR 95% & Wilson CI.' },
+                ].map((stage) => (
+                  <div
+                    key={stage.step}
+                    style={{
+                      padding: '10px 12px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-rule)',
+                      borderRadius: 'var(--radius-sm)',
+                    }}
+                  >
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-brass)', letterSpacing: '0.06em' }}>
+                      {stage.step}
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-ink)', marginTop: '4px' }}>
+                      {stage.title}
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', marginTop: '2px', lineHeight: 1.4 }}>
+                      {stage.desc}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Quick Preset Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', paddingTop: '4px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontWeight: 700, letterSpacing: '0.06em' }}>
+                  LOAD SIMULATION PRESET:
+                </span>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <TypewriterButton
+                    size="sm"
+                    onClick={() => {
+                      setFormDays(7);
+                      setFormMode('full');
+                      setFormStepHours(4);
+                    }}
+                  >
+                    <Layers size={11} /> 7D RAPID REPLAY (4H STEP)
+                  </TypewriterButton>
+                  <TypewriterButton
+                    size="sm"
+                    onClick={() => {
+                      setFormDays(30);
+                      setFormMode('full');
+                      setFormStepHours(6);
+                    }}
+                  >
+                    <Activity size={11} /> 30D INSTITUTIONAL STANDARD
+                  </TypewriterButton>
+                  <TypewriterButton
+                    size="sm"
+                    onClick={() => {
+                      setFormDays(90);
+                      setFormMode('walk_forward');
+                      setFormStepHours(12);
+                    }}
+                  >
+                    <TrendingUp size={11} /> 90D WALK-FORWARD STRESS TEST
+                  </TypewriterButton>
+                </div>
+              </div>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
@@ -453,7 +530,7 @@ export const BacktestPanel: React.FC = () => {
             }
           >
             <div style={{ padding: '8px 0' }}>
-              <EquityChart data={equityCurve} startEquity={runDetails.run.initial_equity || 10000} height={170} />
+              <EquityChart data={equityCurve} startEquity={runDetails.run.initial_equity ?? 0} height={170} />
             </div>
           </Card>
 

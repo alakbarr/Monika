@@ -92,6 +92,8 @@ async def get_risk():
         active_pos_count = await pos_repo.count_open_positions()
 
         # Margin and exposure calculations
+        equity = 0.0
+        balance = 0.0
         margin_used = 0.0
         margin_free = 0.0
         margin_level_pct = 0.0
@@ -99,6 +101,7 @@ async def get_risk():
 
         if account_info and isinstance(account_info, dict):
             equity = float(account_info.get("equity") or 0.0)
+            balance = float(account_info.get("balance") or 0.0)
             margin_used = float(account_info.get("margin") or 0.0)
             margin_free = float(account_info.get("margin_free") or 0.0)
             margin_level_pct = float(account_info.get("margin_level") or 0.0)
@@ -112,6 +115,8 @@ async def get_risk():
             # Fail closed: missing risk state must reflect uninitialized state
             return {
                 "date": now_utc.date().isoformat(),
+                "account_balance": round(balance, 2) if balance > 0 else None,
+                "account_equity": round(equity, 2) if equity > 0 else None,
                 "daily_pnl": 0.0,
                 "daily_pnl_pct": 0.0,
                 "current_drawdown": 0.0,
@@ -139,12 +144,25 @@ async def get_risk():
         elif daily_pnl_pct is None:
             daily_pnl_pct = 0.0
 
+        verified_bal = (
+            round(balance, 2)
+            if balance > 0
+            else (round(float(starting_bal), 2) if (starting_bal and float(starting_bal) > 0) else None)
+        )
+        verified_eq = (
+            round(equity, 2)
+            if equity > 0
+            else (round(verified_bal + risk.daily_pnl, 2) if verified_bal is not None else None)
+        )
+
         return {
             "date": (
                 risk.date.date() if hasattr(risk.date, "date") and callable(getattr(risk.date, "date")) else risk.date
             ).isoformat()
             if risk.date
             else None,
+            "account_balance": verified_bal,
+            "account_equity": verified_eq,
             "daily_pnl": round(risk.daily_pnl, 2),
             "daily_pnl_pct": round(daily_pnl_pct, 2),
             "current_drawdown": round(risk.current_drawdown, 2),

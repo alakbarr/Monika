@@ -185,13 +185,43 @@ export const MarketDataPanel: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontFamily: 'var(--font-precision)' }}>
+      {/* Editorial Masthead */}
+      <div
+        className="liquid-glass-panel swiss-crosshair"
+        style={{
+          padding: '16px 20px',
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
+        <div>
+          <div className="editorial-kicker">I. MACRO &amp; MULTI-ASSET TELEMETRY</div>
+          <h2
+            style={{
+              margin: '2px 0 0 0',
+              fontFamily: 'var(--font-display)',
+              fontSize: '24px',
+              fontWeight: 400,
+              color: 'var(--color-ink)',
+            }}
+          >
+            Real-Time Market Structure &amp; Central Bank Surveillance
+          </h2>
+        </div>
+        <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', fontFamily: 'var(--font-mono)' }}>
+          ACTIVE FOCUS: <strong style={{ color: 'var(--color-ink)' }}>{selectedSymbol}</strong>
+        </div>
+      </div>
 
       {/* Top Grid: Watchlist & VIX Barometer */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '20px' }}>
 
         {/* Live Multi-Asset Watchlist Table */}
         <Card
-          title="REAL-TIME MARKET QUOTES // MULTI-ASSET WATCHLIST"
+          title="REAL-TIME MARKET QUOTES · MULTI-ASSET WATCHLIST"
           variant="blue"
         >
           <div style={{ overflowX: 'auto' }}>
@@ -324,7 +354,7 @@ export const MarketDataPanel: React.FC = () => {
       {/* Technical Indicators & SMC Market Structure Drawer (FASE 3B) */}
       {selectedSymbol && (
         <Card
-          title={`TECHNICAL INDICATORS & SMC MARKET STRUCTURE // ${selectedSymbol}`}
+          title={`TECHNICAL INDICATORS & SMC MARKET STRUCTURE · ${selectedSymbol}`}
           variant="blue"
         >
           {techLoading ? (
@@ -592,7 +622,9 @@ export const MarketDataPanel: React.FC = () => {
                     {typeof opp === 'object' ? (
                       <>
                         <div style={{ fontWeight: 800, color: 'var(--color-brass)' }}>{opp.asset || opp.opportunity || `Opportunity #${i + 1}`}</div>
-                        <div style={{ color: 'var(--color-ink-soft)', marginTop: '2px' }}>{opp.rationale || JSON.stringify(opp)}</div>
+                        <div style={{ color: 'var(--color-ink-soft)', marginTop: '2px' }}>
+                          {opp.rationale || opp.description || opp.summary || 'Contrarian divergence detected.'}
+                        </div>
                       </>
                     ) : (
                       <div style={{ color: 'var(--color-ink)' }}>{String(opp)}</div>
@@ -607,29 +639,31 @@ export const MarketDataPanel: React.FC = () => {
 
       {/* Grid: Fear & Greed Sentiment Barometer + US Yield Curve & 2s10s Inversion */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        {/* Fear & Greed Card */}
+        {/* Fear & Greed Card (Fail-Closed: Never invent 50 when feed is absent) */}
         <Card title="FEAR & GREED SENTIMENT BAROMETER" variant="coral">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <span style={{ fontSize: '32px', fontWeight: 900, fontFamily: 'var(--font-mono)' }}>
-                  {fearGreed?.current_value ?? 50}
+                  {fearGreed?.current_value != null ? fearGreed.current_value : '—'}
                 </span>
                 <span style={{ fontSize: '14px', color: 'var(--color-ink-soft)', marginLeft: '6px' }}>/ 100</span>
               </div>
               <Badge
                 variant={
-                  (fearGreed?.current_value ?? 50) <= 25
+                  fearGreed?.current_value == null
+                    ? 'neutral'
+                    : fearGreed.current_value <= 25
                     ? 'error'
-                    : (fearGreed?.current_value ?? 50) <= 45
+                    : fearGreed.current_value <= 45
                     ? 'warn'
-                    : (fearGreed?.current_value ?? 50) >= 75
+                    : fearGreed.current_value >= 75
                     ? 'profit'
                     : 'neutral'
                 }
                 size="md"
               >
-                {fearGreed?.classification?.toUpperCase() || 'NEUTRAL'}
+                {fearGreed?.classification?.toUpperCase() || 'UNVERIFIED FEED'}
               </Badge>
             </div>
 
@@ -637,14 +671,16 @@ export const MarketDataPanel: React.FC = () => {
             <div style={{ width: '100%', height: '8px', background: 'var(--color-rule)', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
               <div
                 style={{
-                  width: `${Math.min(Math.max(fearGreed?.current_value ?? 50, 0), 100)}%`,
+                  width: `${fearGreed?.current_value != null ? Math.min(Math.max(fearGreed.current_value, 0), 100) : 0}%`,
                   height: '100%',
                   background:
-                    (fearGreed?.current_value ?? 50) <= 25
+                    fearGreed?.current_value == null
+                      ? 'transparent'
+                      : fearGreed.current_value <= 25
                       ? 'var(--color-loss)'
-                      : (fearGreed?.current_value ?? 50) <= 45
+                      : fearGreed.current_value <= 45
                       ? 'var(--color-warn)'
-                      : (fearGreed?.current_value ?? 50) >= 75
+                      : fearGreed.current_value >= 75
                       ? 'var(--color-profit)'
                       : 'var(--color-ink-muted)',
                   transition: 'width 0.4s ease',
@@ -659,7 +695,7 @@ export const MarketDataPanel: React.FC = () => {
             </div>
 
             <div style={{ fontSize: '11px', color: 'var(--color-ink)', background: 'var(--color-paper)', padding: '8px', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
-              <strong>Signal:</strong> {fearGreed?.interpretation || 'Balanced sentiment. No extreme market crowding.'}
+              <strong>Signal:</strong> {fearGreed?.interpretation || 'Sentiment feed awaiting synchronization.'}
               {fearGreed?.wow_change != null && (
                 <span style={{ marginLeft: '8px', color: fearGreed.wow_change >= 0 ? 'var(--color-profit)' : 'var(--color-loss)' }}>
                   ({fearGreed.wow_change >= 0 ? '+' : ''}{fearGreed.wow_change} WoW)
@@ -669,7 +705,7 @@ export const MarketDataPanel: React.FC = () => {
           </div>
         </Card>
 
-        {/* US Treasury Yields & 2s10s Spread */}
+        {/* US Treasury Yields & 2s10s Spread (Fail-Closed: Zero fabricated yields) */}
         <Card title="US TREASURY YIELDS & 2S10S INVERSION" variant="blue">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -681,45 +717,71 @@ export const MarketDataPanel: React.FC = () => {
                     fontWeight: 900,
                     fontFamily: 'var(--font-mono)',
                     marginLeft: '8px',
-                    color: yields?.is_inverted ? 'var(--color-loss)' : 'var(--color-profit)',
+                    color:
+                      yields?.spread_2s10s == null
+                        ? 'var(--color-ink-muted)'
+                        : yields.is_inverted
+                        ? 'var(--color-loss)'
+                        : 'var(--color-profit)',
                   }}
                 >
-                  {yields?.spread_2s10s != null ? `${yields.spread_2s10s > 0 ? '+' : ''}${yields.spread_2s10s.toFixed(2)}%` : '+0.15%'}
+                  {yields?.spread_2s10s != null ? `${yields.spread_2s10s > 0 ? '+' : ''}${yields.spread_2s10s.toFixed(2)}%` : '—'}
                 </span>
               </div>
-              <Badge variant={yields?.is_inverted ? 'error' : 'profit'} size="md">
-                {yields?.is_inverted ? 'INVERTED (RECESSION RISK)' : 'NORMAL CURVE'}
+              <Badge
+                variant={
+                  yields?.spread_2s10s == null
+                    ? 'neutral'
+                    : yields.is_inverted
+                    ? 'error'
+                    : 'profit'
+                }
+                size="md"
+              >
+                {yields?.spread_2s10s == null
+                  ? 'NO YIELD FEED'
+                  : yields.is_inverted
+                  ? 'INVERTED (RECESSION RISK)'
+                  : 'NORMAL CURVE'}
               </Badge>
             </div>
 
             {/* US Treasury Tenors */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-              {(yields?.treasury_yields && yields.treasury_yields.length > 0
-                ? yields.treasury_yields.slice(0, 4)
-                : [
-                    { tenor: '2Y', yield_percent: 4.15 },
-                    { tenor: '5Y', yield_percent: 4.22 },
-                    { tenor: '10Y', yield_percent: 4.38 },
-                    { tenor: '30Y', yield_percent: 4.55 },
-                  ]
-              ).map((t, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    background: 'var(--color-paper)',
-                    padding: '8px',
-                    borderRadius: '2px',
-                    border: '1px solid var(--color-rule)',
-                    textAlign: 'center',
-                  }}
-                >
-                  <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 700 }}>{t.tenor}</div>
-                  <div style={{ fontSize: '14px', fontWeight: 800, fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
-                    {typeof t.yield_percent === 'number' ? `${t.yield_percent.toFixed(2)}%` : String(t.yield_percent)}
+            {yields?.treasury_yields && yields.treasury_yields.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                {yields.treasury_yields.slice(0, 4).map((t, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: 'var(--color-paper)',
+                      padding: '8px',
+                      borderRadius: '2px',
+                      border: '1px solid var(--color-rule)',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', fontWeight: 700 }}>{t.tenor}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 800, fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
+                      {typeof t.yield_percent === 'number' ? `${t.yield_percent.toFixed(2)}%` : String(t.yield_percent)}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                style={{
+                  background: 'var(--color-paper)',
+                  padding: '14px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid var(--color-rule)',
+                  fontSize: '11px',
+                  color: 'var(--color-ink-muted)',
+                  textAlign: 'center',
+                }}
+              >
+                US Treasury yield curve telemetry not yet synchronized in database (Fail-Closed: no synthetic yields displayed).
+              </div>
+            )}
 
             {/* Global Sovereign Bonds */}
             {yields?.global_bonds && yields.global_bonds.length > 0 && (
@@ -737,7 +799,7 @@ export const MarketDataPanel: React.FC = () => {
 
       {/* Grid: CME FedWatch & Central Banks + Multi-Asset Sentiment & COT Composite */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px' }}>
-        {/* FedWatch & Central Bank Expectations */}
+        {/* FedWatch & Central Bank Expectations (Fail-Closed: Zero fabricated FOMC/CB rates) */}
         <Card title="CME FEDWATCH & CENTRAL BANK POLICY EXPECTATIONS" variant="green">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '12px' }}>
             {fedwatch?.fedwatch && fedwatch.fedwatch.length > 0 ? (
@@ -760,51 +822,51 @@ export const MarketDataPanel: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div style={{ background: 'var(--color-paper)', padding: '10px', borderRadius: '2px', border: '1px solid var(--color-rule)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: 800, color: 'var(--color-brass)' }}>Next FOMC: Target Rate 5.25% - 5.50%</span>
-                  <span style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>Target Probabilities</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
-                  <div style={{ background: 'var(--color-surface)', padding: '6px', borderRadius: '2px' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>HOLD RATE</div>
-                    <div style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>85.2%</div>
-                  </div>
-                  <div style={{ background: 'var(--color-surface)', padding: '6px', borderRadius: '2px' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>25 BPS CUT</div>
-                    <div style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>14.8%</div>
-                  </div>
-                  <div style={{ background: 'var(--color-surface)', padding: '6px', borderRadius: '2px' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)' }}>50 BPS CUT</div>
-                    <div style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>0.0%</div>
-                  </div>
-                </div>
+              <div
+                style={{
+                  background: 'var(--color-paper)',
+                  padding: '14px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid var(--color-rule)',
+                  fontSize: '11px',
+                  color: 'var(--color-ink-muted)',
+                  textAlign: 'center',
+                }}
+              >
+                CME FedWatch FOMC rate probability feed not yet synchronized (Fail-Closed).
               </div>
             )}
 
             {/* Central Bank Policy Rates */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', textAlign: 'center' }}>
-              {(fedwatch?.central_banks && fedwatch.central_banks.length > 0
-                ? fedwatch.central_banks.slice(0, 5)
-                : [
-                    { bank: 'FED', current_rate: 5.50, prob_cut: 14.8 },
-                    { bank: 'ECB', current_rate: 3.75, prob_cut: 65.0 },
-                    { bank: 'BOE', current_rate: 5.25, prob_cut: 40.0 },
-                    { bank: 'BOJ', current_rate: 0.25, prob_cut: 0.0 },
-                    { bank: 'RBA', current_rate: 4.35, prob_cut: 10.0 },
-                  ]
-              ).map((cb, idx) => (
-                <div key={idx} style={{ background: 'var(--color-paper)', padding: '6px', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
-                  <div style={{ fontWeight: 800, fontSize: '11px', color: 'var(--color-ink)' }}>{cb.bank}</div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700, marginTop: '2px' }}>
-                    {typeof cb.current_rate === 'number' ? `${cb.current_rate.toFixed(2)}%` : cb.current_rate}
+            {fedwatch?.central_banks && fedwatch.central_banks.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', textAlign: 'center' }}>
+                {fedwatch.central_banks.slice(0, 5).map((cb, idx) => (
+                  <div key={idx} style={{ background: 'var(--color-paper)', padding: '6px', border: '1px solid var(--color-rule)', borderRadius: '2px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '11px', color: 'var(--color-ink)' }}>{cb.bank}</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700, marginTop: '2px' }}>
+                      {typeof cb.current_rate === 'number' ? `${cb.current_rate.toFixed(2)}%` : cb.current_rate}
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', marginTop: '2px' }}>
+                      Cut: {typeof cb.prob_cut === 'number' ? `${cb.prob_cut.toFixed(0)}%` : '—'}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '11px', color: 'var(--color-ink-soft)', marginTop: '2px' }}>
-                    Cut: {typeof cb.prob_cut === 'number' ? `${cb.prob_cut.toFixed(0)}%` : '—'}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                style={{
+                  background: 'var(--color-paper)',
+                  padding: '10px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid var(--color-rule)',
+                  fontSize: '11px',
+                  color: 'var(--color-ink-muted)',
+                  textAlign: 'center',
+                }}
+              >
+                Central Bank policy rate table awaiting scraper snapshot.
+              </div>
+            )}
           </div>
         </Card>
 
@@ -817,8 +879,18 @@ export const MarketDataPanel: React.FC = () => {
                 Retail Crowd Positioning (Contrarian Lens)
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-ink-soft)', fontSize: '11px' }}>
-                <span>Crypto (Binance): {sentimentComp?.crypto?.ratios?.BTCUSDT?.long_pct != null ? `${sentimentComp.crypto.ratios.BTCUSDT.long_pct}% Long` : '62% Long'}</span>
-                <span>Forex (FXSSI): {sentimentComp?.forex_fxssi?.EURUSD?.long_pct != null ? `${sentimentComp.forex_fxssi.EURUSD.long_pct}% Long` : '44% Long'}</span>
+                <span>
+                  Crypto (Binance):{' '}
+                  {sentimentComp?.crypto?.ratios?.BTCUSDT?.long_pct != null
+                    ? `${sentimentComp.crypto.ratios.BTCUSDT.long_pct}% Long`
+                    : '— (NO FEED)'}
+                </span>
+                <span>
+                  Forex (FXSSI):{' '}
+                  {sentimentComp?.forex_fxssi?.EURUSD?.long_pct != null
+                    ? `${sentimentComp.forex_fxssi.EURUSD.long_pct}% Long`
+                    : '— (NO FEED)'}
+                </span>
               </div>
             </div>
 

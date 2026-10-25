@@ -78,7 +78,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
             letterSpacing: '0.08em',
           }}
         >
-          <span>MONIKA // CHAPTER VIEWS</span>
+          <span>MONIKA · CHAPTER VIEWS</span>
           <button
             onClick={onClose}
             aria-label="Close navigation menu"

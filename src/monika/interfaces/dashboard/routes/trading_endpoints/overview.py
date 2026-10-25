@@ -60,7 +60,7 @@ async def get_overview():
             )
         ).scalar_one_or_none()
 
-        # Account balance for pct calculation
+        # Account balance & equity for pct calculation and fail-closed telemetry
         balance_cfg = await cfg_repo.get("account_balance") or await cfg_repo.get("initial_balance")
 
         balance = None
@@ -70,10 +70,38 @@ async def get_overview():
             except ValueError, TypeError:
                 balance = None
 
+        if (balance is None or balance <= 0) and risk and getattr(risk, "starting_balance", None):
+            try:
+                sb = float(getattr(risk, "starting_balance"))
+                if sb > 0:
+                    balance = sb
+            except ValueError, TypeError:
+                pass
+
+        mt5_client = get_dashboard_dependency("mt5_client")
+        live_equity = None
+        if mt5_client and hasattr(mt5_client, "get_account_info"):
+            try:
+                acct = await mt5_client.get_account_info()
+                if isinstance(acct, dict):
+                    eq_val = float(acct.get("equity") or 0.0)
+                    bal_val = float(acct.get("balance") or 0.0)
+                    if eq_val > 0:
+                        live_equity = round(eq_val, 2)
+                    if bal_val > 0 and (balance is None or balance <= 0):
+                        balance = round(bal_val, 2)
+            except Exception:
+                pass
+
         daily_pnl = round(risk.daily_pnl, 2) if risk else 0.0
         current_drawdown = round(risk.current_drawdown, 2) if risk else 0.0
         daily_pnl_pct = round((daily_pnl / balance) * 100, 2) if (balance and balance > 0) else None
         drawdown_pct = round((current_drawdown / balance) * 100, 2) if (balance and balance > 0) else None
+        account_equity = (
+            live_equity
+            if live_equity is not None
+            else (round(balance + daily_pnl, 2) if (balance and balance > 0) else None)
+        )
 
         # Latest VIX
         vix = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
@@ -104,6 +132,8 @@ async def get_overview():
             "agent_status": "paused" if (risk and risk.trading_paused) else "active",
             "is_live": is_live,
             "is_paper": is_paper,
+            "account_balance": round(balance, 2) if (balance and balance > 0) else None,
+            "account_equity": account_equity,
             "open_positions_count": pos_count,
             "daily_pnl": daily_pnl,
             "daily_pnl_pct": daily_pnl_pct,
@@ -214,7 +244,7 @@ async def get_edge_metrics():
 
             win_rate = len(wins) / len(records) if records else 0
             loss_rate = 1 - win_rate
-            avg_rr = sum(rr_values) / len(rr_values) if rr_values else 2.0
+            avg_rr = sum(rr_values) / len(rr_values) if rr_values else 0.0
             expectancy = (win_rate * avg_rr) - loss_rate
 
             hold_times = [r.holding_hours for r, a in records if r.holding_hours]
@@ -222,7 +252,7 @@ async def get_edge_metrics():
             results[f"{days}d"] = {
                 "total_trades": len(records),
                 "win_rate_pct": round(win_rate * 100, 1),
-                "avg_rr_achieved": round(avg_rr, 2),
+                "avg_rr_achieved": round(avg_rr, 2) if rr_values else 0.0,
                 "expectancy_per_trade_R": round(expectancy, 3),
                 "is_profitable": expectancy > 0,
                 "avg_holding_hours": round(sum(hold_times) / len(hold_times), 1) if hold_times else None,
@@ -232,7 +262,7 @@ async def get_edge_metrics():
         return {
             "edge_metrics": results,
             "alert": any(
-                r.get("expectancy_per_trade_R", 1) < -0.1
+                r.get("expectancy_per_trade_R", 0.0) < -0.1
                 for r in results.values()
                 if isinstance(r, dict) and "expectancy_per_trade_R" in r
             ),

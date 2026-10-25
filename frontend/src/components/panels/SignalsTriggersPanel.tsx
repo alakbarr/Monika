@@ -350,10 +350,10 @@ export const SignalsTriggersPanel: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  // Derived stats
+  // Derived stats (Fail-Closed: never claim 100% fill rate when 0 signals exist)
   const totalSignals = signalsMeta.total || signals.length;
   const executedSignals = signalsMeta.executed || signals.filter((s) => s.status?.toLowerCase() === 'executed').length;
-  const fillRatePct = totalSignals > 0 ? ((executedSignals / totalSignals) * 100).toFixed(1) : '100.0';
+  const fillRatePct = totalSignals > 0 ? ((executedSignals / totalSignals) * 100).toFixed(1) : null;
 
   const pendingTriggers = triggersMeta.pending || triggers.filter((t) => t.status?.toLowerCase() === 'pending').length;
   const firedTriggers = triggersMeta.fired || triggers.filter((t) => t.status?.toLowerCase() === 'fired').length;
@@ -465,42 +465,35 @@ export const SignalsTriggersPanel: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header */}
+      {/* Swiss Liquid Glass Masthead */}
       <div
+        className="liquid-glass-panel"
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '16px',
-          borderBottom: '1px solid var(--color-border)',
-          paddingBottom: '16px',
+          padding: '16px 20px',
+          borderLeft: '3px solid var(--color-brass)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div
+        <div>
+          <span className="editorial-kicker">
+            I. EXECUTION ROUTING &amp; CONDITIONAL TRIGGERS
+          </span>
+          <h2
             style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '2px',
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-surface-card)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              fontFamily: 'var(--font-display)',
+              fontSize: 'var(--text-title-lg)',
+              fontWeight: 400,
+              margin: '2px 0 0 0',
               color: 'var(--color-ink)',
+              letterSpacing: '-0.02em',
             }}
           >
-            <Radio size={18} />
-          </div>
-          <div>
-            <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--color-ink)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              MT5 Signals & Conditional Triggers
-            </h2>
-            <div style={{ fontSize: '12px', color: 'var(--color-ink-muted)', marginTop: '2px', fontFamily: 'var(--font-precision)' }}>
-              Telegraph execution routing, fill rates, latency metrics, and real-time triggers
-            </div>
-          </div>
+            MT5 Signal Telegraph &amp; Conditional Trigger Ledger
+          </h2>
         </div>
 
         <button
@@ -657,8 +650,21 @@ export const SignalsTriggersPanel: React.FC = () => {
               <div style={{ fontSize: '11px', color: 'var(--color-ink-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Signal Fill Rate
               </div>
-              <div style={{ fontSize: '24px', fontWeight: 700, color: Number(fillRatePct) >= 80 ? 'var(--color-profit)' : 'var(--color-warning)', marginTop: '4px', fontFamily: 'var(--font-precision)' }}>
-                {fillRatePct}%
+              <div
+                style={{
+                  fontSize: '24px',
+                  fontWeight: 700,
+                  color:
+                    fillRatePct === null
+                      ? 'var(--color-ink-muted)'
+                      : Number(fillRatePct) >= 80
+                        ? 'var(--color-profit)'
+                        : 'var(--color-warning)',
+                  marginTop: '4px',
+                  fontFamily: 'var(--font-precision)',
+                }}
+              >
+                {fillRatePct !== null ? `${fillRatePct}%` : '—'}
               </div>
             </div>
             <div style={{ color: 'var(--color-profit)' }}>

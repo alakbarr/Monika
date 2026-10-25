@@ -39,14 +39,12 @@ def contrast_ratio(hex1: str, hex2: str) -> float:
 
 
 def scan_g1_forbidden_effects():
-    print("=== G1: FORBIDDEN EFFECTS & TOKEN INTEGRITY ===")
+    print("=== G1: FORBIDDEN EFFECTS & LIQUID GLASS TOKEN INTEGRITY ===")
     forbidden_patterns = [
-        (r"backdrop-filter", "Gaussian blur backdrop-filter"),
-        (r"filter:\s*blur", "CSS filter blur"),
-        (r"blur\(", "Blur function"),
         (r"rounded-full", "Tailwind rounded-full pill"),
         (r"from-purple", "AI Slop purple gradient"),
         (r"to-indigo", "AI Slop indigo gradient"),
+        (r"from-pink", "AI Slop pink gradient"),
     ]
     sub_1px_pattern = re.compile(r"border[^:;]*:\s*0\.5px")
     hex_pattern = re.compile(r"#[0-9a-fA-F]{3,8}\b")

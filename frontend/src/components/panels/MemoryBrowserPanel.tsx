@@ -13,7 +13,6 @@ import type { DecisionReflectionItem, CandidateLessonItem, MemorySearchResult, P
 import { fmt } from '../../lib/formatters';
 import { sounds } from '../../lib/soundEffects';
 import {
-  Brain,
   Search,
   Lightbulb,
   RefreshCw,
@@ -152,42 +151,24 @@ export const MemoryBrowserPanel: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontFamily: 'var(--font-precision)' }}>
       {/* Header & Filter Card */}
-      <Card padding="14px 18px" variant="yellow">
+      <Card padding="16px 20px" variant="yellow">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div
+          <div>
+            <span className="editorial-kicker">
+              I. EPISODIC REFLECTION ARCHIVE &amp; PLAYBOOK GOVERNANCE
+            </span>
+            <h2
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: '4px',
-                background: 'var(--color-win-yellow)',
-                border: '1px solid var(--color-rule)',
-                boxShadow: '1px 1px 0 var(--color-rule)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--color-on-win-yellow)',
+                fontFamily: 'var(--font-display)',
+                fontSize: 'var(--text-title-lg)',
+                fontWeight: 400,
+                color: 'var(--color-ink)',
+                letterSpacing: '-0.02em',
+                margin: '2px 0 0 0',
               }}
             >
-              <Brain size={22} />
-            </div>
-            <div>
-              <h3
-                style={{
-                  fontSize: 'var(--text-title-sm)',
-                  fontWeight: 800,
-                  color: 'var(--color-ink)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  margin: 0,
-                }}
-              >
-                AUTONOMOUS MEMORY VAULT // REFLECTIONS & PLAYBOOK RULES
-              </h3>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-ink-soft)', marginTop: '2px' }}>
-                Long-term episodic reflections, post-trade debriefs, and empirical lessons promoted from live execution.
-              </div>
-            </div>
+              Autonomous Memory Vault &amp; Empirical Playbooks
+            </h2>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -544,7 +525,7 @@ export const MemoryBrowserPanel: React.FC = () => {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span style={{ fontSize: 'var(--text-xs)', fontWeight: 800, color: 'var(--color-ink)' }}>
-                          MUTATION AUDIT TRAIL // {rule.symbol}
+                          MUTATION AUDIT TRAIL · {rule.symbol}
                         </span>
                         {rollbackStatus && (
                           <span

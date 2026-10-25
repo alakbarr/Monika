@@ -318,10 +318,27 @@ export const AgentChatPanel: React.FC = () => {
                     <Badge variant="warn">EXPIRES 90S</Badge>
                   </div>
 
-                  <div style={{ fontSize: '11px', color: 'var(--color-ink)', fontFamily: 'var(--font-precision)', lineHeight: 1.5 }}>
-                    <strong>ACTION:</strong> {msg.pendingAction.action_type.toUpperCase()}
-                    <br />
-                    <strong>PARAMETERS:</strong> {JSON.stringify(msg.pendingAction.params)}
+                  <div style={{ fontSize: '11px', color: 'var(--color-ink)', fontFamily: 'var(--font-precision)', lineHeight: 1.5, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div>
+                      <strong>ACTION:</strong> {msg.pendingAction.action_type.toUpperCase()}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {Object.entries(msg.pendingAction.params || {}).map(([pk, pv]) => (
+                        <span
+                          key={pk}
+                          style={{
+                            padding: '2px 8px',
+                            background: 'var(--color-surface)',
+                            border: '1px solid var(--color-rule)',
+                            borderRadius: '2px',
+                            fontSize: '11px',
+                          }}
+                        >
+                          <strong style={{ color: 'var(--color-ink-muted)', textTransform: 'uppercase' }}>{pk}:</strong>{' '}
+                          {typeof pv === 'object' && pv !== null ? JSON.stringify(pv) : String(pv ?? '—')}
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>

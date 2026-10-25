@@ -178,28 +178,35 @@ export const TokenAuditPanel: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header & Filter Bar */}
+      {/* Swiss Liquid Glass Masthead */}
       <div
-        className="ledger-card"
+        className="liquid-glass-panel"
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           padding: '16px 20px',
-          background: 'var(--color-surface-card)',
-          borderRadius: '2px',
-          border: '1px solid var(--color-border)',
           flexWrap: 'wrap',
           gap: '12px',
+          borderLeft: '3px solid var(--color-brass)',
         }}
       >
         <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Token Consumption & Cost Ledger
+          <span className="editorial-kicker">
+            I. COMPUTE ECONOMICS &amp; KV-CACHE EFFICIENCY
+          </span>
+          <h2
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'var(--text-title-lg)',
+              fontWeight: 400,
+              margin: '2px 0 0 0',
+              color: 'var(--color-ink)',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            Token Consumption &amp; Expenditure Ledger
           </h2>
-          <p style={{ fontSize: '12px', color: 'var(--color-ink-muted)', margin: '4px 0 0 0', fontFamily: 'var(--font-precision)' }}>
-            Granular per-role audit tracking across 30+ agent tasks, prompt cache savings, and estimated USD expenditure.
-          </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

@@ -131,47 +131,35 @@ export const PluginManagerPanel: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* Top Banner / Window Header */}
+      {/* Swiss Liquid Glass Masthead */}
       <div
-        className="win-window ledger-card"
+        className="liquid-glass-panel"
         style={{
-          background: 'var(--color-paper-raised)',
-          border: '1px solid var(--color-rule)',
-          borderRadius: 'var(--radius-card)',
           padding: '16px 20px',
-          boxShadow: 'var(--shadow-card)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '12px',
+          borderLeft: '3px solid var(--color-brass)',
         }}
       >
         <div>
-          <div
+          <span className="editorial-kicker">
+            I. MODULAR EXTENSION HARNESS &amp; LIFECYCLE
+          </span>
+          <h2
             style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize: '1.25rem',
-              fontWeight: 700,
-              letterSpacing: '0.05em',
+              fontFamily: 'var(--font-display)',
+              fontSize: 'var(--text-title-lg)',
+              fontWeight: 400,
+              letterSpacing: '-0.02em',
               color: 'var(--color-ink)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
+              margin: '2px 0 0 0',
             }}
           >
-            PLUGIN MARKETPLACE &amp; HARNESS HOST
-          </div>
-          <div
-            style={{
-              fontFamily: 'var(--font-precision)',
-              fontSize: '0.82rem',
-              color: 'var(--color-ink-soft)',
-              marginTop: '4px',
-            }}
-          >
-            Modular "Everything is Plug-in" Architecture • Dynamic ON/OFF Lifecycle
-          </div>
+            Plugin Marketplace &amp; Harness Host
+          </h2>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

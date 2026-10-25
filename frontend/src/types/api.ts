@@ -24,6 +24,8 @@ export interface HealthStatus {
 export interface Overview {
   agent_status: 'active' | 'paused' | 'error';
   open_positions_count: number;
+  account_balance?: number | null;
+  account_equity?: number | null;
   daily_pnl: number;
   daily_pnl_pct: number | null;
   current_drawdown: number;
@@ -189,6 +191,8 @@ export interface Brief {
 
 export interface RiskState {
   date: string;
+  account_balance?: number | null;
+  account_equity?: number | null;
   daily_pnl: number;
   daily_pnl_pct: number;
   current_drawdown: number;
@@ -1175,4 +1179,3 @@ export interface DecisionDossierData {
     }>;
   };
 }
-

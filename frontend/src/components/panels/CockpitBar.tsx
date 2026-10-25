@@ -24,47 +24,115 @@ export const CockpitBar: React.FC<CockpitBarProps> = ({
   const [scrubIndex, setScrubIndex] = useState<number | null>(null);
   const [triggeringCycle, setTriggeringCycle] = useState(false);
 
-  const baseEquity = 10000;
   const dailyPnl = overview?.daily_pnl ?? 0;
   const totalPnlPct = paperStats?.total_pnl_pct ?? overview?.daily_pnl_pct ?? 0;
 
-  // Build interactive scrubbing equity series from recent paper trades + current live state
+  // Fail-closed verified equity resolution (never invent a hardcoded $10,000 fallback)
+  const verifiedCurrentEquity = useMemo<number | null>(() => {
+    if (overview?.account_equity != null && overview.account_equity > 0) {
+      return overview.account_equity;
+    }
+    if (riskState?.account_equity != null && riskState.account_equity > 0) {
+      return riskState.account_equity;
+    }
+    if (
+      riskState?.margin_used != null &&
+      riskState?.margin_free != null &&
+      riskState.margin_used + riskState.margin_free > 0
+    ) {
+      return Number((riskState.margin_used + riskState.margin_free).toFixed(2));
+    }
+    if (overview?.account_balance != null && overview.account_balance > 0) {
+      return Number((overview.account_balance + dailyPnl).toFixed(2));
+    }
+    if (riskState?.account_balance != null && riskState.account_balance > 0) {
+      return Number((riskState.account_balance + dailyPnl).toFixed(2));
+    }
+    return null;
+  }, [overview, riskState, dailyPnl]);
+
+  const hasVerifiedEquity = verifiedCurrentEquity !== null;
+  const sessionBaseEquity =
+    verifiedCurrentEquity !== null
+      ? Math.max(1, Number((verifiedCurrentEquity - dailyPnl).toFixed(2)))
+      : null;
+
+  // Build interactive scrubbing equity series anchored to verified account equity (or indexed 100.0 if unverified)
   const series = useMemo<ScrubPoint[]>(() => {
     const recent = paperStats?.recent_20 ?? [];
-    if (recent.length === 0) {
-      const currentEq = baseEquity + dailyPnl;
-      const pct = ((currentEq - baseEquity) / baseEquity) * 100;
-      return [
-        { index: 0, equity: baseEquity, returnPct: 0, label: 'SESSION OPEN' },
-        { index: 1, equity: currentEq, returnPct: pct, label: 'LIVE SNAPSHOT' },
+    if (verifiedCurrentEquity !== null && sessionBaseEquity !== null) {
+      if (recent.length === 0) {
+        const pct = ((verifiedCurrentEquity - sessionBaseEquity) / sessionBaseEquity) * 100;
+        return [
+          { index: 0, equity: sessionBaseEquity, returnPct: 0, label: 'SESSION OPEN' },
+          { index: 1, equity: verifiedCurrentEquity, returnPct: Number(pct.toFixed(2)), label: 'LIVE SNAPSHOT' },
+        ];
+      }
+
+      // Reconstruct path ending at verifiedCurrentEquity so live snapshot is 100% consistent with account telemetry
+      const relMultipliers: number[] = [1.0];
+      let mult = 1.0;
+      recent.forEach((t) => {
+        mult = mult * (1 + (t.pnl_pct || 0) / 100);
+        relMultipliers.push(mult);
+      });
+      const finalMult = relMultipliers[relMultipliers.length - 1] || 1.0;
+      const startAnchor = verifiedCurrentEquity / finalMult;
+
+      const pts: ScrubPoint[] = [
+        { index: 0, equity: Number(startAnchor.toFixed(2)), returnPct: 0, label: 'WINDOW BASELINE' },
       ];
+      recent.forEach((t, idx) => {
+        const eqVal = startAnchor * relMultipliers[idx + 1];
+        const retPct = ((eqVal - startAnchor) / startAnchor) * 100;
+        pts.push({
+          index: idx + 1,
+          equity: Number(eqVal.toFixed(2)),
+          returnPct: Number(retPct.toFixed(2)),
+          label: `TRADE #${idx + 1} · ${t.symbol} (${t.exit_reason || 'CLOSED'})`,
+        });
+      });
+      // Ensure the final live point matches verifiedCurrentEquity exactly
+      pts[pts.length - 1] = {
+        ...pts[pts.length - 1],
+        equity: verifiedCurrentEquity,
+        returnPct:
+          overview?.daily_pnl_pct != null
+            ? Number(overview.daily_pnl_pct.toFixed(2))
+            : Number((((verifiedCurrentEquity - sessionBaseEquity) / sessionBaseEquity) * 100).toFixed(2)),
+        label: 'LIVE VERIFIED EQUITY',
+      };
+      return pts;
     }
 
-    let eq = baseEquity;
-    const pts: ScrubPoint[] = [
-      { index: 0, equity: eq, returnPct: 0, label: 'INCEPTION BASELINE' },
-    ];
+    // Unverified dollar equity: compute pure normalized index (Base 100.0) for chart shape only
+    let idxVal = 100.0;
+    const pts: ScrubPoint[] = [{ index: 0, equity: 100.0, returnPct: 0, label: 'INDEX BASE (100.0)' }];
     recent.forEach((t, idx) => {
-      eq = eq * (1 + (t.pnl_pct || 0) / 100);
-      const retPct = ((eq - baseEquity) / baseEquity) * 100;
+      idxVal = idxVal * (1 + (t.pnl_pct || 0) / 100);
       pts.push({
         index: idx + 1,
-        equity: Number(eq.toFixed(2)),
-        returnPct: Number(retPct.toFixed(2)),
+        equity: Number(idxVal.toFixed(2)),
+        returnPct: Number((idxVal - 100.0).toFixed(2)),
         label: `TRADE #${idx + 1} · ${t.symbol} (${t.exit_reason || 'CLOSED'})`,
       });
     });
     return pts;
-  }, [paperStats, dailyPnl]);
+  }, [paperStats, verifiedCurrentEquity, sessionBaseEquity, overview]);
 
   const activePoint =
     scrubIndex !== null && series[scrubIndex]
       ? series[scrubIndex]
       : series[series.length - 1];
 
-  const displayedEquity = activePoint?.equity ?? baseEquity + dailyPnl;
+  const displayedEquity = hasVerifiedEquity ? (activePoint?.equity ?? verifiedCurrentEquity!) : 0;
   const displayedReturnPct = activePoint?.returnPct ?? totalPnlPct;
-  const displayedDeltaUsd = displayedEquity - baseEquity;
+  const displayedDeltaUsd =
+    hasVerifiedEquity && sessionBaseEquity !== null
+      ? scrubIndex !== null && series[0]
+        ? displayedEquity - series[0].equity
+        : dailyPnl
+      : dailyPnl;
 
   const wholeDollars = Math.floor(Math.abs(displayedEquity)).toLocaleString('en-US');
   const cents = Math.round((Math.abs(displayedEquity) % 1) * 100)
@@ -143,13 +211,13 @@ export const CockpitBar: React.FC<CockpitBarProps> = ({
 
   return (
     <section
-      className="editorial-section"
+      className="liquid-glass-panel editorial-section"
       aria-label="Portfolio Equity Monument & Telemetry Ribbon"
       style={{
         display: 'flex',
         flexDirection: 'column',
         gap: '18px',
-        paddingTop: '16px',
+        padding: '20px 24px',
       }}
     >
       {!wsConnected && (
@@ -221,6 +289,10 @@ export const CockpitBar: React.FC<CockpitBarProps> = ({
             <div className="equity-monument tabular-nums">
               {loading ? (
                 '—'
+              ) : !hasVerifiedEquity ? (
+                <span style={{ fontSize: '36px', color: 'var(--color-warn)', fontFamily: 'var(--font-mono)' }}>
+                  UNVERIFIED
+                </span>
               ) : (
                 <>
                   {displayedEquity < 0 ? '-$' : '$'}
@@ -229,6 +301,23 @@ export const CockpitBar: React.FC<CockpitBarProps> = ({
                 </>
               )}
             </div>
+
+            {!hasVerifiedEquity && !loading && (
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: 'var(--color-warn)',
+                  background: 'var(--color-warn-bg)',
+                  border: '1px solid var(--color-warn-border)',
+                  padding: '3px 8px',
+                  borderRadius: 'var(--radius-xs)',
+                }}
+              >
+                ACCOUNT EQUITY TELEMETRY OFFLINE · FAIL-CLOSED
+              </span>
+            )}
 
             <div
               className="tabular-nums"

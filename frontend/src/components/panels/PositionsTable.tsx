@@ -361,11 +361,11 @@ export const PositionsTable: React.FC = () => {
                 setOrderDrawerSymbol(open[0]?.symbol || 'EURUSD');
                 setIsOrderDrawerOpen(true);
               }}
-              className="editorial-btn editorial-btn-primary"
+              className="editorial-btn"
               style={{ padding: '4px 10px' }}
-              title="Create and execute a new manual market or limit trade order"
+              title="Open quick discretionary ticket for selected instrument"
             >
-              + NEW ORDER
+              QUICK TICKET
             </button>
 
             {open.length > 0 && (

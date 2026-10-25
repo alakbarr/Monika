@@ -77,10 +77,14 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
       <header
+        className="liquid-glass-chrome"
         style={{
           height: 'var(--header-height)',
-          background: 'var(--color-canvas)',
-          borderBottom: '1px solid var(--color-rule)',
+          background: 'var(--color-glass-chrome)',
+          backdropFilter: 'var(--glass-blur-chrome)',
+          WebkitBackdropFilter: 'var(--glass-blur-chrome)',
+          borderBottom: '1px solid var(--color-glass-border)',
+          boxShadow: 'var(--shadow-glass-chrome)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',

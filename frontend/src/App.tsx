@@ -147,12 +147,18 @@ const App: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--color-canvas)' }}>
-      {/* Tactile Matte Architectural Paper Grain (3.2% SVG feTurbulence) */}
+      {/* Tactile Matte Architectural Paper Grain & Optical Liquid Glass Refraction Filter */}
       <svg className="paper-grain-overlay" width="100%" height="100%" aria-hidden="true">
-        <filter id="monika-editorial-grain">
-          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" />
-          <feColorMatrix type="saturate" values="0" />
-        </filter>
+        <defs>
+          <filter id="monika-editorial-grain">
+            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" />
+            <feColorMatrix type="saturate" values="0" />
+          </filter>
+          <filter id="monika-liquid-refraction" x="-10%" y="-10%" width="120%" height="120%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="2" result="refractNoise" />
+            <feDisplacementMap in="SourceGraphic" in2="refractNoise" scale="4" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
         <rect width="100%" height="100%" filter="url(#monika-editorial-grain)" />
       </svg>
 
@@ -231,7 +237,7 @@ const App: React.FC = () => {
                     }}
                   >
                     <span className="section-kicker">
-                      MULTI-ASSET SMC STRUCTURE &amp; TIMESFM FORECAST CONE // {selectedSymbol || 'EURUSD'}
+                      MULTI-ASSET SMC STRUCTURE &amp; TIMESFM FORECAST CONE · {selectedSymbol || 'EURUSD'}
                     </span>
                   </div>
                   <CandlestickChart

@@ -40,6 +40,10 @@ class TestDashboardAPI:
         assert response.status_code == 200
         data = response.json()
         assert "agent_status" in data
+        assert "account_balance" in data
+        assert "account_equity" in data
+        assert data["account_balance"] is None
+        assert data["account_equity"] is None
 
     @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_positions(self, mock_session_local):
@@ -202,6 +206,8 @@ class TestDashboardAPI:
         assert response2.status_code == 200
         data2 = response2.json()
         assert data2["daily_pnl_pct"] == 5.0
+        assert data2["account_balance"] == 1000.0
+        assert data2["account_equity"] == 1050.0
 
     @patch("monika.infrastructure.database.db.AsyncSessionLocal")
     def test_get_vix(self, mock_session_local):

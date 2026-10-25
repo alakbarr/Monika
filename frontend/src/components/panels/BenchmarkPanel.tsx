@@ -241,25 +241,31 @@ export const BenchmarkPanel: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* Top Header Card */}
+      {/* Swiss Liquid Glass Masthead */}
       <div
-        className="win-window ledger-card"
+        className="liquid-glass-panel"
         style={{
-          background: 'var(--color-paper-raised)',
-          border: '1px solid var(--color-rule)',
-          borderRadius: 'var(--radius-card)',
-          boxShadow: 'var(--shadow-card)',
           padding: '16px 20px',
+          borderLeft: '3px solid var(--color-brass)',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 'var(--text-title-md)', fontFamily: 'var(--font-heading)', color: 'var(--color-ink)' }}>
+            <span className="editorial-kicker">
+              I. EMPIRICAL MODEL EVALUATION &amp; ROUTING LAB
+            </span>
+            <h2
+              style={{
+                margin: '2px 0 0 0',
+                fontSize: 'var(--text-title-lg)',
+                fontFamily: 'var(--font-display)',
+                fontWeight: 400,
+                letterSpacing: '-0.02em',
+                color: 'var(--color-ink)',
+              }}
+            >
               LLM Role Benchmark &amp; Model Comparison Lab
             </h2>
-            <p style={{ margin: '4px 0 0', fontSize: 'var(--text-body-sm)', color: 'var(--color-ink-soft)' }}>
-              Uji model-model pilihanmu pada task_role spesifik secara nyata. Bandingkan skor kualitas, latensi, serta biaya dengan atau tanpa KV-cache hit.
-            </p>
           </div>
 
           {/* Navigation View Tabs */}

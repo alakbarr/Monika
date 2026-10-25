@@ -25,8 +25,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/lightweight-charts') || id.includes('node_modules/recharts')) {
-            return 'vendor-charts';
+          if (id.includes('node_modules/lightweight-charts')) {
+            return 'vendor-tv-charts';
+          }
+          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) {
+            return 'vendor-recharts';
           }
           if (id.includes('node_modules/@xterm')) {
             return 'vendor-terminal';

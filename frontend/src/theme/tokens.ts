@@ -8,12 +8,18 @@
 import type { ITheme } from '@xterm/xterm';
 
 export const colors = {
-  // Architectural Surfaces
+  // Architectural Surfaces & Swiss Liquid Glass v4.0
   canvas: 'var(--color-canvas)',
   well: 'var(--color-well)',
   wellHover: 'var(--color-well-hover)',
   wellSunken: 'var(--color-well-sunken)',
   surfaceElevated: 'var(--color-surface-elevated)',
+  glassSurface: 'var(--color-glass-surface)',
+  glassSurfaceElevated: 'var(--color-glass-surface-elevated)',
+  glassChrome: 'var(--color-glass-chrome)',
+  glassDock: 'var(--color-glass-dock)',
+  glassBorder: 'var(--color-glass-border)',
+  glassSpecularTop: 'var(--color-glass-specular-top)',
   dockBg: 'var(--color-dock-bg)',
   dockFg: 'var(--color-dock-fg)',
 

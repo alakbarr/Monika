@@ -3,25 +3,28 @@ name: monika-design-system
 description: Authoritative design specification for the Monika Autonomous Quantitative Trading Desk featuring the original Monika Swiss Editorial & Unboxed Sculptural architecture. Reference whenever editing UI components, layouts, or stylesheets. Interactive visual specification located at docs/design_system.html.
 ---
 
-# DESIGN.md — Monika Design System Specification (v3.0)
-### Original Monika Visual & Typographic Grammar · Swiss Editorial & Unboxed Sculptural · Dual Mode
+# DESIGN.md — Monika Design System Specification (v4.0)
+### Original Monika Visual & Typographic Grammar · Swiss Liquid Glass & Editorial Precision · Dual Mode
 
-> "Where autonomous quantitative rigor meets editorial calm — zero boxy cards, zero decorative noise, and 100% typographic and numerical truth."
+> "Where autonomous quantitative rigor meets optical crystal clarity — zero AI-slop neon gradients, zero fail-open fallbacks, and 100% typographic and numerical truth."
 
-> **Interactive Reference**: Open [`docs/design_system.html`](docs/design_system.html) in any browser to inspect the live interactive Light (`#FFFFFF`) and Dark (`#121316`) surface spectrum, typographic hierarchy, sculptural equity monument, and borderless ledger primitives.
+> **Interactive Reference**: Open [`docs/design_system.html`](docs/design_system.html) in any browser to inspect the live interactive Light (`#FFFFFF`) Frosted Quartz and Dark (`#121316`) Smoked Obsidian Liquid Glass surface spectrum, specular rim lighting, typographic hierarchy, sculptural equity monument, and borderless ledger primitives.
 
 ---
 
 ## 1. Design Philosophy & Original Monika Identity
 
-Monika establishes its own original **Swiss Editorial & Unboxed Sculptural** visual architecture engineered specifically for institutional quantitative trading and autonomous multi-agent reasoning:
+Monika establishes its own original **Swiss Liquid Glass & Editorial Precision** visual architecture engineered specifically for institutional quantitative trading and autonomous multi-agent reasoning:
 
-1. **Unboxed Open Canvas (High Data-Ink Ratio)**: Data sits directly on the architectural canvas separated by exposed `1px solid var(--color-rule)` hairlines, generous whitespace, and subtle Swiss crosshair (`+`) intersections. Nested card containers, thick outer borders, and ornamental shadows are strictly prohibited.
-2. **Sculptural Hero Equity Monument**: Portfolio net liquidation value is rendered at `64px` (`Plus Jakarta Sans` 700, `tabular-nums`) with muted cents (`.50`) and an interactive scrubbing equity curve that updates the monument and return delta live on cursor scrub.
-3. **Achromatic Discipline (90% Achromatic, 10% Signal)**: Focus rings, active buttons, and chapter tabs use pure black/white inversion (`var(--color-ink)` / `var(--color-on-inverted)`). Chromatic color is strictly reserved for financial truth and safety state: Emerald Gain (`--color-gain`), Crimson Loss/Halt (`--color-loss`), and Amber Paper/Warning (`--color-warn`).
+1. **Three-Plane Optical Material Hierarchy (Swiss Liquid Glass)**:
+   - **Plane 0 — Ambient Optical Canvas**: Subtle radial luminance pools (`--glass-ambient-canvas`) beneath the workspace provide depth for floating crystal surfaces to refract.
+   - **Plane 1 — Machined Crystal Wells (`.liquid-glass-panel`, `.ledger-card`, `.cockpit-bar`)**: Translucent crystal surfaces (`--color-glass-surface`) with saturated optical blur (`backdrop-filter: blur(16px) saturate(175%)`), `1px solid var(--color-glass-border)`, and physical **Specular Rim Lighting** (`inset 0 1px 0 0 var(--color-glass-specular-top)`).
+   - **Plane 2 — Floating Liquid Glass Chrome (`.liquid-glass-chrome`, `.floating-dock-bar`, modals & drawers)**: High-refraction Liquid Glass (`backdrop-filter: blur(24px) saturate(200%)`), dual-edge specular bevels, and SVG optical refraction (`#monika-liquid-refraction`).
+2. **Sculptural Hero Equity Monument (Strict Fail-Closed Telemetry)**: Portfolio net liquidation value is rendered at `56px–64px` (`tabular-nums`) with muted cents (`.80`) and an interactive scrubbing equity curve. If verified account equity is unavailable, the monument fails closed (`UNVERIFIED`) and never displays fabricated fallback numbers.
+3. **Achromatic Discipline (90% Achromatic Crystal, 10% Signal)**: Focus rings, active buttons, and chapter tabs use pure black/white inversion (`var(--color-ink)` / `var(--color-on-inverted)`). Chromatic color is strictly reserved for financial truth and safety state: Emerald Gain (`--color-gain`), Crimson Loss/Halt (`--color-loss`), and Amber Paper/Warning (`--color-warn`).
 4. **Tri-Font Editorial System**:
    - `Instrument Serif` (`--font-editorial`): Chapter titles, narrative synthesis headlines, and Bull/Bear dialectic pull-quotes.
-   - `Plus Jakarta Sans` (`--font-sans`): Sculptural equity monuments, UI labels, and readable prose.
+   - `Plus Jakarta Sans` (`--font-sans`): UI labels, structural headers, and readable prose.
    - `JetBrains Mono` (`--font-mono`): Tabular financial figures (`tabular-nums`), tickets, latencies, and SHA-256 hashes.
 
 ---

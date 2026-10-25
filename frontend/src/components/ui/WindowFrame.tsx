@@ -39,7 +39,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
   actions,
   toolbar,
   statusBar,
-  padding = '16px 0',
+  padding = '16px 18px',
   defaultCollapsed = false,
   onFocus,
 }) => {
@@ -48,20 +48,24 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
 
   return (
     <section
-      className={`editorial-section swiss-crosshair ${className}`}
+      className={`liquid-glass-panel editorial-section swiss-crosshair ${className}`}
       onClick={onFocus}
       style={{
         display: 'flex',
         flexDirection: 'column',
-        background: isMaximized ? 'var(--color-canvas)' : 'transparent',
-        borderTop: '1px solid var(--color-rule)',
+        background: isMaximized ? 'var(--color-glass-surface-elevated)' : 'var(--color-glass-surface)',
+        backdropFilter: 'var(--glass-blur-panel)',
+        WebkitBackdropFilter: 'var(--glass-blur-panel)',
+        border: '1px solid var(--color-glass-border)',
+        borderRadius: 'var(--radius-card)',
+        boxShadow: 'var(--shadow-glass-panel)',
         ...(isMaximized
           ? {
               position: 'fixed',
               inset: '16px',
               zIndex: 999,
               padding: '24px',
-              border: '1px solid var(--color-rule-strong)',
+              border: '1px solid var(--color-glass-border-strong)',
               boxShadow: 'var(--shadow-modal)',
             }
           : {}),
@@ -72,7 +76,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
       <header
         className="editorial-section-header"
         style={{
-          padding: '12px 0',
+          padding: '12px 18px',
           borderBottom: '1px solid var(--color-rule)',
           display: 'flex',
           alignItems: 'center',

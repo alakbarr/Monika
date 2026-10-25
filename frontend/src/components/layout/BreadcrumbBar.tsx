@@ -24,9 +24,12 @@ export const BreadcrumbBar: React.FC = () => {
       role="navigation"
       aria-label="Chapter Navigation"
       style={{
-        background: 'var(--color-canvas)',
-        borderBottom: '1px solid var(--color-rule)',
-        padding: '18px 32px 0 32px',
+        background: 'var(--color-glass-surface)',
+        backdropFilter: 'var(--glass-blur-panel)',
+        WebkitBackdropFilter: 'var(--glass-blur-panel)',
+        borderBottom: '1px solid var(--color-glass-border)',
+        boxShadow: 'inset 0 1px 0 0 var(--color-glass-specular-top)',
+        padding: '16px 32px 0 32px',
       }}
     >
       <div
@@ -83,6 +86,36 @@ export const BreadcrumbBar: React.FC = () => {
             >
               — {activeWorkspace.subtitle}
             </span>
+          </div>
+
+          {/* Quick Chapter Switcher Ribbon (I - V) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+            {WORKSPACES.map((w) => {
+              const isCurrentChapter = activeWorkspace.id === w.id;
+              return (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => handleSelectSubTab(w.defaultTab)}
+                  style={{
+                    height: '26px',
+                    padding: '0 10px',
+                    background: isCurrentChapter ? 'var(--color-ink)' : 'var(--color-well)',
+                    color: isCurrentChapter ? 'var(--color-on-inverted)' : 'var(--color-ink-secondary)',
+                    border: '1px solid var(--color-glass-border)',
+                    borderRadius: 'var(--radius-pill)',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'var(--text-xs)',
+                    fontWeight: isCurrentChapter ? 600 : 500,
+                    letterSpacing: '0.05em',
+                    cursor: 'pointer',
+                    transition: 'all 120ms ease',
+                  }}
+                >
+                  {w.roman}. {w.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
