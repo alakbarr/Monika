@@ -10,6 +10,7 @@ interface GraphNodeProps {
   pos: { x: number; y: number };
   nodeWidth: number;
   nodeHeight: number;
+  totalDurationMs?: number;
 }
 
 export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
@@ -19,10 +20,16 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
   pos,
   nodeWidth,
   nodeHeight,
+  totalDurationMs = 0,
 }) => {
   const Icon = getNodeIcon(node.id);
   const statusColor = getStatusColor(node.status);
   const stageKicker = getStageKicker(node.id, node.stage);
+  const isFortressGate = node.id === 'risk_gate';
+  const durationSharePct =
+    totalDurationMs > 0 && node.duration_ms > 0
+      ? Math.min(100, Math.max(2, Math.round((node.duration_ms / totalDurationMs) * 100)))
+      : 0;
 
   return (
     <g
@@ -41,22 +48,59 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
         height={nodeHeight}
         rx="0"
         fill="var(--color-paper-raised)"
-        stroke={isSelected ? 'var(--color-ink)' : node.status === 'skipped' ? 'var(--color-ink-muted)' : 'var(--color-rule-strong)'}
-        strokeWidth={isSelected ? 1.5 : 1}
+        stroke={
+          isSelected
+            ? 'var(--color-ink)'
+            : isFortressGate
+              ? 'var(--color-brass)'
+              : node.status === 'skipped'
+                ? 'var(--color-ink-muted)'
+                : 'var(--color-rule-strong)'
+        }
+        strokeWidth={isSelected ? 1.5 : isFortressGate ? 1.25 : 1}
         strokeDasharray={node.status === 'skipped' ? '4 3' : undefined}
         opacity={node.status === 'skipped' ? 0.78 : 1}
       />
+
+      {/* Inner Mechanical Fortress Double-Hairline Perimeter */}
+      {isFortressGate && (
+        <rect
+          x="3"
+          y="3"
+          width={nodeWidth - 6}
+          height={nodeHeight - 6}
+          rx="0"
+          fill="none"
+          stroke="var(--color-brass)"
+          strokeWidth="0.75"
+          strokeDasharray="3 2"
+          opacity="0.55"
+        />
+      )}
 
       {/* Top Hairline Status Indicator */}
       <rect
         x="0"
         y="0"
         width={nodeWidth}
-        height="2"
+        height="2.5"
         rx="0"
         fill={isSelected ? 'var(--color-accent)' : statusColor}
         opacity={node.status === 'skipped' ? 0.5 : 1}
       />
+
+      {/* Bottom Latency Waterfall Proportion Bar */}
+      {durationSharePct > 0 && node.status !== 'skipped' && (
+        <rect
+          x="0"
+          y={nodeHeight - 2.5}
+          width={Math.round((nodeWidth * durationSharePct) / 100)}
+          height="2.5"
+          rx="0"
+          fill={statusColor}
+          opacity="0.45"
+        />
+      )}
 
       {/* Swiss Crosshair Corner Tick (Top-Left) */}
       <path
@@ -66,7 +110,7 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
       />
 
       {/* Node Schematic Content */}
-      <foreignObject x="10" y="10" width={nodeWidth - 20} height={nodeHeight - 18}>
+      <foreignObject x="10" y="9" width={nodeWidth - 20} height={nodeHeight - 17}>
         <div
           style={{
             display: 'flex',
@@ -84,7 +128,8 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
                 style={{
                   fontSize: '11px',
                   letterSpacing: '0.04em',
-                  color: 'var(--color-ink-muted)',
+                  color: isFortressGate ? 'var(--color-brass)' : 'var(--color-ink-muted)',
+                  fontWeight: isFortressGate ? 600 : 400,
                   textTransform: 'uppercase',
                   whiteSpace: 'nowrap',
                 }}
@@ -118,7 +163,7 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
 
             {/* Title Row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-              <Icon size={13} color={statusColor} style={{ flexShrink: 0 }} />
+              <Icon size={13} color={isFortressGate ? 'var(--color-brass)' : statusColor} style={{ flexShrink: 0 }} />
               <span
                 style={{
                   fontFamily: 'var(--font-display)',
@@ -159,7 +204,9 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
               }}
             >
               <Clock size={10} />
-              {node.status === 'skipped' ? 'BYPASSED' : `${(node.duration_ms / 1000).toFixed(2)}s`}
+              {node.status === 'skipped'
+                ? 'BYPASSED'
+                : `${(node.duration_ms / 1000).toFixed(2)}s${durationSharePct > 0 ? ` (${durationSharePct}%)` : ''}`}
             </span>
 
             <span
@@ -168,10 +215,18 @@ export const GraphNodeComponent: React.FC<GraphNodeProps> = ({
                 fontSize: '11px',
                 fontFamily: 'var(--font-precision)',
                 fontWeight: 600,
-                color: node.tokens.total > 0 ? 'var(--color-ink)' : 'var(--color-ink-muted)',
+                color: isFortressGate
+                  ? 'var(--color-brass)'
+                  : node.tokens.total > 0
+                    ? 'var(--color-ink)'
+                    : 'var(--color-ink-muted)',
               }}
             >
-              {node.tokens.total > 0 ? `${(node.tokens.total / 1000).toFixed(1)}k tok` : 'DETERMINISTIC'}
+              {isFortressGate
+                ? 'FAIL-CLOSED'
+                : node.tokens.total > 0
+                  ? `${(node.tokens.total / 1000).toFixed(1)}k tok`
+                  : 'DETERMINISTIC'}
             </span>
           </div>
         </div>

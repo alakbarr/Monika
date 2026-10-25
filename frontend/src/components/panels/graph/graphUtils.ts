@@ -40,19 +40,23 @@ export const getNodeIcon = (id: string) => {
 export const getStageKicker = (id: string, fallbackStage?: string): string => {
   switch (id) {
     case 'prefetch_data':
+      return '01 · INGESTION';
     case 'fundamental_brief':
-      return 'I · MACRO';
+      return '02 · MACRO BRIEF';
     case 'per_asset_analysis':
-      return 'II · SYNTHESIS';
+      return '03 · SYNTHESIS';
     case 'bull_advocate':
+      return '04A · BULL THESIS';
     case 'bear_dissent':
+      return '04B · BEAR DISSENT';
     case 'debate_judge':
-      return 'III · DIALECTIC';
+      return '05 · CHIEF JUDGE';
     case 'reflection':
+      return '06 · MEMORY GATE';
     case 'risk_gate':
-      return 'IV · FORTRESS';
+      return '07 · RISK FORTRESS';
     case 'execution':
-      return 'V · EXECUTION';
+      return '08 · MT5 DISPATCH';
     default:
       return fallbackStage ? `STAGE · ${fallbackStage.toUpperCase()}` : 'STAGE · NODE';
   }
@@ -74,28 +78,88 @@ export const getStatusColor = (status: GraphNodeStatus) => {
   }
 };
 
+export interface StageZoneSpec {
+  id: string;
+  title: string;
+  subtitle: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  isFortress?: boolean;
+}
+
+export const STAGE_ZONES_COMPACT: StageZoneSpec[] = [
+  {
+    id: 'stage-1',
+    title: 'STAGE I · MACRO & INGESTION',
+    subtitle: 'PREFETCH + FUNDAMENTAL BRIEF',
+    x: 16,
+    y: 28,
+    width: 228,
+    height: 436,
+  },
+  {
+    id: 'stage-2',
+    title: 'STAGE II · SYNTHESIS',
+    subtitle: 'SMC & QUANT ALPHA',
+    x: 266,
+    y: 28,
+    width: 228,
+    height: 436,
+  },
+  {
+    id: 'stage-3',
+    title: 'STAGE III · DIALECTIC ARBITRATION',
+    subtitle: 'ADVERSARIAL BULL / BEAR + REBUTTAL LOOP + CHIEF JUDGE',
+    x: 516,
+    y: 28,
+    width: 468,
+    height: 436,
+  },
+  {
+    id: 'stage-4',
+    title: 'STAGE IV · FORTRESS',
+    subtitle: 'MEMORY + DETERMINISTIC GATE',
+    x: 1006,
+    y: 28,
+    width: 228,
+    height: 436,
+    isFortress: true,
+  },
+  {
+    id: 'stage-5',
+    title: 'STAGE V · EXECUTION',
+    subtitle: 'MT5 SOCKET DISPATCH',
+    x: 1256,
+    y: 28,
+    width: 228,
+    height: 436,
+  },
+];
+
 export const COMPACT_POSITIONS: Record<string, { x: number; y: number }> = {
-  prefetch_data: { x: 40, y: 120 },
-  fundamental_brief: { x: 40, y: 290 },
-  per_asset_analysis: { x: 290, y: 205 },
-  bull_advocate: { x: 540, y: 80 },
-  bear_dissent: { x: 540, y: 330 },
-  debate_judge: { x: 790, y: 205 },
-  reflection: { x: 1045, y: 80 },
-  risk_gate: { x: 1045, y: 205 },
-  execution: { x: 1045, y: 330 },
+  prefetch_data: { x: 28, y: 78 },
+  fundamental_brief: { x: 28, y: 336 },
+  per_asset_analysis: { x: 278, y: 207 },
+  bull_advocate: { x: 528, y: 78 },
+  bear_dissent: { x: 528, y: 336 },
+  debate_judge: { x: 768, y: 207 },
+  reflection: { x: 1018, y: 78 },
+  risk_gate: { x: 1018, y: 336 },
+  execution: { x: 1268, y: 336 },
 };
 
 export const WIDE_POSITIONS: Record<string, { x: number; y: number }> = {
-  prefetch_data: { x: 40, y: 240 },
-  fundamental_brief: { x: 320, y: 240 },
-  per_asset_analysis: { x: 600, y: 240 },
-  bull_advocate: { x: 890, y: 110 },
-  bear_dissent: { x: 890, y: 370 },
-  debate_judge: { x: 1180, y: 240 },
-  reflection: { x: 1470, y: 240 },
-  risk_gate: { x: 1750, y: 240 },
-  execution: { x: 2030, y: 240 },
+  prefetch_data: { x: 40, y: 220 },
+  fundamental_brief: { x: 330, y: 220 },
+  per_asset_analysis: { x: 620, y: 220 },
+  bull_advocate: { x: 910, y: 100 },
+  bear_dissent: { x: 910, y: 340 },
+  debate_judge: { x: 1200, y: 220 },
+  reflection: { x: 1490, y: 220 },
+  risk_gate: { x: 1780, y: 220 },
+  execution: { x: 2070, y: 220 },
 };
 
 export const CANONICAL_POSITIONS = COMPACT_POSITIONS;

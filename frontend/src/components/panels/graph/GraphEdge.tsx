@@ -43,16 +43,16 @@ export const GraphEdge: React.FC<GraphEdgeProps> = ({
     c1x = startX;
     c1y = startY + dy * 0.45;
     c2x = endX;
-    c2y = startY + dy * 0.55;
+    c2y = endY - dy * 0.45;
   } else if (isHorizontalForward) {
     startX = srcPos.x + nodeWidth;
     startY = srcPos.y + nodeHeight / 2;
     endX = dstPos.x;
     endY = dstPos.y + nodeHeight / 2;
     const dx = endX - startX;
-    c1x = startX + Math.max(dx * 0.45, 25);
+    c1x = startX + dx * 0.5;
     c1y = startY;
-    c2x = startX + Math.max(dx * 0.55, 35);
+    c2x = endX - dx * 0.5;
     c2y = endY;
   } else {
     startX = srcPos.x + nodeWidth / 2;
@@ -89,17 +89,66 @@ export const GraphEdge: React.FC<GraphEdgeProps> = ({
     ? 'url(#arrow-skipped)'
     : 'url(#arrow-pending)';
 
+  // Optional semantic gate badge at midpoint
+  const midX = (startX + endX) / 2;
+  const midY = (startY + endY) / 2;
+  let edgeBadge: string | null = null;
+  let badgeOffsetY = 0;
+  if (fromId === 'risk_gate' && toId === 'execution') {
+    edgeBadge = dstNode?.status === 'skipped' ? 'HALTED' : 'APPROVED';
+    badgeOffsetY = -14;
+  } else if (fromId === 'reflection' && toId === 'risk_gate') {
+    edgeBadge = 'PROPOSAL';
+  } else if (fromId === 'prefetch_data' && toId === 'fundamental_brief') {
+    edgeBadge = 'CONTEXT';
+  }
+
   return (
     <g key={`${fromId}-${toId}`}>
       <path
         d={pathData}
         fill="none"
         stroke={strokeColor}
-        strokeWidth={isRunning ? 1.75 : 1.15}
-        strokeOpacity={isDone ? 0.9 : isRunning ? 1 : isSkipped ? 0.4 : 0.65}
+        strokeWidth={isRunning ? 1.85 : 1.25}
+        strokeOpacity={isDone ? 0.92 : isRunning ? 1 : isSkipped ? 0.42 : 0.68}
         strokeDasharray={isRunning ? '5 3' : isSkipped ? '3 3' : undefined}
         markerEnd={markerId}
       />
+      {/* Source Terminal Port */}
+      <circle
+        cx={startX}
+        cy={startY}
+        r={2.5}
+        fill="var(--color-paper-raised)"
+        stroke={strokeColor}
+        strokeWidth={1.25}
+      />
+      {edgeBadge && (
+        <g transform={`translate(${midX}, ${midY + badgeOffsetY})`}>
+          <rect
+            x={-26}
+            y={-7.5}
+            width={52}
+            height={15}
+            fill="var(--color-paper-raised)"
+            stroke={strokeColor}
+            strokeWidth={0.85}
+            opacity={0.96}
+          />
+          <text
+            x={0}
+            y={3}
+            textAnchor="middle"
+            fill={isDone ? 'var(--color-ink)' : 'var(--color-ink-muted)'}
+            fontSize="8"
+            fontWeight="600"
+            letterSpacing="0.06em"
+            fontFamily="var(--font-precision)"
+          >
+            {edgeBadge}
+          </text>
+        </g>
+      )}
     </g>
   );
 };

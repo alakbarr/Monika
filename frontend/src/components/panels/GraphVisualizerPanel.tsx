@@ -13,11 +13,16 @@ import { GraphControls } from './graph/GraphControls';
 import { GraphEdge } from './graph/GraphEdge';
 import { GraphNodeComponent } from './graph/GraphNode';
 import { GraphInspector } from './graph/GraphInspector';
-import { computeGraphLayout, COMPACT_POSITIONS, WIDE_POSITIONS } from './graph/graphUtils';
+import {
+  computeGraphLayout,
+  COMPACT_POSITIONS,
+  WIDE_POSITIONS,
+  STAGE_ZONES_COMPACT,
+} from './graph/graphUtils';
 
 // Visual canvas dimensions & node geometry
-const NODE_WIDTH = 220;
-const NODE_HEIGHT = 104;
+const NODE_WIDTH = 204;
+const NODE_HEIGHT = 110;
 
 export const GraphVisualizerPanel: React.FC = () => {
   const [graphData, setGraphData] = useState<GraphStateResponse | null>(null);
@@ -86,25 +91,27 @@ export const GraphVisualizerPanel: React.FC = () => {
     });
 
     if (mode === 'compact') {
-      minX = Math.min(minX, 30);
-      minY = Math.min(minY, 35);
-      maxX = Math.max(maxX, 1290);
-      maxY = Math.max(maxY, 495);
+      minX = Math.min(minX, 12);
+      minY = Math.min(minY, 24);
+      maxX = Math.max(maxX, 1490);
+      maxY = Math.max(maxY, 470);
     }
 
-    const padding = 24;
+    const padding = 12;
     const graphWidth = (maxX - minX) + padding * 2;
+    const topReserved = 42;
+    const usableHeight = Math.max(containerHeight - topReserved, 240);
     const graphHeight = (maxY - minY) + padding * 2;
 
     const scaleX = containerWidth / graphWidth;
-    const scaleY = containerHeight / graphHeight;
+    const scaleY = usableHeight / graphHeight;
     const optimalScale = Math.min(scaleX, scaleY, 1.15);
     const clampedScale = Math.max(optimalScale, 0.35);
 
     const scaledGraphWidth = (maxX - minX) * clampedScale;
     const scaledGraphHeight = (maxY - minY) * clampedScale;
     const offsetX = (containerWidth - scaledGraphWidth) / 2 - minX * clampedScale;
-    const offsetY = (containerHeight - scaledGraphHeight) / 2 - minY * clampedScale;
+    const offsetY = topReserved + (usableHeight - scaledGraphHeight) / 2 - minY * clampedScale;
 
     setTransform({
       x: Math.round(offsetX),
@@ -461,9 +468,9 @@ export const GraphVisualizerPanel: React.FC = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: selectedNode ? '1fr 380px' : '1fr',
+          gridTemplateColumns: selectedNode ? '1fr 336px' : '1fr',
           gap: '14px',
-          height: '510px',
+          height: '450px',
           transition: 'all 0.2s ease-out',
         }}
       >
@@ -550,14 +557,164 @@ export const GraphVisualizerPanel: React.FC = () => {
 
             {/* Root SVG Transform Group */}
             <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`}>
-              {/* Subgraph Zone III: Dialectic Arbitration */}
-              {graphData && graphData.nodes && graphData.nodes.length > 0 && (
+              {/* 5-Column Architectural Swimlane Blueprint (Compact Mode) */}
+              {graphData && graphData.nodes && graphData.nodes.length > 0 && layoutMode === 'compact' && (
+                <>
+                  {STAGE_ZONES_COMPACT.map(zone => (
+                    <g key={zone.id}>
+                      <rect
+                        x={zone.x}
+                        y={zone.y}
+                        width={zone.width}
+                        height={zone.height}
+                        rx="0"
+                        fill={zone.id === 'stage-3' || zone.isFortress ? 'var(--color-subgraph-bg)' : 'transparent'}
+                        stroke={zone.isFortress ? 'var(--color-brass)' : 'var(--color-rule-strong)'}
+                        strokeWidth={zone.isFortress ? '1.15' : '1'}
+                        strokeDasharray="4 4"
+                      />
+                      {/* Swimlane Header Band */}
+                      <line
+                        x1={zone.x}
+                        y1={zone.y + 34}
+                        x2={zone.x + zone.width}
+                        y2={zone.y + 34}
+                        stroke={zone.isFortress ? 'var(--color-brass)' : 'var(--color-rule)'}
+                        strokeWidth="1"
+                        strokeDasharray="2 2"
+                      />
+                      <text
+                        x={zone.x + 12}
+                        y={zone.y + 16}
+                        fill={zone.isFortress ? 'var(--color-brass)' : 'var(--color-ink)'}
+                        fontSize="9.5"
+                        fontWeight="600"
+                        letterSpacing="0.1em"
+                        fontFamily="var(--font-precision)"
+                      >
+                        {zone.title}
+                      </text>
+                      <text
+                        x={zone.x + 12}
+                        y={zone.y + 28}
+                        fill="var(--color-ink-muted)"
+                        fontSize="8"
+                        letterSpacing="0.08em"
+                        fontFamily="var(--font-precision)"
+                      >
+                        {zone.subtitle}
+                      </text>
+                    </g>
+                  ))}
+
+                  {/* Cyclic Rebuttal Loop Indicator between Bull Advocate & Bear Dissent */}
+                  <g>
+                    <line
+                      x1={630}
+                      y1={188}
+                      x2={630}
+                      y2={336}
+                      stroke="var(--color-brass)"
+                      strokeWidth="1.15"
+                      strokeDasharray="3 3"
+                      markerStart="url(#arrow-running)"
+                      markerEnd="url(#arrow-running)"
+                    />
+                    <rect
+                      x={562}
+                      y={252}
+                      width={136}
+                      height={20}
+                      fill="var(--color-paper-raised)"
+                      stroke="var(--color-brass)"
+                      strokeWidth="0.9"
+                    />
+                    <text
+                      x={630}
+                      y={265}
+                      textAnchor="middle"
+                      fill="var(--color-brass)"
+                      fontSize="8.5"
+                      fontWeight="600"
+                      letterSpacing="0.08em"
+                      fontFamily="var(--font-precision)"
+                    >
+                      REBUTTAL LOOP (≤2x)
+                    </text>
+                  </g>
+
+                  {/* Stage V Top Governance & Safety Contract Stamp */}
+                  <g transform="translate(1268, 78)">
+                    <rect
+                      x="0"
+                      y="0"
+                      width={NODE_WIDTH}
+                      height={NODE_HEIGHT}
+                      fill="var(--color-paper)"
+                      stroke="var(--color-rule)"
+                      strokeWidth="1"
+                      strokeDasharray="3 3"
+                    />
+                    <text
+                      x="12"
+                      y="22"
+                      fill="var(--color-ink-muted)"
+                      fontSize="9"
+                      fontWeight="600"
+                      letterSpacing="0.1em"
+                      fontFamily="var(--font-precision)"
+                    >
+                      SAFETY INVARIANT · §1
+                    </text>
+                    <text
+                      x="12"
+                      y="44"
+                      fill="var(--color-ink)"
+                      fontSize="14"
+                      fontFamily="var(--font-display)"
+                    >
+                      AI Proposes, Fortress Disposes
+                    </text>
+                    <text
+                      x="12"
+                      y="64"
+                      fill="var(--color-ink-soft)"
+                      fontSize="9.5"
+                      fontFamily="var(--font-precision)"
+                    >
+                      Zero direct LLM socket access.
+                    </text>
+                    <line
+                      x1="12"
+                      y1="76"
+                      x2={NODE_WIDTH - 12}
+                      y2="76"
+                      stroke="var(--color-rule)"
+                      strokeWidth="1"
+                    />
+                    <text
+                      x="12"
+                      y="92"
+                      fill="var(--color-ledger-green)"
+                      fontSize="9"
+                      fontWeight="600"
+                      letterSpacing="0.06em"
+                      fontFamily="var(--font-precision)"
+                    >
+                      FAIL-CLOSED · RISK GATE GUARDED
+                    </text>
+                  </g>
+                </>
+              )}
+
+              {/* Subgraph Zone III: Dialectic Arbitration (Wide / Linear Mode) */}
+              {graphData && graphData.nodes && graphData.nodes.length > 0 && layoutMode === 'wide' && (
                 <>
                   <rect
-                    x={layoutMode === 'compact' ? '515' : '865'}
-                    y={layoutMode === 'compact' ? '45' : '75'}
-                    width={layoutMode === 'compact' ? '495' : '555'}
-                    height={layoutMode === 'compact' ? '408' : '440'}
+                    x="885"
+                    y="60"
+                    width="560"
+                    height="415"
                     rx="0"
                     fill="var(--color-subgraph-bg)"
                     stroke="var(--color-rule-strong)"
@@ -565,8 +722,8 @@ export const GraphVisualizerPanel: React.FC = () => {
                     strokeDasharray="4 4"
                   />
                   <text
-                    x={layoutMode === 'compact' ? '528' : '878'}
-                    y={layoutMode === 'compact' ? '64' : '96'}
+                    x="900"
+                    y="82"
                     fill="var(--color-ink-muted)"
                     fontSize="10"
                     fontWeight="600"
@@ -574,34 +731,6 @@ export const GraphVisualizerPanel: React.FC = () => {
                     fontFamily="var(--font-precision)"
                   >
                     STAGE III — DIALECTIC ARBITRATION (BULL / BEAR / JUDGE)
-                  </text>
-                </>
-              )}
-
-              {/* Subgraph Zone IV & V: Fortress & Execution Waterfall (compact mode) */}
-              {graphData && graphData.nodes && graphData.nodes.length > 0 && layoutMode === 'compact' && (
-                <>
-                  <rect
-                    x="1025"
-                    y="45"
-                    width="255"
-                    height="408"
-                    rx="0"
-                    fill="transparent"
-                    stroke="var(--color-rule-strong)"
-                    strokeWidth="1"
-                    strokeDasharray="4 4"
-                  />
-                  <text
-                    x="1038"
-                    y="64"
-                    fill="var(--color-ink-muted)"
-                    fontSize="10"
-                    fontWeight="600"
-                    letterSpacing="0.12em"
-                    fontFamily="var(--font-precision)"
-                  >
-                    STAGE IV–V — FORTRESS & EXECUTION
                   </text>
                 </>
               )}
@@ -644,6 +773,7 @@ export const GraphVisualizerPanel: React.FC = () => {
                     pos={pos}
                     nodeWidth={NODE_WIDTH}
                     nodeHeight={NODE_HEIGHT}
+                    totalDurationMs={graphData.total_duration_ms || 0}
                   />
                 );
               })}
