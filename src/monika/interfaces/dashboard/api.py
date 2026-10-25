@@ -180,7 +180,8 @@ async def verify_api_key(request: Request, call_next):
     )
     if (
         request.method == "OPTIONS"
-        or path in ("/api/ping", "/api/v1/ping", "/ping", "/api/v1/health")
+        or path in ("/api/ping", "/api/v1/ping", "/ping")
+        or (path == "/api/v1/health" and is_localhost)
         or is_static_asset
     ):
         return await call_next(request)
