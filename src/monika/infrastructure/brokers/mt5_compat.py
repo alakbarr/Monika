@@ -470,6 +470,27 @@ class MT5BridgeProxy:
             else None
         )
 
+    def order_check(self, *args, **kwargs) -> Optional[Any]:
+        return (
+            getattr(self._bridge_client, "order_check", lambda *a, **kw: None)(*args, **kwargs)
+            if self._bridge_client
+            else None
+        )
+
+    def order_calc_margin(self, *args, **kwargs) -> Optional[Any]:
+        return (
+            getattr(self._bridge_client, "order_calc_margin", lambda *a, **kw: None)(*args, **kwargs)
+            if self._bridge_client
+            else None
+        )
+
+    def order_calc_profit(self, *args, **kwargs) -> Optional[Any]:
+        return (
+            getattr(self._bridge_client, "order_calc_profit", lambda *a, **kw: None)(*args, **kwargs)
+            if self._bridge_client
+            else None
+        )
+
     def order_send(self, *args, **kwargs) -> Optional[Any]:
         return (
             getattr(self._bridge_client, "order_send", lambda *a, **kw: None)(*args, **kwargs)
@@ -570,6 +591,15 @@ class MT5FallbackModule:
         return None
 
     def copy_rates_range(self, *args, **kwargs) -> Optional[Any]:
+        return None
+
+    def order_check(self, *args, **kwargs) -> Optional[Any]:
+        return None
+
+    def order_calc_margin(self, *args, **kwargs) -> Optional[Any]:
+        return None
+
+    def order_calc_profit(self, *args, **kwargs) -> Optional[Any]:
         return None
 
     def order_send(self, *args, **kwargs) -> Optional[Any]:

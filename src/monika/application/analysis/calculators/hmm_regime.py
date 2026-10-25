@@ -61,7 +61,13 @@ class HMMRegimeClassifier:
 
         X = np.column_stack([returns, ranges])
 
-        if HAS_HMMLEARN and GaussianHMM is not None:
+        if (
+            HAS_HMMLEARN
+            and GaussianHMM is not None
+            and n_samples >= 50
+            and float(np.std(returns)) > 1e-6
+            and float(np.std(ranges)) > 1e-6
+        ):
             try:
                 model = GaussianHMM(
                     n_components=self.n_components,
@@ -70,6 +76,9 @@ class HMMRegimeClassifier:
                     random_state=self.random_state,
                 )
                 model.fit(X)
+                monitor = getattr(model, "monitor_", None)
+                if monitor is not None and not bool(getattr(monitor, "converged", True)):
+                    raise ValueError("GaussianHMM did not converge")
                 hidden_states = model.predict(X)
                 posteriors = model.predict_proba(X)
                 transmat = model.transmat_.tolist()
@@ -80,6 +89,8 @@ class HMMRegimeClassifier:
                 bear_idx = int(sorted_indices[0])
                 bull_idx = int(sorted_indices[-1])
                 chop_idx = int(sorted_indices[1])
+                if float(means[bear_idx]) >= -1e-5 or float(means[bull_idx]) <= 1e-5:
+                    raise ValueError("GaussianHMM states do not span distinct bull and bear drift regimes")
 
                 curr_state_raw = hidden_states[-1]
                 curr_prob = posteriors[-1]

@@ -260,6 +260,11 @@ def assert_safe_write_path(target_path: str, safe_root: str | None = None) -> st
         root_path = Path(root_env).resolve()
         allow_temp = False
 
+    if os.name != "nt" and re.match(r"^[a-zA-Z]:[/\\]", target_path.strip()):
+        raise SecurityViolationError(
+            f"Path traversal blocked: '{target_path}' is outside designated safe root '{root_path}'."
+        )
+
     target = Path(target_path).resolve()
     import tempfile
 
@@ -337,6 +342,11 @@ def assert_safe_read_path(target_path: str, safe_root: str | None = None) -> str
     else:
         root_path = Path(root_env).resolve()
         allow_temp = False
+
+    if os.name != "nt" and re.match(r"^[a-zA-Z]:[/\\]", target_path.strip()):
+        raise SecurityViolationError(
+            f"Path traversal blocked: '{target_path}' is outside designated safe root '{root_path}'."
+        )
 
     target = Path(target_path).resolve()
     import tempfile

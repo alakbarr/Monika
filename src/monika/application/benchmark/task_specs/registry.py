@@ -33,6 +33,7 @@ from .macro_cases import (
     _case_strategy_discovery,
     _case_fundamental_verifier,
     _case_macro_analyst,
+    _case_macro_chronicle_curator,
     _case_report_synthesizer,
     _case_stage1_escalation,
     _case_stage1_fundamental,
@@ -97,6 +98,7 @@ TASKS: dict[str, TaskSpec] = {
     "report_synthesizer": TaskSpec("report_synthesizer", "macro", "text", _case_report_synthesizer),
     "context_compaction": TaskSpec("context_compaction", "macro", "text", _case_context_compaction),
     "summarizer": TaskSpec("summarizer", "macro", "text", _case_summarizer),
+    "macro_chronicle_curator": TaskSpec("macro_chronicle_curator", "macro", "json", _case_macro_chronicle_curator),
     # 2. Stage 2 Per-Asset Decisions
     "stage2_per_asset_primary": TaskSpec("stage2_per_asset_primary", "trade_decision", "agent", _case_stage2_primary),
     "stage2_per_asset_secondary": TaskSpec(

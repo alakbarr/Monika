@@ -324,3 +324,32 @@ async def _case_stage1_delta_revision(session: Any, settings: dict[str, Any], ex
         stage_name="benchmark_stage1_delta_revision",
         role_kwargs=dict(max_tokens=1500, max_tool_turns=1),
     )
+
+
+async def _case_macro_chronicle_curator(session: Any, settings: dict[str, Any], ex: Any) -> BenchmarkCase:
+    user_msg = (
+        "[PERMANENT GROUND TRUTH REGIMES & MILESTONES]\n"
+        "- ID 1 | 2026-09-15 | geopolitical | Middle East Conflict & Hormuz Disruption | "
+        "Ongoing maritime corridor blockades elevating tanker freight rates. | Assets: XAUUSD,USD\n\n"
+        "[MATURED TACTICAL EVENTS (> 30 DAYS OLD)]\n"
+        "- ID 101 | 2026-09-20 | geopolitical | Drone strike near Strait of Hormuz | "
+        "Oil tanker harassed in Gulf of Oman. | Assets: XAUUSD,USD\n\n"
+        "Task: Evaluate matured tactical events for MERGE, CREATE_NEW, or RETIRE. Output valid JSON."
+    )
+    return BenchmarkCase(
+        "macro_chronicle_curator",
+        "macro",
+        system_prompt="You are the Senior Quantitative Macro Historian & Regime Architect for Monika.",
+        user_prompt=user_msg,
+        schema={
+            "type": "object",
+            "properties": {
+                "proposals": {"type": "array"},
+                "processed_tactical_ids": {"type": "array", "items": {"type": "integer"}},
+                "synthesis_summary": {"type": "string"},
+            },
+            "required": ["proposals", "processed_tactical_ids", "synthesis_summary"],
+        },
+        stage_name="benchmark_macro_chronicle_curator",
+        role_kwargs=dict(max_tokens=8192, thinking="high"),
+    )

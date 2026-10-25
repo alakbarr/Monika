@@ -10916,6 +10916,9 @@
     - `history_orders_get() -> Optional[tuple]`
     - `copy_rates_from_pos() -> Optional[Any]`
     - `copy_rates_range() -> Optional[Any]`
+    - `order_check() -> Optional[Any]`
+    - `order_calc_margin() -> Optional[Any]`
+    - `order_calc_profit() -> Optional[Any]`
     - `order_send() -> Optional[Any]`
     - `market_book_add(symbol: str) -> bool`
     - `market_book_get(symbol: str) -> Optional[Any]`
@@ -10936,6 +10939,9 @@
     - `history_orders_get() -> Optional[tuple]`
     - `copy_rates_from_pos() -> Optional[Any]`
     - `copy_rates_range() -> Optional[Any]`
+    - `order_check() -> Optional[Any]`
+    - `order_calc_margin() -> Optional[Any]`
+    - `order_calc_profit() -> Optional[Any]`
     - `order_send() -> Optional[Any]`
     - `market_book_add(symbol: str) -> bool`
     - `market_book_get(symbol: str) -> Optional[Any]`
