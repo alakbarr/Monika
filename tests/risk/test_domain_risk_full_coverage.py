@@ -370,9 +370,12 @@ async def test_crypto_audit_ledger_and_execution_simulator_full_coverage(tmp_pat
     assert rec0.seq == 0
     assert ledger_new.verify_integrity() is True
 
-    import msvcrt
+    fake_msvcrt = types.ModuleType("msvcrt")
+    setattr(fake_msvcrt, "LK_LOCK", 1)
+    setattr(fake_msvcrt, "LK_UNLCK", 2)
+    setattr(fake_msvcrt, "locking", MagicMock(side_effect=OSError("lock err")))
 
-    with patch.object(msvcrt, "locking", side_effect=OSError("lock err")):
+    with patch.dict(sys.modules, {"msvcrt": fake_msvcrt}), patch.object(sys, "platform", "win32"):
         ledger_new.append("TEST_ACT_2", {"a": 2})
 
     # Also test msvcrt unlock raising OSError
@@ -384,7 +387,8 @@ async def test_crypto_audit_ledger_and_execution_simulator_full_coverage(tmp_pat
         if call_cnt >= 2:
             raise OSError("unlock err")
 
-    with patch.object(msvcrt, "locking", side_effect=_lock_ok_unlock_fail):
+    setattr(fake_msvcrt, "locking", _lock_ok_unlock_fail)
+    with patch.dict(sys.modules, {"msvcrt": fake_msvcrt}), patch.object(sys, "platform", "win32"):
         ledger_new.append("TEST_ACT_3", {"a": 3})
 
     # Test non-win32 branch with dummy fcntl raising on unlock
