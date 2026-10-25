@@ -24,6 +24,16 @@ def upgrade() -> None:
     insp = sa.inspect(bind)
     existing_tables = set(insp.get_table_names())
 
+    # 0. Ensure alembic_version.version_num can store >32-char revision IDs on PostgreSQL
+    if "alembic_version" in existing_tables and bind.dialect.name == "postgresql":
+        op.alter_column(
+            "alembic_version",
+            "version_num",
+            existing_type=sa.String(32),
+            type_=sa.String(64),
+            existing_nullable=False,
+        )
+
     # 1. Update uq_position_symbol_open on positions
     if "positions" in existing_tables:
         existing_indexes = {idx.get("name") for idx in insp.get_indexes("positions")}

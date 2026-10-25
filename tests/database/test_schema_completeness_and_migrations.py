@@ -293,3 +293,84 @@ async def test_trade_outcome_orm_query_execution():
         assert res[0].decision_source == "llm_debate"
 
     await engine.dispose()
+
+
+def test_migration_0012_widens_alembic_version_num_on_postgres():
+    """Verify migration 0012 widens alembic_version.version_num to String(64) on PostgreSQL for >32-char revision IDs."""
+    _ensure_mock_alembic()
+    altered_columns = []
+
+    class MockOp0012:
+        @staticmethod
+        def get_bind():
+            class MockDialect:
+                name = "postgresql"
+
+            class MockConn:
+                dialect = MockDialect()
+
+            return MockConn()
+
+        @staticmethod
+        def alter_column(table_name, col_name, **kw):
+            altered_columns.append((table_name, col_name, kw.get("type_")))
+
+        @staticmethod
+        def drop_index(*a, **kw):
+            pass
+
+        @staticmethod
+        def create_index(*a, **kw):
+            pass
+
+        @staticmethod
+        def batch_alter_table(table_name, **kw):
+            class _NoopBatch:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *a):
+                    pass
+
+                def create_foreign_key(self, *a, **k):
+                    pass
+
+            return _NoopBatch()
+
+    mig_path = os.path.join(
+        os.path.dirname(__file__),
+        "../../src/monika/infrastructure/database/migrations/versions/0012_sync_indexes_and_constraints.py",
+    )
+    spec = importlib.util.spec_from_file_location("mig_0012", mig_path)
+    assert spec is not None and spec.loader is not None
+    mod: Any = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    setattr(mod, "op", MockOp0012)
+
+    orig_inspect = sa.inspect
+    try:
+
+        def mock_insp(conn):
+            class MockInsp:
+                def get_table_names(self):
+                    return ["alembic_version"]
+
+                def get_indexes(self, t_name):
+                    return []
+
+                def get_foreign_keys(self, t_name):
+                    return []
+
+            return MockInsp()
+
+        sa.inspect = mock_insp
+        mod.upgrade()
+    finally:
+        sa.inspect = orig_inspect
+
+    assert len(altered_columns) == 1
+    table_name, col_name, col_type = altered_columns[0]
+    assert table_name == "alembic_version"
+    assert col_name == "version_num"
+    assert isinstance(col_type, sa.String)
+    assert col_type.length == 64
