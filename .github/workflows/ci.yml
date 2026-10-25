@@ -131,6 +131,7 @@ jobs:
         env:
           PYTHONPATH: src
           DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/market_intelligence
+          GEMINI_API_KEY: ci-offline-smoke-test-key
         run: |
           python -m monika.interfaces.cli.main doctor --offline
 
