@@ -3,6 +3,7 @@
 # ==============================================================================
 
 import asyncio
+import logging
 import os
 from logging.config import fileConfig
 
@@ -22,9 +23,10 @@ target_metadata = Base.metadata
 config = context.config
 
 # Interpret the config file for Python logging.
-# This line sets up loggers basically.
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# Preserve application loggers when running in-process inside the trading agent.
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
+    if not logging.getLogger("TradingAgent").handlers:
+        fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 custom_url = config.attributes.get("sqlalchemy_url") or config.get_main_option("custom_sqlalchemy_url")
 test_db_url = os.getenv("TEST_DATABASE_URL")
@@ -112,8 +114,9 @@ def run_migrations_online() -> None:
     import sys
 
     if sys.platform == "win32":
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(run_async_migrations())
+        asyncio.run(run_async_migrations(), loop_factory=asyncio.SelectorEventLoop)
+    else:
+        asyncio.run(run_async_migrations())
 
 
 if context.is_offline_mode():

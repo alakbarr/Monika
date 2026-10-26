@@ -322,6 +322,7 @@ async def init_db() -> None:
                 alembic_ini = Path(__file__).resolve().parent.parent / "alembic.ini"
             if alembic_ini.exists():
                 alembic_cfg = Config(str(alembic_ini))
+                alembic_cfg.attributes["configure_logger"] = False
                 eng = engine if engine is not None else get_engine()
                 db_url = str(eng.url)
                 alembic_cfg.set_main_option("sqlalchemy.url", db_url)

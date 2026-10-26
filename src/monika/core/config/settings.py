@@ -379,6 +379,40 @@ def load_settings(
     # Apply schema versioning and migrations
     if isinstance(settings, dict):
         settings, _ = migrate_config(settings)
+        llm_section = settings.get("llm")
+        if isinstance(llm_section, dict):
+            task_roles_section = llm_section.get("task_roles")
+            if (
+                isinstance(task_roles_section, dict)
+                and ("trade_reflection" in task_roles_section or "stage1_fundamental" in task_roles_section)
+                and "macro_chronicle_curator" not in task_roles_section
+            ):
+                catalog = llm_section.get("model_catalog")
+                catalog_dict = catalog if isinstance(catalog, dict) else {}
+                fb1 = (
+                    "glm-5.3-flash"
+                    if (not catalog_dict or "glm-5.3-flash" in catalog_dict)
+                    else "gemini-3.1-flash-lite"
+                )
+                role_default: dict[str, Any] = {
+                    "primary": "gemini-3.5-flash-lite",
+                    "per_model_timeout_seconds": 120.0,
+                    "thinking": {
+                        "primary": "high",
+                        "fallback_1": "high",
+                        "anthropic": "high",
+                        "gemini": "high",
+                        "openai": "high",
+                    },
+                    "max_tokens": 8192,
+                    "max_tool_turns": None,
+                    "max_cost_per_call": 0.03,
+                    "temperature": 0.1,
+                    "fallback_1": fb1,
+                }
+                if not catalog_dict or "openrouter/free" in catalog_dict:
+                    role_default["fallback_2"] = "openrouter/free"
+                task_roles_section["macro_chronicle_curator"] = role_default
 
     if validate or return_model:
         model = validate_config(settings)

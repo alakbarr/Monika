@@ -12316,6 +12316,20 @@
     - `async commit() -> None` - *Commit all pending database changes within this unit of work.*
     - `async rollback() -> None` - *Rollback all pending database changes within this unit of work.*
 
+#### `user_preference_repository.py` - *SQLAlchemy User Preference Repository.*
+- **Path**: [`src/monika/infrastructure/database/repositories/user_preference_repository.py`](src/monika/infrastructure/database/repositories/user_preference_repository.py)
+- **Classes**:
+  - `class SqlAlchemyUserPreferenceRepository(UserPreferenceRepositoryPort)`: SQLAlchemy repository implementation for user preferences and chart workspace layouts.
+    - `__init__(session: AsyncSession) -> None`
+    - `async get_preference(category: str, key: str, user_id: str) -> Optional[dict[str, Any]]` - *Fetch a specific preference by category and key.*
+    - `async set_preference(category: str, key: str, value: dict[str, Any], ...) -> dict[str, Any]` - *Save or update a preference for a category and key.*
+    - `async delete_preference(category: str, key: str, user_id: str) -> bool` - *Delete matching preference row(s) or deactivate them, flushing changes.*
+    - `async list_preferences(category: str, user_id: str) -> dict[str, dict[str, Any]]` - *List all active preferences within a category.*
+    - `async resolve_chart_workspace_config(symbol: Optional[str], user_id: str) -> dict[str, Any]` - *Resolve effective chart workspace configuration for symbol or fallback to global.*
+    - `async get_chart_workspace_bundle(user_id: str) -> dict[str, Any]` - *Return global config and all symbol override configs as a bundle.*
+- **Top-Level Functions**:
+  - `normalize_chart_workspace_config(raw: Optional[dict[str, Any]]) -> dict[str, Any]`: Normalize a chart workspace configuration dictionary, preserving scope and symbol.
+
 ### Folder: `src/monika/infrastructure/graph` <a id="folder-srcmonikainfrastructuregraph"></a>
 
 #### `__init__.py` - *Graph infrastructure persistence package.*

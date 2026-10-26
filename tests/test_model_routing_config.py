@@ -143,3 +143,20 @@ def test_startup_check_fails_on_ollama_tool_role():
     }
     ok, _warnings = checker._check_model_roles()
     assert ok is False
+
+
+def test_startup_check_task_roles_complete_and_legacy_backfill():
+    """All code task_roles must exist in loaded settings and backfill legacy configs missing macro_chronicle_curator."""
+    from copy import deepcopy
+    from monika.application.agent.startup_checks import StartupChecker
+
+    settings = load_settings()
+    assert "macro_chronicle_curator" in settings.get("llm", {}).get("task_roles", {})
+    checker = StartupChecker(settings)
+    ok, _warnings = checker._check_task_roles()
+    assert ok is True
+
+    legacy_raw = deepcopy(settings)
+    legacy_raw["llm"]["task_roles"].pop("macro_chronicle_curator", None)
+    reloaded = load_settings(legacy_raw)
+    assert "macro_chronicle_curator" in reloaded["llm"]["task_roles"]

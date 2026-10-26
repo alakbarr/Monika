@@ -111,3 +111,45 @@ class TestDB:
 
             async with AsyncSessionLocal() as session:
                 assert session is mock_session
+
+    @pytest.mark.asyncio
+    async def test_init_db_alembic_preserves_existing_loggers(self):
+        import logging
+        import runpy
+        from pathlib import Path
+        from alembic.config import Config
+
+        startup_logger = logging.getLogger("TradingAgent.StartupChecks")
+        cli_logger = logging.getLogger("TradingAgent.CLI")
+        agent_root = logging.getLogger("TradingAgent")
+        startup_logger.disabled = False
+        cli_logger.disabled = False
+        dummy_handler = logging.NullHandler()
+        agent_root.addHandler(dummy_handler)
+
+        try:
+            alembic_ini = Path(__file__).resolve().parents[2] / "alembic.ini"
+            cfg = Config(str(alembic_ini))
+            env_py = (
+                Path(__file__).resolve().parents[2]
+                / "src"
+                / "monika"
+                / "infrastructure"
+                / "database"
+                / "migrations"
+                / "env.py"
+            )
+
+            with (
+                patch("alembic.context.config", cfg, create=True),
+                patch("alembic.context.is_offline_mode", return_value=False, create=True),
+                patch("asyncio.run", side_effect=lambda coro, **kw: coro.close()),
+            ):
+                runpy.run_path(str(env_py), run_name="__main__")
+
+            assert startup_logger.disabled is False
+            assert cli_logger.disabled is False
+        finally:
+            startup_logger.disabled = False
+            cli_logger.disabled = False
+            agent_root.removeHandler(dummy_handler)

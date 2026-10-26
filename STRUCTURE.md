@@ -1694,7 +1694,8 @@ Monika/
 │       │   │   │   ├── risk_repository.py
 │       │   │   │   ├── system_config_repository.py
 │       │   │   │   ├── trade_proposal_repository.py
-│       │   │   │   └── unit_of_work.py
+│       │   │   │   ├── unit_of_work.py
+│       │   │   │   └── user_preference_repository.py
 │       │   │   ├── __init__.py
 │       │   │   ├── adapters.py
 │       │   │   ├── backup.py
@@ -1986,6 +1987,7 @@ Monika/
 │   │   │   │   ├── DecisionDistribution.tsx
 │   │   │   │   ├── EquityChart.tsx
 │   │   │   │   ├── FactorHeatmap.tsx
+│   │   │   │   ├── IndicatorStudioPopover.tsx
 │   │   │   │   ├── VixSparkline.tsx
 │   │   │   │   └── WinRateGauge.tsx
 │   │   │   ├── layout/
@@ -2065,6 +2067,7 @@ Monika/
 │   │   │   └── useWebSocket.ts
 │   │   ├── lib/
 │   │   │   ├── api.ts
+│   │   │   ├── chartIndicatorsClientMath.ts
 │   │   │   ├── formatters.ts
 │   │   │   └── soundEffects.ts
 │   │   ├── store/
@@ -2222,6 +2225,7 @@ Monika/
 │   │   ├── test_audit_sota_enhancements.py
 │   │   ├── test_candidate_lessons_shadow_validation.py
 │   │   ├── test_central_bank_rates.py
+│   │   ├── test_chart_workspace_and_stage2_integration.py
 │   │   ├── test_chronicle_curator.py
 │   │   ├── test_chronicle_writer.py
 │   │   ├── test_closed_loop_memory.py
@@ -3112,4 +3116,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2815
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2819
