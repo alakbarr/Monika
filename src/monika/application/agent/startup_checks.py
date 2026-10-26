@@ -929,7 +929,7 @@ class StartupChecker:
                     ok = False
                     continue
                 if role in tool_bearing_roles:
-                    provider = resolver._resolve_provider(model_name)
+                    provider = resolver._resolve_provider(model_name, role_cfg, slot)
                     if provider == "ollama":
                         logger.error(
                             f'[STARTUP CHECK FAIL] task_roles.{role}.{slot}="{model_name}" '

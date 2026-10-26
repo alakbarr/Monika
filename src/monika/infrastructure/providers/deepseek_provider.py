@@ -25,8 +25,9 @@ class DeepSeekProvider(OpenAIProvider):
         thinking_level: str = "none",
         **kwargs,
     ):
+        clean_model = model[len("deepseek/") :] if model.lower().startswith("deepseek/") else model
         super().__init__(
-            model,
+            clean_model,
             max_tokens=max_tokens,
             api_key=api_key,
             settings=settings,
@@ -35,6 +36,7 @@ class DeepSeekProvider(OpenAIProvider):
             thinking_level=thinking_level,
             **kwargs,
         )
+        self.raw_model_name = model
         self.provider_name = "deepseek"
         self._is_deepseek = True
         self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY")

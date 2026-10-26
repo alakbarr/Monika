@@ -55,8 +55,16 @@ class ZAIProvider(OpenAIProvider):
             base_url or os.getenv("ZAI_BASE_URL") or provider_cfg.get("base_url") or DEFAULT_ZAI_BASE_URL
         ).rstrip("/")
 
+        clean_model = model
+        for prefix in ("z-ai/", "zhipu/"):
+            if clean_model.lower().startswith(prefix):
+                clean_model = clean_model[len(prefix) :]
+                break
+        if clean_model.lower().endswith(":free"):
+            clean_model = clean_model[: -len(":free")]
+
         super().__init__(
-            model=model,
+            model=clean_model,
             max_tokens=max_tokens,
             api_key=resolved_key,
             settings=settings,
@@ -67,6 +75,7 @@ class ZAIProvider(OpenAIProvider):
             **kwargs,
         )
 
+        self.raw_model_name = model
         self.provider_name = "zai"
         self.base_url = resolved_base_url
 

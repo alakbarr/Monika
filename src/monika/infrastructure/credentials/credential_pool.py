@@ -278,6 +278,8 @@ class CredentialPool:
             "openai": ["OPENAI_API_KEYS", "OPENAI_API_KEY"],
             "deepseek": ["DEEPSEEK_API_KEYS", "DEEPSEEK_API_KEY"],
             "groq": ["GROQ_API_KEYS", "GROQ_API_KEY"],
+            "zai": ["ZAI_API_KEYS", "ZAI_API_KEY", "GLM_API_KEY"],
+            "opencode": ["OPENCODE_API_KEYS", "OPENCODE_API_KEY"],
             "openrouter": ["OPENROUTER_PAID_API_KEY", "OPENROUTER_API_KEYS", "OPENROUTER_API_KEY"],
             "typesafe": ["TYPESAFE_API_KEYS", "TYPESAFE_API_KEY"],
         }

@@ -531,3 +531,179 @@ def test_get_client_for_task_role_alias_resolution():
         client = factory.get_client_for_task("conservative_risk")
         assert client is not None
         assert client.model == "conservative-model"
+
+
+def test_role_provider_override_gemini_3_8_flash_and_openrouter_coexistence():
+    from monika.core.config.settings import load_settings
+    from monika.infrastructure.providers.gemini_provider import GeminiProvider
+    from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
+
+    settings = load_settings()
+    factory = LLMFactory(settings)
+
+    # Catalog default for gemini-3.8-flash remains openrouter
+    assert settings["llm"]["model_catalog"]["gemini-3.8-flash"]["provider"] == "openrouter"
+    assert factory._resolve_provider("gemini-3.8-flash") == "openrouter"
+
+    with patch.dict("os.environ", {"GEMINI_API_KEY": "test-gemini-key", "OPENROUTER_API_KEY": "test-or-key"}):
+        for role_name in ("news_digest", "news_digest_macro_overview", "macro_analyst", "sentiment_analyst"):
+            role_cfg = settings["llm"]["task_roles"][role_name]
+            assert role_cfg["primary"] == "gemini-3.8-flash"
+            assert role_cfg["provider"] == "gemini"
+            assert factory._resolve_provider("gemini-3.8-flash", role_config=role_cfg, slot_name="primary") == "gemini"
+
+            wrapper = factory.get_client_for_task(role_name)
+            assert wrapper.provider_name == "gemini"
+            inner_client = wrapper._get_client("primary")
+            assert isinstance(inner_client, GeminiProvider)
+            assert inner_client.model == "gemini-3.8-flash"
+
+        # debate_judge uses gemini-3.8-flash with provider: openrouter -> must stay on OpenRouterProvider
+        judge_cfg = settings["llm"]["task_roles"]["debate_judge"]
+        assert judge_cfg["primary"] == "gemini-3.8-flash"
+        assert judge_cfg["provider"] == "openrouter"
+        assert factory._resolve_provider("gemini-3.8-flash", role_config=judge_cfg, slot_name="primary") == "openrouter"
+        judge_wrapper = factory.get_client_for_task("debate_judge")
+        assert judge_wrapper.provider_name == "openrouter"
+        judge_inner = judge_wrapper._get_client("primary")
+        assert isinstance(judge_inner, OpenRouterProvider)
+        assert judge_inner.model == "google/gemini-3.8-flash"
+
+
+def test_role_provider_override_across_all_direct_vendors():
+    from monika.infrastructure.providers.anthropic_provider import AnthropicProvider
+    from monika.infrastructure.providers.deepseek_provider import DeepSeekProvider
+    from monika.infrastructure.providers.openai_provider import OpenAIProvider
+    from monika.infrastructure.providers.zai_provider import ZAIProvider
+
+    settings = {
+        "llm": {
+            "providers": {
+                "openrouter": {"enabled": True},
+                "anthropic": {"enabled": True},
+                "openai": {"enabled": True},
+                "deepseek": {"enabled": True},
+                "zai": {"enabled": True},
+            },
+            "model_catalog": {
+                "claude-opus-5.5": {"provider": "openrouter", "default_thinking": "high"},
+                "opus-5.5": {"provider": "openrouter", "default_thinking": "high"},
+                "gpt-6-astra": {"provider": "openrouter", "default_thinking": "high"},
+                "gpt-6-luna-xhigh": {"provider": "openrouter", "default_thinking": "xhigh"},
+                "deepseek-v4.1-flash": {"provider": "openrouter", "default_thinking": "high"},
+                "glm-5.3-flash": {"provider": "openrouter", "default_thinking": "high"},
+            },
+        }
+    }
+    factory = LLMFactory(settings)
+
+    with patch.dict(
+        "os.environ",
+        {
+            "ANTHROPIC_API_KEY": "sk-ant-test",
+            "OPENAI_API_KEY": "sk-oai-test",
+            "DEEPSEEK_API_KEY": "sk-ds-test",
+            "ZAI_API_KEY": "sk-zai-test",
+        },
+    ):
+        # 1. Anthropic direct (both canonical name and short alias)
+        ant_role = {"primary": "claude-opus-5.5", "provider": "anthropic"}
+        assert factory._resolve_provider("claude-opus-5.5", role_config=ant_role, slot_name="primary") == "anthropic"
+        c_ant = factory._create_client_instance("claude-opus-5.5", ant_role, slot_name="primary")
+        assert isinstance(c_ant, AnthropicProvider)
+        assert c_ant.model == "claude-opus-5.5"
+
+        c_ant_alias = factory._create_client_instance("opus-5.5", {"primary": "opus-5.5", "provider": "anthropic"})
+        assert isinstance(c_ant_alias, AnthropicProvider)
+        assert c_ant_alias.model == "claude-opus-5.5"
+        assert c_ant_alias.raw_model_name == "opus-5.5"
+
+        # 2. OpenAI direct (both standard and internal thinking-suffixed alias)
+        oai_role = {"primary": "gpt-6-astra", "provider": "openai"}
+        assert factory._resolve_provider("gpt-6-astra", role_config=oai_role, slot_name="primary") == "openai"
+        c_oai = factory._create_client_instance("gpt-6-astra", oai_role, slot_name="primary")
+        assert isinstance(c_oai, OpenAIProvider)
+        assert c_oai.model == "gpt-6-astra"
+
+        c_oai_luna = factory._create_client_instance(
+            "gpt-6-luna-xhigh", {"primary": "gpt-6-luna-xhigh", "provider": "openai"}
+        )
+        assert isinstance(c_oai_luna, OpenAIProvider)
+        assert c_oai_luna.model == "gpt-6-luna"
+        assert c_oai_luna.raw_model_name == "gpt-6-luna-xhigh"
+
+        # 3. DeepSeek direct
+        ds_role = {"primary": "deepseek-v4.1-flash", "provider": "deepseek"}
+        assert factory._resolve_provider("deepseek-v4.1-flash", role_config=ds_role, slot_name="primary") == "deepseek"
+        c_ds = factory._create_client_instance("deepseek/deepseek-v4.1-flash", ds_role, slot_name="primary")
+        assert isinstance(c_ds, DeepSeekProvider)
+        assert c_ds.model == "deepseek-v4.1-flash"
+
+        # 4. Z.AI direct
+        zai_role = {"primary": "glm-5.3-flash", "provider": "zai"}
+        assert factory._resolve_provider("glm-5.3-flash", role_config=zai_role, slot_name="primary") == "zai"
+        c_zai = factory._create_client_instance("z-ai/glm-5.3-flash:free", zai_role, slot_name="primary")
+        assert isinstance(c_zai, ZAIProvider)
+        assert c_zai.model == "glm-5.3-flash"
+
+
+def test_cross_vendor_fallback_chain_preserves_incompatible_fallback_provider():
+    settings = {
+        "llm": {
+            "providers": {"gemini": {"enabled": True}, "openrouter": {"enabled": True}, "groq": {"enabled": True}},
+            "model_catalog": {
+                "gemini-3.8-flash": {"provider": "openrouter"},
+                "gemini-3.5-flash": {"provider": "gemini"},
+                "glm-5.3-flash": {"provider": "openrouter"},
+                "qwen3.8-27b": {"provider": "groq"},
+            },
+        }
+    }
+    factory = LLMFactory(settings)
+    role_cfg = {
+        "primary": "gemini-3.8-flash",
+        "provider": "gemini",
+        "fallback_1": "gemini-3.5-flash",
+        "fallback_2": "glm-5.3-flash",
+        "fallback_3": "qwen3.8-27b",
+    }
+
+    assert factory._resolve_provider("gemini-3.8-flash", role_config=role_cfg, slot_name="primary") == "gemini"
+    assert factory._resolve_provider("gemini-3.5-flash", role_config=role_cfg, slot_name="fallback_1") == "gemini"
+    assert factory._resolve_provider("glm-5.3-flash", role_config=role_cfg, slot_name="fallback_2") == "openrouter"
+    assert factory._resolve_provider("qwen3.8-27b", role_config=role_cfg, slot_name="fallback_3") == "groq"
+
+
+def test_explicit_provider_prefix_preserves_catalog_thinking_and_strips_prefix():
+    from monika.infrastructure.providers.anthropic_provider import AnthropicProvider
+
+    settings = {
+        "llm": {
+            "providers": {"anthropic": {"enabled": True}, "openrouter": {"enabled": True}},
+            "model_catalog": {
+                "claude-opus-5.5": {
+                    "provider": "openrouter",
+                    "model_name": "anthropic/claude-opus-5.5",
+                    "default_thinking": "xhigh",
+                }
+            },
+        }
+    }
+    factory = LLMFactory(settings)
+    role_cfg = {"primary": "anthropic:claude-opus-5.5", "provider": "openrouter"}
+
+    # Explicit prefix wins over both catalog and role_config["provider"]
+    assert (
+        factory._resolve_provider("anthropic:claude-opus-5.5", role_config=role_cfg, slot_name="primary") == "anthropic"
+    )
+    # Catalog default_thinking is still found after stripping prefix
+    assert (
+        factory._resolve_thinking_level("anthropic:claude-opus-5.5", role_cfg, "anthropic", slot_name="primary")
+        == "xhigh"
+    )
+
+    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "sk-ant-test"}):
+        client = factory._create_client_instance("anthropic:claude-opus-5.5", role_cfg, slot_name="primary")
+        assert isinstance(client, AnthropicProvider)
+        assert client.model == "claude-opus-5.5"
+        assert client.thinking_level in ("xhigh", "high")

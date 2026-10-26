@@ -175,6 +175,32 @@ ROLE_ALIASES: dict[str, str] = {
     "reflection": "trade_reflection",
 }
 
+KNOWN_PROVIDER_PREFIXES: tuple[str, ...] = (
+    "gemini",
+    "anthropic",
+    "openai",
+    "openrouter",
+    "deepseek",
+    "groq",
+    "typesafe",
+    "9router",
+    "ninerouter",
+    "nine_router",
+    "ollama",
+    "openai_compatible",
+    "vertex",
+    "opencode",
+    "opencode_go",
+    "opencode-go",
+    "antigravity",
+    "agy",
+    "zai",
+    "glm",
+    "z-ai",
+    "z.ai",
+    "codex",
+)
+
 
 class LLMFactory:
     """
@@ -321,39 +347,159 @@ class LLMFactory:
                     return candidate
         return None
 
-    def _resolve_provider(self, model_name: str) -> str:
-        model_info = self._catalog.get(model_name, {})
-        if "provider" in model_info:
-            return model_info["provider"]
+    @staticmethod
+    def _split_provider_prefix(model_name: str) -> tuple[Optional[str], str]:
+        """Splits an explicit 'provider:model_name' prefix if the prefix is a known provider."""
+        if ":" in model_name:
+            prefix, remainder = model_name.split(":", 1)
+            prefix_lower = prefix.strip().lower()
+            if prefix_lower in KNOWN_PROVIDER_PREFIXES and remainder.strip():
+                return prefix_lower, remainder.strip()
+        return None, model_name
 
-        name = model_name.lower()
+    def _is_model_compatible_with_provider(
+        self, model_name: str, provider_name: str, model_info: Optional[dict] = None
+    ) -> bool:
+        """Checks whether a model is compatible with a role-configured provider override."""
+        prov = provider_name.strip().lower()
+        _, clean_name = self._split_provider_prefix(model_name)
+        name = clean_name.strip().lower()
+        cat = (
+            model_info
+            if isinstance(model_info, dict)
+            else (self._catalog.get(model_name) or self._catalog.get(clean_name) or {})
+        )
+        mapped_name = str(cat.get("model_name") or cat.get("model") or cat.get("remote_model") or "").strip().lower()
+        combined_names = (name, mapped_name) if mapped_name else (name,)
 
-        # Explicit provider:model prefix
-        if ":" in name:
-            prefix = name.split(":", 1)[0]
-            if prefix in (
-                "gemini",
-                "anthropic",
-                "openai",
-                "openrouter",
-                "deepseek",
-                "groq",
+        # Explicit 9Router route prefixes are only compatible with 9Router
+        if (
+            name.startswith(("9router/", "9r/", "kr/", "if/", "oc/", "ocz/", "mmf/", "gc/", "af/", "combo/"))
+            or "9router" in name
+            or "ninerouter" in name
+        ):
+            return prov in ("9router", "ninerouter", "nine_router")
+
+        # Explicit OpenRouter route prefixes/suffixes
+        if name.startswith("openrouter/") or name.endswith("-openrouter"):
+            return prov == "openrouter"
+
+        # System One / TypeSafe decision models must always use TypeSafeProvider
+        if cat.get("provider") == "typesafe" or any(
+            k in name
+            for k in (
+                "jev",
                 "typesafe",
-                "9router",
-                "ninerouter",
-                "nine_router",
-                "ollama",
-                "openai_compatible",
-                "vertex",
-                "opencode",
-                "opencode_go",
-                "opencode-go",
-                "antigravity",
-                "agy",
-                "zai",
-                "codex",
-            ):
-                return prefix
+                "kev",
+                "nanojev",
+                "liquid-d1",
+                "lfm-7b-d1",
+                "luna-decision",
+                "mercury-decide",
+            )
+        ):
+            return prov == "typesafe"
+
+        if prov in ("gemini", "antigravity", "agy", "vertex"):
+            return any("gemini" in n or "gemma" in n or n.startswith("google/") for n in combined_names)
+        if prov == "anthropic":
+            return any(
+                any(k in n for k in ("claude", "opus", "sonnet", "haiku", "fable")) or n.startswith("anthropic/")
+                for n in combined_names
+            )
+        if prov in ("openai", "codex"):
+            return any(
+                not n.startswith("groq")
+                and "gpt-oss" not in n
+                and (any(k in n for k in ("gpt", "o1", "o3", "o4", "codex", "chatgpt")) or n.startswith("openai/"))
+                for n in combined_names
+            )
+        if prov == "deepseek":
+            return any("deepseek" in n or "r1" in n or n.startswith("deepseek/") for n in combined_names)
+        if prov in ("zai", "glm", "z-ai", "z.ai"):
+            return any("glm" in n or n.startswith(("z-ai/", "zhipu/")) for n in combined_names)
+        if prov == "groq":
+            return cat.get("provider") == "groq" or any(
+                any(
+                    k in n
+                    for k in ("groq", "qwen", "llama", "mixtral", "gemma", "whisper", "compound", "gpt-oss", "kimi")
+                )
+                for n in combined_names
+            )
+        if prov in ("opencode", "opencode_go", "opencode-go"):
+            return any(
+                any(
+                    k in n
+                    for k in (
+                        "contributor",
+                        "opencode",
+                        "glm",
+                        "kimi",
+                        "minimax",
+                        "mimo",
+                        "muse",
+                        "gemini",
+                        "claude",
+                        "gpt",
+                        "deepseek",
+                        "qwen",
+                    )
+                )
+                for n in combined_names
+            )
+        if prov in ("9router", "ninerouter", "nine_router", "openrouter", "openai_compatible"):
+            return cat.get("provider") != "ollama"
+        if prov == "ollama":
+            return cat.get("provider") == "ollama" or "ollama" in name or "local" in name
+        return False
+
+    def _resolve_provider(
+        self, model_name: str, role_config: Optional[dict] = None, slot_name: Optional[str] = None
+    ) -> str:
+        # 1. Explicit provider:model prefix always takes highest precedence
+        explicit_prefix, clean_name = self._split_provider_prefix(model_name)
+        if explicit_prefix:
+            return explicit_prefix
+
+        model_info = self._catalog.get(model_name) or self._catalog.get(clean_name) or {}
+        catalog_provider = model_info.get("provider") if isinstance(model_info, dict) else None
+
+        # System One / TypeSafe decision models always require TypeSafeProvider
+        if catalog_provider == "typesafe":
+            return "typesafe"
+
+        providers_dict = getattr(self, "_providers", {}) or (getattr(self, "settings", {}) or {}).get("llm", {}).get(
+            "providers", {}
+        )
+
+        # 2. Honor task_role provider override when compatible with the model
+        if isinstance(role_config, dict):
+            slot_prov = role_config.get(f"{slot_name}_provider") if slot_name else None
+            if not slot_prov and slot_name and isinstance(role_config.get("providers"), dict):
+                slot_prov = role_config["providers"].get(slot_name)
+            role_prov = slot_prov or role_config.get("provider")
+            if isinstance(role_prov, str) and role_prov.strip():
+                role_prov_norm = role_prov.strip().lower()
+                prov_cfg = providers_dict.get(role_prov_norm)
+                is_role_prov_disabled = isinstance(prov_cfg, dict) and prov_cfg.get("enabled") is False
+                if not is_role_prov_disabled:
+                    if slot_prov:
+                        if self._is_model_compatible_with_provider(clean_name, role_prov_norm, model_info):
+                            return role_prov_norm
+                    elif role_prov_norm == "openrouter":
+                        if catalog_provider in (None, "openrouter") or (
+                            slot_name in (None, "primary")
+                            and self._is_model_compatible_with_provider(clean_name, "openrouter", model_info)
+                        ):
+                            return "openrouter"
+                    elif self._is_model_compatible_with_provider(clean_name, role_prov_norm, model_info):
+                        return role_prov_norm
+
+        # 3. Model catalog provider
+        if catalog_provider:
+            return str(catalog_provider)
+
+        name = clean_name.lower()
 
         # 9Router prefix & provider resolution
         if (
@@ -382,10 +528,7 @@ class LLMFactory:
             return "gemini"
         if "gemini" in name:
             return "gemini"
-        providers_dict = getattr(self, "_providers", {}) or (getattr(self, "settings", {}) or {}).get("llm", {}).get(
-            "providers", {}
-        )
-        if "claude" in name or "haiku" in name:
+        if "claude" in name or "haiku" in name or "opus" in name or "sonnet" in name or "fable" in name:
             prov_entry = providers_dict.get("anthropic")
             if prov_entry is not None and prov_entry.get("enabled") is False:
                 if providers_dict.get("openrouter", {}).get("enabled", True):
@@ -425,15 +568,18 @@ class LLMFactory:
         7. role_config['thinking'] (if string, e.g. 'high')
         8. 'none' (safe fallback)
         """
+        _, clean_lookup_name = self._split_provider_prefix(model_name)
         thinking_cfg = role_config.get("thinking")
 
         if isinstance(thinking_cfg, dict):
-            # 1. Exact model name
+            # 1. Exact model name (or provider-stripped model name)
             if model_name in thinking_cfg:
                 return str(thinking_cfg[model_name]).lower()
+            if clean_lookup_name in thinking_cfg:
+                return str(thinking_cfg[clean_lookup_name]).lower()
 
             # 2. Short name / stripped prefix (e.g., 'glm-5.2:free' for 'z-ai/glm-5.2:free')
-            short_name = model_name.split("/")[-1] if "/" in model_name else model_name
+            short_name = clean_lookup_name.split("/")[-1] if "/" in clean_lookup_name else clean_lookup_name
             if short_name in thinking_cfg:
                 return str(thinking_cfg[short_name]).lower()
 
@@ -458,12 +604,14 @@ class LLMFactory:
         if isinstance(thinking_by_model, dict):
             if model_name in thinking_by_model:
                 return str(thinking_by_model[model_name]).lower()
-            short_name = model_name.split("/")[-1] if "/" in model_name else model_name
+            if clean_lookup_name in thinking_by_model:
+                return str(thinking_by_model[clean_lookup_name]).lower()
+            short_name = clean_lookup_name.split("/")[-1] if "/" in clean_lookup_name else clean_lookup_name
             if short_name in thinking_by_model:
                 return str(thinking_by_model[short_name]).lower()
 
         # Check model catalog default
-        cat_entry = self._catalog.get(model_name, {})
+        cat_entry = self._catalog.get(model_name) or self._catalog.get(clean_lookup_name) or {}
         if isinstance(cat_entry, dict) and "default_thinking" in cat_entry:
             return str(cat_entry["default_thinking"]).lower()
 
@@ -472,7 +620,7 @@ class LLMFactory:
     def _create_client_instance(
         self, model_name: str, role_config: dict, slot_name: Optional[str] = None, task_role: Optional[str] = None
     ) -> Optional[BaseLLMClient]:
-        provider_name = self._resolve_provider(model_name)
+        provider_name = self._resolve_provider(model_name, role_config=role_config, slot_name=slot_name)
         provider_config = self._providers.get(provider_name)
         if provider_config is None and provider_name in ("9router", "ninerouter", "nine_router"):
             for alt in ("ninerouter", "9router", "nine_router"):
@@ -493,38 +641,32 @@ class LLMFactory:
 
         thinking_level = self._resolve_thinking_level(model_name, role_config, provider_name, slot_name=slot_name)
 
-        cat_entry = self._catalog.get(model_name, {})
-        clean_model_name = model_name
+        _, lookup_model_name = self._split_provider_prefix(model_name)
+        cat_entry = self._catalog.get(model_name) or self._catalog.get(lookup_model_name) or {}
+        clean_model_name = lookup_model_name
         if isinstance(cat_entry, dict):
             mapped_model = cat_entry.get("model_name") or cat_entry.get("model") or cat_entry.get("remote_model")
             if mapped_model:
-                clean_model_name = str(mapped_model)
+                mapped_str = str(mapped_model)
+                if "/" in mapped_str and provider_name in (
+                    "gemini",
+                    "antigravity",
+                    "agy",
+                    "vertex",
+                    "anthropic",
+                    "openai",
+                    "codex",
+                    "deepseek",
+                    "zai",
+                    "glm",
+                    "z-ai",
+                    "z.ai",
+                ):
+                    clean_model_name = mapped_str.split("/", 1)[1]
+                else:
+                    clean_model_name = mapped_str
 
-        if ":" in clean_model_name:
-            prefix, remainder = clean_model_name.split(":", 1)
-            if prefix.lower() in (
-                "gemini",
-                "anthropic",
-                "openai",
-                "openrouter",
-                "deepseek",
-                "groq",
-                "typesafe",
-                "9router",
-                "ninerouter",
-                "nine_router",
-                "ollama",
-                "openai_compatible",
-                "vertex",
-                "opencode",
-                "opencode_go",
-                "opencode-go",
-                "antigravity",
-                "agy",
-                "zai",
-                "codex",
-            ):
-                clean_model_name = remainder
+        _, clean_model_name = self._split_provider_prefix(clean_model_name)
 
         # Retrieve healthy API key from CredentialPool (M2)
         # Note: OpenRouter manages its own dual-tier key pool (OPENROUTER_PAID_API_KEY vs OPENROUTER_API_KEYS)
@@ -689,7 +831,10 @@ class FallbackClientWrapper(BaseLLMClient):
         self._slot_backoff_count: dict[str, int] = self._shared_role_backoff[self.task_role]
         self._primary_cooldown_until = self._slot_cooldowns.get("primary")
 
-        primary_provider = factory._resolve_provider(primary)
+        try:
+            primary_provider = factory._resolve_provider(primary, role_config=role_config, slot_name="primary")
+        except TypeError:
+            primary_provider = factory._resolve_provider(primary)
         primary_thinking = factory._resolve_thinking_level(primary, role_config, primary_provider, slot_name="primary")
 
         # Set attributes required by BaseLLMClient
@@ -738,7 +883,18 @@ class FallbackClientWrapper(BaseLLMClient):
         """Returns the provider name of the currently active model slot."""
         try:
             active_model = self.model or self.primary
-            return self.factory._resolve_provider(active_model)
+            active_slot: Optional[str] = "primary" if active_model == self.primary else None
+            if active_slot is None and hasattr(self, "fallbacks"):
+                for idx, fb_mod in enumerate(self.fallbacks):
+                    if fb_mod == active_model:
+                        active_slot = f"fallback_{idx + 1}"
+                        break
+            try:
+                return self.factory._resolve_provider(
+                    active_model, role_config=getattr(self, "role_config", None), slot_name=active_slot
+                )
+            except TypeError:
+                return self.factory._resolve_provider(active_model)
         except Exception:
             return getattr(self, "_provider_name", "") or ""
 
@@ -853,7 +1009,10 @@ class FallbackClientWrapper(BaseLLMClient):
                 logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' (in cooldown for {remaining:.1f}s)")
                 continue
 
-            provider = self.factory._resolve_provider(model)
+            try:
+                provider = self.factory._resolve_provider(model, role_config=self.role_config, slot_name=slot_name)
+            except TypeError:
+                provider = self.factory._resolve_provider(model)
 
             # TypeSafe / Jev models are System One decision engines and do not support top-level array schemas in classify_json
             if provider == "typesafe" and method_name == "classify_json" and not kwargs.get("jev_questions"):

@@ -201,6 +201,20 @@ def make_openai_strict_schema(schema_dict: dict) -> dict:
     return s
 
 
+OPENAI_DIRECT_MODEL_ALIASES: dict[str, str] = {
+    "gpt-6-luna-xhigh": "gpt-6-luna",
+    "gpt-6-luna-max": "gpt-6-luna",
+    "gpt-6-luna-decision": "gpt-6-luna",
+    "gpt-5.6-luna-xhigh": "gpt-5.6-luna",
+    "gpt-5.6-luna-max": "gpt-5.6-luna",
+    "gpt-5.6-sol-high": "gpt-5.6-sol",
+    "gpt-5.6-sol-medium": "gpt-5.6-sol",
+    "gpt-sol-6.1": "gpt-6.1-sol",
+    "gpt-sol-6": "gpt-6-sol",
+    "gpt-sol-5.6": "gpt-5.6-sol",
+}
+
+
 class OpenAIProvider(BaseLLMClient):
     """
     Provider untuk model OpenAI (GPT-4o, GPT-4o-mini).
@@ -218,8 +232,13 @@ class OpenAIProvider(BaseLLMClient):
         thinking_level: str = "none",
         **kwargs,
     ):
+        resolved_model = model
+        target_prov = kwargs.get("provider_name") or getattr(self, "provider_name", "") or "openai"
+        if self.__class__.__name__ in ("OpenAIProvider", "CodexProvider") and target_prov in ("openai", "codex"):
+            clean_m = model[len("openai/") :] if model.lower().startswith("openai/") else model
+            resolved_model = OPENAI_DIRECT_MODEL_ALIASES.get(clean_m.lower(), clean_m)
         super().__init__(
-            model,
+            resolved_model,
             max_tokens=max_tokens,
             max_tool_turns=max_tool_turns,
             thinking_level=thinking_level,
@@ -227,7 +246,9 @@ class OpenAIProvider(BaseLLMClient):
             temperature=temperature,
             **kwargs,
         )
-        self.provider_name = kwargs.get("provider_name", getattr(self, "provider_name", "openai"))
+        if not hasattr(self, "raw_model_name"):
+            self.raw_model_name = model
+        self.provider_name = target_prov
         from monika.core.security.credential_vault import vault
 
         self.api_key = api_key or vault.get_secret("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
