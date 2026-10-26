@@ -2904,6 +2904,7 @@ Monika/
 │   ├── test_graph_workflow.py
 │   ├── test_installation_tiers.py
 │   ├── test_interfaces_and_observability_verification.py
+│   ├── test_investigation_remediation.py
 │   ├── test_issue_investigation_reproduction.py
 │   ├── test_live_macro_fetching.py
 │   ├── test_log_issues_and_paper_trade_fixes.py
@@ -3116,4 +3117,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2819
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2820

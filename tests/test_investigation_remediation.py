@@ -4,6 +4,7 @@
 # ==============================================================================
 
 import asyncio
+import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -189,6 +190,21 @@ async def test_claude_rate_limiter_pacing_log_level(caplog):
         r.message for r in caplog.records if r.levelname == "INFO" and "Claude rate limiter throttled" in r.message
     ]
     assert len(info_found) >= 1
+
+
+@pytest.mark.asyncio
+async def test_claude_rate_limiter_bypasses_non_claude_models():
+    """Verify non-Claude models (e.g. DeepSeek, Gemini) are not throttled by ClaudeRateLimiter."""
+    ClaudeRateLimiter._last_session_start = time.time()
+    original_delay = ClaudeRateLimiter.MIN_DELAY_BETWEEN_SESSIONS
+    ClaudeRateLimiter.MIN_DELAY_BETWEEN_SESSIONS = 5.0
+    try:
+        start = time.monotonic()
+        await ClaudeRateLimiter.acquire_session_slot(model_name="deepseek-v4.1-flash-1017")
+        elapsed = time.monotonic() - start
+        assert elapsed < 0.5, f"Non-Claude model should not be throttled, elapsed: {elapsed}s"
+    finally:
+        ClaudeRateLimiter.MIN_DELAY_BETWEEN_SESSIONS = original_delay
 
 
 # ----------------------------------------------------------------------

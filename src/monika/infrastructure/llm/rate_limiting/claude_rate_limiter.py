@@ -28,6 +28,10 @@ class ClaudeRateLimiter:
     @classmethod
     async def acquire_session_slot(cls, model_name: str = "", estimated_tokens: int = 0) -> None:
         """Wait until it's safe to start a new Claude session without holding the lock during sleep."""
+        # Only rate-limit Anthropic Claude models; non-Claude models are governed by their own provider rate limits
+        if model_name and "claude" not in model_name.lower():
+            return
+
         while True:
             wait_time = 0.0
             async with cls._get_lock():
