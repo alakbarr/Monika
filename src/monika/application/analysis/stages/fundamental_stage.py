@@ -1045,13 +1045,12 @@ class FundamentalStage:
                             is_paused = await CostTracker.is_budget_paused(budget_session, settings=self.settings)
 
                         if is_paused:
-                            logger.warning("Budget limit reached — skipping escalation.")
-                        else:
-                            escalation_client = get_client_for_task("stage1_escalation", self.settings)
+                            logger.info("Paid AI budget reached — executing stage1_escalation via free fallback chain.")
+                        escalation_client = get_client_for_task("stage1_escalation", self.settings)
 
-                            esc_msg = (
-                                actual_user_message
-                                + f"""
+                        esc_msg = (
+                            actual_user_message
+                            + f"""
 
 --- ESCALATION REQUIRED ---
 Trigger reason: {escalation_trigger_reason} (previous confidence: {brief_confidence:.2f}, threshold: {escalation_threshold}).
@@ -1063,111 +1062,107 @@ INSTRUCTIONS:
    - For ANY non-neutral bias, ensure `invalidation_conditions` has >= 40 chars and concrete numerical levels.
    - For ANY sticky currency (bias held >=4 cycles), ensure `bias_continuity_justification` has >= 40 chars with concrete numeric evidence.
 """
-                            )
-                            esc_result = await escalation_client.run_agent(
-                                session=session,
-                                system_prompt=system_prompt,
-                                user_message=esc_msg,
-                                tools=tools_to_use,
-                                stage_name="fundamental",
-                                prefetch_satisfied_tools=prefetch_satisfied_tools,
-                            )
+                        )
+                        esc_result = await escalation_client.run_agent(
+                            session=session,
+                            system_prompt=system_prompt,
+                            user_message=esc_msg,
+                            tools=tools_to_use,
+                            stage_name="fundamental",
+                            prefetch_satisfied_tools=prefetch_satisfied_tools,
+                        )
 
-                            if esc_result["success"]:
-                                esc_brief = (
-                                    await session.execute(
-                                        select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                        if esc_result["success"]:
+                            esc_brief = (
+                                await session.execute(
+                                    select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                                )
+                            ).scalar_one_or_none()
+
+                            if esc_brief and esc_brief.id != brief.id:
+                                old_brief = brief
+                                brief = esc_brief
+                                result = esc_result
+                                try:
+                                    await session.delete(old_brief)
+                                    await session.commit()
+                                    logger.info(
+                                        f"Cleaned up pre-escalation draft brief (id={old_brief.id}) in favor of authoritative escalated brief (id={brief.id})"
                                     )
-                                ).scalar_one_or_none()
+                                except Exception as del_err:
+                                    logger.debug(f"Pre-escalation draft brief cleanup error (non-fatal): {del_err}")
 
-                                if esc_brief and esc_brief.id != brief.id:
-                                    old_brief = brief
-                                    brief = esc_brief
-                                    result = esc_result
-                                    try:
-                                        await session.delete(old_brief)
-                                        await session.commit()
-                                        logger.info(
-                                            f"Cleaned up pre-escalation draft brief (id={old_brief.id}) in favor of authoritative escalated brief (id={brief.id})"
+                                try:
+                                    stage1_esc = (
+                                        self.settings.get("llm", {}).get("task_roles", {}).get("stage1_escalation", {})
+                                    )
+                                    cross_check_model = (
+                                        stage1_esc.get("fallback_1")
+                                        or stage1_esc.get("fallback_2")
+                                        or stage1_esc.get("fallback")
+                                        or stage1_esc.get("primary")
+                                    )
+                                    cross_client = create_client(cross_check_model, self.settings)
+                                    cross_schema = {
+                                        "type": "object",
+                                        "properties": {
+                                            "currency_bias": {"type": "object"},
+                                            "confidence": {"type": "number"},
+                                            "one_line_reasoning": {"type": "string"},
+                                        },
+                                        "required": ["currency_bias", "confidence", "one_line_reasoning"],
+                                    }
+                                    cross_prompt = (
+                                        "Independently assess current USD/EUR/GBP/JPY/AUD/XAU directional bias (bullish/bearish/neutral) "
+                                        "using the data context below. Do NOT reference any prior brief — form your own view from raw data.\n\n"
+                                        f"{esc_msg}"
+                                    )
+                                    cross_result = await cross_client.classify_json(
+                                        prompt=cross_prompt, schema=cross_schema, temperature=0.0
+                                    )
+                                    if cross_result:
+                                        esc_bias = (
+                                            json.loads(brief.structured_json).get("currency_bias", {})
+                                            if brief.structured_json
+                                            else {}
                                         )
-                                    except Exception as del_err:
-                                        logger.debug(f"Pre-escalation draft brief cleanup error (non-fatal): {del_err}")
-
-                                    try:
-                                        stage1_esc = (
-                                            self.settings.get("llm", {})
-                                            .get("task_roles", {})
-                                            .get("stage1_escalation", {})
-                                        )
-                                        cross_check_model = (
-                                            stage1_esc.get("fallback_1")
-                                            or stage1_esc.get("fallback_2")
-                                            or stage1_esc.get("fallback")
-                                            or stage1_esc.get("primary")
-                                        )
-                                        cross_client = create_client(cross_check_model, self.settings)
-                                        cross_schema = {
-                                            "type": "object",
-                                            "properties": {
-                                                "currency_bias": {"type": "object"},
-                                                "confidence": {"type": "number"},
-                                                "one_line_reasoning": {"type": "string"},
-                                            },
-                                            "required": ["currency_bias", "confidence", "one_line_reasoning"],
-                                        }
-                                        cross_prompt = (
-                                            "Independently assess current USD/EUR/GBP/JPY/AUD/XAU directional bias (bullish/bearish/neutral) "
-                                            "using the data context below. Do NOT reference any prior brief — form your own view from raw data.\n\n"
-                                            f"{esc_msg}"
-                                        )
-                                        cross_result = await cross_client.classify_json(
-                                            prompt=cross_prompt, schema=cross_schema, temperature=0.0
-                                        )
-                                        if cross_result:
-                                            esc_bias = (
-                                                json.loads(brief.structured_json).get("currency_bias", {})
-                                                if brief.structured_json
-                                                else {}
+                                        cross_bias = cross_result.get("currency_bias", {})
+                                        disagreements = [
+                                            c
+                                            for c in esc_bias
+                                            if c in cross_bias
+                                            and esc_bias[c] != "neutral"
+                                            and cross_bias[c] != "neutral"
+                                            and esc_bias[c] != cross_bias[c]
+                                        ]
+                                        if len(disagreements) >= 2:
+                                            logger.warning(
+                                                f"[Stage1 Escalation] Cross-provider disagreement pada {disagreements} antara {escalation_model} dan {cross_check_model}. Confidence dibatasi."
                                             )
-                                            cross_bias = cross_result.get("currency_bias", {})
-                                            disagreements = [
-                                                c
-                                                for c in esc_bias
-                                                if c in cross_bias
-                                                and esc_bias[c] != "neutral"
-                                                and cross_bias[c] != "neutral"
-                                                and esc_bias[c] != cross_bias[c]
-                                            ]
-                                            if len(disagreements) >= 2:
-                                                logger.warning(
-                                                    f"[Stage1 Escalation] Cross-provider disagreement pada {disagreements} antara {escalation_model} dan {cross_check_model}. Confidence dibatasi."
-                                                )
-                                                brief.confidence = min(brief.confidence or 0.7, 0.65)
-                                                b_data = (
-                                                    json.loads(brief.structured_json) if brief.structured_json else {}
-                                                )
-                                                b_data["confidence"] = brief.confidence
-                                                b_data["macro_narrative"] = b_data.get("macro_narrative", "") + (
-                                                    f"\n\n[SYSTEM: Cross-provider check ({cross_check_model}) tidak sepakat pada {disagreements}. "
-                                                    f"Confidence dibatasi menunggu konfirmasi siklus berikutnya.]"
-                                                )
-                                                brief.structured_json = json.dumps(b_data)
-                                                await session.commit()
-                                    except Exception as cross_err:
-                                        logger.debug(
-                                            f"Cross-provider escalation sanity check gagal (non-fatal): {cross_err}"
-                                        )
+                                            brief.confidence = min(brief.confidence or 0.7, 0.65)
+                                            b_data = json.loads(brief.structured_json) if brief.structured_json else {}
+                                            b_data["confidence"] = brief.confidence
+                                            b_data["macro_narrative"] = b_data.get("macro_narrative", "") + (
+                                                f"\n\n[SYSTEM: Cross-provider check ({cross_check_model}) tidak sepakat pada {disagreements}. "
+                                                f"Confidence dibatasi menunggu konfirmasi siklus berikutnya.]"
+                                            )
+                                            brief.structured_json = json.dumps(b_data)
+                                            await session.commit()
+                                except Exception as cross_err:
+                                    logger.debug(
+                                        f"Cross-provider escalation sanity check gagal (non-fatal): {cross_err}"
+                                    )
 
-                                # Update escalation count
-                                existing_cfg = (
-                                    await session.execute(select(SystemConfig).where(SystemConfig.key == esc_key))
-                                ).scalar_one_or_none()
-                                if existing_cfg and existing_cfg.value is not None:
-                                    existing_cfg.value = str(int(existing_cfg.value) + 1)
-                                else:
-                                    session.add(SystemConfig(key=esc_key, value="1"))
-                                await session.commit()
-                                escalated = True
+                            # Update escalation count
+                            existing_cfg = (
+                                await session.execute(select(SystemConfig).where(SystemConfig.key == esc_key))
+                            ).scalar_one_or_none()
+                            if existing_cfg and existing_cfg.value is not None:
+                                existing_cfg.value = str(int(existing_cfg.value) + 1)
+                            else:
+                                session.add(SystemConfig(key=esc_key, value="1"))
+                            await session.commit()
+                            escalated = True
                     except Exception as e:
                         logger.warning(f"Escalation execution failed: {e}")
                         elapsed = (clock.now() - start_time).total_seconds()

@@ -59,7 +59,10 @@ class CostTracker:
 
                 db_cycle_cost = (
                     await session.execute(
-                        select(func.sum(TokenUsageLog.cost_estimate)).where(TokenUsageLog.cycle_id == str(cycle_id))
+                        select(func.sum(TokenUsageLog.cost_estimate)).where(
+                            TokenUsageLog.cycle_id == str(cycle_id),
+                            (TokenUsageLog.is_paid.is_(True)) | (TokenUsageLog.cost_estimate > 0.0),
+                        )
                     )
                 ).scalar()
                 if db_cycle_cost is not None:
@@ -195,21 +198,24 @@ class CostTracker:
 
             db_mtd_res = await session.execute(
                 select(func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0)).where(
-                    TokenUsageLog.timestamp >= month_start
+                    TokenUsageLog.timestamp >= month_start,
+                    (TokenUsageLog.is_paid.is_(True)) | (TokenUsageLog.cost_estimate > 0.0),
                 )
             )
             mtd_cost = _extract_scalar(db_mtd_res, 0.0)
 
             db_weekly_res = await session.execute(
                 select(func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0)).where(
-                    TokenUsageLog.timestamp >= week_start_dt
+                    TokenUsageLog.timestamp >= week_start_dt,
+                    (TokenUsageLog.is_paid.is_(True)) | (TokenUsageLog.cost_estimate > 0.0),
                 )
             )
             weekly_cost_usd = _extract_scalar(db_weekly_res, 0.0)
 
             db_daily_res = await session.execute(
                 select(func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0)).where(
-                    TokenUsageLog.timestamp >= day_start_dt
+                    TokenUsageLog.timestamp >= day_start_dt,
+                    (TokenUsageLog.is_paid.is_(True)) | (TokenUsageLog.cost_estimate > 0.0),
                 )
             )
             daily_cost_usd = _extract_scalar(db_daily_res, 0.0)
@@ -309,7 +315,7 @@ class CostTracker:
             msg = (
                 f" <b>API BUDGET EXCEEDED</b>\n"
                 f"MTD cost: ${mtd_cost:.4f} — budget: ${budget_usd:.2f} ({usage_pct:.1f}%)\n"
-                f"Pausing AI API calls until budget is acknowledged.\n"
+                f"Pausing paid AI API calls until budget is acknowledged (free models continue running).\n"
                 f"Set <code>cost_tracking.monthly_budget_usd</code> higher or restart to resume."
             )
             logger.error(f"API budget exceeded: ${mtd_cost:.4f} / ${budget_usd:.2f}")
@@ -337,7 +343,7 @@ class CostTracker:
                 try:
                     notifier = AgentNotifier()
                     await notifier.send_critical(
-                        f"[STOP] <b>DAILY SPEND CIRCUIT BREAKER TRIPPED</b>\nDaily AI spend (${daily_cost_usd:.2f}) reached daily limit (${daily_budget_usd:.2f}). System paused."
+                        f"[STOP] <b>DAILY SPEND CIRCUIT BREAKER TRIPPED</b>\nDaily AI spend (${daily_cost_usd:.2f}) reached daily limit (${daily_budget_usd:.2f}). Pausing paid models; continuing with free models."
                     )
                 except Exception:
                     pass
@@ -345,7 +351,7 @@ class CostTracker:
                 try:
                     notifier = AgentNotifier()
                     await notifier.send_critical(
-                        f"[STOP] <b>WEEKLY SPEND CIRCUIT BREAKER TRIPPED</b>\nWeekly AI spend (${weekly_cost_usd:.2f}) reached weekly limit (${weekly_budget_usd:.2f}). System paused."
+                        f"[STOP] <b>WEEKLY SPEND CIRCUIT BREAKER TRIPPED</b>\nWeekly AI spend (${weekly_cost_usd:.2f}) reached weekly limit (${weekly_budget_usd:.2f}). Pausing paid models; continuing with free models."
                     )
                 except Exception:
                     pass

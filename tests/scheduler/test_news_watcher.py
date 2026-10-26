@@ -353,11 +353,9 @@ class TestNewsWatcher:
         news_item = self._make_news("Fed Emergency Shock", impact="HIGH", currency_tags="USD")
         await watcher._trigger_reanalysis([news_item], ["EURUSD", "GBPUSD"])
 
-        # Must suppress Stage 1 patch_brief and Stage 2 per_asset calls
-        mock_fundamental.patch_brief.assert_not_called()
-        mock_per_asset.run_all.assert_not_called()
-        watcher._run_targeted_reanalysis_and_route.assert_not_called()
-        assert watcher._targeted_reruns_today == 0
+        # In decoupled architecture: budget pause allows free-tier news re-analysis
+        watcher._run_targeted_reanalysis_and_route.assert_called_once()
+        assert watcher._targeted_reruns_today == 1
 
     @pytest.mark.asyncio
     @patch("asyncio.sleep", new_callable=AsyncMock)

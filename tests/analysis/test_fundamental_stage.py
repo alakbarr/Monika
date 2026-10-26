@@ -539,7 +539,7 @@ class TestFundamentalStage:
 
             assert res["success"] is True
             assert res["brief_id"] == 101
-            mock_esc_client.run_agent.assert_not_called()
+            mock_esc_client.run_agent.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_quality_flag_unbound_fix_confidence_floor_applied(self):

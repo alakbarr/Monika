@@ -94,6 +94,8 @@ async def test_save_token_usage_records_comprehensive_fields():
             cached_tokens=400,
             cache_creation_tokens=100,
             cost_estimate=0.005,
+            is_paid=True,
+            cost_source="dummy_rate_card",
             execution_time_ms=350,
             status="success",
             slot_name="primary",

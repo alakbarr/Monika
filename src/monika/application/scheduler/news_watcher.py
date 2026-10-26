@@ -790,8 +790,7 @@ class NewsWatcher:
                 if CostTracker.is_budget_paused_cached() or await CostTracker.is_budget_paused(
                     session_inner, settings=self.settings
                 ):
-                    logger.warning("NewsWatcher: AI budget is paused. Suppressing news-triggered re-analysis.")
-                    return
+                    logger.info("NewsWatcher: Paid AI budget is paused. Running news re-analysis in free-tier mode.")
 
                 # Soft limit (90% of daily or weekly budget): throttle re-analysis for idle assets
                 cost_cfg = self.settings.get("cost_tracking", {})

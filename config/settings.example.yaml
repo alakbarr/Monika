@@ -2049,6 +2049,24 @@ llm:
       supports_tool_calling: false
       supports_caching: false
       cost_tier: low
+    gemini-2.5-flash:
+      provider: gemini
+      context_window: 1000000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: free
+      rate_limits:
+        rpm: 15
+        rpd: 500
+    gemini-2.5-flash-lite:
+      provider: gemini
+      context_window: 1000000
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: free
+      rate_limits:
+        rpm: 15
+        rpd: 500
   task_roles:
     stage1_shadow_check:
       primary: jev-latest
@@ -2062,7 +2080,7 @@ llm:
         ollama: none
         openai_compatible: none
       max_tokens: 2048
-      max_tool_turns: null
+      max_tool_turns:
       temperature: 0.0
       fallback_1: liquid-d1
       fallback_2: luna-decision
@@ -2077,6 +2095,9 @@ llm:
       max_tool_turns: 8
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     stage1_escalation:
       primary: gemini-3.5-flash-lite
       provider: gemini
@@ -2085,6 +2106,9 @@ llm:
       max_tool_turns: 8
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     stage1_delta_revision:
       primary: gemini-3.5-flash-lite
       provider: gemini
@@ -2092,6 +2116,7 @@ llm:
       max_tokens: 4096
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
     stage2_per_asset_primary:
       primary: gemini-3.5-flash-lite
       provider: gemini
@@ -2100,6 +2125,8 @@ llm:
       max_tool_turns: 5
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-2.5-flash
+      fallback_3: openrouter/free
     stage2_per_asset_secondary:
       primary: gemini-3.5-flash-lite
       provider: gemini
@@ -2108,6 +2135,8 @@ llm:
       max_tool_turns: 5
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-2.5-flash
+      fallback_3: openrouter/free
     stage2_session_trigger:
       primary: gemini-3.5-flash-lite
       provider: gemini
@@ -2116,6 +2145,8 @@ llm:
       max_tool_turns: 4
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-2.5-flash
+      fallback_3: openrouter/free
     stage2_prescreen:
       primary: gemini-3.5-flash-lite
       provider: gemini
@@ -2123,6 +2154,7 @@ llm:
       max_tokens: 2048
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: openrouter/free
     debate_bear:
       primary: gemini-3.5-flash-lite
       provider: gemini
@@ -2130,6 +2162,9 @@ llm:
       max_tokens: 4096
       temperature: 0.2
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     debate_bull:
       primary: gemini-3.5-flash-lite
       provider: gemini
@@ -2137,6 +2172,9 @@ llm:
       max_tokens: 4096
       temperature: 0.2
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     debate_judge:
       primary: gemini-3.5-flash-lite
       provider: gemini
@@ -2144,6 +2182,9 @@ llm:
       max_tokens: 4096
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     risk_gate_conservative:
       primary: deepseek-v4.1-flash
       thinking:
@@ -2160,6 +2201,10 @@ llm:
       max_tokens: 2048
       temperature: 0.0
       fallback_1: glm-5.3-flash
+      fallback_2: gemini-2.5-flash
+      fallback_3: gemini-3.5-flash-lite
+      fallback_4: openrouter/free
+      fallback_5: liquid-d1
     risk_gate_aggressive:
       primary: deepseek-v4.1-flash
       thinking:
@@ -2176,6 +2221,10 @@ llm:
       max_tokens: 2048
       temperature: 0.0
       fallback_1: glm-5.3-flash
+      fallback_2: gemini-2.5-flash
+      fallback_3: gemini-3.5-flash-lite
+      fallback_4: openrouter/free
+      fallback_5: liquid-d1
     risk_gate_neutral:
       primary: deepseek-v4.1-flash
       thinking:
@@ -2192,6 +2241,10 @@ llm:
       max_tokens: 2048
       temperature: 0.0
       fallback_1: glm-5.3-flash
+      fallback_2: gemini-2.5-flash
+      fallback_3: gemini-3.5-flash-lite
+      fallback_4: openrouter/free
+      fallback_5: liquid-d1
     risk_gate:
       primary: deepseek-v4.1-flash
       thinking:
@@ -2208,6 +2261,10 @@ llm:
       max_tokens: 2048
       temperature: 0.0
       fallback_1: glm-5.3-flash
+      fallback_2: gemini-2.5-flash
+      fallback_3: gemini-3.5-flash-lite
+      fallback_4: openrouter/free
+      fallback_5: liquid-d1
     macro_analyst:
       primary: deepseek-v4.1-flash
       thinking:
@@ -2224,6 +2281,8 @@ llm:
       max_tokens: 4096
       temperature: 0.0
       fallback_1: glm-5.3-flash
+      fallback_2: gemini-2.5-flash
+      fallback_3: openrouter/free
     sentiment_analyst:
       primary: deepseek-v4.1-flash
       thinking:
@@ -2240,6 +2299,8 @@ llm:
       max_tokens: 4096
       temperature: 0.0
       fallback_1: glm-5.3-flash
+      fallback_2: gemini-2.5-flash
+      fallback_3: openrouter/free
     portfolio_manager_per_trade:
       primary: deepseek-v4.1-flash
       thinking:
@@ -2256,6 +2317,9 @@ llm:
       max_tokens: 2048
       temperature: 0.0
       fallback_1: glm-5.3-flash
+      fallback_2: gemini-2.5-flash
+      fallback_3: gemini-3.5-flash-lite
+      fallback_4: openrouter/free
     adversarial_check:
       primary: jev-latest
       thinking:
@@ -2294,6 +2358,7 @@ llm:
       fallback_3: mercury-decide
       fallback_4: glm-5.3-flash
       fallback_5: deepseek-v4.1-flash
+      fallback_6: openrouter/free
     jev_news_realtime:
       primary: jev-latest
       max_tokens: 1024
@@ -2301,6 +2366,9 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
+      fallback_4: gemini-2.5-flash-lite
+      fallback_5: gemini-3.1-flash-lite
+      fallback_6: openrouter/free
     jev_trigger_validator:
       primary: jev-latest
       max_tokens: 1024
@@ -2308,6 +2376,9 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
+      fallback_4: gemini-2.5-flash-lite
+      fallback_5: gemini-3.1-flash-lite
+      fallback_6: openrouter/free
     jev_position_guard:
       primary: jev-latest
       max_tokens: 1024
@@ -2315,6 +2386,9 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
+      fallback_4: gemini-2.5-flash-lite
+      fallback_5: gemini-3.1-flash-lite
+      fallback_6: openrouter/free
     jev_telegram_intent:
       primary: jev-latest
       max_tokens: 512
@@ -2322,6 +2396,9 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
+      fallback_4: gemini-2.5-flash-lite
+      fallback_5: gemini-3.1-flash-lite
+      fallback_6: openrouter/free
     jev_exit_prescreen:
       primary: jev-latest
       max_tokens: 1024
@@ -2329,6 +2406,9 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
+      fallback_4: gemini-2.5-flash-lite
+      fallback_5: gemini-3.1-flash-lite
+      fallback_6: openrouter/free
     news_classification_escalation:
       primary: glm-5.3-flash
       thinking:
@@ -2345,6 +2425,7 @@ llm:
       max_tokens: 4096
       temperature: 0.0
       fallback_1: deepseek-v4.1-flash
+      fallback_2: openrouter/free
     news_classification_verifier:
       primary: jev-latest
       thinking:
@@ -2365,6 +2446,7 @@ llm:
       fallback_3: mercury-decide
       fallback_4: glm-5.3-flash
       fallback_5: deepseek-v4.1-flash
+      fallback_6: openrouter/free
     news_digest:
       primary: gemini-3.8-flash
       thinking:
@@ -2382,6 +2464,9 @@ llm:
       temperature: 0.0
       fallback_1: glm-5.3
       fallback_2: glm-5.3-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: gemini-3.5-flash-lite
+      fallback_5: openrouter/free
     news_digest_macro_overview:
       primary: glm-5.3
       thinking:
@@ -2399,6 +2484,9 @@ llm:
       temperature: 0.0
       fallback_1: muse-spark-1.3
       fallback_2: glm-5.3-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: gemini-3.5-flash-lite
+      fallback_5: openrouter/free
     news_digest_verifier:
       primary: gemini-3.8-flash
       thinking:
@@ -2419,6 +2507,7 @@ llm:
       fallback_3: mercury-decide
       fallback_4: gemini-3.8-flash
       fallback_5: glm-5.3
+      fallback_6: openrouter/free
     fundamental_verifier:
       primary: jev-latest
       thinking:
@@ -2439,6 +2528,7 @@ llm:
       fallback_3: mercury-decide
       fallback_4: glm-5.3-flash
       fallback_5: deepseek-v4.1-flash
+      fallback_6: openrouter/free
     cot_precompute:
       primary: deepseek-v4.1-flash
       thinking:
@@ -2455,24 +2545,33 @@ llm:
       max_tokens: 4096
       temperature: 0.0
       fallback_1: glm-5.3-flash
+      fallback_2: gemini-2.5-flash
+      fallback_3: gemini-3.5-flash-lite
+      fallback_4: openrouter/free
     specialist_technical:
       primary: gemini-3.5-flash-lite
       thinking: low
       max_tokens: 4096
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-2.5-flash
+      fallback_3: openrouter/free
     specialist_sentiment:
       primary: gemini-3.5-flash-lite
       thinking: low
       max_tokens: 4096
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-2.5-flash
+      fallback_3: openrouter/free
     specialist_macro:
       primary: gemini-3.5-flash-lite
       thinking: low
       max_tokens: 4096
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-2.5-flash
+      fallback_3: openrouter/free
     portfolio_synthesis:
       primary: gemini-3.5-flash-lite
       thinking:
@@ -2489,6 +2588,9 @@ llm:
       max_tokens: 4096
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     stage2_adjudicator:
       primary: gemini-3.5-flash-lite
       thinking:
@@ -2505,6 +2607,9 @@ llm:
       max_tokens: 4096
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     trade_reflection:
       primary: gemini-3.5-flash-lite
       thinking:
@@ -2521,6 +2626,9 @@ llm:
       max_tokens: 4096
       temperature: 0.1
       fallback_1: gemini-3.1-flash-lite
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     macro_chronicle_curator:
       primary: gemini-3.5-flash-lite
       per_model_timeout_seconds: 120.0
@@ -2531,7 +2639,7 @@ llm:
         gemini: high
         openai: high
       max_tokens: 8192
-      max_tool_turns: null
+      max_tool_turns:
       max_cost_per_call: 0.03
       temperature: 0.1
       fallback_1: glm-5.3-flash
@@ -2553,6 +2661,8 @@ llm:
       max_tool_turns: 5
       temperature: 0.2
       fallback_1: deepseek-v4.1-flash
+      fallback_2: gemini-2.5-flash
+      fallback_3: openrouter/free
     chat_telegram_medium:
       primary: glm-5.3-flash
       thinking:
@@ -2570,6 +2680,9 @@ llm:
       max_tool_turns: 8
       temperature: 0.2
       fallback_1: deepseek-v4.1-flash
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     chat_telegram_complex:
       primary: glm-5.3
       thinking:
@@ -2587,6 +2700,9 @@ llm:
       max_tool_turns: 15
       temperature: 0.2
       fallback_1: muse-spark-1.3
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     chat_interactive_fast:
       primary: glm-5.3-flash
       thinking:
@@ -2603,6 +2719,7 @@ llm:
       max_tokens: 4096
       temperature: 0.2
       fallback_1: deepseek-v4.1-flash
+      fallback_2: openrouter/free
     chat_interactive_balanced:
       primary: glm-5.3-flash
       thinking:
@@ -2619,6 +2736,9 @@ llm:
       max_tokens: 4096
       temperature: 0.2
       fallback_1: deepseek-v4.1-flash
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     chat_interactive_reasoning:
       primary: glm-5.3
       thinking:
@@ -2635,6 +2755,9 @@ llm:
       max_tokens: 8192
       temperature: 0.2
       fallback_1: muse-spark-1.3
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     chat_interactive_pro:
       primary: glm-5.3
       thinking:
@@ -2651,6 +2774,9 @@ llm:
       max_tokens: 16384
       temperature: 0.2
       fallback_1: muse-spark-1.3
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     deep_research:
       primary: claude-opus-5.5
       thinking:
@@ -2668,6 +2794,9 @@ llm:
       max_tool_turns: 15
       temperature: 0.1
       fallback_1: glm-5.3
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     strategy_discovery:
       primary: deepseek-v4.1-flash
       provider: openrouter
@@ -2686,6 +2815,7 @@ llm:
       max_tool_turns: 10
       temperature: 0.1
       fallback_1: glm-5.3-flash
+      fallback_2: openrouter/free
     context_compaction:
       primary: deepseek-v4.1-flash
       thinking:
@@ -2702,6 +2832,7 @@ llm:
       max_tokens: 4096
       temperature: 0.0
       fallback_1: glm-5.3-flash
+      fallback_2: openrouter/free
     summarizer:
       primary: deepseek-v4.1-flash
       thinking:
@@ -2718,6 +2849,9 @@ llm:
       max_tokens: 2048
       temperature: 0.0
       fallback_1: glm-5.3-flash
+      fallback_2: gemini-3.8-flash
+      fallback_3: gemini-2.5-flash
+      fallback_4: openrouter/free
     report_synthesizer:
       primary: glm-5.3-flash
       thinking:
@@ -2734,6 +2868,7 @@ llm:
       max_tokens: 2048
       temperature: 0.2
       fallback_1: deepseek-v4.1-flash
+      fallback_2: openrouter/free
     pattern_context_verifier:
       primary: jev-latest
       thinking:
@@ -2754,6 +2889,8 @@ llm:
       fallback_3: mercury-decide
       fallback_4: glm-5.3-flash
       fallback_5: deepseek-v4.1-flash
+      fallback_6: gemini-2.5-flash-lite
+      fallback_7: openrouter/free
     jev_confluence_gate:
       primary: jev-latest
       max_tokens: 512
@@ -2761,6 +2898,8 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
+      fallback_4: gemini-2.5-flash-lite
+      fallback_5: openrouter/free
     jev_session_timing_gate:
       primary: jev-latest
       max_tokens: 512
@@ -2768,6 +2907,8 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
+      fallback_4: gemini-2.5-flash-lite
+      fallback_5: openrouter/free
     jev_debate_evaluator:
       primary: jev-latest
       thinking:
@@ -2784,6 +2925,8 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
+      fallback_4: gemini-2.5-flash-lite
+      fallback_5: openrouter/free
     voice_transcription:
       primary: openai/whisper-large-v3
       provider: openrouter
@@ -2802,6 +2945,7 @@ llm:
       fallback_2: gemini-3.8-flash
       fallback_3: openai/whisper-large-v3-turbo
 
+      fallback_4: gemini-2.5-flash
 pattern_similarity:
   enabled: true
   inject_to_prefetch: true

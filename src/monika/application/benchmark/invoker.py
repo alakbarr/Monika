@@ -51,6 +51,8 @@ def _attach_usage_capture(client: BaseLLMClient) -> dict:
         slot_name: str = "primary",
         exact_cost: Optional[float] = None,
         is_direct_free_tier: Optional[bool] = None,
+        is_paid: Optional[bool] = None,
+        cost_source: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         usage["input_tokens"] += input_tokens or 0

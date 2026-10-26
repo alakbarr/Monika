@@ -144,6 +144,8 @@ class TokenUsageLog(Base):
     cached_tokens: Mapped[int] = mapped_column(Integer, default=0)  # prompt cache hits
     cache_creation_tokens: Mapped[int] = mapped_column(Integer, default=0)  # prompt cache write
     cost_estimate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    is_paid: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    cost_source: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
     execution_time_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # latency ms
     status: Mapped[str] = mapped_column(
         String(20), default="success", index=True

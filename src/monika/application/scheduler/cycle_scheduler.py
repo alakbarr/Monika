@@ -132,26 +132,17 @@ class CycleScheduler:
                 except Exception as e:
                     logger.debug(f"Cache cleanup failed (non-fatal): {e}")
                 if await CostTracker.is_budget_paused(budget_check, settings=self.settings, force_recheck=True):
-                    if not forced:
-                        logger.warning(
-                            "[PreCycleSetup] Cycle SKIPPED: API budget is currently paused (limit reached). Adjust settings or clear pause."
-                        )
-                        result.update({"should_skip": True, "skip_reason": "budget_paused"})
-                        return result
-                    else:
-                        logger.warning(
-                            "[PreCycleSetup] API budget is paused, but cycle is FORCED (forced=True). Proceeding anyway..."
-                        )
+                    logger.warning(
+                        "[PreCycleSetup] Paid LLM budget reached. Continuing cycle in ZERO-COST / FREE-TIER ONLY mode (paid models will be skipped)."
+                    )
                 rolling = await CostTracker.get_rolling_7day_cost(budget_check)
                 from monika.core.config.settings import DEFAULT_MONTHLY_BUDGET_USD
 
                 budget = self.settings.get("cost_tracking", {}).get("monthly_budget_usd", DEFAULT_MONTHLY_BUDGET_USD)
-                if rolling["projected_monthly"] > budget * 0.95 and (not forced):
-                    logger.warning(
-                        f"[PreCycleSetup] Cycle SKIPPED: Projected monthly cost ${rolling['projected_monthly']:.2f} > 95% of budget ${budget:.2f}."
+                if rolling["projected_monthly"] > budget * 0.95:
+                    logger.info(
+                        f"[PreCycleSetup] Projected monthly cost ${rolling['projected_monthly']:.2f} > 95% of budget ${budget:.2f}. Free fallbacks engaged."
                     )
-                    result.update({"should_skip": True, "skip_reason": "near_budget_limit"})
-                    return result
         except Exception as e:
             logger.debug(f"Pre-cycle budget check failed (non-fatal): {e}")
         if not forced:

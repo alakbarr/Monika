@@ -730,6 +730,8 @@ class OpenAIProvider(BaseLLMClient):
                 thinking = int(comp_details.get("reasoning_tokens", 0) or 0)
 
             c_cost = usage.get("total_cost") or usage.get("cost")
+            if c_cost is None and "model_extra" in usage and isinstance(usage["model_extra"], dict):
+                c_cost = usage["model_extra"].get("cost") or usage["model_extra"].get("total_cost")
             exact_cost = (
                 float(c_cost) if c_cost is not None and isinstance(c_cost, (int, float)) and c_cost >= 0 else None
             )
@@ -779,6 +781,8 @@ class OpenAIProvider(BaseLLMClient):
 
         exact_cost = None
         c_cost = getattr(usage, "total_cost", None) or getattr(usage, "cost", None)
+        if c_cost is None and hasattr(usage, "model_extra") and isinstance(usage.model_extra, dict):
+            c_cost = usage.model_extra.get("cost") or usage.model_extra.get("total_cost")
         if c_cost is not None and isinstance(c_cost, (int, float)) and c_cost >= 0:
             exact_cost = float(c_cost)
 
@@ -876,6 +880,8 @@ class OpenAIProvider(BaseLLMClient):
                     kw["thinking_tokens"] = thinking_tokens
                 if exact_cost is not None:
                     kw["exact_cost"] = exact_cost
+                    kw["cost_source"] = "openrouter_exact"
+                    kw["is_paid"] = exact_cost > 0.0
                 await self._save_token_usage(self.model, "generate", inp, outp, **kw)
             if not response.choices:
                 return ""
@@ -926,6 +932,10 @@ class OpenAIProvider(BaseLLMClient):
                                 kw["thinking_tokens"] = thinking_tokens
                             if exact_cost is not None:
                                 kw["exact_cost"] = exact_cost
+                                kw["cost_source"] = "openrouter_exact"
+                                kw["is_paid"] = exact_cost > 0.0
+                                kw["cost_source"] = "openrouter_exact"
+                                kw["is_paid"] = exact_cost > 0.0
                             await self._save_token_usage(self.model, "generate", inp, outp, **kw)
                         if not response.choices:
                             return ""
@@ -1073,6 +1083,8 @@ class OpenAIProvider(BaseLLMClient):
                         kw["thinking_tokens"] = thinking_tokens
                     if exact_cost is not None:
                         kw["exact_cost"] = exact_cost
+                        kw["cost_source"] = "openrouter_exact"
+                        kw["is_paid"] = exact_cost > 0.0
                     await self._save_token_usage(self.model, "generate_content", inp, outp, **kw)
                 if not response.choices:
                     return ""
@@ -1177,6 +1189,10 @@ class OpenAIProvider(BaseLLMClient):
                                 kw["thinking_tokens"] = thinking_tokens
                             if exact_cost is not None:
                                 kw["exact_cost"] = exact_cost
+                                kw["cost_source"] = "openrouter_exact"
+                                kw["is_paid"] = exact_cost > 0.0
+                                kw["cost_source"] = "openrouter_exact"
+                                kw["is_paid"] = exact_cost > 0.0
                             await self._save_token_usage(self.model, "generate_content", inp, outp, **kw)
                         if not response.choices:
                             return ""

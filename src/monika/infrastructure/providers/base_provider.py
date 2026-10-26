@@ -893,6 +893,8 @@ class BaseLLMClient(LlmPort, ABC):
         slot_name: str = "primary",
         exact_cost: Optional[float] = None,
         is_direct_free_tier: Optional[bool] = None,
+        is_paid: Optional[bool] = None,
+        cost_source: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         """Save comprehensive token usage to DB. Shared implementation for all providers."""
@@ -1012,6 +1014,30 @@ class BaseLLMClient(LlmPort, ABC):
                 except Exception as tr_err:
                     logger.debug(f"Direct LLM span trace recording non-fatal: {tr_err}")
 
+            resolved_is_paid = is_paid
+            if resolved_is_paid is None:
+                if is_direct_free_tier is True:
+                    resolved_is_paid = False
+                elif is_direct_free_tier is False:
+                    resolved_is_paid = True
+                else:
+                    from monika.core.analytics.pricing import is_paid_model
+
+                    resolved_is_paid = is_paid_model(model_name, provider=provider_name)
+                    if cost_estimate is not None and cost_estimate <= 0.0:
+                        resolved_is_paid = False
+
+            resolved_cost_source = cost_source
+            if not resolved_cost_source:
+                if exact_cost is not None and provider_name in ("openrouter", "openai"):
+                    resolved_cost_source = "openrouter_exact"
+                elif provider_name == "gemini":
+                    resolved_cost_source = "gemini_paid_exact" if resolved_is_paid else "gemini_free_tier"
+                elif not resolved_is_paid:
+                    resolved_cost_source = f"{provider_name}_free_tier"
+                else:
+                    resolved_cost_source = f"{provider_name}_rate_card"
+
             log_entry = TokenUsageLog(
                 provider=provider_name,
                 model_name=model_name,
@@ -1027,6 +1053,8 @@ class BaseLLMClient(LlmPort, ABC):
                 cached_tokens=cached_tokens,
                 cache_creation_tokens=cache_creation_tokens,
                 cost_estimate=cost_estimate,
+                is_paid=resolved_is_paid,
+                cost_source=resolved_cost_source,
                 execution_time_ms=execution_time_ms,
                 status=status,
                 slot_name=slot_name,

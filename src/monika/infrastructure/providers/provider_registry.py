@@ -126,7 +126,10 @@ def _register_builtins():
         temperature = float(role_config.get("temperature", 0.0))
         thinking_level = kwargs.get("thinking_level", "none")
         pooled_key = kwargs.get("api_key")
-        key_kwargs = {"api_key": pooled_key} if pooled_key else {}
+        gemini_tier = kwargs.get("gemini_tier") or role_config.get("gemini_tier") or role_config.get("tier")
+        key_kwargs = {"gemini_tier": gemini_tier} if gemini_tier else {}
+        if pooled_key:
+            key_kwargs["api_key"] = pooled_key
         client = GeminiProvider(
             model_name, max_tokens, max_tool_turns, thinking_level, settings, temperature, role=task_role, **key_kwargs
         )

@@ -218,6 +218,12 @@ class GeminiProvider(BaseLLMClient):
         self.resolved_model = GEMINI_MODEL_ALIASES.get(model, model)
         self.thinking_level = thinking_level or "none"
         self.resolved_thinking_level = GEMINI_THINKING_LEVEL_MAP.get(str(self.thinking_level).lower(), "MINIMAL")
+        self.gemini_tier = kwargs.get("gemini_tier") or kwargs.get("tier")
+        if not self.gemini_tier:
+            if "pro" in self.model.lower() or "argon" in self.model.lower() or "ultra" in self.model.lower():
+                self.gemini_tier = "paid"
+            else:
+                self.gemini_tier = "free"
 
         from monika.core.security.credential_vault import vault
 
@@ -281,9 +287,21 @@ class GeminiProvider(BaseLLMClient):
 
     def _get_api_key(self, sticky: bool = False) -> Optional[str]:
         now = time.time()
-        is_paid_model = "pro" in self.model.lower() or "argon" in self.model.lower()
+        is_paid_request = self.gemini_tier == "paid"
 
-        if is_paid_model:
+        if is_paid_request:
+            # Check global budget circuit breaker
+            try:
+                from monika.core.analytics.cost_tracker import CostTracker
+
+                if CostTracker.is_budget_paused_cached():
+                    logger.warning(
+                        f"[GeminiProvider] Global AI Budget is paused. Rejecting paid Gemini model/tier for '{self.model}'."
+                    )
+                    return None
+            except Exception:
+                pass
+
             try:
                 from monika.infrastructure.auth.antigravity_bridge import resolve_antigravity_access_token
 
@@ -671,6 +689,9 @@ class GeminiProvider(BaseLLMClient):
                             cached_tokens=cached,
                             thinking_tokens=thoughts,
                             is_direct_free_tier=is_free_attempt,
+                            is_paid=is_paid_attempt,
+                            cost_source="gemini_paid_exact" if is_paid_attempt else "gemini_free_tier",
+                            exact_cost=0.0 if is_free_attempt else None,
                         )
 
                     if stream_res.finish_reason == "MAX_TOKENS":
@@ -713,6 +734,9 @@ class GeminiProvider(BaseLLMClient):
                                             cached_tokens=rec_cached,
                                             thinking_tokens=rec_thoughts,
                                             is_direct_free_tier=is_free_attempt,
+                                            is_paid=is_paid_attempt,
+                                            cost_source="gemini_paid_exact" if is_paid_attempt else "gemini_free_tier",
+                                            exact_cost=0.0 if is_free_attempt else None,
                                         )
                                     return rec_res.text
                             except Exception as rec_err:
@@ -758,6 +782,9 @@ class GeminiProvider(BaseLLMClient):
                                 cached_tokens=cached,
                                 thinking_tokens=thoughts,
                                 is_direct_free_tier=is_free_attempt,
+                                is_paid=is_paid_attempt,
+                                cost_source="gemini_paid_exact" if is_paid_attempt else "gemini_free_tier",
+                                exact_cost=0.0 if is_free_attempt else None,
                             )
 
                         candidates = data.get("candidates", [])
@@ -1477,6 +1504,9 @@ class GeminiProvider(BaseLLMClient):
                     cached_tokens=total_cached_tokens,
                     thinking_tokens=total_thinking_tokens,
                     is_direct_free_tier=not any_turn_paid,
+                    is_paid=any_turn_paid,
+                    cost_source="gemini_paid_exact" if any_turn_paid else "gemini_free_tier",
+                    exact_cost=0.0 if not any_turn_paid else None,
                 )
 
         return {

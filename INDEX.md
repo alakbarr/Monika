@@ -362,6 +362,7 @@
     - `from_gemini(usage_metadata: Any) -> CanonicalUsage`
 - **Top-Level Functions**:
   - `infer_provider_from_model(model_name: str) -> str`: Inferensi otomatis provider berdasarkan nama model jika provider tidak diberikan.
+  - `is_paid_model(model_name: str, provider: str | None, is_direct_free_tier: bool | None) -> bool`: Evaluasi apakah pemanggilan model masuk kategori Berbayar (Paid Tier).
   - `is_free_tier(model_name: str, provider: str | None, is_direct_free_tier: bool | None) -> bool`: Evaluasi apakah pemanggilan model masuk kategori Free Tier ($0).
   - `get_price(model_name: str) -> Price`: Mengembalikan objek Price untuk model yang diberikan.
   - `cost_usd_decimal(model_name: str, input_tokens: int, output_tokens: int, ...) -> Decimal`: Menghitung estimasi biaya pemanggilan API dalam USD menggunakan decimal.Decimal
@@ -13146,6 +13147,7 @@
   - `class LLMFactory`: Factory terpusat. Resolves:
     - `__init__(settings: dict)`
     - `get_client_for_task(task_role: str) -> 'BaseLLMClient'` - *Buat client untuk task role tertentu.*
+    - `is_model_paid(model_name: str, role_config: Optional[dict], slot_name: Optional[str], ...) -> bool` - *Determines whether a candidate model/slot is paid or free.*
   - `class FallbackClientWrapper(BaseLLMClient)`: Wrapper that tries primary model, and if it fails, tries fallback models.
     - `__init__(factory: LLMFactory, primary: str, fallbacks: list[str], ...)`
     - `provider_name() -> str` - *Returns the provider name of the currently active model slot.*

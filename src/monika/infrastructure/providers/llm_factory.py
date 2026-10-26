@@ -575,6 +575,47 @@ class LLMFactory:
             return "groq"
         return "openai_compatible"
 
+    def is_model_paid(
+        self,
+        model_name: str,
+        role_config: Optional[dict] = None,
+        slot_name: Optional[str] = "primary",
+        provider: Optional[str] = None,
+    ) -> bool:
+        """
+        Determines whether a candidate model/slot is paid or free.
+        Used by FallbackClientWrapper to bypass paid models when budget is paused.
+        """
+        if not model_name:
+            return False
+
+        from monika.core.analytics.pricing import is_paid_model
+
+        resolved_prov = provider
+        if not resolved_prov:
+            try:
+                resolved_prov = self._resolve_provider(model_name, role_config=role_config, slot_name=slot_name)
+            except Exception:
+                resolved_prov = None
+
+        is_direct_free_tier: Optional[bool] = None
+        if isinstance(role_config, dict):
+            slot_tier = (
+                role_config.get(f"{slot_name}_gemini_tier")
+                or role_config.get(f"{slot_name}_tier")
+                or (role_config.get("gemini_tier") if slot_name in (None, "primary") else None)
+            )
+            if slot_tier == "paid":
+                is_direct_free_tier = False
+            elif slot_tier == "free":
+                is_direct_free_tier = True
+
+        return is_paid_model(
+            model_name,
+            provider=resolved_prov,
+            is_direct_free_tier=is_direct_free_tier,
+        )
+
     def _resolve_thinking_level(
         self, model_name: str, role_config: dict, provider_name: str, slot_name: Optional[str] = None
     ) -> str:
@@ -739,6 +780,14 @@ class LLMFactory:
 
         from monika.infrastructure.providers.provider_registry import ProviderRegistry
 
+        slot_gemini_tier = None
+        if isinstance(role_config, dict):
+            slot_gemini_tier = (
+                role_config.get(f"{slot_name}_gemini_tier")
+                or role_config.get(f"{slot_name}_tier")
+                or (role_config.get("gemini_tier") if slot_name in (None, "primary") else None)
+            )
+
         client = ProviderRegistry.create_client(
             provider_name=provider_name,
             model_name=clean_model_name,
@@ -748,6 +797,7 @@ class LLMFactory:
             thinking_level=thinking_level,
             api_key=pooled_key,
             provider_config=provider_config,
+            gemini_tier=slot_gemini_tier,
         )
         if client is None:
             return None
@@ -1016,17 +1066,12 @@ class FallbackClientWrapper(BaseLLMClient):
 
         # Check global budget circuit breaker
         bypass_budget = kwargs.pop("_bypass_budget_check", False)
+        is_budget_paused = False
         if not bypass_budget:
             try:
                 from monika.core.analytics.cost_tracker import CostTracker
 
-                if CostTracker.is_budget_paused_cached():
-                    logger.critical(
-                        f"[CircuitBreaker] Global AI Budget is paused. Blocking LLM call for task_role='{self.task_role}'"
-                    )
-                    if method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages"]:
-                        return {"success": False, "error": "AI Budget Paused", "status": "blocked"}
-                    return None
+                is_budget_paused = bool(CostTracker.is_budget_paused_cached())
             except Exception as e:
                 logger.debug(f"[CircuitBreaker] Cached budget check error: {e}")
 
@@ -1048,6 +1093,15 @@ class FallbackClientWrapper(BaseLLMClient):
             per_model_timeout = 180.0
 
         for slot_name, model in models_to_try:
+            # If budget is paused, bypass paid models and execute only free tier models
+            if is_budget_paused and self.factory.is_model_paid(
+                model, role_config=self.role_config, slot_name=slot_name
+            ):
+                logger.warning(
+                    f"[{self.task_role}] Budget paused: Skipping paid slot {slot_name} '{model}'. Falling back to free candidate."
+                )
+                continue
+
             # Skip slot if currently in active cooldown
             now = time.time()
             if slot_name in self._slot_cooldowns and self._slot_cooldowns[slot_name] > now:
@@ -1597,7 +1651,13 @@ class FallbackClientWrapper(BaseLLMClient):
                     break
 
         if last_error is None:
-            last_error = "All candidate models skipped (active cooldown or provider circuits open)"
+            if is_budget_paused:
+                last_error = (
+                    f"AI Budget is paused and all paid candidate models were skipped "
+                    f"(no eligible free fallback available or all failed) for task_role='{self.task_role}'"
+                )
+            else:
+                last_error = "All candidate models skipped (active cooldown or provider circuits open)"
 
         logger.error(f"All fallback models failed for {method_name}. Last error: {last_error}")
 

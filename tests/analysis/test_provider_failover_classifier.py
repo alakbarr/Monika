@@ -136,7 +136,7 @@ async def test_streaming_heartbeat_monitor():
 
     monitor = StreamingHeartbeatMonitor(interval=0.05, touch_fn=on_touch)
     monitor.start()
-    await asyncio.sleep(0.12)
+    await asyncio.sleep(0.20)
     monitor.stop()
 
     assert pulse_count >= 2

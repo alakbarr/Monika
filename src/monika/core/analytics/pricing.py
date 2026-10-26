@@ -98,6 +98,7 @@ PRICING: dict[str, Price] = {
     "gemini-3-flash-live": Price(1.50, 0.15, 7.50),
     "gemini-2.5-pro": Price(1.25, 0.125, 10.00),
     "gemini-2.5-flash": Price(0.15, 0.0375, 0.60),
+    "gemini-2.5-flash-lite": Price(0.10, 0.025, 0.40),
     "gemini-2.0-flash": Price(0.10, 0.025, 0.40),
     "gemini-1.5-pro": Price(1.25, 0.3125, 5.00),
     "gemini-1.5-flash": Price(0.075, 0.01875, 0.30),
@@ -430,14 +431,18 @@ def infer_provider_from_model(model_name: str) -> str:
     return "unknown"
 
 
-def is_free_tier(model_name: str, provider: str | None = None, is_direct_free_tier: bool | None = None) -> bool:
+def is_paid_model(
+    model_name: str,
+    provider: str | None = None,
+    is_direct_free_tier: bool | None = None,
+) -> bool:
     """
-    Evaluasi apakah pemanggilan model masuk kategori Free Tier ($0).
-    Mendukung Gemini (GEMINI_API_KEYS), Groq Developer Tier, OpenRouter :free & openrouter/free, Ollama, OpenCode, dan 9Router Free Tier.
+    Evaluasi apakah pemanggilan model masuk kategori Berbayar (Paid Tier).
+    Kembalikan True jika berbayar, False jika gratis ($0 / free tier).
     """
-    if is_direct_free_tier is True:
-        return True
     if is_direct_free_tier is False:
+        return True
+    if is_direct_free_tier is True:
         return False
 
     clean_name = str(model_name).strip().lower()
@@ -446,23 +451,40 @@ def is_free_tier(model_name: str, provider: str | None = None, is_direct_free_ti
         prov = infer_provider_from_model(model_name)
 
     # 1. OpenRouter & 9Router free models & endpoint suffix :free
-    if clean_name.endswith(":free") or ":free" in clean_name:
-        return True
-    if clean_name in FREE_TIER_MODELS or clean_name == "openrouter/free" or clean_name.startswith("stealth/"):
-        return True
+    if clean_name.endswith(":free") or ":free" in clean_name or clean_name == "openrouter/free":
+        return False
+    if clean_name in FREE_TIER_MODELS or clean_name.startswith("stealth/"):
+        return False
 
     # 2. 9Router Free Tier Models (with or without 9r/ or 9router/ prefix)
     for pfx in ("9router/", "9r/"):
         if clean_name.startswith(pfx) and clean_name[len(pfx) :] in FREE_TIER_MODELS:
-            return True
+            return False
 
     # 3. Provider Free Tiers
     if prov in ("groq", "ollama", "opencode", "opencode_go", "opencode-go"):
-        return True
-    if prov == "gemini" and not clean_name.startswith(("vertex/", "google/")):
+        return False
+
+    if prov == "gemini":
+        if clean_name.startswith(("vertex/", "google/")):
+            return True
+        # Direct Gemini AI Studio defaults to free tier unless is_direct_free_tier is explicitly False
+        return False
+
+    # 4. Standard Paid Models check via price catalog
+    p = get_price(clean_name)
+    if p.input > 0.0 or p.output > 0.0:
         return True
 
     return False
+
+
+def is_free_tier(model_name: str, provider: str | None = None, is_direct_free_tier: bool | None = None) -> bool:
+    """
+    Evaluasi apakah pemanggilan model masuk kategori Free Tier ($0).
+    Mendukung Gemini (GEMINI_API_KEYS), Groq Developer Tier, OpenRouter :free & openrouter/free, Ollama, OpenCode, dan 9Router Free Tier.
+    """
+    return not is_paid_model(model_name, provider=provider, is_direct_free_tier=is_direct_free_tier)
 
 
 def get_price(model_name: str) -> Price:
