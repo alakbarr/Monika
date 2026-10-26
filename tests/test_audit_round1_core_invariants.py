@@ -39,6 +39,7 @@ from monika.infrastructure.database.models import (
 from monika.domain.risk.risk_gate import RiskGate
 from monika.domain.risk.position_sizing import PositionSizer
 from monika.domain.indicators.technical import TechnicalIndicatorCalculator
+from monika.application.services.technical_indicator_service import TechnicalIndicatorService
 from monika.application.analysis.schemas.pydantic_schemas import coerce_float
 from monika.application.analysis.prefetch.news_digest import _format_news_item_for_prompt
 from monika.application.analysis.calculators.macro_priced_in_calculator import calculate_macro_priced_in_baseline
@@ -120,7 +121,7 @@ async def test_technical_resample_forex_weekend_filtered():
     mock_res.scalars.return_value.all.return_value = [monday_bar, friday_bar]
     mock_session.execute.return_value = mock_res
 
-    calc = TechnicalIndicatorCalculator(session=mock_session, settings={})
+    calc = TechnicalIndicatorService(session=mock_session, settings={})
     df = await calc._load_ohlcv(symbol="EURUSD", timeframe="H1")
 
     assert df is not None
