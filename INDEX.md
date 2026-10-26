@@ -12180,6 +12180,12 @@
   - `upgrade() -> None`: Upgrade schema: Include is_paper in position unique index, add active order index, and add missing FKs.
   - `downgrade() -> None`: Downgrade schema: Revert uq_position_symbol_open, drop active order index, and drop added FKs.
 
+#### `0013_token_usage_cost_source_and_is_paid.py` - *add is_paid and cost_source to token_usage_log*
+- **Path**: [`src/monika/infrastructure/database/migrations/versions/0013_token_usage_cost_source_and_is_paid.py`](src/monika/infrastructure/database/migrations/versions/0013_token_usage_cost_source_and_is_paid.py)
+- **Top-Level Functions**:
+  - `upgrade() -> None`: Upgrade schema: Add is_paid and cost_source columns and indexes to token_usage_log.
+  - `downgrade() -> None`: Downgrade schema: Drop indexes and columns is_paid and cost_source from token_usage_log.
+
 #### `c83c5e451412_sync_schema_indexes_types_and_.py` - *sync_schema_indexes_types_and_constraints*
 - **Path**: [`src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py`](src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py)
 - **Top-Level Functions**:

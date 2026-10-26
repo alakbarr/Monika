@@ -633,6 +633,9 @@ class LLMFactory:
         _, clean_lookup_name = self._split_provider_prefix(model_name)
         thinking_cfg = role_config.get("thinking")
 
+        if thinking_cfg is False or role_config.get("thinking_budget") == 0:
+            return "none"
+
         if isinstance(thinking_cfg, dict):
             # 1. Exact model name (or provider-stripped model name)
             if model_name in thinking_cfg:
@@ -925,7 +928,9 @@ class FallbackClientWrapper(BaseLLMClient):
         )
 
         self._dynamic_thinking_budget = None
-        is_primary_thinking_disabled = str(primary_thinking or "none").lower() in ("none", "off")
+        is_primary_thinking_disabled = (
+            str(primary_thinking or "none").lower() in ("none", "off") or role_config.get("thinking_budget") == 0
+        )
         if is_primary_thinking_disabled:
             self.thinking_budget = 0
         else:

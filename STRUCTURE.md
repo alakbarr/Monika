@@ -1678,6 +1678,7 @@ Monika/
 │       │   │   │   │   ├── 0010_paper_trade_initial_risk.py
 │       │   │   │   │   ├── 0011_sync_indexes_constraints.py
 │       │   │   │   │   ├── 0012_sync_indexes_and_constraints.py
+│       │   │   │   │   ├── 0013_token_usage_cost_source_and_is_paid.py
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   └── c83c5e451412_sync_schema_indexes_types_and_.py
 │       │   │   │   ├── __init__.py
@@ -2144,6 +2145,7 @@ Monika/
 │   │   │   └── test_unified_risk_contract_and_gates.py
 │   │   ├── providers/
 │   │   │   ├── test_capabilities.py
+│   │   │   ├── test_cost_tracker_and_budget_decoupling.py
 │   │   │   ├── test_credential_pool_routing.py
 │   │   │   ├── test_failover_expanded.py
 │   │   │   ├── test_fallback_wrapper_cooldown.py
@@ -3118,4 +3120,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2821
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2823

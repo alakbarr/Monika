@@ -517,6 +517,46 @@ class BaseLLMClient(LlmPort, ABC):
             return "memory"
         return "system"
 
+    @staticmethod
+    def _infer_task_role(task_role: Optional[str], task_name: Optional[str], subsystem: Optional[str]) -> str:
+        """Infers a valid task_role from available task identifiers to eliminate unlabelled UNKNOWN calls."""
+        if task_role and str(task_role).strip() and str(task_role).strip().lower() != "unknown":
+            return str(task_role).strip()
+        txt = f"{task_name or ''} {subsystem or ''}".lower()
+        if "fundamental" in txt or "stage1" in txt:
+            return "stage1_fundamental"
+        if "per_asset" in txt or "stage2" in txt:
+            return "stage2_per_asset_primary"
+        if "session_trigger" in txt:
+            return "stage2_session_trigger"
+        if "debate_bear" in txt or "bear" in txt:
+            return "debate_bear"
+        if "debate_bull" in txt or "bull" in txt:
+            return "debate_bull"
+        if "judge" in txt:
+            return "debate_judge"
+        if "news_class" in txt or "classify" in txt:
+            return "news_classification"
+        if "digest_macro" in txt or "macro_overview" in txt:
+            return "news_digest_macro_overview"
+        if "digest" in txt:
+            return "news_digest"
+        if "specialist_tech" in txt:
+            return "specialist_technical"
+        if "specialist_sent" in txt:
+            return "specialist_sentiment"
+        if "specialist_macro" in txt:
+            return "specialist_macro"
+        if "telegram" in txt or "chat" in txt:
+            return "chat_telegram"
+        if "reflection" in txt:
+            return "trade_reflection"
+        if "risk" in txt:
+            return "risk_gate"
+        if "discovery" in txt or "strategy" in txt:
+            return "strategy_discovery"
+        return "default"
+
     # --- Core generation methods ---
 
     @abstractmethod
@@ -908,7 +948,8 @@ class BaseLLMClient(LlmPort, ABC):
             from monika.infrastructure.database.db import get_session
             from monika.infrastructure.database.models import TokenUsageLog
 
-            resolved_role = task_role or getattr(self, "role", None) or getattr(self, "task_role", None)
+            raw_role = task_role or getattr(self, "role", None) or getattr(self, "task_role", None)
+            resolved_role = self._infer_task_role(raw_role, task_name, subsystem)
             resolved_subsystem = (
                 subsystem or getattr(self, "subsystem", None) or self._infer_subsystem(resolved_role, task_name)
             )
@@ -916,6 +957,13 @@ class BaseLLMClient(LlmPort, ABC):
             if not resolved_symbol and task_name and task_name.startswith("per_asset_"):
                 resolved_symbol = task_name[len("per_asset_") :]
             resolved_cycle_id = cycle_id or getattr(self, "cycle_id", None)
+            if not resolved_cycle_id:
+                try:
+                    from monika.core.telemetry.tracing.context import get_current_cycle_id
+
+                    resolved_cycle_id = get_current_cycle_id()
+                except Exception:
+                    pass
 
             provider_name = getattr(self, "provider_name", None)
             if not provider_name:

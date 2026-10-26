@@ -37,7 +37,7 @@ STANDARD_FETCH_TASKS = [
     ("get_vix", {"days_back": 5}),
     ("get_open_positions", {}),
     ("get_risk_state", {}),
-    ("get_economic_calendar", {"impact_filter": "high_and_medium", "hours_ahead": 168, "hours_behind": 24}),
+    ("get_economic_calendar", {"impact_filter": "high_and_medium", "hours_ahead": 48, "hours_behind": 12}),
 ]
 
 SYMBOL_FETCH_TASKS = [
@@ -209,6 +209,124 @@ class Stage2DataBundler:
                 lines.append(f"• {name}: {val}{dir_str}{series_str}")
 
         return "\n".join(lines)
+
+    def _format_calendar_compact(self, value: dict, symbol: str) -> str:
+        """Compact tabular formatting of high/medium economic events relevant to target symbol."""
+        if not isinstance(value, dict):
+            return self._compress_json(value)
+        events = value.get("events", [])
+        if not isinstance(events, list) or not events:
+            return "No upcoming high/medium impact events."
+
+        sym_clean = symbol.upper().replace("/", "")
+        relevant_currs = set()
+        if len(sym_clean) == 6:
+            relevant_currs.add(sym_clean[:3])
+            relevant_currs.add(sym_clean[3:])
+        elif "USD" in sym_clean:
+            relevant_currs.add("USD")
+        elif "BTC" in sym_clean:
+            relevant_currs.add("USD")
+
+        filtered = []
+        for ev in events:
+            curr = str(ev.get("currency") or ev.get("country") or "").upper()
+            if not relevant_currs or curr in relevant_currs or curr in ("USD", "ALL"):
+                time_str = str(ev.get("time") or ev.get("event_time") or "")
+                if "T" in time_str:
+                    time_str = time_str.split("T")[-1][:5]
+                name = str(ev.get("event") or ev.get("name") or "")[:35]
+                impact = str(ev.get("impact") or "MED")[:4].upper()
+                act = ev.get("actual")
+                fc = ev.get("forecast")
+                prev = ev.get("previous")
+                filtered.append(
+                    f"{time_str} | {curr:<3} | {impact:<4} | {name:<35} | A:{act or '-'} F:{fc or '-'} P:{prev or '-'}"
+                )
+
+        if not filtered:
+            return "No upcoming events for target currencies."
+
+        return "\n".join(filtered[:15])
+
+    def _format_smc_compact(self, value: dict) -> str:
+        """Compact representation of SMC zones (Order Blocks, FVGs, S/R)."""
+        if not isinstance(value, dict):
+            return self._compress_json(value)
+
+        tf = value.get("timeframe", "")
+        lines = []
+        if tf:
+            lines.append(f"Timeframe: {tf}")
+
+        obs = value.get("order_blocks", [])
+        if isinstance(obs, list) and obs:
+            unmitigated = [
+                f"{ob.get('direction', '').upper()} [{ob.get('price_low')}-{ob.get('price_high')}]"
+                for ob in obs[:6]
+                if not ob.get("mitigated", False)
+            ]
+            if unmitigated:
+                lines.append(f"Order Blocks (Unmitigated): {', '.join(unmitigated)}")
+
+        fvgs = value.get("fvg_zones", [])
+        if isinstance(fvgs, list) and fvgs:
+            unfilled = [
+                f"{fvg.get('direction', '').upper()} [{fvg.get('gap_low')}-{fvg.get('gap_high')}]"
+                for fvg in fvgs[:6]
+                if not fvg.get("filled", False)
+            ]
+            if unfilled:
+                lines.append(f"FVG Zones (Unfilled): {', '.join(unfilled)}")
+
+        srs = value.get("sr_zones", [])
+        if isinstance(srs, list) and srs:
+            sr_strs = [f"[{sr.get('price_low')}-{sr.get('price_high')}]" for sr in srs[:5]]
+            if sr_strs:
+                lines.append(f"S/R Zones: {', '.join(sr_strs)}")
+
+        return "\n".join(lines) if lines else "No active SMC zones detected."
+
+    def _format_structure_breaks_compact(self, value: dict) -> str:
+        """Compact representation of Market Structure Breaks (BOS / CHOCH)."""
+        if not isinstance(value, dict):
+            return self._compress_json(value)
+
+        breaks = value.get("breaks", [])
+        tf = value.get("timeframe", "")
+        if not isinstance(breaks, list) or not breaks:
+            return f"[{tf}] No recent structure breaks detected."
+
+        items = []
+        for b in breaks[:5]:
+            b_type = str(b.get("type", "BOS")).upper()
+            dir_str = str(b.get("direction", "")).capitalize()
+            p = b.get("price") or b.get("broken_price")
+            t_str = str(b.get("formed_at", ""))
+            if "T" in t_str:
+                t_str = t_str.split("T")[-1][:5]
+            items.append(f"{b_type} {dir_str} @ {p} ({t_str})")
+
+        return f"[{tf}] " + " | ".join(items)
+
+    def _format_swing_points_compact(self, value: dict) -> str:
+        """Compact representation of Swing Highs and Lows."""
+        if not isinstance(value, dict):
+            return self._compress_json(value)
+
+        tf = value.get("timeframe", "")
+        highs = value.get("swing_highs", [])
+        lows = value.get("swing_lows", [])
+
+        parts = []
+        if isinstance(highs, list) and highs:
+            h_strs = [str(h.get("price") if isinstance(h, dict) else h) for h in highs[:4]]
+            parts.append(f"Highs: [{', '.join(h_strs)}]")
+        if isinstance(lows, list) and lows:
+            l_strs = [str(l.get("price") if isinstance(l, dict) else l) for l in lows[:4]]
+            parts.append(f"Lows: [{', '.join(l_strs)}]")
+
+        return f"[{tf}] " + " | ".join(parts) if parts else f"[{tf}] No swing points recorded."
 
     def _compress_json(self, data: dict) -> str:
         """Hapus whitespace dan key yang tidak penting."""
@@ -719,6 +837,14 @@ class Stage2DataBundler:
                 lines.append(self._compress_history(value, symbol))
             elif "GET TECHNICAL INDICATORS" in label:
                 lines.append(self._format_technical_readable(value))
+            elif "GET ECONOMIC CALENDAR" in label:
+                lines.append(self._format_calendar_compact(value, symbol))
+            elif "SMC ZONES" in label:
+                lines.append(self._format_smc_compact(value))
+            elif "STRUCTURE BREAKS" in label:
+                lines.append(self._format_structure_breaks_compact(value))
+            elif "SWING POINTS" in label:
+                lines.append(self._format_swing_points_compact(value))
             elif "GET FUNDAMENTAL BRIEF" in label and isinstance(value, dict):
                 matrix = value.get("per_asset_macro_matrix", {})
                 sym_ctx = matrix.get(symbol) or matrix.get(symbol.replace("/", ""))
