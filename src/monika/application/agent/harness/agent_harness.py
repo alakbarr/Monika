@@ -914,23 +914,58 @@ class AgentHarness:
         self,
         session: Optional[AsyncSession],
         system_prompt: Any,
-        user_message: str,
+        user_message: Union[str, list[dict[str, Any]]],
         tools: list,
         stage_name: str = "unknown",
         extra_context: Optional[str] = None,
         prefetch_satisfied_tools: Optional[set] = None,
         max_tool_turns: Optional[int] = None,
         tool_executor: Optional[Any] = None,
+        multimodal_images: Optional[list[dict[str, Any]]] = None,
         **kwargs,
     ) -> dict:
         """
         Execute full ReAct agent lifecycle starting from single user message.
         """
-        full_user_msg = user_message
-        if extra_context:
-            full_user_msg += f"\n\n--- Additional Context ---\n{extra_context}"
+        initial_content: Union[str, list[dict[str, Any]]]
+        if isinstance(user_message, list):
+            blocks: list[dict[str, Any]] = [dict(b) for b in user_message]
+            if extra_context:
+                appended = False
+                for block in blocks:
+                    if block.get("type") == "text" and "text" in block:
+                        block["text"] = f"{block['text']}\n\n--- Additional Context ---\n{extra_context}"
+                        appended = True
+                        break
+                if not appended:
+                    blocks.append({"type": "text", "text": f"--- Additional Context ---\n{extra_context}"})
+            initial_content = blocks
+        else:
+            full_user_msg = str(user_message)
+            if extra_context:
+                full_user_msg += f"\n\n--- Additional Context ---\n{extra_context}"
 
-        initial_messages = [{"role": "user", "content": full_user_msg}]
+            if multimodal_images:
+                valid_images: list[dict[str, Any]] = [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": str(img.get("media_type", "image/jpeg")),
+                            "data": str(img.get("data", "")),
+                        },
+                    }
+                    for img in multimodal_images
+                    if isinstance(img, dict) and img.get("data")
+                ]
+                if valid_images:
+                    initial_content = [{"type": "text", "text": full_user_msg}, *valid_images]
+                else:
+                    initial_content = full_user_msg
+            else:
+                initial_content = full_user_msg
+
+        initial_messages = [{"role": "user", "content": initial_content}]
         return await self.run_agent_from_messages(
             session=session,
             system_prompt=system_prompt,

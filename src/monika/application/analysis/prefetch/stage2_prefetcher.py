@@ -10,9 +10,11 @@ Tujuan: Menghemat token & waktu dengan mengubah belasan panggilan tool menjadi s
 """
 
 import asyncio
+import base64
 import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -483,6 +485,63 @@ class Stage2DataBundler:
         except Exception as e:
             fetch_errors.append(f"timesfm_forecast: {str(e)[:40]}")
 
+        # User-configured chart workspace & indicators (Wave 2 Cognitive Pipeline)
+        try:
+            from monika.application.analysis.tools.domain.multimodal_tools import VisionImageProcessor
+            from monika.application.services.technical_indicator_service import TechnicalIndicatorService
+            from monika.core.analytics.chart_generator import generate_configured_workspace_chart_async
+            from monika.infrastructure.database.repositories.user_preference_repository import (
+                SqlAlchemyUserPreferenceRepository,
+            )
+
+            pref_repo = SqlAlchemyUserPreferenceRepository(self.executor.session)
+            workspace_config = await pref_repo.resolve_chart_workspace_config(symbol)
+            tech_svc = TechnicalIndicatorService(self.executor.session, self.executor.settings)
+            ws_summary = await tech_svc.compute_multi_tf_workspace_summary(symbol, workspace_config)
+            data["user_chart_workspace"] = ws_summary
+
+            if workspace_config.get("vision_sync_enabled", True):
+                primary_tf = ws_summary.get("primary_timeframe", "H4")
+                df = await tech_svc._load_ohlcv(symbol, primary_tf)
+                if df is not None and len(df) >= 20:
+                    chart_res = await generate_configured_workspace_chart_async(
+                        df.tail(150),
+                        symbol,
+                        primary_tf,
+                        workspace_config=workspace_config,
+                        save_to_disk=True,
+                    )
+                    raw_bytes = None
+                    png_path = None
+                    if isinstance(chart_res, tuple) and len(chart_res) == 2:
+                        buf, png_path = chart_res
+                        if buf is not None and hasattr(buf, "getvalue"):
+                            raw_bytes = buf.getvalue()
+                    elif isinstance(chart_res, str):
+                        png_path = chart_res
+
+                    if raw_bytes is None and png_path and Path(png_path).exists():
+                        raw_bytes = await asyncio.to_thread(Path(png_path).read_bytes)
+
+                    if png_path and Path(png_path).exists():
+                        try:
+                            Path(png_path).unlink(missing_ok=True)
+                        except Exception:
+                            pass
+
+                    if raw_bytes:
+                        clamped_bytes, mime_type = await asyncio.to_thread(
+                            VisionImageProcessor.clamp_image_to_budget, raw_bytes
+                        )
+                        b64_data = base64.b64encode(clamped_bytes).decode("ascii")
+                        data["user_chart_vision_image"] = {
+                            "media_type": mime_type,
+                            "data": b64_data,
+                            "timeframe": primary_tf,
+                        }
+        except Exception as exc:
+            logger.warning(f"[{symbol}] User chart workspace prefetch failed (non-fatal): {exc}")
+
         if fetch_errors:
             logger.warning(f"[{symbol}] Stage2 fetch errors: {', '.join(fetch_errors)}")
 
@@ -644,9 +703,16 @@ class Stage2DataBundler:
                     )
             lines.append("")
 
+        ws_bundle_summary = data.get("user_chart_workspace")
+        if isinstance(ws_bundle_summary, dict) and ws_bundle_summary.get("formatted_report"):
+            lines.append(
+                f"── USER-CONFIGURED CHART & INDICATOR WORKSPACE ──\n{str(ws_bundle_summary['formatted_report']).strip()}"
+            )
+            lines.append("")
+
         for key, value in data.items():
-            if key == "timesfm_forecast":
-                continue  # Formatted cleanly in dedicated statistical distribution block below
+            if key in ("timesfm_forecast", "user_chart_workspace", "user_chart_vision_image"):
+                continue  # Formatted cleanly in dedicated blocks or multimodal image pipeline
             label = key.upper().replace("_", " ")
             lines.append(f"── {label} ──")
             if "GET PRICE HISTORY" in label:

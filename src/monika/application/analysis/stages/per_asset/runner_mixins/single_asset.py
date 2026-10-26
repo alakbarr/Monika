@@ -557,6 +557,10 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         except Exception as e:
             logger.debug(f"[{symbol}] Adaptive thinking budget allocation error (non-fatal): {e}")
 
+        # Multimodal Vision Chart Snapshot (Wave 2)
+        vision_image = raw_bundle_data.get("user_chart_vision_image") if isinstance(raw_bundle_data, dict) else None
+        multimodal_images = [vision_image] if isinstance(vision_image, dict) and vision_image.get("data") else None
+
         result = await active_client.run_agent(
             session=session,
             system_prompt=system_prompt,
@@ -565,6 +569,7 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
             stage_name=f"per_asset_{symbol}",
             extra_context=extra_context_str if extra_context_str else None,
             prefetch_satisfied_tools=prefetch_satisfied_tools,
+            multimodal_images=multimodal_images,
         )
         elapsed = (_get_clock().now() - start_time).total_seconds()
 

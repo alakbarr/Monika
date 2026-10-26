@@ -23,6 +23,7 @@ from monika.domain.ports.repository import (
     RiskRepositoryPort,
     SystemConfigRepositoryPort,
     TradeProposalRepositoryPort,
+    UserPreferenceRepositoryPort,
 )
 
 
@@ -91,4 +92,9 @@ class UnitOfWorkPort(Protocol):
     @property
     def market_data(self) -> MarketDataRepositoryPort:
         """Market data, OHLCV bars, and rate indicators repository."""
+        ...
+
+    @property
+    def user_preferences(self) -> UserPreferenceRepositoryPort:
+        """User persistent preferences and chart workspaces repository."""
         ...

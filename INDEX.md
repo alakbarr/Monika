@@ -277,6 +277,8 @@
   - `async generate_candlestick_chart_async(ohlcv_rows: list[dict], symbol: str, timeframe: str, ...) -> io.BytesIO`: Async wrapper non-blocking untuk eksekusi render grafik di thread terpisah.
   - `generate_smc_candlestick_chart(ohlcv_rows: list[dict], symbol: str, timeframe: str, ...) -> tuple[io.BytesIO, str | None]`: Renders dark-theme candlestick chart with SMC overlays:
   - `generate_equity_curve_chart(records: list[dict], title: str, save_to_disk: bool) -> tuple[io.BytesIO, str | None]`: Renders a dark-themed portfolio equity curve with drawdown fill band.
+  - `generate_configured_workspace_chart(ohlcv_rows: list[dict], symbol: str, timeframe: str, ...) -> tuple[io.BytesIO, Optional[str]]`: Renders dark-theme multi-panel chart configured by canonical workspace presets.
+  - `async generate_configured_workspace_chart_async(ohlcv_rows: list[dict], symbol: str, timeframe: str, ...) -> tuple[io.BytesIO, Optional[str]]`: Async wrapper non-blocking running workspace chart generation in a worker thread.
 
 #### `cost_tracker.py`
 - **Path**: [`src/monika/core/analytics/cost_tracker.py`](src/monika/core/analytics/cost_tracker.py)
@@ -1613,6 +1615,16 @@
   - `compute_ichimoku(df: pd.DataFrame, tenkan_period: int, kijun_period: int, ...) -> dict[str, Any]`: Menghitung komponen Ichimoku Kinko Hyo:
   - `detect_rsi_divergence(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> dict[str, Any]`: Detect regular bullish and bearish RSI divergences:
   - `detect_macd_divergence(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> dict[str, Any]`: Detect regular and hidden MACD divergences (Line and Histogram):
+  - `normalize_chart_workspace_config(raw: Optional[dict[str, Any]]) -> dict[str, Any]`: Safely normalizes and deep-merges raw workspace configuration against canonical presets.
+  - `compute_wma(close: pd.Series, period: int) -> pd.Series`: Computes Weighted Moving Average (WMA) for specified period.
+  - `compute_vwap(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> pd.Series`: Computes Volume-Weighted Average Price (VWAP).
+  - `compute_supertrend(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series]`: Computes Supertrend indicator and trend direction.
+  - `compute_keltner_channels(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes Keltner Channels: upper, middle, lower.
+  - `compute_donchian_channels(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes Donchian Channels: upper, middle, lower.
+  - `compute_ichimoku_series(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> dict[str, pd.Series]`: Computes Ichimoku Kinko Hyo full series:
+  - `compute_obv(close: pd.Series, volume: pd.Series) -> pd.Series`: Computes On-Balance Volume (OBV).
+  - `compute_cvd_series(open_: pd.Series, high: pd.Series, low: pd.Series, ...) -> pd.Series`: Computes Cumulative Volume Delta (CVD) series from intrabar buying/selling pressure.
+  - `evaluate_workspace_indicators(df: pd.DataFrame, workspace_config: Optional[dict[str, Any]], max_bars: int) -> dict[str, Any]`: Evaluates all active indicators in the workspace configuration on OHLCV data.
 
 ### Folder: `src/monika/domain/indicators/alpha_zoo` <a id="folder-srcmonikadomainindicatorsalphazoo"></a>
 
@@ -4363,6 +4375,13 @@
     - `async get_latest_vix() -> Optional[float]` - *Fetch latest available VIX index level.*
     - `async get_latest_dxy() -> Optional[float]` - *Fetch latest available DXY index close.*
     - `async get_latest_yield(tenor: str) -> Optional[float]` - *Fetch latest treasury yield percent.*
+  - `class UserPreferenceRepositoryPort(Protocol)`: Pure domain protocol for user preferences and chart workspace persistence.
+    - `async get_preference(category: str, key: str, user_id: str) -> Optional[dict[str, Any]]` - *Fetch a specific preference by category and key.*
+    - `async set_preference(category: str, key: str, value: dict[str, Any], ...) -> dict[str, Any]` - *Save or update a preference for a category and key.*
+    - `async delete_preference(category: str, key: str, user_id: str) -> bool` - *Delete or deactivate a preference.*
+    - `async list_preferences(category: str, user_id: str) -> dict[str, dict[str, Any]]` - *List all active preferences within a category.*
+    - `async resolve_chart_workspace_config(symbol: Optional[str], user_id: str) -> dict[str, Any]` - *Resolve effective chart workspace configuration for symbol or fallback to global.*
+    - `async get_chart_workspace_bundle(user_id: str) -> dict[str, Any]` - *Return global config and all symbol override configs as a bundle.*
 
 #### `unit_of_work.py` - *Domain Unit of Work Port.*
 - **Path**: [`src/monika/domain/ports/unit_of_work.py`](src/monika/domain/ports/unit_of_work.py)
@@ -4378,6 +4397,7 @@
     - `analyses() -> AnalysisRepositoryPort` - *Asset analysis and fundamental brief repository.*
     - `paper_trades() -> PaperTradeRepositoryPort` - *Simulated paper trade records repository.*
     - `market_data() -> MarketDataRepositoryPort` - *Market data, OHLCV bars, and rate indicators repository.*
+    - `user_preferences() -> UserPreferenceRepositoryPort` - *User persistent preferences and chart workspaces repository.*
 
 ### Folder: `src/monika/domain/risk` <a id="folder-srcmonikadomainrisk"></a>
 
@@ -5204,7 +5224,7 @@
     - `enqueue_steering(content: str, sender: str, mode: str) -> None` - *Enqueue an external steering directive or follow-up task.*
     - `compute_tool_signature(tool_name: str, tool_input: Any) -> str` - *Generate deterministic hash signature for tool name and argument payload.*
     - `get_mandatory_tool_for_stage(stage_name: str) -> Optional[str]` - *Determine if a stage has an indispensable conclusion tool.*
-    - `async run_agent(session: Optional[AsyncSession], system_prompt: Any, user_message: str, ...) -> dict` - *Execute full ReAct agent lifecycle starting from single user message.*
+    - `async run_agent(session: Optional[AsyncSession], system_prompt: Any, user_message: Union[str, list[dict[str, Any]]], ...) -> dict` - *Execute full ReAct agent lifecycle starting from single user message.*
     - `async run_agent_from_messages(session: Optional[AsyncSession], system_prompt: Any, messages: list, ...) -> dict` - *Execute multi-turn tool calling loop continuing from existing message history.*
 - **Top-Level Functions**:
   - `calculate_turn_cost_usd(model_name: str, input_tokens: int, output_tokens: int, ...) -> float`
@@ -5666,6 +5686,10 @@
 
 #### `confluence_calculator.py`
 - **Path**: [`src/monika/application/analysis/calculators/confluence_calculator.py`](src/monika/application/analysis/calculators/confluence_calculator.py)
+- **Classes**:
+  - `class ConfluenceCalculator`: Deterministic Confluence Calculator with user chart workspace integration.
+    - `__init__(session: AsyncSession, settings: Optional[dict])`
+    - `async calculate_score(symbol: str, direction: Optional[str], entry_price: Optional[float], ...) -> dict`
 - **Top-Level Functions**:
   - `async calculate_priced_in_subscores(session: AsyncSession, symbol: str, as_of: Optional[datetime]) -> dict`: Hitung otomatis Method 1 (FedWatch), Method 2 (COT extreme), Method 3 (price momentum vs ATR).
   - `async calculate_confluence(session: AsyncSession, symbol: str, direction: Optional[str], ...) -> dict`: Menghitung confluence score secara deterministik.
@@ -8779,6 +8803,8 @@
   - `class InHarnessGroundingValidator`: Verifies that LLM decisions and evidence are 100% grounded in empirical data.
     - `extract_numbers_from_text(text: str) -> List[float]` - *Extracts numerical floats from text string.*
     - `verify_grounding(decision_payload: dict, data_bundle: dict, symbol: str) -> Tuple[bool, List[str], Dict[str, Any]]` - *Validates LLM trade proposal or specialist output against empirical data bundle.*
+- **Top-Level Functions**:
+  - `extract_verified_anchors(data_bundle: dict[str, Any]) -> dict[str, Any]`: Extracts verified deterministic anchors from data_bundle for in-harness grounding checks.
 
 #### `market_snapshot.py` - *Deterministic Market Data Ground-Truth Snapshot.*
 - **Path**: [`src/monika/application/analysis/validators/market_snapshot.py`](src/monika/application/analysis/validators/market_snapshot.py)
@@ -10680,6 +10706,8 @@
     - `__init__(session: Any, settings: Optional[dict])`
     - `async compute_and_save(symbol: str, timeframe: str) -> int` - *Menjalankan alur lengkap: load OHLCV -> hitung -> simpan.*
     - `async compute_all_symbols(symbols: list[str], timeframes: list[str]) -> dict[str, int]` - *Menjalankan komputasi untuk semua aset dan timeframe.*
+    - `async compute_chart_workspace_payload(symbol: str, timeframe: str, count: int, ...) -> dict[str, Any]` - *Compute indicator workspace series, pivot points, and alignment summary.*
+    - `async compute_multi_tf_workspace_summary(symbol: str, workspace_config: Optional[dict[str, Any]], timeframes: tuple[str, ...]) -> dict[str, Any]` - *Compute multi-timeframe workspace alignment, merged declared figures, and confluence summary.*
     - `async get_latest(symbol: str, timeframe: str, indicator_name: str) -> Optional[dict]` - *Mengambil metrik indikator terbaru untuk suatu symbol/timeframe.*
     - `async get_snapshot(symbol: str, timeframe: str, series_depth: int, ...) -> dict` - *Mengambil semua nilai indikator pada timestamp terkini dengan konteks delta, arah,*
 
@@ -12283,6 +12311,7 @@
     - `analyses() -> AnalysisRepositoryPort` - *Asset analysis and fundamental brief repository.*
     - `paper_trades() -> PaperTradeRepositoryPort` - *Simulated paper trade records repository.*
     - `market_data() -> MarketDataRepositoryPort` - *Market data, OHLCV bars, and rate indicators repository.*
+    - `user_preferences() -> SqlAlchemyUserPreferenceRepository` - *User persistent preferences and chart workspaces repository.*
     - `async nested()` - *Savepoint / nested transaction context manager.*
     - `async commit() -> None` - *Commit all pending database changes within this unit of work.*
     - `async rollback() -> None` - *Rollback all pending database changes within this unit of work.*
@@ -13930,6 +13959,7 @@
   - `class MT5SignalItem(BaseSchema)`
   - `class TradeTriggerItem(BaseSchema)`
   - `class TokenSummaryResponse(BaseSchema)`
+  - `class ChartConfigSaveRequest(BaseModel)`: Request payload for saving global or per-symbol chart workspace configuration.
 
 #### `ws_ticket.py` - *Single-Use Ephemeral WebSocket Ticket Authentication Manager.*
 - **Path**: [`src/monika/interfaces/dashboard/ws_ticket.py`](src/monika/interfaces/dashboard/ws_ticket.py)
@@ -14167,9 +14197,14 @@
 #### `market_data.py`
 - **Path**: [`src/monika/interfaces/dashboard/routes/trading_endpoints/market_data.py`](src/monika/interfaces/dashboard/routes/trading_endpoints/market_data.py)
 - **Top-Level Functions**:
+  - `async get_db_session() -> AsyncGenerator[AsyncSession, None]`: Yield database session for FastAPI dependency injection.
   - `async get_technical_indicators_snapshot(symbol: str, timeframe: str)`: Retrieve computed technical indicators (MA, RSI, MACD, BB, ATR) for a symbol.
   - `async get_market_structure_levels(symbol: str, timeframe: str)`: Retrieve SMC market structure levels: Order Blocks, FVGs, and Structure Breaks.
   - `async get_market_candles(symbol: str, timeframe: str, count: int)`: Retrieve OHLCV candlestick bars for financial Canvas charts.
+  - `async get_chart_workspace_config_bundle(request: Request, session: AsyncSession) -> dict[str, Any]`: Retrieve saved global and per-symbol chart workspace configurations with preset definitions.
+  - `async save_chart_workspace_config(payload: ChartConfigSaveRequest, request: Request, session: AsyncSession) -> dict[str, Any]`: Save or update chart workspace configuration at global or per-symbol scope.
+  - `async delete_chart_workspace_override(symbol: str, request: Request, session: AsyncSession) -> dict[str, Any]`: Remove symbol-specific chart workspace layout override to revert to global layout.
+  - `async get_chart_workspace(symbol: str, request: Request, timeframe: Optional[str], ...) -> dict[str, Any]`: Unified institutional chart workspace payload combining candles, technical indicator series,
 
 #### `orders.py`
 - **Path**: [`src/monika/interfaces/dashboard/routes/trading_endpoints/orders.py`](src/monika/interfaces/dashboard/routes/trading_endpoints/orders.py)

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { VixSparkline } from '../charts/VixSparkline';
@@ -39,7 +39,8 @@ const DEFAULT_SYMBOLS = [
 ];
 
 export const MarketDataPanel: React.FC = () => {
-  const { vixHistory, brief, marketQuotes } = useDashboardStore();
+  const { vixHistory, brief, marketQuotes, selectedSymbol: storeSelectedSymbol, setSelectedSymbol: setStoreSelectedSymbol } = useDashboardStore();
+  const selectedSymbol = storeSelectedSymbol || 'EURUSD';
   const [liveCalendar, setLiveCalendar] = useState<CalendarEventItem[]>([]);
   const [fedwatch, setFedwatch] = useState<FedWatchResponse | null>(null);
   const [yields, setYields] = useState<YieldsResponse | null>(null);
@@ -47,13 +48,12 @@ export const MarketDataPanel: React.FC = () => {
   const [sentimentComp, setSentimentComp] = useState<SentimentCompositeResponse | null>(null);
 
   // Technical Indicators & SMC Structure State (FASE 3B)
-  const [selectedSymbol, setSelectedSymbol] = useState<string | null>('EURUSD');
   const [indicators, setIndicators] = useState<Record<string, any> | null>(null);
   const [structure, setStructure] = useState<import('../../types/api').MarketStructureResponse | null>(null);
   const [techLoading, setTechLoading] = useState(false);
 
-  const handleSelectSymbol = async (symbol: string) => {
-    setSelectedSymbol(symbol);
+  const handleSelectSymbol = useCallback(async (symbol: string) => {
+    setStoreSelectedSymbol(symbol);
     setTechLoading(true);
     try {
       const [indRes, structRes] = await Promise.allSettled([
@@ -75,11 +75,14 @@ export const MarketDataPanel: React.FC = () => {
     } finally {
       setTechLoading(false);
     }
-  };
+  }, [setStoreSelectedSymbol]);
+
+  useEffect(() => {
+    handleSelectSymbol(selectedSymbol);
+  }, [selectedSymbol, handleSelectSymbol]);
 
   useEffect(() => {
     let mounted = true;
-    handleSelectSymbol('EURUSD');
     const fetchData = async () => {
       try {
         const [calRes, fwRes, yRes, fgRes, scRes] = await Promise.allSettled([
@@ -284,9 +287,33 @@ export const MarketDataPanel: React.FC = () => {
                         {row.chgPct >= 0 ? '+' : ''}{row.chgPct.toFixed(2)}%
                       </td>
                       <td style={{ textAlign: 'center', padding: '8px 10px' }}>
-                        <Badge variant={isSelected ? 'warn' : 'profit'} size="sm">
-                          {isSelected ? 'ACTIVE' : 'INSPECT'}
-                        </Badge>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <Badge variant={isSelected ? 'warn' : 'profit'} size="sm">
+                            {isSelected ? 'ACTIVE' : 'INSPECT'}
+                          </Badge>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectSymbol(row.symbol);
+                            }}
+                            className="touch-target-expand"
+                            style={{
+                              padding: '2px 6px',
+                              borderRadius: '2px',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              fontFamily: 'var(--font-mono)',
+                              border: `1px solid ${isSelected ? 'var(--color-ink)' : 'var(--color-rule)'}`,
+                              background: isSelected ? 'var(--color-ink)' : 'var(--color-surface)',
+                              color: isSelected ? 'var(--color-surface)' : 'var(--color-ink)',
+                              cursor: 'pointer',
+                            }}
+                            title={`Focus chart on ${row.symbol}`}
+                          >
+                            CHART
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

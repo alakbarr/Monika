@@ -1179,3 +1179,164 @@ export interface DecisionDossierData {
     }>;
   };
 }
+
+// ==============================================================================
+// Chart Workspace, Indicators & Presets Types
+// ==============================================================================
+
+export type ChartPresetId =
+  | 'smc_institutional'
+  | 'trend_momentum'
+  | 'volatility_reversion'
+  | 'quant_orderflow'
+  | 'custom';
+
+export interface ChartOverlaysConfig {
+  ema: { enabled: boolean; periods: number[] };
+  sma: { enabled: boolean; periods: number[] };
+  wma: { enabled: boolean; periods: number[] };
+  bollinger: { enabled: boolean; period: number; std_dev: number };
+  keltner: { enabled: boolean; window: number; window_atr: number; multiplier: number };
+  donchian: { enabled: boolean; window: number };
+  vwap: { enabled: boolean; window?: number | null };
+  supertrend: { enabled: boolean; period: number; multiplier: number };
+  ichimoku: { enabled: boolean; tenkan: number; kijun: number; senkou_b: number };
+  pivot_points: { enabled: boolean; method: 'classic' | 'fibonacci' | 'camarilla' | 'woodie' };
+  smc_order_blocks: boolean;
+  smc_fvg: boolean;
+  smc_bos: boolean;
+  smc_liquidity: boolean;
+  volume_profile: boolean;
+  timesfm_cone: boolean;
+  show_positions: boolean;
+  show_ai_proposals: boolean;
+}
+
+export interface ChartOscillatorsConfig {
+  volume: { enabled: boolean; ma_period: number };
+  rsi: { enabled: boolean; period: number; overbought: number; oversold: number };
+  macd: { enabled: boolean; fast: number; slow: number; signal: number };
+  stochastic: { enabled: boolean; k_period: number; d_period: number };
+  adx: { enabled: boolean; period: number };
+  atr: { enabled: boolean; period: number };
+  cvd_volatility: { enabled: boolean; mode: 'cvd' | 'yz_vol' | 'ac1'; window: number };
+}
+
+export interface ChartWorkspaceConfig {
+  preset_id: ChartPresetId;
+  timeframe: string;
+  vision_sync_enabled: boolean;
+  scope?: 'global' | 'symbol';
+  symbol?: string;
+  overlays: ChartOverlaysConfig;
+  oscillators: ChartOscillatorsConfig;
+}
+
+export interface IndicatorTimePoint {
+  time: number | string;
+  value?: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
+  color?: string;
+  [key: string]: unknown;
+}
+
+export interface IndicatorSummaryItem {
+  id: string;
+  name: string;
+  value: string | number;
+  subValue?: string | number;
+  signal?: 'bullish' | 'bearish' | 'neutral';
+  color?: string;
+}
+
+export interface ActivePositionOverlay {
+  id: number;
+  ticket?: number | null;
+  symbol: string;
+  direction: 'buy' | 'sell';
+  volume: number;
+  entry_price: number;
+  sl: number | null;
+  tp: number | null;
+  pnl?: number | null;
+  opened_at?: string | null;
+}
+
+export interface AiProposalOverlay {
+  analysis_id?: number | null;
+  symbol: string;
+  decision: 'buy' | 'sell' | 'wait' | 'avoid' | 'skip';
+  confidence?: number | null;
+  entry_price?: number | null;
+  sl: number | null;
+  tp: number | null;
+  rationale?: string | null;
+  generated_at?: string | null;
+}
+
+export interface ChartWorkspacePayload {
+  symbol: string;
+  timeframe: string;
+  count: number;
+  candles: Array<{
+    time: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+  }>;
+  config: ChartWorkspaceConfig;
+  indicators?: Record<string, IndicatorTimePoint[]>;
+  summary?: IndicatorSummaryItem[];
+  positions?: ActivePositionOverlay[];
+  ai_proposals?: AiProposalOverlay[];
+  structure?: {
+    order_blocks?: Array<{
+      type: 'bullish' | 'bearish';
+      top: number;
+      bottom: number;
+      start_time: number;
+      end_time?: number;
+    }>;
+    fair_value_gaps?: Array<{
+      type: 'bullish' | 'bearish';
+      top: number;
+      bottom: number;
+      start_time: number;
+      end_time?: number;
+    }>;
+    breaks?: Array<{
+      type: 'BOS' | 'CHoCH';
+      direction: 'bullish' | 'bearish';
+      price: number;
+      time: number;
+    }>;
+    liquidity_pools?: Array<{
+      type: 'EQH' | 'EQL';
+      price: number;
+      start_time: number;
+      end_time?: number;
+    }>;
+    volume_profile?: {
+      poc: number;
+      vah: number;
+      val: number;
+      profile?: Array<{ price: number; volume: number }>;
+    };
+  };
+  timesfm?: {
+    q10: IndicatorTimePoint[];
+    q50: IndicatorTimePoint[];
+    q90: IndicatorTimePoint[];
+  };
+}
+
+export interface ChartConfigBundleResponse {
+  global: ChartWorkspaceConfig;
+  symbols: Record<string, ChartWorkspaceConfig>;
+  updated_at?: string;
+}

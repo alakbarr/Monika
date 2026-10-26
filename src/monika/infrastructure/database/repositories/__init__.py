@@ -13,6 +13,10 @@ from monika.infrastructure.database.repositories.risk_repository import SqlAlche
 from monika.infrastructure.database.repositories.system_config_repository import SystemConfigRepository
 from monika.infrastructure.database.repositories.trade_proposal_repository import TradeProposalRepository
 from monika.infrastructure.database.repositories.unit_of_work import SqlAlchemyUnitOfWork
+from monika.infrastructure.database.repositories.user_preference_repository import (
+    CHART_WORKSPACE_CATEGORY,
+    SqlAlchemyUserPreferenceRepository,
+)
 
 __all__ = [
     "PositionRepository",
@@ -24,4 +28,6 @@ __all__ = [
     "SqlAlchemyPaperTradeRepository",
     "SqlAlchemyMarketDataRepository",
     "SqlAlchemyUnitOfWork",
+    "SqlAlchemyUserPreferenceRepository",
+    "CHART_WORKSPACE_CATEGORY",
 ]

@@ -31,6 +31,8 @@ from monika.domain.indicators.technical import (
     TechnicalIndicatorCalculator as DomainTechnicalIndicatorCalculator,
     compute_lag1_autocorrelation,
     compute_yang_zhang_volatility,
+    evaluate_workspace_indicators,
+    normalize_chart_workspace_config,
 )
 from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
 
@@ -177,6 +179,181 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
         total_rows = sum(results.values())
         logger.info(f"Technical indicators complete: {len(results)} pairs ({total_rows} indicator rows computed)")
         return results
+
+    # ------------------------------------------------------------------
+    # Chart Workspace & Multi-TF Indicator Studio
+    # ------------------------------------------------------------------
+
+    async def compute_chart_workspace_payload(
+        self,
+        symbol: str,
+        timeframe: str,
+        count: int = 250,
+        workspace_config: Optional[dict[str, Any]] = None,
+        ohlcv_rows: Optional[list[dict[str, Any]]] = None,
+    ) -> dict[str, Any]:
+        """
+        Compute indicator workspace series, pivot points, and alignment summary.
+        Normalizes workspace configuration, loads/ensures required historical bars,
+        and computes all active overlays and oscillators.
+        """
+        cfg = normalize_chart_workspace_config(workspace_config)
+
+        if ohlcv_rows:
+            df = pd.DataFrame(ohlcv_rows)
+            time_col = next((c for c in ("timestamp", "time") if c in df.columns), None)
+            if time_col is not None:
+                df["timestamp"] = pd.to_datetime(df[time_col], utc=True)
+                df.set_index("timestamp", inplace=True)
+                if not df.index.is_monotonic_increasing:
+                    df.sort_index(inplace=True)
+                df = df.loc[~df.index.duplicated(keep="last")]
+        else:
+            df = await self._load_ohlcv(symbol, timeframe)
+            if (df is None or len(df) == 0) and self.session is not None:
+                try:
+                    from monika.application.services.market_data_service import MarketDataService
+
+                    md_svc = getattr(self, "market_data_service", None) or MarketDataService
+                    if hasattr(md_svc, "ensure_bars"):
+                        await md_svc.ensure_bars(
+                            symbol=symbol,
+                            timeframe=timeframe,
+                            count=max(count + 200, 300),
+                            session=self.session,
+                        )
+                        df = await self._load_ohlcv(symbol, timeframe)
+                except Exception as e:
+                    logger.debug(f"Failed to ensure bars for {symbol}/{timeframe}: {e}")
+
+        if df is None or len(df) == 0:
+            return evaluate_workspace_indicators(pd.DataFrame(), cfg, max_bars=count)
+
+        return await asyncio.to_thread(evaluate_workspace_indicators, df, cfg, count)
+
+    async def compute_multi_tf_workspace_summary(
+        self,
+        symbol: str,
+        workspace_config: Optional[dict[str, Any]] = None,
+        timeframes: tuple[str, ...] = ("D1", "H4", "H1", "M15"),
+    ) -> dict[str, Any]:
+        """
+        Compute multi-timeframe workspace alignment, merged declared figures, and confluence summary.
+        Combines primary timeframe signals with higher/lower timeframe confirmation.
+        """
+        cfg = normalize_chart_workspace_config(workspace_config)
+        primary_tf = str(cfg.get("timeframe", "H4")).upper()
+        ordered_tfs = list(dict.fromkeys([primary_tf, *timeframes]))
+
+        tf_summaries: dict[str, Any] = {}
+        merged_figures: dict[str, float] = {}
+
+        for tf in ordered_tfs:
+            df = await self._load_ohlcv(symbol, tf)
+            if df is not None and len(df) >= 5:
+                eval_res = await asyncio.to_thread(evaluate_workspace_indicators, df, cfg, 30)
+            else:
+                eval_res = evaluate_workspace_indicators(pd.DataFrame(), cfg, 30)
+
+            overall_data = eval_res.get("overall", {})
+            bias_upper = str(overall_data.get("bias", "neutral")).upper()
+            align_pct = overall_data.get("alignment_pct")
+            if align_pct is None:
+                align_pct = round(float(overall_data.get("alignment_ratio", 0.0)) * 100.0, 1)
+
+            tf_summaries[tf] = {
+                "bias": bias_upper,
+                "bullish_count": overall_data.get("bullish_count", 0),
+                "bearish_count": overall_data.get("bearish_count", 0),
+                "neutral_count": overall_data.get("neutral_count", 0),
+                "alignment_pct": float(align_pct),
+                "indicators": eval_res.get("summary", {}),
+                "pivot_points": eval_res.get("pivot_points"),
+            }
+
+            for k, v in eval_res.get("declared_figures", {}).items():
+                merged_figures[f"{tf}_{k}"] = v
+                if tf == primary_tf:
+                    merged_figures[k] = v
+
+        bullish_tfs = [tf for tf, info in tf_summaries.items() if info["bias"] == "BULLISH"]
+        bearish_tfs = [tf for tf, info in tf_summaries.items() if info["bias"] == "BEARISH"]
+
+        if len(bullish_tfs) > len(bearish_tfs):
+            overall_bias = "BULLISH"
+        elif len(bearish_tfs) > len(bullish_tfs):
+            overall_bias = "BEARISH"
+        else:
+            overall_bias = tf_summaries.get(primary_tf, {}).get("bias", "NEUTRAL")
+
+        prim_info = tf_summaries.get(primary_tf, {})
+        prim_total_dir = int(prim_info.get("bullish_count", 0)) + int(prim_info.get("bearish_count", 0))
+        prim_align = float(prim_info.get("alignment_pct", 0.0))
+        matching_count = len(bullish_tfs if overall_bias == "BULLISH" else bearish_tfs)
+
+        if prim_total_dir >= 3 and prim_align >= 75.0 and matching_count >= 2:
+            confluence_adjustment = 2
+        elif prim_total_dir >= 1 and prim_align >= 60.0:
+            confluence_adjustment = 1
+        else:
+            confluence_adjustment = 0
+
+        active_preset = cfg.get("active_preset") or cfg.get("preset_id", "smc_institutional")
+
+        report_lines = [
+            f"=== TECHNICAL INDICATOR WORKSPACE: {symbol.upper()} ===",
+            f"Active Preset: {active_preset} | Primary TF: {primary_tf} | Overall Bias: {overall_bias} (Bullish TFs: {', '.join(bullish_tfs) or 'None'} | Bearish TFs: {', '.join(bearish_tfs) or 'None'})",
+            f"Confluence Adjustment: {confluence_adjustment:+d}",
+            "",
+            f"[Primary TF ({primary_tf}) Active Indicators]",
+        ]
+
+        prim_indicators = prim_info.get("indicators", {})
+        if prim_indicators:
+            for ind_k, ind_v in prim_indicators.items():
+                sig = str(ind_v.get("signal", "neutral")).upper()
+                latest = ind_v.get("latest")
+                details = ind_v.get("details", "")
+                report_lines.append(f"- {ind_k}: {latest} | {sig} | {details}")
+        else:
+            report_lines.append("- No active indicators evaluated")
+
+        report_lines.append("")
+        report_lines.append("[Multi-TF Matrix]")
+        for tf in ordered_tfs:
+            info = tf_summaries.get(tf, {})
+            b_cnt = info.get("bullish_count", 0)
+            bear_cnt = info.get("bearish_count", 0)
+            align = float(info.get("alignment_pct", 0.0))
+            t_bias = info.get("bias", "NEUTRAL")
+
+            t_inds = info.get("indicators", {})
+            snippets = []
+            for candidate in ("RSI_14", "MACD", "Supertrend", "ADX_14"):
+                if candidate in t_inds:
+                    cand_data = t_inds[candidate]
+                    snippets.append(f"{candidate}: {cand_data.get('latest')} ({cand_data.get('signal')})")
+            highlight_str = f" | {', '.join(snippets)}" if snippets else ""
+            report_lines.append(
+                f"- {tf}: {t_bias} (Bull: {b_cnt}, Bear: {bear_cnt}, Align: {align:.1f}%){highlight_str}"
+            )
+
+        formatted_report = "\n".join(report_lines)
+
+        return {
+            "symbol": symbol.upper(),
+            "primary_timeframe": primary_tf,
+            "vision_sync_enabled": bool(cfg.get("vision_sync_enabled", True)),
+            "active_preset": active_preset,
+            "workspace_config": cfg,
+            "timeframes": tf_summaries,
+            "overall_bias": overall_bias,
+            "bullish_tfs": bullish_tfs,
+            "bearish_tfs": bearish_tfs,
+            "confluence_adjustment": confluence_adjustment,
+            "declared_figures": merged_figures,
+            "formatted_report": formatted_report,
+        }
 
     # ------------------------------------------------------------------
     # Data loading

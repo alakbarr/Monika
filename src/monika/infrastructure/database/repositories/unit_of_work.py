@@ -11,12 +11,12 @@ repositories via an AsyncSession (Clean Architecture Dependency Inversion).
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import logging
 from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from contextlib import asynccontextmanager
 from monika.domain.ports.repository import (
     ActivityLogRepositoryPort,
     AnalysisRepositoryPort,
@@ -26,6 +26,7 @@ from monika.domain.ports.repository import (
     RiskRepositoryPort,
     SystemConfigRepositoryPort,
     TradeProposalRepositoryPort,
+    UserPreferenceRepositoryPort,
 )
 from monika.domain.ports.unit_of_work import UnitOfWorkPort
 from monika.infrastructure.database.db import get_session
@@ -37,6 +38,9 @@ from monika.infrastructure.database.repositories.position_repository import Posi
 from monika.infrastructure.database.repositories.risk_repository import SqlAlchemyRiskRepository
 from monika.infrastructure.database.repositories.system_config_repository import SystemConfigRepository
 from monika.infrastructure.database.repositories.trade_proposal_repository import TradeProposalRepository
+from monika.infrastructure.database.repositories.user_preference_repository import (
+    SqlAlchemyUserPreferenceRepository,
+)
 
 logger = logging.getLogger("TradingAgent.Infrastructure.UnitOfWork")
 
@@ -60,6 +64,7 @@ class SqlAlchemyUnitOfWork(UnitOfWorkPort):
         self._analyses: Optional[AnalysisRepositoryPort] = None
         self._paper_trades: Optional[PaperTradeRepositoryPort] = None
         self._market_data: Optional[MarketDataRepositoryPort] = None
+        self._user_preferences: Optional[SqlAlchemyUserPreferenceRepository] = None
 
     @property
     def session(self) -> AsyncSession:
@@ -124,6 +129,13 @@ class SqlAlchemyUnitOfWork(UnitOfWorkPort):
             self._market_data = SqlAlchemyMarketDataRepository(self.session)
         return self._market_data
 
+    @property
+    def user_preferences(self) -> SqlAlchemyUserPreferenceRepository:
+        """User persistent preferences and chart workspaces repository."""
+        if self._user_preferences is None:
+            self._user_preferences = SqlAlchemyUserPreferenceRepository(self.session)
+        return self._user_preferences
+
     @asynccontextmanager
     async def nested(self):
         """Savepoint / nested transaction context manager."""
@@ -166,6 +178,7 @@ class SqlAlchemyUnitOfWork(UnitOfWorkPort):
             self._analyses = None
             self._paper_trades = None
             self._market_data = None
+            self._user_preferences = None
             if not self._is_external_session and self._session_ctx is not None:
                 await self._session_ctx.__aexit__(exc_type, exc_val, exc_tb)
                 self._session = None

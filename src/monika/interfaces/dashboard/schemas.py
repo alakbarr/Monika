@@ -191,3 +191,11 @@ class TokenSummaryResponse(BaseSchema):
     input_tokens: int = 0
     output_tokens: int = 0
     period_hours: int = 24
+
+
+class ChartConfigSaveRequest(BaseModel):
+    """Request payload for saving global or per-symbol chart workspace configuration."""
+
+    scope: str = Field(default="global", pattern="^(global|symbol)$")
+    symbol: Optional[str] = Field(default=None, max_length=20)
+    config: dict[str, Any] = Field(default_factory=dict)

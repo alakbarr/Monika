@@ -1043,6 +1043,23 @@ class GeminiProvider(BaseLLMClient):
                     elif b_type == "text":
                         text_val = block.get("text") if isinstance(block, dict) else getattr(block, "text", "")
                         parts.append({"text": text_val})
+                    elif b_type == "image":
+                        source = block.get("source", {}) if isinstance(block, dict) else getattr(block, "source", {})
+                        if isinstance(source, dict):
+                            media_type = str(source.get("media_type", "image/jpeg"))
+                            data = str(source.get("data", ""))
+                            if data:
+                                parts.append({"inlineData": {"mimeType": media_type, "data": data}})
+                    elif b_type == "image_url":
+                        img_url_data = (
+                            block.get("image_url", {}) if isinstance(block, dict) else getattr(block, "image_url", {})
+                        )
+                        url = img_url_data.get("url", "") if isinstance(img_url_data, dict) else str(img_url_data)
+                        if url.startswith("data:") and ";base64," in url:
+                            header, b64_data = url.split(";base64,", 1)
+                            mime_type = header[5:] if header.startswith("data:") else "image/jpeg"
+                            if b64_data:
+                                parts.append({"inlineData": {"mimeType": mime_type, "data": b64_data}})
             if parts:
                 gemini_contents.append({"role": role, "parts": parts})
 

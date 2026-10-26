@@ -76,6 +76,12 @@ export interface BulkBreakevenRequest {
   symbol?: string | null;
 }
 
+export interface ChartConfigSaveRequest {
+  config?: Record<string, unknown>;
+  scope?: string;
+  symbol?: string | null;
+}
+
 export interface ChatCompletionRequest {
   max_tokens?: number | null;
   messages: ChatMessage[];
@@ -468,6 +474,18 @@ export interface ApiEndpoints {
   };
   'GET /api/v1/market/candles/{symbol}': {
     summary: 'Get Market Candles';
+  };
+  'GET /api/v1/market/chart-config': {
+    summary: 'Get Chart Workspace Config Bundle';
+  };
+  'PUT /api/v1/market/chart-config': {
+    summary: 'Save Chart Workspace Config';
+  };
+  'DELETE /api/v1/market/chart-config/{symbol}': {
+    summary: 'Delete Chart Workspace Override';
+  };
+  'GET /api/v1/market/chart-workspace/{symbol}': {
+    summary: 'Get Chart Workspace';
   };
   'GET /api/v1/market/cot': {
     summary: 'Get Cot Reports';

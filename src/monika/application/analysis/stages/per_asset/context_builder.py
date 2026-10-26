@@ -123,7 +123,7 @@ SPECIALIST_PROMPTS = {
     "technical": """ROLE: TECHNICAL_ANALYST
 DOMAIN: Chart structure, price action, SMC/ICT zones, and quantitative technical indicators.
 TARGET: Analyze the specific target asset and currency pair provided in the user data payload.
-DATA: price_history, indicators, smc_zones, structure_breaks, fibonacci, playbook_screening, active_playbook_id, market_regime. IGNORE macro/news/COT.
+DATA: price_history, indicators, smc_zones, structure_breaks, fibonacci, playbook_screening, active_playbook_id, market_regime, user_chart_workspace. IGNORE macro/news/COT.
 
 QUANTITATIVE INDICATOR TRADING GUIDE & INTERPRETATION:
 • AC1_20 (Lag-1 Return Autocorrelation):
@@ -141,6 +141,7 @@ QUANTITATIVE INDICATOR TRADING GUIDE & INTERPRETATION:
   - Decelerating histogram bars indicate momentum exhaustion prior to structural reversal.
 • SMC CONVERGENCE: Technical indicators must converge with institutional price levels (OB, FVG, Liquidity Sweeps).
 • ACTIVE PLAYBOOK: If 'active_playbook_id' is present, evaluate whether current technical structure fulfills that playbook's setup rules.
+• USER CHART WORKSPACE: Inspect 'user_chart_workspace' (the user's active chart indicators, overlays, oscillators, and multi-timeframe alignment across D1/H4/H1/M15) and explicitly state whether the user's configured indicator suite confirms or contradicts the setup.
 
 DECISION PROTOCOL:
 Step 1: Multi-timeframe trend alignment (D1 bias vs H4/H1 structure) & active structure breaks (BOS/ChoCH).

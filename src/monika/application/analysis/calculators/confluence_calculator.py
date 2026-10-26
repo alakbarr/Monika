@@ -1,6 +1,10 @@
+import asyncio
 import json
 import logging
+from datetime import datetime, timezone
+from typing import Optional
 
+import pandas as pd
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -407,9 +411,54 @@ async def calculate_confluence(
     except Exception as pat_err:
         logger.debug(f"Confluence pattern similarity cache check skipped: {pat_err}")
 
+    # Factor 7 Pre-computation: User Chart Workspace alignment
+    ws_eval_result = None
+    try:
+        from monika.domain.indicators.technical import evaluate_workspace_indicators
+        from monika.infrastructure.database.repositories.user_preference_repository import (
+            SqlAlchemyUserPreferenceRepository,
+        )
+
+        ws_repo = SqlAlchemyUserPreferenceRepository(session)
+        workspace_config = await ws_repo.resolve_chart_workspace_config(symbol)
+        ws_tf = str(workspace_config.get("timeframe", "H4")).upper()
+
+        ws_ohlcv_stmt = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == ws_tf)
+        if as_of:
+            ws_ohlcv_stmt = ws_ohlcv_stmt.where(PriceOHLCV.timestamp <= as_of)
+        ws_ohlcv_stmt = ws_ohlcv_stmt.order_by(PriceOHLCV.timestamp.desc()).limit(150)
+        ws_rows_res = await session.execute(ws_ohlcv_stmt)
+        ws_rows = ws_rows_res.scalars().all()
+
+        if (
+            isinstance(ws_rows, list)
+            and len(ws_rows) >= 20
+            and hasattr(ws_rows[0], "close")
+            and isinstance(getattr(ws_rows[0], "close", None), (int, float))
+        ):
+            ws_rows_sorted = sorted(ws_rows, key=lambda r: getattr(r, "timestamp", None) or clock.now())
+            df_ws = pd.DataFrame(
+                [
+                    {
+                        "Date": r.timestamp,
+                        "Open": float(r.open),
+                        "High": float(r.high),
+                        "Low": float(r.low),
+                        "Close": float(r.close),
+                        "Volume": float(getattr(r, "volume", 0.0) or 0.0),
+                    }
+                    for r in ws_rows_sorted
+                ]
+            )
+            df_ws.set_index("Date", inplace=True)
+            ws_eval_result = await asyncio.to_thread(evaluate_workspace_indicators, df_ws, workspace_config, 50)
+    except Exception as ws_e:
+        logger.debug(f"User chart workspace confluence alignment skipped: {ws_e}")
+
     def _compute_for_direction(test_direction, test_entry, test_sl, test_tp):
         score = 0
         issues = []
+        factors = []
         near_fvg = False
         near_ob = False
         near_sr = False
@@ -852,11 +901,41 @@ async def calculate_confluence(
             if concordant_edges >= 1:
                 score += 1
 
-        return score, issues
+        # 7. User Chart Workspace Indicator Alignment (±2 pts max, clamped to [0, 10])
+        if ws_eval_result:
+            try:
+                overall = ws_eval_result.get("overall", {})
+                ws_bias = str(overall.get("bias", "NEUTRAL")).upper()
+                bull_cnt = int(overall.get("bullish_count", 0))
+                bear_cnt = int(overall.get("bearish_count", 0))
+                total_dir = bull_cnt + bear_cnt
+                align_pct = float(overall.get("alignment_pct", 0.0))
+
+                dir_test = str(test_direction or "").strip().upper()
+                if total_dir >= 2 and ws_bias in ("BULLISH", "BEARISH"):
+                    expected_bias = "BULLISH" if dir_test == "BUY" else "BEARISH"
+                    if ws_bias == expected_bias:
+                        if total_dir >= 3 and align_pct >= 75.0:
+                            score += 2
+                            factors.append(f"User Chart Workspace Strong Alignment ({ws_bias} {align_pct:.0f}%)")
+                        elif align_pct >= 60.0:
+                            score += 1
+                            factors.append(f"User Chart Workspace Alignment ({ws_bias} {align_pct:.0f}%)")
+                    else:
+                        if total_dir >= 3 and align_pct >= 75.0:
+                            score = max(0, score - 1)
+                            factors.append(
+                                f"User Chart Workspace Divergence ({ws_bias} {align_pct:.0f}% opposes {dir_test})"
+                            )
+            except Exception as e:
+                logger.debug(f"Workspace alignment evaluation error: {e}")
+
+        score = min(max(score, 0), 10)
+        return score, issues, factors
 
     if direction:
-        score, issues = _compute_for_direction(direction, entry_price, sl, tp)
-        return {"computed_score": score, "blocking_issues": issues}
+        score, issues, factors = _compute_for_direction(direction, entry_price, sl, tp)
+        return {"computed_score": score, "blocking_issues": issues, "factors": factors}
     else:
         # Pre-hoc context, we don't know the exact entry. Use last close price if entry is not provided
         price_to_test = entry_price
@@ -870,8 +949,8 @@ async def calculate_confluence(
             if last_price_row:
                 price_to_test = last_price_row.close
 
-        buy_s, _ = _compute_for_direction("buy", price_to_test, None, None)
-        sell_s, _ = _compute_for_direction("sell", price_to_test, None, None)
+        buy_s, _, buy_f = _compute_for_direction("buy", price_to_test, None, None)
+        sell_s, _, sell_f = _compute_for_direction("sell", price_to_test, None, None)
         sep = abs(buy_s - sell_s)
         dom_dir = "buy" if buy_s >= sell_s + 2 else ("sell" if sell_s >= buy_s + 2 else "neutral")
 
@@ -882,3 +961,36 @@ async def calculate_confluence(
             "dominant_direction": dom_dir,
             "reference_price": price_to_test,
         }
+
+
+class ConfluenceCalculator:
+    """
+    Deterministic Confluence Calculator with user chart workspace integration.
+    Provides calculate_score() keeping tool execution and ConfluenceVerifier in 100% parity.
+    """
+
+    def __init__(self, session: AsyncSession, settings: Optional[dict] = None):
+        self.session = session
+        self.settings = settings or {}
+
+    async def calculate_score(
+        self,
+        symbol: str,
+        direction: Optional[str] = None,
+        entry_price: Optional[float] = None,
+        sl: Optional[float] = None,
+        tp: Optional[float] = None,
+        as_of: Optional[datetime] = None,
+        confluence_factors: Optional[list[str]] = None,
+    ) -> dict:
+        return await calculate_confluence(
+            session=self.session,
+            symbol=symbol,
+            direction=direction,
+            entry_price=entry_price,
+            sl=sl,
+            tp=tp,
+            settings=self.settings,
+            as_of=as_of,
+            confluence_factors=confluence_factors,
+        )

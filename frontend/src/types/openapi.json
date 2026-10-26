@@ -330,6 +330,36 @@
         "title": "BulkBreakevenRequest",
         "type": "object"
       },
+      "ChartConfigSaveRequest": {
+        "description": "Request payload for saving global or per-symbol chart workspace configuration.",
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          },
+          "scope": {
+            "default": "global",
+            "pattern": "^(global|symbol)$",
+            "title": "Scope",
+            "type": "string"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          }
+        },
+        "title": "ChartConfigSaveRequest",
+        "type": "object"
+      },
       "ChatCompletionRequest": {
         "properties": {
           "max_tokens": {
@@ -3366,6 +3396,192 @@
           }
         },
         "summary": "Get Market Candles",
+        "tags": [
+          "Market Data"
+        ]
+      }
+    },
+    "/api/v1/market/chart-config": {
+      "get": {
+        "description": "Retrieve saved global and per-symbol chart workspace configurations with preset definitions.",
+        "operationId": "get_chart_workspace_config_bundle_api_v1_market_chart_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Chart Workspace Config Bundle Api V1 Market Chart Config Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Chart Workspace Config Bundle",
+        "tags": [
+          "Market Data"
+        ]
+      },
+      "put": {
+        "description": "Save or update chart workspace configuration at global or per-symbol scope.",
+        "operationId": "save_chart_workspace_config_api_v1_market_chart_config_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChartConfigSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Save Chart Workspace Config Api V1 Market Chart Config Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Chart Workspace Config",
+        "tags": [
+          "Market Data"
+        ]
+      }
+    },
+    "/api/v1/market/chart-config/{symbol}": {
+      "delete": {
+        "description": "Remove symbol-specific chart workspace layout override to revert to global layout.",
+        "operationId": "delete_chart_workspace_override_api_v1_market_chart_config__symbol__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Chart Workspace Override Api V1 Market Chart Config  Symbol  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Chart Workspace Override",
+        "tags": [
+          "Market Data"
+        ]
+      }
+    },
+    "/api/v1/market/chart-workspace/{symbol}": {
+      "get": {
+        "description": "Unified institutional chart workspace payload combining candles, technical indicator series,\npivot points, alignment summary, SMC market structures, active positions, and AI proposals.",
+        "operationId": "get_chart_workspace_api_v1_market_chart_workspace__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Timeframe e.g. M15, H1, H4, D1",
+            "in": "query",
+            "name": "timeframe",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Timeframe e.g. M15, H1, H4, D1",
+              "title": "Timeframe"
+            }
+          },
+          {
+            "in": "query",
+            "name": "count",
+            "required": false,
+            "schema": {
+              "default": 250,
+              "maximum": 1000,
+              "minimum": 10,
+              "title": "Count",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Chart Workspace Api V1 Market Chart Workspace  Symbol  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Chart Workspace",
         "tags": [
           "Market Data"
         ]

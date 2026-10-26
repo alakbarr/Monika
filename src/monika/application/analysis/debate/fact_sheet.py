@@ -286,4 +286,24 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
         logger.debug(f"FactSheet grounding injection note: {g_err}")
         fact_sheet["empirical_market_grounding"] = ""
 
+    # Inject user chart workspace summary and telemetry for debate agents (Wave 2)
+    try:
+        from monika.application.services.technical_indicator_service import TechnicalIndicatorService
+        from monika.infrastructure.database.repositories.user_preference_repository import (
+            SqlAlchemyUserPreferenceRepository,
+        )
+
+        ws_repo = SqlAlchemyUserPreferenceRepository(session)
+        workspace_config = await ws_repo.resolve_chart_workspace_config(analysis.symbol)
+        tech_svc = TechnicalIndicatorService(session)
+        ws_summary = await tech_svc.compute_multi_tf_workspace_summary(analysis.symbol, workspace_config)
+        if ws_summary and ws_summary.get("overall_bias") and ws_summary.get("formatted_report"):
+            fact_sheet["user_chart_workspace_telemetry"] = (
+                f"[USER CHART WORKSPACE TELEMETRY]\n{str(ws_summary['formatted_report']).strip()}"
+            )
+            fact_sheet["user_chart_workspace_bias"] = ws_summary["overall_bias"]
+            fact_sheet["user_chart_workspace_confluence_adj"] = ws_summary.get("confluence_adjustment", 0)
+    except Exception as ws_err:
+        logger.debug(f"FactSheet user chart workspace fetch note: {ws_err}")
+
     return fact_sheet

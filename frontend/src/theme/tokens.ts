@@ -140,6 +140,80 @@ export const getChartPalette = (isLight: boolean) => ({
   bosColor: isLight ? '#111215' : '#F3F4F6',
   timesfmMedian: isLight ? '#1D4ED8' : '#60A5FA',
   timesfmCone: isLight ? 'rgba(29, 78, 216, 0.28)' : 'rgba(96, 165, 250, 0.28)',
+
+  // Moving Averages (EMA / SMA / WMA)
+  ema9: isLight ? '#2563EB' : '#60A5FA',
+  ema20: isLight ? '#D97706' : '#FBBF24',
+  ema21: isLight ? '#F59E0B' : '#FCD34D',
+  ema50: isLight ? '#7C3AED' : '#A78BFA',
+  ema100: isLight ? '#0D9488' : '#2DD4BF',
+  ema200: isLight ? '#E11D48' : '#FB7185',
+  sma20: isLight ? '#4F46E5' : '#818CF8',
+  sma50: isLight ? '#059669' : '#34D399',
+  sma200: isLight ? '#DC2626' : '#F87171',
+  wma20: isLight ? '#0891B2' : '#38BDF8',
+
+  // Volatility Channels (Bollinger / Keltner / Donchian)
+  bbUpper: isLight ? '#2563EB' : '#60A5FA',
+  bbMid: isLight ? 'rgba(37, 99, 235, 0.45)' : 'rgba(96, 165, 250, 0.45)',
+  bbLower: isLight ? '#2563EB' : '#60A5FA',
+  kcUpper: isLight ? '#7C3AED' : '#A78BFA',
+  kcMid: isLight ? 'rgba(124, 58, 237, 0.45)' : 'rgba(167, 139, 250, 0.45)',
+  kcLower: isLight ? '#7C3AED' : '#A78BFA',
+  dcUpper: isLight ? '#0D9488' : '#2DD4BF',
+  dcMid: isLight ? 'rgba(13, 148, 136, 0.45)' : 'rgba(45, 212, 191, 0.45)',
+  dcLower: isLight ? '#0D9488' : '#2DD4BF',
+
+  // VWAP & Supertrend
+  vwapColor: isLight ? '#EA580C' : '#FB923C',
+  supertrendBull: isLight ? '#0D7A52' : '#10B981',
+  supertrendBear: isLight ? '#C82838' : '#F43F5E',
+
+  // Ichimoku Cloud
+  ichimokuTenkan: isLight ? '#2563EB' : '#60A5FA',
+  ichimokuKijun: isLight ? '#DC2626' : '#F87171',
+  ichimokuSenkouA: isLight ? '#0D7A52' : '#34D399',
+  ichimokuSenkouB: isLight ? '#C82838' : '#FB7185',
+
+  // Pivot Points
+  pivotP: isLight ? '#4B5563' : '#9CA3AF',
+  pivotR: isLight ? '#C82838' : '#F43F5E',
+  pivotS: isLight ? '#0D7A52' : '#10B981',
+
+  // Volume Profile & Structure Liquidity
+  pocColor: isLight ? '#D97706' : '#FBBF24',
+  vahValColor: isLight ? '#4B5563' : '#9CA3AF',
+  eqPoolColor: isLight ? '#8B5CF6' : '#C4B5FD',
+
+  // Volume Bars & Volume MA
+  volUp: isLight ? 'rgba(13, 122, 82, 0.4)' : 'rgba(16, 185, 129, 0.4)',
+  volDown: isLight ? 'rgba(200, 40, 56, 0.4)' : 'rgba(244, 63, 94, 0.4)',
+  volMa: isLight ? '#D97706' : '#FBBF24',
+
+  // Sub-pane Oscillators
+  rsiLine: isLight ? '#7C3AED' : '#A78BFA',
+  rsiBand: isLight ? 'rgba(124, 58, 237, 0.15)' : 'rgba(167, 139, 250, 0.15)',
+  macdLine: isLight ? '#2563EB' : '#60A5FA',
+  macdSignal: isLight ? '#EA580C' : '#FB923C',
+  macdHistBull: isLight ? 'rgba(13, 122, 82, 0.65)' : 'rgba(16, 185, 129, 0.65)',
+  macdHistBear: isLight ? 'rgba(200, 40, 56, 0.65)' : 'rgba(244, 63, 94, 0.65)',
+  stochK: isLight ? '#2563EB' : '#60A5FA',
+  stochD: isLight ? '#EA580C' : '#FB923C',
+  adxLine: isLight ? '#4B5563' : '#E5E7EB',
+  plusDi: isLight ? '#0D7A52' : '#10B981',
+  minusDi: isLight ? '#C82838' : '#F43F5E',
+  atrLine: isLight ? '#0891B2' : '#38BDF8',
+  cvdBull: isLight ? '#0D7A52' : '#10B981',
+  cvdBear: isLight ? '#C82838' : '#F43F5E',
+  yzVolLine: isLight ? '#6366F1' : '#818CF8',
+
+  // Execution & AI Overlay Markers
+  posEntry: isLight ? '#1D4ED8' : '#3B82F6',
+  posSl: isLight ? '#DC2626' : '#EF4444',
+  posTp: isLight ? '#0D7A52' : '#10B981',
+  aiEntry: isLight ? '#7C3AED' : '#8B5CF6',
+  aiSl: isLight ? '#B91C1C' : '#F87171',
+  aiTp: isLight ? '#059669' : '#34D399',
 });
 
 /**

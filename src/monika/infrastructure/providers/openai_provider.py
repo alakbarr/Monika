@@ -1234,6 +1234,7 @@ class OpenAIProvider(BaseLLMClient):
 
             if isinstance(content, list):
                 text_parts = []
+                image_parts: list[dict[str, Any]] = []
                 tool_calls = []
                 tool_results = []
                 thinking_parts = []
@@ -1244,6 +1245,36 @@ class OpenAIProvider(BaseLLMClient):
                         text_val = block.get("text") if isinstance(block, dict) else getattr(block, "text", "")
                         if text_val:
                             text_parts.append(text_val)
+                    elif b_type == "image":
+                        source = block.get("source", {}) if isinstance(block, dict) else getattr(block, "source", {})
+                        if isinstance(source, dict):
+                            media_type = str(source.get("media_type", "image/jpeg"))
+                            data = str(source.get("data", ""))
+                            if data:
+                                image_parts.append(
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {"url": f"data:{media_type};base64,{data}"},
+                                    }
+                                )
+                    elif b_type == "image_url":
+                        img_url_data = (
+                            block.get("image_url", {}) if isinstance(block, dict) else getattr(block, "image_url", {})
+                        )
+                        if isinstance(img_url_data, dict) and img_url_data.get("url"):
+                            image_parts.append(
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": str(img_url_data["url"])},
+                                }
+                            )
+                        elif isinstance(img_url_data, str) and img_url_data:
+                            image_parts.append(
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": img_url_data},
+                                }
+                            )
                     elif b_type in ("thinking", "thought"):
                         t_val = block.get("thinking") if isinstance(block, dict) else getattr(block, "thinking", None)
                         if not t_val:
@@ -1317,7 +1348,13 @@ class OpenAIProvider(BaseLLMClient):
                     if tool_results:
                         norm_messages.extend(tool_results)
                         tool_results = []
-                    if text_parts:
+                    if image_parts and role == "user":
+                        content_payload: list[dict[str, Any]] = []
+                        if text_parts:
+                            content_payload.append({"type": "text", "text": " ".join(text_parts)})
+                        content_payload.extend(image_parts)
+                        norm_messages.append({"role": role, "content": content_payload})
+                    elif text_parts:
                         norm_messages.append({"role": role, "content": " ".join(text_parts)})
             elif role == "tool":
                 tid = m.get("tool_call_id", "")

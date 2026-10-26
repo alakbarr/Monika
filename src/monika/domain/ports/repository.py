@@ -354,3 +354,59 @@ class MarketDataRepositoryPort(Protocol):
     async def get_latest_yield(self, tenor: str = "10Y") -> Optional[float]:
         """Fetch latest treasury yield percent."""
         ...
+
+
+@runtime_checkable
+class UserPreferenceRepositoryPort(Protocol):
+    """Pure domain protocol for user preferences and chart workspace persistence."""
+
+    async def get_preference(
+        self,
+        category: str,
+        key: str,
+        user_id: str = "default",
+    ) -> Optional[dict[str, Any]]:
+        """Fetch a specific preference by category and key."""
+        ...
+
+    async def set_preference(
+        self,
+        category: str,
+        key: str,
+        value: dict[str, Any],
+        user_id: str = "default",
+    ) -> dict[str, Any]:
+        """Save or update a preference for a category and key."""
+        ...
+
+    async def delete_preference(
+        self,
+        category: str,
+        key: str,
+        user_id: str = "default",
+    ) -> bool:
+        """Delete or deactivate a preference."""
+        ...
+
+    async def list_preferences(
+        self,
+        category: str,
+        user_id: str = "default",
+    ) -> dict[str, dict[str, Any]]:
+        """List all active preferences within a category."""
+        ...
+
+    async def resolve_chart_workspace_config(
+        self,
+        symbol: Optional[str] = None,
+        user_id: str = "default",
+    ) -> dict[str, Any]:
+        """Resolve effective chart workspace configuration for symbol or fallback to global."""
+        ...
+
+    async def get_chart_workspace_bundle(
+        self,
+        user_id: str = "default",
+    ) -> dict[str, Any]:
+        """Return global config and all symbol override configs as a bundle."""
+        ...

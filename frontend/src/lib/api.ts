@@ -112,6 +112,23 @@ async function put<T>(endpoint: string, body?: unknown): Promise<T> {
   return res.json();
 }
 
+async function del<T>(endpoint: string): Promise<T> {
+  const res = await fetch(`${BASE}${endpoint}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+  if (res.status === 401 || res.status === 403) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dashboard-auth-error', { detail: { status: res.status } }));
+    }
+  }
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || errData.message || `API DELETE ${endpoint}: ${res.status}`);
+  }
+  return res.json();
+}
+
 export const api = {
   health: () => get<import('../types/api').HealthStatus>('/health/diagnostics'),
   overview: () => get<import('../types/api').Overview>('/overview'),
@@ -505,5 +522,28 @@ export const api = {
   decisionDossier: (analysisId: number | string, ticket?: number) =>
     get<import('../types/api').DecisionDossierData>(
       `/analysis/decision-dossier/${encodeURIComponent(String(analysisId))}${ticket ? `?ticket=${ticket}` : ''}`
+    ),
+
+  // Institutional Chart Workspace & Indicator Studio
+  getChartConfig: () =>
+    get<import('../types/api').ChartConfigBundleResponse>('/market/chart-config'),
+  saveChartConfig: (
+    scope: 'global' | 'symbol',
+    config: import('../types/api').ChartWorkspaceConfig,
+    symbol?: string
+  ) =>
+    put<{
+      status: string;
+      scope: string;
+      symbol?: string;
+      config: import('../types/api').ChartWorkspaceConfig;
+    }>('/market/chart-config', { scope, symbol, config }),
+  deleteChartConfigOverride: (symbol: string) =>
+    del<{ status: string; symbol: string }>(`/market/chart-config/${encodeURIComponent(symbol)}`),
+  marketChartWorkspace: (symbol: string, timeframe?: string, count = 250) =>
+    get<import('../types/api').ChartWorkspacePayload>(
+      `/market/chart-workspace/${encodeURIComponent(symbol)}?count=${count}${
+        timeframe ? `&timeframe=${encodeURIComponent(timeframe)}` : ''
+      }`
     ),
 };

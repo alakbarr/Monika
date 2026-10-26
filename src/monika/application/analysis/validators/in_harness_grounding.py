@@ -19,8 +19,52 @@ from typing import Any, Dict, List, Optional, Tuple
 logger = logging.getLogger("TradingAgent.InHarnessGrounding")
 
 
+def extract_verified_anchors(data_bundle: dict[str, Any]) -> dict[str, Any]:
+    """
+    Extracts verified deterministic anchors from data_bundle for in-harness grounding checks.
+    """
+    anchors: dict[str, Any] = {}
+    if not isinstance(data_bundle, dict):
+        return anchors
+
+    # 1. Price anchors
+    for p_key in ("current_price", "price", "close"):
+        if p_key in data_bundle and data_bundle[p_key] is not None:
+            try:
+                anchors["current_price"] = float(data_bundle[p_key])
+                break
+            except ValueError, TypeError:
+                pass
+
+    # 2. Volatility / ATR anchors
+    for a_key in ("atr", "atr_14", "h4_atr"):
+        if a_key in data_bundle and data_bundle[a_key] is not None:
+            try:
+                anchors["atr_14"] = float(data_bundle[a_key])
+                break
+            except ValueError, TypeError:
+                pass
+
+    # 3. User Chart Workspace Declared Figures
+    ws = data_bundle.get("user_chart_workspace")
+    if isinstance(ws, dict):
+        declared = ws.get("declared_figures")
+        if isinstance(declared, dict) and declared:
+            clean_figures = {
+                str(k): float(v)
+                for k, v in declared.items()
+                if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(float(v))
+            }
+            if clean_figures:
+                anchors["user_chart_figures"] = clean_figures
+
+    return anchors
+
+
 class InHarnessGroundingValidator:
     """Verifies that LLM decisions and evidence are 100% grounded in empirical data."""
+
+    extract_verified_anchors = staticmethod(extract_verified_anchors)
 
     @classmethod
     def extract_numbers_from_text(cls, text: str) -> List[float]:

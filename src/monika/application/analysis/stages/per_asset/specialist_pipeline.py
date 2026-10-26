@@ -63,6 +63,7 @@ class SpecialistPipelineMixin:
             "market_chronicle",
             "recent_lessons",
             "pattern_similarity",
+            "user_chart_workspace",
         ],
         "sentiment": [
             "cot_report",

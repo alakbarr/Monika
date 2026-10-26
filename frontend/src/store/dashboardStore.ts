@@ -5,7 +5,62 @@ import type {
   Analysis, PaperTradingStats, FactorAnalysis,
   EdgeMetrics, VixDataPoint, Brief, RiskState,
   DecisionDistribution, GeminiQuota, AnalysisQualityRealtime,
+  ChartPresetId, ChartWorkspaceConfig,
 } from '../types/api';
+import {
+  CHART_PRESETS,
+  DEFAULT_CHART_WORKSPACE_CONFIG,
+  normalizeChartWorkspaceConfig,
+} from '../lib/chartIndicatorsClientMath';
+
+const CHART_CONFIGS_STORAGE_KEY = 'monika_chart_configs_v1';
+
+function getInitialChartConfigs(): {
+  global: ChartWorkspaceConfig;
+  symbols: Record<string, ChartWorkspaceConfig>;
+  loadedFromServer: boolean;
+} {
+  let global = DEFAULT_CHART_WORKSPACE_CONFIG;
+  const symbols: Record<string, ChartWorkspaceConfig> = {};
+
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(CHART_CONFIGS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.global) {
+          global = normalizeChartWorkspaceConfig(parsed.global);
+        }
+        if (parsed.symbols && typeof parsed.symbols === 'object') {
+          for (const [sym, cfg] of Object.entries(parsed.symbols)) {
+            symbols[sym] = normalizeChartWorkspaceConfig(cfg as Partial<ChartWorkspaceConfig>);
+          }
+        }
+      }
+    } catch {
+      // storage unreadable or corrupt
+    }
+  }
+
+  return {
+    global,
+    symbols,
+    loadedFromServer: false,
+  };
+}
+
+function persistChartConfigsLocally(data: {
+  global: ChartWorkspaceConfig;
+  symbols: Record<string, ChartWorkspaceConfig>;
+}) {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(CHART_CONFIGS_STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      // storage unavailable
+    }
+  }
+}
 
 const CHAPTER_DEFAULTS: Record<string, string> = {
   capital: 'overview',
@@ -39,6 +94,14 @@ interface DashboardState {
   analysisQuality: AnalysisQualityRealtime | null;
   marketQuotes: Record<string, { price: number; changePct: number }>;
 
+  // Chart Workspace & Indicator Studio State
+  chartConfigs: {
+    global: ChartWorkspaceConfig;
+    symbols: Record<string, ChartWorkspaceConfig>;
+    loadedFromServer: boolean;
+  };
+  lastTickBySymbol: Record<string, { bid: number; ask: number; spread: number; timestamp: string }>;
+
   // UI State
   loading: boolean;
   error: string | null;
@@ -64,6 +127,13 @@ interface DashboardState {
   setWsConnected: (connected: boolean) => void;
   updateTickPrice: (tick: Record<string, unknown>) => void;
   addActivity: (event: Record<string, unknown>) => void;
+
+  // Chart Workspace Actions
+  loadChartConfigsFromServer: () => Promise<void>;
+  getEffectiveChartConfig: (symbol: string) => { config: ChartWorkspaceConfig; isSymbolOverride: boolean };
+  saveChartWorkspaceConfig: (symbol: string, config: ChartWorkspaceConfig, scope: 'global' | 'symbol') => Promise<void>;
+  applyChartPreset: (symbol: string, presetId: ChartPresetId, scope: 'global' | 'symbol') => Promise<void>;
+  resetSymbolChartOverride: (symbol: string) => Promise<void>;
 }
 
 let pendingTicks: Record<string, Record<string, unknown>> = {};
@@ -85,6 +155,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   decisionDist: null,
   analysisQuality: null,
   marketQuotes: {},
+  chartConfigs: getInitialChartConfigs(),
+  lastTickBySymbol: {},
   loading: true,
   error: null,
   lastRefresh: null,
@@ -206,6 +278,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         lastRefresh: new Date(),
         error: errorMessage,
       }));
+      get().loadChartConfigsFromServer().catch(() => {});
     } catch {
       set({ loading: false, error: 'Failed to load dashboard data.' });
     }
@@ -239,9 +312,16 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
       let positions = get().positions;
       const marketQuotes = { ...get().marketQuotes };
+      const lastTickBySymbol = { ...get().lastTickBySymbol };
 
       for (const [s, t] of Object.entries(ticksToApply)) {
         const bid = typeof t.bid === 'number' ? t.bid : Number(t.bid) || 0;
+        const ask = typeof t.ask === 'number' ? t.ask : Number(t.ask) || bid;
+        const spread = typeof t.spread === 'number' ? t.spread : Math.max(0, ask - bid);
+        const timestamp = (t.timestamp as string) || (t.time as string) || new Date().toISOString();
+
+        lastTickBySymbol[s] = { bid, ask, spread, timestamp };
+
         const floatingPnl =
           typeof t.floating_pnl === 'number'
             ? t.floating_pnl
@@ -277,7 +357,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         marketQuotes[s] = { price: bid, changePct };
       }
 
-      set({ positions, marketQuotes });
+      set({ positions, marketQuotes, lastTickBySymbol });
     };
 
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
@@ -317,5 +397,121 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     };
     const activity = [activityLog, ...get().activity].slice(0, 50);
     set({ activity });
+  },
+
+  loadChartConfigsFromServer: async () => {
+    try {
+      const res = await api.getChartConfig();
+      if (res && res.global) {
+        const globalNorm = normalizeChartWorkspaceConfig(res.global);
+        const symbolsNorm: Record<string, ChartWorkspaceConfig> = {};
+        if (res.symbols && typeof res.symbols === 'object') {
+          for (const [sym, cfg] of Object.entries(res.symbols)) {
+            symbolsNorm[sym] = normalizeChartWorkspaceConfig(cfg);
+          }
+        }
+        const updated = {
+          global: globalNorm,
+          symbols: symbolsNorm,
+          loadedFromServer: true,
+        };
+        persistChartConfigsLocally({ global: globalNorm, symbols: symbolsNorm });
+        set({ chartConfigs: updated });
+      }
+    } catch {
+      // Non-blocking fallback: local configs stay active
+      set((state) => ({
+        chartConfigs: { ...state.chartConfigs, loadedFromServer: false },
+      }));
+    }
+  },
+
+  getEffectiveChartConfig: (symbol: string) => {
+    const { chartConfigs } = get();
+    if (symbol && chartConfigs.symbols[symbol]) {
+      return {
+        config: chartConfigs.symbols[symbol],
+        isSymbolOverride: true,
+      };
+    }
+    return {
+      config: chartConfigs.global,
+      isSymbolOverride: false,
+    };
+  },
+
+  saveChartWorkspaceConfig: async (
+    symbol: string,
+    config: ChartWorkspaceConfig,
+    scope: 'global' | 'symbol'
+  ) => {
+    const norm = normalizeChartWorkspaceConfig(config);
+    const prev = get().chartConfigs;
+
+    let nextGlobal = prev.global;
+    const nextSymbols = { ...prev.symbols };
+
+    if (scope === 'global') {
+      nextGlobal = norm;
+    } else {
+      nextSymbols[symbol] = norm;
+    }
+
+    const nextState = {
+      global: nextGlobal,
+      symbols: nextSymbols,
+      loadedFromServer: prev.loadedFromServer,
+    };
+
+    // Immediate optimistic update to Zustand state and localStorage
+    set({ chartConfigs: nextState });
+    persistChartConfigsLocally({ global: nextGlobal, symbols: nextSymbols });
+
+    // Non-blocking server persistence
+    try {
+      await api.saveChartConfig(scope, norm, symbol);
+    } catch {
+      // Optimistic state remains locally valid even if server persistence temporarily fails
+    }
+  },
+
+  applyChartPreset: async (symbol: string, presetId: ChartPresetId, scope: 'global' | 'symbol') => {
+    const template = CHART_PRESETS[presetId] || CHART_PRESETS.smc_institutional;
+    const currentConfig = get().getEffectiveChartConfig(symbol).config;
+
+    const merged: ChartWorkspaceConfig = {
+      ...template,
+      preset_id: presetId,
+      timeframe: currentConfig.timeframe || template.timeframe,
+      vision_sync_enabled: currentConfig.vision_sync_enabled ?? template.vision_sync_enabled,
+      scope,
+      symbol: scope === 'symbol' ? symbol : undefined,
+    };
+
+    await get().saveChartWorkspaceConfig(symbol, merged, scope);
+  },
+
+  resetSymbolChartOverride: async (symbol: string) => {
+    if (!symbol) return;
+    const prev = get().chartConfigs;
+    if (!prev.symbols[symbol]) return;
+
+    const nextSymbols = { ...prev.symbols };
+    delete nextSymbols[symbol];
+
+    const nextState = {
+      global: prev.global,
+      symbols: nextSymbols,
+      loadedFromServer: prev.loadedFromServer,
+    };
+
+    set({ chartConfigs: nextState });
+    persistChartConfigsLocally({ global: prev.global, symbols: nextSymbols });
+
+    try {
+      await api.deleteChartConfigOverride(symbol);
+    } catch {
+      // Local removal remains effective
+    }
   },
 }));
