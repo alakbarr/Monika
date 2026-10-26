@@ -263,25 +263,42 @@ class LLMFactory:
             or self._llm_config.get("default_model")
             or (next(iter(self._catalog.keys())) if self._catalog else "gpt-6.1-sol-medium")
         )
+        primary_prov = self._resolve_provider(primary_model, role_config=role_config, slot_name="primary")
+        _, primary_clean = self._split_provider_prefix(primary_model)
+        seen_routes: set[tuple[str, str]] = {(primary_prov, primary_clean)}
         fallback_chain: list[str] = []
 
         # 1. Support list format: fallback: [...] or fallbacks: [...]
         list_fb = role_config.get("fallback") or role_config.get("fallbacks")
         if isinstance(list_fb, list):
-            for m in list_fb:
+            for idx, m in enumerate(list_fb):
                 m_str = str(m).strip()
-                if m_str and m_str != primary_model and m_str not in fallback_chain:
-                    fallback_chain.append(m_str)
-        elif isinstance(list_fb, str) and list_fb.strip() and list_fb.strip() != primary_model:
-            fallback_chain.append(list_fb.strip())
+                if m_str:
+                    fb_prov = self._resolve_provider(m_str, role_config=role_config, slot_name=f"fallback_{idx + 1}")
+                    _, fb_clean = self._split_provider_prefix(m_str)
+                    if (fb_prov, fb_clean) not in seen_routes:
+                        seen_routes.add((fb_prov, fb_clean))
+                        fallback_chain.append(m_str)
+        elif isinstance(list_fb, str) and list_fb.strip():
+            m_str = list_fb.strip()
+            fb_prov = self._resolve_provider(m_str, role_config=role_config, slot_name="fallback_1")
+            _, fb_clean = self._split_provider_prefix(m_str)
+            if (fb_prov, fb_clean) not in seen_routes:
+                seen_routes.add((fb_prov, fb_clean))
+                fallback_chain.append(m_str)
 
         # 2. Support numbered slots: fallback_1, fallback_2, ..., fallback_10
         for i in range(1, 11):
-            fb_val = role_config.get(f"fallback_{i}")
+            slot_key = f"fallback_{i}"
+            fb_val = role_config.get(slot_key)
             if fb_val:
                 m_str = str(fb_val).strip()
-                if m_str and m_str != primary_model and m_str not in fallback_chain:
-                    fallback_chain.append(m_str)
+                if m_str:
+                    fb_prov = self._resolve_provider(m_str, role_config=role_config, slot_name=slot_key)
+                    _, fb_clean = self._split_provider_prefix(m_str)
+                    if (fb_prov, fb_clean) not in seen_routes:
+                        seen_routes.add((fb_prov, fb_clean))
+                        fallback_chain.append(m_str)
 
         # Arena-Informed Dynamic Routing (if enabled)
         arena_cfg = self._llm_config.get("arena_routing", {})
@@ -830,6 +847,7 @@ class FallbackClientWrapper(BaseLLMClient):
             self._shared_role_backoff[self.task_role] = {}
         self._slot_backoff_count: dict[str, int] = self._shared_role_backoff[self.task_role]
         self._primary_cooldown_until = self._slot_cooldowns.get("primary")
+        self._active_slot: str = "primary"
 
         try:
             primary_provider = factory._resolve_provider(primary, role_config=role_config, slot_name="primary")
@@ -883,12 +901,24 @@ class FallbackClientWrapper(BaseLLMClient):
         """Returns the provider name of the currently active model slot."""
         try:
             active_model = self.model or self.primary
-            active_slot: Optional[str] = "primary" if active_model == self.primary else None
-            if active_slot is None and hasattr(self, "fallbacks"):
-                for idx, fb_mod in enumerate(self.fallbacks):
-                    if fb_mod == active_model:
-                        active_slot = f"fallback_{idx + 1}"
-                        break
+            active_slot: Optional[str] = getattr(self, "_active_slot", None)
+            if active_slot == "primary" and active_model != self.primary:
+                active_slot = None
+            elif active_slot and active_slot.startswith("fallback_") and hasattr(self, "fallbacks"):
+                try:
+                    fb_idx = int(active_slot.split("_", 1)[1]) - 1
+                    if not (0 <= fb_idx < len(self.fallbacks) and self.fallbacks[fb_idx] == active_model):
+                        active_slot = None
+                except ValueError, IndexError:
+                    active_slot = None
+            if active_slot is None:
+                if active_model == self.primary:
+                    active_slot = "primary"
+                elif hasattr(self, "fallbacks"):
+                    for idx, fb_mod in enumerate(self.fallbacks):
+                        if fb_mod == active_model:
+                            active_slot = f"fallback_{idx + 1}"
+                            break
             try:
                 return self.factory._resolve_provider(
                     active_model, role_config=getattr(self, "role_config", None), slot_name=active_slot
@@ -916,6 +946,7 @@ class FallbackClientWrapper(BaseLLMClient):
             if now >= self._primary_cooldown_until:
                 self._primary_cooldown_until = None
                 self.model = self.primary
+                self._active_slot = "primary"
                 return True
         elif primary_cd is not None and now >= primary_cd:
             logger.info(
@@ -925,6 +956,7 @@ class FallbackClientWrapper(BaseLLMClient):
             self._slot_cooldowns.pop("primary", None)
             self._primary_cooldown_until = None
             self.model = self.primary
+            self._active_slot = "primary"
             return True
         elif primary_cd is not None:
             self._primary_cooldown_until = primary_cd
@@ -1041,9 +1073,16 @@ class FallbackClientWrapper(BaseLLMClient):
                 from monika.infrastructure.credentials.credential_pool import get_credential_pool
 
                 cred_pool = get_credential_pool()
-                if cred_pool and not cred_pool.is_model_available(model):
-                    logger.info(f"[{self.task_role}] Skipping {slot_name} '{model}' — in CredentialPool model cooldown")
-                    continue
+                if cred_pool:
+                    try:
+                        avail = cred_pool.is_model_available(model, provider=provider)
+                    except TypeError:
+                        avail = cred_pool.is_model_available(model)
+                    if not avail:
+                        logger.info(
+                            f"[{self.task_role}] Skipping {slot_name} '{model}' — in CredentialPool model cooldown"
+                        )
+                        continue
             except Exception:
                 pass
 
@@ -1216,6 +1255,7 @@ class FallbackClientWrapper(BaseLLMClient):
                             result["_is_high_confidence"] = True
 
                     self.model = model
+                    self._active_slot = slot_name
                     self.thinking_level = getattr(client, "thinking_level", self.thinking_level)
                     ProviderCircuitBreaker.record_provider_success(provider)
                     # Reset backoff count and clear cooldown for this slot on success
@@ -1287,6 +1327,7 @@ class FallbackClientWrapper(BaseLLMClient):
                             ns_res = await asyncio.wait_for(ns_coro, timeout=25.0)
                             if ns_res is not None:
                                 self.model = model
+                                self._active_slot = slot_name
                                 self._slot_backoff_count[slot_name] = 0
                                 self._slot_cooldowns.pop(slot_name, None)
                                 return ns_res
@@ -1564,7 +1605,20 @@ class FallbackClientWrapper(BaseLLMClient):
 
     def _get_client(self, slot_name: str = "primary") -> Optional[BaseLLMClient]:
         """Returns client instance for specified slot (defaults to active primary)."""
-        model = self.primary if slot_name == "primary" else (self.fallbacks[0] if self.fallbacks else self.primary)
+        if slot_name == "primary":
+            model = self.primary
+        elif slot_name.startswith("fallback_"):
+            try:
+                fb_idx = int(slot_name.split("_", 1)[1]) - 1
+                model = (
+                    self.fallbacks[fb_idx]
+                    if 0 <= fb_idx < len(self.fallbacks)
+                    else (self.fallbacks[0] if self.fallbacks else self.primary)
+                )
+            except ValueError, IndexError:
+                model = self.fallbacks[0] if self.fallbacks else self.primary
+        else:
+            model = self.fallbacks[0] if self.fallbacks else self.primary
         try:
             return self.factory._create_client_instance(
                 model, self.role_config, slot_name=slot_name, task_role=self.task_role

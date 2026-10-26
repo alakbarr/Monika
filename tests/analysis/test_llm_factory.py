@@ -707,3 +707,52 @@ def test_explicit_provider_prefix_preserves_catalog_thinking_and_strips_prefix()
         assert isinstance(client, AnthropicProvider)
         assert client.model == "claude-opus-5.5"
         assert client.thinking_level in ("xhigh", "high")
+
+
+def test_same_model_cross_provider_fallback_chain():
+    from monika.infrastructure.providers.gemini_provider import GeminiProvider
+    from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
+
+    settings = {
+        "llm": {
+            "providers": {"gemini": {"enabled": True}, "openrouter": {"enabled": True}},
+            "model_catalog": {
+                "gemini-3.8-flash": {"provider": "openrouter", "default_thinking": "high"},
+            },
+            "task_roles": {
+                "role_slot_prov": {
+                    "primary": "gemini-3.8-flash",
+                    "provider": "gemini",
+                    "fallback_1": "gemini-3.8-flash",
+                    "fallback_1_provider": "openrouter",
+                },
+                "role_providers_map": {
+                    "primary": "gemini-3.8-flash",
+                    "fallback_1": "gemini-3.8-flash",
+                    "providers": {
+                        "primary": "gemini",
+                        "fallback_1": "openrouter",
+                    },
+                },
+                "role_prefix": {
+                    "primary": "gemini:gemini-3.8-flash",
+                    "fallback_1": "openrouter:gemini-3.8-flash",
+                },
+            },
+        }
+    }
+    factory = LLMFactory(settings)
+
+    with patch.dict("os.environ", {"GEMINI_API_KEY": "test-gem-key", "OPENROUTER_API_KEY": "test-or-key"}):
+        for role_name in ("role_slot_prov", "role_providers_map", "role_prefix"):
+            wrapper = factory.get_client_for_task(role_name)
+            assert len(wrapper.fallbacks) == 1
+            assert wrapper.provider_name == "gemini"
+
+            c_primary = wrapper._get_client("primary")
+            assert isinstance(c_primary, GeminiProvider)
+            assert c_primary.model == "gemini-3.8-flash"
+
+            c_fallback = wrapper._get_client("fallback_1")
+            assert isinstance(c_fallback, OpenRouterProvider)
+            assert c_fallback.model == "google/gemini-3.8-flash"
