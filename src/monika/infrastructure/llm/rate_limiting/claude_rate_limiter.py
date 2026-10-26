@@ -64,7 +64,10 @@ class ClaudeRateLimiter:
 
             # Sleep outside the lock so other coroutines are not blocked
             if wait_time > 0.0:
-                logger.warning(f"Claude rate limiter throttled: waiting {wait_time:.1f}s")
+                if wait_time >= 3.0:
+                    logger.warning(f"Claude rate limiter throttled: waiting {wait_time:.1f}s")
+                else:
+                    logger.info(f"Claude rate limiter throttled: waiting {wait_time:.1f}s")
                 await asyncio.sleep(wait_time)
 
     @classmethod

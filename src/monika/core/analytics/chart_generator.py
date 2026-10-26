@@ -84,8 +84,9 @@ def generate_candlestick_chart(
     Returns:
         io.BytesIO buffer yang berisi binary PNG image (~40 - 90 KB).
     """
-    if not ohlcv_rows or len(ohlcv_rows) < 2:
-        raise ValueError(f"Insufficient OHLCV data for {symbol} ({len(ohlcv_rows) if ohlcv_rows else 0} candles)")
+    if ohlcv_rows is None or len(ohlcv_rows) < 2:
+        count = len(ohlcv_rows) if ohlcv_rows is not None else 0
+        raise ValueError(f"Insufficient OHLCV data for {symbol} ({count} candles)")
 
     df = pd.DataFrame(ohlcv_rows)
 
@@ -435,8 +436,9 @@ def generate_configured_workspace_chart(
               Pivot Points, Order Blocks, FVGs, Structure Breaks, Volume Profile, TimesFM Cone.
     Oscillators: Dedicated subpanels for Volume, RSI, MACD, Stochastic, ADX, ATR, CVD / Volatility.
     """
-    if not ohlcv_rows or len(ohlcv_rows) < 2:
-        raise ValueError(f"Insufficient OHLCV data for {symbol} ({len(ohlcv_rows) if ohlcv_rows else 0} candles)")
+    if ohlcv_rows is None or len(ohlcv_rows) < 2:
+        count = len(ohlcv_rows) if ohlcv_rows is not None else 0
+        raise ValueError(f"Insufficient OHLCV data for {symbol} ({count} candles)")
 
     df = pd.DataFrame(ohlcv_rows)
     col_map: dict[str, str] = {}

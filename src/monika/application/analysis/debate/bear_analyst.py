@@ -118,7 +118,7 @@ async def generate_bear_dissent(
                 user_message=user_msg,
                 temperature=temp,
                 response_schema=schema,
-                max_tokens=getattr(client, "max_tokens", 4096) or 4096,
+                max_tokens=max(getattr(client, "max_tokens", 8192) or 8192, 8192),
             )
             if not resp:
                 raise ValueError("Empty response from LLM")
@@ -219,7 +219,7 @@ async def generate_bear_rebuttal(
                 user_message=user_msg,
                 temperature=temp,
                 response_schema=schema,
-                max_tokens=getattr(client, "max_tokens", 4096) or 4096,
+                max_tokens=max(getattr(client, "max_tokens", 8192) or 8192, 8192),
             )
             if not resp:
                 raise ValueError("Empty response from LLM")

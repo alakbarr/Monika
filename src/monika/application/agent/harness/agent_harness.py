@@ -1414,7 +1414,7 @@ class AgentHarness:
                             async with TurnLivenessWatchdog(
                                 turn_id=f"{stage_name}_{turns}",
                                 timeout_seconds=turn_timeout,
-                                stall_timeout_seconds=min(30.0, max(5.0, turn_timeout / 2.0)),
+                                stall_timeout_seconds=min(60.0, max(15.0, turn_timeout * 0.65)),
                                 abort_on_hang=True,
                             ) as watchdog:
                                 _watchdog_ref = watchdog

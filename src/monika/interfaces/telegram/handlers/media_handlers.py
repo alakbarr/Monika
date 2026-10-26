@@ -141,8 +141,18 @@ class TelegramMediaHandlerMixin(_TelegramBotMixinBase):
                     formatted_chunk = sanitize_telegram_html(chunk)
                     await update.message.reply_text(formatted_chunk, parse_mode=ParseMode.HTML)
                 except Exception as e:
-                    logger.warning(f"Failed to send HTML reply chunk, falling back to plain text: {e}")
-                    await update.message.reply_text(chunk)
+                    err_msg = str(e).lower()
+                    if "timed out" in err_msg or "timeout" in err_msg:
+                        logger.warning(
+                            f"Telegram chunk send timed out ({e}). Retrying plain text with extended timeout..."
+                        )
+                        try:
+                            await update.message.reply_text(chunk, read_timeout=35.0, write_timeout=35.0)
+                        except Exception as retry_err:
+                            logger.error(f"Failed sending chunk after timeout retry: {retry_err}")
+                    else:
+                        logger.warning(f"Failed to send HTML reply chunk, falling back to plain text: {e}")
+                        await update.message.reply_text(chunk)
 
         # Send any generated chart images
         if hasattr(agent, "pop_pending_charts"):
@@ -255,8 +265,18 @@ class TelegramMediaHandlerMixin(_TelegramBotMixinBase):
                     formatted_chunk = sanitize_telegram_html(chunk)
                     await update.message.reply_text(formatted_chunk, parse_mode=ParseMode.HTML)
                 except Exception as e:
-                    logger.warning(f"Failed to send HTML reply chunk: {e}")
-                    await update.message.reply_text(chunk)
+                    err_msg = str(e).lower()
+                    if "timed out" in err_msg or "timeout" in err_msg:
+                        logger.warning(
+                            f"Telegram chunk send timed out ({e}). Retrying plain text with extended timeout..."
+                        )
+                        try:
+                            await update.message.reply_text(chunk, read_timeout=35.0, write_timeout=35.0)
+                        except Exception as retry_err:
+                            logger.error(f"Failed sending chunk after timeout retry: {retry_err}")
+                    else:
+                        logger.warning(f"Failed to send HTML reply chunk: {e}")
+                        await update.message.reply_text(chunk)
 
         if hasattr(agent, "pop_pending_charts"):
             charts = agent.pop_pending_charts()
@@ -380,8 +400,18 @@ class TelegramMediaHandlerMixin(_TelegramBotMixinBase):
                         formatted_chunk = sanitize_telegram_html(chunk)
                         await update.message.reply_text(formatted_chunk, parse_mode=ParseMode.HTML)
                     except Exception as e:
-                        logger.warning(f"Failed to send HTML reply chunk: {e}")
-                        await update.message.reply_text(chunk)
+                        err_msg = str(e).lower()
+                        if "timed out" in err_msg or "timeout" in err_msg:
+                            logger.warning(
+                                f"Telegram chunk send timed out ({e}). Retrying plain text with extended timeout..."
+                            )
+                            try:
+                                await update.message.reply_text(chunk, read_timeout=35.0, write_timeout=35.0)
+                            except Exception as retry_err:
+                                logger.error(f"Failed sending chunk after timeout retry: {retry_err}")
+                        else:
+                            logger.warning(f"Failed to send HTML reply chunk: {e}")
+                            await update.message.reply_text(chunk)
 
             if hasattr(agent, "pop_pending_charts"):
                 charts = agent.pop_pending_charts()

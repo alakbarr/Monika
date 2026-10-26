@@ -167,7 +167,7 @@ class TwitterWatchScraper(BaseScraper):
             target_url = f"{target_url}{separator}lang=en"
 
         tried_sessions: set[str] = set()
-        max_session_attempts = 3
+        max_session_attempts = 2
 
         for _attempt in range(max_session_attempts):
             session_file = self._pick_session()
@@ -206,7 +206,7 @@ class TwitterWatchScraper(BaseScraper):
                 self._mark_quarantined(session_file)
                 continue
 
-            if page_obj.wait.ele_displayed("tag:article", timeout=15):
+            if page_obj.wait.ele_displayed("tag:article", timeout=8):
                 self.had_rendered_articles = True
                 self.last_fetch_status = "ok"
                 break

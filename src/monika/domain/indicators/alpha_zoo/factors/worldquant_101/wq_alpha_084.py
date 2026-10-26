@@ -57,7 +57,8 @@ def compute(panel: dict | pd.DataFrame) -> pd.DataFrame | pd.Series:
     exponent_df = delta(close, 5)
     base_arr = base.to_numpy(dtype=np.float64, na_value=np.nan)
     exp_arr = exponent_df.to_numpy(dtype=np.float64, na_value=np.nan)
-    out_arr = np.sign(base_arr) * np.power(np.abs(base_arr), exp_arr)
+    exp_clipped = np.clip(exp_arr, -50.0, 50.0)
+    out_arr = np.sign(base_arr) * np.power(np.abs(base_arr), exp_clipped)
     out_arr = np.where(np.isfinite(out_arr), out_arr, np.nan)
     out = pd.DataFrame(out_arr, index=close.index, columns=close.columns)
     return out

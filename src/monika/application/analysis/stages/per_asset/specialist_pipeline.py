@@ -295,7 +295,7 @@ class SpecialistPipelineMixin:
                     system_prompt=anchored_sys,
                     user_message=target_header + data_view,
                     response_schema=SPECIALIST_RESPONSE_SCHEMA_EXTENDED,
-                    max_tokens=max(getattr(client, "max_tokens", 4096) or 4096, 4096),
+                    max_tokens=max(getattr(client, "max_tokens", 8192) or 8192, 8192),
                 )
                 try:
                     result = extract_and_parse_json(result_str) if isinstance(result_str, str) else result_str

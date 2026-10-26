@@ -1402,11 +1402,12 @@ class StrategySynthesisScheduler:
                     f"WFE={wf_res.get('wfe', wf_res.get('overall_wfe', 0.0)):.2f}"
                 )
                 logger.info(f"[StrategySynthesis] Candidate '{strategy_id}' {reason}")
+                metrics_summary = {k: v for k, v in wf_res.items() if k != "all_oos_trades"}
                 self.hypothesis_registry.update_status(
                     hyp.hypothesis_id,
                     HypothesisStatus.REJECTED,
                     invalidation_notes=reason,
-                    metrics=wf_res,
+                    metrics=metrics_summary,
                 )
                 return None
             logger.info(

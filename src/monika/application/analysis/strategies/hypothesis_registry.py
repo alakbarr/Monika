@@ -19,7 +19,8 @@ import json
 import logging
 import re
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, is_dataclass
+from datetime import date, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -37,6 +38,24 @@ class HypothesisStatus(str, Enum):
     INCUBATING = "INCUBATING"
     ACTIVE = "ACTIVE"
     DECAYED = "DECAYED"
+
+
+def _serialize_for_json(obj: Any) -> Any:
+    """Helper serializer converting datetime, dataclasses, and custom objects to JSON-serializable primitives."""
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    if isinstance(obj, Enum):
+        return obj.value
+    if is_dataclass(obj) and not isinstance(obj, type):
+        return {k: _serialize_for_json(v) for k, v in asdict(obj).items()}
+    if isinstance(obj, dict):
+        return {str(k): _serialize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple, set)):
+        return [_serialize_for_json(item) for item in obj]
+    to_dict_fn = getattr(obj, "to_dict", None)
+    if callable(to_dict_fn):
+        return _serialize_for_json(to_dict_fn())
+    return obj
 
 
 @dataclass
@@ -60,6 +79,7 @@ class StrategyHypothesis:
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["status"] = self.status.value if isinstance(self.status, HypothesisStatus) else str(self.status)
+        d["metrics"] = _serialize_for_json(self.metrics)
         return d
 
     @classmethod
@@ -136,7 +156,7 @@ class HypothesisRegistry:
             payload = [h.to_dict() for h in self._hypotheses.values()]
             tmp_path = self.storage_path.with_suffix(".tmp")
             with open(tmp_path, "w", encoding="utf-8") as f:
-                json.dump(payload, f, indent=2)
+                json.dump(payload, f, indent=2, default=_serialize_for_json)
             tmp_path.replace(self.storage_path)
         except Exception as e:
             logger.error(f"Failed saving hypotheses to {self.storage_path}: {e}")

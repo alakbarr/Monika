@@ -371,7 +371,7 @@ async def handle_search_social_sentiment(args: dict, **ctx) -> dict:
         from monika.infrastructure.data_ingestion.scrapers.social.twitter_watch import TwitterWatchScraper
 
         scraper = TwitterWatchScraper(headless=True)
-        tweets = await asyncio.to_thread(scraper.fetch_latest_tweets)
+        tweets = await asyncio.wait_for(asyncio.to_thread(scraper.fetch_latest_tweets), timeout=20.0)
         if tweets:
             import dataclasses
 

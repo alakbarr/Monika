@@ -126,7 +126,12 @@ class MacroToolHandlers:
                         expanded_currs.add("EU")
                     query = query.where(EconomicCalendar.currency.in_(list(expanded_currs)))
 
-                rows = (await session.execute(query)).scalars().all()
+                lock = getattr(session, "_session_lock", None)
+                if lock is not None:
+                    async with lock:
+                        rows = (await session.execute(query)).scalars().all()
+                else:
+                    rows = (await session.execute(query)).scalars().all()
                 if rows:
 
                     def _is_past_event(r_time, curr_now):

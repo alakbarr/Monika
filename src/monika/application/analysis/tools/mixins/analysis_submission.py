@@ -764,7 +764,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     else:
                         errors.append(
                             f"VOLATILITY REGIME GATE: {chop.get('reason')} — market order in squeeze is prone to chop. "
-                            f"Specify a structural limit/pullback/breakout entry condition at a confirmed level (OB/FVG/sweep) or submit WAIT."
+                            f"Specify a structural limit/pullback/breakout entry condition at a confirmed level (OB/FVG/sweep) with confluence >= 5, or submit decision='wait'."
                         )
         except Exception as e:
             logger.warning(f"Mechanical gates failed (fail-open): {e}")
@@ -1410,7 +1410,11 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     f"(SL={sl_price}, TP={tp_price}, R:R={opt_res.rr_ratio:.2f})]"
                 )
                 errors = []
-            elif error_class == "FATAL" or attempts >= 3:
+            elif (
+                error_class == "FATAL"
+                or attempts >= 3
+                or (attempts >= 2 and any("volatility regime gate" in e.lower() for e in errors))
+            ):
                 if error_class == "FATAL":
                     logger.error(f"[{symbol}] submit_asset_analysis failed validation (FATAL: {errors}). Forcing WAIT.")
                 else:
@@ -1433,13 +1437,12 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 errors = []
             else:
                 logger.warning(f"submit_asset_analysis validation failed for {symbol} (Attempt {attempts}): {errors}")
-                return {
-                    "status": "validation_failed",
-                    "errors": errors,
-                    "error_classification": error_class,
-                    "guidance": (
-                        'Specialist conflict or SSVP discrepancy active: explicitly adjudicate in specialist_adjudication or rationale (e.g. "I trust price action because..."), or adjust entry/SL/TP, or submit WAIT.'
-                        if any("adjudication" in e.lower() or "specialist disagreement" in e.lower() for e in errors)
+                guidance_text = (
+                    'Specialist conflict or SSVP discrepancy active: explicitly adjudicate in specialist_adjudication or rationale (e.g. "I trust price action because..."), or adjust entry/SL/TP, or submit WAIT.'
+                    if any("adjudication" in e.lower() or "specialist disagreement" in e.lower() for e in errors)
+                    else (
+                        "VOLATILITY SQUEEZE: Market orders in squeeze are blocked. Either change entry_condition to type='limit' at an exact structural level with confluence >= 5, or submit decision='wait'."
+                        if any("volatility regime gate" in e.lower() for e in errors)
                         else {
                             "STRUCTURAL": "Recalculate entry/SL/TP. Try different structural level.",
                             "GATE_FIXABLE": "Gate condition fixable: adjust entry type/zone (limit order at POC/VAH/VAL) or provide required override justification.",
@@ -1448,7 +1451,13 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                             "GATE": "Mechanical gate active. Submit WAIT.",
                             "FATAL": "Submit WAIT immediately. Do not retry.",
                         }.get(error_class, "")
-                    ),
+                    )
+                )
+                return {
+                    "status": "validation_failed",
+                    "errors": errors,
+                    "error_classification": error_class,
+                    "guidance": guidance_text,
                     "attempt": attempts,
                 }
 

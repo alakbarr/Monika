@@ -77,15 +77,18 @@ class PostgresSpillSubsystem:
 
         blob_id = f"spill_{uuid.uuid4().hex[:12]}"
         try:
-            spill_record = ContextSpillBlob(
-                blob_id=blob_id,
-                cycle_id=str(cycle_id) if cycle_id else "unassigned",
-                tool_name=tool_name,
-                token_count=tokens,
-                payload_text=output,
-            )
-            session.add(spill_record)
-            await session.flush()
+            from monika.infrastructure.database.db import get_session
+
+            async with get_session() as spill_session:
+                spill_record = ContextSpillBlob(
+                    blob_id=blob_id,
+                    cycle_id=str(cycle_id) if cycle_id else "unassigned",
+                    tool_name=tool_name,
+                    token_count=tokens,
+                    payload_text=output,
+                )
+                spill_session.add(spill_record)
+                await spill_session.commit()
 
             state_summary = self.compactor._extract_decisive_state(tool_name, output)
             logger.info(
@@ -112,8 +115,20 @@ class PostgresSpillSubsystem:
         """
         clean_id = blob_id.replace("db://spill/", "").strip()
         stmt = select(ContextSpillBlob.payload_text).where(ContextSpillBlob.blob_id == clean_id)
-        res = await session.execute(stmt)
-        payload = res.scalar_one_or_none()
+        if session is not None:
+            lock = getattr(session, "_session_lock", None)
+            if lock is not None:
+                async with lock:
+                    res = await session.execute(stmt)
+            else:
+                res = await session.execute(stmt)
+            payload = res.scalar_one_or_none()
+        else:
+            from monika.infrastructure.database.db import get_session
+
+            async with get_session() as read_session:
+                res = await read_session.execute(stmt)
+                payload = res.scalar_one_or_none()
 
         if payload is None:
             return None
