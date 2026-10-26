@@ -14,6 +14,7 @@ Fungsi:
 import asyncio
 import json
 import logging
+import os
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
@@ -63,9 +64,23 @@ MEDIUM_IMPACT_KEYWORDS = [
     "central bank",
 ]
 
+# Kata kunci Tier-1 systemic macro shock — berdampak luas ke seluruh kelas aset
+TIER1_MACRO_KEYWORDS = [
+    "federal reserve",
+    "fomc",
+    "fed rate",
+    "powell",
+    "non-farm",
+    "nonfarm payroll",
+    "nfp",
+    "cpi",
+    "inflation shock",
+    "emergency rate",
+]
+
 # Pemetaan tag mata uang untuk targeted re-analysis aset
 CURRENCY_TO_SYMBOLS: dict[str, list[str]] = {
-    "USD": ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "BTCUSD", "XTIUSD", "XBRUSD"],
+    "USD": ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD"],
     "EUR": ["EURUSD"],
     "GBP": ["GBPUSD"],
     "JPY": ["USDJPY"],
@@ -137,6 +152,7 @@ class NewsWatcher:
         self._background_tasks: set[asyncio.Task] = set()
         self._run_lock = asyncio.Lock()
         self._targeted_reruns_today: int = 0
+        self._targeted_rerun_day: Optional[str] = None  # YYYY-MM-DD UTC
         self._max_targeted_reruns: int = int(
             settings.get("news_classification_control", {}).get("max_targeted_reruns_per_day", 10)
         )
@@ -172,47 +188,152 @@ class NewsWatcher:
     # Public API
     # ------------------------------------------------------------------
 
+    def _check_day_rollover(self) -> bool:
+        """Reset counters if UTC day has rolled over. Returns True if rolled over."""
+        today_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        if self._forced_rerun_day != today_utc or self._targeted_rerun_day != today_utc:
+            self._forced_rerun_day = today_utc
+            self._targeted_rerun_day = today_utc
+            self._forced_reruns_today = 0
+            self._targeted_reruns_today = 0
+            self._save_persistent_state()
+            return True
+        return False
+
     def _load_persistent_state(self) -> None:
-        """FIX-4: Load persisted state from disk on startup."""
-        import json
-        import os
+        """Load persisted state from disk on startup."""
+        today_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        self._forced_rerun_day = today_utc
+        self._targeted_rerun_day = today_utc
 
         try:
-            if os.path.exists(self._state_file):
-                with open(self._state_file, "r") as f:
-                    data = json.load(f)
-                ts_str = data.get("last_seen_at")
-                if ts_str:
-                    self._last_seen_at = datetime.fromisoformat(ts_str)
-                reruns = data.get("forced_reruns_today", 0)
-                targeted_reruns = data.get("targeted_reruns_today", 0)
-                day = data.get("forced_rerun_day")
-                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                if day == today:
-                    self._forced_reruns_today = reruns
-                    self._targeted_reruns_today = targeted_reruns
-                    self._forced_rerun_day = day
-                logger.info(f"NewsWatcher: Loaded persistent state. last_seen_at={self._last_seen_at}")
+            if not os.path.exists(self._state_file):
+                return
+
+            with open(self._state_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            if not isinstance(data, dict):
+                logger.warning(f"NewsWatcher: State file {self._state_file} is not a valid dict, ignoring.")
+                return
+
+            now_utc = datetime.now(timezone.utc)
+
+            # Parse last_seen_at
+            ts_str = data.get("last_seen_at")
+            if ts_str and isinstance(ts_str, str):
+                try:
+                    dt = datetime.fromisoformat(ts_str)
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    else:
+                        dt = dt.astimezone(timezone.utc)
+                    if dt <= now_utc:
+                        self._last_seen_at = dt
+                    else:
+                        logger.warning(f"NewsWatcher: Ignoring future last_seen_at {dt}")
+                except Exception as e:
+                    logger.debug(f"NewsWatcher: Unparseable last_seen_at '{ts_str}': {e}")
+
+            # Days and counters
+            saved_forced_day = data.get("forced_rerun_day")
+            saved_targeted_day = data.get("targeted_rerun_day") or saved_forced_day
+
+            # Counters from file (default 0)
+            raw_forced = data.get("forced_reruns_today", 0)
+            raw_targeted = data.get("targeted_reruns_today", 0)
+            try:
+                forced_reruns = int(raw_forced) if raw_forced is not None and int(raw_forced) >= 0 else 0
+            except ValueError, TypeError:
+                forced_reruns = 0
+            try:
+                targeted_reruns = int(raw_targeted) if raw_targeted is not None and int(raw_targeted) >= 0 else 0
+            except ValueError, TypeError:
+                targeted_reruns = 0
+
+            # If day is recorded and it's a past/different day -> reset counters to 0.
+            # If day is missing/None -> assume today so we do not silently grant extra reruns.
+            # If day matches today -> restore recorded counters.
+            if saved_targeted_day is not None and saved_targeted_day != today_utc:
+                self._targeted_reruns_today = 0
+                self._targeted_rerun_day = today_utc
+            else:
+                self._targeted_reruns_today = targeted_reruns
+                self._targeted_rerun_day = saved_targeted_day or today_utc
+
+            if saved_forced_day is not None and saved_forced_day != today_utc:
+                self._forced_reruns_today = 0
+                self._forced_rerun_day = today_utc
+            else:
+                self._forced_reruns_today = forced_reruns
+                self._forced_rerun_day = saved_forced_day or today_utc
+
+            # Parse last_reanalysis dict
+            raw_last_reanalysis = data.get("last_reanalysis")
+            if isinstance(raw_last_reanalysis, dict):
+                for sym, ts_val in raw_last_reanalysis.items():
+                    if not isinstance(sym, str) or not isinstance(ts_val, str):
+                        continue
+                    try:
+                        dt = datetime.fromisoformat(ts_val)
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        else:
+                            dt = dt.astimezone(timezone.utc)
+                        if dt <= now_utc:
+                            self._last_reanalysis[sym] = dt
+                        else:
+                            logger.warning(f"NewsWatcher: Ignoring future last_reanalysis timestamp for {sym}: {dt}")
+                    except Exception as e:
+                        logger.debug(
+                            f"NewsWatcher: Ignoring unparseable last_reanalysis timestamp for {sym} ('{ts_val}'): {e}"
+                        )
+
+            logger.info(
+                f"NewsWatcher: Loaded persistent state. last_seen_at={self._last_seen_at}, "
+                f"targeted_reruns={self._targeted_reruns_today}/{self._max_targeted_reruns}, "
+                f"cooldown_symbols={list(self._last_reanalysis.keys())}"
+            )
         except Exception as e:
             logger.warning(f"NewsWatcher: Could not load persistent state: {e}")
 
     def _save_persistent_state(self) -> None:
-        """FIX-4: Save state to disk after each run_once."""
-        import json
-        import os
-
+        """Save state to disk atomically using a temp file and os.replace."""
+        tmp_path = f"{self._state_file}.tmp"
         try:
-            os.makedirs(os.path.dirname(self._state_file) or ".", exist_ok=True)
+            today_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            forced_day = self._forced_rerun_day or today_utc
+            targeted_day = self._targeted_rerun_day or today_utc
+
+            state_dir = os.path.dirname(os.path.abspath(self._state_file))
+            if state_dir:
+                os.makedirs(state_dir, exist_ok=True)
+
             data = {
                 "last_seen_at": self._last_seen_at.isoformat() if self._last_seen_at else None,
                 "forced_reruns_today": self._forced_reruns_today,
+                "forced_rerun_day": forced_day,
                 "targeted_reruns_today": getattr(self, "_targeted_reruns_today", 0),
-                "forced_rerun_day": self._forced_rerun_day,
+                "targeted_rerun_day": targeted_day,
+                "last_reanalysis": {
+                    sym: (dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc))
+                    .astimezone(timezone.utc)
+                    .isoformat()
+                    for sym, dt in self._last_reanalysis.items()
+                    if isinstance(dt, datetime)
+                },
             }
-            with open(self._state_file, "w") as f:
-                json.dump(data, f)
+
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            os.replace(tmp_path, self._state_file)
         except Exception as e:
             logger.warning(f"NewsWatcher: Could not save persistent state: {e}")
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
 
     async def run_once(self) -> dict:
         """
@@ -236,6 +357,7 @@ class NewsWatcher:
             return await self._run_once_internal()
 
     async def _run_once_internal(self) -> dict:
+        self._check_day_rollover()
         if self._position_guardian:
             try:
                 await self._position_guardian.check_and_protect()
@@ -589,10 +711,10 @@ class NewsWatcher:
                 if currency in title_upper:
                     affected.update(symbols)
 
-        # Jika berita USD besar tanpa spesifik aset -> anggap semua aset USD terdampak
+        # Cek guncangan makro sistemik Tier-1 yang berdampak ke seluruh kelas aset
         text_combined = " ".join(self._text_for_classification(n) for n in items).lower()
-        if any(k in text_combined for k in ["federal reserve", "fomc", "fed rate", "powell"]):
-            # USD news affects all instruments
+        if any(k in text_combined for k in TIER1_MACRO_KEYWORDS):
+            # Tier-1 macro shock affects all instruments
             for syms in CURRENCY_TO_SYMBOLS.values():
                 affected.update(syms)
 
@@ -662,6 +784,66 @@ class NewsWatcher:
                     except Exception as shock_err:
                         logger.debug(f"NewsWatcher Jev shock check error (non-fatal): {shock_err}")
 
+                # AI budget circuit breaker: hard pause
+                from monika.core.analytics.cost_tracker import CostTracker
+
+                if CostTracker.is_budget_paused_cached() or await CostTracker.is_budget_paused(
+                    session_inner, settings=self.settings
+                ):
+                    logger.warning("NewsWatcher: AI budget is paused. Suppressing news-triggered re-analysis.")
+                    return
+
+                # Soft limit (90% of daily or weekly budget): throttle re-analysis for idle assets
+                cost_cfg = self.settings.get("cost_tracking", {})
+                from monika.core.config.settings import (
+                    DEFAULT_DAILY_BUDGET_USD,
+                    DEFAULT_WEEKLY_BUDGET_USD,
+                )
+
+                daily_budget = float(cost_cfg.get("daily_budget_usd", DEFAULT_DAILY_BUDGET_USD))
+                weekly_budget = float(cost_cfg.get("weekly_budget_usd", DEFAULT_WEEKLY_BUDGET_USD))
+                if daily_budget > 0 or weekly_budget > 0:
+                    budget_summary = await CostTracker.evaluate_budget(session_inner, settings=self.settings)
+                    daily_cost = budget_summary.get("daily_cost", 0.0)
+                    weekly_cost = budget_summary.get("weekly_cost", 0.0)
+                    is_near_daily = daily_budget > 0 and daily_cost >= 0.90 * daily_budget
+                    is_near_weekly = weekly_budget > 0 and weekly_cost >= 0.90 * weekly_budget
+                    if is_near_daily or is_near_weekly:
+                        # Filter affected_symbols: only keep symbols with an active open position
+                        symbols_with_pos = set(
+                            (
+                                await session_inner.execute(
+                                    select(Position.symbol)
+                                    .where(Position.symbol.in_(affected_symbols))
+                                    .where(Position.status == "open")
+                                )
+                            )
+                            .scalars()
+                            .all()
+                        )
+                        filtered = [s for s in affected_symbols if s in symbols_with_pos]
+                        if len(filtered) < len(affected_symbols):
+                            dropped = [s for s in affected_symbols if s not in symbols_with_pos]
+                            reasons = []
+                            if is_near_daily:
+                                reasons.append(
+                                    f"Daily AI budget near ceiling (${daily_cost:.2f} >= ${0.90 * daily_budget:.2f})"
+                                )
+                            if is_near_weekly:
+                                reasons.append(
+                                    f"Weekly AI budget near ceiling (${weekly_cost:.2f} >= ${0.90 * weekly_budget:.2f})"
+                                )
+                            logger.warning(
+                                f"NewsWatcher: {'; '.join(reasons)}. "
+                                f"Throttling news re-analysis for idle assets: {dropped}"
+                            )
+                            affected_symbols = filtered
+                        if not affected_symbols:
+                            logger.info(
+                                "NewsWatcher: No affected symbols have open positions. Re-analysis suppressed under budget throttle."
+                            )
+                            return
+
                 today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
                 today_end = today_start + timedelta(days=1)
                 today_trades = (
@@ -729,10 +911,7 @@ class NewsWatcher:
                 high_items = non_calendar
 
         # --- Circuit breaker: reset counter on new UTC day ---
-        today_utc = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        if self._forced_rerun_day != today_utc:
-            self._forced_rerun_day = today_utc
-            self._forced_reruns_today = 0
+        self._check_day_rollover()
 
         # Coalesce event into active turn leases if active
         try:
@@ -788,22 +967,28 @@ class NewsWatcher:
         # For targeted Stage 2 reruns, apply per-symbol cooldown:
         now = datetime.now(timezone.utc)
         symbols_to_reanalyze = []
+        cooldown_updated = False
 
         for sym in affected_symbols:
             last_time = self._last_reanalysis.get(sym)
             if last_time is None:
                 symbols_to_reanalyze.append(sym)
                 self._last_reanalysis[sym] = now
+                cooldown_updated = True
             else:
                 elapsed_minutes = (now - last_time).total_seconds() / 60
                 if elapsed_minutes >= self._min_reanalysis_interval_minutes:
                     symbols_to_reanalyze.append(sym)
                     self._last_reanalysis[sym] = now
+                    cooldown_updated = True
                 else:
                     logger.info(
                         f"News watcher: Skipping {sym} reanalysis "
                         f"({elapsed_minutes:.0f}min < {self._min_reanalysis_interval_minutes}min cooldown)"
                     )
+
+        if cooldown_updated:
+            self._save_persistent_state()
 
         catalyst_summary = f"{high_items[0].title}: {high_items[0].summary}" if high_items else "Breaking news"
         affected_ccys = list(
@@ -835,6 +1020,8 @@ class NewsWatcher:
             return
 
         self._targeted_reruns_today += 1
+        self._targeted_rerun_day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        self._save_persistent_state()
 
         # Partial: Stage 1 delta revision + targeted Stage 2
         logger.info(

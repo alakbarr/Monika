@@ -72,11 +72,13 @@ Directly cite concrete numerical data points rather than making generic claims.
 Provide your structured evaluation in JSON matching the schema."""
 
     try:
+        raw_tok = getattr(client, "max_tokens", None)
+        call_max_tokens = max(int(raw_tok), 8192) if isinstance(raw_tok, (int, float)) else 8192
         res = await client.classify_json(
             prompt=prompt,
             schema=MACRO_BULL_SCHEMA,
             system_prompt=system_prompt,
-            max_tokens=max(getattr(client, "max_tokens", 8192) or 8192, 8192),
+            max_tokens=call_max_tokens,
         )
         if res and isinstance(res, dict) and "bull_thesis" in res:
             return res

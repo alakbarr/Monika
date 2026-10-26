@@ -111,12 +111,14 @@ async def generate_bull_advocacy(
                 if attempt == 0
                 else f"{base_user_msg}\n\nYour previous response was not valid JSON ({last_err}). Return ONLY valid JSON matching the schema."
             )
+            raw_tok = getattr(client, "max_tokens", None)
+            call_max_tokens = max(int(raw_tok), 8192) if isinstance(raw_tok, (int, float)) else 8192
             resp = await client.generate_content(
                 system_prompt=system_prompt,
                 user_message=user_msg,
                 temperature=temp,
                 response_schema=schema,
-                max_tokens=max(getattr(client, "max_tokens", 8192) or 8192, 8192),
+                max_tokens=call_max_tokens,
             )
             if not resp:
                 raise ValueError("Empty response from LLM")
@@ -213,12 +215,14 @@ async def generate_bull_rebuttal(
                 if attempt == 0
                 else f"{base_user_msg}\n\nYour previous response was not valid JSON ({last_err}). Return ONLY valid JSON matching the schema."
             )
+            raw_tok = getattr(client, "max_tokens", None)
+            call_max_tokens = max(int(raw_tok), 8192) if isinstance(raw_tok, (int, float)) else 8192
             resp = await client.generate_content(
                 system_prompt=system_prompt,
                 user_message=user_msg,
                 temperature=temp,
                 response_schema=schema,
-                max_tokens=max(getattr(client, "max_tokens", 8192) or 8192, 8192),
+                max_tokens=call_max_tokens,
             )
             if not resp:
                 raise ValueError("Empty response from LLM")

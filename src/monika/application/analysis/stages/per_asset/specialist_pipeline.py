@@ -161,12 +161,14 @@ class SpecialistPipelineMixin:
             for sc in (tech_client, sent_client, macro_client):
                 if sc:
                     sc.symbol = symbol
-                    current_budget = getattr(sc, "thinking_budget", None)
-                    target_budget = current_budget if (current_budget and current_budget > 1024) else 2048
-                    if hasattr(sc, "set_thinking_budget"):
-                        sc.set_thinking_budget(target_budget)
-                    elif hasattr(sc, "thinking_budget"):
-                        sc.thinking_budget = target_budget
+                    sc_thinking = getattr(sc, "thinking_level", None)
+                    if sc_thinking and str(sc_thinking).lower() not in ("none", "off"):
+                        current_budget = getattr(sc, "thinking_budget", None)
+                        target_budget = current_budget if (current_budget and current_budget > 1024) else 2048
+                        if hasattr(sc, "set_thinking_budget"):
+                            sc.set_thinking_budget(target_budget)
+                        elif hasattr(sc, "thinking_budget"):
+                            sc.thinking_budget = target_budget
 
             # SOTA Memory Link: Ensure active structural macro events are present for domain specialists
             if isinstance(raw_bundle_data, dict) and "market_chronicle" not in raw_bundle_data:
@@ -291,11 +293,13 @@ class SpecialistPipelineMixin:
                 )
                 anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
                 anchored_sys = f"{anchor}\n\n---\n\n{role_desc}{telegraphic_specialist_directive}"
+                raw_tok = getattr(client, "max_tokens", None)
+                call_max_tokens = max(int(raw_tok), 8192) if isinstance(raw_tok, (int, float)) else 8192
                 result_str = await client.generate_content(
                     system_prompt=anchored_sys,
                     user_message=target_header + data_view,
                     response_schema=SPECIALIST_RESPONSE_SCHEMA_EXTENDED,
-                    max_tokens=max(getattr(client, "max_tokens", 8192) or 8192, 8192),
+                    max_tokens=call_max_tokens,
                 )
                 try:
                     result = extract_and_parse_json(result_str) if isinstance(result_str, str) else result_str

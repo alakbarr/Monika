@@ -494,7 +494,11 @@ class LLMFactory:
             slot_prov = role_config.get(f"{slot_name}_provider") if slot_name else None
             if not slot_prov and slot_name and isinstance(role_config.get("providers"), dict):
                 slot_prov = role_config["providers"].get(slot_name)
-            role_prov = slot_prov or role_config.get("provider")
+            if not slot_prov and slot_name and isinstance(role_config.get("provider"), dict):
+                slot_prov = role_config["provider"].get(slot_name)
+            raw_prov = role_config.get("provider")
+            default_prov = raw_prov.get("primary") if isinstance(raw_prov, dict) else raw_prov
+            role_prov = slot_prov or default_prov
             if isinstance(role_prov, str) and role_prov.strip():
                 role_prov_norm = role_prov.strip().lower()
                 prov_cfg = providers_dict.get(role_prov_norm)
@@ -756,7 +760,8 @@ class LLMFactory:
                     clamp_thinking_budget_to_answer_room,
                 )
 
-                if thinking_level and thinking_level != "none":
+                is_disabled = str(thinking_level or "none").lower() in ("none", "off")
+                if not is_disabled:
                     level_to_budget = {
                         "minimal": 1024,
                         "low": 1024,
@@ -770,18 +775,21 @@ class LLMFactory:
                     adaptive_budget = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(
                         task_role or "", base_budget=base_b
                     )
+
+                    if isinstance(max_tokens, int) and max_tokens > 1024:
+                        adaptive_budget = clamp_thinking_budget_to_answer_room(
+                            adaptive_budget, max_tokens=max_tokens, min_answer_tokens=1024
+                        )
+
+                    if hasattr(client, "set_thinking_budget"):
+                        client.set_thinking_budget(adaptive_budget)
+                    elif hasattr(client, "thinking_budget"):
+                        client.thinking_budget = adaptive_budget
                 else:
-                    adaptive_budget = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(task_role or "")
-
-                if isinstance(max_tokens, int) and max_tokens > 1024:
-                    adaptive_budget = clamp_thinking_budget_to_answer_room(
-                        adaptive_budget, max_tokens=max_tokens, min_answer_tokens=1024
-                    )
-
-                if hasattr(client, "set_thinking_budget"):
-                    client.set_thinking_budget(adaptive_budget)
-                elif hasattr(client, "thinking_budget"):
-                    client.thinking_budget = adaptive_budget
+                    if hasattr(client, "set_thinking_budget"):
+                        client.set_thinking_budget(0)
+                    elif hasattr(client, "thinking_budget"):
+                        client.thinking_budget = 0
             except Exception:
                 pass
 
@@ -867,34 +875,35 @@ class FallbackClientWrapper(BaseLLMClient):
         )
 
         self._dynamic_thinking_budget = None
-        try:
-            from monika.infrastructure.llm.adaptive_thinking import (
-                PerSymbolAdaptiveThinkingAllocator,
-                QuantizedThinkingAllocator,
-                clamp_thinking_budget_to_answer_room,
-            )
+        is_primary_thinking_disabled = str(primary_thinking or "none").lower() in ("none", "off")
+        if is_primary_thinking_disabled:
+            self.thinking_budget = 0
+        else:
+            try:
+                from monika.infrastructure.llm.adaptive_thinking import (
+                    PerSymbolAdaptiveThinkingAllocator,
+                    QuantizedThinkingAllocator,
+                    clamp_thinking_budget_to_answer_room,
+                )
 
-            level_to_budget = {
-                "none": 0,
-                "minimal": 1024,
-                "low": 1024,
-                "medium": 4096,
-                "high": 10000,
-                "max": 16000,
-                "xhigh": 16000,
-                "extended": 16000,
-            }
-            base_b = (
-                level_to_budget.get(str(primary_thinking).lower(), 4096)
-                if primary_thinking and str(primary_thinking).lower() != "none"
-                else None
-            )
-            raw_b = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(task_role, base_budget=base_b)
-            if isinstance(self.max_tokens, int) and self.max_tokens > 1024 and raw_b > 0:
-                raw_b = clamp_thinking_budget_to_answer_room(raw_b, max_tokens=self.max_tokens, min_answer_tokens=1024)
-            self.thinking_budget = QuantizedThinkingAllocator.quantize(raw_b) if raw_b > 0 else 0
-        except Exception:
-            self.thinking_budget = 4096
+                level_to_budget = {
+                    "minimal": 1024,
+                    "low": 1024,
+                    "medium": 4096,
+                    "high": 10000,
+                    "max": 16000,
+                    "xhigh": 16000,
+                    "extended": 16000,
+                }
+                base_b = level_to_budget.get(str(primary_thinking).lower(), 4096)
+                raw_b = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(task_role, base_budget=base_b)
+                if isinstance(self.max_tokens, int) and self.max_tokens > 1024 and raw_b > 0:
+                    raw_b = clamp_thinking_budget_to_answer_room(
+                        raw_b, max_tokens=self.max_tokens, min_answer_tokens=1024
+                    )
+                self.thinking_budget = QuantizedThinkingAllocator.quantize(raw_b) if raw_b > 0 else 0
+            except Exception:
+                self.thinking_budget = 4096
 
     @property
     def provider_name(self) -> str:
@@ -965,6 +974,11 @@ class FallbackClientWrapper(BaseLLMClient):
 
     def set_thinking_budget(self, budget: int) -> None:
         """Sets thinking budget dynamically for wrapper and upcoming provider invocations."""
+        if str(getattr(self, "thinking_level", "")).lower() in ("none", "off"):
+            self.thinking_budget = 0
+            self._dynamic_thinking_budget = None
+            return
+
         from monika.infrastructure.llm.adaptive_thinking import QuantizedThinkingAllocator
 
         quantized = QuantizedThinkingAllocator.quantize(budget)
@@ -1113,7 +1127,10 @@ class FallbackClientWrapper(BaseLLMClient):
                 continue
             client.role = self.task_role
             client.task_role = self.task_role
-            if self._dynamic_thinking_budget is not None:
+            is_none_thinking = str(getattr(self, "thinking_level", "")).lower() in ("none", "off") or str(
+                getattr(client, "thinking_level", "")
+            ).lower() in ("none", "off")
+            if not is_none_thinking and self._dynamic_thinking_budget is not None:
                 set_tb: Any = getattr(client, "set_thinking_budget", None)
                 if callable(set_tb):
                     res_tb: Any = set_tb(self._dynamic_thinking_budget)
@@ -1121,6 +1138,14 @@ class FallbackClientWrapper(BaseLLMClient):
                         await res_tb
                 elif hasattr(client, "thinking_budget"):
                     client.thinking_budget = self._dynamic_thinking_budget
+            elif is_none_thinking:
+                set_tb = getattr(client, "set_thinking_budget", None)
+                if callable(set_tb):
+                    res_tb = set_tb(0)
+                    if inspect.isawaitable(res_tb):
+                        await res_tb
+                elif hasattr(client, "thinking_budget"):
+                    client.thinking_budget = 0
 
             slot_retries = 0
             method = getattr(client, method_name, None)

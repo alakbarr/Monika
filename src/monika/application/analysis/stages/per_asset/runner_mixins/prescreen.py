@@ -79,6 +79,103 @@ class PrescreenMixin(_RunnerMixinBase):
         except Exception as e:
             logger.debug(f"Price-move prescreen check failed: {e}")
 
+        # === NEW (Phase 3B): SMART RE-ANALYSIS GATE / FLAT-MARKET CHECK ===
+        try:
+            from datetime import timezone
+
+            from sqlalchemy import select
+
+            from monika.infrastructure.database.models import (
+                AssetAnalysis,
+                Position,
+                PriceOHLCV,
+                TechnicalIndicator,
+            )
+
+            open_pos = (
+                await session.execute(
+                    select(Position).where(Position.symbol == symbol).where(Position.status == "open").limit(1)
+                )
+            ).scalar_one_or_none()
+
+            # If open_pos is not None: do NOT skip via flat-market check (always allow analysis to monitor/manage open position).
+            if open_pos is None:
+                last_analysis = (
+                    await session.execute(
+                        select(AssetAnalysis)
+                        .where(AssetAnalysis.symbol == symbol)
+                        .order_by(AssetAnalysis.created_at.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
+
+                if last_analysis and last_analysis.decision and str(last_analysis.decision).lower() == "wait":
+                    now_u = _get_clock().now()
+                    raw_created = getattr(last_analysis, "created_at", None)
+                    if raw_created is None:
+                        raw_created = getattr(last_analysis, "generated_at", None)
+                    if raw_created is not None:
+                        created_at = (
+                            raw_created.replace(tzinfo=timezone.utc) if raw_created.tzinfo is None else raw_created
+                        )
+                        age_minutes = (now_u - created_at).total_seconds() / 60.0
+                        if 0 <= age_minutes < 60.0:
+                            price_now = (
+                                await session.execute(
+                                    select(PriceOHLCV.close)
+                                    .where(PriceOHLCV.symbol == symbol)
+                                    .order_by(PriceOHLCV.timestamp.desc())
+                                    .limit(1)
+                                )
+                            ).scalar_one_or_none()
+
+                            ref_price = getattr(last_analysis, "price_at_analysis", None) or price_now
+                            if price_now is not None and ref_price is not None:
+                                atr_row = (
+                                    await session.execute(
+                                        select(TechnicalIndicator)
+                                        .where(TechnicalIndicator.symbol == symbol)
+                                        .where(TechnicalIndicator.timeframe == "H4")
+                                        .where(TechnicalIndicator.indicator_name.in_(["ATR_14", "ATR"]))
+                                        .order_by(TechnicalIndicator.timestamp.desc())
+                                        .limit(1)
+                                    )
+                                ).scalar_one_or_none()
+                                if atr_row is None:
+                                    atr_row = (
+                                        await session.execute(
+                                            select(TechnicalIndicator)
+                                            .where(TechnicalIndicator.symbol == symbol)
+                                            .where(TechnicalIndicator.timeframe == "H1")
+                                            .where(TechnicalIndicator.indicator_name.in_(["ATR_14", "ATR"]))
+                                            .order_by(TechnicalIndicator.timestamp.desc())
+                                            .limit(1)
+                                        )
+                                    ).scalar_one_or_none()
+
+                                if atr_row:
+                                    import json as _j
+
+                                    atr_raw = (
+                                        _j.loads(atr_row.value_json)
+                                        if isinstance(atr_row.value_json, str)
+                                        else atr_row.value_json
+                                    )
+                                    atr_val = (
+                                        float(atr_raw.get("atr", atr_raw.get("value", 0)))
+                                        if isinstance(atr_raw, dict)
+                                        else float(atr_raw)
+                                    )
+                                    if atr_val and atr_val > 0:
+                                        price_delta = abs(float(price_now) - float(ref_price))
+                                        if price_delta / atr_val < 0.25:
+                                            return (
+                                                False,
+                                                f"Quick flat-market check: price moved only {price_delta / atr_val:.2f}x ATR (<0.25x) since WAIT posture {int(age_minutes)}m ago — reusing WAIT posture",
+                                            )
+        except Exception as e:
+            logger.debug(f"Flat-market prescreen check failed: {e}")
+
         # === QUICK LOCAL PRE-CHECK (no API call) ===
         try:
             from monika.core.calibration.prescreen_calibrator import compute_prescreen_skip_quality

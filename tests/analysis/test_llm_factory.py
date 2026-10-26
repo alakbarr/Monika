@@ -549,7 +549,9 @@ def test_role_provider_override_gemini_3_8_flash_and_openrouter_coexistence():
         for role_name in ("news_digest", "news_digest_macro_overview", "macro_analyst", "sentiment_analyst"):
             role_cfg = settings["llm"]["task_roles"][role_name]
             assert role_cfg["primary"] == "gemini-3.8-flash"
-            assert role_cfg["provider"] == "gemini"
+            raw_prov = role_cfg["provider"]
+            prov_str = raw_prov.get("primary") if isinstance(raw_prov, dict) else raw_prov
+            assert prov_str == "gemini"
             assert factory._resolve_provider("gemini-3.8-flash", role_config=role_cfg, slot_name="primary") == "gemini"
 
             wrapper = factory.get_client_for_task(role_name)

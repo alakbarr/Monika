@@ -2296,6 +2296,7 @@ Monika/
 │   │   ├── test_precommit_gate.py
 │   │   ├── test_prefetch_and_anti_fabrication.py
 │   │   ├── test_preflight_gate.py
+│   │   ├── test_prescreen_flat_market.py
 │   │   ├── test_pricing_audit.py
 │   │   ├── test_progressive_tools.py
 │   │   ├── test_prompt_cache_stability.py
@@ -3117,4 +3118,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2820
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2821

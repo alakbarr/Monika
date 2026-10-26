@@ -597,3 +597,192 @@ def test_openrouter_provider_paid_model_rejects_free_key_override():
         assert provider.is_free is False
         assert provider._paid_key == "sk-or-paid-secret"
         assert provider._get_api_key() == "sk-or-paid-secret"
+
+
+@pytest.mark.asyncio
+async def test_role_configured_thinking_none_end_to_end():
+    """A role explicitly configured with thinking: none must never produce reasoning extra_body."""
+    settings = {
+        "llm": {
+            "providers": {
+                "openrouter": {
+                    "api_key": "sk-or-test-key",
+                }
+            },
+            "task_roles": {
+                "specialist_technical": {
+                    "primary": "deepseek-v4.1-flash-1017",
+                    "provider": "openrouter",
+                    "thinking": "none",
+                    "max_tokens": 4096,
+                    "temperature": 0.0,
+                }
+            },
+        }
+    }
+    client = get_client_for_task("specialist_technical", settings)
+
+    # 1. Verify wrapper thinking_level is 'none' and thinking_budget is 0
+    assert getattr(client, "thinking_level", None) == "none"
+    assert getattr(client, "thinking_budget", None) == 0
+
+    # 2. Emulate specialist pipeline budget configuration logic
+    sc_thinking = getattr(client, "thinking_level", None)
+    if sc_thinking and str(sc_thinking).lower() not in ("none", "off"):
+        current_budget = getattr(client, "thinking_budget", None)
+        target_budget = current_budget if (current_budget and current_budget > 1024) else 2048
+        if hasattr(client, "set_thinking_budget"):
+            client.set_thinking_budget(target_budget)
+        elif hasattr(client, "thinking_budget"):
+            client.thinking_budget = target_budget
+
+    # Even if set_thinking_budget was directly called on wrapper, none must be preserved
+    if hasattr(client, "set_thinking_budget"):
+        client.set_thinking_budget(2048)
+
+    assert getattr(client, "thinking_level", None) == "none"
+    assert getattr(client, "thinking_budget", None) == 0
+
+    # 3. Check resolved inner client
+    inner = client._get_client("primary") if hasattr(client, "_get_client") else client
+    assert inner is not None
+    assert str(getattr(inner, "thinking_level", "")).lower() == "none"
+    kwargs = {"model": inner.model, "messages": []}
+    inner._apply_reasoning_params(kwargs)
+    assert "reasoning" not in kwargs.get("extra_body", {})
+
+    # 4. End-to-end generate call via wrapper
+    mock_choice = MagicMock()
+    mock_choice.message.content = "Specialist output"
+    mock_resp = MagicMock()
+    mock_resp.choices = [mock_choice]
+    mock_resp.usage = None
+
+    mock_create = inner.client.chat.completions.create
+    mock_create.return_value = mock_resp
+    mock_create.reset_mock()
+
+    res = await client.generate("Analyze the chart")
+    assert res == "Specialist output"
+    assert mock_create.called
+    call_kwargs = mock_create.call_args.kwargs
+    extra_body = call_kwargs.get("extra_body", {})
+    assert "reasoning" not in extra_body
+
+
+@pytest.mark.asyncio
+async def test_role_configured_thinking_low_end_to_end():
+    """A role configured with thinking: low must preserve effort: low."""
+    settings = {
+        "llm": {
+            "providers": {
+                "openrouter": {
+                    "api_key": "sk-or-test-key",
+                }
+            },
+            "task_roles": {
+                "specialist_technical": {
+                    "primary": "deepseek-v4.1-flash-1017",
+                    "provider": "openrouter",
+                    "thinking": "low",
+                    "max_tokens": 4096,
+                    "temperature": 0.0,
+                }
+            },
+        }
+    }
+    client = get_client_for_task("specialist_technical", settings)
+
+    assert getattr(client, "thinking_level", None) == "low"
+
+    # Emulate specialist pipeline budget configuration
+    sc_thinking = getattr(client, "thinking_level", None)
+    if sc_thinking and str(sc_thinking).lower() not in ("none", "off"):
+        current_budget = getattr(client, "thinking_budget", None)
+        target_budget = current_budget if (current_budget and current_budget > 1024) else 2048
+        if hasattr(client, "set_thinking_budget"):
+            client.set_thinking_budget(target_budget)
+        elif hasattr(client, "thinking_budget"):
+            client.thinking_budget = target_budget
+
+    assert getattr(client, "thinking_level", None) == "low"
+
+    # End-to-end generate call via wrapper
+    mock_choice = MagicMock()
+    mock_choice.message.content = "Specialist output"
+    mock_resp = MagicMock()
+    mock_resp.choices = [mock_choice]
+    mock_resp.usage = None
+
+    inner = client._get_client("primary") if hasattr(client, "_get_client") else client
+    assert inner is not None
+    mock_create = inner.client.chat.completions.create
+    mock_create.return_value = mock_resp
+    mock_create.reset_mock()
+
+    res = await client.generate("Analyze the chart")
+    assert res == "Specialist output"
+    assert mock_create.called
+    call_kwargs = mock_create.call_args.kwargs
+    extra_body = call_kwargs.get("extra_body", {})
+    assert "reasoning" in extra_body
+    assert extra_body["reasoning"] == {"effort": "low"}
+
+
+@pytest.mark.asyncio
+async def test_specialist_pipeline_thinking_none_preserves_zero_budget():
+    """Verify that specialist clients configured with thinking: none are not elevated by specialist pipeline logic."""
+    settings = {
+        "llm": {
+            "providers": {
+                "openrouter": {
+                    "api_key": "sk-or-test-key",
+                }
+            },
+            "task_roles": {
+                "specialist_technical": {
+                    "primary": "deepseek-v4.1-flash-1017",
+                    "provider": "openrouter",
+                    "thinking": "none",
+                    "max_tokens": 4096,
+                },
+                "specialist_sentiment": {
+                    "primary": "deepseek-v4.1-flash-1017",
+                    "provider": "openrouter",
+                    "thinking": "none",
+                    "max_tokens": 4096,
+                },
+                "specialist_macro": {
+                    "primary": "deepseek-v4.1-flash-1017",
+                    "provider": "openrouter",
+                    "thinking": "none",
+                    "max_tokens": 4096,
+                },
+            },
+        }
+    }
+    tech_client = get_client_for_task("specialist_technical", settings)
+    sent_client = get_client_for_task("specialist_sentiment", settings)
+    macro_client = get_client_for_task("specialist_macro", settings)
+
+    for sc in (tech_client, sent_client, macro_client):
+        sc.symbol = "EURUSD"
+        sc_thinking = getattr(sc, "thinking_level", None)
+        if sc_thinking and str(sc_thinking).lower() not in ("none", "off"):
+            current_budget = getattr(sc, "thinking_budget", None)
+            target_budget = current_budget if (current_budget and current_budget > 1024) else 2048
+            if hasattr(sc, "set_thinking_budget"):
+                sc.set_thinking_budget(target_budget)
+            elif hasattr(sc, "thinking_budget"):
+                sc.thinking_budget = target_budget
+
+    for sc in (tech_client, sent_client, macro_client):
+        assert sc.thinking_budget == 0
+        assert sc.thinking_level == "none"
+        inner = sc._get_client("primary")
+        assert inner is not None
+        assert inner.thinking_budget == 0
+        assert inner.thinking_level == "none"
+        kwargs = {"model": inner.model, "messages": []}
+        inner._apply_reasoning_params(kwargs)
+        assert "reasoning" not in kwargs.get("extra_body", {})

@@ -424,7 +424,7 @@ class OpenRouterProvider(OpenAIProvider):
         Mengonfigurasi objek reasoning: {"effort": "low"|"medium"|"high"} secara aman
         dan menerapkan dynamic adaptive floor pada max_tokens.
         """
-        if self.thinking_level and str(self.thinking_level).lower() != "none":
+        if self.thinking_level and str(self.thinking_level).lower() not in ("none", "off"):
             lvl = str(self.thinking_level).lower()
             effort_map = {
                 "low": "low",

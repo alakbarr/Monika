@@ -420,3 +420,147 @@ class TestPerAssetStage:
         ok, reason = await stage._check_data_coherence_for_analysis(mock_session, "XAUUSD")
         assert ok is False
         assert "No VIX data" in reason
+
+    def _setup_stage_for_run_one(self, settings=None):
+        if settings is None:
+            settings = get_test_settings()
+        stage = PerAssetStage(settings)
+        mock_session = create_mock_async_session()
+        mock_session.add = MagicMock()
+        stage._check_brief_freshness_and_quality = AsyncMock(return_value=(None, MagicMock(), []))
+        stage._compute_ssvp_coherence = AsyncMock(return_value=None)
+        stage._fetch_stage2_bundle = AsyncMock(return_value=(None, {}, False, ""))
+        stage._fetch_gemini_precomputed = AsyncMock(return_value="")
+        stage._check_minimum_data_quality = AsyncMock(return_value=(True, "ok"))
+        stage._verify_data_currency = AsyncMock(return_value=(True, "ok"))
+        stage._check_data_coherence_for_analysis = AsyncMock(return_value=(True, "ok"))
+        stage._run_prescreen = AsyncMock(return_value=(True, "ok"))
+        stage._execute_specialist_debate_pipeline = AsyncMock(return_value=("", {}, {}, {}))
+        stage._get_symbol_sl_streak = AsyncMock(return_value=0)
+        stage._run_second_opinion_check = AsyncMock(return_value={"agree": True})
+        stage._log = AsyncMock()
+
+        mock_result = MagicMock()
+        mock_analysis = MagicMock()
+        mock_analysis.id = 99
+        mock_analysis.decision = "buy"
+        mock_analysis.confidence = 0.9
+        mock_analysis.generated_at = datetime.now(timezone.utc)
+        mock_result.scalar_one_or_none.return_value = mock_analysis
+        mock_result.scalars.return_value.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        return stage, mock_session
+
+    @pytest.mark.asyncio
+    @patch(
+        "monika.application.analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
+        new_callable=AsyncMock,
+        return_value=(7.0, "default"),
+    )
+    @patch("monika.infrastructure.providers.llm_factory.FallbackClientWrapper.run_agent", new_callable=AsyncMock)
+    @patch(
+        "monika.application.analysis.calculators.regime_classifier.compute_bollinger_donchian_chop",
+        new_callable=AsyncMock,
+    )
+    async def test_run_one_volatility_regime_gate_chop_block_true(self, mock_chop, mock_run_agent, mock_threshold):
+        mock_chop.return_value = {
+            "chop_block": True,
+            "reason": "BB width percentile 12.5% <= 25% with no Donchian breakout (range squeeze)",
+        }
+        mock_run_agent.return_value = {"success": True, "tool_calls_made": 1, "turns": 1}
+
+        stage, mock_session = self._setup_stage_for_run_one()
+        res = await stage.run_one(mock_session, "XAUUSD", bypass_prescreen=True)
+
+        assert res["success"] is True
+        mock_chop.assert_awaited_once_with(mock_session, "XAUUSD", "H4", stage.settings)
+        mock_run_agent.assert_awaited_once()
+        _, kwargs = mock_run_agent.call_args
+        user_message = kwargs["user_message"]
+        assert "[VOLATILITY REGIME GATE — ACTIVE (deterministic)]" in user_message
+        assert "BB width percentile 12.5% <= 25% with no Donchian breakout (range squeeze)" in user_message
+        assert "Market-order BUY/SELL will be rejected" in user_message
+        assert (
+            "The only acceptable submissions are a structural limit/pullback/breakout entry at a confirmed level (OB/FVG/sweep) with explicit entry price and confluence_score >= 5, or decision='wait'"
+            in user_message
+        )
+
+    @pytest.mark.asyncio
+    @patch(
+        "monika.application.analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
+        new_callable=AsyncMock,
+        return_value=(7.0, "default"),
+    )
+    @patch("monika.infrastructure.providers.llm_factory.FallbackClientWrapper.run_agent", new_callable=AsyncMock)
+    @patch(
+        "monika.application.analysis.calculators.regime_classifier.compute_bollinger_donchian_chop",
+        new_callable=AsyncMock,
+    )
+    async def test_run_one_volatility_regime_gate_chop_block_false(self, mock_chop, mock_run_agent, mock_threshold):
+        mock_chop.return_value = {
+            "chop_block": False,
+            "reason": "normal_volatility",
+        }
+        mock_run_agent.return_value = {"success": True, "tool_calls_made": 1, "turns": 1}
+
+        stage, mock_session = self._setup_stage_for_run_one()
+        res = await stage.run_one(mock_session, "XAUUSD", bypass_prescreen=True)
+
+        assert res["success"] is True
+        mock_chop.assert_awaited_once_with(mock_session, "XAUUSD", "H4", stage.settings)
+        mock_run_agent.assert_awaited_once()
+        _, kwargs = mock_run_agent.call_args
+        user_message = kwargs["user_message"]
+        assert "[VOLATILITY REGIME GATE — ACTIVE (deterministic)]" not in user_message
+
+    @pytest.mark.asyncio
+    @patch(
+        "monika.application.analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
+        new_callable=AsyncMock,
+        return_value=(7.0, "default"),
+    )
+    @patch("monika.infrastructure.providers.llm_factory.FallbackClientWrapper.run_agent", new_callable=AsyncMock)
+    @patch(
+        "monika.application.analysis.calculators.regime_classifier.compute_bollinger_donchian_chop",
+        new_callable=AsyncMock,
+    )
+    async def test_run_one_volatility_regime_gate_flag_disabled(self, mock_chop, mock_run_agent, mock_threshold):
+        settings = get_test_settings()
+        settings.setdefault("trading", {}).setdefault("edge_strategy", {})["volatility_regime"] = {"enabled": False}
+        mock_run_agent.return_value = {"success": True, "tool_calls_made": 1, "turns": 1}
+
+        stage, mock_session = self._setup_stage_for_run_one(settings=settings)
+        res = await stage.run_one(mock_session, "XAUUSD", bypass_prescreen=True)
+
+        assert res["success"] is True
+        mock_chop.assert_not_called()
+        mock_run_agent.assert_awaited_once()
+        _, kwargs = mock_run_agent.call_args
+        user_message = kwargs["user_message"]
+        assert "[VOLATILITY REGIME GATE — ACTIVE (deterministic)]" not in user_message
+
+    @pytest.mark.asyncio
+    @patch(
+        "monika.application.analysis.calculators.adaptive_policy.AdaptiveRiskPolicy.get_effective_threshold",
+        new_callable=AsyncMock,
+        return_value=(7.0, "default"),
+    )
+    @patch("monika.infrastructure.providers.llm_factory.FallbackClientWrapper.run_agent", new_callable=AsyncMock)
+    @patch(
+        "monika.application.analysis.calculators.regime_classifier.compute_bollinger_donchian_chop",
+        new_callable=AsyncMock,
+    )
+    async def test_run_one_volatility_regime_gate_calculator_raises(self, mock_chop, mock_run_agent, mock_threshold):
+        mock_chop.side_effect = RuntimeError("db connection dropped")
+        mock_run_agent.return_value = {"success": True, "tool_calls_made": 1, "turns": 1}
+
+        stage, mock_session = self._setup_stage_for_run_one()
+        res = await stage.run_one(mock_session, "XAUUSD", bypass_prescreen=True)
+
+        assert res["success"] is True
+        mock_chop.assert_awaited_once_with(mock_session, "XAUUSD", "H4", stage.settings)
+        mock_run_agent.assert_awaited_once()
+        _, kwargs = mock_run_agent.call_args
+        user_message = kwargs["user_message"]
+        assert "[VOLATILITY REGIME GATE — ACTIVE (deterministic)]" not in user_message

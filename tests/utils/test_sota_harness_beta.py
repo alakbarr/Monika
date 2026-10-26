@@ -117,7 +117,8 @@ async def test_spill_subsystem_threshold():
     res_large = await subsystem.maybe_spill(mock_session, "get_price_history", large_text, cycle_id="test_cycle")
     assert "[Observation Receipt: get_price_history" in res_large
     assert "db://spill/" in res_large
-    assert mock_session.add.called
+    # Under isolated session contract (commit 39c0cbcc), caller session is not mutated
+    mock_session.add.assert_not_called()
 
 
 @pytest.mark.asyncio

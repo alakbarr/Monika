@@ -17,7 +17,7 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
 from monika.infrastructure.database.domain_models.base import Base, _utcnow
 
@@ -86,6 +86,7 @@ class AssetAnalysis(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     symbol: Mapped[str] = mapped_column(String(20), index=True)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    created_at = synonym("generated_at")
     brief_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("fundamental_briefs.id", ondelete="SET NULL"), nullable=True, index=True
     )

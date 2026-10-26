@@ -221,6 +221,115 @@ class TestCostTracker:
         assert CostTracker.is_budget_paused_cached() is True
 
     @pytest.mark.asyncio
+    async def test_check_and_update_budget_status_tracks_weekly_cost(self):
+        mock_session = create_mock_async_session()
+        mock_session.add = MagicMock()
+
+        mock_cfg_pause = MagicMock()
+        mock_cfg_pause.key = "budget_pause"
+        mock_cfg_pause.value = "false"
+
+        scalar_calls = []
+
+        def execute_side_effect(stmt):
+            mock_res = MagicMock()
+            sql_str = str(stmt).lower()
+            if "token_usage_log" in sql_str:
+                if "group by" in sql_str:
+                    mock_res.all.return_value = [("gemini", 10000)]
+                else:
+                    call_idx = len(scalar_calls)
+                    scalar_calls.append(call_idx)
+                    if call_idx == 0:
+                        mock_res.scalar_one.return_value = 8.50  # MTD
+                    elif call_idx == 1:
+                        mock_res.scalar_one.return_value = 4.25  # Weekly
+                    else:
+                        mock_res.scalar_one.return_value = 1.10  # Daily
+            elif "system_config" in sql_str:
+                mock_res.scalar_one_or_none.return_value = mock_cfg_pause
+            else:
+                mock_res.scalar_one.return_value = 0.0
+                mock_res.scalar_one_or_none.return_value = None
+            return mock_res
+
+        mock_session.execute.side_effect = execute_side_effect
+
+        settings = {
+            "cost_tracking": {
+                "monthly_budget_usd": 60.0,
+                "weekly_budget_usd": 18.0,
+                "daily_budget_usd": 3.0,
+            }
+        }
+
+        status = await CostTracker.check_and_update_budget_status(mock_session, settings)
+
+        assert status["mtd_cost"] == 8.50
+        assert status["weekly_cost"] == 4.25
+        assert status["daily_cost"] == 1.10
+        assert status["monthly_budget"] == 60.0
+        assert status["weekly_budget"] == 18.0
+        assert status["daily_budget"] == 3.0
+        assert status["is_paused"] is False
+
+    @pytest.mark.asyncio
+    async def test_check_and_update_budget_status_triggers_weekly_pause(self):
+        mock_session = create_mock_async_session()
+        mock_session.add = MagicMock()
+
+        mock_cfg_pause = MagicMock()
+        mock_cfg_pause.key = "budget_pause"
+        mock_cfg_pause.value = "false"
+
+        scalar_calls = []
+
+        def execute_side_effect(stmt):
+            mock_res = MagicMock()
+            sql_str = str(stmt).lower()
+            if "token_usage_log" in sql_str:
+                if "group by" in sql_str:
+                    mock_res.all.return_value = [("gemini", 500000)]
+                else:
+                    call_idx = len(scalar_calls)
+                    scalar_calls.append(call_idx)
+                    if call_idx == 0:
+                        mock_res.scalar_one.return_value = 25.0  # MTD (< 95% of 60.0)
+                    elif call_idx == 1:
+                        mock_res.scalar_one.return_value = 18.50  # Weekly >= 18.0 (exceeded!)
+                    else:
+                        mock_res.scalar_one.return_value = 2.00  # Daily < 3.0 (safe)
+            elif "system_config" in sql_str:
+                mock_res.scalar_one_or_none.return_value = mock_cfg_pause
+            else:
+                mock_res.scalar_one.return_value = 0.0
+                mock_res.scalar_one_or_none.return_value = None
+            return mock_res
+
+        mock_session.execute.side_effect = execute_side_effect
+
+        settings = {
+            "cost_tracking": {
+                "monthly_budget_usd": 60.0,
+                "weekly_budget_usd": 18.0,
+                "daily_budget_usd": 3.0,
+            }
+        }
+
+        with patch(
+            "monika.infrastructure.notifications.telegram_notifier.AgentNotifier.send_critical", AsyncMock()
+        ) as mock_notify:
+            status = await CostTracker.check_and_update_budget_status(mock_session, settings)
+
+        assert status["is_paused"] is True
+        assert status["weekly_cost"] == 18.50
+        assert status["daily_cost"] == 2.00
+        assert mock_cfg_pause.value == "true"
+        assert CostTracker.is_budget_paused_cached() is True
+        mock_notify.assert_called_once()
+        assert "WEEKLY SPEND CIRCUIT BREAKER TRIPPED" in mock_notify.call_args[0][0]
+
+    @pytest.mark.asyncio
     async def test_clear_budget_pause(self):
         mock_session = create_mock_async_session()
         mock_cfg_pause = MagicMock()

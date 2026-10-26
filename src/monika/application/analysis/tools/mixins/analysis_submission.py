@@ -707,7 +707,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 macro_check = await evaluate_macro_alignment(self.session, symbol, decision, self.settings)
                 if macro_check.get("strong_conflict"):
                     logger.warning(f"MACRO BIAS WARNING for {symbol}: {'; '.join(macro_check['reasons'])}")
-            if edge_cfg.get("volatility_regime", {}).get("enabled", True):
+            if edge_cfg.get("volatility_regime", {}).get("enabled", True) and decision in ("buy", "sell"):
                 from monika.application.analysis.calculators.regime_classifier import compute_bollinger_donchian_chop
 
                 chop = await compute_bollinger_donchian_chop(self.session, symbol, "H4", self.settings)

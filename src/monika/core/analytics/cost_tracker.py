@@ -139,13 +139,18 @@ class CostTracker:
             dict ringkasan status budget (mtd_cost, monthly_budget, usage_pct, daily_cost, daily_budget, is_paused).
         """
         cost_cfg = (settings or {}).get("cost_tracking", {})
-        from monika.core.config.settings import DEFAULT_MONTHLY_BUDGET_USD
+        from monika.core.config.settings import (
+            DEFAULT_DAILY_BUDGET_USD,
+            DEFAULT_MONTHLY_BUDGET_USD,
+            DEFAULT_WEEKLY_BUDGET_USD,
+        )
 
         budget_usd: float = float(cost_cfg.get("monthly_budget_usd", DEFAULT_MONTHLY_BUDGET_USD))
         if not budget_usd or budget_usd <= 0:
             budget_usd = DEFAULT_MONTHLY_BUDGET_USD
 
-        daily_budget_usd = float(cost_cfg.get("daily_budget_usd", 5.0))
+        daily_budget_usd = float(cost_cfg.get("daily_budget_usd", DEFAULT_DAILY_BUDGET_USD))
+        weekly_budget_usd = float(cost_cfg.get("weekly_budget_usd", DEFAULT_WEEKLY_BUDGET_USD))
         limit_anthropic = int(cost_cfg.get("daily_anthropic_limit", 10_000_000))
         limit_gemini = int(cost_cfg.get("daily_gemini_limit", cost_cfg.get("daily_token_limit", 4_000_000)))
 
@@ -154,6 +159,7 @@ class CostTracker:
         current_day = now.strftime("%Y-%m-%d")
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         day_start_dt = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        week_start_dt = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
 
         # 1. Query SSOT dari TokenUsageLog untuk MTD, Daily Cost, dan Daily Token Usage per Provider
         try:
@@ -193,6 +199,13 @@ class CostTracker:
                 )
             )
             mtd_cost = _extract_scalar(db_mtd_res, 0.0)
+
+            db_weekly_res = await session.execute(
+                select(func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0)).where(
+                    TokenUsageLog.timestamp >= week_start_dt
+                )
+            )
+            weekly_cost_usd = _extract_scalar(db_weekly_res, 0.0)
 
             db_daily_res = await session.execute(
                 select(func.coalesce(func.sum(TokenUsageLog.cost_estimate), 0.0)).where(
@@ -236,6 +249,12 @@ class CostTracker:
                 for e in (history or [])
                 if isinstance(e, dict) and e.get("cycle_date", "").startswith(current_month)
             )
+            week_start_str = week_start_dt.strftime("%Y-%m-%d")
+            weekly_cost_usd = sum(
+                float(e.get("total_cost_usd", e.get("estimated_cost_usd", 0.0)) or 0.0)
+                for e in (history or [])
+                if isinstance(e, dict) and e.get("cycle_date", "") >= week_start_str
+            )
             daily_cost_usd = sum(
                 float(e.get("total_cost_usd", e.get("estimated_cost_usd", 0.0)) or 0.0)
                 for e in (history or [])
@@ -254,13 +273,18 @@ class CostTracker:
                 if e.get("cycle_date", "").startswith(current_day)
             )
 
-        # Enforce Monotonic Invariant: MTD harus selalu >= Daily
-        mtd_cost = max(mtd_cost, daily_cost_usd)
+        # Enforce Monotonic Invariants: MTD >= Weekly >= Daily
+        weekly_cost_usd = max(weekly_cost_usd, daily_cost_usd)
+        mtd_cost = max(mtd_cost, weekly_cost_usd, daily_cost_usd)
         usage_pct = (mtd_cost / budget_usd) * 100
-        logger.info(f"Month-to-date API cost: ${mtd_cost:.4f} / ${budget_usd:.2f} ({usage_pct:.1f}%)")
+        logger.info(
+            f"API cost status: MTD ${mtd_cost:.4f}/${budget_usd:.2f} ({usage_pct:.1f}%), "
+            f"Weekly ${weekly_cost_usd:.4f}/${weekly_budget_usd:.2f}, Daily ${daily_cost_usd:.4f}/${daily_budget_usd:.2f}"
+        )
 
         # 2. Limit validations
         is_daily_budget_exceeded = daily_budget_usd > 0 and daily_cost_usd >= daily_budget_usd
+        is_weekly_budget_exceeded = weekly_budget_usd > 0 and weekly_cost_usd >= weekly_budget_usd
         alerts = []
         if limit_anthropic > 0 and daily_anthropic >= limit_anthropic * 0.9:
             alerts.append(
@@ -270,8 +294,10 @@ class CostTracker:
             alerts.append(f"Gemini limit at {daily_gemini / limit_gemini * 100:.1f}% ({daily_gemini}/{limit_gemini})")
         if is_daily_budget_exceeded:
             alerts.append(f"Daily dollar spend limit reached: ${daily_cost_usd:.2f} >= ${daily_budget_usd:.2f}")
+        if is_weekly_budget_exceeded:
+            alerts.append(f"Weekly dollar spend limit reached: ${weekly_cost_usd:.2f} >= ${weekly_budget_usd:.2f}")
 
-        if alerts and (usage_pct < 95 and not is_daily_budget_exceeded):
+        if alerts and (usage_pct < 95 and not is_daily_budget_exceeded and not is_weekly_budget_exceeded):
             msg = "[PERINGATAN] <b>DAILY API LIMIT WARNING</b>\n" + "\n".join(alerts)
             try:
                 notifier = AgentNotifier()
@@ -293,7 +319,7 @@ class CostTracker:
             except Exception as e:
                 logger.warning(f"Could not send budget alert: {e}")
 
-        should_pause = (usage_pct >= 95) or is_daily_budget_exceeded
+        should_pause = (usage_pct >= 95) or is_daily_budget_exceeded or is_weekly_budget_exceeded
 
         pause_cfg = (
             await session.execute(select(SystemConfig).where(SystemConfig.key == "budget_pause"))
@@ -315,13 +341,21 @@ class CostTracker:
                     )
                 except Exception:
                     pass
+            elif is_weekly_budget_exceeded and not (usage_pct >= 95):
+                try:
+                    notifier = AgentNotifier()
+                    await notifier.send_critical(
+                        f"[STOP] <b>WEEKLY SPEND CIRCUIT BREAKER TRIPPED</b>\nWeekly AI spend (${weekly_cost_usd:.2f}) reached weekly limit (${weekly_budget_usd:.2f}). System paused."
+                    )
+                except Exception:
+                    pass
         else:
             # Auto-clear lingering budget_pause when cost is safely within budget
             if pause_cfg and pause_cfg.value == "true":
                 pause_cfg.value = "false"
                 await session.commit()
                 logger.info(
-                    f"Budget pause auto-cleared: MTD ${mtd_cost:.4f}/${budget_usd:.2f}, Daily ${daily_cost_usd:.4f}/${daily_budget_usd:.2f}"
+                    f"Budget pause auto-cleared: MTD ${mtd_cost:.4f}/${budget_usd:.2f}, Weekly ${weekly_cost_usd:.4f}/${weekly_budget_usd:.2f}, Daily ${daily_cost_usd:.4f}/${daily_budget_usd:.2f}"
                 )
             CostTracker._cached_pause_state = False
             CostTracker._cached_pause_time = now
@@ -345,9 +379,29 @@ class CostTracker:
             "usage_pct": usage_pct,
             "daily_cost": daily_cost_usd,
             "daily_budget": daily_budget_usd,
+            "weekly_cost": weekly_cost_usd,
+            "weekly_budget": weekly_budget_usd,
             "is_paused": should_pause,
             "alerts": alerts,
         }
+
+    @staticmethod
+    async def evaluate_budget(
+        session: AsyncSession,
+        settings: dict,
+        history: list | None = None,
+        latest_cost: float = 0.0,
+    ) -> dict:
+        """
+        Evaluasi pengeluaran bulan berjalan dan harian vs anggaran secara dinamis (SSOT: TokenUsageLog).
+        Alias terstandarisasi untuk check_and_update_budget_status.
+        """
+        return await CostTracker.check_and_update_budget_status(
+            session=session,
+            settings=settings,
+            history=history,
+            latest_cost=latest_cost,
+        )
 
     @staticmethod
     async def _check_budget(
@@ -363,6 +417,9 @@ class CostTracker:
             history=history,
             latest_cost=latest_cost,
         )
+
+    # Standardized alias
+    evaluate_budget = check_and_update_budget_status
 
     @classmethod
     def is_budget_paused_cached(cls) -> bool:

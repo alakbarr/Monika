@@ -68,7 +68,9 @@ except ImportError:
         TradingConfig,
     )
 
-DEFAULT_MONTHLY_BUDGET_USD = 100.0
+DEFAULT_MONTHLY_BUDGET_USD = 60.0
+DEFAULT_WEEKLY_BUDGET_USD = 18.0
+DEFAULT_DAILY_BUDGET_USD = 3.0
 
 logger = logging.getLogger("TradingAgent.Config")
 

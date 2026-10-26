@@ -286,6 +286,7 @@
   - `class CostTracker`
     - `async log_cycle_cost(session: AsyncSession, stage1_input: int, stage1_output: int, ...) -> float` - *Mencatat biaya API dari satu siklus analisis dan mengeceknya terhadap anggaran.*
     - `async check_and_update_budget_status(session: AsyncSession, settings: dict, history: list | None, ...) -> dict` - *Evaluasi pengeluaran bulan berjalan & harian vs anggaran secara dinamis (SSOT: TokenUsageLog).*
+    - `async evaluate_budget(session: AsyncSession, settings: dict, history: list | None, ...) -> dict` - *Evaluasi pengeluaran bulan berjalan dan harian vs anggaran secara dinamis (SSOT: TokenUsageLog).*
     - `is_budget_paused_cached() -> bool` - *Synchronous in-memory check if AI budget is paused.*
     - `async is_budget_paused(session: AsyncSession, settings: dict | None, force_recheck: bool) -> bool` - *Mengembalikan True jika anggaran terlampaui (AI calls akan dihentikan).*
     - `async clear_budget_pause(session: AsyncSession) -> None` - *Menghapus flag pause anggaran (dipanggil setelah user mereset anggaran).*

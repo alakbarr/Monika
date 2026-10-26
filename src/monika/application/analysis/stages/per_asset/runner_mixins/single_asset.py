@@ -561,6 +561,31 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         vision_image = raw_bundle_data.get("user_chart_vision_image") if isinstance(raw_bundle_data, dict) else None
         multimodal_images = [vision_image] if isinstance(vision_image, dict) and vision_image.get("data") else None
 
+        # Pre-inject deterministic Volatility Regime Gate status
+        edge_cfg = (self.settings.get("trading") or {}).get("edge_strategy") or {}
+        vol_cfg = edge_cfg.get("volatility_regime") or {}
+        if vol_cfg.get("enabled", True):
+            try:
+                from monika.application.analysis.calculators.regime_classifier import (
+                    compute_bollinger_donchian_chop,
+                )
+
+                chop = await compute_bollinger_donchian_chop(session, symbol, "H4", self.settings)
+                if chop and chop.get("chop_block"):
+                    chop_reason = chop.get("reason") or "range squeeze"
+                    user_message += (
+                        f"\n\n[VOLATILITY REGIME GATE — ACTIVE (deterministic)]\n"
+                        f"Reason: {chop_reason}. "
+                        "Market-order BUY/SELL will be rejected. "
+                        "The only acceptable submissions are a structural limit/pullback/breakout entry "
+                        "at a confirmed level (OB/FVG/sweep) with explicit entry price and confluence_score >= 5, "
+                        "or decision='wait'."
+                    )
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.warning(f"[{symbol}] Volatility regime gate pre-check failed (non-fatal): {e}")
+
         result = await active_client.run_agent(
             session=session,
             system_prompt=system_prompt,

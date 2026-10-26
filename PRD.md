@@ -214,6 +214,11 @@ flowchart TD
 ### NFR-4: Token Economics & Caching
 - **Prompt Caching Optimization:** Static system instructions engineered for provider KV caching ($>70\%$ target hit rate).
 - **Dynamic Model Routing:** Lighter models handle high-volume filtering, reserving high-reasoning models for debate arbitration.
+- **Multi-Horizon AI Budget Governor & Circuit Breaker ($3.00/Day, $18.00/Week, $60.00/Month):**
+  - **Multi-Horizon Spend Ceilings:** Strict budget caps configured via `cost_tracking.daily_budget_usd` ($3.00/day default), `cost_tracking.weekly_budget_usd` ($18.00/week default), and `cost_tracking.monthly_budget_usd` ($60.00/month default).
+  - **90% Soft Guard ($2.70/day, $16.20/week):** When daily or weekly spend reaches 90% of its respective ceiling, `NewsWatcher` throttles targeted Stage 2 re-analysis for idle assets (symbols with NO active open positions), preserving remaining quota for scheduled cycle updates and active trade management.
+  - **100% Hard Circuit Breakers:** When daily, weekly, or monthly spend reaches 100% (or 95% for monthly MTD), `CostTracker` trips `budget_pause = "true"` via `SystemConfig`, suppressing all news-triggered re-analyses and new cycle entries until acknowledged or reset.
+  - **Fail-Safe Zero-Compromise on Capital Protection (§1):** Mechanical capital protection paths — including deterministic `RiskGate`, `PositionGuardian` emergency stop-loss tightening / trailing stops, emergency kill-switch (`POST /api/v1/kill`), and MT5 EA watchdog (`AIAgent_EA.mq5`) — are deterministic, non-LLM paths and are NEVER paused, throttled, or compromised by AI budget state.
 
 ### NFR-5: Portability & Cross-Platform Operation
 - **Primary Windows Execution:** Native MT5 execution on Windows 10/11 or Windows Server.
