@@ -98,8 +98,177 @@ def spill_tool_output(
         return tool_output
 
 
+PRUNE_THRESHOLD_CHARS = 8192
+PRUNE_HEAD_CHARS = 4096
+PRUNE_TAIL_CHARS = 1024
+PRUNE_MARKER = "\n\n[... tool result middle pruned ...]\n\n"
+
+
+def prune_tool_result_text(
+    text: str,
+    threshold_chars: int = PRUNE_THRESHOLD_CHARS,
+    head_chars: int = PRUNE_HEAD_CHARS,
+    tail_chars: int = PRUNE_TAIL_CHARS,
+) -> tuple[str, bool]:
+    """Prunes the middle of an oversized tool result string with 1-pass idempotence.
+
+    Invariant: head_chars + len(PRUNE_MARKER) + tail_chars <= threshold_chars.
+    (4096 + 37 + 1024 = 5157 <= 8192), ensuring an already-pruned result is never re-pruned.
+    """
+    if not isinstance(text, str) or len(text) <= threshold_chars:
+        return text, False
+
+    pruned = text[:head_chars] + PRUNE_MARKER + text[-tail_chars:]
+    return pruned, True
+
+
+def prune_session_tool_results(
+    messages: list[dict[str, Any]],
+    threshold_chars: int = PRUNE_THRESHOLD_CHARS,
+    head_chars: int = PRUNE_HEAD_CHARS,
+    tail_chars: int = PRUNE_TAIL_CHARS,
+) -> tuple[list[dict[str, Any]], int]:
+    """Prunes oversized tool results across a session in a single batch pass.
+
+    Returns a new list of messages (without mutating input) and the count of pruned results.
+    """
+    if not messages:
+        return [], 0
+
+    new_messages: list[dict[str, Any]] = []
+    prune_count = 0
+
+    for m in messages:
+        if not isinstance(m, dict):
+            new_messages.append(m)
+            continue
+
+        role = m.get("role")
+        content = m.get("content")
+
+        if role == "tool":
+            if isinstance(content, str):
+                pruned_text, did_prune = prune_tool_result_text(content, threshold_chars, head_chars, tail_chars)
+                if did_prune:
+                    prune_count += 1
+                    new_messages.append(dict(m, content=pruned_text))
+                    continue
+            new_messages.append(dict(m))
+        elif isinstance(content, list):
+            new_content = []
+            msg_modified = False
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "tool_result":
+                    b_content = block.get("content")
+                    if isinstance(b_content, str):
+                        pruned_text, did_prune = prune_tool_result_text(
+                            b_content, threshold_chars, head_chars, tail_chars
+                        )
+                        if did_prune:
+                            prune_count += 1
+                            msg_modified = True
+                            new_content.append(dict(block, content=pruned_text))
+                            continue
+                new_content.append(block)
+            if msg_modified:
+                new_messages.append(dict(m, content=new_content))
+            else:
+                new_messages.append(dict(m))
+        else:
+            new_messages.append(dict(m))
+
+    return new_messages, prune_count
+
+
+def find_tool_pairing_balanced_cut(
+    messages: list[dict[str, Any]], target_keep_from_idx: int, min_first_idx: int = 1
+) -> int:
+    """Finds a cut point where no tool call is orphaned from its tool result.
+
+    Walks messages tracking pending tool calls (+K for assistant tool_use / tool_calls,
+    -1 for each tool_result / role == "tool"). If target_keep_from_idx lands where
+    in_progress_tool_calls != 0 or directly on a tool result, walks backward until
+    in_progress_tool_calls == 0 and idx >= min_first_idx.
+    """
+    if not messages:
+        return 0
+
+    n = len(messages)
+    clamped_target = max(min_first_idx, min(target_keep_from_idx, n))
+
+    def _is_tool_result(msg: dict[str, Any]) -> bool:
+        if msg.get("role") == "tool":
+            return True
+        c = msg.get("content")
+        if isinstance(c, list):
+            return any(isinstance(b, dict) and b.get("type") == "tool_result" for b in c)
+        return False
+
+    # Compute in_progress_tool_calls before each index i (i.e. for slice messages[:i])
+    in_progress = [0] * (n + 1)
+    running_balance = 0
+    for i, m in enumerate(messages):
+        in_progress[i] = running_balance
+        if isinstance(m, dict):
+            role = m.get("role")
+            if role == "assistant":
+                tc_count = len(m.get("tool_calls") or [])
+                c = m.get("content")
+                if isinstance(c, list):
+                    tc_count += sum(1 for b in c if isinstance(b, dict) and b.get("type") == "tool_use")
+                running_balance += tc_count
+            elif role == "tool":
+                running_balance = max(0, running_balance - 1)
+            else:
+                c = m.get("content")
+                if isinstance(c, list):
+                    tr_count = sum(1 for b in c if isinstance(b, dict) and b.get("type") == "tool_result")
+                    running_balance = max(0, running_balance - tr_count)
+    in_progress[n] = running_balance
+
+    cut_idx = clamped_target
+    while cut_idx > min_first_idx:
+        if in_progress[cut_idx] == 0:
+            if cut_idx < n and _is_tool_result(messages[cut_idx]):
+                cut_idx -= 1
+                continue
+            return cut_idx
+        cut_idx -= 1
+
+    return min_first_idx
+
+
 class ContextCompactionEngine:
     """Manages context hygiene and compaction across agent execution turns."""
+
+    PRUNE_THRESHOLD_CHARS = PRUNE_THRESHOLD_CHARS
+    PRUNE_HEAD_CHARS = PRUNE_HEAD_CHARS
+    PRUNE_TAIL_CHARS = PRUNE_TAIL_CHARS
+    PRUNE_MARKER = PRUNE_MARKER
+
+    @staticmethod
+    def prune_tool_result_text(
+        text: str,
+        threshold_chars: int = PRUNE_THRESHOLD_CHARS,
+        head_chars: int = PRUNE_HEAD_CHARS,
+        tail_chars: int = PRUNE_TAIL_CHARS,
+    ) -> tuple[str, bool]:
+        return prune_tool_result_text(text, threshold_chars, head_chars, tail_chars)
+
+    @staticmethod
+    def prune_session_tool_results(
+        messages: list[dict[str, Any]],
+        threshold_chars: int = PRUNE_THRESHOLD_CHARS,
+        head_chars: int = PRUNE_HEAD_CHARS,
+        tail_chars: int = PRUNE_TAIL_CHARS,
+    ) -> tuple[list[dict[str, Any]], int]:
+        return prune_session_tool_results(messages, threshold_chars, head_chars, tail_chars)
+
+    @staticmethod
+    def find_tool_pairing_balanced_cut(
+        messages: list[dict[str, Any]], target_keep_from_idx: int, min_first_idx: int = 1
+    ) -> int:
+        return find_tool_pairing_balanced_cut(messages, target_keep_from_idx, min_first_idx)
 
     SYNTHESIS_THRESHOLD = 0.50  # 50% of context window -> Layer 2 synthesis
     EMERGENCY_THRESHOLD = 0.85  # 85% of context window -> Layer 3 emergency guard
@@ -1013,6 +1182,8 @@ class ContextCompactionEngine:
         messages: List[Dict[str, Any]],
         context_window: int = 128000,
         settings: Optional[dict] = None,
+        system_prompt: Optional[Any] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Layer 2 Synthesis with Model Offload and Warm-Prefix Replay.
@@ -1063,7 +1234,11 @@ class ContextCompactionEngine:
                     summary = None
                     if hasattr(client, "run_tool_agent"):
                         try:
-                            resp = await client.run_tool_agent(messages=replay_messages, tools=[], system_prompt=None)
+                            resp = await client.run_tool_agent(
+                                messages=replay_messages,
+                                tools=tools if tools is not None else [],
+                                system_prompt=system_prompt,
+                            )
                             if resp:
                                 if hasattr(resp, "choices") and resp.choices:
                                     summary = getattr(resp.choices[0].message, "content", None)
@@ -1094,3 +1269,42 @@ class ContextCompactionEngine:
             logger.debug(f"Context compaction offload non-fatal error: {e}")
 
         return messages
+
+    async def check_and_compact_async(
+        self,
+        messages: List[Dict[str, Any]],
+        context_window: int = 128000,
+        reserved_output_tokens: int = 4096,
+        headroom_tokens: int = 2048,
+        system_prompt: Optional[Any] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        settings: Optional[dict] = None,
+    ) -> List[Dict[str, Any]]:
+        """Async context evaluation.
+
+        If under genuine synthesis pressure, invokes compact_with_summary_model
+        with warm-prefix replay forwarding system_prompt and tools.
+        Falls back to synchronous check_and_compact.
+        """
+        if not messages or context_window <= 0:
+            return messages
+
+        current_tokens = self.calculate_history_tokens(messages)
+        ratio = current_tokens / context_window
+        if ratio >= self.SYNTHESIS_THRESHOLD or current_tokens >= self.SYNTHESIS_THRESHOLD_ABSOLUTE:
+            compacted = await self.compact_with_summary_model(
+                messages,
+                context_window=context_window,
+                settings=settings,
+                system_prompt=system_prompt,
+                tools=tools,
+            )
+            if compacted is not messages:
+                return compacted
+
+        return self.check_and_compact(
+            messages,
+            context_window=context_window,
+            reserved_output_tokens=reserved_output_tokens,
+            headroom_tokens=headroom_tokens,
+        )

@@ -552,6 +552,64 @@ class AnthropicProvider(BaseLLMClient):
         logger.warning(f"JSON decode failed in Anthropic classify_json: {res[:200]}")
         return None
 
+    def _sanitize_messages(self, messages: list[dict], preserve_historical_thinking: bool = True) -> list[dict]:
+        """Sanitizes messages for Anthropic API submission.
+
+        Preserves signed thinking and redacted_thinking blocks across historical turns
+        to maintain server-side prompt cache prefix validity. Only strips unsigned historical
+        thinking blocks (which the Anthropic API rejects) or when preserve_historical_thinking=False.
+        """
+        last_user_idx = -1
+        for i, m in enumerate(messages):
+            if isinstance(m, dict) and m.get("role") == "user":
+                last_user_idx = i
+
+        sanitized: list[dict] = []
+        for msg_idx, m in enumerate(messages):
+            if not isinstance(m, dict):
+                sanitized.append(m)
+                continue
+            if m.get("role") != "assistant":
+                sanitized.append(dict(m))
+                continue
+
+            content = m.get("content")
+            if not isinstance(content, list):
+                sanitized.append(dict(m))
+                continue
+
+            new_content = []
+            for block in content:
+                if not isinstance(block, dict):
+                    new_content.append(block)
+                    continue
+
+                b_type = block.get("type")
+                if b_type == "thinking":
+                    sig = block.get("signature") or getattr(block, "signature", None)
+                    if msg_idx >= last_user_idx:
+                        new_content.append(dict(block))
+                    elif preserve_historical_thinking and sig:
+                        new_content.append(dict(block))
+                    else:
+                        continue
+                elif b_type == "redacted_thinking":
+                    data = block.get("data") or getattr(block, "data", None)
+                    if msg_idx >= last_user_idx:
+                        new_content.append(dict(block))
+                    elif preserve_historical_thinking and data:
+                        new_content.append(dict(block))
+                    else:
+                        continue
+                else:
+                    new_content.append(dict(block))
+
+            m_copy = dict(m)
+            m_copy["content"] = new_content
+            sanitized.append(m_copy)
+
+        return sanitized
+
     async def run_tool_agent(self, messages: list, tools: list, system_prompt: str | tuple) -> Any:
         """Low-level multi-turn tool-calling. (Digunakan internal atau by agent_from_messages)."""
         if not self.client:
@@ -607,10 +665,12 @@ class AnthropicProvider(BaseLLMClient):
             else:
                 normalized_messages.append(m)
 
+        sanitized_messages = self._sanitize_messages(normalized_messages, preserve_historical_thinking=True)
+
         from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
         cbm = CacheBreakpointManager()
-        cached_messages = cbm.apply_to_messages(normalized_messages)
+        cached_messages = cbm.apply_to_messages(sanitized_messages)
 
         create_kwargs = {
             "model": self.model,

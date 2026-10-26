@@ -108,12 +108,43 @@ class DebateOrchestrator:
             bull_claim=bull_claim,
         )
 
+        from monika.application.analysis.debate.blackboard import DebateBlackboard
+
+        blackboard = DebateBlackboard(
+            symbol=clean_symbol,
+            fact_sheet=fact_sheet if isinstance(fact_sheet, dict) else original_context,
+        )
+        b_thesis = (
+            bull_claim.get("thesis")
+            or bull_claim.get("bull_thesis")
+            or bull_claim.get("argument")
+            or str(bull_claim)[:300]
+        )
+        blackboard.add_bull_thesis(
+            b_thesis,
+            confidence=float(bull_claim.get("strength_score", 5.0) or 5.0) / 10.0,
+            claim_dict=bull_claim,
+        )
+        br_thesis = (
+            bear_dissent.get("counter_thesis")
+            or bear_dissent.get("bear_dissent")
+            or bear_dissent.get("bear_thesis")
+            or bear_dissent.get("argument")
+            or str(bear_dissent)[:300]
+        )
+        blackboard.add_bear_thesis(
+            br_thesis,
+            confidence=float(bear_dissent.get("risk_severity", 5.0) or 5.0) / 10.0,
+            claim_dict=bear_dissent,
+        )
+
         judge_verdict = await evaluate_debate(
             client=judge_client,
             symbol=clean_symbol,
             original_context=original_context,
             bull_claim=bull_claim,
             bear_dissent=bear_dissent,
+            fact_sheet=fact_sheet,
         )
 
         decision = str(judge_verdict.get("final_decision") or judge_verdict.get("verdict") or "WAIT").upper()

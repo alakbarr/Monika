@@ -43,6 +43,9 @@ def _gemini_stream_parser(chunk: dict, result: StreamResult) -> bool:
         for part in parts:
             if part.get("thought") is True:
                 result.thinking_text += part.get("text", "")
+                ts = part.get("thoughtSignature") or part.get("thought_signature")
+                if ts and not getattr(result, "thought_signature", None):
+                    setattr(result, "thought_signature", ts)
             elif "text" in part:
                 result.text += part.get("text", "")
             elif "functionCall" in part:
@@ -999,6 +1002,44 @@ class GeminiProvider(BaseLLMClient):
                             if not is_synthetic_id:
                                 part_dict["thoughtSignature"] = str_id
                         parts.append(part_dict)
+                    elif b_type in ("thinking", "thought"):
+                        thinking_txt = (
+                            block.get("thinking", "") if isinstance(block, dict) else getattr(block, "thinking", "")
+                        )
+                        if not thinking_txt:
+                            thinking_txt = (
+                                block.get("text", "") if isinstance(block, dict) else getattr(block, "text", "")
+                            )
+                        sig = block.get("signature", "") if isinstance(block, dict) else getattr(block, "signature", "")
+                        if not sig:
+                            sig = (
+                                block.get("thought_signature", "")
+                                if isinstance(block, dict)
+                                else getattr(block, "thought_signature", "")
+                            )
+                        if not sig:
+                            sig = (
+                                block.get("thoughtSignature", "")
+                                if isinstance(block, dict)
+                                else getattr(block, "thoughtSignature", "")
+                            )
+                        if thinking_txt:
+                            part_dict: dict[str, Any] = {"text": str(thinking_txt), "thought": True}
+                            if sig:
+                                import base64
+
+                                if isinstance(sig, bytes):
+                                    part_dict["thoughtSignature"] = base64.b64encode(sig).decode("utf-8")
+                                else:
+                                    str_sig = str(sig).strip()
+                                    try:
+                                        base64.b64decode(str_sig, validate=True)
+                                        part_dict["thoughtSignature"] = str_sig
+                                    except Exception:
+                                        part_dict["thoughtSignature"] = base64.b64encode(
+                                            str_sig.encode("utf-8")
+                                        ).decode("utf-8")
+                            parts.append(part_dict)
                     elif b_type == "text":
                         text_val = block.get("text") if isinstance(block, dict) else getattr(block, "text", "")
                         parts.append({"text": text_val})
@@ -1009,15 +1050,22 @@ class GeminiProvider(BaseLLMClient):
             injected = False
             for gc in reversed(gemini_contents):
                 if gc.get("role") == "user":
-                    for p in reversed(gc.get("parts", [])):
-                        if "text" in p:
-                            p["text"] = f"{p['text']}\n\n{dynamic_note}"
+                    user_parts = list(gc.get("parts", []))
+                    for i in range(len(user_parts) - 1, -1, -1):
+                        p = user_parts[i]
+                        if isinstance(p, dict) and "text" in p and not p.get("thought"):
+                            user_parts[i] = dict(p, text=f"{p['text']}\n\n{dynamic_note}")
+                            injected = True
+                            break
+                        elif hasattr(p, "text") and not getattr(p, "thought", False):
+                            user_parts[i] = {"text": f"{getattr(p, 'text')}\n\n{dynamic_note}"}
                             injected = True
                             break
                     if injected:
+                        gc["parts"] = user_parts
                         break
             if not injected and gemini_contents:
-                gemini_contents[-1]["parts"].append({"text": dynamic_note})
+                gemini_contents[-1]["parts"] = list(gemini_contents[-1].get("parts", [])) + [{"text": dynamic_note}]
 
         eff_max_tokens = self.max_tokens or 36000
         is_thinking_active = str(self.thinking_level or "none").lower() not in ("none", "off")
@@ -1162,6 +1210,20 @@ class GeminiProvider(BaseLLMClient):
                     f"Gemini {self.model} run_tool_agent output truncated by token limit (finishReason=MAX_TOKENS, maxOutputTokens={eff_max_tokens})"
                 )
                 stop_reason = "max_tokens"
+
+            if stream_res.thinking_text:
+                sig = getattr(stream_res, "thought_signature", "") or ""
+                blocks.append(
+                    MockBlock(
+                        type="thinking",
+                        thinking=stream_res.thinking_text,
+                        text=stream_res.thinking_text,
+                        thought=True,
+                        signature=sig,
+                        thought_signature=sig,
+                        thoughtSignature=sig,
+                    )
+                )
 
             if stream_res.text:
                 blocks.append(MockBlock(type="text", text=stream_res.text))

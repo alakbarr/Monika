@@ -1236,6 +1236,7 @@ class OpenAIProvider(BaseLLMClient):
                 text_parts = []
                 tool_calls = []
                 tool_results = []
+                thinking_parts = []
 
                 for block in content:
                     b_type = block.get("type") if isinstance(block, dict) else getattr(block, "type", None)
@@ -1243,6 +1244,12 @@ class OpenAIProvider(BaseLLMClient):
                         text_val = block.get("text") if isinstance(block, dict) else getattr(block, "text", "")
                         if text_val:
                             text_parts.append(text_val)
+                    elif b_type in ("thinking", "thought"):
+                        t_val = block.get("thinking") if isinstance(block, dict) else getattr(block, "thinking", None)
+                        if not t_val:
+                            t_val = block.get("text") if isinstance(block, dict) else getattr(block, "text", "")
+                        if t_val:
+                            thinking_parts.append(str(t_val))
                     elif b_type == "tool_result":
                         c_val = block.get("content") if isinstance(block, dict) else getattr(block, "content", "")
                         tid = (
@@ -1297,6 +1304,8 @@ class OpenAIProvider(BaseLLMClient):
                         ast_msg["tool_calls"] = tool_calls
                     if m.get("reasoning_content"):
                         ast_msg["reasoning_content"] = m["reasoning_content"]
+                    elif thinking_parts:
+                        ast_msg["reasoning_content"] = "\n".join(thinking_parts)
                     for k in ("thought_signature", "thought", "reasoning_details", "extra_content"):
                         if k in m and m[k] is not None:
                             ast_msg[k] = m[k]
@@ -1318,9 +1327,9 @@ class OpenAIProvider(BaseLLMClient):
                     m_copy["name"] = call_id_to_name.get(str(tid)) or "tool"
                     norm_messages.append(m_copy)
                 else:
-                    norm_messages.append(m)
+                    norm_messages.append(dict(m))
             else:
-                norm_messages.append(m)
+                norm_messages.append(dict(m))
         return norm_messages
 
     async def run_tool_agent(self, messages: list, tools: list, system_prompt: Any):
@@ -1359,16 +1368,20 @@ class OpenAIProvider(BaseLLMClient):
 
         norm_msgs = self._normalize_messages(messages)
         if dynamic_sys and norm_msgs:
-            first_user = next((m for m in norm_msgs if m.get("role") == "user"), None)
-            if first_user and "<context_snapshot>" not in str(first_user.get("content", "")):
-                if isinstance(first_user.get("content"), str):
-                    first_user["content"] = (
-                        f"{first_user['content']}\n\n<context_snapshot>\n{dynamic_sys}\n</context_snapshot>"
-                    )
-                elif isinstance(first_user.get("content"), list):
-                    first_user["content"].append(
-                        {"type": "text", "text": f"\n\n<context_snapshot>\n{dynamic_sys}\n</context_snapshot>"}
-                    )
+            first_user_idx = next((i for i, m in enumerate(norm_msgs) if m.get("role") == "user"), None)
+            if first_user_idx is not None:
+                first_user = dict(norm_msgs[first_user_idx])
+                user_content = first_user.get("content", "")
+                if "<context_snapshot>" not in str(user_content):
+                    if isinstance(user_content, str):
+                        first_user["content"] = (
+                            f"{user_content}\n\n<context_snapshot>\n{dynamic_sys}\n</context_snapshot>"
+                        )
+                    elif isinstance(user_content, list):
+                        first_user["content"] = list(user_content) + [
+                            {"type": "text", "text": f"\n\n<context_snapshot>\n{dynamic_sys}\n</context_snapshot>"}
+                        ]
+                norm_msgs[first_user_idx] = first_user
 
         if is_openrouter and is_claude_or_qwen:
             from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager

@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Any, Dict, Union
 
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 from monika.infrastructure.llm.prompt_disciplines import get_universal_execution_discipline
 from monika.infrastructure.providers.base_provider import BaseLLMClient
 
@@ -60,21 +61,7 @@ async def generate_bull_advocacy(
             "- 1-2: Negligible bullish threat. Clear bearish dominance with no credible upward reversal drivers."
         )
 
-    system_prompt = f"""{role_desc}
-Rely heavily on the 'original_context' (entry, SL, TP, invalidation) and the Fact Sheet provided in the user message.
-
-{score_desc}
-
-{get_universal_execution_discipline()}
-
-[COMPUTE, DO NOT ASSERT DISCIPLINE]:
-- NEVER invent, guess, hallucinate, or rhetorically declare numbers, indicators, or prices.
-- EVERY numerical claim MUST be explicitly cited from the Fact Sheet or calculated from explicit formulas (e.g. entry-SL gap, R:R ratio, ATR multiple).
-- Unsupported rhetorical assertions (e.g. 'momentum will explode', 'support will easily hold') without quantitative metrics are strictly forbidden.
-- Ground all arguments in concrete mathematical and structural evidence: ATR levels, liquidity zones, CVD divergence, orderbook imbalance, and quantified price gaps.
-
-[TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Output valid JSON strictly conforming to the schema. bull_thesis must be structured in 3-5 dense telegraphic bullet points (max 150 words) and grounded with exact numbers from Fact Sheet. Zero conversational filler.
-Respond in valid JSON format ONLY conforming to the schema."""
+    system_prompt = CacheBreakpointManager.get_canonical_debate_system_prompt()
 
     schema = {
         "type": "object",
@@ -101,14 +88,24 @@ Respond in valid JSON format ONLY conforming to the schema."""
         "required": ["bull_thesis", "strength_score", "evidence_cited"],
     }
 
-    context_payload = {"original_context": original_context, "fact_sheet": fact_sheet}
-    context_str = json.dumps(context_payload, separators=(",", ":"), default=str)
+    task_directive = (
+        f"[TARGET ASSET]: {symbol} | [DIRECTION]: {decision.upper()}\n"
+        f"{role_desc}\n\n"
+        f"{score_desc}\n\n"
+        "Generate bull analysis based strictly on the setup and Fact Sheet above. "
+        "Return valid JSON strictly matching the schema."
+    )
+    base_user_msg = CacheBreakpointManager.build_shared_debate_user_message(
+        fact_sheet=fact_sheet,
+        original_context=original_context,
+        append_ledger=None,
+        task_directive=task_directive,
+    )
 
     temp = getattr(client, "default_temperature", 0.2)
     last_err = None
     for attempt in range(2):
         try:
-            base_user_msg = f"[TARGET ASSET]: {symbol} | [DIRECTION]: {decision.upper()}\nTrade Setup & Market Fact Sheet:\n{context_str}\n\nGenerate bull analysis based strictly on the setup and Fact Sheet above."
             user_msg = (
                 base_user_msg
                 if attempt == 0
@@ -138,6 +135,10 @@ Respond in valid JSON format ONLY conforming to the schema."""
     }
 
 
+# Canonical alias for debate lifecycle
+generate_bull_claim = generate_bull_advocacy
+
+
 async def generate_bull_rebuttal(
     client: BaseLLMClient,
     symbol: str,
@@ -164,13 +165,7 @@ async def generate_bull_rebuttal(
         "- 1-2: Capitulation. Bear's critique identifies a fatal flaw that cannot be defended."
     )
 
-    system_prompt = f"""{role_desc}
-Rely heavily on 'original_context', 'bull_claim', 'bear_dissent', and the Fact Sheet.
-
-{score_desc}
-
-[TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Output valid JSON strictly conforming to the schema. rebuttal_thesis must be structured in 3-5 dense telegraphic bullet points (max 150 words) and grounded with exact numbers from Fact Sheet. Zero conversational filler.
-Respond in valid JSON format ONLY conforming to the schema."""
+    system_prompt = CacheBreakpointManager.get_canonical_debate_system_prompt()
 
     schema = {
         "type": "object",
@@ -192,22 +187,27 @@ Respond in valid JSON format ONLY conforming to the schema."""
         "required": ["rebuttal_thesis", "rebuttal_strength", "rebuttal_evidence"],
     }
 
-    payload = {
-        "original_context": original_context,
+    task_directive = (
+        f"[TARGET ASSET]: {symbol} | [DIRECTION]: {decision.upper()}\n"
+        f"{role_desc}\n\n"
+        f"{score_desc}\n\n"
+        "Provide Round 2 Bullish Rebuttal confronting the Bear Dissent based strictly on the Fact Sheet. "
+        "Return valid JSON strictly matching the schema."
+    )
+    append_ledger = {
         "bull_claim": bull_claim,
         "bear_dissent": bear_dissent,
-        "fact_sheet": fact_sheet,
     }
-    context_str = json.dumps(payload, separators=(",", ":"), default=str)
+    base_user_msg = CacheBreakpointManager.build_shared_debate_user_message(
+        fact_sheet=fact_sheet,
+        original_context=original_context,
+        append_ledger=append_ledger,
+        task_directive=task_directive,
+    )
     temp = getattr(client, "default_temperature", 0.2)
     last_err = None
     for attempt in range(2):
         try:
-            base_user_msg = (
-                f"[TARGET ASSET]: {symbol} | [DIRECTION]: {decision.upper()}\n"
-                f"Round 1 Debate & Market Fact Sheet:\n{context_str}\n\n"
-                f"Provide Round 2 Bullish Rebuttal confronting the Bear Dissent based strictly on the Fact Sheet."
-            )
             user_msg = (
                 base_user_msg
                 if attempt == 0
@@ -236,3 +236,7 @@ Respond in valid JSON format ONLY conforming to the schema."""
         "parse_error": True,
         "degraded_fallback": True,
     }
+
+
+# Canonical alias for debate lifecycle
+generate_bull_claim = generate_bull_advocacy

@@ -27,24 +27,36 @@ class MarketGroundingEngine:
     @classmethod
     async def build_grounding_table(
         cls,
-        symbol: str,
+        symbol: Any,
         session: Any = None,
         days_back: int = 30,
         repository: Any = None,
+        as_of: Optional[datetime] = None,
     ) -> str:
         """Constructs Markdown Ground Truth section for prompt injection via MarketDataRepository."""
-        if not symbol:
+        if not symbol and not session:
             return ""
 
-        norm_sym = symbol.upper().replace("/", "")
+        # Seamlessly support both (symbol, session, ...) and (session, symbol, ...) signatures
+        if isinstance(symbol, str):
+            sym = symbol
+            sess = session
+        else:
+            sess = symbol
+            sym = str(session) if session else ""
+
+        if not sym:
+            return ""
+
+        norm_sym = sym.upper().replace("/", "")
         repo = repository
-        if repo is None and session is not None:
+        if repo is None and sess is not None:
             try:
                 from monika.infrastructure.database.repositories.market_data_repository import (
                     SqlAlchemyMarketDataRepository,
                 )
 
-                repo = SqlAlchemyMarketDataRepository(session)
+                repo = SqlAlchemyMarketDataRepository(sess)
             except Exception as e:
                 logger.debug(f"[MarketGroundingEngine] Could not initialize SqlAlchemyMarketDataRepository: {e}")
 
@@ -77,9 +89,22 @@ class MarketGroundingEngine:
         pct_change = round(((last_close - closes[0]) / max(closes[0], 1e-9)) * 100.0, 2)
         trend_str = f"+{pct_change}% (BULLISH)" if pct_change > 0 else f"{pct_change}% (BEARISH)"
 
+        ref_ts = as_of
+        if ref_ts is None and rows and isinstance(getattr(rows[-1], "timestamp", None), datetime):
+            ref_ts = rows[-1].timestamp
+
+        if isinstance(ref_ts, datetime):
+            if ref_ts.tzinfo is None:
+                ref_ts = ref_ts.replace(tzinfo=timezone.utc)
+            else:
+                ref_ts = ref_ts.astimezone(timezone.utc)
+            gen_at_str = ref_ts.strftime("%Y-%m-%d %H:%M:%S UTC")
+        else:
+            gen_at_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:00:00 UTC")
+
         sections: List[str] = [
             "## Ground Truth — Empirical Market Context (Strict Anchor)",
-            f"*Generated at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}*",
+            f"*Generated at: {gen_at_str}*",
             "You MUST treat the prices below as absolute ground truth. Do not invent or assume historical prices.\n",
             f"### {norm_sym} (Recent {days_back}-Day Context)",
             f"- **Current Reference Price**: `{last_close:,.4f}`",
@@ -104,7 +129,12 @@ class MarketGroundingEngine:
         return "\n".join(sections) + "\n"
 
     @classmethod
-    def format_grounding_from_df(cls, symbol: str, df: Optional[pd.DataFrame]) -> str:
+    def format_grounding_from_df(
+        cls,
+        symbol: str,
+        df: Optional[pd.DataFrame],
+        as_of: Optional[datetime] = None,
+    ) -> str:
         """Constructs Markdown Ground Truth section directly from an OHLCV DataFrame."""
         if df is None or df.empty:
             return ""
@@ -123,9 +153,33 @@ class MarketGroundingEngine:
         pct_chg = round(((last_close - closes[0]) / max(closes[0], 1e-9)) * 100.0, 2)
         trend_str = f"+{pct_chg}% (BULLISH)" if pct_chg > 0 else f"{pct_chg}% (BEARISH)"
 
+        ref_ts = as_of
+        if ref_ts is None and hasattr(df, "index") and len(df.index) > 0:
+            last_idx = df.index[-1]
+            if isinstance(last_idx, datetime):
+                ref_ts = last_idx
+            else:
+                pydt_fn = getattr(last_idx, "to_pydatetime", None)
+                if callable(pydt_fn):
+                    try:
+                        pydt_val = pydt_fn()
+                        if isinstance(pydt_val, datetime):
+                            ref_ts = pydt_val
+                    except Exception:
+                        pass
+
+        if isinstance(ref_ts, datetime):
+            if ref_ts.tzinfo is None:
+                ref_ts = ref_ts.replace(tzinfo=timezone.utc)
+            else:
+                ref_ts = ref_ts.astimezone(timezone.utc)
+            gen_at_str = ref_ts.strftime("%Y-%m-%d %H:%M:%S UTC")
+        else:
+            gen_at_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:00:00 UTC")
+
         sections = [
             "## Ground Truth — Empirical Market Context (Strict Anchor)",
-            f"*Generated at: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}*",
+            f"*Generated at: {gen_at_str}*",
             "You MUST treat the prices below as absolute ground truth. Do not invent or assume historical prices.\n",
             f"### {norm_sym} (Empirical Regime Context)",
             f"- **Current Reference Price**: `{last_close:,.4f}`",

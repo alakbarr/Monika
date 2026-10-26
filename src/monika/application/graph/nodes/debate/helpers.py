@@ -112,25 +112,44 @@ def _is_grounded(claim_dict: dict, current_price: float, reference: Optional[Dic
         "code",
         "ungrounded_penalty",
     }
-    claim_nums: List[float] = []
+    raw_claim_nums: List[float] = []
     for k, v in claim_dict.items():
         if k not in meta_keys:
-            claim_nums.extend(_extract_numbers_recursive(v))
+            raw_claim_nums.extend(_extract_numbers_recursive(v))
 
-    if not claim_nums:
+    if not raw_claim_nums:
         return False
 
-    # Verify against reference (e.g. fact_sheet) if available
+    trivial_periods = {14.0, 20.0, 50.0, 100.0, 200.0}
+    non_trivial = [n for n in raw_claim_nums if n not in trivial_periods]
+    claim_nums = non_trivial if non_trivial else raw_claim_nums
+
+    decimal_figures = [n for n in claim_nums if (n % 1 != 0 or n > 500)]
+
+    ref_nums: List[float] = []
     if reference and isinstance(reference, dict):
         ref_nums = _extract_numbers_recursive(reference)
-        for n in claim_nums:
+
+    def matches_grounding(n: float) -> bool:
+        if ref_nums:
             for rn in ref_nums:
                 if rn > 0 and (abs(n - rn) / rn <= 0.05 or abs(n - rn) <= 0.001):
                     return True
+        if current_price > 0:
+            if abs(n - current_price) / current_price <= 0.20:
+                return True
+        return False
 
-    if current_price > 0:
-        has_plausible_price = any(abs(n - current_price) / current_price <= 0.20 for n in claim_nums)
-        return has_plausible_price
+    grounded_count = sum(1 for n in claim_nums if matches_grounding(n))
+
+    # If there are >= 3 decimal figures in the claim, require at least 50% to be grounded
+    if len(decimal_figures) >= 3:
+        grounded_decimals = sum(1 for n in decimal_figures if matches_grounding(n))
+        if (grounded_decimals / len(decimal_figures)) < 0.50:
+            return False
+
+    if ref_nums or current_price > 0:
+        return grounded_count >= 1
 
     return len(claim_nums) >= 2
 

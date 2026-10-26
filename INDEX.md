@@ -5191,6 +5191,11 @@
 #### `__init__.py`
 - **Path**: [`src/monika/application/agent/harness/__init__.py`](src/monika/application/agent/harness/__init__.py)
 
+#### `action_reviewer.py` - *Safety action reviewer prompt builder with prompt-injection-resistant history filtering.*
+- **Path**: [`src/monika/application/agent/harness/action_reviewer.py`](src/monika/application/agent/harness/action_reviewer.py)
+- **Top-Level Functions**:
+  - `build_filtered_review_history(messages: Sequence[dict[str, Any]], pending_tool_name: str, pending_args: dict[str, Any]) -> str`: Build filtered history and pending action XML for safety review.
+
 #### `agent_harness.py` - *File: src/monika/application/agent/harness/agent_harness.py*
 - **Path**: [`src/monika/application/agent/harness/agent_harness.py`](src/monika/application/agent/harness/agent_harness.py)
 - **Classes**:
@@ -5221,7 +5226,7 @@
     - `__init__(settings: Optional[dict], aux_client: Optional[Any])`
     - `prune_oversized_tool_results(messages: List[dict], threshold_chars: int, head_chars: int, ...) -> List[dict]` - *Stage 0: Deterministic model-free pruning of individual oversized tool results.*
     - `prune_deterministic_tools(messages: List[dict]) -> List[dict]` - *Phase 1: Deterministic Tool Pruning & Deduplication.*
-    - `distill_initial_bundle_after_turn_1(messages: List[dict]) -> List[dict]` - *P0 Token Optimization: Prunes the verbose 50k character raw prefetch bundle*
+    - `distill_initial_bundle_after_turn_1(messages: List[dict], turn: int, preserve_kv_cache: bool) -> List[dict]` - *P0 Token Optimization: Prunes the verbose 50k character raw prefetch bundle*
     - `is_balanced_tool_boundary(messages: List[dict], split_idx: int) -> bool` - *Verifies whether splitting messages at split_idx keeps all tool-use/tool-result pairs balanced.*
     - `split_boundaries(messages: List[dict], tail_turns: int) -> Tuple[List[dict], List[dict], List[dict]]` - *Phase 2: Protected Boundary Split with Warm-Prefix Preservation and Tool-Pair Snap.*
     - `async summarize_middle(middle_messages: List[dict]) -> str` - *Phase 3: Auxiliary Model Summarization with Iterative Chaining.*
@@ -5237,6 +5242,16 @@
 #### `error_classifier.py` - *Structured error classification and recovery strategy assignment (Phase 3).*
 - **Path**: [`src/monika/application/agent/harness/error_classifier.py`](src/monika/application/agent/harness/error_classifier.py)
 
+#### `fs_observation_policy.py` - *Filesystem observation policy ensuring edit safety.*
+- **Path**: [`src/monika/application/agent/harness/fs_observation_policy.py`](src/monika/application/agent/harness/fs_observation_policy.py)
+- **Classes**:
+  - `class FsVersion`: Exact filesystem version snapshot.
+  - `class ObservedStateGate`: Gate verifying files have been observed prior to mutation.
+    - `__init__() -> None`
+    - `record_read(path: str | Path, truncated: bool) -> FsVersion | None` - *Record file version upon reading. Ignored if content was truncated.*
+    - `check_write_allowed(path: str | Path) -> tuple[bool, str | None, str | None]` - *Verify whether an edit or overwrite is allowed for path.*
+    - `record_write(path: str | Path) -> FsVersion | None` - *Update observed version after a successful write/edit.*
+
 #### `general_tool_pruner.py` - *Model-Free Deterministic Tool Result Pruner.*
 - **Path**: [`src/monika/application/agent/harness/general_tool_pruner.py`](src/monika/application/agent/harness/general_tool_pruner.py)
 - **Classes**:
@@ -5248,6 +5263,19 @@
     - `truncate_head(text: str, max_chars: int, max_lines: int, ...) -> str` - *Truncate file content keeping head lines (headers, imports, declarations).*
     - `truncate_tail(text: str, max_chars: int, max_lines: int, ...) -> str` - *Truncate shell/terminal/build logs keeping tail lines (exit code, stack trace, error message).*
     - `prune_by_tool_type(tool_name: str, content: Union[str, Dict[str, Any], List[Any]], max_chars: int) -> str` - *Routes tool result content to the optimal pruning strategy:*
+
+#### `goal_driver.py` - *Goal driver service managing goal lifecycle and grounded wrap-up prompts.*
+- **Path**: [`src/monika/application/agent/harness/goal_driver.py`](src/monika/application/agent/harness/goal_driver.py)
+- **Classes**:
+  - `class GoalRef`: Optimistic concurrency token for goal state transitions.
+  - `class GoalSnapshot`: Immutable state snapshot for a tracked goal.
+  - `class GoalStateService`: State service governing goal lifecycle with optimistic concurrency and premature block protection.
+    - `__init__(blocked_after_consecutive_rounds: int) -> None`
+    - `create_goal(goal_id: str, description: str, status: GoalStatus, ...) -> GoalSnapshot`
+    - `get_goal(goal_id: str) -> GoalSnapshot | None`
+    - `update_goal(ref: GoalRef, action: str, new_status: GoalStatus | None, ...) -> GoalSnapshot`
+    - `build_goal_complete_prompt(goal: GoalSnapshot, evidence_summary: str) -> str` - *Build grounded wrap-up prompt for completed goal.*
+    - `build_goal_blocked_prompt(goal: GoalSnapshot, block_reason: str) -> str` - *Build grounded wrap-up prompt for blocked goal.*
 
 #### `harness_state.py` - *Typed state machine and phase models for autonomous agent harness loop.*
 - **Path**: [`src/monika/application/agent/harness/harness_state.py`](src/monika/application/agent/harness/harness_state.py)
@@ -5305,10 +5333,61 @@
     - `verify_deliverables_batch(paths: List[str], min_bytes: int) -> DeliverableVerdict` - *Probes multiple deliverables, collecting verified and missing paths.*
     - `audit_claimed_completion(response_text: str, touched_files: Optional[List[str]], ledger: Optional[Any]) -> DeliverableVerdict` - *Audits model response text for claimed file operations.*
 
+#### `repeat_tool_guard.py` - *Repetition guard monitoring consecutive identical tool invocations.*
+- **Path**: [`src/monika/application/agent/harness/repeat_tool_guard.py`](src/monika/application/agent/harness/repeat_tool_guard.py)
+- **Classes**:
+  - `class RepeatToolGuard`: Detects consecutive identical tool calls and injects reminders to break loops.
+    - `__init__(thresholds: tuple[int, ...], excluded_tools: frozenset[str] | None) -> None`
+    - `current_streak() -> int`
+    - `observe(tool_name: str, args: Any) -> dict[str, Any] | None`
+    - `reset_on_user_turn() -> None` - *Reset streak counter when a new user turn commences.*
+- **Top-Level Functions**:
+  - `canonicalize_tool_key(tool_name: str, args: Any) -> str`: Recursively sort dictionary keys to create deterministic tool invocation signatures.
+
 #### `repetition_guard.py` - *Monitors assistant text generation for degenerate repetition loops.*
 - **Path**: [`src/monika/application/agent/harness/repetition_guard.py`](src/monika/application/agent/harness/repetition_guard.py)
 - **Top-Level Functions**:
   - `detect_text_repetition(text: str, min_phrase_len: int, min_repeats: int, ...) -> Tuple[bool, Optional[str]]`: Detect degenerate repeating phrases in model output.
+
+#### `session_surface.py` - *Session surface maintaining an append-only event log and KV-cache-preserving active nodes.*
+- **Path**: [`src/monika/application/agent/harness/session_surface.py`](src/monika/application/agent/harness/session_surface.py)
+- **Classes**:
+  - `class ReplaceOp(TypedDict)`
+  - `class SurfaceEvent`
+  - `class SessionSurface`: Append-only session surface with KV-cache-preserving active node list.
+    - `__init__() -> None`
+    - `log() -> list[SurfaceEvent]`
+    - `nodes() -> list[int]`
+    - `get_event(seq: int) -> SurfaceEvent | None`
+    - `append_event(event_type: SurfaceEventType, message: dict[str, Any] | None, surface_op: str | dict[str, Any] | None, ...) -> SurfaceEvent`
+    - `derive_messages(include_system: bool) -> list[dict[str, Any]]` - *Incrementally derive model-visible messages in O(new nodes) when content_generation hasn't changed.*
+  - `class SystemPromptProjection`: Manages system/message placement on SessionSurface preserving KV cache prefixes.
+    - `__init__(surface: SessionSurface, starts_series: bool, in_history: bool) -> None`
+    - `update_system_prompt(content: str | dict[str, Any], metadata: dict[str, Any] | None) -> SurfaceEvent`
+  - `class RuntimeContextProjection`: Renders dynamic runtime context sections into a tail user message with SHA-1 deduplication.
+    - `__init__() -> None`
+    - `project(sections: dict[str, str]) -> dict[str, Any] | None`
+    - `reset_on_compaction(replace_generation: int) -> None` - *Clear retained digest when compaction replaces nodes so next step re-emits context if needed.*
+  - `class ThrottledTimeContext`: Throttles wall-clock time snapshots to avoid unnecessary KV cache invalidations.
+    - `__init__(refresh_interval_seconds: float) -> None`
+    - `project(now_ts: float | None, as_of_iso: str | None) -> dict[str, Any] | None`
+- **Top-Level Functions**:
+  - `deep_freeze_message(msg: dict[str, Any]) -> dict[str, Any]`: Return a deep-copied message dict so caller mutations cannot corrupt stored surface messages.
+
+#### `spill_store.py` - *Creation-time output spill store and spill policy.*
+- **Path**: [`src/monika/application/agent/harness/spill_store.py`](src/monika/application/agent/harness/spill_store.py)
+- **Classes**:
+  - `class SpillRef`: Reference to spilled output stored on disk.
+  - `class SpillStore`: Stores spilled outputs under root_dir / session-<sha256(session_id)[:12]>.
+    - `__init__(root_dir: str | Path) -> None`
+    - `get_session_dir(session_id: str) -> Path`
+    - `save_text(session_id: str, tool_name: str, content: str) -> SpillRef`
+  - `class SpillPolicy`: Enforces token budgets by spilling oversized tool outputs and generating head/tail excerpts.
+    - `__init__(store: SpillStore, max_inline_tokens: int, exempt_tools: frozenset[str] | None) -> None`
+    - `estimate_tokens(content: str) -> int`
+    - `apply(session_id: str, tool_name: str, content: str) -> tuple[str, SpillRef | None]`
+- **Top-Level Functions**:
+  - `encode_safe_segment(name: str) -> str`: Encode string for safe filesystem usage.
 
 #### `stall_guard.py`
 - **Path**: [`src/monika/application/agent/harness/stall_guard.py`](src/monika/application/agent/harness/stall_guard.py)
@@ -5349,6 +5428,21 @@
   - `deep_repair_tool_arguments(tool_name: str, args: Dict[str, Any], schema: Dict[str, Any], ...) -> bool`: Attempt intelligent, self-healing repair of tool arguments when jsonschema.validate() fails.
   - `canonicalize_tool_arguments(value: Any) -> Any`: Recursively sorts dictionary keys and formats nested collections so identical
   - `compute_canonical_tool_signature(tool_name: str, tool_args: Any) -> str`: Computes a deterministic MD5 hash signature for a tool name and argument payload.
+
+#### `tool_scheduler.py` - *Ordered concurrency pool and tool call recovery for tool execution.*
+- **Path**: [`src/monika/application/agent/harness/tool_scheduler.py`](src/monika/application/agent/harness/tool_scheduler.py)
+- **Classes**:
+  - `class PlannedToolCall`: A planned tool call emitted by the assistant.
+  - `class ToolCallOutcome`: Outcome of a tool execution ready for the session surface.
+  - `class ToolCallRecovery`: Tracks tool call dispatch lifecycle and synthesizes results for dangling calls.
+    - `__init__() -> None`
+    - `register_assistant_tool_calls(calls: Sequence[PlannedToolCall] | Sequence[dict[str, Any]]) -> None`
+    - `mark_dispatched(call_id: str) -> None`
+    - `mark_completed(call_id: str) -> None`
+    - `synthesize_missing_results(aborted: bool) -> list[ToolCallOutcome]`
+  - `class OrderedToolScheduler`: Coordinates tool execution with ordered preparation, bounded concurrency, and Head-of-Line commits.
+    - `__init__(max_parallel_tool_calls: int) -> None`
+    - `async execute_batch(calls: Sequence[PlannedToolCall], prepare_fn: Callable[[PlannedToolCall], Awaitable[None] | None] | None, execute_fn: Callable[[PlannedToolCall], Awaitable[ToolCallOutcome]] | None, ...) -> list[ToolCallOutcome]`
 
 #### `trade_stop_gates.py` - *Trade Stop Gates for Trading Agent Harness.*
 - **Path**: [`src/monika/application/agent/harness/trade_stop_gates.py`](src/monika/application/agent/harness/trade_stop_gates.py)
@@ -5746,6 +5840,13 @@
 - **Top-Level Functions**:
   - `calculate_stage1_priced_in_baseline(symbol: str, cot_percentile: float, retail_sentiment: Optional[float], ...) -> dict`
 
+#### `symbol_fact_bundle.py` - *Symbol Fact Bundle — Pre-computed, immutable-friendly market fact snapshot.*
+- **Path**: [`src/monika/application/analysis/calculators/symbol_fact_bundle.py`](src/monika/application/analysis/calculators/symbol_fact_bundle.py)
+- **Classes**:
+  - `class SymbolFactBundle`: Immutable pre-computed snapshot of symbol facts and cached prompt prefixes.
+- **Top-Level Functions**:
+  - `async build_symbol_fact_bundle(session: Any, symbol: str, fact_sheet: Any, ...) -> SymbolFactBundle`: Builds and caches a SymbolFactBundle for a given symbol.
+
 #### `taylor_rule.py` - *Taylor Rule Implied Policy Rate Calculator.*
 - **Path**: [`src/monika/application/analysis/calculators/taylor_rule.py`](src/monika/application/analysis/calculators/taylor_rule.py)
 - **Classes**:
@@ -5839,6 +5940,7 @@
 - **Classes**:
   - `class DebateBlackboard`: Central structured blackboard for adversarial multi-agent debate.
     - `__init__(symbol: str, fact_sheet: Optional[dict])`
+    - `extract_claim_metadata(claim: Optional[Dict[str, Any]]) -> Tuple[List[float], List[str]]` - *Extracts numeric price levels and falsification triggers from a claim dictionary.*
     - `add_bull_thesis(thesis: str, key_levels: Optional[List[float]], confidence: float, ...) -> None` - *Appends concise bull claim and falsification criteria to blackboard.*
     - `add_bear_thesis(thesis: str, key_levels: Optional[List[float]], confidence: float, ...) -> None` - *Appends concise bear counter-claim and falsification criteria to blackboard.*
     - `extract_sparse_contradictions() -> List[Dict[str, Any]]` - *Deterministic Python extractor: Identifies direct opposing friction points*
@@ -5977,8 +6079,8 @@
 - **Path**: [`src/monika/application/analysis/grounding/market_grounding.py`](src/monika/application/analysis/grounding/market_grounding.py)
 - **Classes**:
   - `class MarketGroundingEngine`: Extracts empirical market realities and constructs Ground Truth prompt context.
-    - `async build_grounding_table(symbol: str, session: Any, days_back: int, ...) -> str` - *Constructs Markdown Ground Truth section for prompt injection via MarketDataRepository.*
-    - `format_grounding_from_df(symbol: str, df: Optional[pd.DataFrame]) -> str` - *Constructs Markdown Ground Truth section directly from an OHLCV DataFrame.*
+    - `async build_grounding_table(symbol: Any, session: Any, days_back: int, ...) -> str` - *Constructs Markdown Ground Truth section for prompt injection via MarketDataRepository.*
+    - `format_grounding_from_df(symbol: str, df: Optional[pd.DataFrame], as_of: Optional[datetime]) -> str` - *Constructs Markdown Ground Truth section directly from an OHLCV DataFrame.*
 
 #### `provenance_tagger.py` - *Provenance Tagger & Ledger: Tracks numeric provenance of tool outputs*
 - **Path**: [`src/monika/application/analysis/grounding/provenance_tagger.py`](src/monika/application/analysis/grounding/provenance_tagger.py)
@@ -12246,6 +12348,9 @@
 - **Path**: [`src/monika/infrastructure/llm/cache_breakpoint_manager.py`](src/monika/infrastructure/llm/cache_breakpoint_manager.py)
 - **Classes**:
   - `class CacheBreakpointManager`: Manages explicit Anthropic cache_control breakpoints (up to 4 per request).
+    - `get_canonical_debate_system_prompt(include_discipline: bool) -> str` - *Returns the byte-identical canonical debate system prompt shared across all debate and risk personas.*
+    - `build_shared_debate_user_message(fact_sheet: Any, original_context: Any, append_ledger: Optional[Dict[str, Any]], ...) -> str` - *Constructs a three-segment debate user message designed for prefix-cache sharing:*
+    - `compute_disjoint_cache_metrics(uncached_input_tokens: int, cache_read_tokens: int, cache_write_tokens: int, ...) -> Dict[str, float | int]` - *Computes accurate disjoint KV prompt cache metrics:*
     - `get_min_cacheable_chars(model_name: str) -> int` - *Returns required minimum characters for Anthropic / Gemini / provider prompt caching.*
     - `should_inject_anchor(model_name: str, provider_name: str, current_prompt_chars: int) -> bool` - *Determines whether CANONICAL_TIER0_ANCHOR should be injected.*
     - `pad_system_prompt_to_threshold(system_prompt: str, model_name: str, provider_name: str, ...) -> str` - *Pads system prompts with canonical invariant rules only when close to cache threshold (or force=True).*
@@ -12300,6 +12405,9 @@
 - **Path**: [`src/monika/infrastructure/llm/context_compaction.py`](src/monika/infrastructure/llm/context_compaction.py)
 - **Classes**:
   - `class ContextCompactionEngine`: Manages context hygiene and compaction across agent execution turns.
+    - `prune_tool_result_text(text: str, threshold_chars: int, head_chars: int, ...) -> tuple[str, bool]`
+    - `prune_session_tool_results(messages: list[dict[str, Any]], threshold_chars: int, head_chars: int, ...) -> tuple[list[dict[str, Any]], int]`
+    - `find_tool_pairing_balanced_cut(messages: list[dict[str, Any]], target_keep_from_idx: int, min_first_idx: int) -> int`
     - `check_tool_family_quota(tool_name: str, session_calls: List[str], max_quota: Optional[int]) -> tuple[bool, Optional[str]]` - *Guards against parameter-variant oscillation loops within the same tool family.*
     - `__init__(settings: Optional[dict])`
     - `micro_prune(tool_output: str, tool_name: str) -> str` - *Applies deterministic micro-compaction to raw tool output.*
@@ -12308,9 +12416,13 @@
     - `mask_aged_observations(messages: List[Dict[str, Any]], keep_recent_turns: int, turns_to_keep: Optional[int]) -> List[Dict[str, Any]]` - *Observation Masking / Turn Aging.*
     - `check_and_compact(messages: List[Dict[str, Any]], context_window: int, reserved_output_tokens: int, ...) -> List[Dict[str, Any]]` - *Evaluates context pressure and applies Layer 1/2/3 defense.*
     - `emergency_compact(messages: List[Dict[str, Any]], context_window: int, target_reduction: float) -> List[Dict[str, Any]]` - *Emergency compaction for context overflow recovery.*
-    - `async compact_with_summary_model(messages: List[Dict[str, Any]], context_window: int, settings: Optional[dict]) -> List[Dict[str, Any]]` - *Layer 2 Synthesis with Model Offload and Warm-Prefix Replay.*
+    - `async compact_with_summary_model(messages: List[Dict[str, Any]], context_window: int, settings: Optional[dict], ...) -> List[Dict[str, Any]]` - *Layer 2 Synthesis with Model Offload and Warm-Prefix Replay.*
+    - `async check_and_compact_async(messages: List[Dict[str, Any]], context_window: int, reserved_output_tokens: int, ...) -> List[Dict[str, Any]]` - *Async context evaluation.*
 - **Top-Level Functions**:
   - `spill_tool_output(tool_output: str, tool_name: str, threshold_chars: int, ...) -> str`: Spill oversized tool outputs to disk, replacing with a preview and file reference (I6).
+  - `prune_tool_result_text(text: str, threshold_chars: int, head_chars: int, ...) -> tuple[str, bool]`: Prunes the middle of an oversized tool result string with 1-pass idempotence.
+  - `prune_session_tool_results(messages: list[dict[str, Any]], threshold_chars: int, head_chars: int, ...) -> tuple[list[dict[str, Any]], int]`: Prunes oversized tool results across a session in a single batch pass.
+  - `find_tool_pairing_balanced_cut(messages: list[dict[str, Any]], target_keep_from_idx: int, min_first_idx: int) -> int`: Finds a cut point where no tool call is orphaned from its tool result.
 
 #### `context_compressor.py` - *Unified Context Compressor & Memory Compaction Facade (Phase 4).*
 - **Path**: [`src/monika/infrastructure/llm/context_compressor.py`](src/monika/infrastructure/llm/context_compressor.py)
@@ -12940,6 +13052,7 @@
 - **Classes**:
   - `class DeepSeekProvider(OpenAIProvider)`: Provider untuk model DeepSeek.
     - `__init__(model: str, max_tokens: int, api_key: Optional[str], ...)`
+    - `get_session_affinity_headers(session_id: Optional[str], is_compaction: bool) -> dict[str, str]` - *Returns session affinity headers for DeepSeek KV-cache routing and compaction.*
 
 #### `error_classifier.py` - *Backward-compatibility shim.*
 - **Path**: [`src/monika/infrastructure/providers/error_classifier.py`](src/monika/infrastructure/providers/error_classifier.py)

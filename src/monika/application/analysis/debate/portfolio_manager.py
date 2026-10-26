@@ -9,7 +9,11 @@ logger = logging.getLogger("TradingAgent.PortfolioManager")
 async def make_portfolio_decision(
     client: BaseLLMClient, symbol: str, risk_debate_states: dict, actual_risk_state: dict | None
 ) -> dict:
+    from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
+    anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
     sys_prompt = (
+        f"{anchor}\n\n---\n\n"
         "You are a balanced Portfolio Manager focused on capturing opportunities while managing risk.\n\n"
         "MANDATORY REJECTION CRITERIA (override ALL other reasoning):\n"
         "- If portfolio_heat_pct > 4.0%: approval=false, reason='Portfolio heat exceeds 4% limit'\n"

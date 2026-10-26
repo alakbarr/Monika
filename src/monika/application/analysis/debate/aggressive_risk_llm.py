@@ -17,7 +17,14 @@ RISK_SCHEMA = {
 
 
 async def analyze_risk_aggressive_llm(client: BaseLLMClient, symbol: str, strict_context: dict) -> dict:
-    sys_prompt = """You are the AGGRESSIVE Risk Manager. Your mandate: maximize capture of genuine
+    from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
+    anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
+    sys_prompt = f"""{anchor}
+
+---
+
+You are the AGGRESSIVE Risk Manager. Your mandate: maximize capture of genuine
 edge; only intervene for STRUCTURAL flaws, never for routine caution (that is
 the Conservative persona's job — do not duplicate their logic).
 APPLY THESE RULES:

@@ -11,7 +11,7 @@ import json
 import logging
 import threading
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.Debate.Blackboard")
 
@@ -31,26 +31,101 @@ class DebateBlackboard:
         self.created_at = datetime.now(timezone.utc).isoformat()
         self._lock = threading.RLock()
 
+    @classmethod
+    def extract_claim_metadata(cls, claim: Optional[Dict[str, Any]]) -> Tuple[List[float], List[str]]:
+        """
+        Extracts numeric price levels and falsification triggers from a claim dictionary.
+        Inspects key_levels, invalidation_price, key_catalysts, core_risk_factors,
+        and falsification_triggers, invalidation_trigger, Primary_Risk_Trigger.
+        """
+        if not claim or not isinstance(claim, dict):
+            return [], []
+
+        levels: List[float] = []
+        raw_levels = claim.get("key_levels")
+        if isinstance(raw_levels, (list, tuple)):
+            for x in raw_levels:
+                try:
+                    levels.append(float(x))
+                except ValueError, TypeError:
+                    pass
+
+        # Invalidation price / level
+        inv_price = claim.get("invalidation_price") or claim.get("invalidation_level")
+        if inv_price is not None:
+            try:
+                f_inv = float(inv_price)
+                if f_inv not in levels:
+                    levels.append(f_inv)
+            except ValueError, TypeError:
+                pass
+
+        # Regex extract numbers from catalysts / risk factors / evidence if key_levels is empty
+        if not levels:
+            import re
+
+            scan_texts: List[str] = []
+            for k in (
+                "key_catalysts",
+                "core_risk_factors",
+                "evidence_cited",
+                "thesis",
+                "bull_thesis",
+                "bear_dissent",
+            ):
+                val = claim.get(k)
+                if isinstance(val, (list, tuple)):
+                    scan_texts.extend([str(item) for item in val])
+                elif isinstance(val, str):
+                    scan_texts.append(val)
+            for txt in scan_texts:
+                matches = re.findall(r"\b(?:\d{1,6}\.\d{2,5}|\d{4,6})\b", txt)
+                for m in matches:
+                    try:
+                        f = float(m)
+                        if f not in levels:
+                            levels.append(f)
+                    except ValueError, TypeError:
+                        pass
+
+        triggers: List[str] = []
+        raw_trigs = (
+            claim.get("falsification_triggers")
+            or claim.get("invalidation_trigger")
+            or claim.get("Primary_Risk_Trigger")
+            or claim.get("primary_risk_trigger")
+        )
+        if isinstance(raw_trigs, (list, tuple)):
+            triggers.extend([str(t) for t in raw_trigs if t])
+        elif isinstance(raw_trigs, str) and raw_trigs.strip():
+            triggers.append(raw_trigs.strip())
+
+        return levels, triggers
+
     def add_bull_thesis(
         self,
         thesis: str,
         key_levels: Optional[List[float]] = None,
         confidence: float = 0.5,
         falsification_triggers: Optional[List[str]] = None,
+        claim_dict: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Appends concise bull claim and falsification criteria to blackboard."""
         with self._lock:
-            triggers = falsification_triggers or []
+            extracted_levels, extracted_trigs = self.extract_claim_metadata(claim_dict)
+            final_levels = key_levels if key_levels is not None else extracted_levels
+            final_trigs = falsification_triggers if falsification_triggers is not None else extracted_trigs
+
             self.bull_claims.append(
                 {
                     "thesis": thesis[:400],
-                    "key_levels": key_levels or [],
+                    "key_levels": final_levels,
                     "confidence": confidence,
-                    "falsification_triggers": triggers,
+                    "falsification_triggers": final_trigs,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             )
-            for trig in triggers:
+            for trig in final_trigs:
                 self.falsification_triggers.append({"side": "bull", "trigger": trig})
 
     def add_bear_thesis(
@@ -59,20 +134,24 @@ class DebateBlackboard:
         key_levels: Optional[List[float]] = None,
         confidence: float = 0.5,
         falsification_triggers: Optional[List[str]] = None,
+        claim_dict: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Appends concise bear counter-claim and falsification criteria to blackboard."""
         with self._lock:
-            triggers = falsification_triggers or []
+            extracted_levels, extracted_trigs = self.extract_claim_metadata(claim_dict)
+            final_levels = key_levels if key_levels is not None else extracted_levels
+            final_trigs = falsification_triggers if falsification_triggers is not None else extracted_trigs
+
             self.bear_claims.append(
                 {
                     "thesis": thesis[:400],
-                    "key_levels": key_levels or [],
+                    "key_levels": final_levels,
                     "confidence": confidence,
-                    "falsification_triggers": triggers,
+                    "falsification_triggers": final_trigs,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             )
-            for trig in triggers:
+            for trig in final_trigs:
                 self.falsification_triggers.append({"side": "bear", "trigger": trig})
 
     def extract_sparse_contradictions(self) -> List[Dict[str, Any]]:

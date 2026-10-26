@@ -55,3 +55,14 @@ class DeepSeekProvider(OpenAIProvider):
         except ImportError:
             logger.warning("OpenAI package not installed. Run `pip install openai`.")
             self.client = None
+
+    def get_session_affinity_headers(
+        self, session_id: Optional[str] = None, is_compaction: bool = False
+    ) -> dict[str, str]:
+        """Returns session affinity headers for DeepSeek KV-cache routing and compaction."""
+        headers: dict[str, str] = {}
+        if session_id:
+            headers["x-monika-session-id"] = str(session_id)
+        if is_compaction:
+            headers["x-monika-compact"] = "1"
+        return headers

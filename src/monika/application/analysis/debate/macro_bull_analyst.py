@@ -61,11 +61,13 @@ async def run_bull_analyst(context: str, settings: dict) -> dict:
         "- 1-2: Risk-on thesis invalid; aggressive hawkish regime, soaring yields, high VIX > 25, dominant dollar rally."
     )
 
-    prompt = f"""Rigorously evaluate the provided macro data to build the strongest Risk-On / Dollar-Bear thesis.
-Directly cite concrete numerical data points rather than making generic claims.
-
-DATA CONTEXT:
+    prompt = f"""DATA CONTEXT:
 {context}
+
+=== TIER 2 CYCLE CACHE BREAKPOINT ===
+
+Rigorously evaluate the provided macro data to build the strongest Risk-On / Dollar-Bear thesis.
+Directly cite concrete numerical data points rather than making generic claims.
 
 Provide your structured evaluation in JSON matching the schema."""
 

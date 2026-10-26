@@ -209,6 +209,16 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                         else None
                     )
 
+                    prov_verified = (
+                        False
+                        if (
+                            r.get("provenance_verified") is False
+                            or (ana is not None and getattr(ana, "provenance_verified", None) is False)
+                            or not (entry_price and sl and tp)
+                        )
+                        else True
+                    )
+
                     try:
                         proposal = TradeProposal.from_analysis(
                             symbol=sym,
@@ -220,7 +230,7 @@ async def risk_gate_node(state: TradingState, config: Optional[RunnableConfig] =
                             confluence_score=confluence_val,
                             confidence_override=conf_override if conf_override is not None else conf,
                             reasoning_text=reasoning_text,
-                            provenance_verified=True,
+                            provenance_verified=prov_verified,
                             account_equity=equity,
                             analysis=ana,
                         )

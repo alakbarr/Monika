@@ -22,21 +22,28 @@ Monika/
 │       │   │   │   └── tiers.py
 │       │   │   ├── harness/
 │       │   │   │   ├── __init__.py
+│       │   │   │   ├── action_reviewer.py
 │       │   │   │   ├── agent_harness.py
 │       │   │   │   ├── anti_slop_gate.py
 │       │   │   │   ├── context_compressor.py
 │       │   │   │   ├── error_classifier.py
+│       │   │   │   ├── fs_observation_policy.py
 │       │   │   │   ├── general_tool_pruner.py
+│       │   │   │   ├── goal_driver.py
 │       │   │   │   ├── harness_state.py
 │       │   │   │   ├── interactive_todo.py
 │       │   │   │   ├── message_repair.py
 │       │   │   │   ├── physical_deliverable_gate.py
+│       │   │   │   ├── repeat_tool_guard.py
 │       │   │   │   ├── repetition_guard.py
+│       │   │   │   ├── session_surface.py
+│       │   │   │   ├── spill_store.py
 │       │   │   │   ├── stall_guard.py
 │       │   │   │   ├── structured_output.py
 │       │   │   │   ├── symbol_segment_planner.py
 │       │   │   │   ├── tool_batch_planner.py
 │       │   │   │   ├── tool_repair.py
+│       │   │   │   ├── tool_scheduler.py
 │       │   │   │   ├── trade_stop_gates.py
 │       │   │   │   ├── turn_failure_diagnostics.py
 │       │   │   │   └── verification_evidence_ledger.py
@@ -109,6 +116,7 @@ Monika/
 │       │   │   │   ├── rolling_correlation_calculator.py
 │       │   │   │   ├── seasonality.py
 │       │   │   │   ├── stage1_priced_in.py
+│       │   │   │   ├── symbol_fact_bundle.py
 │       │   │   │   ├── taylor_rule.py
 │       │   │   │   ├── technical_regime_calculator.py
 │       │   │   │   ├── timesfm_alpha.py
@@ -2752,13 +2760,20 @@ Monika/
 │   ├── unit/
 │   │   ├── application/
 │   │   │   ├── agent/
+│   │   │   │   ├── harness/
+│   │   │   │   │   ├── test_session_surface_and_cache_invariants.py
+│   │   │   │   │   ├── test_spill_and_warm_compaction.py
+│   │   │   │   │   └── test_tool_scheduler_and_guards.py
 │   │   │   │   └── test_replay_envelope_and_recovery.py
 │   │   │   └── analysis/
+│   │   │       ├── test_debate_prefix_cache_sharing.py
 │   │   │       ├── test_forked_subagent_cache.py
 │   │   │       └── test_spill_and_ptc_parallel.py
 │   │   └── infrastructure/
-│   │       └── llm/
-│   │           └── test_kv_cache_invariance.py
+│   │       ├── llm/
+│   │       │   └── test_kv_cache_invariance.py
+│   │       └── providers/
+│   │           └── test_provider_thinking_replay_and_immutability.py
 │   ├── utils/
 │   │   ├── __init__.py
 │   │   ├── test_analysis_tracker.py
@@ -3097,4 +3112,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 265 | **Total Tracked Files**: 2802
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2815

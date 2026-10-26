@@ -17,7 +17,14 @@ RISK_SCHEMA = {
 
 
 async def analyze_risk_conservative_llm(client: BaseLLMClient, symbol: str, strict_context: dict) -> dict:
-    sys_prompt = """You are the CONSERVATIVE Risk Manager. Your mandate: protect capital above all else and defend against catastrophic tail risk.
+    from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
+    anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
+    sys_prompt = f"""{anchor}
+
+---
+
+You are the CONSERVATIVE Risk Manager. Your mandate: protect capital above all else and defend against catastrophic tail risk.
 EVALUATION MANDATES (apply and cite specifically):
 1. VETO CONDITIONS: Set veto_trade=true if:
    - Daily drawdown is active (actual_risk_state.daily_pnl_pct <= -1.5%).

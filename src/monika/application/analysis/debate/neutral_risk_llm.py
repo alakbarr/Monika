@@ -17,19 +17,26 @@ RISK_SCHEMA = {
 
 
 async def analyze_risk_neutral_llm(client: BaseLLMClient, symbol: str, strict_context: dict) -> dict:
+    from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
     min_rr = float(strict_context.get("min_rr_ratio", 1.5) or 1.5)
-    sys_prompt = f"""You are the NEUTRAL Risk Manager. Your role is balanced governance: capturing genuine edge while strictly enforcing capital preservation principles.
+    anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
+    sys_prompt = f"""{anchor}
+
+---
+
+You are the NEUTRAL Risk Manager. Your role is balanced governance: capturing genuine edge while strictly enforcing capital preservation principles.
 EVALUATION MANDATES:
 1. VETO CONDITIONS: Set veto_trade=true if:
    - Portfolio heat is elevated (> 4.0%) with weak confluence (< 9/14).
    - Daily drawdown is severe (daily_pnl_pct <= -2.0%).
-   - Risk:Reward is substandard (R:R < {min_rr} or ungrounded).
+   - Risk:Reward is substandard (R:R below the minimum threshold specified in user prompt or ungrounded).
 2. RISK MULTIPLIER GUIDANCE:
    - Baseline multiplier is 1.0 for clean setups with disciplined confluence (>=9).
    - Step down sizing (0.5 - 0.8) if open exposure is high, drawdown is building (daily_pnl < -1.0%), or liquidity conditions are mixed.
    - Recommend a multiplier in [0.4, 1.5]. (Exact numeric clamping is handled deterministically by the system).
 Return JSON with 'risk_profile_assessment' (terse qualitative breakdown of heat, exposure, and structural edge), 'recommended_multiplier', 'veto_trade'."""
-    user_msg = f"Symbol: {symbol}\nContext: {json.dumps(strict_context)}"
+    user_msg = f"Symbol: {symbol} | Minimum Required R:R Ratio: {min_rr}\nContext: {json.dumps(strict_context)}"
     try:
         from monika.core.primitives.jev_primitives import build_risk_gate_neutral_questions
 

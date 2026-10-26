@@ -61,7 +61,15 @@ async def _build_strict_context(
     if not ana:
         return None, None, None
 
-    actual_risk_state = await compute_actual_risk_state(s_inner, settings, mt5_client=mt5_client)
+    cached_risk_state = (
+        r.get("_cached_actual_risk_state") or state.get("_cached_actual_risk_state") or state.get("actual_risk_state")
+    )
+    if cached_risk_state is not None and isinstance(cached_risk_state, dict):
+        actual_risk_state = cached_risk_state
+    else:
+        actual_risk_state = await compute_actual_risk_state(s_inner, settings, mt5_client=mt5_client)
+        r["_cached_actual_risk_state"] = actual_risk_state
+
     entry_zone_data = json.loads(ana.entry_zone) if ana.entry_zone else {}
     entry_price = entry_zone_data.get("price") or ana.price_at_analysis
     rr_ratio = None

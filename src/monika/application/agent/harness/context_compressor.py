@@ -269,12 +269,22 @@ class ContextCompressor:
         return pruned_messages
 
     @classmethod
-    def distill_initial_bundle_after_turn_1(cls, messages: List[dict]) -> List[dict]:
+    def distill_initial_bundle_after_turn_1(
+        cls,
+        messages: List[dict],
+        turn: int = 1,
+        preserve_kv_cache: bool = False,
+    ) -> List[dict]:
         """
         P0 Token Optimization: Prunes the verbose 50k character raw prefetch bundle
         from messages[0] once Turn 1 has completed.
         Retains core anchors, regime, and macro bias while compressing thousands of raw candle rows.
+        If preserve_kv_cache is True, returns messages unmodified to prevent invalidating
+        server-side KV-cache at token 0.
         """
+        if preserve_kv_cache:
+            return list(messages)
+
         if not messages or len(messages) < 3:
             return messages
 

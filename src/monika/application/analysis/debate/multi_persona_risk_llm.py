@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Any, Dict, Tuple
 
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 from monika.infrastructure.providers.base_provider import BaseLLMClient, extract_and_parse_json
 
 logger = logging.getLogger("TradingAgent.MultiPersonaRisk")
@@ -40,7 +41,11 @@ MULTI_PERSONA_RISK_SCHEMA = {
     "required": ["conservative", "aggressive", "neutral"],
 }
 
-MULTI_PERSONA_SYS_PROMPT = """You are a collegiate Risk Evaluation Board analyzing a proposed trade setup from 3 distinct risk perspectives simultaneously.
+MULTI_PERSONA_SYS_PROMPT = f"""{CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()}
+
+---
+
+You are a collegiate Risk Evaluation Board analyzing a proposed trade setup from 3 distinct risk perspectives simultaneously.
 
 1. CONSERVATIVE RISK PERSONA (Mandate: Capital protection above all):
    - If actual_risk_state.daily_pnl_pct <= -1.5%: veto_trade=true.

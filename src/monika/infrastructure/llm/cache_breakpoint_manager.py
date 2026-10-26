@@ -7,6 +7,7 @@ summaries + volatile tails in analysis/harness/context_compressor.py).
 This class is maintained for backward compatibility with Anthropic/Gemini provider adapters.
 """
 
+import json
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -116,6 +117,117 @@ class CacheBreakpointManager:
 """
 
     CANONICAL_INVARIANT_RULES = CANONICAL_TIER0_ANCHOR
+
+    UNIVERSAL_DEBATE_CONSTITUTION = """
+=== UNIVERSAL ADVERSARIAL MULTI-AGENT DEBATE & RISK CONSTITUTION ===
+[SCOPE & INSTITUTIONAL JURISDICTION]:
+This constitution establishes immutable operating standards for all participants in adversarial dialectical debate, macroeconomic synthesis, risk arbitration, and portfolio decision-making:
+- Bull Analyst (Advocate / Upward Scrutinizer)
+- Bear Analyst (Dissent / Downward Scrutinizer)
+- Adversarial Dialectical Rebuttal Specialist
+- Chief Investment Judge & Macro Judge
+- Risk Arbitrators (Conservative, Aggressive, Neutral Risk Managers)
+- Portfolio Manager (PM Allocation & Heat Gate)
+
+1. COGNITIVE INTEGRITY & ZERO-HALLUCINATION INVARIANT:
+   - [COMPUTE, DO NOT ASSERT DISCIPLINE]: Never invent, guess, extrapolate, hallucinate, or rhetorically declare numbers, indicators, or prices.
+   - EVERY numerical claim MUST be explicitly cited from the Fact Sheet / Market Grounding data or calculated using deterministic formulas (e.g. entry-SL gap, R:R ratio, ATR multiple, CVD divergence, order book imbalance).
+   - Unsupported rhetorical assertions (e.g. 'momentum will explode', 'support will easily hold', 'breakdown is imminent') lacking quantitative metrics are strictly invalid.
+   - Ground all arguments in concrete mathematical and structural evidence: ATR levels, liquidity zones, order flow delta, and quantified price gaps.
+
+2. ADVERSARIAL DIALECTICAL SPECIALIZATION:
+   - Target Asset Context: Every participant evaluates the target asset specified in the user message without bias or drift.
+   - Bull Advocate Mandate: Scrutinize upside potential, defend BUY (Long) setups or identify upside bounce threats against SELL (Short) setups. Leverage order flow (CVD divergence, bid dominance) and market structure.
+   - Bear Dissenter Mandate: Scrutinize downside risk, challenge BUY (Long) setups or defend SELL (Short) breakdown catalysts. Scrutinize stop-loss placement against liquidity sweeps and identify overhead supply/ask walls.
+   - Round 2 Rebuttal Mandate: Directly confront specific criticisms raised by the opposing analyst with concrete facts. Concede structural flaws when insurmountable.
+   - Chief Investment Judge Mandate: Objective Bayesian adjudication. Calibrate risk multiplier ([0.0, 1.0]), tune entry/SL/TP levels, or enforce 'avoid' upon detecting fatal flaws. Never reject frivolously when risk can be safely calibrated.
+   - Tie & Low Conviction Rule: If Bull thesis and Bear dissent are evenly matched without a clear structural edge, or if empirical data is conflicting, declare 'avoid' with risk_multiplier = 0.0 to preserve capital.
+
+3. RISK ARBITRATION & PORTFOLIO GOVERNANCE:
+   - Conservative Risk: Capital preservation above all; defend against catastrophic tail risk, active drawdown, and over-concentration.
+   - Aggressive Risk: Capture genuine alpha edge; veto only for fatal structural flaws (R:R < 1.5, invalid SL, low confluence), never routine caution.
+   - Neutral Risk: Balanced statistical governance; enforce asymmetric R:R >= 1.5 and disciplined confluence.
+   - Portfolio Manager: Strictly enforce portfolio heat (<= 4.0%), daily drawdown (<= 3.0%), concurrent position limits, and correlation buffers.
+
+4. TELEGRAPHIC EFFORT & OUTPUT DISCIPLINE:
+   - Telegraphic Density: Structure all claims, dissents, rebuttals, and syntheses in 3-5 dense telegraphic bullet points (max 150 words). Zero conversational filler, pleasantries, or preamble.
+   - Schema Conformance: Respond strictly in valid JSON conforming to the requested response schema.
+=== END UNIVERSAL DEBATE CONSTITUTION ===
+"""
+
+    @classmethod
+    def get_canonical_debate_system_prompt(cls, include_discipline: bool = True) -> str:
+        """
+        Returns the byte-identical canonical debate system prompt shared across all debate and risk personas.
+        Combines CANONICAL_TIER0_ANCHOR, UNIVERSAL_DEBATE_CONSTITUTION, and universal execution discipline.
+        """
+        from monika.infrastructure.llm.prompt_disciplines import get_universal_execution_discipline
+
+        anchor = cls.CANONICAL_TIER0_ANCHOR.strip()
+        constitution = cls.UNIVERSAL_DEBATE_CONSTITUTION.strip()
+        if include_discipline:
+            disc = get_universal_execution_discipline().strip()
+            return f"{anchor}\n\n---\n\n{constitution}\n\n{disc}"
+        return f"{anchor}\n\n---\n\n{constitution}"
+
+    @classmethod
+    def build_shared_debate_user_message(
+        cls,
+        fact_sheet: Any,
+        original_context: Any,
+        append_ledger: Optional[Dict[str, Any]] = None,
+        task_directive: str = "",
+    ) -> str:
+        """
+        Constructs a three-segment debate user message designed for prefix-cache sharing:
+        - Segment A (Immutable Cached Prefix): Serializes fact_sheet and original_context followed
+          by the Tier-2 Cycle Cache Breakpoint anchor. Byte-identical across all debate turns!
+        - Segment B (Append-Only Debate Ledger): Serializes prior debate turns (bull_claim, bear_dissent, etc.)
+          without altering Segment A's byte positions.
+        - Segment C (Tail Task Directive): Emits the role-specific instructions and schema reminders.
+        """
+        segment_a_payload = {
+            "1_fact_sheet": fact_sheet,
+            "2_original_context": original_context,
+        }
+        segment_a_str = json.dumps(segment_a_payload, indent=2, sort_keys=True, default=str)
+        segment_a = f"{segment_a_str}\n\n=== TIER 2 CYCLE CACHE BREAKPOINT ===\n\n"
+
+        segment_b = ""
+        if append_ledger:
+            segment_b_str = json.dumps(append_ledger, indent=2, sort_keys=True, default=str)
+            segment_b = f"[DEBATE_LEDGER]:\n{segment_b_str}\n\n"
+
+        directive_clean = task_directive.strip()
+        segment_c = f"<task_directive>\n{directive_clean}\n</task_directive>" if directive_clean else ""
+
+        return f"{segment_a}{segment_b}{segment_c}".strip()
+
+    @classmethod
+    def compute_disjoint_cache_metrics(
+        cls,
+        uncached_input_tokens: int,
+        cache_read_tokens: int,
+        cache_write_tokens: int = 0,
+        output_tokens: int = 0,
+    ) -> Dict[str, float | int]:
+        """
+        Computes accurate disjoint KV prompt cache metrics:
+        total_input_tokens = uncached_input_tokens + cache_read_tokens + cache_write_tokens
+        kv_cache_hit_rate = (cache_read_tokens / total_input_tokens) if total_input_tokens > 0 else 0.0
+        """
+        total_input_tokens = uncached_input_tokens + cache_read_tokens + cache_write_tokens
+        total_tokens = total_input_tokens + output_tokens
+        kv_cache_hit_rate = (float(cache_read_tokens) / float(total_input_tokens)) if total_input_tokens > 0 else 0.0
+        return {
+            "uncached_input_tokens": uncached_input_tokens,
+            "cache_read_tokens": cache_read_tokens,
+            "cache_write_tokens": cache_write_tokens,
+            "output_tokens": output_tokens,
+            "total_input_tokens": total_input_tokens,
+            "total_tokens": total_tokens,
+            "kv_cache_hit_rate": kv_cache_hit_rate,
+        }
 
     @classmethod
     def get_min_cacheable_chars(cls, model_name: str = "") -> int:

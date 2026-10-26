@@ -30,7 +30,15 @@ from monika.application.agent.auxiliary_model_router import AuxiliaryModelRouter
 from monika.application.agent.bounded_response import truncate_text_middle
 from monika.application.agent.deadline import run_bounded_async
 from monika.application.agent.empty_response_guard import EmptyResponseGuard
+from monika.application.agent.harness.fs_observation_policy import ObservedStateGate
+from monika.application.agent.harness.repeat_tool_guard import RepeatToolGuard
+from monika.application.agent.harness.session_surface import (
+    RuntimeContextProjection,
+    SessionSurface,
+    ThrottledTimeContext,
+)
 from monika.application.agent.harness.tool_batch_planner import ToolBatchPlanner
+from monika.application.agent.harness.tool_scheduler import ToolCallRecovery
 from monika.application.agent.harness.tool_repair import (
     coerce_tool_arguments,
     compute_canonical_tool_signature,
@@ -176,6 +184,14 @@ class AgentHarness:
         self.replay_cache = ReadOnlyReplayCache.get_instance()
         self.auxiliary_router = AuxiliaryModelRouter(settings=self.settings)
         self.tool_round_coordinator = TurnToolRoundCoordinator()
+
+        # Session Surface & Execution Guard Subsystems
+        self.session_surface = SessionSurface()
+        self.runtime_context_projection = RuntimeContextProjection()
+        self.throttled_time_context = ThrottledTimeContext()
+        self.repeat_tool_guard = RepeatToolGuard()
+        self.fs_observation_gate = ObservedStateGate()
+        self.tool_call_recovery = ToolCallRecovery()
 
     def enqueue_steering(
         self,
@@ -967,6 +983,9 @@ class AgentHarness:
         active_tools: list[dict] = [dict(t) for t in tools] if tools else []
         active_tools.sort(key=lambda t: str(t.get("name", "")))
 
+        if hasattr(self, "repeat_tool_guard") and self.repeat_tool_guard:
+            self.repeat_tool_guard.reset_on_user_turn()
+
         curr_max = getattr(self.llm_client, "max_tokens", None)
         if isinstance(curr_max, int) and curr_max < 32000:
             if getattr(self.llm_client, "provider_name", "") in ("groq", "openrouter"):
@@ -1122,38 +1141,61 @@ class AgentHarness:
                 # Offload heavy multimodal chart data from historical turns (>2 turns old)
                 current_messages = offload_historical_charts(current_messages, retain_recent_turns=2)
 
-            if current_tokens > int(context_win * 0.85):
+            enable_prefetch_distillation = bool(
+                (self.settings or {}).get("harness", {}).get("enable_prefetch_distillation", False)
+            )
+            if enable_prefetch_distillation and current_tokens > int(context_win * 0.85):
                 try:
                     from monika.application.agent.harness.context_compressor import ContextCompressor
 
-                    current_messages = ContextCompressor.distill_initial_bundle_after_turn_1(current_messages)
+                    current_messages = ContextCompressor.distill_initial_bundle_after_turn_1(
+                        current_messages, turn=turns, preserve_kv_cache=False
+                    )
                 except Exception as dist_err:
                     logger.debug(f"Prefetch bundle distillation skipped: {dist_err}")
 
-            current_messages = self.compactor.check_and_compact(current_messages, context_window=context_win)
-
-            # 2. Context Compression (HIGH-4)
-            if hasattr(self, "context_compressor") and self.context_compressor:
-                try:
-                    current_messages = await self.context_compressor.compress(
-                        current_messages,
-                        max_context_chars=self.max_context_chars,
-                        tail_turns=3,
-                        primary_client=self.llm_client,
-                    )
-                except Exception as comp_err:
-                    logger.debug(f"ContextCompressor skipped or failed: {comp_err}")
-
-            # 3. Layer 3 Truncation Guardrail with Fact Preservation
-            current_messages = self._apply_truncation_guardrail(
-                current_messages, system_prompt=system_prompt, stage_name=stage_name
+            # Dynamic Tool Definition Selection (Turn >= 6)
+            # Default False preserves 100% byte-stable tool schemas across turns to avoid token-0 cache invalidation.
+            stub_tools_on_turn_6 = bool(
+                (self.settings or {}).get("harness", {}).get("enable_legacy_turn6_tool_stubbing", False)
             )
-
-            # Dynamic Tool Definition Stubbing (Turn >= 6) for Heavy Exploration Tools
-            if turns >= 6 and not self.settings.get("disable_tool_stubbing", False):
+            if turns >= 6 and stub_tools_on_turn_6 and not self.settings.get("disable_tool_stubbing", False):
                 effective_tools = self._stub_exploration_tools(active_tools, called_tools)
             else:
                 effective_tools = active_tools
+
+            # Layer 1/2 Compaction with Warm-Prefix Forwarding
+            if hasattr(self.compactor, "check_and_compact_async"):
+                current_messages = await self.compactor.check_and_compact_async(
+                    current_messages,
+                    context_window=context_win,
+                    system_prompt=system_prompt,
+                    tools=effective_tools,
+                    settings=self.settings,
+                )
+            else:
+                current_messages = self.compactor.check_and_compact(current_messages, context_window=context_win)
+
+            # High-Water-Mark Gate: only run ContextCompressor.compress and _apply_truncation_guardrail
+            # when token pressure exceeds 80% capacity (or when compactor is disabled).
+            # This preserves historical tool outputs and 100% KV-cache!
+            if current_tokens >= int(context_win * 0.80):
+                # 2. Context Compression (HIGH-4)
+                if hasattr(self, "context_compressor") and self.context_compressor:
+                    try:
+                        current_messages = await self.context_compressor.compress(
+                            current_messages,
+                            max_context_chars=self.max_context_chars,
+                            tail_turns=3,
+                            primary_client=self.llm_client,
+                        )
+                    except Exception as comp_err:
+                        logger.debug(f"ContextCompressor skipped or failed: {comp_err}")
+
+                # 3. Layer 3 Truncation Guardrail with Fact Preservation
+                current_messages = self._apply_truncation_guardrail(
+                    current_messages, system_prompt=system_prompt, stage_name=stage_name
+                )
 
             # 3. Provider Call with Transient Retry, Distributed Tracing, and Plugin Hooks
             from monika.application.plugins.manager.manager import PluginHook, get_plugin_manager
@@ -1253,7 +1295,14 @@ class AgentHarness:
                                 )
 
                         # 1.3: Dynamic context isolation: inject into user message tail, never system prompt
-                        if dynamic_sys and dynamic_sys != self._last_injected_dynamic_overlay:
+                        volatile_changed = False
+                        if hasattr(self, "runtime_context_projection") and self.runtime_context_projection:
+                            proj = self.runtime_context_projection.project({"volatile": dynamic_sys or ""})
+                            volatile_changed = proj is not None or dynamic_sys != self._last_injected_dynamic_overlay
+                        else:
+                            volatile_changed = dynamic_sys != self._last_injected_dynamic_overlay
+
+                        if dynamic_sys and volatile_changed:
                             self._last_injected_dynamic_overlay = dynamic_sys
                             snapshot_text = f"<volatile_overlay>\n{dynamic_sys}\n</volatile_overlay>"
                             if (
@@ -1263,21 +1312,28 @@ class AgentHarness:
                                 and "<volatile_overlay>" not in str(send_messages[0].get("content", ""))
                             ):
                                 prev_c = send_messages[0].get("content")
+                                send_messages[0] = dict(send_messages[0])
                                 if isinstance(prev_c, str):
                                     send_messages[0]["content"] = f"{prev_c}\n\n{snapshot_text}"
                                 elif isinstance(prev_c, list):
-                                    send_messages[0]["content"].append({"type": "text", "text": f"\n\n{snapshot_text}"})
-                                # Surface Node 0 invariant: keep current_messages[0] in sync so subsequent turns inherit identical prefix
+                                    send_messages[0]["content"] = list(prev_c) + [
+                                        {"type": "text", "text": f"\n\n{snapshot_text}"}
+                                    ]
+                                # Surface Node 0 invariant: keep current_messages[0] in sync without in-place mutation of caller's dict
                                 if current_messages and current_messages[0].get("role") == "user":
+                                    current_messages[0] = dict(current_messages[0])
                                     current_messages[0]["content"] = send_messages[0]["content"]
                             else:
-                                last_user_msg = next(
-                                    (m for m in reversed(send_messages) if m.get("role") == "user"), None
-                                )
-                                if last_user_msg and (turns == 1 or last_user_msg is not send_messages[0]):
-                                    prev_c = last_user_msg.get("content")
+                                last_user_idx = None
+                                for i in range(len(send_messages) - 1, -1, -1):
+                                    if send_messages[i].get("role") == "user":
+                                        last_user_idx = i
+                                        break
+                                if last_user_idx is not None and (turns == 1 or last_user_idx != 0):
+                                    send_messages[last_user_idx] = dict(send_messages[last_user_idx])
+                                    prev_c = send_messages[last_user_idx].get("content")
                                     if isinstance(prev_c, str) and "<volatile_overlay>" not in prev_c:
-                                        last_user_msg["content"] = f"{prev_c}\n\n{snapshot_text}"
+                                        send_messages[last_user_idx]["content"] = f"{prev_c}\n\n{snapshot_text}"
                                     elif isinstance(prev_c, list):
                                         has_snapshot = any(
                                             "<volatile_overlay>" in str(b.get("text", ""))
@@ -1285,9 +1341,9 @@ class AgentHarness:
                                             if isinstance(b, dict)
                                         )
                                         if not has_snapshot:
-                                            last_user_msg["content"].append(
+                                            send_messages[last_user_idx]["content"] = list(prev_c) + [
                                                 {"type": "text", "text": f"\n\n{snapshot_text}"}
-                                            )
+                                            ]
                                 else:
                                     send_messages.append({"role": "user", "content": snapshot_text})
 
@@ -1296,22 +1352,25 @@ class AgentHarness:
                             todo_scaffold = self.todo_state.format_scaffold()
                             if todo_scaffold:
                                 todo_block = f"<active_todos>\n{todo_scaffold}\n</active_todos>"
-                                last_user_msg = next(
-                                    (m for m in reversed(send_messages) if m.get("role") == "user"), None
-                                )
-                                if last_user_msg:
-                                    prev_c = last_user_msg.get("content")
+                                last_user_idx = None
+                                for i in range(len(send_messages) - 1, -1, -1):
+                                    if send_messages[i].get("role") == "user":
+                                        last_user_idx = i
+                                        break
+                                if last_user_idx is not None:
+                                    send_messages[last_user_idx] = dict(send_messages[last_user_idx])
+                                    prev_c = send_messages[last_user_idx].get("content")
                                     if isinstance(prev_c, str) and "<active_todos>" not in prev_c:
-                                        last_user_msg["content"] = f"{prev_c}\n\n{todo_block}"
+                                        send_messages[last_user_idx]["content"] = f"{prev_c}\n\n{todo_block}"
                                     elif isinstance(prev_c, list):
                                         if not any(
                                             "<active_todos>" in str(b.get("text", ""))
                                             for b in prev_c
                                             if isinstance(b, dict)
                                         ):
-                                            last_user_msg["content"].append(
+                                            send_messages[last_user_idx]["content"] = list(prev_c) + [
                                                 {"type": "text", "text": f"\n\n{todo_block}"}
-                                            )
+                                            ]
 
                         turn_state.current_phase = TurnPhase.API_CALL
                         t_api_start = asyncio.get_event_loop().time()
@@ -1726,6 +1785,8 @@ class AgentHarness:
                 for b in assistant_content
                 if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None)) == "tool_use"
             ]
+            if tool_use_blocks and hasattr(self, "tool_call_recovery") and self.tool_call_recovery:
+                self.tool_call_recovery.register_assistant_tool_calls(tool_use_blocks)
 
             if not (final_text or "").strip() and not tool_use_blocks:
                 prov_name = str(getattr(self.llm_client, "provider", "unknown"))
@@ -2070,6 +2131,9 @@ class AgentHarness:
                 c_input = call_item["input"]
                 c_id = call_item["id"]
                 needs_repeat_advisory = False
+
+                if hasattr(self, "repeat_tool_guard") and self.repeat_tool_guard:
+                    self.repeat_tool_guard.observe(c_name, c_input)
 
                 # Check if call was superseded by another parallel call
                 if call_item.get("_superseded"):
@@ -2483,11 +2547,26 @@ class AgentHarness:
                     new_schemas = res_obj.get("schemas", [])
                     if isinstance(new_schemas, list):
                         existing_names = {str(t.get("name", "")) for t in active_tools}
-                        for sch in new_schemas:
-                            if isinstance(sch, dict) and str(sch.get("name", "")) not in existing_names:
-                                active_tools.append(dict(sch))
-                                existing_names.add(str(sch.get("name", "")))
-                        active_tools.sort(key=lambda t: str(t.get("name", "")))
+                        preserve_prefix = bool(
+                            (self.settings or {}).get("harness", {}).get("preserve_tool_prefix", False)
+                            or (self.settings or {}).get("harness", {}).get("preserve_tool_prefix_order", False)
+                        )
+                        if preserve_prefix:
+                            newly_added = []
+                            for sch in new_schemas:
+                                if isinstance(sch, dict) and str(sch.get("name", "")) not in existing_names:
+                                    sch_copy = dict(sch)
+                                    sch_copy.setdefault("defer_loading", True)
+                                    newly_added.append(sch_copy)
+                                    existing_names.add(str(sch_copy.get("name", "")))
+                            newly_added.sort(key=lambda t: str(t.get("name", "")))
+                            active_tools.extend(newly_added)
+                        else:
+                            for sch in new_schemas:
+                                if isinstance(sch, dict) and str(sch.get("name", "")) not in existing_names:
+                                    active_tools.append(dict(sch))
+                                    existing_names.add(str(sch.get("name", "")))
+                            active_tools.sort(key=lambda t: str(t.get("name", "")))
 
                 if c_name in (
                     "patch_source_file",
@@ -2501,7 +2580,17 @@ class AgentHarness:
                     )
                     if target_file:
                         turn_state.stop_gate_context.mutated_files.append(str(target_file))
+                        if not is_tool_err and hasattr(self, "fs_observation_gate") and self.fs_observation_gate:
+                            self.fs_observation_gate.record_write(str(target_file))
                     turn_state.stop_gate_context.has_unverified_file_edits = True
+
+                if any(k in c_name.lower() for k in ("read", "view", "inspect_file")):
+                    target_file = (
+                        c_input.get("filepath") or c_input.get("path") or c_input.get("filename") or c_input.get("file")
+                    )
+                    if target_file and not is_tool_err:
+                        if hasattr(self, "fs_observation_gate") and self.fs_observation_gate:
+                            self.fs_observation_gate.record_read(str(target_file))
 
                 if c_name in (
                     "run_verification_gate",

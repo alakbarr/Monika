@@ -3155,3 +3155,14 @@ security:
     - 443
   denial_breaker_threshold: 5
   audit_logging: true
+
+# ==============================================================================
+# Agent Execution Harness & KV-Cache Stability
+# ==============================================================================
+harness:
+  compaction_cooldown_seconds: 120.0
+  max_context_chars: 100000
+  retain_recent_turns: 2
+  enable_legacy_turn6_tool_stubbing: false  # When false, maintains 100% byte-stable tool schemas across turns to preserve KV-cache
+  preserve_tool_prefix: true                # Appends dynamically loaded tools after baseline tools to prevent shifting indices at token 0
+  enable_prefetch_distillation: false       # When false, avoids rewriting token 0 prefetch data to maintain full KV-cache hit rate

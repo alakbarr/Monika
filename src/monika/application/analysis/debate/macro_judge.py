@@ -68,7 +68,11 @@ async def run_macro_judge(bull_thesis: dict | str, bear_thesis: dict | str, cont
     bull_str = json.dumps(bull_thesis, indent=2) if isinstance(bull_thesis, dict) else str(bull_thesis)
     bear_str = json.dumps(bear_thesis, indent=2) if isinstance(bear_thesis, dict) else str(bear_thesis)
 
+    from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
+    anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
     system_prompt = (
+        f"{anchor}\n\n---\n\n"
         "You are the CHIEF MACRO JUDGE.\n"
         "Your responsibility is to objectively adjudicate a macroeconomic debate between two opposing analysts:\n"
         "1. Analyst 1: Risk-On / Dollar-Bear Thesis (Bullish Risk Assets, Bearish USD)\n"
@@ -85,10 +89,12 @@ async def run_macro_judge(bull_thesis: dict | str, bear_thesis: dict | str, cont
         "3. If both analysts rely primarily on speculation and HTF data is flat, declare 'TIE' and set escalation_required=True.\n"
     )
 
-    prompt = f"""Adjudicate the macro debate based strictly on the empirical data context and analyst arguments.
-
-DATA CONTEXT:
+    prompt = f"""DATA CONTEXT:
 {context}
+
+=== TIER 2 CYCLE CACHE BREAKPOINT ===
+
+Adjudicate the macro debate based strictly on the empirical data context and analyst arguments.
 
 BULL ANALYST (Risk-On / Dollar-Bear):
 {bull_str}

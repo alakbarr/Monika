@@ -99,10 +99,11 @@ async def evaluate_debate(
     bull_claim: dict,
     bear_dissent: dict,
     bull_rebuttal: Optional[dict] = None,
+    fact_sheet: Optional[Any] = None,
 ) -> dict:
     from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
-    anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
+    system_prompt = CacheBreakpointManager.get_canonical_debate_system_prompt()
     decision = str(original_context.get("decision", "buy")).upper()
     regime_weights = resolve_regime_weights(original_context)
     detected_regime = regime_weights["detected_regime"]
@@ -115,14 +116,9 @@ async def evaluate_debate(
     norm_bull_bw = bw_bull / tot_bw
     norm_bear_bw = bw_bear / tot_bw
 
-    system_prompt = f"""{anchor}
-
----
-
+    task_directive = f"""[EVALUATE DEBATE FOR {symbol} ({decision})]:
 You are the Chief Investment Officer (Judge).
-You must evaluate the proposed trade setup in 'original_context', alongside the Bull Analyst's analysis, the Bear Analyst's analysis, and any Round 2 Rebuttal (Bull or Bear) provided in the user prompt.
-Determine if the trade should proceed at full size, needs size adjustment, level adjustment, or REJECTION.
-Your role is to critically evaluate trade viability and protect capital.
+Evaluate the proposed trade setup in 'original_context', alongside the Bull Analyst's analysis, the Bear Analyst's analysis, and any Round 2 Rebuttal.
 
 MARKET REGIME CALIBRATION CONTEXT:
 - Detected Regime: {detected_regime.upper()}
@@ -180,10 +176,7 @@ If Bull thesis and Bear dissent are evenly matched without a clear structural ed
 
 MANDATORY ADJUSTMENT CONSTRAINT: If proposing adjusted_entry, adjusted_sl, or adjusted_tp, the resulting Risk-to-Reward ratio MUST remain >= 1.3 (i.e. |adjusted_tp - entry| >= 1.3 * |entry - adjusted_sl|). Any proposed adjustment with R:R < 1.5 will be automatically rejected by backend risk validators.
 
-{get_universal_execution_discipline()}
-
-[TELEGRAPHIC MANDATE]: Think strictly in dense analytical bullet points. Verify math against ATR and risk tables. reason must be an analytically rigorous synthesis (citing explicit R:R, ATR multiples, and counter-thesis verification) based strictly on factual evidence. Zero fluff.
-Respond in valid JSON format conforming to the schema."""
+Proceed with evaluation based strictly on the data above. Respond in valid JSON format conforming to the schema."""
 
     schema = {
         "type": "object",
@@ -225,7 +218,11 @@ Respond in valid JSON format conforming to the schema."""
             or bull_claim.get("argument")
             or str(bull_claim)[:300]
         )
-        bb.add_bull_thesis(b_thesis, confidence=float(bull_claim.get("strength_score", 5.0) or 5.0) / 10.0)
+        bb.add_bull_thesis(
+            b_thesis,
+            confidence=float(bull_claim.get("strength_score", 5.0) or 5.0) / 10.0,
+            claim_dict=bull_claim,
+        )
         br_thesis = (
             bear_dissent.get("counter_thesis")
             or bear_dissent.get("bear_dissent")
@@ -233,12 +230,25 @@ Respond in valid JSON format conforming to the schema."""
             or bear_dissent.get("argument")
             or str(bear_dissent)[:300]
         )
-        bb.add_bear_thesis(br_thesis, confidence=float(bear_dissent.get("risk_severity", 5.0) or 5.0) / 10.0)
+        bb.add_bear_thesis(
+            br_thesis,
+            confidence=float(bear_dissent.get("risk_severity", 5.0) or 5.0) / 10.0,
+            claim_dict=bear_dissent,
+        )
         debate_payload["sparse_blackboard"] = bb.render_sparse_summary()
     except Exception as bb_err:
         logger.debug(f"DebateBlackboard injection non-fatal: {bb_err}")
 
-    user_prompt = f"Evaluate Debate for {symbol} ({decision}):\n{json.dumps(debate_payload, separators=(',', ':'), default=str)}\n\nProceed with evaluation based strictly on the data above."
+    effective_fact_sheet = fact_sheet if fact_sheet is not None else original_context.get("fact_sheet", {})
+    append_ledger = dict(debate_payload)
+    append_ledger.pop("original_context", None)
+
+    user_prompt = CacheBreakpointManager.build_shared_debate_user_message(
+        fact_sheet=effective_fact_sheet,
+        original_context=original_context,
+        append_ledger=append_ledger,
+        task_directive=task_directive,
+    )
 
     try:
         parsed: Optional[Dict[str, Any]] = None
