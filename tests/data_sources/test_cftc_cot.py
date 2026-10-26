@@ -209,3 +209,31 @@ class TestCFTCCOTFetcher:
         assert CFTCCOTFetcher._parse_date(None) is None
         assert CFTCCOTFetcher._parse_date(12345) is None
         assert CFTCCOTFetcher._parse_date("invalid-date") is None
+
+    @pytest.mark.asyncio
+    @patch("monika.infrastructure.data_ingestion.sources.cftc_cot.fetch_with_retry")
+    async def test_fetch_and_save_stops_after_two_consecutive_existing(self, mock_fetch):
+        mock_fetch.return_value = [
+            {"report_date_as_yyyy_mm_dd": "2026-08-25T00:00:00.000"},
+            {"report_date_as_yyyy_mm_dd": "2026-08-18T00:00:00.000"},
+            {"report_date_as_yyyy_mm_dd": "2026-08-11T00:00:00.000"},
+            {"report_date_as_yyyy_mm_dd": "2026-08-04T00:00:00.000"},
+        ]
+        mock_session = create_mock_async_session()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = 99
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        fetcher = CFTCCOTFetcher(mock_session, {})
+        res = await fetcher._fetch_and_save("http://test", {}, "gold", "088691")
+        assert res == 0
+        # Should stop after checking the 2 newest weeks instead of querying all 4
+        assert mock_session.execute.call_count == 2
+
+    def test_macro_data_scheduler_formats_empty_timeout_error(self):
+        from monika.application.scheduler.macro_data_scheduler import MacroDataScheduler
+
+        sched = MacroDataScheduler(settings={})
+        err_msg = sched._fmt_err(TimeoutError())
+        assert "TimeoutError" in err_msg
+        assert "90s" in err_msg

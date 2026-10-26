@@ -394,6 +394,9 @@ class AgentBuilderMixin:
             if isinstance(payload, dict):
                 self.settings.clear()
                 self.settings.update(payload)
+                mt5_cli = getattr(self, "mt5_client", None)
+                if mt5_cli is not None and hasattr(mt5_cli, "_broker_utc_offset_seconds"):
+                    mt5_cli._broker_utc_offset_seconds = None
 
         self.config_manager.subscribe("risk", _on_config_risk_update)
         self.config_manager.subscribe("scheduler", _on_config_scheduler_update)

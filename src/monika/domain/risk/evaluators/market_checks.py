@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 import monika.core.primitives.clock as clock
 from monika.domain.macro.regime_classifier import RegimeClassifier
 from monika.domain.market.currency_utils import get_symbol_currencies
-from monika.domain.risk.evaluators.base import _RiskGateMixinBase, resolve_model
+from monika.domain.risk.evaluators.base import _RiskGateMixinBase, bind_module_models, resolve_model
 from monika.domain.risk.position_sizing import SizingResult
 
 Position: Any = resolve_model("Position")
@@ -30,6 +30,21 @@ TechnicalIndicator: Any = resolve_model("TechnicalIndicator")
 SystemConfig: Any = resolve_model("SystemConfig")
 DXYData: Any = resolve_model("DXYData")
 TreasuryYield: Any = resolve_model("TreasuryYield")
+
+bind_module_models(
+    globals(),
+    (
+        "Position",
+        "EconomicCalendar",
+        "PriceOHLCV",
+        "VIXData",
+        "UserPreference",
+        "TechnicalIndicator",
+        "SystemConfig",
+        "DXYData",
+        "TreasuryYield",
+    ),
+)
 
 logger = logging.getLogger("TradingAgent.RiskGate")
 

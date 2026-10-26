@@ -16,7 +16,12 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import monika.core.primitives.clock as clock
 from monika.domain.market.currency_utils import get_symbol_currencies
-from monika.domain.risk.evaluators.base import _RiskGateMixinBase, get_trading_day_start, resolve_model
+from monika.domain.risk.evaluators.base import (
+    _RiskGateMixinBase,
+    bind_module_models,
+    get_trading_day_start,
+    resolve_model,
+)
 from monika.domain.risk.position_math import validated_stop_distance
 from monika.domain.risk.position_sizing import PositionSizer, SizingResult
 
@@ -26,6 +31,18 @@ TradeOutcome: Any = resolve_model("TradeOutcome")
 PaperTradeRecord: Any = resolve_model("PaperTradeRecord")
 AssetAnalysis: Any = resolve_model("AssetAnalysis")
 PriceOHLCV: Any = resolve_model("PriceOHLCV")
+
+bind_module_models(
+    globals(),
+    (
+        "Position",
+        "RiskState",
+        "TradeOutcome",
+        "PaperTradeRecord",
+        "AssetAnalysis",
+        "PriceOHLCV",
+    ),
+)
 
 logger = logging.getLogger("TradingAgent.RiskGate")
 

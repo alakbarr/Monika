@@ -14,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 
-from monika.domain.models_resolver import resolve_model
+from monika.domain.models_resolver import bind_module_models, resolve_model
 
 
 def get_trading_day_start(settings: dict, now: datetime | None = None) -> datetime:
@@ -85,4 +85,10 @@ class _RiskGateMixinBase:
         dynamic_correlation_matrix: Any
 
 
-__all__ = ["_RiskGateMixinBase", "resolve_model", "get_trading_day_start", "get_daily_risk_cutoff"]
+__all__ = [
+    "_RiskGateMixinBase",
+    "bind_module_models",
+    "resolve_model",
+    "get_trading_day_start",
+    "get_daily_risk_cutoff",
+]

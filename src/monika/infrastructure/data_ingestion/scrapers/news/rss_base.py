@@ -75,8 +75,18 @@ class RssBaseScraper:
                 logger.warning(f"RSS {self.source_name} returned HTTP {status}")
                 return news_list
 
-            if getattr(feed, "bozo", 0) == 1 and getattr(feed, "bozo_exception", None):
-                logger.warning(f"RSS {self.source_name} feed parser bozo exception: {feed.bozo_exception}")
+            bozo_exc = getattr(feed, "bozo_exception", None)
+            if getattr(feed, "bozo", 0) == 1 and bozo_exc is not None:
+                exc_name = type(bozo_exc).__name__
+                exc_str = str(bozo_exc).lower()
+                is_benign_encoding_notice = (
+                    exc_name in ("CharacterEncodingOverride", "NonXMLContentType")
+                    or "declared as us-ascii, but parsed as utf-8" in exc_str
+                )
+                if is_benign_encoding_notice and getattr(feed, "entries", None):
+                    logger.debug(f"RSS {self.source_name} benign feed parser notice: {bozo_exc}")
+                else:
+                    logger.warning(f"RSS {self.source_name} feed parser bozo exception: {bozo_exc}")
 
             count = 0
             seen_urls = set()

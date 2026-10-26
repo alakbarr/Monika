@@ -149,10 +149,20 @@ class MT5MarketDataMixin(MT5MixinBase):
         Hitung selisih detik antara broker server time MT5 dan UTC.
         Menggunakan central process-wide BrokerTimeResolver (fail-closed jika tidak terkonfigurasi).
         """
-        if self._broker_utc_offset_seconds is not None:
+        from monika.infrastructure.brokers.mt5.broker_time import BrokerTimeResolver
+
+        has_cfg_offset = False
+        if isinstance(getattr(self, "settings", None), dict):
+            mt5_cfg = self.settings.get("trading", {}).get("mt5", {}) or self.settings.get("mt5", {})
+            has_cfg_offset = isinstance(mt5_cfg, dict) and mt5_cfg.get("broker_utc_offset_hours") is not None
+
+        if self._broker_utc_offset_seconds is not None and not has_cfg_offset:
             return self._broker_utc_offset_seconds
 
-        from monika.infrastructure.brokers.mt5.broker_time import BrokerTimeResolver
+        fresh_cached = BrokerTimeResolver.get_cached_offset_if_fresh(self.settings)
+        if fresh_cached is not None:
+            self._broker_utc_offset_seconds = fresh_cached
+            return fresh_cached
 
         offset = await asyncio.to_thread(BrokerTimeResolver.resolve_offset_seconds, self.settings)
         self._broker_utc_offset_seconds = offset
@@ -298,6 +308,7 @@ class MT5MarketDataMixin(MT5MixinBase):
 
         broker_offset = await self.get_broker_utc_offset_seconds()
         saved = 0
+        parsed_rows: list[tuple[datetime, datetime, Any]] = []
         for _, row in df.iterrows():
             row_data: Any = row
             ts = row_data["time"]
@@ -311,21 +322,60 @@ class MT5MarketDataMixin(MT5MixinBase):
             canonical_ts = BrokerTimeResolver.to_canonical_bar_timestamp(
                 ts_dt, timeframe, offset_seconds=broker_offset, settings=self.settings
             )
+            parsed_rows.append((ts_dt, canonical_ts, row_data))
 
-            # Check if record exists by canonical_timestamp (or legacy timestamp)
-            exists = await session.execute(
+        existing_by_canonical: dict[datetime, Any] = {}
+        existing_by_legacy_ts: dict[datetime, Any] = {}
+        use_bulk_lookup = False
+
+        if len(parsed_rows) > 1:
+            min_ts = min(min(r[0] for r in parsed_rows), min(r[1] for r in parsed_rows))
+            max_ts = max(max(r[0] for r in parsed_rows), max(r[1] for r in parsed_rows))
+            bulk_res = await session.execute(
                 select(PriceOHLCV)
                 .where(PriceOHLCV.symbol == symbol)
                 .where(PriceOHLCV.timeframe == timeframe)
                 .where(
                     or_(
-                        PriceOHLCV.canonical_timestamp == canonical_ts,
-                        and_(PriceOHLCV.canonical_timestamp.is_(None), PriceOHLCV.timestamp == ts_dt),
+                        and_(PriceOHLCV.canonical_timestamp >= min_ts, PriceOHLCV.canonical_timestamp <= max_ts),
+                        and_(
+                            PriceOHLCV.canonical_timestamp.is_(None),
+                            PriceOHLCV.timestamp >= min_ts,
+                            PriceOHLCV.timestamp <= max_ts,
+                        ),
                     )
                 )
-                .limit(1)
             )
-            existing_record = exists.scalar_one_or_none()
+            scalars_obj = bulk_res.scalars() if hasattr(bulk_res, "scalars") else None
+            bulk_rows = scalars_obj.all() if scalars_obj is not None and hasattr(scalars_obj, "all") else None
+            if isinstance(bulk_rows, list):
+                use_bulk_lookup = True
+                for rec in bulk_rows:
+                    c_ts = getattr(rec, "canonical_timestamp", None)
+                    r_ts = getattr(rec, "timestamp", None)
+                    if c_ts is not None:
+                        existing_by_canonical[c_ts] = rec
+                    elif r_ts is not None:
+                        existing_by_legacy_ts[r_ts] = rec
+
+        for ts_dt, canonical_ts, row_data in parsed_rows:
+            if use_bulk_lookup:
+                existing_record = existing_by_canonical.get(canonical_ts) or existing_by_legacy_ts.get(ts_dt)
+            else:
+                exists = await session.execute(
+                    select(PriceOHLCV)
+                    .where(PriceOHLCV.symbol == symbol)
+                    .where(PriceOHLCV.timeframe == timeframe)
+                    .where(
+                        or_(
+                            PriceOHLCV.canonical_timestamp == canonical_ts,
+                            and_(PriceOHLCV.canonical_timestamp.is_(None), PriceOHLCV.timestamp == ts_dt),
+                        )
+                    )
+                    .limit(1)
+                )
+                existing_record = exists.scalar_one_or_none()
+
             if existing_record is not None:
                 if existing_record.canonical_timestamp is None:
                     existing_record.canonical_timestamp = canonical_ts
@@ -362,6 +412,8 @@ class MT5MarketDataMixin(MT5MixinBase):
                 volume=float(row_data["volume"]),
             )
             session.add(record)
+            if use_bulk_lookup:
+                existing_by_canonical[canonical_ts] = record
             saved += 1
 
         if saved:
@@ -415,12 +467,20 @@ class MT5MarketDataMixin(MT5MixinBase):
         tick = await self._run(_get_last_tick, symbol)
         if tick is None:
             return None
+        broker_offset = int(self._broker_utc_offset_seconds or 0)
+        if broker_offset == 0 and isinstance(getattr(self, "settings", None), dict):
+            mt5_cfg = self.settings.get("trading", {}).get("mt5", {}) or self.settings.get("mt5", {})
+            if isinstance(mt5_cfg, dict) and mt5_cfg.get("broker_utc_offset_hours") is not None:
+                try:
+                    broker_offset = await self.get_broker_utc_offset_seconds()
+                except Exception:
+                    broker_offset = 0
         return {
             "symbol": symbol,
             "bid": tick.bid,
             "ask": tick.ask,
             "last": tick.last,
-            "time": datetime.fromtimestamp(tick.time, tz=timezone.utc),
+            "time": datetime.fromtimestamp(tick.time - broker_offset, tz=timezone.utc),
             "fetched_at": time.time(),
         }
 

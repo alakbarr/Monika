@@ -186,10 +186,13 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                 )
                 summary["price_fetch"] = result
 
-                # TAMBAHAN: Fetch M15 khusus untuk paper trade detection
-                m15_result = await scheduler._mt5.fetch_and_save_all(
-                    session, symbols=target_symbols, timeframes=["M15"], count=100
-                )
+                # TAMBAHAN: Fetch M15 khusus untuk paper trade detection jika belum termasuk di mt5_timeframes
+                if "M15" not in scheduler.mt5_timeframes:
+                    m15_result = await scheduler._mt5.fetch_and_save_all(
+                        session, symbols=target_symbols, timeframes=["M15"], count=100
+                    )
+                else:
+                    m15_result = {f"{s}/M15": result.get(f"{s}/M15", 0) for s in target_symbols}
                 summary["price_fetch_m15"] = m15_result
                 logger.debug(f"M15 price fetch for paper trade detection: {m15_result}")
 

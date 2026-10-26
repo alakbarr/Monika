@@ -1241,6 +1241,7 @@ class IsolatedStrategyBacktestHarness:
             if sl is None or tp is None:
                 if self.fail_fast_on_error:
                     return HarnessMetrics(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+                i += 1
                 continue
 
             exit_price = entry_price

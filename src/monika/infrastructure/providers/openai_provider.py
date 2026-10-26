@@ -221,6 +221,15 @@ class OpenAIProvider(BaseLLMClient):
     Note: Requires `openai` package installed.
     """
 
+    _UNSUPPORTED_PROMPT_CACHE_PROVIDERS: frozenset[str] = frozenset({"groq"})
+    _UNSUPPORTED_PROMPT_CACHE_MODELS: set[str] = {
+        "qwen/qwen3.8-27b",
+        "qwen3.8-27b",
+        "groq-qwen3.8-27b",
+        "qwen/qwen3.6-27b",
+        "qwen3.6-27b",
+    }
+
     def __init__(
         self,
         model: str,
@@ -255,6 +264,7 @@ class OpenAIProvider(BaseLLMClient):
         self.role = kwargs.get("role", getattr(self, "role", model))
         self.kwargs = kwargs
         self.last_served_model: Optional[str] = None
+        self._prompt_cache_key_supported: bool = True
         try:
             from openai import AsyncOpenAI
 
@@ -585,7 +595,15 @@ class OpenAIProvider(BaseLLMClient):
 
                 # Case 1: prompt_cache_key rejected by endpoint
                 if "prompt_cache_key" in err_str and "prompt_cache_key" in current_kwargs:
-                    logger.warning(f"[{self.model}] prompt_cache_key rejected by endpoint, retrying without it.")
+                    self._prompt_cache_key_supported = False
+                    prov = self._get_provider_name()
+                    model_id = str(getattr(self, "model", "")).strip()
+                    if model_id:
+                        self._UNSUPPORTED_PROMPT_CACHE_MODELS.add(model_id)
+                        self._UNSUPPORTED_PROMPT_CACHE_MODELS.add(f"{prov}:{model_id}")
+                    logger.info(
+                        f"[{self.model}] prompt_cache_key not supported by {prov} endpoint; disabling for future requests and retrying."
+                    )
                     current_kwargs.pop("prompt_cache_key", None)
                     continue
 
@@ -626,6 +644,19 @@ class OpenAIProvider(BaseLLMClient):
                 # If no recovery rule matched, re-raise original exception
                 raise
 
+    def _supports_prompt_cache_key(self, provider_name: str) -> bool:
+        """Return True if the active provider and model support the prompt_cache_key parameter."""
+        if not getattr(self, "_prompt_cache_key_supported", True):
+            return False
+        if provider_name in self._UNSUPPORTED_PROMPT_CACHE_PROVIDERS:
+            return False
+        model_id = str(getattr(self, "model", "")).strip()
+        if model_id in self._UNSUPPORTED_PROMPT_CACHE_MODELS:
+            return False
+        if f"{provider_name}:{model_id}" in self._UNSUPPORTED_PROMPT_CACHE_MODELS:
+            return False
+        return True
+
     async def _create_chat_completion(self, kwargs: dict):
         if not self.client:
             raise RuntimeError("OpenAI API client not initialized")
@@ -639,7 +670,7 @@ class OpenAIProvider(BaseLLMClient):
             kwargs["extra_headers"] = {**affinity_headers, **extra_headers}
 
         # Auto-populate prompt_cache_key clamped to 64 chars when supported
-        if "prompt_cache_key" not in kwargs:
+        if "prompt_cache_key" not in kwargs and self._supports_prompt_cache_key(provider_name):
             raw_key = (
                 getattr(self, "session_id", None)
                 or getattr(self, "_session_affinity_id", None)

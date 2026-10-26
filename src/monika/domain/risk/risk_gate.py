@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import monika.core.primitives.clock as clock
 from monika.domain.entities.order_status import OrderStatus
-from monika.domain.risk.evaluators.base import resolve_model
+from monika.domain.risk.evaluators.base import bind_module_models, resolve_model
 
 Position: Any = resolve_model("Position")
 RiskState: Any = resolve_model("RiskState")
@@ -45,6 +45,26 @@ VIXData: Any = resolve_model("VIXData")
 UserPreference: Any = resolve_model("UserPreference")
 TechnicalIndicator: Any = resolve_model("TechnicalIndicator")
 TimesFMForecast: Any = resolve_model("TimesFMForecast")
+
+bind_module_models(
+    globals(),
+    (
+        "Position",
+        "RiskState",
+        "EconomicCalendar",
+        "OrderLog",
+        "TradeOutcome",
+        "PaperTradeRecord",
+        "AssetAnalysis",
+        "SystemConfig",
+        "Order",
+        "PriceOHLCV",
+        "VIXData",
+        "UserPreference",
+        "TechnicalIndicator",
+        "TimesFMForecast",
+    ),
+)
 
 
 from monika.domain.risk.position_sizing import SizingResult

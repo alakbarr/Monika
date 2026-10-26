@@ -8,6 +8,9 @@ Batch news classification and second-pass breaking verification pipeline.
 
 from __future__ import annotations
 
+import asyncio
+import time
+import weakref
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -34,10 +37,29 @@ from monika.application.analysis.prefetch.news_digest.helpers import (
 )
 
 
+_CLASSIFICATION_LOCKS: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = weakref.WeakKeyDictionary()
+
+
+def get_news_classification_lock() -> asyncio.Lock:
+    """Return the event-loop-scoped lock serializing classify_unscored_news passes."""
+    loop = asyncio.get_running_loop()
+    lock = _CLASSIFICATION_LOCKS.get(loop)
+    if lock is None:
+        lock = asyncio.Lock()
+        _CLASSIFICATION_LOCKS[loop] = lock
+    return lock
+
+
 class NewsClassificationMixin(_NewsDigestMixinBase):
     """Mixin providing unscored news classification lifecycle."""
 
     async def classify_unscored_news(self, session: AsyncSession, hours_back: int = 6) -> int:
+        async with get_news_classification_lock():
+            return await self._classify_unscored_news_locked(session, hours_back=hours_back)
+
+    async def _classify_unscored_news_locked(self, session: AsyncSession, hours_back: int = 6) -> int:
+        pass_start = time.monotonic()
+        max_pass_secs = float(self.settings.get("news_classification", {}).get("max_pass_seconds", 75.0))
         since = datetime.now(timezone.utc) - timedelta(hours=hours_back)
         try:
             from monika.application.analysis.calculators.economic_surprise import compute_surprise_scores
@@ -142,6 +164,11 @@ class NewsClassificationMixin(_NewsDigestMixinBase):
         macro_5d_context = await self._build_5day_macro_context(session, now_utc)
 
         for i in range(0, len(news_items), batch_size):
+            if i > 0 and (time.monotonic() - pass_start) >= max_pass_secs:
+                logger.info(
+                    f"[NewsClassification] Reached pass time budget ({max_pass_secs:.0f}s) after {classified} classified items; remaining items deferred to next pass."
+                )
+                break
             batch = news_items[i : i + batch_size]
             calendar_priors = await self._get_calendar_impact_priors(session, batch, now_utc)
 

@@ -251,3 +251,36 @@ class TestNewsWatcher:
 
         assert result["reanalysis_triggered"] is True
         assert any("BREAKING NEWS DETECTED" in rec.message and rec.levelno == logging.INFO for rec in caplog.records)
+
+    @pytest.mark.asyncio
+    @patch("monika.application.scheduler.news_watcher.get_session")
+    @patch("monika.application.analysis.prefetch.news_digest.NewsDigestProcessor")
+    async def test_run_once_skips_duplicate_classification_when_lock_held(
+        self, mock_processor, mock_get_session, settings
+    ):
+        from monika.application.analysis.prefetch.news_digest.classification import (
+            get_news_classification_lock,
+        )
+
+        watcher = NewsWatcher(settings)
+        news_routine = self._make_news("routine market update", impact=None)
+        watcher._fetch_new_news = AsyncMock(return_value=[news_routine])
+
+        mock_session = create_mock_async_session()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [news_routine]
+        mock_session.execute.return_value = mock_result
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_session
+        mock_get_session.return_value = mock_ctx
+
+        processor_instance = mock_processor.return_value
+        processor_instance.classify_unscored_news = AsyncMock()
+
+        cls_lock = get_news_classification_lock()
+        async with cls_lock:
+            await watcher.run_once()
+
+        # Because another worker holds the classification lock and item is not a shock keyword,
+        # NewsWatcher must skip spawning a duplicate concurrent classification pass.
+        processor_instance.classify_unscored_news.assert_not_called()

@@ -19,7 +19,7 @@ import asyncio
 import io
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import pandas as pd
@@ -124,7 +124,8 @@ class BondYieldFetcher:
         Mengambil data harian Euro Area AAA Yield (10Y atau 2Y) dari ECB Data Portal API.
         Endpoint REST/SDMX gratis tanpa auth.
         """
-        params = {"startPeriod": "2024-01-01", "format": "csvdata", "detail": "dataonly"}
+        start_period = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%d")
+        params = {"startPeriod": start_period, "format": "csvdata", "detail": "dataonly"}
         response = await fetch_with_retry(
             url=url,
             method="GET",
@@ -145,6 +146,9 @@ class BondYieldFetcher:
 
         if df.empty or "TIME_PERIOD" not in df.columns or "OBS_VALUE" not in df.columns:
             return 0
+
+        if len(df) > 60:
+            df = df.tail(60)
 
         saved = 0
         for _, row in df.iterrows():

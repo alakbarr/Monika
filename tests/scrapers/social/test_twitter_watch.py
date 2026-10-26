@@ -182,3 +182,50 @@ class TestTwitterWatchScraper:
             with patch("time.sleep"):
                 tweets = scraper.fetch_latest_tweets()
                 assert tweets == []
+
+    @patch("monika.infrastructure.data_ingestion.scrapers.social.twitter_watch.BaseScraper._initialize_browser")
+    def test_fetch_latest_tweets_rotates_and_quarantines_expired_session_after_wait(self, mock_init, tmp_path):
+        mock_page = MagicMock()
+        mock_init.return_value = mock_page
+
+        scraper = TwitterWatchScraper()
+        scraper.quarantined_file = tmp_path / "twitter_quarantined.json"
+        s1 = str(tmp_path / "twitter_session_dead.json")
+        s2 = str(tmp_path / "twitter_session_good.json")
+        scraper._pick_session = MagicMock(side_effect=[s1, s2])
+        scraper._load_cookies = MagicMock(return_value=[{"name": "auth_token", "value": "x", "domain": ".twitter.com"}])
+
+        # Session 1: initial URL ok, wait.ele_displayed False, then post-hydration check finds login prompt
+        # Session 2: initial URL ok, wait.ele_displayed True, returns 1 fresh article
+        mock_page.url = "https://x.com/i/lists/123"
+        mock_page.wait.ele_displayed.side_effect = [False, True]
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        mock_article = MagicMock()
+        mock_article.html = f'''
+        <article>
+            <a href="/macro/status/999">Link</a>
+            <time datetime="{now_iso}"></time>
+            <div data-testid="User-Name"><span>@macro</span></div>
+            <div data-testid="tweetText">Fed update</div>
+        </article>
+        '''
+        old_iso = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+        mock_old = MagicMock()
+        mock_old.html = f'<article><a href="/macro/status/1">L</a><time datetime="{old_iso}"></time></article>'
+
+        mock_page.eles.side_effect = [
+            [],  # s1 pre-wait login check
+            [MagicMock()],  # s1 post-wait login check -> found "Sign in to X"
+            [],  # s2 pre-wait login check
+            [mock_article] + [mock_old] * 6,  # s2 articles
+        ]
+
+        with patch("time.sleep"):
+            tweets = scraper.fetch_latest_tweets()
+
+        assert len(tweets) == 1
+        assert tweets[0].content == "Fed update"
+        quarantined = json.loads(scraper.quarantined_file.read_text(encoding="utf-8"))
+        assert s1 in quarantined
+        assert s2 not in quarantined

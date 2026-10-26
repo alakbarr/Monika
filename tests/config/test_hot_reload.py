@@ -71,3 +71,42 @@ def test_risk_parameter_reloader_file_watch():
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+@pytest.mark.asyncio
+async def test_config_reloader_in_worker_thread_awaits_async_notifier(tmp_path):
+    import asyncio
+    import warnings
+
+    cfg_file = tmp_path / "settings.yaml"
+    cfg_file.write_text(
+        yaml.safe_dump({"trading": {"risk": {"max_daily_drawdown_percent": 2.5, "max_concurrent_positions": 4}}}),
+        encoding="utf-8",
+    )
+
+    sent_messages: list[str] = []
+
+    class DummyNotifier:
+        async def send_info(self, msg: str) -> None:
+            sent_messages.append(msg)
+
+    mock_gate = MagicMock()
+    reloader = RiskParameterReloader(str(cfg_file), mock_gate, notifier=DummyNotifier())
+    reloader._loop = asyncio.get_running_loop()
+
+    cfg_file.write_text(
+        yaml.safe_dump({"trading": {"risk": {"max_daily_drawdown_percent": 3.5, "max_concurrent_positions": 5}}}),
+        encoding="utf-8",
+    )
+    future_mtime = (reloader.last_mtime or time.time()) + 10.0
+    os.utime(cfg_file, (future_mtime, future_mtime))
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", RuntimeWarning)
+        reloaded = await asyncio.to_thread(reloader.check_and_reload)
+        await asyncio.sleep(0.05)
+
+    assert reloaded is True
+    assert sent_messages == ["Configuration hot-reloaded."]
+    unawaited = [w for w in caught if "was never awaited" in str(w.message)]
+    assert unawaited == []

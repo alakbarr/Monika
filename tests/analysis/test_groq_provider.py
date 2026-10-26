@@ -298,3 +298,38 @@ async def test_openai_provider_auto_heals_on_token_limit_400():
     )
     assert resp.choices[0].message.content == "recovered successfully"
     assert call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_prompt_cache_key_skipped_for_groq_and_cached_on_rejection():
+    """Groq/qwen3.8-27b must not send prompt_cache_key, and rejected models must remember unsupported status."""
+    groq_prov = GroqProvider(model="groq-qwen3.8-27b", api_key="test-key")
+    assert groq_prov._supports_prompt_cache_key("groq") is False
+    assert groq_prov._supports_prompt_cache_key("openrouter") is False
+
+    custom_prov = OpenAIProvider(model="custom/test-no-cache-model", api_key="test-key")
+    assert custom_prov._supports_prompt_cache_key("openai") is True
+
+    calls = []
+
+    async def mock_create(**kwargs):
+        calls.append(dict(kwargs))
+        if "prompt_cache_key" in kwargs:
+            raise Exception("Unknown parameter: 'prompt_cache_key'")
+        mock_resp = AsyncMock()
+        mock_resp.choices = [AsyncMock()]
+        mock_resp.choices[0].message.content = "ok"
+        return mock_resp
+
+    custom_prov.client.chat.completions.create = AsyncMock(side_effect=mock_create)
+    await custom_prov._create_chat_completion({"model": custom_prov.model, "messages": []})
+    assert len(calls) == 2
+    assert "prompt_cache_key" in calls[0]
+    assert "prompt_cache_key" not in calls[1]
+    assert custom_prov._supports_prompt_cache_key("openai") is False
+
+    # Subsequent call should not inject prompt_cache_key at all
+    calls.clear()
+    await custom_prov._create_chat_completion({"model": custom_prov.model, "messages": []})
+    assert len(calls) == 1
+    assert "prompt_cache_key" not in calls[0]

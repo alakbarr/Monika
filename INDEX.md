@@ -1203,6 +1203,7 @@
 #### `models_resolver.py` - *Model resolver for Domain layer.*
 - **Path**: [`src/monika/domain/models_resolver.py`](src/monika/domain/models_resolver.py)
 - **Top-Level Functions**:
+  - `bind_module_models(target_globals: dict[str, Any], model_names: Iterable[str]) -> None`: Bind and auto-synchronize model references in a module's global namespace.
   - `register_model(name: str, model_cls: Any) -> None`: Register a database model class into the domain registry.
   - `register_models(models_dict: dict[str, Any]) -> None`: Batch register model classes into the domain registry.
   - `register_model_provider(provider: Callable[[str], Any]) -> None`: Register a provider callable (from outer layers) to lazily supply model classes.
@@ -6625,6 +6626,8 @@
 - **Classes**:
   - `class NewsClassificationMixin(_NewsDigestMixinBase)`: Mixin providing unscored news classification lifecycle.
     - `async classify_unscored_news(session: AsyncSession, hours_back: int) -> int`
+- **Top-Level Functions**:
+  - `get_news_classification_lock() -> asyncio.Lock`: Return the event-loop-scoped lock serializing classify_unscored_news passes.
 
 #### `constants.py` - *Constants, taxonomy, regular expressions, and JSON schemas for news digest processing.*
 - **Path**: [`src/monika/application/analysis/prefetch/news_digest/constants.py`](src/monika/application/analysis/prefetch/news_digest/constants.py)
@@ -11181,6 +11184,8 @@
 - **Path**: [`src/monika/infrastructure/brokers/mt5/broker_time.py`](src/monika/infrastructure/brokers/mt5/broker_time.py)
 - **Classes**:
   - `class BrokerTimeResolver`: Process-wide resolver for MT5 broker server time and canonical bar timestamps.
+    - `reset_cache() -> None` - *Reset process-wide cached broker offset state.*
+    - `get_cached_offset_if_fresh(settings: Optional[dict]) -> Optional[int]` - *Return cached broker UTC offset in seconds if valid, fresh, and config-consistent.*
     - `get_configured_offset_hours(settings: Optional[dict]) -> float` - *Retrieve configured broker UTC offset hours from settings. Fails closed.*
     - `resolve_offset_seconds(settings: Optional[dict], force_refresh: bool) -> int` - *Resolve the broker UTC offset in seconds.*
     - `to_canonical_bar_timestamp(ts: Any, timeframe: str, offset_seconds: Optional[int], ...) -> datetime` - *Floor and normalize a bar timestamp to its exact canonical UTC instant.*

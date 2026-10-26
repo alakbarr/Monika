@@ -17,7 +17,12 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import monika.core.primitives.clock as clock
 from monika.domain.entities.order_status import OrderStatus
-from monika.domain.risk.evaluators.base import _RiskGateMixinBase, get_trading_day_start, resolve_model
+from monika.domain.risk.evaluators.base import (
+    _RiskGateMixinBase,
+    bind_module_models,
+    get_trading_day_start,
+    resolve_model,
+)
 from monika.domain.risk.position_sizing import SizingResult
 
 Position: Any = resolve_model("Position")
@@ -26,6 +31,18 @@ TradeOutcome: Any = resolve_model("TradeOutcome")
 PaperTradeRecord: Any = resolve_model("PaperTradeRecord")
 SystemConfig: Any = resolve_model("SystemConfig")
 Order: Any = resolve_model("Order")
+
+bind_module_models(
+    globals(),
+    (
+        "Position",
+        "RiskState",
+        "TradeOutcome",
+        "PaperTradeRecord",
+        "SystemConfig",
+        "Order",
+    ),
+)
 
 logger = logging.getLogger("TradingAgent.RiskGate")
 

@@ -84,3 +84,31 @@ class TestRssBaseScraper:
         assert len(news) == 1
         assert news[0].title == "Recovered News"
         assert mock_feedparser.parse.call_count == 2
+
+    def test_fetch_news_benign_encoding_override_does_not_warn(self, caplog):
+        import logging
+
+        class CharacterEncodingOverride(Exception):
+            pass
+
+        mock_feedparser = MagicMock()
+        mock_feed = MagicMock()
+        mock_feed.status = 200
+        mock_feed.bozo = 1
+        mock_feed.bozo_exception = CharacterEncodingOverride("document declared as us-ascii, but parsed as utf-8")
+        mock_feed.entries = [
+            {
+                "link": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261026a.htm",
+                "title": "Federal Reserve issues FOMC statement",
+                "pubDate": "2026-10-26",
+                "summary": "Policy rate decision",
+            }
+        ]
+        mock_feedparser.parse.return_value = mock_feed
+        scraper = RssBaseScraper("federal_reserve_official", "https://www.federalreserve.gov/feeds/press_all.xml")
+
+        with caplog.at_level(logging.WARNING), patch.dict("sys.modules", {"feedparser": mock_feedparser}):
+            news = scraper.fetch_news(limit=5)
+
+        assert len(news) == 1
+        assert not any("bozo exception" in rec.message for rec in caplog.records)

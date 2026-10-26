@@ -78,3 +78,21 @@ def test_canonical_timestamp_w1():
     dt = datetime(2026, 10, 22, 10, 0, 0, tzinfo=timezone.utc)
     canon_w1 = to_canonical_timestamp(dt, "W1", offset_seconds=10800)
     assert canon_w1 == datetime(2026, 10, 19, 0, 0, 0, tzinfo=timezone.utc)
+
+
+def test_resolve_offset_seconds_auto_adjusts_on_live_tick_dst_shift(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    now_utc_ts = datetime.now(timezone.utc).timestamp()
+    # Simulate broker on Winter time (UTC+2 = +7200s) with a 3-second-old tick while settings still say 3.0 (UTC+3)
+    fake_tick = SimpleNamespace(time=int(now_utc_ts + 7200 - 3))
+    fake_mt5 = SimpleNamespace(symbol_info_tick=lambda _s: fake_tick)
+    monkeypatch.setitem(sys.modules, "MetaTrader5", fake_mt5)
+
+    settings = {"trading": {"mt5": {"broker_utc_offset_hours": 3.0}}}
+    try:
+        sec = BrokerTimeResolver.resolve_offset_seconds(settings, force_refresh=True)
+        assert sec == 7200
+    finally:
+        BrokerTimeResolver.reset_cache()

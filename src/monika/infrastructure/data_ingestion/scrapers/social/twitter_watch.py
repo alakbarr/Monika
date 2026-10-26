@@ -33,6 +33,8 @@ class TwitterWatchScraper(BaseScraper):
         self.target_list_url = list_url or "https://x.com/i/lists/2024453847716970688"
         self.max_fetch_limit = 200
         self.seen_urls = set()
+        self.had_rendered_articles: bool = False
+        self.last_fetch_status: str = "init"
 
     def _load_quarantined(self) -> List[str]:
         if self.quarantined_file.exists():
@@ -141,49 +143,89 @@ class TwitterWatchScraper(BaseScraper):
     def _get_url_hash(self, url: str) -> str:
         return hashlib.md5(url.encode("utf-8")).hexdigest()
 
+    @staticmethod
+    def _is_login_wall(page_obj: Any) -> bool:
+        url_str = str(getattr(page_obj, "url", "") or "").lower()
+        if "login" in url_str or "i/flow" in url_str:
+            return True
+        sign_in_eles = page_obj.eles("text:Sign in to X", timeout=0.5)
+        return isinstance(sign_in_eles, list) and len(sign_in_eles) > 0
+
     def fetch_latest_tweets(self, max_age_minutes: int = 1440) -> List[ScrapedTweet]:
         loop_deadline = time.monotonic() + 65.0
-
-        session_file = self._pick_session()
-        if not session_file:
-            return []
-
-        cookies = self._load_cookies(session_file)
-        if not cookies:
-            self._mark_quarantined(session_file)
-            return []
+        self.had_rendered_articles = False
+        self.last_fetch_status = "init"
 
         if not self.page:
+            self.last_fetch_status = "no_browser"
             return []
         page_obj: Any = self.page
-
-        logger.info(f"Injecting cookies from {Path(session_file).name}...")
-        page_obj.get("https://x.com/robots.txt")
-        page_obj.set.cookies(cookies)
-
-        # Ekstra injeksi domain cookie lang=en secara eksplisit
-        try:
-            page_obj.set.cookies({"name": "lang", "value": "en", "domain": ".x.com", "path": "/"})
-            page_obj.set.cookies({"name": "lang", "value": "en", "domain": "x.com", "path": "/"})
-        except Exception:
-            pass
 
         target_url = self.target_list_url
         if "lang=" not in target_url:
             separator = "&" if "?" in target_url else "?"
             target_url = f"{target_url}{separator}lang=en"
 
-        logger.info(f"Navigating to {target_url}")
-        page_obj.get(target_url)
+        tried_sessions: set[str] = set()
+        max_session_attempts = 3
 
-        # Periksa status login
-        if "login" in page_obj.url or page_obj.eles("text:Sign in to X", timeout=0.5):
-            logger.error("Session expired/unauthorized. Quarantining...")
-            self._mark_quarantined(session_file)
-            return []
+        for _attempt in range(max_session_attempts):
+            session_file = self._pick_session()
+            if not session_file or session_file in tried_sessions:
+                break
+            tried_sessions.add(session_file)
 
-        if not page_obj.wait.ele_displayed("tag:article", timeout=15):
-            logger.error("No articles rendered. Possible rate limit.")
+            cookies = self._load_cookies(session_file)
+            if not cookies:
+                self._mark_quarantined(session_file)
+                continue
+
+            logger.info(f"Injecting cookies from {Path(session_file).name}...")
+            page_obj.get("https://x.com/robots.txt")
+            page_obj.set.cookies(cookies)
+
+            # Mirror any .twitter.com cookies onto .x.com and enforce lang=en
+            try:
+                if isinstance(cookies, list):
+                    for c_item in cookies:
+                        if isinstance(c_item, dict) and "twitter.com" in str(c_item.get("domain", "")):
+                            x_cookie = dict(c_item)
+                            x_cookie["domain"] = ".x.com"
+                            page_obj.set.cookies(x_cookie)
+                page_obj.set.cookies({"name": "lang", "value": "en", "domain": ".x.com", "path": "/"})
+                page_obj.set.cookies({"name": "lang", "value": "en", "domain": "x.com", "path": "/"})
+            except Exception:
+                pass
+
+            logger.info(f"Navigating to {target_url}")
+            page_obj.get(target_url)
+
+            # Periksa status login awal
+            if self._is_login_wall(page_obj):
+                logger.warning(f"Session {Path(session_file).name} expired/unauthorized. Quarantining and rotating...")
+                self._mark_quarantined(session_file)
+                continue
+
+            if page_obj.wait.ele_displayed("tag:article", timeout=15):
+                self.had_rendered_articles = True
+                self.last_fetch_status = "ok"
+                break
+
+            # Re-check login wall after SPA hydration / redirect during wait
+            if self._is_login_wall(page_obj):
+                logger.warning(
+                    f"Session {Path(session_file).name} redirected to login after hydration. Quarantining and rotating..."
+                )
+                self._mark_quarantined(session_file)
+                continue
+
+            logger.warning(
+                f"No articles rendered with session {Path(session_file).name} (possible rate limit); trying next session if available..."
+            )
+
+        if not self.had_rendered_articles:
+            self.last_fetch_status = "no_articles"
+            logger.info(f"TwitterWatchScraper: no articles rendered after trying {len(tried_sessions)} session(s).")
             return []
 
         cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=max_age_minutes)

@@ -275,13 +275,26 @@ class NewsWatcher:
                 or (self._classify_tick_counter % self._classify_every_n_ticks == 0 and len(new_items) >= 1)
             ):
                 # Quick batch classification via AI / LLM classifier
-                processor = NewsDigestProcessor(self.settings)
-                async with get_session() as session:
-                    try:
-                        async with asyncio.timeout(30.0):
-                            await processor.classify_unscored_news(session, hours_back=1)
-                    except asyncio.TimeoutError:
-                        logger.warning("[NewsWatcher] News classification timed out after 30s")
+                from monika.application.analysis.prefetch.news_digest.classification import (
+                    get_news_classification_lock,
+                )
+
+                cls_lock = get_news_classification_lock()
+                if cls_lock.locked() and not force_classify:
+                    logger.debug(
+                        "[NewsWatcher] News classification already in progress in another worker; skipping duplicate pass."
+                    )
+                else:
+                    classify_timeout = float(
+                        self.settings.get("news_classification", {}).get("watcher_timeout_seconds", 90.0)
+                    )
+                    processor = NewsDigestProcessor(self.settings)
+                    async with get_session() as session:
+                        try:
+                            async with asyncio.timeout(classify_timeout):
+                                await processor.classify_unscored_news(session, hours_back=1)
+                        except asyncio.TimeoutError:
+                            logger.warning(f"[NewsWatcher] News classification timed out after {classify_timeout:.0f}s")
 
             # Re-query dengan impact filter (Fix 5.9: by ID instead of URL)
             async with get_session() as session:

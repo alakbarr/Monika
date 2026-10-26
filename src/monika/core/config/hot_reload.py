@@ -25,6 +25,7 @@ class ConfigReloader:
         self.check_interval_seconds = check_interval_seconds
         self.subscribers = list(subscribers or [])
         self._background_tasks: set[asyncio.Task[Any]] = set()
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
         self.last_mtime: float | None = None
         if os.path.exists(self.config_path):
             try:
@@ -97,20 +98,53 @@ class ConfigReloader:
 
                 self.last_mtime = current_mtime
                 logger.info(f"[HotReload] Reloaded configuration from {self.config_path}")
-                if self.notifier and hasattr(self.notifier, "send_info"):
-                    try:
-                        task = asyncio.create_task(self.notifier.send_info("Configuration hot-reloaded."))
-                        self._background_tasks.add(task)
-                        task.add_done_callback(self._background_tasks.discard)
-                    except Exception:
-                        pass
+                self._dispatch_notification("Configuration hot-reloaded.")
                 return True
         except Exception as e:
             logger.error(f"[HotReload] Error reloading config from {self.config_path}: {e}")
         return False
 
+    def _dispatch_notification(self, message: str) -> None:
+        """Schedule notifier.send_info safely from either an event-loop thread or a worker thread."""
+        send_info_fn = getattr(self.notifier, "send_info", None)
+        if not callable(send_info_fn):
+            return
+
+        def _schedule_on_loop() -> None:
+            try:
+                res = send_info_fn(message)
+                if asyncio.iscoroutine(res):
+                    task = asyncio.create_task(res)
+                    self._background_tasks.add(task)
+                    task.add_done_callback(self._background_tasks.discard)
+            except Exception as err:
+                logger.debug(f"[HotReload] Notification dispatch error: {err}")
+
+        try:
+            asyncio.get_running_loop()
+            _schedule_on_loop()
+            return
+        except RuntimeError:
+            pass
+
+        if self._loop is not None and self._loop.is_running():
+            try:
+                self._loop.call_soon_threadsafe(_schedule_on_loop)
+                return
+            except RuntimeError:
+                pass
+
+        if not asyncio.iscoroutinefunction(send_info_fn):
+            try:
+                res = send_info_fn(message)
+                if asyncio.iscoroutine(res):
+                    res.close()
+            except Exception:
+                pass
+
     async def watch_and_reload(self, shutdown_event: asyncio.Event | None = None):
         """Continuous background task watching config file."""
+        self._loop = asyncio.get_running_loop()
         while shutdown_event is None or not shutdown_event.is_set():
             try:
                 await asyncio.to_thread(self.check_and_reload)

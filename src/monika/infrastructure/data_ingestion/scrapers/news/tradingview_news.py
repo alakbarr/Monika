@@ -212,9 +212,9 @@ class TradingViewNewsScraper(BaseScraper):
                             logger.info(
                                 "Watchlist empty state rendered; falling back to public TradingView news flow..."
                             )
-                            public_sel = 'css:[data-qa-id="news-headline-card"], [data-name="news-headline-card"], a[href*="/news/"], article'
+                            public_sel = wait_sel
                             self.navigate_with_fallback(
-                                "https://www.tradingview.com/news-flow/", public_sel, timeout=12
+                                "https://www.tradingview.com/news-flow/", public_sel, timeout=12, disable_fallback=True
                             )
                     except Exception:
                         pass
@@ -222,7 +222,8 @@ class TradingViewNewsScraper(BaseScraper):
                 # Kumpulkan link dan metadata terlebih dahulu
                 count = 0
                 articles = page_obj.eles(
-                    'css:[data-qa-id="news-headline-card"], [data-name="news-headline-card"], a[href*="/news/"], article'
+                    'css:[data-qa-id="news-headline-card"], [data-name="news-headline-card"], a[href*="/news/"], article',
+                    timeout=1.5,
                 )
                 article_data_list = []
 

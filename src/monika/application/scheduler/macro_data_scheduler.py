@@ -29,7 +29,15 @@ class MacroDataScheduler:
     """
 
     _global_sync_locks: dict[Any, asyncio.Lock] = {}
-    FETCH_TIMEOUT_SECS: float = 45.0
+    FETCH_TIMEOUT_SECS: float = 90.0
+
+    def _fmt_err(self, e: Exception) -> str:
+        msg = str(e).strip()
+        if msg:
+            return msg
+        if isinstance(e, TimeoutError):
+            return f"TimeoutError (exceeded {self.FETCH_TIMEOUT_SECS:.0f}s)"
+        return type(e).__name__
 
     @classmethod
     def _get_global_lock(cls) -> asyncio.Lock:
@@ -76,8 +84,9 @@ class MacroDataScheduler:
                         results["btc_funding"] = fg
                         logger.info("MacroDataScheduler: Coinglass funding refreshed")
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: Coinglass funding fetch failed: {e}")
-                results["btc_funding"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: Coinglass funding fetch failed: {err_msg}")
+                results["btc_funding"] = {"error": err_msg}
 
             # 2. Binance Sentiment
             try:
@@ -92,8 +101,9 @@ class MacroDataScheduler:
                         results["binance_sentiment"] = sentiment
                         logger.info("MacroDataScheduler: Binance retail sentiment refreshed")
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: Binance sentiment fetch failed: {e}")
-                results["binance_sentiment"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: Binance sentiment fetch failed: {err_msg}")
+                results["binance_sentiment"] = {"error": err_msg}
 
             # 3. MyFxBook Sentiment
             try:
@@ -108,8 +118,9 @@ class MacroDataScheduler:
                         results["myfxbook_sentiment"] = sentiment
                         logger.info("MacroDataScheduler: MyFxBook retail sentiment refreshed")
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: MyFxBook sentiment fetch failed: {e}")
-                results["myfxbook_sentiment"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: MyFxBook sentiment fetch failed: {err_msg}")
+                results["myfxbook_sentiment"] = {"error": err_msg}
 
             # 4. FXSSI Sentiment
             try:
@@ -124,8 +135,9 @@ class MacroDataScheduler:
                         results["fxssi_sentiment"] = sentiment
                         logger.info("MacroDataScheduler: FXSSI retail sentiment refreshed")
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: FXSSI sentiment fetch failed: {e}")
-                results["fxssi_sentiment"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: FXSSI sentiment fetch failed: {err_msg}")
+                results["fxssi_sentiment"] = {"error": err_msg}
 
             # 5. VIX (Multi-tier: Yahoo Direct, CBOE CDN, FRED, yfinance)
             try:
@@ -139,8 +151,9 @@ class MacroDataScheduler:
                         results["vix"] = {"saved": n}
                         logger.info(f"MacroDataScheduler: VIX refreshed ({n} records)")
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: VIX refresh failed: {e}")
-                results["vix"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: VIX refresh failed: {err_msg}")
+                results["vix"] = {"error": err_msg}
 
             # 6. FRED Treasury Yields
             try:
@@ -153,8 +166,9 @@ class MacroDataScheduler:
                         results["fred"] = r
                         logger.info(f"MacroDataScheduler: FRED refreshed: {r}")
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: FRED refresh failed: {e}")
-                results["fred"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: FRED refresh failed: {err_msg}")
+                results["fred"] = {"error": err_msg}
 
             # 7. CFTC COT Report
             try:
@@ -167,8 +181,9 @@ class MacroDataScheduler:
                         results["cftc"] = {"saved": n}
                         logger.info(f"MacroDataScheduler: CFTC COT refreshed ({n} records)")
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: CFTC refresh failed: {e}")
-                results["cftc"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: CFTC refresh failed: {err_msg}")
+                results["cftc"] = {"error": err_msg}
 
             # 8. DXY (Yahoo Finance)
             try:
@@ -181,8 +196,9 @@ class MacroDataScheduler:
                         results["dxy"] = {"saved": n}
                         logger.info(f"MacroDataScheduler: DXY refreshed ({n} records)")
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: DXY refresh failed: {e}")
-                results["dxy"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: DXY refresh failed: {err_msg}")
+                results["dxy"] = {"error": err_msg}
 
             # 9. Bond Yields (Yahoo Finance)
             try:
@@ -195,8 +211,9 @@ class MacroDataScheduler:
                         results["bond_yields"] = r
                         logger.info(f"MacroDataScheduler: Bond yields refreshed: {r}")
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: Bond yields refresh failed: {e}")
-                results["bond_yields"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: Bond yields refresh failed: {err_msg}")
+                results["bond_yields"] = {"error": err_msg}
 
             # 10. Crypto Fear & Greed Index
             try:
@@ -212,8 +229,9 @@ class MacroDataScheduler:
                         }
                         logger.info(f"MacroDataScheduler: Fear & Greed refreshed ({fg.get('current_value')})")
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: Fear & Greed fetch failed: {e}")
-                results["fear_greed"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: Fear & Greed fetch failed: {err_msg}")
+                results["fear_greed"] = {"error": err_msg}
 
             # 11. EIA Oil Inventory
             try:
@@ -230,8 +248,9 @@ class MacroDataScheduler:
                 else:
                     results["eia_oil"] = {"status": "skipped_not_wednesday"}
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: EIA fetch failed: {e}")
-                results["eia_oil"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: EIA fetch failed: {err_msg}")
+                results["eia_oil"] = {"error": err_msg}
 
             # 12. Central Bank Watch Rate Expectations & Sovereign Curves (Fed, ECB, BoE, BoJ, RBA)
             try:
@@ -249,8 +268,9 @@ class MacroDataScheduler:
                             f"MacroDataScheduler: Central Bank Watch refreshed ({len(cbw.get('expectations', {}))} banks, {len(cbw.get('yields', {}))} curves)"
                         )
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: Central Bank Watch fetch failed: {e}")
-                results["central_bank_watch"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: Central Bank Watch fetch failed: {err_msg}")
+                results["central_bank_watch"] = {"error": err_msg}
 
             # 13. Fed H.4.1 Net Liquidity, Treasury Auctions & Market Stress
             try:
@@ -277,8 +297,9 @@ class MacroDataScheduler:
                             f"MacroDataScheduler: Fed Net Liquidity (${fed_res.get('net_liquidity_billions'):,.1f}B) and Treasury Auction refreshed"
                         )
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: Systemic liquidity refresh failed: {e}")
-                results["systemic_liquidity_and_stress"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: Systemic liquidity refresh failed: {err_msg}")
+                results["systemic_liquidity_and_stress"] = {"error": err_msg}
 
             # 14. Central Bank Documents & Macro Decomposition Warmup
             try:
@@ -296,8 +317,9 @@ class MacroDataScheduler:
                         results["macro_docs_and_decomposition"] = {"status": "verified_and_warmed"}
                         logger.info("MacroDataScheduler: Central bank documents and macro decomposition cache warmed")
             except Exception as e:
-                logger.warning(f"MacroDataScheduler: Central bank docs warm failed: {e}")
-                results["macro_docs_and_decomposition"] = {"error": str(e)}
+                err_msg = self._fmt_err(e)
+                logger.warning(f"MacroDataScheduler: Central bank docs warm failed: {err_msg}")
+                results["macro_docs_and_decomposition"] = {"error": err_msg}
 
             self._last_refresh_time = datetime.now(timezone.utc)
             self._last_results = results

@@ -10,7 +10,7 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from monika.infrastructure.database.adapters import (
     batch_save_calendar,
@@ -396,13 +396,18 @@ class ScraperRunner:
         return {"saved": n}
 
     async def _fetch_twitter(self) -> dict:
+        fetch_meta: dict[str, Any] = {"had_rendered_articles": False, "status": "ok"}
+
         def _fetch():
             from monika.infrastructure.data_ingestion.scrapers.social.twitter_watch import TwitterWatchScraper
 
             list_url = self.enabled_sources.get("twitter", {}).get("list_url")
             scraper = self._register_scraper(TwitterWatchScraper(headless=True, list_url=list_url))
             try:
-                return scraper.fetch_latest_tweets(max_age_minutes=360)
+                res_tweets = scraper.fetch_latest_tweets(max_age_minutes=360)
+                fetch_meta["had_rendered_articles"] = getattr(scraper, "had_rendered_articles", False)
+                fetch_meta["status"] = getattr(scraper, "last_fetch_status", "ok")
+                return res_tweets
             finally:
                 self._unregister_scraper(scraper)
                 scraper.close()
@@ -411,9 +416,14 @@ class ScraperRunner:
         async with get_session() as session:
             n = await batch_save_tweets(session, tweets)
         if n == 0 and not tweets:
-            now_utc = datetime.now(timezone.utc)
-            if now_utc.weekday() < 5:
-                raise RuntimeError("Twitter watch scraper returned 0 tweets during active market window")
+            if fetch_meta.get("had_rendered_articles"):
+                logger.info("Twitter watch scraper rendered timeline articles; 0 new tweets within 360m window.")
+                return {"saved": 0, "status": "no_new_tweets"}
+            if fetch_meta.get("status") == "no_articles":
+                logger.info(
+                    "Twitter watch scraper returned 0 tweets (session pool rate-limited or empty feed); skipping failure alert."
+                )
+                return {"saved": 0, "status": "rate_limited_or_empty"}
         return {"saved": n}
 
     # ------------------------------------------------------------------

@@ -3000,3 +3000,29 @@ async def test_domain_risk_remaining_143_lines_coverage(tmp_path: Path) -> None:
     ):
         st_err = await get_current_risk_state(session=_MockSession(scalar_val=None), settings={})
         assert st_err["starting_equity"] == 10000.0
+
+
+def test_bind_module_models_syncs_after_late_registration() -> None:
+    """Verify bind_module_models dynamically updates RiskGate & evaluator globals when registered late."""
+    import monika.domain.risk.evaluators.intelligence_checks as ic_mod
+    import monika.domain.risk.evaluators.market_checks as mc_mod
+    import monika.domain.risk.evaluators.portfolio_checks as pc_mod
+    import monika.domain.risk.risk_gate as rg_mod
+    from monika.domain.models_resolver import register_model
+    from monika.infrastructure.database.models import PriceOHLCV as RealPriceOHLCV
+    from monika.infrastructure.database.models import TimesFMForecast as RealTimesFMForecast
+
+    ic_mod.TimesFMForecast = None
+    mc_mod.PriceOHLCV = None
+    pc_mod.PriceOHLCV = None
+    rg_mod.TimesFMForecast = None
+    rg_mod.PriceOHLCV = None
+
+    register_model("TimesFMForecast", RealTimesFMForecast)
+    register_model("PriceOHLCV", RealPriceOHLCV)
+
+    assert ic_mod.TimesFMForecast is RealTimesFMForecast
+    assert mc_mod.PriceOHLCV is RealPriceOHLCV
+    assert pc_mod.PriceOHLCV is RealPriceOHLCV
+    assert rg_mod.TimesFMForecast is RealTimesFMForecast
+    assert rg_mod.PriceOHLCV is RealPriceOHLCV

@@ -15,7 +15,7 @@ import math
 from datetime import datetime, timedelta, timezone, UTC
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from monika.domain.risk.evaluators.base import _RiskGateMixinBase, resolve_model
+from monika.domain.risk.evaluators.base import _RiskGateMixinBase, bind_module_models, resolve_model
 from monika.domain.risk.position_sizing import SizingResult
 from monika.core.config.risk_defaults import (
     DEFAULT_AUTO_EXECUTE_MIN_CONFIDENCE,
@@ -32,6 +32,16 @@ Position: Any = resolve_model("Position")
 AssetAnalysis: Any = resolve_model("AssetAnalysis")
 SystemConfig: Any = resolve_model("SystemConfig")
 TimesFMForecast: Any = resolve_model("TimesFMForecast")
+
+bind_module_models(
+    globals(),
+    (
+        "Position",
+        "AssetAnalysis",
+        "SystemConfig",
+        "TimesFMForecast",
+    ),
+)
 
 logger = logging.getLogger("TradingAgent.RiskGate")
 

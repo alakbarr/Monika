@@ -88,7 +88,7 @@ class CFTCCOTFetcher:
                 total_saved += saved
 
                 # Rate limiting (delay) untuk free-tier
-                await asyncio.sleep(1.5)
+                await asyncio.sleep(0.5)
             except Exception as e:
                 logger.error(f"COT fetch failed for {market_name} ({market_code}): {e}")
                 try:
@@ -123,6 +123,7 @@ class CFTCCOTFetcher:
             return 0
 
         records_saved = 0
+        consecutive_existing = 0
         for row in data:
             if not isinstance(row, dict):
                 continue
@@ -141,7 +142,11 @@ class CFTCCOTFetcher:
             ).scalar_one_or_none()
 
             if existing is not None:
+                consecutive_existing += 1
+                if consecutive_existing >= 2:
+                    break
                 continue
+            consecutive_existing = 0
 
             # Multi-fallback parser posisi untuk mendukung skema TFF dan Komoditas
             dealer_long = self._int(
