@@ -186,6 +186,13 @@ def test_tool_registry_concurrency_safe():
     assert ToolRegistry.is_tool_concurrency_safe("run_terminal") is False
     assert ToolRegistry.is_tool_concurrency_safe("submit_asset_analysis") is False
 
+    # Database tools must serialize under session lock to avoid AsyncSession provisioning collision
+    assert ToolRegistry.is_tool_concurrency_safe("get_cot_report") is False
+    assert ToolRegistry.is_tool_concurrency_safe("get_forex_sentiment") is False
+    assert ToolRegistry.is_tool_concurrency_safe("get_funding_rate") is False
+    assert ToolRegistry.is_tool_concurrency_safe("get_dxy") is False
+    assert ToolRegistry.is_tool_concurrency_safe("get_vix") is False
+
 
 def test_code_execution_rpc_parallel_connections():
     """Verify CodeExecutionRpcServer handles concurrent requests across threads."""

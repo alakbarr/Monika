@@ -137,3 +137,52 @@ async def test_anthropic_provider_log_tool_call_uses_isolated_session():
     caller_session.add.assert_not_called()
     isolated_session.add.assert_called_once()
     isolated_session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_concurrent_get_tools_raise_invalid_request_when_unlocked():
+    """Reproduce: when multiple get_* tools touch the same session concurrently without session_lock,
+    SQLAlchemy's state tracker raises InvalidRequestError (provisioning a new connection; concurrent operations).
+    """
+    from sqlalchemy.exc import InvalidRequestError
+
+    class ConcurrencyEnforcingSession:
+        def __init__(self):
+            self._busy = False
+            self._session_lock = asyncio.Lock()
+            self.rollback_count = 0
+
+        async def execute(self, stmt, *args, **kwargs):
+            if self._busy:
+                raise InvalidRequestError(
+                    "This session is provisioning a new connection; concurrent operations are not permitted "
+                    "(Background on this error at: https://sqlalche.me/e/20/isce)"
+                )
+            self._busy = True
+            try:
+                await asyncio.sleep(0.02)
+                mock_res = MagicMock()
+                mock_res.scalars.return_value.all.return_value = []
+                mock_res.scalar_one_or_none.return_value = None
+                return mock_res
+            finally:
+                self._busy = False
+
+        async def rollback(self):
+            self.rollback_count += 1
+
+    session = ConcurrencyEnforcingSession()
+    executor = ToolExecutor(session=session, settings={})
+
+    # In current main, get_cot_report and get_forex_sentiment are treated as concurrency_safe=True
+    # and bypass session_lock, causing InvalidRequestError!
+    res1, res2, res3 = await asyncio.gather(
+        executor.execute("get_cot_report", {}),
+        executor.execute("get_forex_sentiment", {}),
+        executor.execute("get_funding_rate", {}),
+    )
+
+    # In a properly synchronized executor, all three tools serialize under session_lock and never hit InvalidRequestError!
+    assert res1.get("error_type") != "InvalidRequestError", f"get_cot_report raised InvalidRequestError: {res1}"
+    assert res2.get("error_type") != "InvalidRequestError", f"get_forex_sentiment raised InvalidRequestError: {res2}"
+    assert res3.get("error_type") != "InvalidRequestError", f"get_funding_rate raised InvalidRequestError: {res3}"

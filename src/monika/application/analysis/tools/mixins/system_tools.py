@@ -557,16 +557,21 @@ class SystemToolsMixin(_ToolExecutorMixinBase):
 
     async def _tool_get_forex_sentiment(self, inp: dict) -> dict:
         import json as _json
+        from monika.application.analysis.tools.handlers.macro.base import _safe_execute
 
-        cfg = (
-            await self.session.execute(select(SystemConfig).where(SystemConfig.key == "myfxbook_sentiment_latest"))
-        ).scalar_one_or_none()
+        res_myfx = await _safe_execute(
+            self.session,
+            select(SystemConfig).where(SystemConfig.key == "myfxbook_sentiment_latest"),
+        )
+        cfg = res_myfx.scalar_one_or_none() if res_myfx is not None else None
 
         if not cfg or not cfg.value:
             # Fallback to FXSSI sentiment if MyFxBook is not available
-            fxssi_cfg = (
-                await self.session.execute(select(SystemConfig).where(SystemConfig.key == "fxssi_sentiment_latest"))
-            ).scalar_one_or_none()
+            res_fxssi = await _safe_execute(
+                self.session,
+                select(SystemConfig).where(SystemConfig.key == "fxssi_sentiment_latest"),
+            )
+            fxssi_cfg = res_fxssi.scalar_one_or_none() if res_fxssi is not None else None
             if fxssi_cfg and fxssi_cfg.value:
                 try:
                     return _json.loads(fxssi_cfg.value)

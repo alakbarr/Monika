@@ -122,7 +122,8 @@ async def handle_get_cot_report(args: dict, **ctx) -> dict:
     if market_codes:
         query = query.where(COTReport.market_code.in_(market_codes))
 
-    rows = (await session.execute(query)).scalars().all()
+    raw_res = await _safe_execute(session, query)
+    rows = raw_res.scalars().all() if raw_res is not None else []
 
     seen_counts: Dict[str, int] = {}
     reports = []
@@ -294,17 +295,11 @@ async def handle_get_funding_rate(args: dict, **ctx) -> dict:
     session, _, _ = _get_macro_context(args, ctx)
     # 1. Cek cache SystemConfig jika session tersedia
     if session:
-        cfg_rows = (
-            (
-                await session.execute(
-                    select(SystemConfig).where(
-                        SystemConfig.key.in_(["coinglass_funding_latest", "funding_rate_latest"])
-                    )
-                )
-            )
-            .scalars()
-            .all()
+        raw_cfg = await _safe_execute(
+            session,
+            select(SystemConfig).where(SystemConfig.key.in_(["coinglass_funding_latest", "funding_rate_latest"])),
         )
+        cfg_rows = raw_cfg.scalars().all() if raw_cfg is not None else []
 
         for cfg in cfg_rows:
             if cfg and cfg.value:

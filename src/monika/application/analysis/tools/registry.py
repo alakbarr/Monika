@@ -413,11 +413,64 @@ class ToolRegistry:
         if canonical in MUTATING_CORE_TOOLS:
             return False
 
+        # Known tools that require database queries (must serialize under session_lock on shared AsyncSession)
+        DATABASE_TOOLS = frozenset(
+            {
+                "get_cot_report",
+                "get_forex_sentiment",
+                "get_funding_rate",
+                "get_dxy",
+                "get_vix",
+                "get_treasury_yields",
+                "get_bond_yield_spreads",
+                "get_economic_calendar",
+                "get_economic_surprise",
+                "get_interest_rates",
+                "get_precomputed_cot_signals",
+                "get_surprise_summary",
+                "get_retail_sentiment",
+                "get_fxssi_sentiment",
+                "get_fear_greed_index",
+                "get_eia_oil_inventory",
+                "get_fedwatch_probabilities",
+                "get_central_bank_expectations",
+                "get_price_history",
+                "get_indicator_snapshot",
+                "get_open_positions",
+                "get_trade_history",
+                "get_active_triggers",
+                "get_system_health",
+                "get_fundamental_brief",
+                "get_smc_zones",
+                "get_structure_breaks",
+                "get_order_blocks",
+                "get_liquidity_pools",
+                "get_fair_value_gaps",
+                "get_swing_points",
+                "get_atr",
+                "get_fibonacci_levels",
+                "get_mt5_bars",
+                "get_macro_bias_score",
+                "get_daily_range_context",
+                "get_volatility_regime",
+                "get_sr_zones",
+            }
+        )
+        if canonical in DATABASE_TOOLS:
+            return False
+
+        # Purely standalone read and computational tools known to be concurrency safe
+        if canonical in {"get_market_quote", "calculate_position_size"}:
+            return True
+
         # If explicitly registered with concurrency flag, respect it
         if instance:
             tool_def = instance._tools.get(canonical)
             if tool_def is not None and tool_def.is_concurrency_safe is not None:
                 return bool(tool_def.is_concurrency_safe)
+
+            if tool_def is not None and getattr(tool_def, "requires_db", False):
+                return False
 
             handler = instance.get(canonical)
             if (
@@ -427,18 +480,16 @@ class ToolRegistry:
             ):
                 return bool(getattr(handler, "is_concurrency_safe"))
 
-        READ_ONLY_PREFIXES = (
-            "get_",
+            if handler is not None and getattr(handler, "requires_db", False):
+                return False
+
+        CONCURRENCY_SAFE_READ_PREFIXES = (
             "read_",
             "search_",
-            "list_",
             "calculate_",
-            "scan_",
-            "check_",
-            "describe_",
             "retrieve_",
         )
-        if any(canonical.startswith(p) for p in READ_ONLY_PREFIXES):
+        if any(canonical.startswith(p) for p in CONCURRENCY_SAFE_READ_PREFIXES):
             return True
 
         return False

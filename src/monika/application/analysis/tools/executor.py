@@ -756,13 +756,34 @@ class ToolExecutor(
             if self.session is not None:
                 setattr(self.session, "_session_lock", session_lock)
 
+        # Standalone non-database tools can run lock-free even when a session exists.
+        # Tools that touch self.session MUST synchronize under session_lock to prevent
+        # SQLAlchemy "concurrent operations are not permitted" (InvalidRequestError).
+        STANDALONE_NON_DB_TOOLS = frozenset(
+            {
+                "read_file",
+                "search_files",
+                "retrieve_spilled_context",
+                "execute_analysis_code",
+                "execute_code",
+                "web_search",
+                "read_url",
+                "scrape_url",
+                "read_scratchpad",
+                "update_scratchpad",
+            }
+        )
+
+        is_standalone_non_db = self.session is None or (concurrency_safe and normalized_name in STANDALONE_NON_DB_TOOLS)
+
         result = None
         max_db_attempts = 2
+        force_session_lock = False
 
         _cur_task = asyncio.current_task()
         for db_attempt in range(max_db_attempts):
             try:
-                if concurrency_safe:
+                if is_standalone_non_db and not force_session_lock:
                     result = await handler(tool_input)
                 elif getattr(session_lock, "_owner_task", None) is _cur_task:
                     # Reentrant: current task already holds the lock (nested execute).
@@ -785,12 +806,18 @@ class ToolExecutor(
             except Exception as e:
                 err_text = str(e).lower()
                 is_concurrency_error = (
-                    "another operation is in progress" in err_text or "cannot perform operation" in err_text
+                    "another operation is in progress" in err_text
+                    or "cannot perform operation" in err_text
+                    or "concurrent operations are not permitted" in err_text
+                    or "provisioning a new connection" in err_text
+                    or "operation already in progress" in err_text
+                    or "recursive use of cursors not allowed" in err_text
+                    or "database is locked" in err_text
                 )
                 if is_concurrency_error and db_attempt < max_db_attempts - 1:
                     logger.warning(
                         f"Session contention on tool '{normalized_name}' (attempt {db_attempt + 1}/{max_db_attempts}): {e}. "
-                        f"Rolling back and retrying in 50ms..."
+                        f"Rolling back and retrying in 50ms under serial session lock..."
                     )
                     if self.session is not None:
                         try:
@@ -799,6 +826,7 @@ class ToolExecutor(
                             logger.debug(f"Rollback during retry non-fatal: {rb_err}")
 
                     await asyncio.sleep(0.05)
+                    force_session_lock = True
                     continue
 
                 if self.session is not None:

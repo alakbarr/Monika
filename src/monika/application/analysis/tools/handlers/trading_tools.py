@@ -169,6 +169,7 @@ def register_trading_tools():
             handler=handle_calculate_position_size,
             toolset="trading",
             requires_db=True,
+            is_concurrency_safe=True,
         ),
         ToolDefinition(
             name="get_swap_rates",

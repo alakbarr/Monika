@@ -33,15 +33,26 @@ async def _safe_execute(session: Optional[AsyncSession], stmt: Any, max_retries:
         try:
             if lock and getattr(lock, "_owner_task", None) is not _cur_task:
                 async with lock:
-                    return await session.execute(stmt)
+                    setattr(lock, "_owner_task", _cur_task)
+                    try:
+                        return await session.execute(stmt)
+                    finally:
+                        setattr(lock, "_owner_task", None)
             else:
                 # No lock, or current task already holds it (executor reentrancy).
                 return await session.execute(stmt)
         except Exception as e:
             err_str = str(e).lower()
-            if (
-                "another operation is in progress" in err_str or "cannot perform operation" in err_str
-            ) and attempt < max_retries - 1:
+            is_concurrency = (
+                "another operation is in progress" in err_str
+                or "cannot perform operation" in err_str
+                or "concurrent operations are not permitted" in err_str
+                or "provisioning a new connection" in err_str
+                or "operation already in progress" in err_str
+                or "recursive use of cursors not allowed" in err_str
+                or "database is locked" in err_str
+            )
+            if is_concurrency and attempt < max_retries - 1:
                 try:
                     await session.rollback()
                 except Exception:
