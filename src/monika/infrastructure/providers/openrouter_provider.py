@@ -458,9 +458,10 @@ class OpenRouterProvider(OpenAIProvider):
             else:
                 kwargs["max_tokens"] = max(current_max, min_floor)
         else:
-            extra = kwargs.setdefault("extra_body", {})
-            if isinstance(extra, dict):
-                extra["reasoning"] = {"effort": "none"}
+            # Reasoning disabled: ensure no reasoning body is sent to OpenRouter
+            extra = kwargs.get("extra_body")
+            if isinstance(extra, dict) and "reasoning" in extra:
+                extra.pop("reasoning", None)
 
         self._apply_provider_routing(kwargs)
 

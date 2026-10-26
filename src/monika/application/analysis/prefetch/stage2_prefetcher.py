@@ -261,23 +261,29 @@ class Stage2DataBundler:
 
         obs = value.get("order_blocks", [])
         if isinstance(obs, list) and obs:
-            unmitigated = [
-                f"{ob.get('direction', '').upper()} [{ob.get('price_low')}-{ob.get('price_high')}]"
-                for ob in obs[:6]
-                if not ob.get("mitigated", False)
-            ]
+            unmitigated = []
+            for ob in obs[:6]:
+                if not ob.get("mitigated", False):
+                    direction = (ob.get("type") or ob.get("direction") or "").upper()
+                    p_low = ob.get("price_low") if ob.get("price_low") is not None else ob.get("low")
+                    p_high = ob.get("price_high") if ob.get("price_high") is not None else ob.get("high")
+                    tf_str = f"[{ob.get('timeframe')}] " if ob.get("timeframe") else ""
+                    unmitigated.append(f"{tf_str}{direction} [{p_low}-{p_high}]")
             if unmitigated:
-                lines.append(f"Order Blocks (Unmitigated): {', '.join(unmitigated)}")
+                lines.append(f"order_blocks (unmitigated): {', '.join(unmitigated)}")
 
-        fvgs = value.get("fvg_zones", [])
+        fvgs = value.get("fair_value_gaps") or value.get("fvg_zones", [])
         if isinstance(fvgs, list) and fvgs:
-            unfilled = [
-                f"{fvg.get('direction', '').upper()} [{fvg.get('gap_low')}-{fvg.get('gap_high')}]"
-                for fvg in fvgs[:6]
-                if not fvg.get("filled", False)
-            ]
+            unfilled = []
+            for fvg in fvgs[:6]:
+                if not fvg.get("filled", False):
+                    direction = (fvg.get("type") or fvg.get("direction") or "").upper()
+                    gap_low = fvg.get("gap_low") if fvg.get("gap_low") is not None else fvg.get("bottom")
+                    gap_high = fvg.get("gap_high") if fvg.get("gap_high") is not None else fvg.get("top")
+                    tf_str = f"[{fvg.get('timeframe')}] " if fvg.get("timeframe") else ""
+                    unfilled.append(f"{tf_str}{direction} [{gap_low}-{gap_high}]")
             if unfilled:
-                lines.append(f"FVG Zones (Unfilled): {', '.join(unfilled)}")
+                lines.append(f"fair_value_gaps (unfilled): {', '.join(unfilled)}")
 
         srs = value.get("sr_zones", [])
         if isinstance(srs, list) and srs:
