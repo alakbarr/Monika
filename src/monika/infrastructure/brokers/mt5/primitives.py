@@ -286,20 +286,30 @@ def _capture_chart_screenshot(symbol: str, tf: int, width: int, height: int, fil
 
     mt5: Any = _mt5
 
-    charts = mt5.charts_get() or []
+    charts_fn = getattr(mt5, "charts_get", None)
+    screenshot_fn = getattr(mt5, "chart_screenshot", None)
+    open_fn = getattr(mt5, "chart_open", None)
+
+    if not callable(screenshot_fn):
+        return {
+            "success": False,
+            "error": "MT5 Python API does not provide GUI chart_screenshot. Use plot_price_chart or get_chart.",
+        }
+
+    charts = charts_fn() if callable(charts_fn) else []
     target_chart_id = None
     for c in charts:
         if getattr(c, "symbol", "") == symbol:
             target_chart_id = getattr(c, "chart_id", None) or getattr(c, "id", None)
             break
 
-    if target_chart_id is None:
-        target_chart_id = mt5.chart_open(symbol, tf)
+    if target_chart_id is None and callable(open_fn):
+        target_chart_id = open_fn(symbol, tf)
 
     if target_chart_id is None:
         return {"success": False, "error": f"Could not find or open MT5 chart for {symbol}"}
 
-    success = mt5.chart_screenshot(target_chart_id, filepath, width, height)
+    success = screenshot_fn(target_chart_id, filepath, width, height)
     if success:
         return {"success": True, "chart_id": target_chart_id, "symbol": symbol, "filepath": filepath}
     return {"success": False, "error": f"chart_screenshot returned False for chart_id {target_chart_id}"}

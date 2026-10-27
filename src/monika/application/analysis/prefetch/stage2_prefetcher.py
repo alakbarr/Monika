@@ -94,6 +94,11 @@ class Stage2DataBundler:
         self.executor = ToolExecutor(session, self.settings)
         self._shared_global_cache: dict[str, Any] = {}
 
+    @staticmethod
+    def _format_fetch_error(name: str, err: Exception) -> str:
+        msg = str(err).strip()
+        return f"{name}: {msg[:40]}" if msg else f"{name}: {type(err).__name__}"
+
     @classmethod
     def get_symbol_precision(cls, symbol: str) -> int:
         """Determines price precision dynamically using InstrumentSpec with fallback."""
@@ -468,7 +473,7 @@ class Stage2DataBundler:
                             data[tool_name] = result
                             self._shared_global_cache[tool_name] = result
                 except Exception as e:
-                    fetch_errors.append(f"{tool_name}: {str(e)[:40]}")
+                    fetch_errors.append(self._format_fetch_error(tool_name, e))
 
         for tool_name, extra_inp in SYMBOL_FETCH_TASKS:
             inp = {"symbol": symbol, **extra_inp}
@@ -480,7 +485,7 @@ class Stage2DataBundler:
                     if "error" not in result:
                         data[task_key] = result
             except Exception as e:
-                fetch_errors.append(f"{task_key}: {str(e)[:40]}")
+                fetch_errors.append(self._format_fetch_error(task_key, e))
 
         # D1 price history untuk seluruh aset (pola mingguan dan struktur makro)
         try:
@@ -490,7 +495,7 @@ class Stage2DataBundler:
             if "error" not in result:
                 data["price_history_D1_recent"] = result
         except Exception as e:
-            fetch_errors.append(f"price_history_D1: {str(e)[:40]}")
+            fetch_errors.append(self._format_fetch_error("price_history_D1", e))
 
         # IMP-3: Market regime detection
         try:
@@ -498,7 +503,7 @@ class Stage2DataBundler:
             if "error" not in regime_result:
                 data["market_regime"] = regime_result
         except Exception as e:
-            fetch_errors.append(f"market_regime: {str(e)[:40]}")
+            fetch_errors.append(self._format_fetch_error("market_regime", e))
 
         # Always fetch both D1 structure breaks and SMC zones for macro structural context
         try:
@@ -539,7 +544,7 @@ class Stage2DataBundler:
                 if "error" not in res:
                     data["retail_sentiment"] = res
         except Exception as e:
-            fetch_errors.append(f"asset_sentiment: {str(e)[:40]}")
+            fetch_errors.append(self._format_fetch_error("asset_sentiment", e))
 
         # Data COT (opsional)
         if cot_code:
@@ -548,7 +553,7 @@ class Stage2DataBundler:
                 if "error" not in result:
                     data["cot_report"] = result
             except Exception as e:
-                fetch_errors.append(f"cot_report: {str(e)[:40]}")
+                fetch_errors.append(self._format_fetch_error("cot_report", e))
 
         try:
             from monika.application.protocol.context_coherence import get_base_quote_tags
@@ -594,7 +599,7 @@ class Stage2DataBundler:
                     )
                 data["recent_news"] = {"count": len(compact_news), "items": compact_news}
         except Exception as e:
-            fetch_errors.append(f"recent_news: {str(e)[:40]}")
+            fetch_errors.append(self._format_fetch_error("recent_news", e))
 
         # TimesFM 3.0 Multivariate Forecast fetch
         try:
@@ -607,7 +612,7 @@ class Stage2DataBundler:
             if tfm_fc:
                 data["timesfm_forecast"] = tfm_fc
         except Exception as e:
-            fetch_errors.append(f"timesfm_forecast: {str(e)[:40]}")
+            fetch_errors.append(self._format_fetch_error("timesfm_forecast", e))
 
         # User-configured chart workspace & indicators (Wave 2 Cognitive Pipeline)
         try:

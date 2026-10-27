@@ -11,15 +11,13 @@ logger = logging.getLogger("TradingAgent.CompositeTools")
 
 
 async def _run_tasks_gather(tasks: Dict[str, Any]) -> Dict[str, Any]:
-    keys = list(tasks.keys())
-    raw_res = await asyncio.gather(*tasks.values(), return_exceptions=True)
     results = {}
-    for key, res in zip(keys, raw_res):
-        if isinstance(res, Exception):
-            logger.debug(f"Composite item {key} error: {res}")
-            results[key] = {"error": str(res)}
-        else:
-            results[key] = res
+    for key, coro in tasks.items():
+        try:
+            results[key] = await coro
+        except Exception as e:
+            logger.debug(f"Composite item {key} error: {e}")
+            results[key] = {"error": str(e)}
     return results
 
 

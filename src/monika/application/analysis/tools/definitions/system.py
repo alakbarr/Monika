@@ -268,7 +268,12 @@ RUN_SYSTEM_DOCTOR_CHECK = _tool(
     description=(
         "Run comprehensive system doctor diagnostic check verifying directories, API keys, MT5 terminal bridge, database tables, and scrapers."
     ),
-    properties={},
+    properties={
+        "live_probes": {
+            "type": "boolean",
+            "description": "Whether to perform live network/broker probes (APIs, MT5, Redis). Default: false (offline diagnostic).",
+        }
+    },
     required=[],
 )
 

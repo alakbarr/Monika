@@ -108,7 +108,28 @@ class SystemToolsMixin(_ToolExecutorMixinBase):
 
     async def _tool_transition_analysis_phase(self, inp: dict) -> dict:
         """Records explicit phase advancement request."""
-        target_phase = int(inp.get("target_phase", 2))
+        val = inp.get("target_phase", 2)
+        phase_map = {
+            "recon": 1,
+            "phase_1": 1,
+            "phase1": 1,
+            "structure": 2,
+            "confluence": 2,
+            "market_structure": 2,
+            "phase_2": 2,
+            "phase2": 2,
+            "sizing": 3,
+            "submission": 3,
+            "phase_3": 3,
+            "phase3": 3,
+        }
+        if isinstance(val, str) and val.strip().lower() in phase_map:
+            target_phase = phase_map[val.strip().lower()]
+        else:
+            try:
+                target_phase = int(val)
+            except ValueError, TypeError:
+                target_phase = 2
         rationale = inp.get("rationale", "")
         return {
             "status": "success",

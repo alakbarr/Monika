@@ -12398,7 +12398,7 @@
     - `get_thinking_level(symbol: str, context: Optional[Dict[str, Any]]) -> str` - *Maps the adaptive computation to standardized thinking levels:*
     - `get_thinking_budget_for_task(task_role: Optional[str], symbol: str, context: Optional[Dict[str, Any]], ...) -> int` - *Determines the appropriate thinking token budget based on task role and symbol context.*
 - **Top-Level Functions**:
-  - `clamp_thinking_budget_to_answer_room(budget: int, max_tokens: int, min_answer_tokens: int) -> int`: Clamps thinking token budget so it never starves max_tokens of answer completion headroom.
+  - `clamp_thinking_budget_to_answer_room(budget: int, max_tokens: int, min_answer_tokens: int, ...) -> int`: Clamps thinking token budget so it never starves max_tokens of answer completion headroom.
 
 #### `cache_breakpoint_manager.py` - *Cache Breakpoint Manager — Optimizes Anthropic / Gemini Prompt Caching.*
 - **Path**: [`src/monika/infrastructure/llm/cache_breakpoint_manager.py`](src/monika/infrastructure/llm/cache_breakpoint_manager.py)
@@ -13093,6 +13093,7 @@
   - `resolve_effective_context_window(model_name: Optional[str], provider_name: Optional[str], settings: Optional[dict], ...) -> int`: Multi-Tier Context Window Resolution Cascade:
   - `resolve_stale_timeout_floor(model_name: Optional[str], default_timeout: float) -> float`: Enforces minimum timeout floors for reasoning models to prevent premature disconnects.
   - `clamp_reasoning_effort(model_name: str, requested_effort: str) -> str`: Maps requested reasoning effort ('high', 'medium', 'low') to the closest supported
+  - `resolve_effective_max_tokens(model_name: Optional[str], provider_name: Optional[str], requested_max_tokens: Optional[int], ...) -> int`: Multi-Tier Max Output Tokens Resolution Cascade:
 
 #### `codex_provider.py` - *OpenAI Codex Provider Client for Monika Trading Agent.*
 - **Path**: [`src/monika/infrastructure/providers/codex_provider.py`](src/monika/infrastructure/providers/codex_provider.py)

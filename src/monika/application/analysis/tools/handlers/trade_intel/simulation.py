@@ -259,7 +259,17 @@ async def handle_run_trade_counterfactual(
     from monika.application.analysis.memory.counterfactual_simulator import CounterfactualSimulator
     from monika.infrastructure.database.db import get_session
 
-    trade_id = int(args.get("trade_id", 0))
+    raw_trade_id = args.get("trade_id", 0)
+    try:
+        if isinstance(raw_trade_id, str):
+            import re
+
+            m = re.search(r"\d+", raw_trade_id)
+            trade_id = int(m.group(0)) if m else 0
+        else:
+            trade_id = int(raw_trade_id)
+    except ValueError, TypeError:
+        trade_id = 0
     sl_pips_delta = float(args.get("sl_pips_delta", 0.0))
     tp_pips_delta = float(args.get("tp_pips_delta", 0.0))
 

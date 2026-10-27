@@ -1,5 +1,6 @@
 """Macro domain tool handlers (FRED, COT, Yields, Calendar, Session)."""
 
+import asyncio
 import html as _html
 import logging
 from datetime import datetime, timedelta, timezone
@@ -127,52 +128,56 @@ class MacroToolHandlers:
                     query = query.where(EconomicCalendar.currency.in_(list(expanded_currs)))
 
                 lock = getattr(session, "_session_lock", None)
-                if lock is not None:
+                cur_t = asyncio.current_task()
+                if lock is not None and getattr(lock, "_owner_task", None) is not cur_t:
                     async with lock:
-                        rows = (await session.execute(query)).scalars().all()
+                        setattr(lock, "_owner_task", cur_t)
+                        try:
+                            rows = (await session.execute(query)).scalars().all()
+                        finally:
+                            setattr(lock, "_owner_task", None)
                 else:
                     rows = (await session.execute(query)).scalars().all()
-                if rows:
 
-                    def _is_past_event(r_time, curr_now):
-                        if isinstance(r_time, datetime) and isinstance(curr_now, datetime):
-                            if r_time.tzinfo is None and curr_now.tzinfo is not None:
-                                r_time = r_time.replace(tzinfo=timezone.utc)
-                            elif r_time.tzinfo is not None and curr_now.tzinfo is None:
-                                curr_now = curr_now.replace(tzinfo=timezone.utc)
-                            return r_time <= curr_now
-                        return False
+                def _is_past_event(r_time, curr_now):
+                    if isinstance(r_time, datetime) and isinstance(curr_now, datetime):
+                        if r_time.tzinfo is None and curr_now.tzinfo is not None:
+                            r_time = r_time.replace(tzinfo=timezone.utc)
+                        elif r_time.tzinfo is not None and curr_now.tzinfo is None:
+                            curr_now = curr_now.replace(tzinfo=timezone.utc)
+                        return r_time <= curr_now
+                    return False
 
-                    from monika.application.scheduler.post_release_analyzer import CURRENCY_TO_SYMBOLS
+                from monika.application.scheduler.post_release_analyzer import CURRENCY_TO_SYMBOLS
 
-                    wib_tz = ZoneInfo("Asia/Jakarta")
+                wib_tz = ZoneInfo("Asia/Jakarta")
 
-                    def _fmt_wib(dt_val):
-                        if not dt_val:
-                            return None
-                        if dt_val.tzinfo is None:
-                            dt_val = dt_val.replace(tzinfo=timezone.utc)
-                        return dt_val.astimezone(wib_tz).strftime("%Y-%m-%d %H:%M WIB")
+                def _fmt_wib(dt_val):
+                    if not dt_val:
+                        return None
+                    if dt_val.tzinfo is None:
+                        dt_val = dt_val.replace(tzinfo=timezone.utc)
+                    return dt_val.astimezone(wib_tz).strftime("%Y-%m-%d %H:%M WIB")
 
-                    return {
-                        "count": len(rows),
-                        "events": [
-                            {
-                                "event_name": f"<untrusted_external_content>{_html.escape(r.event_name or '')}</untrusted_external_content>",
-                                "currency": r.currency,
-                                "country": getattr(r, "country", ""),
-                                "impact": r.impact,
-                                "actual": r.actual if _is_past_event(r.event_time, now) else None,
-                                "forecast": r.forecast,
-                                "previous": r.previous,
-                                "event_time": r.event_time.isoformat() if r.event_time is not None else None,
-                                "event_time_wib": _fmt_wib(r.event_time),
-                                "affected_pairs": CURRENCY_TO_SYMBOLS.get((r.currency or "").upper(), []),
-                                "surprise_score": getattr(r, "surprise_score", None),
-                            }
-                            for r in rows
-                        ],
-                    }
+                return {
+                    "count": len(rows),
+                    "events": [
+                        {
+                            "event_name": f"<untrusted_external_content>{_html.escape(r.event_name or '')}</untrusted_external_content>",
+                            "currency": r.currency,
+                            "country": getattr(r, "country", ""),
+                            "impact": r.impact,
+                            "actual": r.actual if _is_past_event(r.event_time, now) else None,
+                            "forecast": r.forecast,
+                            "previous": r.previous,
+                            "event_time": r.event_time.isoformat() if r.event_time is not None else None,
+                            "event_time_wib": _fmt_wib(r.event_time),
+                            "affected_pairs": CURRENCY_TO_SYMBOLS.get((r.currency or "").upper(), []),
+                            "surprise_score": getattr(r, "surprise_score", None),
+                        }
+                        for r in rows
+                    ],
+                }
             except Exception as e:
                 logger.warning(f"Database economic calendar query error: {e}")
 
@@ -188,8 +193,6 @@ class MacroToolHandlers:
             )
             return {"events": [], "count": 0, "source": "db_only"}
         try:
-            import asyncio
-
             from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing import (
                 InvestingCalendarScraper,
             )

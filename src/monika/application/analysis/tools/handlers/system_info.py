@@ -142,7 +142,10 @@ async def handle_get_edge_tracker_status(
 
         edge = await compute_edge_status(effective_session)
         factors = await compute_factor_effectiveness(effective_session, days_back)
-        top_factors = sorted(factors.items(), key=lambda x: x[1].get("win_rate", 0), reverse=True)
+        valid_factors = (
+            [item for item in factors.items() if isinstance(item[1], dict)] if isinstance(factors, dict) else []
+        )
+        top_factors = sorted(valid_factors, key=lambda x: x[1].get("win_rate", 0), reverse=True)
         factor_summary = [
             {"factor": f, "win_rate": d.get("win_rate", 0), "wins": d.get("wins", 0), "total": d.get("total", 0)}
             for f, d in top_factors
@@ -307,7 +310,8 @@ async def handle_run_system_doctor_check(
     try:
         from monika.core.telemetry.doctor import SystemDoctor
 
-        doctor = SystemDoctor(fix=False, live_probes=True, verbose=False)
+        live_probes = bool(args.get("live_probes", False))
+        doctor = SystemDoctor(fix=False, live_probes=live_probes, verbose=False)
         await doctor.run_diagnostics()
 
         diags = [

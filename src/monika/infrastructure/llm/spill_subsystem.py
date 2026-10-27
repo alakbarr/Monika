@@ -6,6 +6,7 @@ leaving only an exact, decisive state receipt and pointer in the active context 
 Prevents O(N) context window degradation and saves thousands of tokens per large tool call.
 """
 
+import asyncio
 import logging
 import uuid
 from typing import Any, Dict, Optional
@@ -117,9 +118,14 @@ class PostgresSpillSubsystem:
         stmt = select(ContextSpillBlob.payload_text).where(ContextSpillBlob.blob_id == clean_id)
         if session is not None:
             lock = getattr(session, "_session_lock", None)
-            if lock is not None:
+            cur_t = asyncio.current_task()
+            if lock is not None and getattr(lock, "_owner_task", None) is not cur_t:
                 async with lock:
-                    res = await session.execute(stmt)
+                    setattr(lock, "_owner_task", cur_t)
+                    try:
+                        res = await session.execute(stmt)
+                    finally:
+                        setattr(lock, "_owner_task", None)
             else:
                 res = await session.execute(stmt)
             payload = res.scalar_one_or_none()

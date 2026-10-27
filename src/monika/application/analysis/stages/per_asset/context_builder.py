@@ -269,7 +269,11 @@ class ContextBuilderMixin:
         try:
             from monika.application.analysis.prefetch.stage2_prefetcher import Stage2DataBundler
 
-            bundler = Stage2DataBundler(session, self.settings)
+            if not hasattr(self, "_stage2_bundler") or self._stage2_bundler is None:
+                self._stage2_bundler = Stage2DataBundler(session, self.settings)
+            else:
+                self._stage2_bundler.executor.session = session
+            bundler = self._stage2_bundler
             data_bundle, raw_bundle_data = await bundler.fetch_bundle(symbol, cot_code=cot_code or None)
             bundle_success = bool(data_bundle) and len(data_bundle) > 500
         except Exception as e:

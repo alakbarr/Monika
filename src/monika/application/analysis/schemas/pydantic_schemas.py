@@ -1556,10 +1556,17 @@ class SubmitFundamentalBriefSchema(BaseModel):
                 risk_sent = str(data.get("risk_sentiment", "mixed"))
 
                 for asset_sym, (base_c, quote_c) in _ASSET_PAIRS.items():
-                    if asset_sym not in matrix:
+                    existing_entry = matrix.get(asset_sym)
+                    needs_rebuild = (
+                        existing_entry is None
+                        or not isinstance(existing_entry, (dict, AssetMacroContext))
+                        or (isinstance(existing_entry, dict) and "structural_driver" not in existing_entry)
+                    )
+                    if needs_rebuild:
                         b_bias = str(cb.get(base_c, "neutral")).lower()
                         q_bias = str(cb.get(quote_c, "neutral")).lower()
-                        dir_bias = _calc_net_bias(b_bias, q_bias)
+                        extracted_bias = _extract_bias(existing_entry) if existing_entry is not None else None
+                        dir_bias = extracted_bias or _calc_net_bias(b_bias, q_bias)
 
                         inv_text = inv.get(base_c) or inv.get(asset_sym) if isinstance(inv, dict) else None
                         if not inv_text or len(str(inv_text).strip()) < 20:

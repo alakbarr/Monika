@@ -191,11 +191,14 @@ async def handle_get_earnings_calendar(args: dict, **ctx) -> dict:
         logger.debug(f"Finnhub earnings fetch failed: {e}")
 
     try:
+        import asyncio
+
         from monika.infrastructure.data_ingestion.sources.web_search import WebSearch
 
         ws = WebSearch()
         q = f"{symbol or 'US tech stocks'} earnings release date calendar estimates 2026"
-        res = await ws.search(q, max_results=5)
+        async with asyncio.timeout(5.0):
+            res = await ws.search(q, max_results=5)
         return {"symbol": symbol, "results": res, "status": "fallback_web_search"}
     except Exception as err:
         return {"symbol": symbol, "error": str(err), "status": "error"}

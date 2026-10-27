@@ -40,16 +40,20 @@ def compress_tool_payload(
     if isinstance(data, dict):
         compressed_dict = {}
         for k, v in data.items():
-            if (v is None or v == "") and k not in preserve_keys:
+            if (v is None or (isinstance(v, str) and v == "")) and k not in preserve_keys:
                 continue
-            if strip_empty_collections and v in ([], {}) and k not in preserve_keys:
+            if strip_empty_collections and (isinstance(v, (list, dict)) and len(v) == 0) and k not in preserve_keys:
                 continue
 
             compressed_val = compress_tool_payload(
                 v, strip_empty_collections=strip_empty_collections, preserve_keys=preserve_keys
             )
-            if compressed_val is not None and compressed_val != "":
-                if not strip_empty_collections or compressed_val not in ([], {}) or k in preserve_keys:
+            if compressed_val is not None and not (isinstance(compressed_val, str) and compressed_val == ""):
+                if (
+                    not strip_empty_collections
+                    or not (isinstance(compressed_val, (list, dict)) and len(compressed_val) == 0)
+                    or k in preserve_keys
+                ):
                     compressed_dict[k] = compressed_val
             elif k in preserve_keys:
                 compressed_dict[k] = v
@@ -62,8 +66,10 @@ def compress_tool_payload(
             compressed_val = compress_tool_payload(
                 item, strip_empty_collections=strip_empty_collections, preserve_keys=preserve_keys
             )
-            if compressed_val is not None and compressed_val != "":
-                if not strip_empty_collections or compressed_val not in ([], {}):
+            if compressed_val is not None and not (isinstance(compressed_val, str) and compressed_val == ""):
+                if not strip_empty_collections or not (
+                    isinstance(compressed_val, (list, dict)) and len(compressed_val) == 0
+                ):
                     compressed_list.append(compressed_val)
         return compressed_list
 

@@ -141,9 +141,19 @@ async def handle_get_trade_details(
     args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
 ) -> dict:
     effective_session = session or getattr(executor, "session", None)
-    trade_id = args.get("trade_id") or args.get("id")
+    trade_id = args.get("trade_id") or args.get("id") or args.get("ticket") or args.get("analysis_id")
     if not trade_id:
-        return {"error": "Missing trade_id"}
+        recent = (
+            (
+                await effective_session.execute(select(PaperTradeRecord).order_by(PaperTradeRecord.id.desc()).limit(1))
+            ).scalar_one_or_none()
+            if effective_session
+            else None
+        )
+        if recent:
+            trade_id = recent.id
+        else:
+            return {"error": "Missing trade_id and no recorded trades available."}
     if not effective_session:
         return {"status": "no_session"}
 

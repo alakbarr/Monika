@@ -371,7 +371,7 @@ async def handle_search_social_sentiment(args: dict, **ctx) -> dict:
         from monika.infrastructure.data_ingestion.scrapers.social.twitter_watch import TwitterWatchScraper
 
         scraper = TwitterWatchScraper(headless=True)
-        tweets = await asyncio.wait_for(asyncio.to_thread(scraper.fetch_latest_tweets), timeout=20.0)
+        tweets = await asyncio.wait_for(asyncio.to_thread(scraper.fetch_latest_tweets), timeout=3.0)
         if tweets:
             import dataclasses
 
@@ -397,7 +397,8 @@ async def handle_search_social_sentiment(args: dict, **ctx) -> dict:
         from monika.infrastructure.data_ingestion.sources.web_search import WebSearch
 
         searcher = WebSearch()
-        results = await searcher.search(f"{query} sentiment twitter reddit tradingview", max_results=5)
+        async with asyncio.timeout(5.0):
+            results = await searcher.search(f"{query} sentiment twitter reddit tradingview", max_results=5)
         return {
             "query": query,
             "source": "web_search_fallback",

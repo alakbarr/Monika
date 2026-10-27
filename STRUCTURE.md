@@ -2644,6 +2644,7 @@ Monika/
 │   │   ├── test_cron_nlp_and_worker.py
 │   │   ├── test_cycle_scheduler.py
 │   │   ├── test_cycle_scheduler_demo_gate.py
+│   │   ├── test_data_node_recovery.py
 │   │   ├── test_digest_slice_scheduler.py
 │   │   ├── test_edge_strategy_runner.py
 │   │   ├── test_edge_strategy_runner_admission.py
@@ -3120,4 +3121,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2823
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2824
