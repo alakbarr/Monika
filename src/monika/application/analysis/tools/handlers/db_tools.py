@@ -406,6 +406,8 @@ async def handle_backup_database(
         settings = load_settings()
         force = bool(args.get("force", True))
         res = await create_backup(settings=settings, force=force)
+        if res.get("status") in ("unavailable", "skipped") or res.get("skipped"):
+            return {"status": "unavailable", **res}
         return {"status": "success" if res.get("success") else "error", **res}
     except Exception as e:
         return {"status": "error", "error": f"Database backup execution error: {str(e)}"}

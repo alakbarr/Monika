@@ -94,11 +94,19 @@ class TimesFMEngine:
                     # Approach 1: SOTA Google TimesFM 3.0 Native Forecaster (from_pretrained)
                     if hasattr(timesfm_mod, "TimesFM3Forecaster"):
                         hf_token = os.getenv("HF_TOKEN")
-                        model = timesfm_mod.TimesFM3Forecaster.from_pretrained(
-                            pretrained_model_name_or_path=model_id,
-                            device=device,
-                            token=hf_token,
-                        )
+                        try:
+                            model = timesfm_mod.TimesFM3Forecaster.from_pretrained(
+                                pretrained_model_name_or_path=model_id,
+                                device=device,
+                                token=hf_token,
+                                local_files_only=True,
+                            )
+                        except Exception:
+                            model = timesfm_mod.TimesFM3Forecaster.from_pretrained(
+                                pretrained_model_name_or_path=model_id,
+                                device=device,
+                                token=hf_token,
+                            )
                         cls._model_instance = model
                         cls._model_initialized = True
                         logger.info(

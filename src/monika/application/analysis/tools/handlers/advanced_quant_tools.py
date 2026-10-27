@@ -413,7 +413,7 @@ async def handle_run_model_benchmark(args: dict, **ctx) -> dict:
             "models_tested": models,
             "rounds": rounds,
             "elo_leaderboard": leaderboard,
-            "top_model": leaderboard[0] if leaderboard else models[0],
+            "top_model": leaderboard[0] if leaderboard else (models[0] if models else None),
         }
     except Exception as e:
         return {

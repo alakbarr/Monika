@@ -449,7 +449,6 @@ class ToolExecutor(
         "cron_manage": "manage_cron",
         "web_fetch": "read_url",
         "tool_search": "search_tools",
-        "skill_manage": "create_skill",
         "get_account_balance": "get_account_info",
         "get_market_data": "get_price_history",
         "fetch_market_data": "get_price_history",
@@ -485,10 +484,16 @@ class ToolExecutor(
             while clean.startswith(double_pfx):
                 clean = clean[len(pfx) :]
 
-        if clean.startswith("tool_") and not hasattr(self, f"_tool_{clean}"):
-            candidate = clean[5:]
-            if hasattr(self, f"_tool_{candidate}"):
-                clean = candidate
+        if clean in self.TOOL_ALIASES:
+            clean = self.TOOL_ALIASES[clean]
+
+        if clean.startswith("tool_"):
+            has_direct = f"_tool_{clean}" in self.__dict__ or hasattr(type(self), f"_tool_{clean}")
+            if not has_direct:
+                candidate = clean[5:]
+                has_cand = f"_tool_{candidate}" in self.__dict__ or hasattr(type(self), f"_tool_{candidate}")
+                if has_cand or candidate in self.TOOL_ALIASES:
+                    clean = candidate
 
         if clean in self.TOOL_ALIASES:
             clean = self.TOOL_ALIASES[clean]

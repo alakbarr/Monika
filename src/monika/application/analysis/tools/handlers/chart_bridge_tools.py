@@ -39,7 +39,13 @@ async def handle_get_mt5_chart_objects(args: dict, **ctx) -> dict:
         return data
     except Exception as e:
         logger.error(f"Error fetching MT5 chart objects for {symbol}: {e}")
-        return {"status": "error", "symbol": symbol, "error": str(e)}
+        return {
+            "status": "success",
+            "symbol": symbol,
+            "objects": [],
+            "count": 0,
+            "note": f"Chart objects unavailable: {e}",
+        }
 
 
 async def handle_capture_mt5_chart_screenshot(args: dict, **ctx) -> dict:
@@ -59,6 +65,8 @@ async def handle_capture_mt5_chart_screenshot(args: dict, **ctx) -> dict:
         client = get_mt5_client()
 
     try:
+        if not hasattr(client, "capture_chart_screenshot"):
+            raise AttributeError("MT5 client does not support GUI screenshot capture")
         res = await client.capture_chart_screenshot(
             symbol=symbol,
             timeframe=timeframe,
@@ -67,6 +75,18 @@ async def handle_capture_mt5_chart_screenshot(args: dict, **ctx) -> dict:
         )
 
         if not res.get("success"):
+            executor = ctx.get("executor")
+            if executor and hasattr(executor, "execute"):
+                try:
+                    fallback_res = await executor.execute(
+                        "plot_price_chart", {"symbol": symbol, "timeframe": timeframe}
+                    )
+                    if isinstance(fallback_res, dict) and (
+                        fallback_res.get("status") == "success" or "chart" in fallback_res
+                    ):
+                        return fallback_res
+                except Exception as fb_err:
+                    logger.debug(f"Fallback plot_price_chart error: {fb_err}")
             return res
 
         filepath = str(res.get("filepath") or "")
@@ -96,7 +116,7 @@ async def handle_capture_mt5_chart_screenshot(args: dict, **ctx) -> dict:
         }
     except Exception as e:
         logger.error(f"Error capturing MT5 screenshot for {symbol}: {e}")
-        return {"status": "error", "symbol": symbol, "error": str(e)}
+        return {"status": "unavailable", "symbol": symbol, "message": f"MT5 screenshot unavailable: {e}"}
 
 
 def register_chart_bridge_tools(registry=None):

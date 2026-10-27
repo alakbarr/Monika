@@ -2607,6 +2607,7 @@ Monika/
 │   │   ├── test_multitier_subscription_routing.py
 │   │   ├── test_opencode_provider.py
 │   │   ├── test_role_fallback_chain.py
+│   │   ├── test_token_resolution_and_headroom.py
 │   │   ├── test_universal_provider.py
 │   │   └── test_zai_provider.py
 │   ├── providers/
@@ -3122,4 +3123,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2825
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2826

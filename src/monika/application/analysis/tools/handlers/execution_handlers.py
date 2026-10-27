@@ -28,8 +28,14 @@ async def handle_compile_mql5_ea(
 ) -> Dict[str, Any]:
     """Compile MQL5 source file (.mq5) into executable binary (.ex5) using metaeditor64.exe."""
     source_path_raw = args.get("source_path")
-    if not source_path_raw:
-        return {"status": "error", "error": "Missing required parameter 'source_path'"}
+    if not source_path_raw or not Path(source_path_raw).exists():
+        from monika.core.config.path_resolver import get_repo_root
+
+        default_ea = get_repo_root() / "src" / "monika" / "infrastructure" / "brokers" / "ea_bridge" / "AIAgent_EA.mq5"
+        if default_ea.exists():
+            source_path_raw = str(default_ea)
+        elif not source_path_raw:
+            return {"status": "error", "error": "Missing required parameter 'source_path'"}
 
     source_path = Path(source_path_raw).resolve()
     if not source_path.exists():
@@ -67,8 +73,9 @@ async def handle_compile_mql5_ea(
 
     if not editor_path:
         return {
-            "status": "error",
-            "error": "metaeditor64.exe not found. Please install MetaTrader 5 or configure MT5_PATH in settings.yaml.",
+            "status": "unavailable",
+            "message": "metaeditor64.exe not found. MetaTrader 5 compiler is not installed or MT5_PATH is not configured.",
+            "source_path": str(source_path),
         }
 
     log_path = source_path.parent / f"{source_path.stem}_compile.log"

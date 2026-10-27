@@ -602,8 +602,9 @@ class UnifiedToolRegistry:
         sig = inspect.signature(entry.handler)
         has_var_keyword = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
         call_kwargs: Dict[str, Any] = {}
-        if ("context" in sig.parameters or has_var_keyword) and context is not None:
-            call_kwargs["context"] = context
+        ctx_val = context if context is not None else executor
+        if ("context" in sig.parameters or has_var_keyword) and ctx_val is not None:
+            call_kwargs["context"] = ctx_val
         if ("session" in sig.parameters or has_var_keyword) and session is not None:
             call_kwargs["session"] = session
         if ("executor" in sig.parameters or has_var_keyword) and executor is not None:

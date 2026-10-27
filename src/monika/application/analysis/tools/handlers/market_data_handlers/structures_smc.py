@@ -263,9 +263,11 @@ async def handle_get_fibonacci_levels(args: dict, **ctx) -> dict:
     for i in range(len(recent_subset)):
         for j in range(i + 1, len(recent_subset)):
             s_a, s_b = recent_subset[i], recent_subset[j]
-            if s_a.type != s_b.type:
-                cur_h = s_a if s_a.type == "high" else s_b
-                cur_l = s_a if s_a.type == "low" else s_b
+            s_a_type = (s_a.type or "").lower()
+            s_b_type = (s_b.type or "").lower()
+            if s_a_type != s_b_type and s_a_type in ("high", "low") and s_b_type in ("high", "low"):
+                cur_h = s_a if s_a_type == "high" else s_b
+                cur_l = s_a if s_a_type == "low" else s_b
                 rng = cur_h.price - cur_l.price
                 if rng > best_range:
                     best_range = rng
@@ -277,8 +279,8 @@ async def handle_get_fibonacci_levels(args: dict, **ctx) -> dict:
         swing_low = best_low
         coherent = True
     else:
-        highs = [s for s in all_swings if s.type == "high"]
-        lows = [s for s in all_swings if s.type == "low"]
+        highs = [s for s in all_swings if (s.type or "").lower() == "high"]
+        lows = [s for s in all_swings if (s.type or "").lower() == "low"]
         if not highs or not lows:
             return {"error": "Not enough swing points found"}
         swing_high = highs[-1]

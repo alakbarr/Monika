@@ -7851,7 +7851,7 @@
     - `async execute(args: Dict[str, Any], session: AsyncSession, executor: Optional[Any]) -> Any`
 - **Top-Level Functions**:
   - `async handle_retrieve_spilled_context(args: Dict[str, Any], session: Optional[AsyncSession], executor: Optional[Any]) -> Dict[str, Any]`: Retrieves spilled content from PostgreSQL or disk spill caches.
-  - `async unified_retrieve_spilled_context(args: RetrieveSpilledContextInput, context: Any) -> Dict[str, Any]`: Retrieve spilled tool observation or context from PostgreSQL context_spill_blobs or disk.
+  - `async unified_retrieve_spilled_context(args: RetrieveSpilledContextInput, context: Any, session: Any, ...) -> Dict[str, Any]`: Retrieve spilled tool observation or context from PostgreSQL context_spill_blobs or disk.
 
 #### `technical_handlers.py` - *Technical domain tool handlers (OHLCV, Indicators, SMC, Fibonacci, ATR).*
 - **Path**: [`src/monika/application/analysis/tools/domain/technical_handlers.py`](src/monika/application/analysis/tools/domain/technical_handlers.py)

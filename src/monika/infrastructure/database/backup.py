@@ -159,7 +159,11 @@ async def create_backup(settings: dict, force: bool = False) -> Dict[str, Any]:
     except subprocess.TimeoutExpired, asyncio.TimeoutError:
         return {"error": "pg_dump timed out after 120 seconds"}
     except FileNotFoundError:
-        return {"error": "pg_dump not found. Ensure PostgreSQL client tools are installed."}
+        return {
+            "status": "unavailable",
+            "skipped": True,
+            "message": "pg_dump not found on host. Database backup requires PostgreSQL client tools installed or a local SQLite database.",
+        }
     except Exception as e:
         logger.error(f"DB backup failed: {e}")
         return {"error": str(e)}

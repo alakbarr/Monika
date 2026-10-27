@@ -13,7 +13,8 @@ logger = logging.getLogger("TradingAgent.SentimentHandlers")
 
 @retryable(max_retries=2, base_delay=0.5)
 async def _fetch_with_retry(fetcher: Any) -> Any:
-    return await fetcher.fetch()
+    async with asyncio.timeout(3.5):
+        return await fetcher.fetch()
 
 
 _MYFXBOOK_LOCK = asyncio.Lock()

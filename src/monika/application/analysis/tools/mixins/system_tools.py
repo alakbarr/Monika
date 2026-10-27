@@ -629,8 +629,15 @@ class SystemToolsMixin(_ToolExecutorMixinBase):
         structured = json.loads(row.structured_json) if row.structured_json else {}
 
         now = clock.now()
-        age_hours = (now - row.generated_at).total_seconds() / 3600
-        is_stale = row.valid_until is not None and now > row.valid_until
+        gen_at = row.generated_at
+        if gen_at.tzinfo is None:
+            gen_at = gen_at.replace(tzinfo=timezone.utc)
+        age_hours = (now - gen_at).total_seconds() / 3600
+
+        valid_until = row.valid_until
+        if valid_until is not None and valid_until.tzinfo is None:
+            valid_until = valid_until.replace(tzinfo=timezone.utc)
+        is_stale = valid_until is not None and now > valid_until
 
         max_critical = float(self.settings.get("data_quality", {}).get("max_brief_age_analysis_hours", 12.0))
         max_warning = float(self.settings.get("data_quality", {}).get("max_brief_age_execution_hours", 10.0))

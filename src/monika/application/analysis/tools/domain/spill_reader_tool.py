@@ -248,7 +248,16 @@ class RetrieveSpilledContextHandler(ToolHandler):
 @unified_tool_registry.register(
     name="retrieve_spilled_context", category="SYSTEM", input_model=RetrieveSpilledContextInput
 )
-async def unified_retrieve_spilled_context(args: RetrieveSpilledContextInput, context: Any = None) -> Dict[str, Any]:
+async def unified_retrieve_spilled_context(
+    args: RetrieveSpilledContextInput,
+    context: Any = None,
+    session: Any = None,
+    executor: Any = None,
+    **kwargs: Any,
+) -> Dict[str, Any]:
     """Retrieve spilled tool observation or context from PostgreSQL context_spill_blobs or disk."""
-    session = getattr(context, "session", None) if context else None
-    return await handle_retrieve_spilled_context(args.model_dump(), session=session, executor=context)
+    effective_session = session or getattr(context, "session", None) or getattr(executor, "session", None)
+    effective_exec = executor or context
+    return await handle_retrieve_spilled_context(
+        args.model_dump(), session=effective_session, executor=effective_exec, **kwargs
+    )

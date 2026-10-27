@@ -361,7 +361,8 @@ class WebReader:
                             chunks.append(chunk)
 
                         raw_bytes = b"".join(chunks)
-                        content_type = response.headers.get("Content-Type", "").lower()
+                        raw_ct = response.headers.get("Content-Type", "")
+                        content_type = str(raw_ct() if callable(raw_ct) else raw_ct).lower()
 
                         # 1. PDF Document Extraction via pypdf
                         if (

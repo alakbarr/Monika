@@ -1358,6 +1358,14 @@ class FallbackClientWrapper(BaseLLMClient):
                     except Exception as ps_err:
                         logger.debug(f"[LLMDispatch] prompt sections notice: {ps_err}")
 
+                    try:
+                        sig = inspect.signature(method)
+                        has_var_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+                        if not has_var_kwargs:
+                            safe_kwargs = {k: v for k, v in safe_kwargs.items() if k in sig.parameters}
+                    except Exception as sig_err:
+                        logger.debug(f"[LLMDispatch] signature filter notice: {sig_err}")
+
                     call_coro: Any = method(*safe_args, **safe_kwargs)
                     result = await asyncio.wait_for(call_coro, timeout=per_model_timeout)
 
