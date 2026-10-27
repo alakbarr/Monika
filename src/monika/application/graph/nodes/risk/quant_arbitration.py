@@ -49,9 +49,14 @@ async def run_quant_arbitration(
         if not isinstance(r, dict):
             continue
         dec = str(r.get("decision", "")).lower()
-        if not r.get("success", True) or dec not in ("buy", "sell", "wait", "avoid"):
+        if not r.get("success", True) or dec not in ("buy", "sell", "wait", "avoid", "skip"):
             logger.warning(
                 f"[QuantArbitration] Skipping actionable {sym} due to invalid/errored Stage 2 state (decision={dec!r})."
+            )
+            continue
+        if dec == "skip":
+            logger.debug(
+                f"[QuantArbitration] Skipping actionable {sym} as Stage 2 analysis was skipped (decision='skip')."
             )
             continue
         candidate_map[sym] = (dict(r), True)
@@ -65,10 +70,13 @@ async def run_quant_arbitration(
         if not sym or sym in candidate_map or not isinstance(r, dict):
             continue
         dec = str(r.get("decision", "")).lower()
-        if not r.get("success", True) or dec not in ("buy", "sell", "wait", "avoid"):
+        if not r.get("success", True) or dec not in ("buy", "sell", "wait", "avoid", "skip"):
             logger.warning(
                 f"[QuantArbitration] Skipping {sym} due to invalid/errored Stage 2 state (decision={dec!r})."
             )
+            continue
+        if dec == "skip":
+            logger.debug(f"[QuantArbitration] Skipping {sym} as Stage 2 analysis was skipped (decision='skip').")
             continue
         candidate_map[sym] = (dict(r), False)
 

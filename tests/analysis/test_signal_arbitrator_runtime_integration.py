@@ -324,6 +324,96 @@ async def test_quant_arbitration_skips_error_analyses_and_materializes_promoted_
 
 
 @pytest.mark.asyncio
+async def test_quant_arbitration_skips_stage2_skip_state_without_warning(db_session, caplog):
+    """Verify run_quant_arbitration handles Stage 2 'skip' decisions cleanly at DEBUG without warning."""
+    import logging
+    from unittest.mock import MagicMock, patch
+    from contextlib import asynccontextmanager
+    from monika.application.graph.nodes.risk.quant_arbitration import run_quant_arbitration
+
+    @asynccontextmanager
+    async def mock_session_ctx():
+        yield db_session
+
+    mock_scheduler = MagicMock()
+    mock_scheduler.settings = {"trading": {}}
+
+    actionable = []
+    asset_analyses = {
+        "XAUUSD": {
+            "symbol": "XAUUSD",
+            "decision": "skip",
+            "success": True,
+            "skipped_by_cooldown": True,
+        },
+        "GBPUSD": {
+            "symbol": "GBPUSD",
+            "decision": "skip",
+            "success": True,
+            "skipped_by_prescreen": True,
+        },
+        "ETHUSD": {
+            "symbol": "ETHUSD",
+            "decision": "error",
+            "success": False,
+            "confidence": 0.0,
+        },
+        "BTCUSD": {
+            "symbol": "BTCUSD",
+            "decision": "wait",
+            "confidence": 0.50,
+            "success": True,
+        },
+    }
+    state = {
+        "brief_id": 42,
+        "asset_analyses": dict(asset_analyses),
+    }
+
+    with (
+        patch("monika.infrastructure.database.db.get_session", mock_session_ctx),
+        patch(
+            "monika.application.analysis.strategies.registry.StrategyRegistry.evaluate_all",
+            AsyncMock(return_value=[]),
+        ),
+        patch("monika.application.analysis.strategies.decay_monitor.get_strategy_decay_monitor") as mock_decay,
+        patch(
+            "monika.infrastructure.ml.timesfm_engine.TimesFMEngine.get_latest_forecast",
+            AsyncMock(return_value=None),
+        ),
+        caplog.at_level(logging.DEBUG, logger="TradingAgent.Graph.Risk.QuantArbitration"),
+    ):
+        mock_mon = MagicMock()
+        mock_mon.is_live_ready.return_value = True
+        mock_decay.return_value = mock_mon
+
+        filtered, rejected = await run_quant_arbitration(
+            scheduler=mock_scheduler,
+            actionable=actionable,
+            asset_analyses=asset_analyses,
+            state=state,
+        )
+
+    # 1. Skipped and errored symbols must not be in filtered or rejected
+    assert not any(sym in ("XAUUSD", "GBPUSD", "ETHUSD") for sym, _ in filtered)
+    assert not any(d.get("symbol") in ("XAUUSD", "GBPUSD", "ETHUSD") for d in rejected)
+
+    # 2. WARNING must be logged for ETHUSD (errored), but NOT for XAUUSD or GBPUSD (valid skips)
+    warning_records = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    warning_messages = [r.getMessage() for r in warning_records]
+
+    assert any("Skipping ETHUSD due to invalid/errored Stage 2 state" in msg for msg in warning_messages)
+    assert not any("Skipping XAUUSD due to invalid/errored Stage 2 state" in msg for msg in warning_messages)
+    assert not any("Skipping GBPUSD due to invalid/errored Stage 2 state" in msg for msg in warning_messages)
+
+    # 3. DEBUG records must capture clean skips for XAUUSD and GBPUSD
+    debug_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
+    debug_messages = [r.getMessage() for r in debug_records]
+    assert any("Skipping XAUUSD as Stage 2 analysis was skipped" in msg for msg in debug_messages)
+    assert any("Skipping GBPUSD as Stage 2 analysis was skipped" in msg for msg in debug_messages)
+
+
+@pytest.mark.asyncio
 async def test_execution_node_missing_analysis_id_graceful(db_session):
     """Verify execution_node fails closed gracefully without KeyError when analysis_id is missing."""
     from unittest.mock import MagicMock, patch
