@@ -332,9 +332,9 @@ class UnifiedCronEngine:
             next_ts = compute_next_cron_timestamp(cron_expr, from_ts=now)
             return ScheduleParseResult(next_ts, description)
 
-        # Fallback default: 1 hour
-        logger.warning(f"[UnifiedCronEngine] Unrecognized schedule '{expr}', defaulting to 1 hour.")
-        return ScheduleParseResult(now + 3600.0, "Fallback 1 hour interval")
+        # Fail closed on unrecognized schedules
+        logger.error(f"[UnifiedCronEngine] Unrecognized schedule '{expr}'.")
+        raise ValueError(f"Unrecognized or invalid schedule expression: '{expr}'")
 
     def register_job(
         self,
@@ -542,7 +542,21 @@ class UnifiedCronEngine:
                 for row in rows:
                     job = self._row_to_job(row)
                     # Advance next_run_at in DB before dispatching to eliminate duplicate runs
-                    next_timestamp, _ = self.parse_schedule_expression(job.schedule_expression, from_timestamp=now)
+                    try:
+                        next_timestamp, _ = self.parse_schedule_expression(job.schedule_expression, from_timestamp=now)
+                    except ValueError as parse_err:
+                        logger.error(
+                            f"[UnifiedCronEngine] Deactivating job '{job.job_id}': schedule expression '{job.schedule_expression}' cannot be parsed ({parse_err})."
+                        )
+                        cursor.execute(
+                            "UPDATE cron_jobs SET is_active = 0, last_output = ? WHERE job_id = ?",
+                            (
+                                f"Deactivated due to invalid schedule expression: '{job.schedule_expression}'",
+                                job.job_id,
+                            ),
+                        )
+                        continue
+
                     cursor.execute(
                         """
                         UPDATE cron_jobs

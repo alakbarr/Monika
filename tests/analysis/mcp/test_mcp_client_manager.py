@@ -159,3 +159,106 @@ async def test_mcp_server_connection_start_fallback_on_not_implemented():
             assert mock_to_thread.awaited
             assert mock_to_thread.call_args[0][0] is _PopenStdioProcess
             await server.stop()
+
+
+@pytest.mark.asyncio
+async def test_mcp_server_process_concurrent_start_idempotent():
+    """Verify McpServerProcess handles concurrent start calls without spawning duplicate processes."""
+    proc = McpServerProcess(
+        "test_concurrent",
+        {
+            "transport": "stdio",
+            "command": "python",
+            "args": ["-m", "dummy"],
+        },
+    )
+
+    mock_proc = MagicMock()
+    mock_proc.pid = 12345
+    mock_proc.returncode = None
+    mock_proc.stdin = MagicMock()
+    mock_proc.stdout = MagicMock()
+    mock_proc.stdout.readline = AsyncMock(return_value=b"")
+    mock_proc.stderr = MagicMock()
+    mock_proc.stderr.readline = AsyncMock(return_value=b"")
+
+    spawn_count = 0
+
+    async def fake_create_subprocess(*args, **kwargs):
+        nonlocal spawn_count
+        spawn_count += 1
+        await asyncio.sleep(0.01)  # Simulate startup delay to test race condition
+        return mock_proc
+
+    with patch("asyncio.create_subprocess_exec", side_effect=fake_create_subprocess):
+        proc.send_request = AsyncMock(return_value={"result": {"protocolVersion": "2024-11-05"}})
+        proc.send_notification = AsyncMock()
+
+        # Run two concurrent starts
+        res1, res2 = await asyncio.gather(proc.start(), proc.start())
+        assert res1 is True
+        assert res2 is True
+        # Process should have been spawned exactly once
+        assert spawn_count == 1
+        assert proc.is_running is True
+
+        # Sequential third start should return immediately without spawning
+        res3 = await proc.start()
+        assert res3 is True
+        assert spawn_count == 1
+
+        await proc.stop()
+
+
+@pytest.mark.asyncio
+async def test_mcp_client_manager_initialize_servers_idempotent():
+    """Verify McpClientManager.initialize_servers is thread-safe and does not re-start active servers."""
+    mgr = McpClientManager.get_instance(
+        {
+            "mcp": {
+                "enabled": True,
+                "client": {
+                    "servers": {
+                        "srv1": {
+                            "enabled": True,
+                            "transport": "stdio",
+                            "command": "python",
+                            "args": ["-m", "dummy"],
+                        }
+                    }
+                },
+            }
+        }
+    )
+
+    mock_proc = MagicMock(spec=McpServerProcess)
+    mock_proc.is_running = False
+    mock_proc.ensure_started = AsyncMock(return_value=True)
+    mock_proc.list_tools = AsyncMock(
+        return_value=[
+            {
+                "name": "ping",
+                "description": "ping tool",
+                "inputSchema": {"type": "object", "properties": {}},
+            }
+        ]
+    )
+
+    async def fake_ensure_started():
+        mock_proc.is_running = True
+        return True
+
+    mock_proc.ensure_started.side_effect = fake_ensure_started
+
+    with patch("monika.infrastructure.mcp.client.McpServerProcess", return_value=mock_proc):
+        # First concurrent run
+        c1, c2 = await asyncio.gather(mgr.initialize_servers(), mgr.initialize_servers())
+        assert c1 == 1
+        assert c2 == 1
+        assert "srv1" in mgr.servers
+
+        # Sequential run
+        c3 = await mgr.initialize_servers()
+        assert c3 == 1
+
+        await mgr.stop()

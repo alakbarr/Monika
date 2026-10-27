@@ -56,6 +56,71 @@ def test_cron_nlp_parser_expressions():
     assert expr6 == raw_cron
 
 
+def test_cron_nlp_parser_fail_closed_on_unrecognized():
+    """Verify parse_natural_schedule fails closed (returns None, None, ...) for unparseable input."""
+    # Unparseable words or typos must not default to 1-hour interval
+    expr, sec, desc = parse_natural_schedule("test")
+    assert expr is None
+    assert sec is None
+    assert "Unrecognized schedule" in desc
+
+    expr_random, sec_random, desc_random = parse_natural_schedule("random garbage string xyz")
+    assert expr_random is None
+    assert sec_random is None
+    assert "Unrecognized schedule" in desc_random
+
+
+def test_unified_cron_rejects_unparseable_schedule(tmp_path):
+    """Verify UnifiedCronEngine.register_job raises ValueError when given an unparseable expression."""
+    from monika.application.scheduler.unified_cron_engine import UnifiedCronEngine
+
+    db_path = str(tmp_path / "cron_test.db")
+    engine = UnifiedCronEngine(db_path=db_path)
+
+    with pytest.raises(ValueError, match="Unrecognized or invalid schedule expression"):
+        engine.register_job(
+            job_id="bad_job",
+            schedule_expression="test",
+            prompt="do something",
+        )
+
+
+def test_unified_cron_deactivates_legacy_unparseable_due_job(tmp_path):
+    """Verify UnifiedCronEngine._evaluate_due_jobs deactivates (is_active=0) legacy jobs with corrupted schedule expressions."""
+    import sqlite3
+    import time
+    from monika.application.scheduler.unified_cron_engine import UnifiedCronEngine
+
+    db_path = str(tmp_path / "cron_test.db")
+    engine = UnifiedCronEngine(db_path=db_path)
+
+    # Insert a raw corrupted job directly into sqlite
+    now = time.time()
+    conn = sqlite3.connect(db_path)
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO cron_jobs (
+                job_id, name, schedule_expression, prompt, target_delivery,
+                target_destination, is_active, pending_slot, next_run_at, timeout_seconds
+            ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, 300.0)
+            """,
+            ("corrupt_job", "corrupt_job", "test", "dummy prompt", "session", None, now - 10),
+        )
+
+    # Trigger evaluation
+    engine._evaluate_due_jobs()
+
+    # Verify that the job was deactivated and NOT dispatched
+    with conn:
+        cur = conn.cursor()
+        cur.execute("SELECT is_active, last_output FROM cron_jobs WHERE job_id = 'corrupt_job'")
+        row = cur.fetchone()
+        assert row is not None
+        assert row[0] == 0  # is_active should be 0
+        assert "Deactivated due to invalid schedule expression" in row[1]
+
+
 # ==============================================================================
 # 2. Detached Cron Worker Tests
 # ==============================================================================

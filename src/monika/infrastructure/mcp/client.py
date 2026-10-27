@@ -175,6 +175,7 @@ class McpServerProcess:
         self._http_session: Optional[aiohttp.ClientSession] = None
         self._req_id = 0
         self._lock = asyncio.Lock()
+        self._start_lock = asyncio.Lock()
         self._pending_futures: Dict[int, asyncio.Future] = {}
         self._listen_task: Optional[asyncio.Task] = None
         self._stderr_task: Optional[asyncio.Task] = None
@@ -241,104 +242,109 @@ class McpServerProcess:
 
     async def start(self) -> bool:
         """Starts the MCP server subprocess or HTTP/SSE session and performs handshake."""
-        try:
-            if self.transport == "sse":
-                self._endpoint_discovered = asyncio.Event()
-                self._post_url = self.url
-                timeout = aiohttp.ClientTimeout(total=None, sock_read=None)
-                headers = {"Accept": "text/event-stream"}
-                if self.auth_token:
-                    headers["Authorization"] = f"Bearer {self.auth_token}"
-                self._http_session = aiohttp.ClientSession(timeout=timeout, trust_env=True)
+        async with self._start_lock:
+            if self.is_running:
+                return True
+            try:
+                if self.transport == "sse":
+                    self._endpoint_discovered = asyncio.Event()
+                    self._post_url = self.url
+                    timeout = aiohttp.ClientTimeout(total=None, sock_read=None)
+                    headers = {"Accept": "text/event-stream"}
+                    if self.auth_token:
+                        headers["Authorization"] = f"Bearer {self.auth_token}"
+                    self._http_session = aiohttp.ClientSession(timeout=timeout, trust_env=True)
 
-                resp = await self._http_session.get(self.url, headers=headers)
-                if resp.status != 200:
-                    logger.warning(f"MCP SSE connection to '{self.name}' failed with status {resp.status}")
-                    resp.close()
-                    await self._http_session.close()
-                    self._http_session = None
-                    return False
-                self._listen_task = asyncio.create_task(self._read_sse_stream(resp))
+                    resp = await self._http_session.get(self.url, headers=headers)
+                    if resp.status != 200:
+                        logger.warning(f"MCP SSE connection to '{self.name}' failed with status {resp.status}")
+                        resp.close()
+                        await self._http_session.close()
+                        self._http_session = None
+                        return False
+                    self._listen_task = asyncio.create_task(self._read_sse_stream(resp))
 
-                try:
-                    await asyncio.wait_for(self._endpoint_discovered.wait(), timeout=min(self.timeout, 8.0))
-                except asyncio.TimeoutError:
-                    logger.debug(f"[MCP SSE] No endpoint event received, defaulting POST URL to {self.url}")
-            elif self.transport == "http":
-                self._post_url = self.url
-                timeout = aiohttp.ClientTimeout(total=self.timeout)
-                headers = {"Content-Type": "application/json"}
-                if self.auth_token:
-                    headers["Authorization"] = f"Bearer {self.auth_token}"
-                self._http_session = aiohttp.ClientSession(headers=headers, timeout=timeout, trust_env=True)
-            else:
-                # Default stdio
-                resolved_cmd = (
-                    sys.executable
-                    if self.command in ("python", "python3")
-                    else (shutil.which(self.command) or self.command)
+                    try:
+                        await asyncio.wait_for(self._endpoint_discovered.wait(), timeout=min(self.timeout, 8.0))
+                    except asyncio.TimeoutError:
+                        logger.debug(f"[MCP SSE] No endpoint event received, defaulting POST URL to {self.url}")
+                elif self.transport == "http":
+                    self._post_url = self.url
+                    timeout = aiohttp.ClientTimeout(total=self.timeout)
+                    headers = {"Content-Type": "application/json"}
+                    if self.auth_token:
+                        headers["Authorization"] = f"Bearer {self.auth_token}"
+                    self._http_session = aiohttp.ClientSession(headers=headers, timeout=timeout, trust_env=True)
+                else:
+                    # Default stdio
+                    resolved_cmd = (
+                        sys.executable
+                        if self.command in ("python", "python3")
+                        else (shutil.which(self.command) or self.command)
+                    )
+                    repo_root = get_repo_root()
+                    base_dir = str(repo_root)
+                    src_dir = str(repo_root / "src")
+                    args: List[str] = []
+                    for arg in self.args:
+                        if arg.startswith("analysis.mcp.servers."):
+                            args.append(
+                                f"monika.infrastructure.mcp.servers.{arg.removeprefix('analysis.mcp.servers.')}"
+                            )
+                        else:
+                            args.append(arg)
+                    cmd = [resolved_cmd] + args
+                    env = dict(self.env)
+                    cur_pythonpath = env.get("PYTHONPATH", "")
+                    pythonpath_parts = [src_dir, base_dir]
+                    if cur_pythonpath:
+                        pythonpath_parts.append(cur_pythonpath)
+                    env["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
+                    try:
+                        self.process = await asyncio.create_subprocess_exec(
+                            *cmd,
+                            stdin=asyncio.subprocess.PIPE,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                            env=env,
+                            cwd=base_dir,
+                        )
+                    except NotImplementedError:
+                        loop = asyncio.get_running_loop()
+                        self.process = await asyncio.to_thread(
+                            _PopenStdioProcess,
+                            cmd,
+                            env,
+                            loop,
+                            base_dir,
+                        )
+                    if self.process and self.process.pid:
+                        McpDeathSupervisor.register_process(self.process.pid)
+                    self._listen_task = asyncio.create_task(self._read_responses())
+                    self._stderr_task = asyncio.create_task(self._drain_stderr())
+
+                # Perform initialize handshake
+                init_res = await self.send_request(
+                    "initialize",
+                    {
+                        "protocolVersion": LATEST_PROTOCOL_VERSION,
+                        "capabilities": {},
+                        "clientInfo": {"name": "monika-mcp-client", "version": "1.0.0"},
+                    },
                 )
-                repo_root = get_repo_root()
-                base_dir = str(repo_root)
-                src_dir = str(repo_root / "src")
-                args: List[str] = []
-                for arg in self.args:
-                    if arg.startswith("analysis.mcp.servers."):
-                        args.append(f"monika.infrastructure.mcp.servers.{arg.removeprefix('analysis.mcp.servers.')}")
-                    else:
-                        args.append(arg)
-                cmd = [resolved_cmd] + args
-                env = dict(self.env)
-                cur_pythonpath = env.get("PYTHONPATH", "")
-                pythonpath_parts = [src_dir, base_dir]
-                if cur_pythonpath:
-                    pythonpath_parts.append(cur_pythonpath)
-                env["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
-                try:
-                    self.process = await asyncio.create_subprocess_exec(
-                        *cmd,
-                        stdin=asyncio.subprocess.PIPE,
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE,
-                        env=env,
-                        cwd=base_dir,
-                    )
-                except NotImplementedError:
-                    loop = asyncio.get_running_loop()
-                    self.process = await asyncio.to_thread(
-                        _PopenStdioProcess,
-                        cmd,
-                        env,
-                        loop,
-                        base_dir,
-                    )
-                if self.process and self.process.pid:
-                    McpDeathSupervisor.register_process(self.process.pid)
-                self._listen_task = asyncio.create_task(self._read_responses())
-                self._stderr_task = asyncio.create_task(self._drain_stderr())
+                if not init_res or "error" in init_res:
+                    logger.warning(f"MCP server '{self.name}' initialization failed: {init_res}")
+                    return False
 
-            # Perform initialize handshake
-            init_res = await self.send_request(
-                "initialize",
-                {
-                    "protocolVersion": LATEST_PROTOCOL_VERSION,
-                    "capabilities": {},
-                    "clientInfo": {"name": "monika-mcp-client", "version": "1.0.0"},
-                },
-            )
-            if not init_res or "error" in init_res:
-                logger.warning(f"MCP server '{self.name}' initialization failed: {init_res}")
+                # Send initialized notification
+                await self.send_notification("notifications/initialized", {})
+                conn_info = f"PID {self.process.pid}" if self.process else f"URL {self.url}"
+                logger.info(f"Connected to MCP server '{self.name}' via {self.transport} ({conn_info})")
+                return True
+            except Exception as e:
+                err_detail = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
+                logger.warning(f"Failed to start MCP server '{self.name}': {err_detail}")
                 return False
-
-            # Send initialized notification
-            await self.send_notification("notifications/initialized", {})
-            conn_info = f"PID {self.process.pid}" if self.process else f"URL {self.url}"
-            logger.info(f"Connected to MCP server '{self.name}' via {self.transport} ({conn_info})")
-            return True
-        except Exception as e:
-            err_detail = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
-            logger.warning(f"Failed to start MCP server '{self.name}': {err_detail}")
-            return False
 
     async def send_request(self, method: str, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
         """Sends a JSON-RPC request and awaits the response over stdio or HTTP/SSE."""
@@ -554,6 +560,7 @@ class McpClientManager:
         self.settings = settings or {}
         self.servers: Dict[str, McpServerProcess] = {}
         self.schema_cache = McpSchemaCache()
+        self._init_lock = asyncio.Lock()
 
     @classmethod
     def get_instance(cls, settings: Optional[Dict[str, Any]] = None) -> "McpClientManager":
@@ -609,93 +616,98 @@ class McpClientManager:
 
     async def initialize_servers(self) -> int:
         """Starts all enabled MCP servers and bridges their tools into default_tool_registry and unified_tool_registry."""
-        mcp_cfg = self.settings.get("mcp", {})
-        if not mcp_cfg.get("enabled", True):
-            logger.info("MCP client integration is disabled in settings.")
-            return 0
+        async with self._init_lock:
+            mcp_cfg = self.settings.get("mcp", {})
+            if not mcp_cfg.get("enabled", True):
+                logger.info("MCP client integration is disabled in settings.")
+                return 0
 
-        servers_cfg = mcp_cfg.get("client", {}).get("servers", {})
-        connected_count = 0
+            servers_cfg = mcp_cfg.get("client", {}).get("servers", {})
+            connected_count = 0
 
-        # Phase 1: Optimistic Lazy Registration from disk schema cache
-        for s_name, s_cfg in servers_cfg.items():
-            if not isinstance(s_cfg, dict) or not s_cfg.get("enabled", False):
-                continue
-            cached_tools = self.schema_cache.get_cached_tools(s_name, s_cfg)
-            if cached_tools:
-                logger.info(f"[McpClientManager] Lazy-booted {len(cached_tools)} cached tools for '{s_name}'.")
-                if s_name not in self.servers:
-                    self.servers[s_name] = McpServerProcess(s_name, s_cfg)
-                proc = self.servers[s_name]
-                for t in cached_tools:
-                    t_name = t.get("name", "")
-                    if not t_name:
-                        continue
-                    local_name = f"mcp_{s_name}_{t_name}"
-                    handler = McpBridgeHandler(proc, t_name, local_name)
-                    default_tool_registry.register(
-                        handler,
-                        name=local_name,
-                        aliases=[f"{s_name}_{t_name}"],
-                        category="MCP",
-                    )
-                    try:
-                        unified_tool_registry.register_tool(
+            # Phase 1: Optimistic Lazy Registration from disk schema cache
+            for s_name, s_cfg in servers_cfg.items():
+                if not isinstance(s_cfg, dict) or not s_cfg.get("enabled", False):
+                    continue
+                cached_tools = self.schema_cache.get_cached_tools(s_name, s_cfg)
+                if cached_tools:
+                    logger.info(f"[McpClientManager] Lazy-booted {len(cached_tools)} cached tools for '{s_name}'.")
+                    if s_name not in self.servers:
+                        self.servers[s_name] = McpServerProcess(s_name, s_cfg)
+                    proc = self.servers[s_name]
+                    for t in cached_tools:
+                        t_name = t.get("name", "")
+                        if not t_name:
+                            continue
+                        local_name = f"mcp_{s_name}_{t_name}"
+                        handler = McpBridgeHandler(proc, t_name, local_name)
+                        default_tool_registry.register(
+                            handler,
                             name=local_name,
-                            category="MCP",
-                            handler=handler.execute,
-                            parameters_schema=t.get("inputSchema") or t.get("parameters"),
-                            is_async=True,
-                            description=t.get("description", f"MCP tool {t_name} from {s_name}"),
                             aliases=[f"{s_name}_{t_name}"],
-                        )
-                    except Exception as reg_err:
-                        logger.debug(f"Could not register cached '{local_name}' to unified_tool_registry: {reg_err}")
-
-        # Phase 2: Live Connections & Cache Freshness Update
-        for s_name, s_cfg in servers_cfg.items():
-            if not isinstance(s_cfg, dict) or not s_cfg.get("enabled", False):
-                continue
-
-            proc = self.servers.get(s_name) or McpServerProcess(s_name, s_cfg)
-            success = await proc.start()
-            if success:
-                self.servers[s_name] = proc
-                tools = await proc.list_tools()
-                if tools:
-                    self.schema_cache.save_cached_tools(s_name, s_cfg, tools)
-
-                for t in tools:
-                    t_name = t.get("name", "")
-                    if not t_name:
-                        continue
-                    local_name = f"mcp_{s_name}_{t_name}"
-                    handler = McpBridgeHandler(proc, t_name, local_name)
-                    # Register into default_tool_registry
-                    default_tool_registry.register(
-                        handler,
-                        name=local_name,
-                        aliases=[f"{s_name}_{t_name}"],
-                        category="MCP",
-                    )
-                    # Register into unified_tool_registry
-                    try:
-                        unified_tool_registry.register_tool(
-                            name=local_name,
                             category="MCP",
-                            handler=handler.execute,
-                            parameters_schema=t.get("inputSchema") or t.get("parameters"),
-                            is_async=True,
-                            description=t.get("description", f"MCP tool {t_name} from {s_name}"),
-                            aliases=[f"{s_name}_{t_name}"],
                         )
-                    except Exception as reg_err:
-                        logger.debug(f"Could not register '{local_name}' to unified_tool_registry: {reg_err}")
-                    logger.debug(f"Bridged MCP tool '{local_name}' into ToolRegistry")
-                connected_count += 1
+                        try:
+                            unified_tool_registry.register_tool(
+                                name=local_name,
+                                category="MCP",
+                                handler=handler.execute,
+                                parameters_schema=t.get("inputSchema") or t.get("parameters"),
+                                is_async=True,
+                                description=t.get("description", f"MCP tool {t_name} from {s_name}"),
+                                aliases=[f"{s_name}_{t_name}"],
+                            )
+                        except Exception as reg_err:
+                            logger.debug(
+                                f"Could not register cached '{local_name}' to unified_tool_registry: {reg_err}"
+                            )
 
-        logger.info(f"McpClientManager initialized: {connected_count} server(s) connected.")
-        return connected_count
+            # Phase 2: Live Connections & Cache Freshness Update (Idempotent)
+            for s_name, s_cfg in servers_cfg.items():
+                if not isinstance(s_cfg, dict) or not s_cfg.get("enabled", False):
+                    continue
+
+                proc = self.servers.get(s_name) or McpServerProcess(s_name, s_cfg)
+                already_running = proc.is_running
+                success = await proc.ensure_started()
+                if success:
+                    self.servers[s_name] = proc
+                    connected_count += 1
+                    if not already_running:
+                        tools = await proc.list_tools()
+                        if tools:
+                            self.schema_cache.save_cached_tools(s_name, s_cfg, tools)
+
+                        for t in tools:
+                            t_name = t.get("name", "")
+                            if not t_name:
+                                continue
+                            local_name = f"mcp_{s_name}_{t_name}"
+                            handler = McpBridgeHandler(proc, t_name, local_name)
+                            # Register into default_tool_registry
+                            default_tool_registry.register(
+                                handler,
+                                name=local_name,
+                                aliases=[f"{s_name}_{t_name}"],
+                                category="MCP",
+                            )
+                            # Register into unified_tool_registry
+                            try:
+                                unified_tool_registry.register_tool(
+                                    name=local_name,
+                                    category="MCP",
+                                    handler=handler.execute,
+                                    parameters_schema=t.get("inputSchema") or t.get("parameters"),
+                                    is_async=True,
+                                    description=t.get("description", f"MCP tool {t_name} from {s_name}"),
+                                    aliases=[f"{s_name}_{t_name}"],
+                                )
+                            except Exception as reg_err:
+                                logger.debug(f"Could not register '{local_name}' to unified_tool_registry: {reg_err}")
+                            logger.debug(f"Bridged MCP tool '{local_name}' into ToolRegistry")
+
+            logger.info(f"McpClientManager initialized: {connected_count} server(s) connected.")
+            return connected_count
 
     async def stop(self):
         """Stops all running MCP client subprocesses and connections."""

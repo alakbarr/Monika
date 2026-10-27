@@ -167,6 +167,6 @@ def parse_natural_schedule(text: str) -> Tuple[Optional[str], Optional[float], s
         utc_h = (h - tz_offset_hours) % 24
         return f"{m} {utc_h} * * 1-5", None, f"Every weekday at {h:02d}:{m:02d} {tz_name} ({utc_h:02d}:{m:02d} UTC)"
 
-    # Default fallback: 1 hour interval
-    logger.warning(f"[CronNlpParser] Could not unambiguously parse '{text}', defaulting to 1-hour interval.")
-    return "0 * * * *", None, f"Default 1-hour interval (unparsed: '{text}')"
+    # Fail closed: Do not silently default unparseable schedules to recurring jobs
+    logger.warning(f"[CronNlpParser] Could not unambiguously parse schedule '{text}'.")
+    return None, None, f"Unrecognized schedule expression: '{text}'"

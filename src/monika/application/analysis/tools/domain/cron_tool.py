@@ -165,7 +165,9 @@ async def handle_manage_cron(
                 target_destination="telegram",
             )
         except Exception as e:
+            _cron_registry.remove_job(job.name)
             logger.error(f"[CronTool] UnifiedCronEngine register_job failed: {e}")
+            return {"success": False, "error": f"Failed to register cron schedule: {e}"}
 
         return {
             "success": True,
@@ -185,15 +187,16 @@ async def handle_manage_cron(
         if not params.name:
             return {"success": False, "error": "Name is required to remove a cron job."}
         ok = _cron_registry.remove_job(params.name)
-        if not ok:
-            return {"success": False, "error": f"Cron job '{params.name}' not found."}
+        engine_ok = False
         try:
             from monika.application.scheduler.unified_cron_engine import get_unified_cron_engine
 
             engine = get_unified_cron_engine()
-            engine.unregister_job(params.name)
+            engine_ok = engine.unregister_job(params.name)
         except Exception as e:
             logger.debug(f"[CronTool] UnifiedCronEngine unregister_job: {e}")
+        if not ok and not engine_ok:
+            return {"success": False, "error": f"Cron job '{params.name}' not found."}
         return {"success": True, "message": f"Removed cron job '{params.name}'."}
 
     elif act == "clear":
