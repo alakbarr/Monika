@@ -155,13 +155,49 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
         logger.debug(f"Saved {saved} indicator rows for {symbol}/{timeframe}")
         return saved
 
-    async def compute_all_symbols(self, symbols: list[str], timeframes: list[str]) -> dict[str, int]:
-        """Menjalankan komputasi untuk semua aset dan timeframe."""
+    async def compute_all_symbols(
+        self, symbols: list[str], timeframes: list[str], force: bool = False
+    ) -> dict[str, int]:
+        """
+        Menjalankan komputasi untuk semua aset dan timeframe.
+        Mendukung smart delta-check: jika timestamp indikator terbaru sudah cocok dengan
+        bar OHLCV kanonikal terbaru, komputasi ulang yang memakan resource di-bypass.
+        """
         results = {}
         for symbol in symbols:
             for tf in timeframes:
                 key = f"{symbol}/{tf}"
                 try:
+                    if not force and self.session:
+                        from sqlalchemy import func, select
+                        from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
+
+                        ts_col = func.coalesce(PriceOHLCV.canonical_timestamp, PriceOHLCV.timestamp)
+                        res_p = await self.session.execute(
+                            select(ts_col)
+                            .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == tf)
+                            .order_by(ts_col.desc())
+                            .limit(1)
+                        )
+                        latest_price_ts = res_p.scalar_one_or_none() if hasattr(res_p, "scalar_one_or_none") else None
+
+                        res_i = await self.session.execute(
+                            select(TechnicalIndicator.timestamp)
+                            .where(TechnicalIndicator.symbol == symbol, TechnicalIndicator.timeframe == tf)
+                            .order_by(TechnicalIndicator.timestamp.desc())
+                            .limit(1)
+                        )
+                        latest_ind_ts = res_i.scalar_one_or_none() if hasattr(res_i, "scalar_one_or_none") else None
+
+                        if (
+                            isinstance(latest_price_ts, datetime)
+                            and isinstance(latest_ind_ts, datetime)
+                            and latest_price_ts == latest_ind_ts
+                        ):
+                            logger.debug(f"Indicators for {key} up-to-date ({latest_ind_ts}), bypassing recompute")
+                            results[key] = 0
+                            continue
+
                     n = await self.compute_and_save(symbol, tf)
                     results[key] = n
                 except Exception as e:

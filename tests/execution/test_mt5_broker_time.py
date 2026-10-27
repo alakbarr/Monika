@@ -79,6 +79,31 @@ def test_canonical_timestamp_w1():
     canon_w1 = to_canonical_timestamp(dt, "W1", offset_seconds=10800)
     assert canon_w1 == datetime(2026, 10, 19, 0, 0, 0, tzinfo=timezone.utc)
 
+    # Broker UTC+3: Sunday MT5 forex candle open 2026-10-24 21:00:00 UTC (Sunday 00:00:00 broker time)
+    # Must map to Monday 2026-10-26 00:00:00 UTC of that trading week, NOT the previous week
+    dt_sunday_forex = datetime(2026, 10, 24, 21, 0, 0, tzinfo=timezone.utc)
+    canon_sunday_forex = to_canonical_timestamp(dt_sunday_forex, "W1", offset_seconds=10800)
+    assert canon_sunday_forex == datetime(2026, 10, 26, 0, 0, 0, tzinfo=timezone.utc)
+
+    # Even under UTC+2 offset (Saturday 23:00 broker time), weekend open maps to upcoming Monday
+    canon_sat_utc2 = to_canonical_timestamp(dt_sunday_forex, "W1", offset_seconds=7200)
+    assert canon_sat_utc2 == datetime(2026, 10, 26, 0, 0, 0, tzinfo=timezone.utc)
+
+    # Sunday crypto candle open 2026-10-25 00:00:00 UTC
+    dt_sunday_crypto = datetime(2026, 10, 25, 0, 0, 0, tzinfo=timezone.utc)
+    canon_sunday_crypto = to_canonical_timestamp(dt_sunday_crypto, "W1", offset_seconds=10800)
+    assert canon_sunday_crypto == datetime(2026, 10, 26, 0, 0, 0, tzinfo=timezone.utc)
+
+    # Monday candle open 2026-10-26 00:00:00 UTC
+    dt_monday = datetime(2026, 10, 26, 0, 0, 0, tzinfo=timezone.utc)
+    canon_monday = to_canonical_timestamp(dt_monday, "W1", offset_seconds=10800)
+    assert canon_monday == datetime(2026, 10, 26, 0, 0, 0, tzinfo=timezone.utc)
+
+    # Friday market close 2026-10-30 21:00:00 UTC
+    dt_friday = datetime(2026, 10, 30, 21, 0, 0, tzinfo=timezone.utc)
+    canon_friday = to_canonical_timestamp(dt_friday, "W1", offset_seconds=10800)
+    assert canon_friday == datetime(2026, 10, 26, 0, 0, 0, tzinfo=timezone.utc)
+
 
 def test_resolve_offset_seconds_auto_adjusts_on_live_tick_dst_shift(monkeypatch):
     import sys

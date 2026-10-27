@@ -49,6 +49,28 @@ async def compute_agent_accuracy_report(
         "XAU": {"symbol": "XAUUSD", "invert": False},
     }
 
+    # Bulk load H4 candles for all proxy symbols in a single query to eliminate N*M roundtrips
+    proxy_symbols = list({p["symbol"] for p in CURRENCY_PROXY.values()})
+    candles_by_symbol: dict[str, list[tuple[datetime, float]]] = {s: [] for s in proxy_symbols}
+    if briefs:
+        oldest_brief = min(b.generated_at for b in briefs[:50] if b.generated_at)
+        if oldest_brief.tzinfo is None:
+            oldest_brief = oldest_brief.replace(tzinfo=UTC)
+        bulk_start = oldest_brief - timedelta(hours=2)
+
+        stmt = (
+            select(PriceOHLCV.symbol, PriceOHLCV.timestamp, PriceOHLCV.close)
+            .where(PriceOHLCV.symbol.in_(proxy_symbols))
+            .where(PriceOHLCV.timeframe == "H4")
+            .where(PriceOHLCV.timestamp >= bulk_start)
+            .order_by(PriceOHLCV.timestamp.asc())
+        )
+        raw_candles = (await session.execute(stmt)).all()
+        for sym, c_ts, close_val in raw_candles:
+            if c_ts is not None and close_val is not None:
+                ts_aware = c_ts.replace(tzinfo=UTC) if c_ts.tzinfo is None else c_ts
+                candles_by_symbol[sym].append((ts_aware, float(close_val)))
+
     for brief in briefs[:50]:  # Limit to 50 for performance
         if not brief.structured_json:
             continue
@@ -71,36 +93,20 @@ async def compute_agent_accuracy_report(
                 proxy = CURRENCY_PROXY[currency]
                 symbol = proxy["symbol"]
                 invert = proxy["invert"]
+                sym_candles = candles_by_symbol.get(symbol, [])
 
-                # Get price at brief generation (dialect-agnostic sorting in Python)
-                candles_at_brief = (
-                    await session.execute(
-                        select(PriceOHLCV.timestamp, PriceOHLCV.close)
-                        .where(PriceOHLCV.symbol == symbol)
-                        .where(PriceOHLCV.timeframe == "H4")
-                        .where(PriceOHLCV.timestamp <= brief_time + timedelta(hours=1))
-                        .where(PriceOHLCV.timestamp >= brief_time - timedelta(hours=1))
-                    )
-                ).all()
+                # In-memory lookup: price at brief generation (+/- 1 hour)
                 price_at_brief = None
-                if candles_at_brief:
-                    sorted_candles = sorted(
-                        candles_at_brief,
-                        key=lambda r: abs((r[0] - brief_time).total_seconds()) if r[0] else 999999.0,
-                    )
-                    price_at_brief = sorted_candles[0][1]
+                candidates_at_brief = [c for c in sym_candles if abs((c[0] - brief_time).total_seconds()) <= 3600]
+                if candidates_at_brief:
+                    price_at_brief = min(candidates_at_brief, key=lambda c: abs((c[0] - brief_time).total_seconds()))[1]
 
-                price_after = (
-                    await session.execute(
-                        select(PriceOHLCV.close)
-                        .where(PriceOHLCV.symbol == symbol)
-                        .where(PriceOHLCV.timeframe == "H4")
-                        .where(PriceOHLCV.timestamp >= check_time_start)
-                        .where(PriceOHLCV.timestamp <= check_time_end)
-                        .order_by(PriceOHLCV.timestamp)
-                        .limit(1)
-                    )
-                ).scalar_one_or_none()
+                # In-memory lookup: price after horizon window
+                price_after = None
+                for c_ts, c_close in sym_candles:
+                    if check_time_start <= c_ts <= check_time_end:
+                        price_after = c_close
+                        break
 
                 if not price_at_brief or not price_after:
                     continue

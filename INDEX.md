@@ -10710,7 +10710,7 @@
   - `class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator)`: Application Service that computes and persists technical indicators from OHLCV data.
     - `__init__(session: Any, settings: Optional[dict])`
     - `async compute_and_save(symbol: str, timeframe: str) -> int` - *Menjalankan alur lengkap: load OHLCV -> hitung -> simpan.*
-    - `async compute_all_symbols(symbols: list[str], timeframes: list[str]) -> dict[str, int]` - *Menjalankan komputasi untuk semua aset dan timeframe.*
+    - `async compute_all_symbols(symbols: list[str], timeframes: list[str], force: bool) -> dict[str, int]` - *Menjalankan komputasi untuk semua aset dan timeframe.*
     - `async compute_chart_workspace_payload(symbol: str, timeframe: str, count: int, ...) -> dict[str, Any]` - *Compute indicator workspace series, pivot points, and alignment summary.*
     - `async compute_multi_tf_workspace_summary(symbol: str, workspace_config: Optional[dict[str, Any]], timeframes: tuple[str, ...]) -> dict[str, Any]` - *Compute multi-timeframe workspace alignment, merged declared figures, and confluence summary.*
     - `async get_latest(symbol: str, timeframe: str, indicator_name: str) -> Optional[dict]` - *Mengambil metrik indikator terbaru untuk suatu symbol/timeframe.*

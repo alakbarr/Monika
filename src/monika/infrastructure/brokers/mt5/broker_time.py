@@ -201,11 +201,24 @@ class BrokerTimeResolver:
             # Store D1 at 00:00:00 UTC of that broker date for uniform daily indicator indexing
             return broker_d1.replace(tzinfo=timezone.utc)
         elif tf == "W1":
-            if offset_seconds is None:
-                offset_seconds = cls.resolve_offset_seconds(settings)
-            broker_dt = dt + timedelta(seconds=offset_seconds)
-            broker_monday = broker_dt - timedelta(days=broker_dt.weekday())
-            return broker_monday.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+            # Bar W1 di MT5 dibuka pada Minggu 00:00 broker time.
+            # Dalam koordinat UTC (setelah dikurangi offset broker), bar pembuka minggu ini jatuh pada:
+            # - Minggu (weekday 6): crypto atau broker UTC+0, maps ke Senin mendatang (+1 hari).
+            # - Sabtu malam >= 20:00 UTC (weekday 5): broker UTC+2 s/d UTC+4, maps ke Senin mendatang (+2 hari).
+            # - Hari kerja (Senin..Jumat): bar/tick berjalan pada minggu aktif, maps ke Senin minggu tersebut.
+            # - Sabtu dini hari < 20:00 UTC: penutupan sesi Jumat, maps ke Senin minggu yang baru lewat.
+            utc_dt = dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+            day = utc_dt.weekday()
+            base_midnight = utc_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+
+            if day == 6:  # Sunday open -> upcoming Monday
+                return base_midnight + timedelta(days=1)
+            elif day == 5 and utc_dt.hour >= 20:  # Saturday night weekend open -> upcoming Monday
+                return base_midnight + timedelta(days=2)
+            elif day == 5 and utc_dt.hour < 20:  # Saturday early morning close -> current week's Monday
+                return base_midnight - timedelta(days=5)
+            else:  # Monday through Friday -> current week's Monday
+                return base_midnight - timedelta(days=day)
         elif tf == "MN1":
             return dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         else:

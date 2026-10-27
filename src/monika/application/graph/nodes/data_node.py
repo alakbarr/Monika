@@ -37,7 +37,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
             return {"summary": summary, "should_pause": True, "stale_assets": []}
 
     # Step 1: Eksekusi scrapers (Scraping berat sekarang dilakukan di latar belakang setiap 1 jam via main.py)
-    logger.info("[Step 1/7] Scraping is handled in background loop. Skipping in graph cycle.")
+    logger.info("[DataNode 1/8] Scraping & news metrics check...")
     try:
         scraping_info: Dict[str, Any] = {"status": "moved to background loop"}
         summary["scraping"] = scraping_info
@@ -114,8 +114,8 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     except Exception as e:
         logger.debug(f"Calendar freshness check failed: {e}")
 
-    # Step 1.5: LLM News Digest
-    logger.info("[Step 1.5/7] Processing news with LLM...")
+    # News Processing
+    logger.info("[DataNode 1/8] Processing news digest with LLM...")
     try:
         from monika.application.analysis.prefetch.news_digest import NewsDigestProcessor
 
@@ -167,14 +167,14 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         logger.warning(f"News processing failed (non-fatal): {e}")
 
     # Step 2: External API Refresh
-    logger.info("[Step 2/7] Refreshing API data sources...")
+    logger.info("[DataNode 2/8] Refreshing API data sources...")
     summary["data_refresh"] = await scheduler._refresh_data_sources()
 
     # Resolve target symbols respecting weekend crypto mode
     target_symbols = list(state.get("weekend_symbols_override") or state.get("symbols") or scheduler.asset_universe)
 
     # Step 3: MT5 price fetch
-    logger.info(f"[Step 3/7] Fetching MT5 price data for {len(target_symbols)} symbols...")
+    logger.info(f"[DataNode 3/8] Fetching MT5 price data for {len(target_symbols)} symbols...")
     if scheduler._mt5:
         try:
             async with get_session() as session:
@@ -204,8 +204,8 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         logger.warning("MT5 client not available — skipping price fetch")
         summary["price_fetch"] = {"skipped": "no MT5 client"}
 
-    # Step 4: Technical indicators
-    logger.info(f"[Step 4/7] Computing technical indicators for {len(target_symbols)} symbols...")
+    # Step 4: Technical indicators (delta-cached)
+    logger.info(f"[DataNode 4/8] Computing technical indicators for {len(target_symbols)} symbols (delta-cached)...")
     try:
         from monika.application.services.technical_indicator_service import (
             TechnicalIndicatorService as TechnicalIndicatorCalculator,
@@ -221,8 +221,8 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         logger.error(f"Indicator computation failed: {e}")
         summary["indicators"] = {"error": str(e)}
 
-    # Step 5: Structure analysis
-    logger.info(f"[Step 5/7] Analyzing market structure for {len(target_symbols)} symbols (swings, SR, FVG)...")
+    # Step 5: Structure analysis (delta-cached)
+    logger.info(f"[DataNode 5/8] Analyzing market structure for {len(target_symbols)} symbols (swings, SR, FVG)...")
     try:
         from monika.application.services.market_structure_service import (
             MarketStructureService as MarketStructureAnalyzer,
@@ -231,15 +231,52 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         async with get_session() as session:
             analyzer = MarketStructureAnalyzer(session, scheduler.settings)
             indicator_timeframes = [tf for tf in scheduler.mt5_timeframes if tf != "M15"]
-            struct_result = await analyzer.analyze_all(target_symbols, indicator_timeframes)
-        summary["structure"] = {k: sum(v.values()) for k, v in struct_result.items()}
+
+            # Filter symbols: only analyze symbols that had new price bars or are missing structure in DB
+            price_fetch_result = summary.get("price_fetch") or {}
+            symbols_to_analyze: list[str] = []
+
+            for s in target_symbols:
+                needs_update = False
+                for tf in indicator_timeframes:
+                    k = f"{s}/{tf}"
+                    bars_added = price_fetch_result.get(k, 1) if isinstance(price_fetch_result, dict) else 1
+                    if bars_added > 0:
+                        needs_update = True
+                        break
+                    else:
+                        from sqlalchemy import func, select
+                        from monika.infrastructure.database.models import SwingPoint
+
+                        has_struct = (
+                            await session.execute(
+                                select(func.count(SwingPoint.id)).where(
+                                    SwingPoint.symbol == s, SwingPoint.timeframe == tf
+                                )
+                            )
+                        ).scalar_one()
+                        if has_struct == 0:
+                            needs_update = True
+                            break
+
+                if needs_update:
+                    symbols_to_analyze.append(s)
+                else:
+                    logger.debug(f"Structure for {s} up-to-date, skipping re-analysis")
+
+            if symbols_to_analyze:
+                struct_result = await analyzer.analyze_all(symbols_to_analyze, indicator_timeframes)
+                summary["structure"] = {k: sum(v.values()) for k, v in struct_result.items()}
+            else:
+                logger.info("[DataNode 5/8] All market structures up-to-date. Skipped redundant computation.")
+                summary["structure"] = {"cached": True}
         logger.debug(f"Structure analysis complete: {summary['structure']}")
     except Exception as e:
         logger.error(f"Structure analysis failed: {e}")
         summary["structure"] = {"error": str(e)}
 
-    # Step 5.5: Macro Precomputations
-    logger.info("[Step 5.5/7] Running Macro pre-computations...")
+    # Step 6: Macro Precomputations
+    logger.info("[DataNode 6/8] Running Macro pre-computations...")
     try:
         from monika.application.analysis.prefetch.macro_preprocessor import MacroPreprocessor
 
@@ -252,8 +289,8 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         logger.error(f"Macro pre-computations failed: {e}")
         summary["macro_precompute"] = {"error": str(e)}
 
-    # Step 5.6: Regenerate Performance Notes
-    logger.info("[Step 5.6/7] Checking if performance notes need regeneration...")
+    # Step 7: Adaptation & Factor Overrides
+    logger.info("[DataNode 7/8] Checking if performance notes need regeneration...")
     try:
         async with get_session() as session:
             tracker = getattr(scheduler, "_paper_tracker", None)
@@ -331,8 +368,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
         logger.error(f"Performance notes check failed: {e}")
         summary["performance_notes"] = {"error": str(e)}
 
-    # Step 5.7: Score Inflation Detection
-    logger.info("[Step 5.7/7] Running score inflation drift check (lightweight, every cycle)...")
+    logger.info("[DataNode 7/8] Running score inflation drift check (lightweight, every cycle)...")
     try:
         import json as _json_infl
 
@@ -367,13 +403,12 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                         session.add(SystemConfig(key=cfg_key, value=correction_data))
                     await session.commit()
                     logger.warning(
-                        f"[Step 5.7] Intra-cycle score inflation correction applied: threshold={correction_threshold} (drift={drift:.1f})"
+                        f"[DataNode 7/8] Intra-cycle score inflation correction applied: threshold={correction_threshold} (drift={drift:.1f})"
                     )
     except Exception as e:
         logger.error(f"Score inflation detection failed: {e}")
 
-    # Step 5.8: Factor Point Override Computation
-    logger.info("[Step 5.8/7] Computing factor point overrides...")
+    logger.info("[DataNode 7/8] Computing factor point overrides...")
     try:
         from monika.core.analytics.analysis_tracker import compute_and_persist_factor_point_overrides
 
@@ -382,7 +417,8 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     except Exception as e:
         logger.error(f"Factor point override computation failed: {e}")
 
-    # Validasi kesegaran data
+    # Step 8: Validasi kesegaran data & Active In-Cycle Recovery
+    logger.info("[DataNode 8/8] Validating data freshness and executing active recovery...")
     from monika.core.validation.data_validator import validate_data_freshness
 
     weekend_symbols_override = state.get("weekend_symbols_override")
@@ -405,12 +441,94 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
             require_macro_data=bool(data_quality_cfg.get("require_macro_data", False)),
         )
 
+    # Active in-cycle recovery if errors exist
+    val_errors = validation.get("errors") or []
+    mt5_client = getattr(scheduler, "_mt5", None)
+    if val_errors and mt5_client is not None:
+        logger.info(
+            f"[DataNode 8/8] Stale data detected ({len(val_errors)} errors). Initiating active in-cycle recovery..."
+        )
+        ohlcv_refetch_targets: dict[str, set[str]] = {}
+        ind_recompute_targets: dict[str, set[str]] = {}
+
+        for err in val_errors:
+            parts = err.split(" ")
+            if len(parts) >= 2 and "/" in parts[0]:
+                sym_tf = parts[0]
+                if "/" in sym_tf:
+                    sym, tf = sym_tf.split("/", 1)
+                    item_type = parts[1]
+                    if item_type == "OHLCV":
+                        ohlcv_refetch_targets.setdefault(tf, set()).add(sym)
+                    elif item_type == "Indicator":
+                        ind_recompute_targets.setdefault(tf, set()).add(sym)
+
+        recovery_updated = False
+        async with get_session() as rec_session:
+            # 1. Targeted re-fetch OHLCV from MT5
+            if ohlcv_refetch_targets:
+                for tf, syms in ohlcv_refetch_targets.items():
+                    try:
+                        rec_res = await mt5_client.fetch_and_save_all(
+                            rec_session, symbols=list(syms), timeframes=[tf], count=100
+                        )
+                        if any(rec_res.get(f"{s}/{tf}", 0) > 0 for s in syms):
+                            recovery_updated = True
+                            ind_recompute_targets.setdefault(tf, set()).update(syms)
+                    except Exception as rec_err:
+                        logger.warning(f"[ActiveRecovery] MT5 re-fetch failed for {tf} {syms}: {rec_err}")
+
+            # 2. Targeted recompute indicators
+            if ind_recompute_targets:
+                try:
+                    from monika.application.services.technical_indicator_service import (
+                        TechnicalIndicatorService as TechnicalIndicatorCalculator,
+                    )
+
+                    rec_calc = TechnicalIndicatorCalculator(rec_session, scheduler.settings.get("trading", {}))
+                    for tf, syms in ind_recompute_targets.items():
+                        for s in syms:
+                            try:
+                                await rec_calc.compute_and_save(s, tf)
+                                recovery_updated = True
+                            except Exception as ind_rec_err:
+                                logger.warning(
+                                    f"[ActiveRecovery] Indicator recompute failed for {s}/{tf}: {ind_rec_err}"
+                                )
+                except Exception as ind_init_err:
+                    logger.warning(f"[ActiveRecovery] Calculator init failed: {ind_init_err}")
+
+        # 3. Re-run validation if recovery updated DB
+        if recovery_updated:
+            async with get_session() as reval_session:
+                validation = await validate_data_freshness(
+                    reval_session,
+                    symbols=target_symbols,
+                    timeframes=scheduler.mt5_timeframes,
+                    max_ohlcv_age_hours=data_quality_cfg.get("max_ohlcv_age_hours", {}),
+                    max_indicator_age_hours=data_quality_cfg.get("max_indicator_age_hours", {}),
+                    max_macro_age_days=data_quality_cfg.get("max_macro_age_days", {}),
+                    max_calendar_age_hours=float(data_quality_cfg.get("block_analysis_if_calendar_stale_hours", 14.0)),
+                    max_news_age_hours=float(data_quality_cfg.get("max_news_age_hours", 24.0)),
+                    require_macro_data=bool(data_quality_cfg.get("require_macro_data", False)),
+                )
+            reval_errors = validation.get("errors") or []
+            if not reval_errors:
+                logger.info("[DataNode 8/8] Active recovery successful! All stale data resolved.")
+            else:
+                logger.warning(f"[DataNode 8/8] Active recovery finished with {len(reval_errors)} remaining errors.")
+
     critical_stale_assets = set()
     context_stale_assets = set()
     for err in validation.get("errors", []):
         for sym in target_symbols:
             if sym in err:
-                if "/D1 Indicator is" in err or "/W1 Indicator is" in err:
+                if (
+                    "/D1 Indicator is" in err
+                    or "/W1 Indicator is" in err
+                    or "/D1 OHLCV is" in err
+                    or "/W1 OHLCV is" in err
+                ):
                     context_stale_assets.add(sym)
                 else:
                     critical_stale_assets.add(sym)
@@ -436,9 +554,15 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
             pass
         summary["per_asset"] = {"skipped": True, "reason": reason}
         should_pause = True
+    elif critical_stale_assets:
+        # Per-asset isolation: Healthy symbols proceed, only stale assets quarantined
+        logger.warning(
+            f"[DataNode 8/8] Per-asset isolation active: {len(critical_stale_assets)} assets quarantined "
+            f"({', '.join(sorted(critical_stale_assets))}). Healthy symbols ({len(target_symbols) - len(critical_stale_assets)}) proceed to Stage 2."
+        )
     elif context_stale_assets:
         logger.warning(
-            f"HTF context indicators (D1/W1) aging for {len(context_stale_assets)} assets ({', '.join(sorted(context_stale_assets))}). "
+            f"HTF context data (D1/W1) aging for {len(context_stale_assets)} assets ({', '.join(sorted(context_stale_assets))}). "
             f"Proceeding with Stage 2 in graceful degradation mode."
         )
 

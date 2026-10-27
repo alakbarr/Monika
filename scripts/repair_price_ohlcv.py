@@ -207,6 +207,82 @@ async def deduplicate_price_ohlcv(dry_run: bool = True) -> int:
         return deleted_count
 
 
+async def repair_w1_canonical_timestamps(dry_run: bool = True) -> int:
+    """Repair canonical_timestamp on W1 rows where Sunday open was incorrectly mapped to previous Monday."""
+    settings = load_settings()
+    offset_sec = BrokerTimeResolver.resolve_offset_seconds(settings)
+    logger.info(f"Checking W1 canonical timestamps with broker offset {offset_sec}s...")
+
+    async with get_session() as session:
+        stmt = select(PriceOHLCV.id, PriceOHLCV.symbol, PriceOHLCV.timestamp, PriceOHLCV.canonical_timestamp).where(
+            PriceOHLCV.timeframe == "W1"
+        )
+        res = await session.execute(stmt)
+        rows = res.all()
+        logger.info(f"Total W1 rows in price_ohlcv: {len(rows)}")
+
+        updates: List[Dict[str, Any]] = []
+        for r_id, sym, ts, cur_canon_ts in rows:
+            expected_canon_ts = BrokerTimeResolver.to_canonical_bar_timestamp(ts, "W1", offset_seconds=offset_sec)
+            if cur_canon_ts != expected_canon_ts:
+                updates.append(
+                    {
+                        "_id": r_id,
+                        "_symbol": sym,
+                        "_old_canon": cur_canon_ts,
+                        "_new_canon": expected_canon_ts,
+                    }
+                )
+
+        logger.info(f"Found {len(updates)} W1 rows with incorrect canonical_timestamp.")
+        if not updates:
+            return 0
+
+        if dry_run:
+            logger.info(
+                f"[DRY-RUN] Sample fix: id={updates[0]['_id']} symbol={updates[0]['_symbol']} "
+                f"old={updates[0]['_old_canon']} -> new={updates[0]['_new_canon']}"
+            )
+            logger.info("[DRY-RUN] Aborting before updating. Run with --execute --repair-w1-canonical to apply.")
+            return len(updates)
+
+        logger.info(f"Applying canonical_timestamp repair for {len(updates)} W1 rows...")
+        update_stmt = text("UPDATE price_ohlcv SET canonical_timestamp = :_new_canon WHERE id = :_id")
+        for chunk_start in range(0, len(updates), 1000):
+            chunk = updates[chunk_start : chunk_start + 1000]
+            await session.execute(update_stmt, chunk)
+        await session.commit()
+        logger.info("Successfully updated W1 canonical_timestamps.")
+
+        logger.info("Updating W1 technical_indicators timestamps...")
+        ti_update_stmt = text(
+            """
+            UPDATE technical_indicators
+            SET timestamp = :_new_canon
+            WHERE symbol = :_symbol AND timeframe = 'W1' AND timestamp = :_old_canon
+            """
+        )
+        for chunk_start in range(0, len(updates), 500):
+            chunk = updates[chunk_start : chunk_start + 500]
+            await session.execute(ti_update_stmt, chunk)
+        await session.commit()
+        logger.info("Successfully updated W1 technical_indicators timestamps.")
+
+        return len(updates)
+
+
+async def recompute_w1_indicators(symbols: List[str]) -> None:
+    """Recompute W1 indicators for symbols after canonical repair."""
+    from monika.application.services.technical_indicator_service import TechnicalIndicatorService
+
+    async with get_session() as session:
+        svc = TechnicalIndicatorService(session=session)
+        for sym in symbols:
+            saved = await svc.compute_and_save(sym, "W1")
+            logger.info(f"Recomputed {saved} W1 indicators for {sym}")
+        await session.commit()
+
+
 async def verify_duplicate_rate() -> bool:
     """Audit check: report duplicate rate across all symbols and timeframes."""
     async with get_session() as session:
@@ -267,17 +343,35 @@ async def main() -> None:
     parser.add_argument("--dry-run", action="store_true", default=False, help="Dry run without modifying database.")
     parser.add_argument("--execute", action="store_true", default=False, help="Execute repairs and deletions.")
     parser.add_argument("--fetch-mt5", action="store_true", default=False, help="Fetch fresh bars from MT5.")
+    parser.add_argument(
+        "--repair-w1-canonical",
+        action="store_true",
+        default=False,
+        help="Repair W1 canonical_timestamps based on corrected Sunday mapping.",
+    )
+    parser.add_argument(
+        "--recompute-w1-indicators",
+        action="store_true",
+        default=False,
+        help="Recompute W1 indicators after repair.",
+    )
     args = parser.parse_args()
 
     if not args.execute and not args.dry_run:
         logger.info("No action specified. Running dry run by default...")
         args.dry_run = True
 
+    watched_symbols = ["XAUUSD", "EURUSD", "USDJPY", "GBPUSD", "AUDUSD", "BTCUSD", "XTIUSD", "XBRUSD"]
+
     try:
-        await deduplicate_price_ohlcv(dry_run=args.dry_run)
-        if args.execute and args.fetch_mt5:
-            watched_symbols = ["XAUUSD", "EURUSD", "USDJPY", "GBPUSD", "AUDUSD", "BTCUSD", "XTIUSD", "XBRUSD"]
-            await fetch_clean_from_mt5(watched_symbols)
+        if args.repair_w1_canonical:
+            await repair_w1_canonical_timestamps(dry_run=args.dry_run)
+            if args.execute and args.recompute_w1_indicators:
+                await recompute_w1_indicators(watched_symbols)
+        else:
+            await deduplicate_price_ohlcv(dry_run=args.dry_run)
+            if args.execute and args.fetch_mt5:
+                await fetch_clean_from_mt5(watched_symbols)
 
         clean = await verify_duplicate_rate()
         if clean:

@@ -170,13 +170,15 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             ) = await asyncio.to_thread(_cpu_compute)
 
             counts = {
-                "swing_points": await self._save_swings(symbol, timeframe, swing_highs, swing_lows),
-                "sr_zones": await self._save_sr_zones(symbol, timeframe, sr_zones),
-                "liquidity_zones": await self._save_liquidity(symbol, timeframe, liq_zones),
-                "fvg_zones": await self._save_fvg(symbol, timeframe, fvg_zones),
-                "order_blocks": await self._save_order_blocks(symbol, timeframe, order_blocks),
-                "struct_breaks": await self._save_structure_breaks(symbol, timeframe, struct_breaks),
+                "swing_points": await self._save_swings(symbol, timeframe, swing_highs, swing_lows, commit=False),
+                "sr_zones": await self._save_sr_zones(symbol, timeframe, sr_zones, commit=False),
+                "liquidity_zones": await self._save_liquidity(symbol, timeframe, liq_zones, commit=False),
+                "fvg_zones": await self._save_fvg(symbol, timeframe, fvg_zones, commit=False),
+                "order_blocks": await self._save_order_blocks(symbol, timeframe, order_blocks, commit=False),
+                "struct_breaks": await self._save_structure_breaks(symbol, timeframe, struct_breaks, commit=False),
             }
+            if self.session:
+                await self.session.commit()
 
             logger.debug(
                 f"Structure analysis {symbol}/{timeframe}: "
@@ -345,6 +347,7 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
         timeframe: str,
         highs: pd.DataFrame,
         lows: pd.DataFrame,
+        commit: bool = True,
     ) -> int:
         """Mengganti data swing points lama dengan yang baru."""
         if not self.session:
@@ -390,10 +393,11 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             )
             saved += 1
 
-        await self.session.commit()
+        if commit:
+            await self.session.commit()
         return saved
 
-    async def _save_sr_zones(self, symbol: str, timeframe: str, zones: list[dict]) -> int:
+    async def _save_sr_zones(self, symbol: str, timeframe: str, zones: list[dict], commit: bool = True) -> int:
         """Mengganti S/R zones lama dengan yang baru."""
         if not self.session:
             return 0
@@ -412,10 +416,11 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
                 )
             )
 
-        await self.session.commit()
+        if commit:
+            await self.session.commit()
         return len(zones)
 
-    async def _save_liquidity(self, symbol: str, timeframe: str, zones: list[Any]) -> int:
+    async def _save_liquidity(self, symbol: str, timeframe: str, zones: list[Any], commit: bool = True) -> int:
         """Persist newly identified liquidity zones."""
         if not self.session:
             return 0
@@ -436,7 +441,7 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
                 )
             )
 
-        if zones:
+        if commit and zones:
             await self.session.commit()
 
         return len(zones)
@@ -446,6 +451,7 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
         arg1: Union[str, list[Any]],
         arg2: Optional[Union[str, list[Any]]] = None,
         arg3: Optional[list[Any]] = None,
+        commit: bool = True,
     ) -> int:
         """Upsert Fair Value Gaps."""
         if isinstance(arg1, str) and isinstance(arg2, str):
@@ -576,7 +582,8 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
                 if distance_pct > max_dist * 2:
                     await self.session.delete(fvg)
 
-        await self.session.commit()
+        if commit:
+            await self.session.commit()
         return new_count
 
     async def _save_order_blocks(
@@ -584,6 +591,7 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
         arg1: Union[str, list[Any]],
         arg2: Optional[Union[str, list[Any]]] = None,
         arg3: Optional[list[Any]] = None,
+        commit: bool = True,
     ) -> int:
         """Upsert Order Blocks."""
         if isinstance(arg1, str) and isinstance(arg2, str):
@@ -651,10 +659,11 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
                 )
                 saved += 1
 
-        await self.session.commit()
+        if commit:
+            await self.session.commit()
         return saved
 
-    async def _save_structure_breaks(self, symbol: str, timeframe: str, breaks: list[Any]) -> int:
+    async def _save_structure_breaks(self, symbol: str, timeframe: str, breaks: list[Any], commit: bool = True) -> int:
         if not self.session:
             return 0
 
@@ -672,7 +681,7 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
                     formed_at=brk.formed_at,
                 )
             )
-        if breaks:
+        if commit and breaks:
             await self.session.commit()
         return len(breaks)
 
