@@ -446,11 +446,31 @@ async def websocket_agent_chat(websocket: WebSocket):
     session_id = (
         websocket.query_params.get("session_id") or f"dash:{role.value if role else 'unknown'}:{uuid.uuid4().hex[:8]}"
     )
+    tier_models = {}
+    try:
+        from monika.core.config.settings import load_settings
+
+        _cfg = load_settings()
+        _task_roles = _cfg.get("llm", {}).get("task_roles") or _cfg.get("llm", {}).get("roles", {})
+        tier_models = {
+            "fast": _task_roles.get("chat_interactive_fast", {}).get("primary")
+            or _task_roles.get("chat_telegram", {}).get("primary", "gemini-3.5-flash-lite"),
+            "medium": _task_roles.get("chat_interactive_balanced", {}).get("primary")
+            or _task_roles.get("chat_telegram_medium", {}).get("primary", "glm-5.3-flash"),
+            "complex": _task_roles.get("chat_interactive_reasoning", {}).get("primary")
+            or _task_roles.get("chat_telegram_complex", {}).get("primary", "deepseek-v4.1-flash-1017"),
+            "deep_research": _task_roles.get("chat_interactive_pro", {}).get("primary")
+            or _task_roles.get("deep_research", {}).get("primary", "gemini-4-argon"),
+        }
+    except Exception as _cfg_err:
+        logger.debug(f"[AgentChat WS] Failed to resolve tier models: {_cfg_err}")
+
     await websocket.send_json(
         {
             "type": "connection_established",
             "role": role.value if role else "viewer",
             "session_id": session_id,
+            "tier_models": tier_models,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     )

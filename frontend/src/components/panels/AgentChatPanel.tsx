@@ -24,6 +24,7 @@ export const AgentChatPanel: React.FC = () => {
     wsConnected,
     isProcessing,
     activeToolEvents,
+    tierModels,
     sendMessage,
     interrupt,
     respondApproval,
@@ -161,10 +162,15 @@ export const AgentChatPanel: React.FC = () => {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="editorial-kicker">ROUTER</span>
+            <span className="editorial-kicker">ROUTER TIER</span>
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
+              title={
+                selectedModel === 'auto'
+                  ? 'Auto: Intent-based routing to optimal tier'
+                  : `Active Model: ${tierModels[selectedModel] || 'Configured via settings.yaml'}`
+              }
               style={{
                 height: '28px',
                 background: 'var(--color-paper-raised)',
@@ -179,11 +185,36 @@ export const AgentChatPanel: React.FC = () => {
               }}
             >
               <option value="auto">Auto (Smart Routing)</option>
-              <option value="fast">Gemini Flash (Low Latency)</option>
-              <option value="medium">Groq / Medium</option>
-              <option value="complex">Claude 3.5 Sonnet (In-Depth)</option>
-              <option value="deep_research">Deep Quantitative Research</option>
+              <option value="fast">
+                Fast Tier (Quick Queries & Low Latency){tierModels.fast ? ` · ${tierModels.fast}` : ''}
+              </option>
+              <option value="medium">
+                Balanced Tier (Operations & Standard){tierModels.medium ? ` · ${tierModels.medium}` : ''}
+              </option>
+              <option value="complex">
+                Reasoning Tier (In-Depth Quant Analysis){tierModels.complex ? ` · ${tierModels.complex}` : ''}
+              </option>
+              <option value="deep_research">
+                Deep Research (Multi-Agent Swarm){tierModels.deep_research ? ` · ${tierModels.deep_research}` : ''}
+              </option>
             </select>
+            {selectedModel !== 'auto' && tierModels[selectedModel] && (
+              <span
+                style={{
+                  fontSize: '10px',
+                  padding: '2px 6px',
+                  background: 'var(--color-paper)',
+                  border: '1px solid var(--color-rule)',
+                  color: 'var(--color-ink-soft)',
+                  fontFamily: 'var(--font-precision)',
+                  fontWeight: 600,
+                  letterSpacing: '0.04em',
+                }}
+                title={`Active model assigned to ${selectedModel} tier in settings.yaml`}
+              >
+                ACTIVE: {tierModels[selectedModel]}
+              </span>
+            )}
           </div>
 
           <Badge variant={isOperatorOrAdmin ? 'active' : 'neutral'}>

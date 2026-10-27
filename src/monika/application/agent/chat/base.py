@@ -162,6 +162,20 @@ class _ChatAgentMixinBase:
             tool_executor: Any = None,
             image_bytes: Optional[bytes] = None,
         ) -> dict: ...
+        async def _run_tier_lite_stream(
+            self,
+            system_prompt: Any,
+            history: Any,
+            message: Any,
+            tool_executor: Any = None,
+        ) -> Any: ...
+        async def _run_tier_deep_stream(
+            self,
+            system_prompt: Any,
+            history: Any,
+            message: Any,
+            tool_executor: Any = None,
+        ) -> Any: ...
         async def _run_with_gemini(
             self,
             system_prompt: Any,

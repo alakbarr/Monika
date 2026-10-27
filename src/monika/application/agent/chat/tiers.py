@@ -245,52 +245,52 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
         )
         return response
 
+    async def _run_tier_lite_stream(self, system_prompt, history, message, tool_executor=None):
+        """Run tier_lite; yields streaming tokens."""
+        client = self._client_lite
+        gen_stream = getattr(client, "generate_stream", None)
+        if callable(getattr(client, "generate_content_stream", None)):
+            async for chunk in client.generate_content_stream(
+                system_prompt=system_prompt, user_message=message, conversation_history=history
+            ):
+                yield chunk if isinstance(chunk, str) else getattr(chunk, "text", str(chunk))
+        elif callable(gen_stream):
+            stream_call: Any = gen_stream
+            async for chunk in stream_call(message, system=system_prompt):
+                yield chunk
+        else:
+            resp = await self._run_tier_lite(system_prompt, history, message, tool_executor=tool_executor)
+            reply = resp.get("reply", "")
+            if reply:
+                yield reply
+
+    async def _run_tier_deep_stream(self, system_prompt, history, message, tool_executor=None):
+        """Run tier_deep; yields streaming tokens."""
+        client = self._client_deep
+        gen_stream = getattr(client, "generate_stream", None)
+        if callable(getattr(client, "generate_content_stream", None)):
+            async for chunk in client.generate_content_stream(
+                system_prompt=system_prompt, user_message=message, conversation_history=history
+            ):
+                yield chunk if isinstance(chunk, str) else getattr(chunk, "text", str(chunk))
+        elif callable(gen_stream):
+            stream_call: Any = gen_stream
+            async for chunk in stream_call(message, system=system_prompt):
+                yield chunk
+        else:
+            resp = await self._run_tier_deep(system_prompt, history, message, tool_executor=tool_executor)
+            reply = resp.get("reply", "")
+            if reply:
+                yield reply
+
     async def _run_with_gemini(self, system_prompt, history, message, tool_executor=None, stream: bool = False):
-        """Run with Gemini provider (tier_lite); yields tokens if stream=True."""
+        """Run tier_lite; yields tokens if stream=True."""
         if stream:
-
-            async def _generator():
-                client = self._client_lite
-                gen_stream = getattr(client, "generate_stream", None)
-                if callable(getattr(client, "generate_content_stream", None)):
-                    async for chunk in client.generate_content_stream(
-                        system_prompt=system_prompt, user_message=message, conversation_history=history
-                    ):
-                        yield chunk if isinstance(chunk, str) else getattr(chunk, "text", str(chunk))
-                elif callable(gen_stream):
-                    stream_call: Any = gen_stream
-                    async for chunk in stream_call(message, system=system_prompt):
-                        yield chunk
-                else:
-                    resp = await self._run_tier_lite(system_prompt, history, message, tool_executor=tool_executor)
-                    reply = resp.get("reply", "")
-                    if reply:
-                        yield reply
-
-            return _generator()
+            return self._run_tier_lite_stream(system_prompt, history, message, tool_executor=tool_executor)
         return await self._run_tier_lite(system_prompt, history, message, tool_executor=tool_executor)
 
     async def _run_with_claude(self, system_prompt, history, message, tool_executor=None, stream: bool = False):
-        """Run with Claude provider (tier_deep); yields tokens if stream=True."""
+        """Run tier_deep; yields tokens if stream=True."""
         if stream:
-
-            async def _generator():
-                client = self._client_deep
-                gen_stream = getattr(client, "generate_stream", None)
-                if callable(getattr(client, "generate_content_stream", None)):
-                    async for chunk in client.generate_content_stream(
-                        system_prompt=system_prompt, user_message=message, conversation_history=history
-                    ):
-                        yield chunk if isinstance(chunk, str) else getattr(chunk, "text", str(chunk))
-                elif callable(gen_stream):
-                    stream_call: Any = gen_stream
-                    async for chunk in stream_call(message, system=system_prompt):
-                        yield chunk
-                else:
-                    resp = await self._run_tier_deep(system_prompt, history, message, tool_executor=tool_executor)
-                    reply = resp.get("reply", "")
-                    if reply:
-                        yield reply
-
-            return _generator()
+            return self._run_tier_deep_stream(system_prompt, history, message, tool_executor=tool_executor)
         return await self._run_tier_deep(system_prompt, history, message, tool_executor=tool_executor)

@@ -436,16 +436,18 @@ class StreamingMixin(_ChatAgentMixinBase):
             preference = self._detect_model_preference(user_message)
             clean_message = user_message
             if preference == "deep_research":
-                clean_message = re.sub(r"^/research\s*", "", user_message, flags=re.IGNORECASE)
+                clean_message = re.sub(r"^/(research|pro)\s*", "", user_message, flags=re.IGNORECASE)
             elif preference in ("tier_lite", "gemini_lite"):
                 preference = "tier_lite"
-                clean_message = re.sub(r"^/(fast|quick)\s+", "", user_message, flags=re.IGNORECASE)
+                clean_message = re.sub(r"^/(fast|quick|lite|tier1)\s+", "", user_message, flags=re.IGNORECASE)
             elif preference in ("tier_medium", "groq_medium"):
                 preference = "tier_medium"
-                clean_message = re.sub(r"^/(medium|mid)\s+", "", user_message, flags=re.IGNORECASE)
+                clean_message = re.sub(r"^/(medium|mid|balanced|tier2)\s+", "", user_message, flags=re.IGNORECASE)
             elif preference in ("tier_deep", "claude_sonnet"):
                 preference = "tier_deep"
-                clean_message = re.sub(r"^/(analyze|analisis)\s+", "", user_message, flags=re.IGNORECASE)
+                clean_message = re.sub(
+                    r"^/(analyze|analisis|deep|reasoning|complex|tier3)\s+", "", user_message, flags=re.IGNORECASE
+                )
 
             if preference == "auto":
                 complexity = await self._classify_query_complexity(clean_message)
@@ -501,9 +503,9 @@ class StreamingMixin(_ChatAgentMixinBase):
             system_prompt = self._inject_macro_playbooks(system_prompt, user_query=clean_message)
 
             if preference in ("tier_deep", "claude_sonnet"):
-                generator = await self._run_with_claude(system_prompt, history, clean_message, stream=True)
+                generator = await self._run_tier_deep_stream(system_prompt, history, clean_message)
             else:
-                generator = await self._run_with_gemini(system_prompt, history, clean_message, stream=True)
+                generator = await self._run_tier_lite_stream(system_prompt, history, clean_message)
 
             buffer = []
             try:

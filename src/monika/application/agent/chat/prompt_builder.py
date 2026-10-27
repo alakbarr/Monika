@@ -29,14 +29,14 @@ class PromptBuilderMixin(_ChatAgentMixinBase):
         msg_lower = msg.lower().strip()
 
         # Manual override via prefix
-        if re.match(r"^/research\b", msg_lower):
+        if re.match(r"^/(research|pro)\b", msg_lower):
             return "deep_research"
-        if re.match(r"^/(fast|quick)\b", msg_lower):
+        if re.match(r"^/(fast|quick|lite|tier1)\b", msg_lower):
             return "tier_lite"
-        if re.match(r"^/(medium|mid)\b", msg_lower):
-            return "groq_medium"
-        if re.match(r"^/(analyze|analisis)\b", msg_lower):
-            return "claude_sonnet"
+        if re.match(r"^/(medium|mid|balanced|tier2)\b", msg_lower):
+            return "tier_medium"
+        if re.match(r"^/(analyze|analisis|deep|reasoning|complex|tier3)\b", msg_lower):
+            return "tier_deep"
 
         return "auto"
 

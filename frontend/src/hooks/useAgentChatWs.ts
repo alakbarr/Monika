@@ -28,6 +28,7 @@ export function useAgentChatWs() {
   const [wsConnected, setWsConnected] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [activeToolEvents, setActiveToolEvents] = useState<ChatToolEvent[]>([]);
+  const [tierModels, setTierModels] = useState<Record<string, string>>({});
 
   const socketRef = useRef<WebSocket | null>(null);
   const isMountedRef = useRef<boolean>(true);
@@ -92,6 +93,9 @@ export function useAgentChatWs() {
 
         switch (data.type) {
           case 'connection_established':
+            if (data.tier_models && typeof data.tier_models === 'object') {
+              setTierModels(data.tier_models);
+            }
             break;
 
           case 'history':
@@ -372,6 +376,7 @@ export function useAgentChatWs() {
     wsConnected,
     isProcessing,
     activeToolEvents,
+    tierModels,
     sendMessage,
     interrupt,
     respondApproval,

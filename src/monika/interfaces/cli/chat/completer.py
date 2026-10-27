@@ -21,7 +21,7 @@ SLASH_COMMANDS: List[Tuple[str, str, List[str]]] = [
         "Switch routing model tier (fast, medium, analyze, research)",
         ["fast", "medium", "analyze", "research", "auto"],
     ),
-    ("/fast", "Quickly ask with Tier 1 Low-Latency model (Gemini Flash)", []),
+    ("/fast", "Quickly ask with Tier 1 Low-Latency model", []),
     ("/analyze", "Ask with Tier 3 Deep Synthesis model", []),
     ("/research", "Ask with Tier 4 Macro Research model", []),
     ("/status", "Display live system status, flags, and MT5 indicators inline", []),
