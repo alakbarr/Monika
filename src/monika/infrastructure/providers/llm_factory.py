@@ -700,11 +700,22 @@ class LLMFactory:
                 logger.warning(f"Provider {provider_name} is disabled.")
                 return None
 
-        max_tokens = role_config.get("max_tokens", 8192)
+        from monika.infrastructure.providers.capabilities import resolve_effective_max_tokens
+
+        raw_max_tokens = role_config.get("max_tokens", 8192)
         max_tool_turns = role_config.get("max_tool_turns", 15)
         temperature = float(role_config.get("temperature", 0.0))
 
         thinking_level = self._resolve_thinking_level(model_name, role_config, provider_name, slot_name=slot_name)
+        effective_max_tokens = resolve_effective_max_tokens(
+            model_name=model_name,
+            provider_name=provider_name,
+            requested_max_tokens=raw_max_tokens,
+            thinking_level=thinking_level,
+            settings=getattr(self, "settings", None) or getattr(getattr(self, "factory", None), "_settings", None),
+        )
+        role_cfg_effective = dict(role_config)
+        role_cfg_effective["max_tokens"] = effective_max_tokens
 
         _, lookup_model_name = self._split_provider_prefix(model_name)
         cat_entry = self._catalog.get(model_name) or self._catalog.get(lookup_model_name) or {}
@@ -829,9 +840,17 @@ class LLMFactory:
                         task_role or "", base_budget=base_b
                     )
 
-                    if isinstance(max_tokens, int) and max_tokens > 1024:
+                    final_eff_max = resolve_effective_max_tokens(
+                        model_name=clean_model_name,
+                        provider_name=provider_name,
+                        requested_max_tokens=raw_max_tokens,
+                        thinking_budget=adaptive_budget,
+                        thinking_level=thinking_level,
+                        settings=self._settings,
+                    )
+                    if isinstance(final_eff_max, int) and final_eff_max > 1024:
                         adaptive_budget = clamp_thinking_budget_to_answer_room(
-                            adaptive_budget, max_tokens=max_tokens, min_answer_tokens=1024
+                            adaptive_budget, max_tokens=final_eff_max, min_answer_tokens=1024
                         )
 
                     if hasattr(client, "set_thinking_budget"):
@@ -916,10 +935,21 @@ class FallbackClientWrapper(BaseLLMClient):
             primary_provider = factory._resolve_provider(primary)
         primary_thinking = factory._resolve_thinking_level(primary, role_config, primary_provider, slot_name="primary")
 
+        from monika.infrastructure.providers.capabilities import resolve_effective_max_tokens
+
+        primary_raw_max = role_config.get("max_tokens", 8192)
+        primary_eff_max = resolve_effective_max_tokens(
+            model_name=primary,
+            provider_name=primary_provider,
+            requested_max_tokens=primary_raw_max,
+            thinking_level=primary_thinking,
+            settings=factory._settings,
+        )
+
         # Set attributes required by BaseLLMClient
         super().__init__(
             model=primary,
-            max_tokens=role_config.get("max_tokens", 8192),
+            max_tokens=primary_eff_max,
             max_tool_turns=role_config.get("max_tool_turns", 15),
             thinking_level=primary_thinking,
             settings=factory._settings,
@@ -952,10 +982,20 @@ class FallbackClientWrapper(BaseLLMClient):
                 }
                 base_b = level_to_budget.get(str(primary_thinking).lower(), 4096)
                 raw_b = PerSymbolAdaptiveThinkingAllocator.get_thinking_budget_for_task(task_role, base_budget=base_b)
-                if isinstance(self.max_tokens, int) and self.max_tokens > 1024 and raw_b > 0:
-                    raw_b = clamp_thinking_budget_to_answer_room(
-                        raw_b, max_tokens=self.max_tokens, min_answer_tokens=1024
+                if raw_b > 0:
+                    final_fc_max = resolve_effective_max_tokens(
+                        model_name=primary,
+                        provider_name=primary_provider,
+                        requested_max_tokens=primary_raw_max,
+                        thinking_budget=raw_b,
+                        thinking_level=primary_thinking,
+                        settings=factory._settings,
                     )
+                    self.max_tokens = final_fc_max
+                    if isinstance(self.max_tokens, int) and self.max_tokens > 1024:
+                        raw_b = clamp_thinking_budget_to_answer_room(
+                            raw_b, max_tokens=self.max_tokens, min_answer_tokens=1024
+                        )
                 self.thinking_budget = QuantizedThinkingAllocator.quantize(raw_b) if raw_b > 0 else 0
             except Exception:
                 self.thinking_budget = 4096
@@ -1218,14 +1258,28 @@ class FallbackClientWrapper(BaseLLMClient):
                     safe_args = [_safe_clone(a) for a in args]
                     safe_kwargs = {k: _safe_clone(v) for k, v in kwargs.items()}
 
-                    # Dynamic capability clamping (prevent context/output token limit errors)
-                    from monika.infrastructure.providers.capabilities import get_model_capabilities
+                    # Dynamic capability clamping (prevent context/output token limit errors across fallback slots)
+                    from monika.infrastructure.providers.capabilities import (
+                        get_model_capabilities,
+                        resolve_effective_max_tokens,
+                    )
 
                     caps = get_model_capabilities(model)
-                    if caps and caps.max_output_tokens:
-                        if "max_tokens" in safe_kwargs and isinstance(safe_kwargs["max_tokens"], int):
-                            if safe_kwargs["max_tokens"] > caps.max_output_tokens:
-                                safe_kwargs["max_tokens"] = caps.max_output_tokens
+                    wrapper_settings = getattr(self, "settings", None) or getattr(
+                        getattr(self, "factory", None), "_settings", None
+                    )
+                    eff_slot_ceiling = resolve_effective_max_tokens(
+                        model_name=model,
+                        provider_name=provider,
+                        requested_max_tokens=safe_kwargs.get("max_tokens") or getattr(client, "max_tokens", None),
+                        thinking_level=getattr(client, "thinking_level", "none"),
+                        thinking_budget=getattr(client, "thinking_budget", 0),
+                        settings=wrapper_settings,
+                    )
+                    if "max_tokens" in safe_kwargs and isinstance(safe_kwargs["max_tokens"], int):
+                        safe_kwargs["max_tokens"] = min(safe_kwargs["max_tokens"], eff_slot_ceiling)
+                    elif hasattr(client, "max_tokens") and client.max_tokens:
+                        safe_kwargs["max_tokens"] = eff_slot_ceiling
 
                     # Memoized schema rejection check: strip native response_format if previously rejected
                     if (provider, model) in _UNSUPPORTED_SCHEMA_ROUTES and "response_format" in safe_kwargs:

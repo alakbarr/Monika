@@ -456,7 +456,17 @@ class OpenRouterProvider(OpenAIProvider):
             elif not current_max:
                 kwargs["max_tokens"] = min_floor
             else:
-                kwargs["max_tokens"] = max(current_max, min_floor)
+                from monika.infrastructure.providers.capabilities import resolve_effective_max_tokens
+
+                effective_tokens = resolve_effective_max_tokens(
+                    model_name=self.model,
+                    provider_name="openrouter",
+                    requested_max_tokens=current_max,
+                    thinking_budget=getattr(self, "thinking_budget", None),
+                    thinking_level=self.thinking_level,
+                    settings=self.settings,
+                )
+                kwargs["max_tokens"] = max(current_max, min_floor, effective_tokens)
         else:
             # Reasoning disabled: ensure no reasoning body is sent to OpenRouter
             extra = kwargs.get("extra_body")

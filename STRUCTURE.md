@@ -2336,6 +2336,7 @@ Monika/
 │   │   ├── test_technical_analysis_improvements.py
 │   │   ├── test_telegram_tools_integration.py
 │   │   ├── test_token_logging.py
+│   │   ├── test_tool_deadlock_prevention.py
 │   │   ├── test_tool_executor.py
 │   │   ├── test_tool_executor_concurrency.py
 │   │   ├── test_tool_registry.py
@@ -3121,4 +3122,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2824
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2825

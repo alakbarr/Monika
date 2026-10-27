@@ -275,14 +275,19 @@ def clamp_thinking_budget_to_answer_room(
     budget: int,
     max_tokens: int,
     min_answer_tokens: int = 1024,
+    max_thinking_ratio: Optional[float] = None,
 ) -> int:
     """
     Clamps thinking token budget so it never starves max_tokens of answer completion headroom.
     Ensures at least min_answer_tokens remain available for the visible answer.
+    Optionally enforces max_thinking_ratio (e.g. 0.7 for max 70% thinking) if provided.
     """
     if budget <= 0:
         return 0
     if max_tokens <= min_answer_tokens:
         return 0
     max_allowed_thinking = max(0, max_tokens - min_answer_tokens)
+    if max_thinking_ratio is not None and 0.0 < max_thinking_ratio < 1.0:
+        ratio_limit = int(max_tokens * max_thinking_ratio)
+        max_allowed_thinking = min(max_allowed_thinking, ratio_limit)
     return max(0, min(budget, max_allowed_thinking))

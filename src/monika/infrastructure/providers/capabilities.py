@@ -8,6 +8,7 @@ Centralizes LLM feature flags (tool choice, structured output, caching, reasonin
 to eliminate scattered ad-hoc if/else branching across providers.
 """
 
+import re
 from dataclasses import dataclass
 from typing import Dict, Optional
 
@@ -140,7 +141,7 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     "claude-3-7-sonnet": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=16384,
+        max_output_tokens=64000,
         context_window=200000,
         prompt_cache_strategy="anthropic_system_and_3",
         supports_native_thinking=True,
@@ -171,7 +172,7 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     "gemini-3.8-flash": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=16384,
+        max_output_tokens=65536,
         context_window=2097152,
         prompt_cache_strategy="gemini_context",
         supports_native_thinking=True,
@@ -179,7 +180,7 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     "gemini-3.7-flash": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=16384,
+        max_output_tokens=65536,
         context_window=1048576,
         prompt_cache_strategy="gemini_context",
         supports_native_thinking=True,
@@ -187,7 +188,7 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     "gemini-3.6-flash": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=16384,
+        max_output_tokens=65536,
         context_window=2097152,
         prompt_cache_strategy="gemini_context",
         supports_native_thinking=True,
@@ -195,7 +196,7 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     "gemini-3.5-flash": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=16384,
+        max_output_tokens=65536,
         context_window=2097152,
         prompt_cache_strategy="gemini_context",
         supports_native_thinking=True,
@@ -203,14 +204,14 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     "gemini-3.5-flash-lite": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=8192,
+        max_output_tokens=65536,
         context_window=1048576,
         prompt_cache_strategy="gemini_context",
     ),
     "gemini-3.1-flash-lite": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=8192,
+        max_output_tokens=65536,
         context_window=1048576,
         prompt_cache_strategy="gemini_context",
     ),
@@ -274,7 +275,7 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     "gemini-2.5-pro": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=8192,
+        max_output_tokens=65536,
         context_window=1048576,
         prompt_cache_strategy="gemini_context",
         supports_native_thinking=True,
@@ -282,7 +283,7 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     "gemini-2.5-flash": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=8192,
+        max_output_tokens=65536,
         context_window=1048576,
         prompt_cache_strategy="gemini_context",
         supports_native_thinking=True,
@@ -355,51 +356,52 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     "gpt-4o": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=4096,
+        max_output_tokens=16384,
     ),
     "gpt-4o-mini": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=4096,
+        max_output_tokens=16384,
     ),
     "o1": ModelCapabilities(
         supports_tool_choice=False,
         supports_structured_output=True,
         requires_reasoning_split=True,
-        max_output_tokens=16384,
+        max_output_tokens=65536,
     ),
     "o3-mini": ModelCapabilities(
         supports_tool_choice=True,
         supports_structured_output=True,
         requires_reasoning_split=True,
-        max_output_tokens=16384,
+        max_output_tokens=65536,
+        supports_native_thinking=True,
     ),
     # DeepSeek
     "deepseek-v4-pro": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=32768,
+        max_output_tokens=65536,
         context_window=256000,
         supports_native_thinking=True,
     ),
     "deepseek-v4.1-flash": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=16384,
+        max_output_tokens=32768,
         context_window=256000,
         supports_native_thinking=True,
     ),
     "deepseek-v4-flash": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=16384,
+        max_output_tokens=32768,
         context_window=256000,
         supports_native_thinking=True,
     ),
     "deepseek-v4": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=16384,
+        max_output_tokens=32768,
         context_window=256000,
         supports_native_thinking=True,
     ),
@@ -614,6 +616,711 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         max_output_tokens=8192,
         context_window=128000,
     ),
+    # --- Full Catalog Canonical Registrations ---
+    # Anthropic / Claude
+    "claude-sonnet-4.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "sonnet-4.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-sonnet-4.6": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "sonnet-4.6": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-sonnet-4-6": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-opus-4.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "opus-4.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-opus-4.6": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "opus-4.6": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-opus-4.7": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "opus-4.7": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-opus-4.8": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "opus-4.8": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "opus-5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=500000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "sonnet-5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=64000,
+        context_window=500000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    "claude-haiku-4.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=False,
+    ),
+    "haiku-4.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=False,
+    ),
+    "claude-haiku-4-5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=False,
+    ),
+    "fable-5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=200000,
+        prompt_cache_strategy="anthropic_system_and_3",
+        supports_native_thinking=True,
+    ),
+    # Google / Gemini
+    "gemini-3.0-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=1048576,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-3.8-flash-high": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=2097152,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    # OpenAI / GPT Frontier & Reasoning
+    "gpt-5.4": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "gpt-5.4-mini": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "gpt-5.4-nano": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "gpt-5.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "gpt-5.6-luna": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "gpt-5.6-luna-max": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "gpt-5.6-luna-xhigh": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "gpt-5.6-sol": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "gpt-5.6-sol-high": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "gpt-5.6-sol-medium": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "gpt-5.6-terra": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "gpt-6-luna": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "gpt-6-luna-decision": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "gpt-6-luna-max": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "gpt-6-luna-xhigh": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=200000,
+        supports_native_thinking=True,
+    ),
+    "luna-decision": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "gpt-oss-120b": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    # DeepSeek
+    "deepseek-r1": ModelCapabilities(
+        supports_tool_choice=False,
+        supports_json_mode=True,
+        supports_structured_output=True,
+        requires_reasoning_roundtrip=True,
+        max_output_tokens=65536,
+        context_window=128000,
+        prompt_cache_strategy="none",
+        supports_native_thinking=True,
+    ),
+    "deepseek-v3.2": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+    ),
+    "deepseek-3.2": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+    ),
+    # Qwen
+    "qwen3-coder-next": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "qwen3-coder-plus": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "qwen3.8-max": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "qwen3.8-2.4t-a95b": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "smart-code": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    # Zhipu / GLM
+    "glm-4.7": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "glm-5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "glm-5.1": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "glm-5.2": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    # xAI / Grok
+    "grok-4.3": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "grok-4.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "grok-4.6": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    # Moonshot / Kimi
+    "kimi-k2": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "kimi-k2.7-code": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    # MiniMax
+    "minimax-m2.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+    ),
+    "minimax-m3": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+    ),
+    "minimax-m3.1-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+    ),
+    # Nvidia Nemotron
+    "nemotron-3-nano": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+    ),
+    "nemotron-3-nano-30b-a3b": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+    ),
+    "nemotron-3-nano-omni": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "nemotron-3-nano-omni-30b-a3b-reasoning": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "nemotron-3-super": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "nemotron-3-super-120b-a12b": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "nemotron-3-ultra": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "nemotron-3-ultra-550b-a55b": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+        supports_native_thinking=True,
+    ),
+    "nemotron-3.5-content-safety": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+    ),
+    "nemotron-3.5-safety": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+    ),
+    "nemotron-3.5-lightning": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+    ),
+    "nemotron-nano-12b-vl": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
+    "nemotron-nano-12b-v2-vl": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
+    "nemotron-nano-9b": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
+    "nemotron-nano-9b-v2": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
+    # Gemma
+    "gemma-4-26b": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+    ),
+    "gemma-4-26b-a4b-it": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+    ),
+    "gemma-4-31b": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+    ),
+    "gemma-4-31b-it": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+    ),
+    # Mimo
+    "mimo-auto": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=128000,
+    ),
+    "mimo-v2.5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+    ),
+    "mimo-v2.5-pro": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+    ),
+    "mimo-v2.6-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+    ),
+    "mimo-v2.6-pro": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=128000,
+    ),
+    # Specialized Models
+    "dots-3-note": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=64000,
+    ),
+    "inkling": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=64000,
+    ),
+    "inkling-small": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=64000,
+    ),
+    "laguna-s-2.1": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=64000,
+    ),
+    "laguna-xs-2.1": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=64000,
+    ),
+    "lfm-2.5-2.6b": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=64000,
+    ),
+    "liquid-d1": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=64000,
+    ),
+    "ling-3.0-flash-fin": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=64000,
+    ),
+    "llama3.2": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
+    "mercury-decide": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=64000,
+    ),
+    "north-mini-code": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=64000,
+    ),
+    "ox-alpha": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=64000,
+    ),
+    "union-alpha": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=64000,
+    ),
+    "step-5": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=64000,
+    ),
+    "kev-4b": ModelCapabilities(
+        supports_tool_choice=False,
+        supports_json_mode=True,
+        supports_structured_output=True,
+        supports_streaming=False,
+        max_output_tokens=8192,
+        context_window=64000,
+        supports_caching=False,
+        supports_native_thinking=False,
+    ),
+    "whisper-large-v3": ModelCapabilities(
+        supports_tool_choice=False,
+        supports_streaming=False,
+        supports_json_mode=False,
+        supports_structured_output=False,
+        max_output_tokens=448,
+        context_window=16000,
+    ),
+    "whisper-large-v3-turbo": ModelCapabilities(
+        supports_tool_choice=False,
+        supports_streaming=False,
+        supports_json_mode=False,
+        supports_structured_output=False,
+        max_output_tokens=448,
+        context_window=16000,
+    ),
+    "free": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=8192,
+        context_window=128000,
+    ),
 }
 
 DEFAULT_CAPABILITIES = ModelCapabilities()
@@ -622,27 +1329,31 @@ DEFAULT_CAPABILITIES = ModelCapabilities()
 def get_model_capabilities(model_name: Optional[str]) -> ModelCapabilities:
     """
     Look up capabilities for a model with prefix/substring matching and graceful default fallback.
+    Supports comprehensive canonicalization across all routing prefixes, vendor slugs, and feature suffixes.
     """
     if not model_name:
         return DEFAULT_CAPABILITIES
 
     clean_name = model_name.strip().lower()
 
-    # Exact match
-    if clean_name in MODEL_CAPABILITIES:
-        return MODEL_CAPABILITIES[clean_name]
-
-    # Handle 9Router prefix stripping (e.g. 9r/kr/claude-sonnet-4.5 -> kr/claude-sonnet-4.5 or claude-sonnet-4.5)
-    for prefix in ("9router/", "9r/"):
-        if clean_name.startswith(prefix):
-            stripped = clean_name[len(prefix) :]
-            if stripped in MODEL_CAPABILITIES:
-                return MODEL_CAPABILITIES[stripped]
-            clean_name = stripped
-            break
-
-    # Handle OpenRouter vendor slug stripping (e.g. anthropic/claude-sonnet-5.5 -> claude-sonnet-5.5)
-    for vendor in (
+    # Repeatedly strip known router and vendor prefixes
+    router_prefixes = (
+        "9router/",
+        "9r/",
+        "kr/",
+        "if/",
+        "oc/",
+        "ocz/",
+        "mmf/",
+        "gc/",
+        "af/",
+        "ag/",
+        "cx/",
+        "cc/",
+        "gh/",
+        "combo/",
+    )
+    vendor_prefixes = (
         "anthropic/",
         "google/",
         "openai/",
@@ -652,47 +1363,197 @@ def get_model_capabilities(model_name: Optional[str]) -> ModelCapabilities:
         "meta/",
         "moonshotai/",
         "moonshot/",
-    ):
-        if clean_name.startswith(vendor):
-            stripped = clean_name[len(vendor) :]
-            if stripped in MODEL_CAPABILITIES:
-                return MODEL_CAPABILITIES[stripped]
-            clean_name = stripped
-            break
+        "minimax/",
+        "nvidia/",
+        "cohere/",
+        "poolside/",
+        "thinkingmachines/",
+        "liquid/",
+        "openrouter/",
+        "typesafe/",
+        "jaredpalmer/",
+        "dots-studio/",
+    )
+    suffixes = (":free", "-free", "-preview", "-thinking", "-contributor", "-opencode", "-openrouter")
 
-    # Partial / prefix match: exact match first, then longest matching key
+    changed = True
+    while changed:
+        changed = False
+        for p in router_prefixes:
+            if clean_name.startswith(p):
+                clean_name = clean_name[len(p) :]
+                changed = True
+                break
+        for v in vendor_prefixes:
+            if clean_name.startswith(v):
+                clean_name = clean_name[len(v) :]
+                changed = True
+                break
+
+    changed = True
+    while changed:
+        changed = False
+        for s in suffixes:
+            if clean_name.endswith(s):
+                clean_name = clean_name[: -len(s)]
+                changed = True
+                break
+
+    clean_name = re.sub(r"-\d{4,8}$", "", clean_name)
+
+    # 1. Exact match in canonical registry
     if clean_name in MODEL_CAPABILITIES:
         return MODEL_CAPABILITIES[clean_name]
+
+    # 2. Substring / longest matching key lookup
     matching_keys = [k for k in MODEL_CAPABILITIES if k in clean_name]
     if matching_keys:
         best_key = max(matching_keys, key=len)
         return MODEL_CAPABILITIES[best_key]
 
-    # Provider heuristic fallbacks
-    if "jev" in clean_name or "typesafe" in clean_name:
+    # 3. Comprehensive family heuristics fallbacks
+    if "whisper" in clean_name:
+        return ModelCapabilities(
+            supports_tool_choice=False,
+            supports_streaming=False,
+            supports_json_mode=False,
+            supports_structured_output=False,
+            max_output_tokens=448,
+            context_window=16000,
+        )
+    if "haiku" in clean_name:
+        return ModelCapabilities(
+            supports_caching=True,
+            supports_structured_output=True,
+            max_output_tokens=8192,
+            context_window=200000,
+            prompt_cache_strategy="anthropic_system_and_3",
+            supports_native_thinking=False,
+        )
+    if any(k in clean_name for k in ("claude", "sonnet", "opus")):
+        return ModelCapabilities(
+            supports_caching=True,
+            supports_structured_output=True,
+            max_output_tokens=64000,
+            context_window=200000,
+            prompt_cache_strategy="anthropic_system_and_3",
+            supports_native_thinking=True,
+        )
+    if any(k in clean_name for k in ("gemini", "argon")):
+        if "transcribe" in clean_name:
+            toks = 4096
+        elif "live" in clean_name and "extended" not in clean_name:
+            toks = 8192
+        else:
+            toks = 65536
+        return ModelCapabilities(
+            supports_caching=True,
+            supports_structured_output=True,
+            max_output_tokens=toks,
+            context_window=1048576,
+            prompt_cache_strategy="gemini_context",
+            supports_native_thinking=True,
+        )
+    if any(k in clean_name for k in ("gpt-5.6", "gpt-6", "luna", "sol", "astra", "terra", "gpt-oss")):
+        return ModelCapabilities(
+            supports_caching=True,
+            supports_structured_output=True,
+            max_output_tokens=65536,
+            context_window=200000,
+            supports_native_thinking=True,
+        )
+    if any(k in clean_name for k in ("gpt-5.4", "gpt-5.5", "gpt-5")):
+        toks = 16384 if "nano" in clean_name else 32768
+        return ModelCapabilities(
+            supports_caching=True,
+            supports_structured_output=True,
+            max_output_tokens=toks,
+            context_window=128000,
+            supports_native_thinking=True,
+        )
+    if "deepseek-r1" in clean_name or "r1" in clean_name:
+        return ModelCapabilities(
+            supports_caching=True,
+            supports_structured_output=True,
+            supports_tool_choice=False,
+            requires_reasoning_roundtrip=True,
+            max_output_tokens=65536,
+            context_window=128000,
+            supports_native_thinking=True,
+        )
+    if "deepseek-v4" in clean_name or "deepseek-4" in clean_name:
+        return ModelCapabilities(
+            supports_caching=True,
+            supports_structured_output=True,
+            max_output_tokens=32768,
+            context_window=128000,
+            supports_native_thinking=True,
+        )
+    if "deepseek" in clean_name:
+        return ModelCapabilities(
+            supports_caching=True,
+            supports_structured_output=True,
+            max_output_tokens=16384,
+            context_window=128000,
+        )
+    if any(k in clean_name for k in ("qwen3", "smart-code")):
+        return ModelCapabilities(
+            supports_caching=True,
+            supports_structured_output=True,
+            max_output_tokens=32768,
+            context_window=128000,
+            supports_native_thinking=True,
+        )
+    if any(k in clean_name for k in ("glm-5", "grok", "kimi", "minimax")):
+        return ModelCapabilities(
+            supports_caching=True,
+            supports_structured_output=True,
+            max_output_tokens=32768,
+            context_window=128000,
+            supports_native_thinking=True,
+        )
+    if any(k in clean_name for k in ("nemotron-3-ultra", "nemotron-3-super", "reasoning")):
+        return ModelCapabilities(
+            supports_caching=True,
+            supports_structured_output=True,
+            max_output_tokens=32768,
+            context_window=128000,
+            supports_native_thinking=True,
+        )
+    if any(
+        k in clean_name
+        for k in (
+            "nemotron",
+            "gemma",
+            "mimo",
+            "laguna",
+            "inkling",
+            "lfm",
+            "liquid",
+            "muse",
+            "north",
+            "step-5",
+            "ling",
+            "union",
+            "ox-alpha",
+        )
+    ):
+        return ModelCapabilities(
+            supports_caching=True,
+            supports_structured_output=True,
+            max_output_tokens=16384,
+            context_window=64000,
+        )
+    if any(k in clean_name for k in ("jev", "kev", "typesafe")):
         return ModelCapabilities(
             supports_tool_choice=False,
             supports_json_mode=True,
             supports_structured_output=True,
             supports_streaming=False,
-            max_output_tokens=2048,
+            max_output_tokens=8192,
             context_window=64000,
             supports_caching=False,
             supports_native_thinking=False,
-        )
-    if "claude" in clean_name:
-        return ModelCapabilities(supports_caching=True, supports_structured_output=True)
-    if "gemini" in clean_name:
-        return ModelCapabilities(supports_caching=True, supports_structured_output=True)
-    if "gpt-4" in clean_name:
-        return ModelCapabilities(supports_caching=True, supports_structured_output=True)
-    if "deepseek-reasoner" in clean_name or "r1" in clean_name:
-        return ModelCapabilities(
-            supports_tool_choice=False, requires_reasoning_roundtrip=True, prompt_cache_strategy="none"
-        )
-    if clean_name.startswith(("kr/", "if/", "oc/", "ocz/", "mmf/", "gc/", "af/", "ag/", "cx/", "cc/", "combo/")):
-        return ModelCapabilities(
-            supports_caching=False, supports_structured_output=True, max_output_tokens=8192, context_window=128000
         )
 
     return DEFAULT_CAPABILITIES
@@ -818,3 +1679,100 @@ def clamp_reasoning_effort(
         return "medium"  # o1-mini doesn't support custom effort levels
 
     return effort
+
+
+def resolve_effective_max_tokens(
+    model_name: Optional[str],
+    provider_name: Optional[str] = None,
+    requested_max_tokens: Optional[int] = None,
+    thinking_budget: Optional[int] = None,
+    thinking_level: Optional[str] = None,
+    settings: Optional[dict] = None,
+    min_answer_headroom: int = 4096,
+) -> int:
+    """
+    Multi-Tier Max Output Tokens Resolution Cascade:
+    1. Explicit settings override (llm.models.<model>.max_tokens or llm.providers.<prov>.max_tokens).
+    2. Provider strict hardware/API ceilings (Groq, DeepSeek Direct).
+    3. ModelCapabilities table lookup with prefix/suffix normalization.
+    4. Thinking-aware auto-expansion: if thinking is active, ensures
+       effective_max_tokens >= thinking_budget + min_answer_headroom (capped at model ceiling).
+    5. Respect caller requested_max_tokens when larger, clamped to hard ceiling.
+    6. Safe lower bound default.
+    """
+    clean_model = (model_name or "").strip().lower()
+    clean_prov = (provider_name or "").strip().lower()
+
+    # Tier 1: Settings override
+    if isinstance(settings, dict):
+        llm_cfg = settings.get("llm", {})
+        if isinstance(llm_cfg, dict):
+            models_cfg = llm_cfg.get("models", {})
+            if isinstance(models_cfg, dict) and clean_model in models_cfg:
+                m_entry = models_cfg[clean_model]
+                if isinstance(m_entry, dict) and "max_tokens" in m_entry:
+                    return int(m_entry["max_tokens"])
+            provs_cfg = llm_cfg.get("providers", {})
+            if isinstance(provs_cfg, dict) and clean_prov in provs_cfg:
+                p_entry = provs_cfg[clean_prov]
+                if isinstance(p_entry, dict) and "max_tokens" in p_entry:
+                    return int(p_entry["max_tokens"])
+
+    # Tier 2 & 3: ModelCapabilities lookup
+    caps = get_model_capabilities(clean_model)
+    model_ceiling = caps.max_output_tokens if caps and caps.max_output_tokens else 8192
+
+    # Provider strict hardware / API policy ceilings
+    if "groq" in clean_prov or "groq" in clean_model:
+        if "oss" in clean_model:
+            model_ceiling = min(model_ceiling, 65536)
+        elif "qwen" in clean_model or "70b" in clean_model:
+            model_ceiling = min(model_ceiling, 32768)
+        else:
+            model_ceiling = min(model_ceiling, 8192)
+    elif clean_prov == "deepseek" and "openrouter" not in clean_prov:
+        # Official direct DeepSeek API enforces 8,192 max completion
+        model_ceiling = min(model_ceiling, 8192)
+    elif ("openrouter" in clean_prov or "openrouter" in clean_model) and "deepseek" in clean_model:
+        # OpenRouter third-party host ceiling
+        model_ceiling = max(model_ceiling, 32768)
+    elif "claude-3-7" in clean_model or "claude-3.7" in clean_model:
+        model_ceiling = max(model_ceiling, 64000)
+    elif any(k in clean_model for k in ("gemini-2.0", "gemini-2.5", "gemini-3")):
+        model_ceiling = max(model_ceiling, 65536)
+    elif any(k in clean_model for k in ("o1", "o3")):
+        model_ceiling = max(model_ceiling, 65536)
+
+    # Tier 4: Thinking Budget Resolution
+    lvl = (thinking_level or "none").strip().lower()
+    level_to_budget = {
+        "none": 0,
+        "off": 0,
+        "minimal": 1024,
+        "low": 2048,
+        "medium": 4096,
+        "high": 8192,
+        "xhigh": 16384,
+        "extended": 16384,
+        "max": 16000,
+    }
+    resolved_budget = (
+        thinking_budget if (thinking_budget is not None and thinking_budget > 0) else level_to_budget.get(lvl, 0)
+    )
+
+    # Tier 5: Compute Effective Max Tokens
+    if resolved_budget > 0:
+        # When thinking is active, ensure room for BOTH thinking and visible answer
+        needed = resolved_budget + min_answer_headroom
+        if requested_max_tokens is not None and requested_max_tokens > 0:
+            needed = max(needed, requested_max_tokens + resolved_budget)
+        effective = min(needed, model_ceiling)
+        effective = max(effective, min(min_answer_headroom, model_ceiling))
+    else:
+        # Non-thinking mode
+        if requested_max_tokens is not None and requested_max_tokens > 0:
+            effective = min(requested_max_tokens, model_ceiling)
+        else:
+            effective = min(8192, model_ceiling)
+
+    return effective

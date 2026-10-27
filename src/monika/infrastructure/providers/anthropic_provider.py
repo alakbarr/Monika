@@ -297,8 +297,9 @@ class AnthropicProvider(BaseLLMClient):
         if system:
             create_kwargs["system"] = _build_system_blocks(system, cache_ttl=cache_ttl)
 
+        model_ceiling = 8192 if is_haiku else 64000
         if use_thinking:
-            create_kwargs["max_tokens"] = max(safe_max, thinking_budget + 4000)
+            create_kwargs["max_tokens"] = min(max(safe_max, thinking_budget + 4000), model_ceiling)
             create_kwargs["temperature"] = 1.0
             if not kwargs.get("adaptive_only", False):
                 create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
@@ -466,9 +467,10 @@ class AnthropicProvider(BaseLLMClient):
             is_haiku = "haiku" in self.model.lower()
             output_headroom = 4096 if is_haiku else 8192
 
+            model_ceiling = 8192 if is_haiku else 64000
             if use_thinking:
                 budget = getattr(self, "thinking_budget", None) or self.THINKING_BUDGETS.get(self.thinking_level, 4096)
-                create_kwargs["max_tokens"] = max(eff_tokens, budget + output_headroom)
+                create_kwargs["max_tokens"] = min(max(eff_tokens, budget + output_headroom), model_ceiling)
                 create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
                 create_kwargs["temperature"] = 1.0
                 create_kwargs["tool_choice"] = {"type": "auto"}
@@ -712,8 +714,9 @@ class AnthropicProvider(BaseLLMClient):
         is_haiku = "haiku" in self.model.lower()
         safe_max = min(max(self.max_tokens, 8192), 8192) if is_haiku else max(self.max_tokens, 64000)
 
+        model_ceiling = 8192 if is_haiku else 64000
         if use_thinking:
-            create_kwargs["max_tokens"] = max(safe_max, thinking_budget + 4000)
+            create_kwargs["max_tokens"] = min(max(safe_max, thinking_budget + 4000), model_ceiling)
             create_kwargs["temperature"] = 1.0
             create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": thinking_budget}
         else:

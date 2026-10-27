@@ -410,15 +410,32 @@ class OpenAIProvider(BaseLLMClient):
                 kwargs["reasoning_effort"] = effort
                 kwargs.pop("temperature", None)
 
-            reasoning_headroom = floor_map.get(lvl, 2048)
-            safe_tokens = requested_tokens + reasoning_headroom
+            from monika.infrastructure.providers.capabilities import resolve_effective_max_tokens
+
+            safe_tokens = resolve_effective_max_tokens(
+                model_name=self.model,
+                provider_name=provider_name,
+                requested_max_tokens=requested_tokens,
+                thinking_budget=getattr(self, "thinking_budget", None),
+                thinking_level=self.thinking_level,
+                settings=self.settings,
+            )
             if "max_completion_tokens" in kwargs or is_reasoning_model or supports_reasoning_effort:
                 kwargs["max_completion_tokens"] = safe_tokens
                 kwargs.pop("max_tokens", None)
             else:
                 kwargs["max_tokens"] = safe_tokens
         elif is_reasoning_model:
-            kwargs["max_completion_tokens"] = max(requested_tokens + 4096, 4096)
+            from monika.infrastructure.providers.capabilities import resolve_effective_max_tokens
+
+            safe_tokens = resolve_effective_max_tokens(
+                model_name=self.model,
+                provider_name=provider_name,
+                requested_max_tokens=max(requested_tokens, 4096),
+                thinking_level="medium",
+                settings=self.settings,
+            )
+            kwargs["max_completion_tokens"] = safe_tokens
             kwargs.pop("max_tokens", None)
             kwargs.pop("temperature", None)
 
@@ -828,12 +845,18 @@ class OpenAIProvider(BaseLLMClient):
 
         eff_temp = temperature if temperature is not None else self.kwargs.get("temperature", self.default_temperature)
 
+        from monika.infrastructure.providers.capabilities import resolve_effective_max_tokens
+
         base_tok = max_tokens if max_tokens is not None else self.max_tokens
-        is_openrouter = "openrouter" in str(getattr(self.client, "base_url", "")) or "openrouter" in self.model
-        if is_openrouter:
-            max_tok = max(base_tok, 16384) if self.thinking_level != "none" else max(base_tok, 8192)
-        else:
-            max_tok = base_tok
+        provider_name = self._get_provider_name()
+        max_tok = resolve_effective_max_tokens(
+            model_name=self.model,
+            provider_name=provider_name,
+            requested_max_tokens=base_tok,
+            thinking_budget=getattr(self, "thinking_budget", None),
+            thinking_level=self.thinking_level,
+            settings=self.settings,
+        )
         openai_valid_params = {
             "model",
             "messages",
@@ -889,7 +912,7 @@ class OpenAIProvider(BaseLLMClient):
             finish_reason = getattr(choice, "finish_reason", None)
             if finish_reason == "length":
                 logger.warning(
-                    f"[{self.model}] generate: response truncated by token limit (finish_reason='length', max_tokens={kwargs.get('max_tokens')})"
+                    f"[{self.model}] generate: response truncated by token limit (finish_reason='length', max_tokens={call_kwargs.get('max_tokens') or call_kwargs.get('max_completion_tokens')})"
                 )
             return _extract_message_text(choice)
         except (StreamTimeoutError, StreamSafetyTimeoutError) as e:
@@ -996,14 +1019,24 @@ class OpenAIProvider(BaseLLMClient):
                 messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": user_message})
         eff_temp = temperature if temperature is not None else self.kwargs.get("temperature", self.default_temperature)
-        is_groq = "groq" in self.__class__.__name__.lower()
-        is_openrouter = "openrouter" in self.__class__.__name__.lower()
-        if max_tokens is not None:
-            max_tok = max_tokens
-        elif is_openrouter:
-            max_tok = max(self.max_tokens, 16384) if self.thinking_level != "none" else max(self.max_tokens, 8192)
-        else:
-            max_tok = self.max_tokens
+        provider_name = self._get_provider_name()
+        is_groq = "groq" in self.__class__.__name__.lower() or provider_name == "groq"
+        is_openrouter = (
+            "openrouter" in self.__class__.__name__.lower()
+            or provider_name in ("openrouter", "9router")
+            or "openrouter" in str(getattr(self.client, "base_url", "")).lower()
+        )
+        from monika.infrastructure.providers.capabilities import resolve_effective_max_tokens
+
+        base_tok = max_tokens if max_tokens is not None else self.max_tokens
+        max_tok = resolve_effective_max_tokens(
+            model_name=self.model,
+            provider_name=provider_name,
+            requested_max_tokens=base_tok,
+            thinking_budget=getattr(self, "thinking_budget", None),
+            thinking_level=self.thinking_level,
+            settings=self.settings,
+        )
 
         if response_schema:
             is_array_schema = isinstance(response_schema, dict) and response_schema.get("type") == "array"
@@ -1092,7 +1125,7 @@ class OpenAIProvider(BaseLLMClient):
                 finish_reason = getattr(choice, "finish_reason", None)
                 if finish_reason == "length":
                     logger.warning(
-                        f"[{self.model}] generate_content: response truncated by token limit (finish_reason='length', max_tokens={kwargs.get('max_tokens')})"
+                        f"[{self.model}] generate_content: response truncated by token limit (finish_reason='length', max_tokens={kwargs.get('max_tokens') or kwargs.get('max_completion_tokens')})"
                     )
                 return _extract_message_text(choice)
             except (StreamTimeoutError, StreamSafetyTimeoutError) as e:
