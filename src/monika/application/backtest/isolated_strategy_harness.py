@@ -1089,7 +1089,13 @@ class IsolatedStrategyBacktestHarness:
                         min_trade_count=3,
                     )
                     fold_opt_res = await fold_opt.optimize(_eval_fold_plateau)
-                    if fold_opt_res and fold_opt_res.best_parameters:
+                    if (
+                        fold_opt_res
+                        and getattr(
+                            fold_opt_res, "found_plateau", getattr(fold_opt_res, "best_plateau_score", 0.0) > 0.0
+                        )
+                        and fold_opt_res.best_parameters
+                    ):
                         self.strategy_params = fold_opt_res.best_parameters
                 except Exception as fold_err:
                     logger.debug(f"[IsolatedHarness] Fold {fold_idx} plateau opt note: {fold_err}")

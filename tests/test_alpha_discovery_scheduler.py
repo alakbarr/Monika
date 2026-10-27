@@ -277,3 +277,72 @@ async def test_evaluate_hypothesis_rejected_high_drawdown(mock_settings):
 
         assert proposal is None, "Hypothesis with MaxDD 28.5% > 20.0% limit must be rejected"
         assert len(scheduler.candidate_proposals) == 0
+
+
+@pytest.mark.asyncio
+async def test_evaluate_hypothesis_plateau_failure_preserves_parameters(mock_settings):
+    """Verify that when Plateau optimizer fails (score=0.0 / not found),
+    hypothesis.parameters are NOT overwritten with fallback random parameters."""
+    scheduler = AlphaDiscoveryScheduler(
+        settings=mock_settings,
+        min_wfe=0.60,
+        min_oos_sharpe=0.50,
+    )
+
+    hypothesis = AlphaHypothesis(
+        hypothesis_id="hyp_test_plateau_fail",
+        name="Test Donchian Plateau Fail",
+        strategy_type="btc_donchian_breakout",
+        symbol="BTCUSD",
+        parameters={"donchian_period": 20, "volume_zscore_min": 1.5, "size_multiplier": 0.8},
+        description="Test breakout plateau preservation",
+    )
+
+    mock_harness_result = {
+        "passed": False,
+        "overall_wfe": 0.1,
+        "aggregate_is_sharpe": -0.5,
+        "aggregate_oos_sharpe": -0.5,
+        "dsr": 0.0,
+        "total_oos_trades": 5,
+        "oos_win_rate_pct": 20.0,
+        "alpha_validation": MagicMock(passed=False),
+        "all_oos_trades": [],
+    }
+
+    from monika.application.analysis.calculators.quant_plateau_optimizer import PlateauOptimizationResult
+
+    # Simulate plateau optimizer failing to find any robust plateau (score=0.0)
+    failed_opt_result = PlateauOptimizationResult(
+        best_params={"donchian_period": 38, "volume_zscore_min": 2.4, "size_multiplier": 0.5},
+        best_plateau_score=0.0,
+        center_sharpe=0.0,
+        neighbor_mean_sharpe=0.0,
+        neighbor_std_sharpe=0.0,
+        total_evaluations=12,
+        dsr_score=0.0,
+        is_plateau_stable=False,
+    )
+
+    with (
+        patch(
+            "monika.application.scheduler.alpha_discovery_scheduler.IsolatedStrategyBacktestHarness"
+        ) as mock_harness_cls,
+        patch("monika.application.scheduler.alpha_discovery_scheduler.QuantPlateauOptimizer") as mock_opt_cls,
+    ):
+        mock_instance = MagicMock()
+        mock_instance.fetch_historical_candles = AsyncMock(return_value=[{"time": 1, "close": 100}] * 200)
+        mock_instance._run_simulation_on_candles = AsyncMock()
+        mock_instance.run_walk_forward = AsyncMock(return_value=mock_harness_result)
+        mock_harness_cls.return_value = mock_instance
+
+        mock_optimizer_instance = MagicMock()
+        mock_optimizer_instance.optimize = AsyncMock(return_value=failed_opt_result)
+        mock_opt_cls.return_value = mock_optimizer_instance
+
+        await scheduler.evaluate_hypothesis(hypothesis)
+
+        # Hypothesis parameters must retain original values, NOT the fallback params
+        assert hypothesis.parameters["donchian_period"] == 20
+        assert hypothesis.parameters["volume_zscore_min"] == 1.5
+        assert hypothesis.parameters["size_multiplier"] == 0.8

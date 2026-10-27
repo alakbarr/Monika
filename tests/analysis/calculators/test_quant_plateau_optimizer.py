@@ -76,3 +76,29 @@ async def test_quant_plateau_optimizer_finds_stable_plateau():
     assert result.best_params["period"] in [22, 24, 26, 28]
     assert result.is_plateau_stable is True
     assert result.neighbor_mean_sharpe >= 1.5
+
+
+@pytest.mark.asyncio
+async def test_quant_plateau_optimizer_all_failing_candidates():
+    """Verify that when all trials fail initial gating (negative Sharpe or low trades),
+    found_plateau is False, best_plateau_score is 0.0, and is_plateau_stable is False.
+    """
+    param_space = [
+        ParameterSpec(name="period", param_type="int", low=10, high=30, step=2),
+    ]
+
+    async def mock_failing_eval_fn(params: dict) -> dict:
+        return {"sharpe": -1.2, "trades": 25, "trade_returns": [-0.01] * 25, "pnl_pct": -4.0}
+
+    optimizer = QuantPlateauOptimizer(
+        param_space=param_space,
+        n_trials=6,
+        min_trade_count=10,
+        seed=42,
+    )
+
+    result = await optimizer.optimize(mock_failing_eval_fn)
+    assert result.found_plateau is False
+    assert result.best_plateau_score == 0.0
+    assert result.is_plateau_stable is False
+    assert result.neighbor_mean_sharpe == 0.0

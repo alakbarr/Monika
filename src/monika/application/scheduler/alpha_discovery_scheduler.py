@@ -307,13 +307,23 @@ class AlphaDiscoveryScheduler:
                         min_trade_count=10,
                     )
                     opt_res = await optimizer.optimize(_eval_plateau)
-                    if opt_res and opt_res.best_parameters:
+                    if (
+                        opt_res
+                        and getattr(opt_res, "found_plateau", getattr(opt_res, "best_plateau_score", 0.0) > 0.0)
+                        and opt_res.best_parameters
+                    ):
                         hypothesis.parameters.update(opt_res.best_parameters)
                         harness.strategy_params = hypothesis.parameters
                         logger.info(
                             f"[AlphaDiscovery] Plateau optimizer found robust parameter plateau for '{hypothesis.name}': "
                             f"{opt_res.best_parameters} (Plateau Score: {opt_res.best_plateau_score:.2f}, "
                             f"Neighbor Sharpe: {opt_res.neighbor_mean_sharpe:.2f})"
+                        )
+                    else:
+                        plateau_sc = getattr(opt_res, "best_plateau_score", 0.0) if opt_res else 0.0
+                        logger.debug(
+                            f"[AlphaDiscovery] No stable parameter plateau found for '{hypothesis.name}' "
+                            f"(Plateau Score: {plateau_sc:.2f}). Retaining default hypothesis parameters."
                         )
             except Exception as opt_err:
                 logger.debug(f"[AlphaDiscovery] Plateau pre-optimization non-fatal: {opt_err}")

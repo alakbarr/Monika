@@ -87,6 +87,7 @@ class PlateauOptimizationResult:
     dsr_score: float
     is_plateau_stable: bool
     trials_history: List[Dict[str, Any]] = field(default_factory=list)
+    found_plateau: bool = False
 
     @property
     def best_parameters(self) -> Dict[str, Any]:
@@ -261,6 +262,7 @@ class QuantPlateauOptimizer:
 
         fallback_params = {p.name: p.sample() for p in self.param_space}
         safe_score = 0.0 if math.isinf(best_score) else max(0.0, round(best_score, 3))
+        found_plateau = bool(best_candidate is not None and safe_score > 0.0)
         return PlateauOptimizationResult(
             best_params=best_candidate or fallback_params,
             best_plateau_score=safe_score,
@@ -271,4 +273,5 @@ class QuantPlateauOptimizer:
             dsr_score=round(best_dsr, 2),
             is_plateau_stable=best_stable,
             trials_history=trials_history,
+            found_plateau=found_plateau,
         )
