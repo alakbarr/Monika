@@ -667,7 +667,7 @@ class StartupChecker:
                         except Exception:
                             pass
 
-                    client = factory._create_client_instance(test_model, {"max_tokens": 10})
+                    client = factory._create_client_instance(test_model, {"max_tokens": 64})
                     if client:
                         logger.info(f"  [TEST] Pinging {provider_name} (model: {test_model})...")
                         if provider_name == "typesafe":

@@ -161,7 +161,10 @@ async def fetch_with_retry(
     Returns: JSON dict, text string, atau None jika gagal.
     """
     effective_timeout = timeout_seconds if timeout_seconds is not None else (kwargs.get("timeout_sec") or timeout)
-    conn_timeout = min(10.0, float(effective_timeout) * 0.5) if effective_timeout else 10.0
+    if effective_timeout:
+        conn_timeout = min(10.0, float(effective_timeout), max(5.0, float(effective_timeout) * 0.6))
+    else:
+        conn_timeout = 10.0
     timeout_obj = aiohttp.ClientTimeout(total=effective_timeout, connect=conn_timeout, sock_connect=conn_timeout)
     effective_ssl = ssl if ssl is not None else kwargs.get("ssl", _DEFAULT_SSL_CONTEXT)
     domain = url.split("/")[2] if "//" in url else url

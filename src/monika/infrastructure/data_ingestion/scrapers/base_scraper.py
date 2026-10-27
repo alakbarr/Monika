@@ -123,6 +123,45 @@ class BaseScraper:
                 return path
         return None
 
+    def _detect_browser_major_version(self, browser_bin: str | None = None) -> str:
+        """Mendeteksi versi mayor browser (Chrome/Edge) terpasang untuk menyelaraskan User-Agent dengan Client Hints."""
+        if platform.system().lower() == "windows":
+            try:
+                import winreg
+
+                for reg_path in (
+                    r"Software\Google\Chrome\BLBeacon",
+                    r"SOFTWARE\Microsoft\Edge\BLBeacon",
+                    r"SOFTWARE\WOW6432Node\Google\Chrome\BLBeacon",
+                    r"SOFTWARE\WOW6432Node\Microsoft\Edge\BLBeacon",
+                ):
+                    for root in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+                        try:
+                            with winreg.OpenKey(root, reg_path) as key:
+                                val, _ = winreg.QueryValueEx(key, "version")
+                                if val and isinstance(val, str):
+                                    major = val.strip().split(".")[0]
+                                    if major.isdigit():
+                                        return major
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+        if browser_bin:
+            try:
+                res = subprocess.run([browser_bin, "--version"], capture_output=True, text=True, timeout=2)
+                out = res.stdout or res.stderr
+                for token in out.split():
+                    if "." in token and token[0].isdigit():
+                        major = token.split(".")[0]
+                        if major.isdigit():
+                            return major
+            except Exception:
+                pass
+
+        return "131"
+
     @classmethod
     def _kill_stale_profile_processes(cls, profile_dir: Path) -> None:
         """Membersihkan proses browser zombie yang masih mengunci direktori profil."""
@@ -232,9 +271,10 @@ class BaseScraper:
 
         options.headless(headless)
 
-        # User-agent desktop realistis untuk menghindari deteksi HeadlessChrome bot
+        # User-agent desktop realistis tersinkronisasi dengan Client Hints (sec-ch-ua) versi browser terpasang
+        major_ver = self._detect_browser_major_version(browser_bin)
         options.set_user_agent(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+            f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{major_ver}.0.0.0 Safari/537.36"
         )
 
         # Strategi anti-deteksi dan peningkatan performa

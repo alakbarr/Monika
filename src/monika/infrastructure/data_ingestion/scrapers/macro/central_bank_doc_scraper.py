@@ -22,7 +22,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
-from monika.infrastructure.llm.rate_limiting.http_retry import _DEFAULT_SSL_CONTEXT
+from monika.infrastructure.llm.rate_limiting.http_retry import _DEFAULT_SSL_CONTEXT, fetch_with_retry
 from monika.infrastructure.database.models import CentralBankDocument
 from monika.infrastructure.database.safe_ops import safe_commit
 
@@ -149,35 +149,43 @@ class CentralBankDocScraper:
         """
         bank_clean = bank.strip().upper()
         doc_clean = doc_type.strip().upper()
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
         try:
-            async with aiohttp.ClientSession(headers=headers) as http_client:
-                if bank_clean == "FED":
-                    return await self._scrape_live_fed(http_client, doc_clean)
-                elif bank_clean == "ECB":
-                    return await self._scrape_live_ecb(http_client, doc_clean)
-                elif bank_clean in ("BOJ", "BOJ_JAPAN"):
-                    return await self._scrape_live_boj(http_client, doc_clean)
+            if bank_clean == "FED":
+                return await self._scrape_live_fed(None, doc_clean)
+            elif bank_clean == "ECB":
+                return await self._scrape_live_ecb(None, doc_clean)
+            elif bank_clean in ("BOJ", "BOJ_JAPAN"):
+                return await self._scrape_live_boj(None, doc_clean)
         except Exception as e:
-            logger.warning(f"Live scraping error for {bank_clean} {doc_clean}: {e}")
+            err_type = type(e).__name__
+            err_msg = str(e).strip() or err_type
+            logger.warning(f"Live scraping error for {bank_clean} {doc_clean}: {err_msg}")
 
         return None
 
-    async def _scrape_live_fed(self, http_client: aiohttp.ClientSession, doc_type: str) -> Optional[Dict[str, Any]]:
+    async def _scrape_live_fed(
+        self, http_client: Optional[aiohttp.ClientSession], doc_type: str
+    ) -> Optional[Dict[str, Any]]:
         """Scrapes Federal Reserve FOMC Statement or Minutes directly from federalreserve.gov."""
-        async with http_client.get(
-            FED_CALENDAR_URL, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=12)
-        ) as resp:
-            if resp.status != 200:
-                return None
-            raw_bytes = await resp.read()
-            html = raw_bytes.decode("utf-8", errors="ignore")
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        }
+        html = await fetch_with_retry(
+            FED_CALENDAR_URL,
+            headers=headers,
+            response_type="text",
+            timeout=15,
+            max_retries=2,
+        )
+        if not html or not isinstance(html, str):
+            return None
 
         soup = BeautifulSoup(html, "html.parser")
         target_link: Optional[str] = None
         doc_title: Optional[str] = None
 
+        matching_links: List[tuple[str, str, str]] = []
         if doc_type in ("STATEMENT", "RATE_DECISION"):
             for a in soup.find_all("a", href=True):
                 raw_href = a.get("href")
@@ -185,9 +193,11 @@ class CentralBankDocScraper:
                     continue
                 href = raw_href
                 if "monetary" in href and "a.htm" in href:
-                    target_link = href
-                    doc_title = f"Federal Reserve FOMC Statement ({a.get_text().strip() or 'Latest'})"
-                    break
+                    date_match = re.search(r"(\d{8})", href)
+                    d_val = date_match.group(1) if date_match else "00000000"
+                    matching_links.append(
+                        (d_val, href, f"Federal Reserve FOMC Statement ({a.get_text().strip() or 'Latest'})")
+                    )
         else:  # MINUTES
             for a in soup.find_all("a", href=True):
                 raw_href = a.get("href")
@@ -195,23 +205,28 @@ class CentralBankDocScraper:
                     continue
                 href = raw_href
                 if "fomcminutes" in href and href.endswith(".htm"):
-                    target_link = href
-                    doc_title = "Federal Reserve FOMC Meeting Minutes"
-                    break
+                    date_match = re.search(r"(\d{8})", href)
+                    d_val = date_match.group(1) if date_match else "00000000"
+                    matching_links.append((d_val, href, "Federal Reserve FOMC Meeting Minutes"))
 
-        if not target_link:
+        if not matching_links:
             return None
+
+        matching_links.sort(key=lambda x: x[0], reverse=True)
+        _, target_link, doc_title = matching_links[0]
 
         if target_link.startswith("/"):
             target_link = "https://www.federalreserve.gov" + target_link
 
-        async with http_client.get(
-            target_link, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=15)
-        ) as doc_resp:
-            if doc_resp.status != 200:
-                return None
-            doc_raw = await doc_resp.read()
-            doc_html = doc_raw.decode("utf-8", errors="ignore")
+        doc_html = await fetch_with_retry(
+            target_link,
+            headers=headers,
+            response_type="text",
+            timeout=15,
+            max_retries=2,
+        )
+        if not doc_html or not isinstance(doc_html, str):
+            return None
 
         doc_soup = BeautifulSoup(doc_html, "html.parser")
         article = doc_soup.find("div", {"id": "article"}) or doc_soup.find("div", class_="col-xs-12")
@@ -244,15 +259,22 @@ class CentralBankDocScraper:
             key_phrases=key_phrases,
         )
 
-    async def _scrape_live_ecb(self, http_client: aiohttp.ClientSession, doc_type: str) -> Optional[Dict[str, Any]]:
+    async def _scrape_live_ecb(
+        self, http_client: Optional[aiohttp.ClientSession], doc_type: str
+    ) -> Optional[Dict[str, Any]]:
         """Scrapes ECB Monetary Policy Statement from ecb.europa.eu."""
-        async with http_client.get(
-            ECB_PRESS_URL, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=12)
-        ) as resp:
-            if resp.status != 200:
-                return None
-            raw_bytes = await resp.read()
-            html = raw_bytes.decode("utf-8", errors="ignore")
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        }
+        html = await fetch_with_retry(
+            ECB_PRESS_URL,
+            headers=headers,
+            response_type="text",
+            timeout=15,
+            max_retries=2,
+        )
+        if not html or not isinstance(html, str):
+            return None
 
         soup = BeautifulSoup(html, "html.parser")
         target_link: Optional[str] = None
@@ -283,13 +305,15 @@ class CentralBankDocScraper:
         if target_link.startswith("/"):
             target_link = "https://www.ecb.europa.eu" + target_link
 
-        async with http_client.get(
-            target_link, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=15)
-        ) as doc_resp:
-            if doc_resp.status != 200:
-                return None
-            doc_raw = await doc_resp.read()
-            doc_html = doc_raw.decode("utf-8", errors="ignore")
+        doc_html = await fetch_with_retry(
+            target_link,
+            headers=headers,
+            response_type="text",
+            timeout=15,
+            max_retries=2,
+        )
+        if not doc_html or not isinstance(doc_html, str):
+            return None
 
         doc_soup = BeautifulSoup(doc_html, "html.parser")
         main_sec = doc_soup.find("main") or doc_soup.find("div", class_="section") or doc_soup
@@ -323,18 +347,25 @@ class CentralBankDocScraper:
             key_phrases=key_phrases,
         )
 
-    async def _scrape_live_boj(self, http_client: aiohttp.ClientSession, doc_type: str) -> Optional[Dict[str, Any]]:
+    async def _scrape_live_boj(
+        self, http_client: Optional[aiohttp.ClientSession], doc_type: str
+    ) -> Optional[Dict[str, Any]]:
         """Scrapes Bank of Japan Monetary Policy Statement from boj.or.jp."""
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        }
         for year in ["2026", "2025"]:
             boj_url = f"https://www.boj.or.jp/en/mopo/mpmdeci/mpr_{year}/index.htm"
             try:
-                async with http_client.get(
-                    boj_url, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=10)
-                ) as resp:
-                    if resp.status != 200:
-                        continue
-                    raw_bytes = await resp.read()
-                    html = raw_bytes.decode("utf-8", errors="ignore")
+                html = await fetch_with_retry(
+                    boj_url,
+                    headers=headers,
+                    response_type="text",
+                    timeout=15,
+                    max_retries=2,
+                )
+                if not html or not isinstance(html, str):
+                    continue
 
                 soup = BeautifulSoup(html, "html.parser")
                 target_link: Optional[str] = None
@@ -354,55 +385,53 @@ class CentralBankDocScraper:
                     if target_link.startswith("/"):
                         target_link = "https://www.boj.or.jp" + target_link
 
-                    async with http_client.get(
-                        target_link, ssl=_DEFAULT_SSL_CONTEXT, timeout=aiohttp.ClientTimeout(total=15)
-                    ) as doc_resp:
-                        if doc_resp.status == 200:
-                            doc_raw = await doc_resp.read()
-                            doc_html = doc_raw.decode("utf-8", errors="ignore")
-                            doc_soup = BeautifulSoup(doc_html, "html.parser")
-                            main_sec = doc_soup.find("main") or doc_soup
-                            raw_lines = [l.strip() for l in main_sec.get_text().splitlines() if len(l.strip()) > 35]
+                    doc_html = await fetch_with_retry(
+                        target_link,
+                        headers=headers,
+                        response_type="text",
+                        timeout=15,
+                        max_retries=2,
+                    )
+                    if doc_html and isinstance(doc_html, str):
+                        doc_soup = BeautifulSoup(doc_html, "html.parser")
+                        main_sec = doc_soup.find("main") or doc_soup
+                        raw_lines = [l.strip() for l in main_sec.get_text().splitlines() if len(l.strip()) > 35]
 
-                            paragraphs = []
-                            for line in raw_lines:
-                                if not any(
-                                    k in line
-                                    for k in ["Location", "Guide Map", "Visiting the Bank", "Copyright", "Site Map"]
-                                ):
-                                    paragraphs.append(line)
+                        paragraphs = []
+                        for line in raw_lines:
+                            if not any(
+                                k in line
+                                for k in ["Location", "Guide Map", "Visiting the Bank", "Copyright", "Site Map"]
+                            ):
+                                paragraphs.append(line)
 
-                            if paragraphs:
-                                tone_score, key_phrases = self._analyze_tone_polarity(paragraphs)
-                                logger.info(
-                                    f"Live scraped BOJ {doc_type}: {len(paragraphs)} paragraphs from {target_link}"
-                                )
+                        if paragraphs:
+                            tone_score, key_phrases = self._analyze_tone_polarity(paragraphs)
+                            logger.info(f"Live scraped BOJ {doc_type}: {len(paragraphs)} paragraphs from {target_link}")
 
-                                boj_date = _normalize_meeting_date(None)
-                                if target_link:
-                                    date_match = re.search(r"(\d{8})", target_link) or re.search(
-                                        r"(\d{6})", target_link
-                                    )
-                                    if date_match:
-                                        try:
-                                            ds = date_match.group(1)
-                                            if len(ds) == 8:
-                                                boj_date = datetime.strptime(ds, "%Y%m%d").replace(tzinfo=timezone.utc)
-                                            elif len(ds) == 6:
-                                                boj_date = datetime.strptime(ds, "%y%m%d").replace(tzinfo=timezone.utc)
-                                        except Exception:
-                                            pass
+                            boj_date = _normalize_meeting_date(None)
+                            if target_link:
+                                date_match = re.search(r"(\d{8})", target_link) or re.search(r"(\d{6})", target_link)
+                                if date_match:
+                                    try:
+                                        ds = date_match.group(1)
+                                        if len(ds) == 8:
+                                            boj_date = datetime.strptime(ds, "%Y%m%d").replace(tzinfo=timezone.utc)
+                                        elif len(ds) == 6:
+                                            boj_date = datetime.strptime(ds, "%y%m%d").replace(tzinfo=timezone.utc)
+                                    except Exception:
+                                        pass
 
-                                return await self._persist_document_record(
-                                    bank="BOJ",
-                                    doc_type=doc_type,
-                                    meeting_date=boj_date,
-                                    title=f"Bank of Japan Statement on Monetary Policy",
-                                    source_url=target_link,
-                                    paragraphs=paragraphs,
-                                    tone_score=tone_score,
-                                    key_phrases=key_phrases,
-                                )
+                            return await self._persist_document_record(
+                                bank="BOJ",
+                                doc_type=doc_type,
+                                meeting_date=boj_date,
+                                title=f"Bank of Japan Statement on Monetary Policy",
+                                source_url=target_link,
+                                paragraphs=paragraphs,
+                                tone_score=tone_score,
+                                key_phrases=key_phrases,
+                            )
             except Exception as e:
                 logger.debug(f"BoJ year {year} scrape failed: {e}")
 

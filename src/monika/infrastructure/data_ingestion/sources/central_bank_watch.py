@@ -69,7 +69,8 @@ class CentralBankWatchFetcher:
             CBW_BASE_URL,
             headers=DEFAULT_HEADERS,
             response_type="text",
-            timeout=20,
+            timeout=10,
+            max_retries=1,
         )
         if not html or not isinstance(html, str):
             logger.warning("CentralBankWatch: Gagal mengambil HTML ekspektasi suku bunga")
@@ -218,7 +219,8 @@ class CentralBankWatchFetcher:
             CBW_YIELD_URL,
             headers=DEFAULT_HEADERS,
             response_type="text",
-            timeout=20,
+            timeout=10,
+            max_retries=1,
         )
         if not html or not isinstance(html, str):
             logger.warning("CentralBankWatch: Gagal mengambil HTML kurva yield sovereign")

@@ -22,7 +22,7 @@ logger = logging.getLogger("TradingAgent.TwitterScraper")
 class TwitterWatchScraper(BaseScraper):
     def __init__(self, headless=True, list_url=None):
         # Gunakan profil sementara untuk memastikan kondisi bersih sebelum injeksi cookie
-        super().__init__(headless=headless, profile_name=None, load_mode="eager", no_imgs=True)
+        super().__init__(headless=headless, profile_name=None, load_mode="normal", no_imgs=False)
 
         from monika.core.paths import DATA_DIR
 
@@ -206,7 +206,7 @@ class TwitterWatchScraper(BaseScraper):
                 self._mark_quarantined(session_file)
                 continue
 
-            if page_obj.wait.ele_displayed("tag:article", timeout=8):
+            if page_obj.wait.ele_displayed("tag:article", timeout=20):
                 self.had_rendered_articles = True
                 self.last_fetch_status = "ok"
                 break

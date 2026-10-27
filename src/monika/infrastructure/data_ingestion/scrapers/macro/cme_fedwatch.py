@@ -30,6 +30,48 @@ class FedWatchScraper(BaseScraper):
         self.cme_url = "https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html"
         self.max_meetings = 4
 
+    def _ensure_quikstrike_iframe(self) -> None:
+        """
+        Ensures the QuikStrike iframe is mounted on the CME Group DOM.
+        On modern Adobe Edge Delivery Services (AEM EDS / Franklin) layouts, CME Group renders
+        the tool container as a content block (.iframe.block a[href*='quikstrike']), which
+        does not always decorate into an <iframe> in headless Chrome or when third-party
+        scripts are gated by consent banners.
+        Mounting or declaring the iframe directly within the www.cmegroup.com origin ensures
+        the browser passes the required 'Referer: https://www.cmegroup.com/' header to QuikStrike.
+        """
+        if not self.page or getattr(self, "is_closed", False):
+            return
+        page_obj: Any = self.page
+        try:
+            # Dismiss cookie consent if present to avoid blocking overlays
+            try:
+                accept_btn = page_obj.ele(
+                    'xpath://button[contains(@id, "onetrust-accept") or contains(@id, "accept-recommended")]',
+                    timeout=1.0,
+                )
+                if accept_btn:
+                    accept_btn.click()
+            except Exception:
+                pass
+
+            js = """
+            let existing = document.querySelector('iframe[src*="quikstrike"]');
+            if (!existing) {
+                let link = document.querySelector('.iframe.block a[href*="quikstrike"]') || document.querySelector('a[href*="quikstrike"]');
+                let targetUrl = link ? link.href : "https://cmegroup-tools.quikstrike.net/User/QuikStrikeTools.aspx?viewitemid=IntegratedFedWatchTool";
+                let iframe = document.createElement('iframe');
+                iframe.src = targetUrl;
+                iframe.id = 'quikstrike_injected';
+                iframe.width = '100%';
+                iframe.height = '1000px';
+                document.body.appendChild(iframe);
+            }
+            """
+            page_obj.run_js(js)
+        except Exception as e:
+            logger.debug(f"[FedWatch] _ensure_quikstrike_iframe error: {e}")
+
     def _locate_quikstrike_iframe(self, max_wait_seconds: int = 30):
         """Mencari iframe QuikStrike secara adaptif dengan polling loop dan fallback ke headed jika perlu."""
         if not self.page:
@@ -37,6 +79,9 @@ class FedWatchScraper(BaseScraper):
         page_obj: Any = self.page
         start_time = time.time()
         iframe = None
+
+        # Proactively ensure iframe exists on modern AEM page
+        self._ensure_quikstrike_iframe()
 
         while time.time() - start_time < max_wait_seconds:
             if getattr(self, "is_closed", False):
@@ -50,6 +95,8 @@ class FedWatchScraper(BaseScraper):
                     if tab_0:
                         logger.info(f"QuikStrike iframe detected and ready ({round(time.time() - start_time, 1)}s)")
                         return iframe
+                else:
+                    self._ensure_quikstrike_iframe()
             except Exception:
                 pass
             time.sleep(2)
@@ -68,6 +115,7 @@ class FedWatchScraper(BaseScraper):
                     return None
                 page_obj = self.page
                 page_obj.get(self.cme_url)
+                self._ensure_quikstrike_iframe()
 
                 fallback_start = time.time()
                 while time.time() - fallback_start < 25:
