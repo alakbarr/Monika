@@ -867,5 +867,17 @@ class TradingService:
             actor=actor,
         )
         await session.commit()
+
+        # Ensure physical disk kill switch flag is removed
+        from monika.core.paths import DATA_DIR
+
+        disk_flag = DATA_DIR / "kill_switch.flag"
+        if disk_flag.exists():
+            try:
+                disk_flag.unlink(missing_ok=True)
+                logger.info(f"[TradingService] Removed disk kill switch flag: {disk_flag}")
+            except Exception as flag_err:
+                logger.error(f"[TradingService] Failed removing disk kill flag: {flag_err}")
+
         logger.info(f"[TradingService] System trading resumed by '{actor}'")
         return {"status": "RESUMED", "actor": actor}

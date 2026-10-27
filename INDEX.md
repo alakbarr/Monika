@@ -11729,7 +11729,7 @@
 - **Path**: [`src/monika/infrastructure/data_ingestion/sources/fed_liquidity_h41_fetcher.py`](src/monika/infrastructure/data_ingestion/sources/fed_liquidity_h41_fetcher.py)
 - **Classes**:
   - `class FedLiquidityH41Fetcher`: Fetcher for Federal Reserve balance sheet metrics and Net Systemic Liquidity.
-    - `__init__(session: AsyncSession)`
+    - `__init__(session: AsyncSession, api_key: Optional[str])`
     - `async fetch_and_store_liquidity(record_date: Optional[datetime], walcl_override_b: Optional[float], tga_override_b: Optional[float], ...) -> Dict[str, Any]` - *Calculates Net Liquidity and persists individual components + Net Liquidity.*
 
 #### `fred_treasury_yield.py` - *Fetcher FRED Treasury Yield & Interest Rate (Async).*
@@ -11759,7 +11759,7 @@
 - **Path**: [`src/monika/infrastructure/data_ingestion/sources/market_stress_auction_fetcher.py`](src/monika/infrastructure/data_ingestion/sources/market_stress_auction_fetcher.py)
 - **Classes**:
   - `class MarketStressAuctionFetcher`: Fetcher for debt auctions, credit risk spreads, and money market funding stress.
-    - `__init__(session: AsyncSession)`
+    - `__init__(session: AsyncSession, api_key: Optional[str])`
     - `async fetch_and_store_treasury_auction(tenor: str, record_date: Optional[datetime], high_yield: Optional[float], ...) -> Dict[str, Any]` - *Fetches live Treasury auction results from TreasuryDirect API or stores provided results,*
     - `async fetch_and_store_credit_and_money_market(record_date: Optional[datetime], hy_oas_override: Optional[float], sofr_override: Optional[float]) -> List[Dict[str, Any]]` - *Stores ICE BofA High Yield OAS credit spreads and SOFR overnight rate.*
 

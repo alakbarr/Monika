@@ -62,6 +62,26 @@ class PositionGuardian:
         self._alerted_position_events: set[tuple[Any, Any]] = set()
         self._kill_switch_triggered: bool = False
 
+    async def _check_kill_switch_active(self, session: Any) -> tuple[bool, bool]:
+        """
+        Atomically inspect whether emergency kill switch is active in DB or disk.
+
+        Returns:
+            (kill_active, disk_kill_active)
+        """
+        from monika.core.paths import DATA_DIR
+        from monika.infrastructure.database.models import SystemConfig
+
+        disk_flag = DATA_DIR / "kill_switch.flag"
+        disk_kill_active = disk_flag.exists()
+
+        cfg_kill = (
+            await session.execute(select(SystemConfig).where(SystemConfig.key == "kill_switch"))
+        ).scalar_one_or_none()
+        db_kill_active = bool(cfg_kill and str(cfg_kill.value).lower() in ("true", "1", "yes"))
+
+        return (disk_kill_active or db_kill_active), disk_kill_active
+
     async def check_and_protect(self, emergency: bool = False) -> dict:
         """
         Cek kalender dan eksekusi proteksi posisi terbuka.
@@ -74,21 +94,16 @@ class PositionGuardian:
         warning_window = now + timedelta(minutes=self.warning_minutes)
 
         async with get_session() as session:
-            # Check DB emergency kill switch flag (from CLI/Web)
-            from monika.infrastructure.database.models import SystemConfig
-
-            cfg_kill = (
-                await session.execute(select(SystemConfig).where(SystemConfig.key == "kill_switch"))
-            ).scalar_one_or_none()
-            kill_active = bool(cfg_kill and str(cfg_kill.value).lower() in ("true", "1", "yes"))
+            # Check DB & Disk emergency kill switch flag
+            kill_active, disk_kill_active = await self._check_kill_switch_active(session)
             if kill_active:
-                if not self._kill_switch_triggered:
+                if not getattr(self, "_kill_switch_triggered", False):
                     self._kill_switch_triggered = True
                     logger.critical(
-                        "[PositionGuardian] Emergency kill switch is ACTIVE in SystemConfig! Liquidating all positions."
+                        f"[PositionGuardian] Emergency kill switch is ACTIVE (disk={disk_kill_active})! Liquidating all positions."
                     )
                     if self.execution_service:
-                        await self.execution_service.kill_switch("Database emergency kill switch triggered")
+                        await self.execution_service.kill_switch("Database/disk emergency kill switch triggered")
                 return {"checked": True, "action_taken": True, "kill_switch_active": True}
             else:
                 self._kill_switch_triggered = False
@@ -545,20 +560,13 @@ class PositionGuardian:
 
         from sqlalchemy import select
 
-        from monika.core.paths import DATA_DIR
         from monika.infrastructure.database.db import get_session
-        from monika.infrastructure.database.models import Position, SystemConfig
+        from monika.infrastructure.database.models import Position
 
         try:
             async with get_session() as session:
                 # Fast check for DB and Disk emergency kill switch
-                disk_flag = DATA_DIR / "kill_switch.flag"
-                disk_kill_active = disk_flag.exists()
-
-                cfg_kill = (
-                    await session.execute(select(SystemConfig).where(SystemConfig.key == "kill_switch"))
-                ).scalar_one_or_none()
-                kill_active = disk_kill_active or bool(cfg_kill and str(cfg_kill.value).lower() in ("true", "1", "yes"))
+                kill_active, disk_kill_active = await self._check_kill_switch_active(session)
                 if kill_active:
                     if not getattr(self, "_kill_switch_triggered", False):
                         self._kill_switch_triggered = True

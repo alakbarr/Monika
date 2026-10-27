@@ -620,6 +620,17 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
         if hasattr(self, "effect_gate") and self.effect_gate is not None:
             self.effect_gate.reset()
 
+        # Ensure physical disk kill switch flag is removed
+        from monika.core.paths import DATA_DIR
+
+        disk_flag = DATA_DIR / "kill_switch.flag"
+        if disk_flag.exists():
+            try:
+                disk_flag.unlink(missing_ok=True)
+                logger.info(f"[ExecutionService] Removed disk kill switch flag: {disk_flag}")
+            except Exception as flag_err:
+                logger.error(f"[ExecutionService] Failed removing disk kill flag: {flag_err}")
+
         async def _do_resume(sess: AsyncSession):
             if hasattr(self, "gate") and self.gate is not None:
                 await self.gate.resume_trading(sess)

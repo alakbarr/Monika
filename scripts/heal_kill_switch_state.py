@@ -90,7 +90,21 @@ async def heal(dry_run: bool = True):
             st.trading_paused = False
             st.reason = None
 
-        # 5. Log audit trail
+        # 5. Check and clear physical disk kill switch flag
+        from monika.core.paths import DATA_DIR
+
+        disk_flag = DATA_DIR / "kill_switch.flag"
+        if disk_flag.exists():
+            if dry_run:
+                logger.info(f"[DRY-RUN] Found disk kill switch flag at {disk_flag}. Would remove it with --confirm.")
+            else:
+                try:
+                    disk_flag.unlink(missing_ok=True)
+                    logger.info(f"Removed disk kill switch flag at {disk_flag}")
+                except Exception as flag_err:
+                    logger.error(f"Failed removing disk kill switch flag: {flag_err}")
+
+        # 6. Log audit trail
         session.add(
             ActivityLog(
                 category="system",
