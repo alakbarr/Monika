@@ -1078,6 +1078,11 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
                 logger.warning(f"[{symbol}] Failed to persist auto-PI score: {e}")
         except Exception as e:
             logger.error(f"Failed to calculate pre-hoc confluence: {e}")
+            try:
+                if self.executor and hasattr(self.executor, "session") and self.executor.session:
+                    await self.executor.session.rollback()
+            except Exception:
+                pass
 
         # Inject alpha lessons
         try:
@@ -1116,6 +1121,11 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
                 lines.append("")
         except Exception as e:
             logger.error(f"Failed to fetch alpha lessons: {e}")
+            try:
+                if self.executor and hasattr(self.executor, "session") and self.executor.session:
+                    await self.executor.session.rollback()
+            except Exception:
+                pass
 
         # Quantitative Playbook Signal Screener (Pillar 1: Institutional Screener)
         try:

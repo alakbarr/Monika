@@ -252,24 +252,29 @@ def extract_and_parse_json(text: str) -> Optional[dict]:
                 try:
                     r = json.loads(rep, strict=False)
                     if isinstance(r, dict):
+                        if not r and len(s) > 100:
+                            return None
                         return r
                     if isinstance(r, list):
                         return {"items": r}
                 except Exception:
                     return None
+                return None
 
             repaired_candidate = _repair_containers(candidate)
             if repaired_candidate is not None:
                 return repaired_candidate
 
-            # Progressive line-trimming recovery for truncated inner objects
+            # Progressive line-trimming recovery for truncated inner objects (capped to at most 15 lines from tail)
             lines = candidate.splitlines()
-            while len(lines) > 1:
-                lines.pop()
-                trimmed = "\n".join(lines)
-                r = _repair_containers(trimmed)
-                if r is not None:
-                    return r
+            if len(lines) > 1:
+                trim_limit = min(15, len(lines) - 1)
+                for _ in range(trim_limit):
+                    lines.pop()
+                    trimmed = "\n".join(lines)
+                    r = _repair_containers(trimmed)
+                    if r is not None:
+                        return r
     except Exception:
         pass
 

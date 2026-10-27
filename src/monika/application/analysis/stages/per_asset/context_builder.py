@@ -160,9 +160,9 @@ OUTPUT JSON:
 - recommended_entry_zone: {"type":"FVG/OB/SR", "price_high":X, "price_low":X, "direction":"BULLISH/BEARISH", "score_rationale":"txt"}
 - nearest_entry_zone: {"type":"FVG/OB/SR", "price_high":X, "price_low":X}
 - structural_sl: {"price":X, "basis":"txt"}
-- key_evidence: [string]
+- key_evidence: 4 to 6 high-conviction quantitative bullet points with exact prices, levels, and indicators.
 - invalidation_condition: "Thesis invalid if price closes [above/below] X"
-- analysis: max 3 sentences.
+- analysis: Detailed, structured, and dense analysis (target 500 to 600 words). Anchor every finding with concrete numbers (levels, indicators, spreads, or volumes). Do NOT repeat raw OHLCV tables from the bundle. Zero conversational pleasantries.
 
 GLOSSARY: OB (Order Block) = last opposing candle before impulsive move, unmitigated = untested. FVG (Fair Value Gap) = 3-candle imbalance gap, acts as price magnet. OTE = 0.618-0.786 Fibonacci retracement. BOS = trend continuation break. ChoCH = trend reversal break.
 
@@ -198,9 +198,9 @@ OUTPUT JSON:
 - confidence: HIGH/MEDIUM/LOW
 - cot_net_position: {"value":X, "bias":"txt", "is_extreme":bool}
 - retail_positioning: {"long_pct":X, "contrarian_signal":"txt"}
-- key_evidence: [string]
+- key_evidence: 4 to 6 high-conviction quantitative bullet points (exact net positioning, retail %, inventory barrels).
 - invalidation_condition: "Fails if [cond]"
-- analysis: max 3 sentences.
+- analysis: Detailed, structured, and dense analysis (target 500 to 600 words). Anchor every finding with concrete numbers (contracts, retail crowding, inventory deltas). Zero conversational pleasantries.
 
 GROUNDING REQUIREMENT: cot_net_position, retail_positioning, and key_evidence MUST contain exact numerical data from raw input (e.g. net contracts, retail long %, inventory barrel draws/builds, or funding bps).""",
     "macro": """ROLE: MACRO_ANALYST
@@ -239,9 +239,9 @@ OUTPUT JSON:
 - quote_currency_bias: "Quote currency: bias - reason citing central bank/macro stance"
 - dxy_alignment: "confirming/contradicting/neutral"
 - macro_uncertainty_level: "HIGH/MEDIUM/LOW"
-- key_evidence: [string]
+- key_evidence: 4 to 6 high-conviction quantitative bullet points (central bank rates, yield spreads, FedWatch %).
 - invalidation_condition: "Invalid if [event]"
-- analysis: max 3 sentences.
+- analysis: Detailed, structured, and dense analysis (target 500 to 600 words). Anchor every finding with concrete macro data (rates, spreads, FedWatch repricing). Zero conversational pleasantries.
 
 MACRO UNCERTAINTY ANCHORS:
 - HIGH: brief >4h old OR Stage 1 currency_confidence <0.5 on the relevant currency.

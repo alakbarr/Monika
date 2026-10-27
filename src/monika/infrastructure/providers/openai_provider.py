@@ -1053,7 +1053,7 @@ class OpenAIProvider(BaseLLMClient):
                 # as upstream inference engines often reject/strip it. Prompt-enforced JSON is 100% reliable.
                 if self.thinking_level == "none" and not is_array_schema:
                     kwargs["response_format"] = {"type": "json_object"}
-                json_hint = f"\n\nYou MUST return valid JSON conforming to this schema:\n{json.dumps(response_schema)}"
+                json_hint = f"\n\nYou MUST return valid JSON conforming to this schema without commentary, preamble, or markdown wrapper:\n{json.dumps(response_schema)}"
                 user_msg = kwargs["messages"][-1]["content"]
                 if isinstance(user_msg, str):
                     kwargs["messages"][-1]["content"] += json_hint
@@ -1263,8 +1263,8 @@ class OpenAIProvider(BaseLLMClient):
         )
         for attempt in range(2):
             try:
-                # If attempt > 0 (retry after parse failure or truncated output), expand token budget to 32768
-                override_tokens = 32768 if attempt > 0 else max_tokens
+                # If attempt > 0 (retry after parse failure or truncated output), expand token budget moderately
+                override_tokens = min(int(max_tokens or 4096) * 2, 8192) if attempt > 0 else max_tokens
                 result_text = await self.generate_content(
                     sys_prompt, prompt, response_schema=schema, temperature=temperature, max_tokens=override_tokens
                 )
@@ -1276,7 +1276,10 @@ class OpenAIProvider(BaseLLMClient):
                     return None
                 from monika.infrastructure.providers.base_provider import extract_and_parse_json
 
-                parsed = extract_and_parse_json(result_text)
+                if len(result_text) > 20000:
+                    parsed = await asyncio.to_thread(extract_and_parse_json, result_text)
+                else:
+                    parsed = extract_and_parse_json(result_text)
                 if parsed is not None:
                     return parsed
                 logger.warning(f"[{self.model}] classify_json: parse failed on text: {result_text[:250]}")

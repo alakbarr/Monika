@@ -294,7 +294,9 @@ class SpecialistPipelineMixin:
                 anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
                 anchored_sys = f"{anchor}\n\n---\n\n{role_desc}{telegraphic_specialist_directive}"
                 raw_tok = getattr(client, "max_tokens", None)
-                call_max_tokens = max(int(raw_tok), 8192) if isinstance(raw_tok, (int, float)) else 8192
+                # Specialist JSON schema output typically requires <= 4096 tokens (target 500-600 words);
+                # cap ceiling to 8192 to allow ample room while preventing 32k runaway degradation.
+                call_max_tokens = min(int(raw_tok), 8192) if isinstance(raw_tok, (int, float)) and raw_tok > 0 else 8192
                 result_str = await client.generate_content(
                     system_prompt=anchored_sys,
                     user_message=target_header + data_view,
@@ -302,7 +304,10 @@ class SpecialistPipelineMixin:
                     max_tokens=call_max_tokens,
                 )
                 try:
-                    result = extract_and_parse_json(result_str) if isinstance(result_str, str) else result_str
+                    if isinstance(result_str, str) and len(result_str) > 20000:
+                        result = await asyncio.to_thread(extract_and_parse_json, result_str)
+                    else:
+                        result = extract_and_parse_json(result_str) if isinstance(result_str, str) else result_str
                     if not result and isinstance(result_str, str):
                         try:
                             result = json.loads(result_str)
@@ -478,8 +483,8 @@ class SpecialistPipelineMixin:
                     "conf": rep.get("confidence", "LOW"),
                     "zone": rep.get("recommended_entry_zone") or rep.get("nearest_entry_zone"),
                     "sl": rep.get("structural_sl"),
-                    "signals": (rep.get("key_signals") or rep.get("signals") or rep.get("key_evidence") or [])[:3],
-                    "summary": smart_distill_text(raw_summary, max_chars=240),
+                    "signals": (rep.get("key_signals") or rep.get("signals") or rep.get("key_evidence") or [])[:5],
+                    "summary": smart_distill_text(raw_summary, max_chars=1200),
                 }
                 # Drop None / empty entries to minimize tokens
                 compact = {k: v for k, v in distilled.items() if v}
