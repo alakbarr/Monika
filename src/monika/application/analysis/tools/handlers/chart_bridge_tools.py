@@ -76,17 +76,51 @@ async def handle_capture_mt5_chart_screenshot(args: dict, **ctx) -> dict:
 
         if not res.get("success"):
             executor = ctx.get("executor")
+            fallback_res = None
             if executor and hasattr(executor, "execute"):
                 try:
                     fallback_res = await executor.execute(
                         "plot_price_chart", {"symbol": symbol, "timeframe": timeframe}
                     )
-                    if isinstance(fallback_res, dict) and (
-                        fallback_res.get("status") == "success" or "chart" in fallback_res
-                    ):
-                        return fallback_res
                 except Exception as fb_err:
                     logger.debug(f"Fallback plot_price_chart error: {fb_err}")
+
+            if not fallback_res or (isinstance(fallback_res, dict) and fallback_res.get("status") != "success"):
+                try:
+                    from monika.application.analysis.tools.handlers.market_data_handlers.charts import (
+                        handle_plot_price_chart,
+                    )
+
+                    fallback_res = await handle_plot_price_chart({"symbol": symbol, "timeframe": timeframe}, **ctx)
+                except Exception as direct_err:
+                    logger.debug(f"Direct plot_price_chart error: {direct_err}")
+
+            if isinstance(fallback_res, dict) and (
+                fallback_res.get("status") == "success" or "file_path" in fallback_res
+            ):
+                filepath = str(fallback_res.get("file_path") or "")
+                if filepath and os.path.exists(filepath):
+                    from monika.application.analysis.tools.domain.multimodal_tools import (
+                        ChartVisionInput,
+                        handle_chart_vision_analyze,
+                    )
+
+                    vision_input = ChartVisionInput(
+                        image_path_or_base64=filepath,
+                        symbol=symbol,
+                        timeframe=timeframe,
+                        focus_areas=["trend", "support_resistance", "indicators", "candlestick_patterns"],
+                    )
+                    vision_res = await handle_chart_vision_analyze(vision_input, context=ctx)
+                    return {
+                        "status": "success",
+                        "symbol": symbol,
+                        "timeframe": timeframe,
+                        "screenshot_path": filepath,
+                        "vision_payload": vision_res,
+                        "message": "SMC Candlestick chart rendered and processed for multimodal vision analysis.",
+                    }
+                return fallback_res
             return res
 
         filepath = str(res.get("filepath") or "")

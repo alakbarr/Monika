@@ -191,20 +191,51 @@ async def handle_plot_price_chart(args: dict, **ctx) -> dict:
         .all()
     )
 
-    if not rows or len(rows) < 5:
-        return {"error": f"Insufficient price history for {symbol} ({timeframe})"}
+    ohlcv_data = []
+    if rows and len(rows) >= 5:
+        ohlcv_data = [
+            {
+                "timestamp": r.timestamp,
+                "open": r.open,
+                "high": r.high,
+                "low": r.low,
+                "close": r.close,
+                "volume": r.volume or 0,
+            }
+            for r in reversed(rows)
+        ]
+    else:
+        try:
+            from monika.application.services.market_data_service import MarketDataService
 
-    ohlcv_data = [
-        {
-            "timestamp": r.timestamp,
-            "open": r.open,
-            "high": r.high,
-            "low": r.low,
-            "close": r.close,
-            "volume": r.volume or 0,
-        }
-        for r in reversed(rows)
-    ]
+            bars = await MarketDataService.ensure_bars(
+                symbol=symbol, timeframe=timeframe, count=candles_count, session=session
+            )
+            if bars and len(bars) >= 5:
+                import dateutil.parser as dparser
+
+                for b in bars:
+                    ts = b.get("time")
+                    if isinstance(ts, str):
+                        try:
+                            ts = dparser.parse(ts)
+                        except Exception:
+                            ts = clock.now()
+                    ohlcv_data.append(
+                        {
+                            "timestamp": ts,
+                            "open": float(b.get("open", 0.0)),
+                            "high": float(b.get("high", 0.0)),
+                            "low": float(b.get("low", 0.0)),
+                            "close": float(b.get("close", 0.0)),
+                            "volume": float(b.get("volume", 0.0)),
+                        }
+                    )
+        except Exception as bar_err:
+            logger.debug(f"[handle_plot_price_chart] ensure_bars fallback error: {bar_err}")
+
+    if not ohlcv_data or len(ohlcv_data) < 5:
+        return {"error": f"Insufficient price history for {symbol} ({timeframe})"}
 
     fvg_list = []
     swing_points = []
