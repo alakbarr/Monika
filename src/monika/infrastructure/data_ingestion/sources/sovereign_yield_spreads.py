@@ -50,10 +50,6 @@ class SovereignYieldSpreads:
 
     YIELD_TICKERS = {
         "US_10Y": "^TNX",
-        "GERMANY_10Y": "DE10YT=RR",
-        "JAPAN_10Y": "JP10YT=RR",
-        "UK_10Y": "GB10YT=RR",
-        "AUSTRALIA_10Y": "AU10YT=RR",
     }
 
     @classmethod
@@ -151,6 +147,32 @@ class SovereignYieldSpreads:
                     prev = float(res[1]) if len(res) > 1 else curr
                     return curr, prev
 
+                # On-demand populate if DB is empty for foreign bond yields
+                if not res and country_tenor != "US_10Y":
+                    try:
+                        from monika.infrastructure.data_ingestion.sources.bond_yields_fetcher import BondYieldFetcher
+
+                        fetcher = BondYieldFetcher(s)
+                        await fetcher.fetch()
+                        refetched = (
+                            (
+                                await s.execute(
+                                    select(BondYieldData.yield_percent)
+                                    .where(BondYieldData.country_tenor.in_(db_candidates))
+                                    .order_by(BondYieldData.date.desc())
+                                    .limit(2)
+                                )
+                            )
+                            .scalars()
+                            .all()
+                        )
+                        if refetched and len(refetched) >= 1:
+                            curr = float(refetched[0])
+                            prev = float(refetched[1]) if len(refetched) > 1 else curr
+                            return curr, prev
+                    except Exception as fe:
+                        logger.debug(f"On-demand bond yield fetch fallback failed for {country_tenor}: {fe}")
+
                 if country_tenor == "US_10Y":
                     ty_res = (
                         (
@@ -184,6 +206,19 @@ class SovereignYieldSpreads:
         Synchronous fallback calculating macro yield spreads.
         Fails closed if US 10Y data cannot be fetched.
         """
+        try:
+            import asyncio
+
+            loop = None
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                pass
+            if loop is None:
+                return asyncio.run(cls.get_spreads())
+        except Exception:
+            pass
+
         us_ticker = cls.YIELD_TICKERS.get("US_10Y")
         us_data = cls._fetch_yahoo_chart_sync(us_ticker) if us_ticker else None
         if not us_data:
