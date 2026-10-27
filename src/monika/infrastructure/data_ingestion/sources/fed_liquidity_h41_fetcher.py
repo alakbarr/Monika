@@ -34,8 +34,9 @@ FRED_SERIES_RRP = "RRPONTSYD"  # Overnight Reverse Repurchase Agreements (in Bil
 class FedLiquidityH41Fetcher:
     """Fetcher for Federal Reserve balance sheet metrics and Net Systemic Liquidity."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, api_key: Optional[str] = None):
         self.session = session
+        self.api_key = api_key
 
     async def fetch_and_store_liquidity(
         self,
@@ -50,7 +51,7 @@ class FedLiquidityH41Fetcher:
         Fetches live from official FRED API when overrides are not specified.
         """
         dt_record = record_date or clock.now()
-        api_key = os.getenv("FRED_API_KEY", "")
+        api_key = self.api_key or os.getenv("FRED_API_KEY", "")
 
         walcl = walcl_override_b
         tga = tga_override_b

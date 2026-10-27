@@ -42,8 +42,9 @@ TENOR_TERM_MAP = {
 class MarketStressAuctionFetcher:
     """Fetcher for debt auctions, credit risk spreads, and money market funding stress."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, api_key: Optional[str] = None):
         self.session = session
+        self.api_key = api_key
 
     async def fetch_and_store_treasury_auction(
         self,
@@ -197,7 +198,7 @@ class MarketStressAuctionFetcher:
         Fetches live from FRED API if available. Fails closed if data is unavailable.
         """
         dt_record = record_date or clock.now()
-        api_key = os.getenv("FRED_API_KEY", "")
+        api_key = self.api_key or os.getenv("FRED_API_KEY", "")
 
         hy_oas = hy_oas_override
         sofr = sofr_override

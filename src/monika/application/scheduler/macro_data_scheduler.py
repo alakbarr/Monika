@@ -281,21 +281,27 @@ class MacroDataScheduler:
                     MarketStressAuctionFetcher,
                 )
 
+                fred_key = self.settings.get("data_sources", {}).get("fred", {}).get("api_key")
                 async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
                     async with get_session() as session:
-                        fed_fetcher = FedLiquidityH41Fetcher(session)
-                        stress_fetcher = MarketStressAuctionFetcher(session)
+                        fed_fetcher = FedLiquidityH41Fetcher(session, api_key=fred_key)
+                        stress_fetcher = MarketStressAuctionFetcher(session, api_key=fred_key)
                         fed_res = await fed_fetcher.fetch_and_store_liquidity()
                         auc_res = await stress_fetcher.fetch_and_store_treasury_auction(tenor="10Y")
                         stress_res = await stress_fetcher.fetch_and_store_credit_and_money_market()
-                        results["systemic_liquidity_and_stress"] = {
-                            "net_liquidity_b": fed_res.get("net_liquidity_billions"),
-                            "auction_yield": auc_res.get("value"),
-                            "stress_metrics": len(stress_res),
-                        }
-                        logger.info(
-                            f"MacroDataScheduler: Fed Net Liquidity (${fed_res.get('net_liquidity_billions'):,.1f}B) and Treasury Auction refreshed"
-                        )
+
+                    net_liq = fed_res.get("net_liquidity_billions")
+                    auc_yield = auc_res.get("value")
+                    results["systemic_liquidity_and_stress"] = {
+                        "net_liquidity_b": net_liq,
+                        "auction_yield": auc_yield,
+                        "stress_metrics": len(stress_res),
+                    }
+                    net_liq_str = f"${net_liq:,.1f}B" if net_liq is not None else "unavailable"
+                    auc_str = f"{auc_yield:.3f}%" if auc_yield is not None else "unavailable"
+                    logger.info(
+                        f"MacroDataScheduler: Fed Net Liquidity ({net_liq_str}) and Treasury Auction ({auc_str}) refreshed"
+                    )
             except Exception as e:
                 err_msg = self._fmt_err(e)
                 logger.warning(f"MacroDataScheduler: Systemic liquidity refresh failed: {err_msg}")

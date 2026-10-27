@@ -57,20 +57,24 @@ class TelegramAdminCommandsMixin(_TelegramBotMixinBase):
                 return
             orig = res.get("original", {})
             cf = res.get("counterfactual", {})
-            pnl_icon = "[AKTIF]" if cf.get("pnl_diff", 0) >= 0 else "[KRITIS]"
+            cf_pnl_diff = cf.get("pnl_diff")
+            pnl_icon = "[AKTIF]" if (cf_pnl_diff is not None and cf_pnl_diff >= 0) else "[KRITIS]"
+            orig_pnl = f"${orig['pnl']:.2f}" if orig.get("pnl") is not None else "N/A"
+            est_pnl = f"${cf['estimated_pnl']:.2f}" if cf.get("estimated_pnl") is not None else "N/A"
+            pnl_diff = f"{pnl_icon} `${cf_pnl_diff:+.2f}`" if cf_pnl_diff is not None else "N/A"
             msg = (
                 f"[RISET] *Counterfactual Replay: Trade #{trade_id} ({res.get('symbol')} {res.get('direction')})*\n"
                 f"Entry: `{res.get('entry_price')}`\n\n"
                 f"[LAPORAN] *Hasil Asli:*\n"
                 f"• SL: `{orig.get('stop_loss')}` | TP: `{orig.get('take_profit')}`\n"
                 f"• Exit Reason: `{orig.get('exit_reason')}`\n"
-                f"• Realized PnL: `${orig.get('pnl'):.2f}`\n\n"
+                f"• Realized PnL: `{orig_pnl}`\n\n"
                 f"[UJI COBA] *Skenario Counterfactual (SL +{sl_delta} pips):*\n"
                 f"• New SL: `{cf.get('new_stop_loss')}`\n"
                 f"• Survived SL: `{'YA' if cf.get('survived_sl') else 'TIDAK'}`\n"
                 f"• Outcome: `{cf.get('outcome')}`\n"
-                f"• Est. PnL: `${cf.get('estimated_pnl'):.2f}`\n"
-                f"• PnL Delta: {pnl_icon} `${cf.get('pnl_diff'):+.2f}`\n\n"
+                f"• Est. PnL: `{est_pnl}`\n"
+                f"• PnL Delta: {pnl_diff}\n\n"
                 f"[CATATAN] *Catatan:* {res.get('notes')}"
             )
             await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)

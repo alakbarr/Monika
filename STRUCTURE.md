@@ -2662,6 +2662,7 @@ Monika/
 │   │   ├── test_news_watcher_turn_lease.py
 │   │   ├── test_playbook_curator.py
 │   │   ├── test_position_exit_reviewer.py
+│   │   ├── test_position_guardian_kill_switch_latch.py
 │   │   ├── test_post_release_analyzer.py
 │   │   ├── test_report_and_safehaven.py
 │   │   ├── test_scraper_runner.py
@@ -3127,4 +3128,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2830
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2831
