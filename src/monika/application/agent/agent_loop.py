@@ -328,12 +328,21 @@ class SystemAgentLoop:
         divergence: float,
     ) -> str:
         """Menyusun representasi teks bersih dan terstruktur untuk chat."""
+        confluence_display = f"{confluence}" if confluence is not None else "N/A (Belum Terbentuk)"
+        decision_clean = decision.upper().strip()
+        if decision_clean == "SKIP":
+            decision_display = "WAIT (Setup Belum Memenuhi Kriteria)"
+        elif decision_clean == "WAIT":
+            decision_display = "WAIT (Stand Aside / Observasi)"
+        else:
+            decision_display = decision_clean
+
         lines = [
             f"[TARGET] *HASIL ANALISIS AD-HOC: {symbol}*",
             f"━━━━━━━━━━━━━━━━━━━━",
-            f"• *Keputusan*: `{decision}`",
+            f"• *Keputusan*: `{decision_display}`",
             f"• *Tingkat Keyakinan*: `{confidence * 100:.0f}%`",
-            f"• *Skor Konfluensi*: `{confluence}`",
+            f"• *Skor Konfluensi*: `{confluence_display}`",
         ]
 
         if entry_price is not None:

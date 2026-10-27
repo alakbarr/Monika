@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -155,6 +156,111 @@ async def safe_subprocess_run(
             return await asyncio.to_thread(_sync_fallback)
 
 
+def get_platform_info() -> Dict[str, Any]:
+    """
+    Return normalized host platform and shell environment details for LLM prompting and tools.
+    """
+    os_name = "Windows" if IS_WINDOWS else ("Linux" if IS_LINUX else "macOS" if IS_DARWIN else "Unix")
+    shell_name = "PowerShell 5.1" if IS_WINDOWS else "Bash (/bin/bash)"
+    return {
+        "os_name": os_name,
+        "shell_name": shell_name,
+        "is_windows": IS_WINDOWS,
+        "is_linux": IS_LINUX,
+        "is_darwin": IS_DARWIN,
+        "is_wine": IS_WINE,
+        "preferred_read_tool": "read_file",
+    }
+
+
+def normalize_shell_command_for_platform(command: str) -> str:
+    """
+    Normalizes shell command strings across host operating systems.
+
+    On Windows, translates common Unix file-viewing idioms (e.g. `cat <path> | head -c <N>`,
+    `head -n <N>`, pipelines with `grep`) into robust, native PowerShell cmdlets to prevent
+    'command not found' errors when LLMs inadvertently emit POSIX commands.
+    """
+    if not IS_WINDOWS or not command:
+        return command
+
+    cmd = command.strip()
+
+    # Pattern 1: cat/type/Get-Content "<path>" | head -c <num>
+    m_cat_head_c = re.match(
+        r'^(?:cat|type|Get-Content)\s+([^\s|]+|".+?"|\'.+?\')\s*\|\s*head\s+-c\s+(\d+)$',
+        cmd,
+        re.IGNORECASE,
+    )
+    if m_cat_head_c:
+        path = m_cat_head_c.group(1)
+        count = int(m_cat_head_c.group(2))
+        return f"$raw = (Get-Content -Path {path} -Raw); if ($raw.Length -gt {count}) {{ $raw.Substring(0, {count}) }} else {{ $raw }}"
+
+    # Pattern 2: cat/type/Get-Content "<path>" | head [-n <num>]
+    m_cat_head_n = re.match(
+        r'^(?:cat|type|Get-Content)\s+([^\s|]+|".+?"|\'.+?\')\s*\|\s*head(?:\s+(?:-n\s+)?(\d+))?$',
+        cmd,
+        re.IGNORECASE,
+    )
+    if m_cat_head_n:
+        path = m_cat_head_n.group(1)
+        lines = int(m_cat_head_n.group(2)) if m_cat_head_n.group(2) else 10
+        return f"Get-Content -Path {path} | Select-Object -First {lines}"
+
+    # Pattern 3: direct `head [-n <num>] "<path>"`
+    m_head_direct = re.match(
+        r'^head(?:\s+(?:-n\s+)?(\d+))?\s+([^\s|]+|".+?"|\'.+?\')$',
+        cmd,
+        re.IGNORECASE,
+    )
+    if m_head_direct:
+        lines = int(m_head_direct.group(1)) if m_head_direct.group(1) else 10
+        path = m_head_direct.group(2)
+        return f"Get-Content -Path {path} | Select-Object -First {lines}"
+
+    # Pattern 4: direct `tail [-n <num>] "<path>"`
+    m_tail_direct = re.match(
+        r'^tail(?:\s+(?:-n\s+)?(\d+))?\s+([^\s|]+|".+?"|\'.+?\')$',
+        cmd,
+        re.IGNORECASE,
+    )
+    if m_tail_direct:
+        lines = int(m_tail_direct.group(1)) if m_tail_direct.group(1) else 10
+        path = m_tail_direct.group(2)
+        return f"Get-Content -Path {path} | Select-Object -Last {lines}"
+
+    # Pattern 5: pipeline `<prefix> | head -c <num>`
+    m_pipe_head_c = re.match(r"^(.+?)\s*\|\s*head\s+-c\s+(\d+)$", cmd, re.IGNORECASE)
+    if m_pipe_head_c:
+        prefix = m_pipe_head_c.group(1)
+        count = int(m_pipe_head_c.group(2))
+        return f"$txt = (({prefix}) | Out-String); if ($txt.Length -gt {count}) {{ $txt.Substring(0, {count}) }} else {{ $txt }}"
+
+    # Pattern 6: pipeline `<prefix> | head [-n <num>]`
+    m_pipe_head_n = re.match(r"^(.+?)\s*\|\s*head(?:\s+(?:-n\s+)?(\d+))?$", cmd, re.IGNORECASE)
+    if m_pipe_head_n:
+        prefix = m_pipe_head_n.group(1)
+        lines = int(m_pipe_head_n.group(2)) if m_pipe_head_n.group(2) else 10
+        return f"({prefix}) | Select-Object -First {lines}"
+
+    # Pattern 7: pipeline `<prefix> | tail [-n <num>]`
+    m_pipe_tail_n = re.match(r"^(.+?)\s*\|\s*tail(?:\s+(?:-n\s+)?(\d+))?$", cmd, re.IGNORECASE)
+    if m_pipe_tail_n:
+        prefix = m_pipe_tail_n.group(1)
+        lines = int(m_pipe_tail_n.group(2)) if m_pipe_tail_n.group(2) else 10
+        return f"({prefix}) | Select-Object -Last {lines}"
+
+    # Pattern 8: pipeline `<prefix> | grep "pattern"`
+    m_pipe_grep = re.match(r'^(.+?)\s*\|\s*grep(?:\s+-[a-zA-Z]+)?\s+([^\s|]+|".+?"|\'.+?\')$', cmd, re.IGNORECASE)
+    if m_pipe_grep:
+        prefix = m_pipe_grep.group(1)
+        pattern = m_pipe_grep.group(2)
+        return f"({prefix}) | Select-String -Pattern {pattern}"
+
+    return cmd
+
+
 __all__ = [
     "IS_WINDOWS",
     "IS_LINUX",
@@ -165,4 +271,6 @@ __all__ = [
     "run_async",
     "normalize_path",
     "safe_subprocess_run",
+    "get_platform_info",
+    "normalize_shell_command_for_platform",
 ]

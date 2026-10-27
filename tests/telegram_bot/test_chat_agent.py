@@ -267,3 +267,31 @@ async def test_chat_agent_adhoc_pipeline_routing(mock_get_session):
         assert pending is None
         assert "HASIL ANALISIS AD-HOC: XAUUSD" in reply
         assert "SystemAgentLoop" in reply
+
+
+@pytest.mark.asyncio
+@patch("monika.interfaces.telegram.chat_agent.get_session")
+async def test_chat_agent_conversational_inquiry_does_not_hijack_adhoc(mock_get_session):
+    mock_session = create_mock_async_session()
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__.return_value = mock_session
+    mock_get_session.return_value = mock_ctx
+
+    agent = ChatAgent(settings={}, user_id=123)
+    agent._save_message = AsyncMock()
+    agent._load_history = AsyncMock(return_value=[])
+    agent._build_system_prompt = AsyncMock(return_value="You are Monika.")
+    agent._classify_query_complexity = AsyncMock(return_value="medium")
+    agent._run_tier_medium = AsyncMock(
+        return_value={"reply": "Tentu! Analisis XAUUSD hari ini menunjukkan konsolidasi..."}
+    )
+
+    with patch(
+        "monika.application.agent.agent_loop.SystemAgentLoop.execute_ad_hoc_analysis", new_callable=AsyncMock
+    ) as mock_adhoc:
+        reply, pending = await agent.handle("Bagaimana analisis untuk XAUUSD hari ini?")
+
+        mock_adhoc.assert_not_called()
+        assert pending is None
+        assert "Tentu! Analisis XAUUSD" in reply
+        agent._run_tier_medium.assert_called_once()

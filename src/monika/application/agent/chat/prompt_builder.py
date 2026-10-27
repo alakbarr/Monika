@@ -270,8 +270,10 @@ class PromptBuilderMixin(_ChatAgentMixinBase):
 
     async def _build_system_prompt(self, session: AsyncSession) -> str | tuple[str, str]:
         """Construct complete system prompt with immutable static prefix for optimal KV-cache hits."""
+        from monika.core.platform import get_platform_info
         from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
+        platform_info = get_platform_info()
         anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
         lines = [
             anchor,
@@ -288,6 +290,13 @@ class PromptBuilderMixin(_ChatAgentMixinBase):
             "## Tool Usage Policy",
             "Perform all tool interactions, calculations, and internal analytical reasoning in English.",
             "Always ground analytical answers in fresh data from tools rather than assumptions.",
+            "",
+            "## Host Environment & Shell Execution Policy",
+            f"- Active Host Operating System: {platform_info['os_name']}",
+            f"- Active Terminal Shell: {platform_info['shell_name']}",
+            "- When executing terminal commands or scripts, ALWAYS format commands strictly compatible with the active shell.",
+            '- On Windows: NEVER use Linux-specific shell pipeline idioms (e.g. `cat file | head` or `grep`). Use PowerShell cmdlets (`Get-Content`, `Select-Object`) or python one-liners (`python -c "..."`) which are 100% portable.',
+            "- For inspecting or reading files, ALWAYS use dedicated tools (`read_file`, `mcp_filesystem_workspace_fs_read_file`, or `retrieve_spilled_context`) rather than spawning a terminal command.",
             "",
             "## STRICT COMMUNICATION & FORMATTING RULES (MANDATORY)",
             "- FLEXIBLE BILINGUAL MATCHING: ALWAYS mirror the user's language dynamically. If the user communicates in Bahasa Indonesia, respond in articulate, natural, polite, and professional Bahasa Indonesia. If the user communicates in English, respond in articulate, natural, clear, and professional English.",

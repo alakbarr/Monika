@@ -229,6 +229,8 @@
   - `run_async(coroutine: Any) -> Any`: Execute coroutine using asyncio.run() with SelectorEventLoop on Windows.
   - `normalize_path(path_input: Union[str, Path]) -> Path`: Normalize cross-platform file paths, resolving symlinks and unifying directory separators.
   - `async safe_subprocess_run(cmd: List[str], cwd: Optional[Union[str, Path]], env: Optional[Dict[str, str]], ...) -> Tuple[int, str, str]`: Run subprocess safely across platforms without triggering NotImplementedError.
+  - `get_platform_info() -> Dict[str, Any]`: Return normalized host platform and shell environment details for LLM prompting and tools.
+  - `normalize_shell_command_for_platform(command: str) -> str`: Normalizes shell command strings across host operating systems.
 
 ### Folder: `src/monika/core/analytics` <a id="folder-srcmonikacoreanalytics"></a>
 
@@ -5202,6 +5204,7 @@
     - `was_last_turn_streamed(value: bool) -> None`
     - `set_tool_event_listener(listener: Optional[Any])` - *Register a callback for tool events ('start' and 'result').*
 - **Top-Level Functions**:
+  - `is_safe_read_only_terminal(cmd: str) -> bool`: Classify shell commands as safe read-only queries versus mutating or dangerous actions.
   - `is_mutating_mcp_tool(tool_name: str) -> bool`: Classify MCP tools for approval; unknown tools fail closed (require approval).
 
 #### `tiers.py` - *Execution tier runners (lite, medium, deep, research) and model provider adapters.*

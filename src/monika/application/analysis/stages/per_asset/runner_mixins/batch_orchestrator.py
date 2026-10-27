@@ -48,6 +48,7 @@ class BatchOrchestratorMixin(_RunnerMixinBase):
         is_secondary: bool = False,
         use_session_trigger_client: bool = False,
         skip_cooldown: bool = False,
+        bypass_prescreen: bool = False,
         user_market_intel: Optional[list] = None,
     ) -> dict[str, dict]:
         """Menjalankan siklus analisis untuk daftar simbol (bisa berurutan atau paralel)."""
@@ -123,6 +124,7 @@ class BatchOrchestratorMixin(_RunnerMixinBase):
                             combined_context or None,
                             skip_cooldown=skip_cooldown,
                             is_secondary=is_secondary,
+                            bypass_prescreen=bypass_prescreen,
                             use_session_trigger_client=use_session_trigger_client,
                             stage1_confidence=stage1_confidence,
                         )
@@ -160,6 +162,7 @@ class BatchOrchestratorMixin(_RunnerMixinBase):
                             combined_context or None,
                             skip_cooldown=skip_cooldown,
                             is_secondary=is_secondary,
+                            bypass_prescreen=bypass_prescreen,
                             use_session_trigger_client=use_session_trigger_client,
                             stage1_confidence=stage1_confidence,
                         )

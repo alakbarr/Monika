@@ -264,6 +264,26 @@ class TestPerAssetStage:
         assert mock_sleep.call_count == 2
 
     @pytest.mark.asyncio
+    @patch("monika.application.analysis.stages.per_asset_stage.asyncio.sleep", new_callable=AsyncMock)
+    async def test_run_all_forwards_bypass_prescreen(self, mock_sleep):
+        stage = PerAssetStage(get_test_settings())
+        stage.run_parallel = False
+
+        mock_session = create_mock_async_session()
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_session
+        mock_session_factory = MagicMock(return_value=mock_ctx)
+
+        stage.run_one = AsyncMock(return_value={"success": True, "symbol": "XAUUSD"})
+
+        res = await stage.run_all(mock_session_factory, ["XAUUSD"], bypass_prescreen=True)
+
+        assert len(res) == 1
+        stage.run_one.assert_called_once()
+        _, kwargs = stage.run_one.call_args
+        assert kwargs.get("bypass_prescreen") is True
+
+    @pytest.mark.asyncio
     async def test_log(self):
         stage = PerAssetStage(get_test_settings())
         mock_session = create_mock_async_session()

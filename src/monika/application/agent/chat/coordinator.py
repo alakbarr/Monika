@@ -367,11 +367,24 @@ class ChatAgent(
                 return reply_text, pending
 
             # HIGH-1 & P5.1 (Q36): Check for ad-hoc / debate re-evaluation LangGraph pipeline trigger
-            adhoc_match = re.search(
-                r"\b(?:analisis|analisa|analyze|bedah|setup|debat\s*ulang|ulangi\s*debat|re-?debate|evaluasi\s*ulang\s*debat|bandingkan|komparasi|bull\s*vs\s*bear)\s+([A-Za-z0-9,/_\s]{3,100})\b",
-                clean_message,
-                re.IGNORECASE,
+            # Disambiguation: Conversational inquiries ("Bagaimana analisis XAUUSD hari ini?", "Gimana gold?")
+            # must route to the conversational ChatAgent with 6-pillar SOP, NOT the automated pipeline.
+            is_inquiry = bool(
+                re.search(
+                    r"\b(bagaimana|gimana|apa|apakah|menurutmu|ceritakan|pandanganmu|kenapa|tolong\s+jelaskan|adakah|review)\b",
+                    clean_message,
+                    re.IGNORECASE,
+                )
+                or clean_message.strip().endswith("?")
             )
+
+            adhoc_match = None
+            if not is_inquiry:
+                adhoc_match = re.search(
+                    r"\b(?:jalankan\s+pipeline|run\s+pipeline|eksekusi\s+pipeline|trigger\s+pipeline|analisis\s+ad-?hoc|analisa\s+ad-?hoc|tolong\s+analis[a|is]|analisis|analisa|analyze|bedah|setup|debat\s*ulang|ulangi\s*debat|re-?debate|evaluasi\s*ulang\s*debat|bandingkan|komparasi|bull\s*vs\s*bear)\s+([A-Za-z0-9,/_\s]{3,100})\b",
+                    clean_message,
+                    re.IGNORECASE,
+                )
             if adhoc_match:
                 candidate_str = adhoc_match.group(1).strip()
                 import re as _re

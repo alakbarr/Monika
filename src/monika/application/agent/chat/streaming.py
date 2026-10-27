@@ -101,6 +101,149 @@ _MCP_READ_ONLY_TOKENS = frozenset(
 
 _FILE_WRITE_TOOLS = frozenset({"write_file", "patch"})
 
+_SAFE_PIPE_FILTERS = frozenset(
+    {
+        "head",
+        "tail",
+        "grep",
+        "findstr",
+        "select-object",
+        "select-string",
+        "more",
+        "less",
+        "sort",
+        "wc",
+        "measure-object",
+        "out-string",
+        "find",
+    }
+)
+
+_DANGEROUS_PIPE_TARGETS = frozenset(
+    {
+        "bash",
+        "sh",
+        "zsh",
+        "powershell",
+        "pwsh",
+        "cmd",
+        "iex",
+        "invoke-expression",
+        "sudo",
+        "rm",
+        "del",
+        "python",
+        "python3",
+        "py",
+        "node",
+        "ruby",
+        "perl",
+        "curl",
+        "wget",
+        "tee",
+        "set-content",
+        "add-content",
+        "out-file",
+        "remove-item",
+    }
+)
+
+_MULTI_WORD_READ_ONLY_STARTERS = (
+    "git status",
+    "git log",
+    "git diff",
+    "git branch",
+    "git show",
+)
+
+_SINGLE_WORD_READ_ONLY_STARTERS = frozenset(
+    {
+        "uptime",
+        "tasklist",
+        "dir",
+        "ls",
+        "ps",
+        "whoami",
+        "date",
+        "hostname",
+        "cat",
+        "type",
+        "head",
+        "tail",
+        "get-content",
+        "findstr",
+        "grep",
+        "wc",
+    }
+)
+
+
+def is_safe_read_only_terminal(cmd: str) -> bool:
+    """Classify shell commands as safe read-only queries versus mutating or dangerous actions."""
+    if not isinstance(cmd, str):
+        return False
+    cmd_clean = cmd.strip()
+    if not cmd_clean:
+        return False
+    cmd_lower = cmd_clean.lower()
+
+    # Secret or credential files must never be inspected via automated read-only terminal
+    has_secret_ref = any(
+        s in cmd_lower
+        for s in (
+            ".env",
+            "secret",
+            "credentials",
+            "id_rsa",
+            "id_ed25519",
+            ".key",
+            ".pem",
+            "shadow",
+            "passwd",
+            ".ssh",
+        )
+    )
+    if has_secret_ref:
+        return False
+
+    # Chaining operators, redirects, backticks, multiline injection, and command substitutions are prohibited
+    has_forbidden = any(ch in cmd_clean for ch in (";", "&", ">", "<", "`", "\n", "\r")) or "$(" in cmd_clean
+    if has_forbidden:
+        return False
+
+    def _is_read_only_head(segment: str) -> bool:
+        seg_lower = segment.strip().lower()
+        if not seg_lower:
+            return False
+        if any(seg_lower.startswith(s) for s in _MULTI_WORD_READ_ONLY_STARTERS):
+            return True
+        first_word = seg_lower.split()[0]
+        return first_word in _SINGLE_WORD_READ_ONLY_STARTERS
+
+    if "|" not in cmd_clean:
+        return _is_read_only_head(cmd_clean)
+
+    # Validate pipelines: every segment must be safe and not route to dangerous targets
+    segments = [s.strip() for s in cmd_clean.split("|")]
+    if not segments or not segments[0]:
+        return False
+    if not _is_read_only_head(segments[0]):
+        return False
+
+    for seg in segments[1:]:
+        seg_lower = seg.lower().strip()
+        if not seg_lower:
+            return False
+        tokens = seg_lower.split()
+        first_word = tokens[0]
+        if first_word not in _SAFE_PIPE_FILTERS:
+            return False
+        seg_tokens = set(re.findall(r"[a-zA-Z0-9_\-]+", seg_lower))
+        if seg_tokens.intersection(_DANGEROUS_PIPE_TARGETS):
+            return False
+
+    return True
+
 
 def is_mutating_mcp_tool(tool_name: str) -> bool:
     """Classify MCP tools for approval; unknown tools fail closed (require approval)."""
@@ -254,29 +397,7 @@ class StreamingMixin(_ChatAgentMixinBase):
             # Safety Fortress Gate: Intercept mutating terminal execution
             if tool_name == "terminal":
                 cmd = str((tool_input or {}).get("command", "")).strip()
-                cmd_lower = cmd.lower()
-                read_only_starters = (
-                    "git status",
-                    "git log",
-                    "git diff",
-                    "git branch",
-                    "uptime",
-                    "tasklist",
-                    "dir",
-                    "ls",
-                    "ps",
-                    "whoami",
-                    "date",
-                    "hostname",
-                )
-                has_secret_ref = any(
-                    s in cmd_lower for s in (".env", "secret", "credentials", "id_rsa", ".key", ".pem")
-                )
-                is_read_only = (
-                    any(cmd_lower.startswith(starter) for starter in read_only_starters) and not has_secret_ref
-                )
-                destructive_chars = (";", "&", "|", ">", "<", "`", "$", "\n", "\r")
-                if not (is_read_only and not any(ch in cmd for ch in destructive_chars)):
+                if not is_safe_read_only_terminal(cmd):
                     action_type = "execute_terminal_command"
                     pending = self._create_pending_action(
                         {

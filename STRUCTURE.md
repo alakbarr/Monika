@@ -2096,6 +2096,7 @@ Monika/
 │   ├── agent/
 │   │   ├── test_agent_loop.py
 │   │   ├── test_chat_memory_budget.py
+│   │   ├── test_chat_router_tiers.py
 │   │   ├── test_core_and_error_taxonomy.py
 │   │   ├── test_file_write_approval.py
 │   │   ├── test_harness_effort_recovery_and_antislop.py
@@ -3123,4 +3124,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2826
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2827

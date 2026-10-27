@@ -109,6 +109,7 @@ class _RunnerMixinBase:
         is_secondary: bool = False,
         use_session_trigger_client: bool = False,
         skip_cooldown: bool = False,
+        bypass_prescreen: bool = False,
         user_market_intel: Optional[list] = None,
     ) -> dict[str, dict]: ...
 

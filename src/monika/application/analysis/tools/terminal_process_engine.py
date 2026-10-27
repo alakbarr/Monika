@@ -207,6 +207,11 @@ class TerminalProcessEngine:
         # Sanitize sudo if applicable
         command = rewrite_sudo_command(command)
 
+        # Normalize shell command for host platform (e.g. Unix pipes on Windows PowerShell)
+        from monika.core.platform import normalize_shell_command_for_platform
+
+        command = normalize_shell_command_for_platform(command)
+
         # Validate command security
         from monika.core.security.terminal_guard import CommandSecurityViolationError, validate_command
 

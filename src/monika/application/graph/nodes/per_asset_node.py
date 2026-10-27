@@ -158,11 +158,18 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
     if per_asset_stage is not None:
         run_all_fn = getattr(per_asset_stage, "run_all", None)
         if callable(run_all_fn):
+            is_ad_hoc = bool(configurable.get("is_ad_hoc") or summary.get("is_ad_hoc"))
+            is_forced = bool(configurable.get("forced") or configurable.get("force"))
+            bypass_prescreen = is_ad_hoc or is_forced
+            skip_cooldown = is_ad_hoc or is_forced
+
             raw_res = run_all_fn(
                 session_factory=_gs,
                 symbols=symbols_to_analyze,
                 extra_context=f"Market Regime: {state.get('market_regime', 'normal')}",
                 per_symbol_contexts=per_symbol_contexts,
+                bypass_prescreen=bypass_prescreen,
+                skip_cooldown=skip_cooldown,
                 user_market_intel=state.get("user_market_intel"),
             )
             if inspect.isawaitable(raw_res):
