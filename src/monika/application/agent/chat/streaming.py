@@ -624,9 +624,9 @@ class StreamingMixin(_ChatAgentMixinBase):
             system_prompt = self._inject_macro_playbooks(system_prompt, user_query=clean_message)
 
             if preference in ("tier_deep", "claude_sonnet"):
-                generator = await self._run_tier_deep_stream(system_prompt, history, clean_message)
+                generator = self._run_tier_deep_stream(system_prompt, history, clean_message)
             else:
-                generator = await self._run_tier_lite_stream(system_prompt, history, clean_message)
+                generator = self._run_tier_lite_stream(system_prompt, history, clean_message)
 
             buffer = []
             try:

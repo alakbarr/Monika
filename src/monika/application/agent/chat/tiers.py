@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import Any, List, Optional
+from typing import Any, AsyncGenerator, List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from monika.application.analysis.tools.tools_definitions import (
@@ -245,7 +245,9 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
         )
         return response
 
-    async def _run_tier_lite_stream(self, system_prompt, history, message, tool_executor=None):
+    async def _run_tier_lite_stream(
+        self, system_prompt, history, message, tool_executor=None
+    ) -> AsyncGenerator[str, None]:
         """Run tier_lite; yields streaming tokens."""
         client = self._client_lite
         gen_stream = getattr(client, "generate_stream", None)
@@ -264,7 +266,9 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
             if reply:
                 yield reply
 
-    async def _run_tier_deep_stream(self, system_prompt, history, message, tool_executor=None):
+    async def _run_tier_deep_stream(
+        self, system_prompt, history, message, tool_executor=None
+    ) -> AsyncGenerator[str, None]:
         """Run tier_deep; yields streaming tokens."""
         client = self._client_deep
         gen_stream = getattr(client, "generate_stream", None)

@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional, Set, Tuple, Union
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -162,20 +162,20 @@ class _ChatAgentMixinBase:
             tool_executor: Any = None,
             image_bytes: Optional[bytes] = None,
         ) -> dict: ...
-        async def _run_tier_lite_stream(
+        def _run_tier_lite_stream(
             self,
             system_prompt: Any,
             history: Any,
             message: Any,
             tool_executor: Any = None,
-        ) -> Any: ...
-        async def _run_tier_deep_stream(
+        ) -> AsyncGenerator[str, None]: ...
+        def _run_tier_deep_stream(
             self,
             system_prompt: Any,
             history: Any,
             message: Any,
             tool_executor: Any = None,
-        ) -> Any: ...
+        ) -> AsyncGenerator[str, None]: ...
         async def _run_with_gemini(
             self,
             system_prompt: Any,

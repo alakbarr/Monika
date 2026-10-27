@@ -1438,6 +1438,26 @@ class SubmitFundamentalBriefSchema(BaseModel):
                 if "USD" not in cb:
                     cb["USD"] = uj_b
 
+            def _extract_bias(ent: Any) -> Optional[str]:
+                if isinstance(ent, dict):
+                    b_raw = ent.get("directional_bias") or ent.get("macro_bias") or ent.get("bias")
+                elif hasattr(ent, "directional_bias"):
+                    b_raw = getattr(ent, "directional_bias", None)
+                elif isinstance(ent, str):
+                    b_raw = ent
+                else:
+                    b_raw = None
+                if not b_raw or not isinstance(b_raw, str):
+                    return None
+                clean = b_raw.lower().strip().replace("-", "_").replace(" ", "_")
+                if clean in ["strong_bullish", "bullish", "bearish", "strong_bearish", "neutral"]:
+                    return clean
+                if "bull" in clean:
+                    return "bullish"
+                if "bear" in clean:
+                    return "bearish"
+                return "neutral"
+
             matrix = data.get("per_asset_macro_matrix")
             if not isinstance(matrix, dict):
                 matrix = {}
@@ -1451,26 +1471,6 @@ class SubmitFundamentalBriefSchema(BaseModel):
                     "strong_bearish": "strong_bullish",
                     "neutral": "neutral",
                 }
-
-                def _extract_bias(ent: Any) -> Optional[str]:
-                    if isinstance(ent, dict):
-                        b_raw = ent.get("directional_bias") or ent.get("macro_bias") or ent.get("bias")
-                    elif hasattr(ent, "directional_bias"):
-                        b_raw = getattr(ent, "directional_bias", None)
-                    elif isinstance(ent, str):
-                        b_raw = ent
-                    else:
-                        b_raw = None
-                    if not b_raw or not isinstance(b_raw, str):
-                        return None
-                    clean = b_raw.lower().strip().replace("-", "_").replace(" ", "_")
-                    if clean in ["strong_bullish", "bullish", "bearish", "strong_bearish", "neutral"]:
-                        return clean
-                    if "bull" in clean:
-                        return "bullish"
-                    if "bear" in clean:
-                        return "bearish"
-                    return "neutral"
 
                 _BASE_CCY_MAP = {
                     "EURUSD": "EUR",

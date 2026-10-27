@@ -296,7 +296,8 @@ def _capture_chart_screenshot(symbol: str, tf: int, width: int, height: int, fil
             "error": "MT5 Python API does not provide GUI chart_screenshot. Use plot_price_chart or get_chart.",
         }
 
-    charts = charts_fn() if callable(charts_fn) else []
+    raw_charts = charts_fn() if callable(charts_fn) else None
+    charts = raw_charts if isinstance(raw_charts, (list, tuple)) else []
     target_chart_id = None
     for c in charts:
         if getattr(c, "symbol", "") == symbol:

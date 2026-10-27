@@ -29,7 +29,7 @@ async def handle_compile_mql5_ea(
     """Compile MQL5 source file (.mq5) into executable binary (.ex5) using metaeditor64.exe."""
     source_path_raw = args.get("source_path")
     if not source_path_raw or not Path(source_path_raw).exists():
-        from monika.core.config.path_resolver import get_repo_root
+        from monika.core.paths import get_repo_root
 
         default_ea = get_repo_root() / "src" / "monika" / "infrastructure" / "brokers" / "ea_bridge" / "AIAgent_EA.mq5"
         if default_ea.exists():
