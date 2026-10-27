@@ -377,6 +377,34 @@ def isolate_environment_mutations():
 
 
 @pytest.fixture(autouse=True)
+def isolate_dashboard_credentials_in_tests(monkeypatch):
+    """
+    Mencegah kebocoran kredensial DASHBOARD_API_KEYS dari .env lokal ke test client (AGENTS.md §5.6).
+    Memungkinkan unit test default mengakses localhost tanpa 401 Unauthorized.
+    """
+    monkeypatch.setenv("DASHBOARD_API_KEY", "")
+    monkeypatch.setenv("DASHBOARD_API_KEYS", "")
+
+
+@pytest.fixture(autouse=True)
+def isolate_disk_kill_switch_flag(monkeypatch, tmp_path_factory, request):
+    """
+    Mencegah file flag kill switch lokal pada disk (data/kill_switch.flag)
+    mempolusi unit test (AGENTS.md §5.6).
+    Mengarahkan DATA_DIR ke direktori sementara yang bersih.
+    """
+    if "test_paths.py" in request.node.nodeid:
+        return
+    try:
+        import monika.core.paths as core_paths
+
+        clean_data_dir = tmp_path_factory.mktemp("isolated_data")
+        monkeypatch.setattr(core_paths, "DATA_DIR", clean_data_dir)
+    except Exception:
+        pass
+
+
+@pytest.fixture(autouse=True)
 def allow_tradingagent_log_propagation():
     """Memastikan log dari hierarki logger TradingAgent merambat ke root logger untuk caplog pytest."""
     import logging

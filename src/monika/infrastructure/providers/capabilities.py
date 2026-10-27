@@ -380,7 +380,7 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
     "deepseek-v4-pro": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
-        max_output_tokens=65536,
+        max_output_tokens=32768,
         context_window=256000,
         supports_native_thinking=True,
     ),
@@ -1744,7 +1744,10 @@ def resolve_effective_max_tokens(
         model_ceiling = max(model_ceiling, 65536)
 
     # Tier 4: Thinking Budget Resolution
-    lvl = (thinking_level or "none").strip().lower()
+    if isinstance(thinking_level, str):
+        lvl = thinking_level.strip().lower()
+    else:
+        lvl = "none"
     level_to_budget = {
         "none": 0,
         "off": 0,
@@ -1757,20 +1760,30 @@ def resolve_effective_max_tokens(
         "max": 16000,
     }
     resolved_budget = (
-        thinking_budget if (thinking_budget is not None and thinking_budget > 0) else level_to_budget.get(lvl, 0)
+        int(thinking_budget)
+        if isinstance(thinking_budget, (int, float)) and not isinstance(thinking_budget, bool) and thinking_budget > 0
+        else level_to_budget.get(lvl, 0)
     )
 
     # Tier 5: Compute Effective Max Tokens
     if resolved_budget > 0:
         # When thinking is active, ensure room for BOTH thinking and visible answer
         needed = resolved_budget + min_answer_headroom
-        if requested_max_tokens is not None and requested_max_tokens > 0:
+        if (
+            isinstance(requested_max_tokens, (int, float))
+            and not isinstance(requested_max_tokens, bool)
+            and requested_max_tokens > 0
+        ):
             needed = max(needed, requested_max_tokens + resolved_budget)
         effective = min(needed, model_ceiling)
         effective = max(effective, min(min_answer_headroom, model_ceiling))
     else:
         # Non-thinking mode
-        if requested_max_tokens is not None and requested_max_tokens > 0:
+        if (
+            isinstance(requested_max_tokens, (int, float))
+            and not isinstance(requested_max_tokens, bool)
+            and requested_max_tokens > 0
+        ):
             effective = min(requested_max_tokens, model_ceiling)
         else:
             effective = min(8192, model_ceiling)

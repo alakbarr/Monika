@@ -7,7 +7,7 @@ import asyncio
 import logging
 import re
 from datetime import timedelta
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -720,6 +720,22 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         if analysis and hasattr(analysis, "decision") and analysis.decision is not None:
             decision = analysis.decision
 
+        def _safe_float(val: Any) -> Optional[float]:
+            if val is None:
+                return None
+            try:
+                return float(val)
+            except ValueError, TypeError:
+                return None
+
+        def _safe_int(val: Any) -> Optional[int]:
+            if val is None:
+                return None
+            try:
+                return int(val)
+            except ValueError, TypeError:
+                return None
+
         result.update(
             {
                 "symbol": symbol,
@@ -727,11 +743,9 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
                 "decision": decision,
                 "confidence": confidence,
                 "entry_price": entry_price_val,
-                "stop_loss": float(analysis.stop_loss) if (analysis and analysis.stop_loss is not None) else None,
-                "take_profit": float(analysis.take_profit) if (analysis and analysis.take_profit is not None) else None,
-                "confluence_score": int(analysis.confluence_score)
-                if (analysis and analysis.confluence_score is not None)
-                else None,
+                "stop_loss": _safe_float(analysis.stop_loss) if analysis else None,
+                "take_profit": _safe_float(analysis.take_profit) if analysis else None,
+                "confluence_score": _safe_int(analysis.confluence_score) if analysis else None,
                 "elapsed_seconds": elapsed,
             }
         )

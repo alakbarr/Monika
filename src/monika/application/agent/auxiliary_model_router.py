@@ -79,17 +79,23 @@ class ReasoningFloorManager:
     """
 
     @classmethod
-    def is_floored(cls, provider: str, model: str) -> bool:
-        """Returns True if this route is known to require non-zero reasoning effort."""
-        return (provider.lower(), model.lower()) in _FLOORED_ROUTES
+    def _normalize_route(cls, provider: Any, model: Any) -> Tuple[str, str]:
+        p_str = (provider.get("primary", "") if isinstance(provider, dict) else str(provider or "")).lower()
+        m_str = str(model or "").lower()
+        return (p_str, m_str)
 
     @classmethod
-    def record_floored_route(cls, provider: str, model: str) -> None:
+    def is_floored(cls, provider: Any, model: Any) -> bool:
+        """Returns True if this route is known to require non-zero reasoning effort."""
+        return cls._normalize_route(provider, model) in _FLOORED_ROUTES
+
+    @classmethod
+    def record_floored_route(cls, provider: Any, model: Any) -> None:
         """Records a route as requiring a minimum reasoning floor ('low')."""
-        key = (provider.lower(), model.lower())
+        key = cls._normalize_route(provider, model)
         if key not in _FLOORED_ROUTES:
             _FLOORED_ROUTES.add(key)
-            logger.info(f"[ReasoningFloorManager] Memoized floored route: {provider}/{model} -> reasoning_effort='low'")
+            logger.info(f"[ReasoningFloorManager] Memoized floored route: {key[0]}/{key[1]} -> reasoning_effort='low'")
 
     @classmethod
     def adapt_request(cls, provider: str, model: str, params: Dict[str, Any]) -> Dict[str, Any]:
@@ -139,7 +145,8 @@ class AuxiliaryModelRouter:
 
         def _resolve(role_name: str) -> Tuple[str, str]:
             r = task_roles.get(role_name, {})
-            p = r.get("provider", def_prov)
+            raw_p = r.get("provider", def_prov)
+            p = raw_p.get("primary", def_prov) if isinstance(raw_p, dict) else (raw_p or def_prov)
             m = r.get("primary", def_model)
             return (p, m)
 

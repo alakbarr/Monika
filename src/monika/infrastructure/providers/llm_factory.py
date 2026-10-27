@@ -1278,7 +1278,9 @@ class FallbackClientWrapper(BaseLLMClient):
                     )
                     if "max_tokens" in safe_kwargs and isinstance(safe_kwargs["max_tokens"], int):
                         safe_kwargs["max_tokens"] = min(safe_kwargs["max_tokens"], eff_slot_ceiling)
-                    elif hasattr(client, "max_tokens") and client.max_tokens:
+                    elif isinstance(getattr(client, "max_tokens", None), int) and not isinstance(
+                        client.max_tokens, bool
+                    ):
                         safe_kwargs["max_tokens"] = eff_slot_ceiling
 
                     # Memoized schema rejection check: strip native response_format if previously rejected

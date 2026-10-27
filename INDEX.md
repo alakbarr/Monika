@@ -4821,8 +4821,8 @@
   - `class ParameterRejectionLadder`: Sequentially removes optional LLM parameters upon HTTP 400 errors.
     - `apply_rung(rung: int, params: Dict[str, Any]) -> Dict[str, Any]` - *Returns a sanitized copy of params for the given ladder rung.*
   - `class ReasoningFloorManager`: Manages models that require explicit reasoning effort settings.
-    - `is_floored(provider: str, model: str) -> bool` - *Returns True if this route is known to require non-zero reasoning effort.*
-    - `record_floored_route(provider: str, model: str) -> None` - *Records a route as requiring a minimum reasoning floor ('low').*
+    - `is_floored(provider: Any, model: Any) -> bool` - *Returns True if this route is known to require non-zero reasoning effort.*
+    - `record_floored_route(provider: Any, model: Any) -> None` - *Records a route as requiring a minimum reasoning floor ('low').*
     - `adapt_request(provider: str, model: str, params: Dict[str, Any]) -> Dict[str, Any]` - *Proactively applies reasoning floor if route is floored.*
   - `class AuxiliaryModelRouter`: Central coordinator for auxiliary LLM calls across the agent framework.
     - `__init__(default_caller: Optional[Callable[[str, str, Dict[str, Any]], Any]], task_role_mapping: Optional[Dict[AuxiliaryTaskType, Tuple[str, str]]], settings: Optional[Dict[str, Any]])`

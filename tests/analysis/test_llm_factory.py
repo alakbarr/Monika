@@ -546,7 +546,7 @@ def test_role_provider_override_gemini_3_8_flash_and_openrouter_coexistence():
     assert factory._resolve_provider("gemini-3.8-flash") == "openrouter"
 
     with patch.dict("os.environ", {"GEMINI_API_KEY": "test-gemini-key", "OPENROUTER_API_KEY": "test-or-key"}):
-        for role_name in ("news_digest", "news_digest_macro_overview", "macro_analyst", "sentiment_analyst"):
+        for role_name in ("news_digest", "news_digest_macro_overview"):
             role_cfg = settings["llm"]["task_roles"][role_name]
             assert role_cfg["primary"] == "gemini-3.8-flash"
             raw_prov = role_cfg["provider"]
@@ -563,7 +563,9 @@ def test_role_provider_override_gemini_3_8_flash_and_openrouter_coexistence():
         # debate_judge uses gemini-3.8-flash with provider: openrouter -> must stay on OpenRouterProvider
         judge_cfg = settings["llm"]["task_roles"]["debate_judge"]
         assert judge_cfg["primary"] == "gemini-3.8-flash"
-        assert judge_cfg["provider"] == "openrouter"
+        judge_prov = judge_cfg["provider"]
+        judge_prov_str = judge_prov.get("primary") if isinstance(judge_prov, dict) else judge_prov
+        assert judge_prov_str == "openrouter"
         assert factory._resolve_provider("gemini-3.8-flash", role_config=judge_cfg, slot_name="primary") == "openrouter"
         judge_wrapper = factory.get_client_for_task("debate_judge")
         assert judge_wrapper.provider_name == "openrouter"

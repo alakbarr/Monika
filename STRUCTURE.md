@@ -2150,6 +2150,7 @@ Monika/
 │   │   │   ├── test_credential_pool_routing.py
 │   │   │   ├── test_failover_expanded.py
 │   │   │   ├── test_fallback_wrapper_cooldown.py
+│   │   │   ├── test_json_recovery_performance.py
 │   │   │   ├── test_llm_and_streaming.py
 │   │   │   ├── test_nine_router_provider.py
 │   │   │   ├── test_prompt_caching_enhancements.py
@@ -2432,6 +2433,7 @@ Monika/
 │   │   ├── test_fred_treasury_yield.py
 │   │   ├── test_macro_fail_closed.py
 │   │   ├── test_prediction_market.py
+│   │   ├── test_sovereign_yield_spreads.py
 │   │   ├── test_validators.py
 │   │   ├── test_vix_yfinance.py
 │   │   ├── test_web_and_search.py
@@ -2779,7 +2781,8 @@ Monika/
 │   │   │   └── analysis/
 │   │   │       ├── test_debate_prefix_cache_sharing.py
 │   │   │       ├── test_forked_subagent_cache.py
-│   │   │       └── test_spill_and_ptc_parallel.py
+│   │   │       ├── test_spill_and_ptc_parallel.py
+│   │   │       └── test_stage2_session_concurrency.py
 │   │   └── infrastructure/
 │   │       ├── llm/
 │   │       │   └── test_kv_cache_invariance.py
@@ -3124,4 +3127,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2827
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2830
