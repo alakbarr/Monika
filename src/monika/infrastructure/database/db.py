@@ -61,6 +61,7 @@ def __getattr__(name: str) -> Any:
 
 
 engine = None
+_engine_loop = None
 _async_session_factory = None
 _engine_lock = threading.RLock()
 
@@ -174,7 +175,27 @@ def get_canonical_db_path() -> Path:
 
 def get_engine():
     """Lazy engine factory with connection pooling (thread-safe)."""
-    global engine
+    global engine, _engine_loop, _async_session_factory
+    try:
+        current_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        current_loop = None
+
+    if engine is not None:
+        if _engine_loop is not None and current_loop is not None and _engine_loop is not current_loop:
+            if _engine_loop.is_closed():
+                with _engine_lock:
+                    if _engine_loop is not None and _engine_loop.is_closed():
+                        eng = engine
+                        engine = None
+                        _engine_loop = None
+                        _async_session_factory = None
+                        if eng is not None:
+                            try:
+                                eng.sync_engine.dispose()
+                            except Exception:
+                                pass
+
     if engine is None:
         with _engine_lock:
             if engine is None:
@@ -287,6 +308,7 @@ def get_engine():
                             return
                         conn.exec_driver_sql("BEGIN IMMEDIATE")
 
+                _engine_loop = current_loop
                 engine = new_engine
 
     return engine
@@ -560,12 +582,13 @@ async def transactional_advisory_lock(
 
 async def close_db() -> None:
     """Tutup koneksi database dengan aman."""
-    global engine, _async_session_factory
+    global engine, _engine_loop, _async_session_factory
     _SQLITE_WRITE_LOCKS.clear()
     _IN_MEMORY_EXECUTION_LOCKS.clear()
     with _engine_lock:
         eng = engine
         engine = None
+        _engine_loop = None
         _async_session_factory = None
     if eng is not None:
         logger.info("Disposing database engine...")

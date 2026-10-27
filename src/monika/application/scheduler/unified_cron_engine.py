@@ -188,10 +188,16 @@ class UnifiedCronEngine:
     token-saving output hashing, and multi-channel result dispatch.
     """
 
-    def __init__(self, db_path: str = DEFAULT_CRON_DB, tick_interval_seconds: float = 15.0):
+    def __init__(
+        self,
+        db_path: str = DEFAULT_CRON_DB,
+        tick_interval_seconds: float = 15.0,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ):
         self.db_path = db_path
         self.tick_interval_seconds = tick_interval_seconds
         self._lock = threading.Lock()
+        self._loop: Optional[asyncio.AbstractEventLoop] = loop
         self._is_running = False
         self._worker_thread: Optional[threading.Thread] = None
         self._execution_callbacks: List[Callable[[UnifiedCronJob], None]] = []
@@ -469,11 +475,18 @@ class UnifiedCronEngine:
         """Sets the multi-channel notification dispatcher for delivery results."""
         self._channel_dispatcher = dispatcher
 
-    def start(self) -> None:
+    def start(self, loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
         """Starts the background scheduler tick thread."""
         with self._lock:
             if self._is_running:
                 return
+            if loop is not None:
+                self._loop = loop
+            elif self._loop is None:
+                try:
+                    self._loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    pass
             self._is_running = True
             self._worker_thread = threading.Thread(target=self._tick_loop, daemon=True, name="UnifiedCronTick")
             self._worker_thread.start()
@@ -599,15 +612,20 @@ class UnifiedCronEngine:
                     try:
                         res = cb(job)
                         if asyncio.iscoroutine(res):
-                            try:
-                                loop = asyncio.get_event_loop()
-                                if loop.is_running():
-                                    fut = asyncio.run_coroutine_threadsafe(res, loop)
-                                    res = fut.result(timeout=job.timeout_seconds)
-                                else:
-                                    res = loop.run_until_complete(res)
-                            except RuntimeError:
-                                res = asyncio.run(res)
+                            target_loop = self._loop
+                            if target_loop is not None and target_loop.is_running():
+                                fut = asyncio.run_coroutine_threadsafe(res, target_loop)
+                                res = fut.result(timeout=job.timeout_seconds)
+                            else:
+                                try:
+                                    loop = asyncio.get_event_loop()
+                                    if loop.is_running():
+                                        fut = asyncio.run_coroutine_threadsafe(res, loop)
+                                        res = fut.result(timeout=job.timeout_seconds)
+                                    else:
+                                        res = loop.run_until_complete(res)
+                                except RuntimeError:
+                                    res = asyncio.run(res)
                         if isinstance(res, str) and res:
                             execution_output = res
                     except Exception as cb_exc:
@@ -627,15 +645,20 @@ class UnifiedCronEngine:
                         r, _ = await agent.handle(job.prompt)
                         return r
 
-                    try:
-                        loop = asyncio.get_event_loop()
-                        if loop.is_running():
-                            fut = asyncio.run_coroutine_threadsafe(_run_agent(), loop)
-                            execution_output = fut.result(timeout=job.timeout_seconds)
-                        else:
-                            execution_output = loop.run_until_complete(_run_agent())
-                    except RuntimeError:
-                        execution_output = asyncio.run(_run_agent())
+                    target_loop = self._loop
+                    if target_loop is not None and target_loop.is_running():
+                        fut = asyncio.run_coroutine_threadsafe(_run_agent(), target_loop)
+                        execution_output = fut.result(timeout=job.timeout_seconds)
+                    else:
+                        try:
+                            loop = asyncio.get_event_loop()
+                            if loop.is_running():
+                                fut = asyncio.run_coroutine_threadsafe(_run_agent(), loop)
+                                execution_output = fut.result(timeout=job.timeout_seconds)
+                            else:
+                                execution_output = loop.run_until_complete(_run_agent())
+                        except RuntimeError:
+                            execution_output = asyncio.run(_run_agent())
                 except Exception as agent_err:
                     logger.error(f"[UnifiedCronEngine] Headless agent turn error: {agent_err}")
                     exit_code = 1
@@ -672,14 +695,20 @@ class UnifiedCronEngine:
                         notifier = AgentNotifier()
                         header = f"<b>[JADWAL OTOMATIS: {job.name or job.job_id}]</b>\n\n"
                         msg = header + execution_output
-                        try:
-                            loop = asyncio.get_event_loop()
-                            if loop.is_running():
-                                asyncio.run_coroutine_threadsafe(notifier.send(msg), loop)
-                            else:
-                                loop.run_until_complete(notifier.send(msg))
-                        except RuntimeError:
-                            asyncio.run(notifier.send(msg))
+                        target_loop = self._loop
+                        if target_loop is not None and target_loop.is_running():
+                            fut = asyncio.run_coroutine_threadsafe(notifier.send(msg), target_loop)
+                            fut.result(timeout=30.0)
+                        else:
+                            try:
+                                loop = asyncio.get_event_loop()
+                                if loop.is_running():
+                                    fut = asyncio.run_coroutine_threadsafe(notifier.send(msg), loop)
+                                    fut.result(timeout=30.0)
+                                else:
+                                    loop.run_until_complete(notifier.send(msg))
+                            except RuntimeError:
+                                asyncio.run(notifier.send(msg))
                     self.mark_outbox_sent(del_id)
                 except Exception as dist_exc:
                     logger.warning(f"[UnifiedCronEngine] Result dispatch error: {dist_exc}")

@@ -818,6 +818,10 @@ class ToolExecutor(
                     or "operation already in progress" in err_text
                     or "recursive use of cursors not allowed" in err_text
                     or "database is locked" in err_text
+                    or "in 'prepared' state" in err_text
+                    or "pendingrollbackerror" in err_text
+                    or "rollback() fully before proceeding" in err_text
+                    or "unknown protocol state" in err_text
                 )
                 if is_concurrency_error and db_attempt < max_db_attempts - 1:
                     logger.warning(

@@ -381,7 +381,11 @@ class AgentLifecycleMixin:
         if hasattr(self, "playbook_curator") and self.playbook_curator:
             _launch_task("PlaybookCurator", self.playbook_curator.start, "playbook_curator")
         if hasattr(self, "universal_cron") and self.universal_cron:
-            self.universal_cron.start()
+            try:
+                curr_loop = asyncio.get_running_loop()
+            except RuntimeError:
+                curr_loop = None
+            self.universal_cron.start(loop=curr_loop)
         if hasattr(self, "config_manager") and self.config_manager:
             _launch_task("ConfigManagerWatcher", self.config_manager.start_watcher, "config_manager_watcher")
 

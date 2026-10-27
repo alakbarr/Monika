@@ -89,10 +89,15 @@ class Stage2DataBundler:
         "ETHUSD": 2,
     }
 
-    def __init__(self, session: AsyncSession, settings: Optional[dict] = None):
+    def __init__(
+        self,
+        session: AsyncSession,
+        settings: Optional[dict] = None,
+        shared_global_cache: Optional[dict[str, Any]] = None,
+    ):
         self.settings = settings or {}
         self.executor = ToolExecutor(session, self.settings)
-        self._shared_global_cache: dict[str, Any] = {}
+        self._shared_global_cache: dict[str, Any] = shared_global_cache if shared_global_cache is not None else {}
 
     @staticmethod
     def _format_fetch_error(name: str, err: Exception) -> str:
@@ -1020,8 +1025,10 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
                                     }
                                 ),
                             )
-                            self.executor.session.add(cache_entry)
-                            await self.executor.session.commit()
+                            from monika.infrastructure.database.db import get_write_session
+
+                            async with get_write_session() as write_sess:
+                                write_sess.add(cache_entry)
             except Exception as e:
                 logger.debug(f"Failed to prefetch pattern similarity for {symbol}: {e}")
 
@@ -1056,16 +1063,17 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
                 )
                 from sqlalchemy import select
 
+                from monika.infrastructure.database.db import get_write_session
                 from monika.infrastructure.database.models import SystemConfig
 
-                existing_pi_cfg = (
-                    await self.executor.session.execute(select(SystemConfig).where(SystemConfig.key == auto_pi_key))
-                ).scalar_one_or_none()
-                if existing_pi_cfg:
-                    existing_pi_cfg.value = auto_pi_data
-                else:
-                    self.executor.session.add(SystemConfig(key=auto_pi_key, value=auto_pi_data))
-                await self.executor.session.commit()
+                async with get_write_session() as write_sess:
+                    existing_pi_cfg = (
+                        await write_sess.execute(select(SystemConfig).where(SystemConfig.key == auto_pi_key))
+                    ).scalar_one_or_none()
+                    if existing_pi_cfg:
+                        existing_pi_cfg.value = auto_pi_data
+                    else:
+                        write_sess.add(SystemConfig(key=auto_pi_key, value=auto_pi_data))
             except Exception as e:
                 logger.warning(f"[{symbol}] Failed to persist auto-PI score: {e}")
         except Exception as e:

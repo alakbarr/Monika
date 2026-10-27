@@ -6614,7 +6614,7 @@
 - **Path**: [`src/monika/application/analysis/prefetch/stage2_prefetcher.py`](src/monika/application/analysis/prefetch/stage2_prefetcher.py)
 - **Classes**:
   - `class Stage2DataBundler`: Engine penyusun (bundler) data teknikal untuk 1 simbol ke dalam format teks tunggal.
-    - `__init__(session: AsyncSession, settings: Optional[dict])`
+    - `__init__(session: AsyncSession, settings: Optional[dict], shared_global_cache: Optional[dict[str, Any]])`
     - `get_symbol_precision(symbol: str) -> int` - *Determines price precision dynamically using InstrumentSpec with fallback.*
     - `async fetch_bundle(symbol: str, cot_code: Optional[str]) -> tuple[str, dict]` - *Menarik seluruh dataset yang dibutuhkan dan memformatnya menjadi string konteks. Mengembalikan `("", {})` jika gagal total.*
 
@@ -10608,7 +10608,7 @@
     - `description() -> str`
   - `class UnifiedCronJob`: Unified schema for scheduled background recurring tasks and one-shots.
   - `class UnifiedCronEngine`: Centralized Cron Engine unifying natural language scheduling,
-    - `__init__(db_path: str, tick_interval_seconds: float)`
+    - `__init__(db_path: str, tick_interval_seconds: float, loop: Optional[asyncio.AbstractEventLoop])`
     - `parse_schedule_expression(expr: str, from_timestamp: Optional[float]) -> Tuple[float, str]` - *Parses schedule expression into (next_run_epoch, resolved_description).*
     - `register_job(job_id: str, schedule_expression: str, prompt: str, ...) -> UnifiedCronJob` - *Registers a new background job with safety checks and at-most-once semantics.*
     - `unregister_job(job_id: str) -> bool` - *Deletes a job from the database.*
@@ -10616,7 +10616,7 @@
     - `list_jobs(active_only: bool) -> List[UnifiedCronJob]` - *Lists all registered jobs.*
     - `register_execution_callback(cb: Callable[[UnifiedCronJob], None]) -> None` - *Registers a runner callback function for executing scheduled jobs.*
     - `set_channel_dispatcher(dispatcher: Callable[[UnifiedCronJob, str], None]) -> None` - *Sets the multi-channel notification dispatcher for delivery results.*
-    - `start() -> None` - *Starts the background scheduler tick thread.*
+    - `start(loop: Optional[asyncio.AbstractEventLoop]) -> None` - *Starts the background scheduler tick thread.*
     - `stop() -> None` - *Stops the background scheduler thread.*
     - `close() -> None` - *Closes workers and checkpoints WAL database.*
     - `enqueue_outbox_delivery(job_id: str, channel: str, destination: Optional[str], ...) -> str` - *Enqueues an outbox delivery with initial PENDING status.*
