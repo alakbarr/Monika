@@ -8,9 +8,11 @@ Macro context builder, calendar priors, and pre-filtering relevance checks.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 import json
 from typing import Optional
+import weakref
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,17 +31,82 @@ from monika.application.analysis.prefetch.news_digest.helpers import (
 )
 
 
+_MACRO_CACHE_LOCKS: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = weakref.WeakKeyDictionary()
+
+_macro_context_cache: Optional[str] = None
+_macro_context_cache_time: Optional[datetime] = None
+_last_known_brief_id: Optional[int] = None
+_last_known_breaking_id: Optional[int] = None
+
+
+def get_macro_cache_lock() -> asyncio.Lock:
+    """Return the event-loop-scoped lock serializing macro context cache operations."""
+    loop = asyncio.get_running_loop()
+    lock = _MACRO_CACHE_LOCKS.get(loop)
+    if lock is None:
+        lock = asyncio.Lock()
+        _MACRO_CACHE_LOCKS[loop] = lock
+    return lock
+
+
+def invalidate_global_macro_context_cache() -> None:
+    """Explicitly invalidate global in-memory 5-day macro context cache across all instances."""
+    global _macro_context_cache, _macro_context_cache_time, _last_known_brief_id, _last_known_breaking_id
+    _macro_context_cache = None
+    _macro_context_cache_time = None
+    _last_known_brief_id = None
+    _last_known_breaking_id = None
+
+
 class MacroContextMixin(_NewsDigestMixinBase):
     """Mixin providing 5-day macro context, calendar impact priors, and headline relevance."""
 
+    @property
+    def _macro_context_cache(self) -> Optional[str]:
+        return _macro_context_cache
+
+    @_macro_context_cache.setter
+    def _macro_context_cache(self, value: Optional[str]) -> None:
+        global _macro_context_cache
+        _macro_context_cache = value
+
+    @property
+    def _macro_context_cache_time(self) -> Optional[datetime]:
+        return _macro_context_cache_time
+
+    @_macro_context_cache_time.setter
+    def _macro_context_cache_time(self, value: Optional[datetime]) -> None:
+        global _macro_context_cache_time
+        _macro_context_cache_time = value
+
+    @property
+    def _last_known_brief_id(self) -> Optional[int]:
+        return _last_known_brief_id
+
+    @_last_known_brief_id.setter
+    def _last_known_brief_id(self, value: Optional[int]) -> None:
+        global _last_known_brief_id
+        _last_known_brief_id = value
+
+    @property
+    def _last_known_breaking_id(self) -> Optional[int]:
+        return _last_known_breaking_id
+
+    @_last_known_breaking_id.setter
+    def _last_known_breaking_id(self, value: Optional[int]) -> None:
+        global _last_known_breaking_id
+        _last_known_breaking_id = value
+
     def invalidate_macro_context_cache(self) -> None:
-        """Explicitly invalidate in-memory 5-day macro context cache."""
-        self._macro_context_cache = None
-        self._macro_context_cache_time = None
-        self._last_known_brief_id = None
-        self._last_known_breaking_id = None
+        """Explicitly invalidate in-memory 5-day macro context cache across all instances."""
+        invalidate_global_macro_context_cache()
 
     async def _build_7day_macro_grounding_context(self, session: AsyncSession, now_utc: datetime) -> str:
+        """Membangun ringkasan narasi makro institusional dan grounding pasar yang komprehensif."""
+        async with get_macro_cache_lock():
+            return await self._build_7day_macro_grounding_context_locked(session, now_utc)
+
+    async def _build_7day_macro_grounding_context_locked(self, session: AsyncSession, now_utc: datetime) -> str:
         """
         Membangun ringkasan narasi makro institusional dan grounding pasar yang komprehensif:
         1. Macro Core dari FundamentalBrief (Regime, Risk Sentiment, Biases, Priced-In Consensus, Invalidation).

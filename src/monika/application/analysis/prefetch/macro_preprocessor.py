@@ -24,8 +24,12 @@ from monika.infrastructure.database.models import COTReport, EconomicCalendar, S
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 from monika.domain.market.instrument_identity import COT_CODE_TO_SYMBOL_MAP
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
 logger = logging.getLogger(__name__)
+
+COT_PRECOMPUTE_SYSTEM_PROMPT = """=== MONIKA COT POSITIONING ANALYST ===
+You are an institutional macro positioning analyst. Synthesize computed Commitment of Traders (COT) data into concise, high-signal positioning intelligence. Highlight extreme sentiment, crowded positioning, and mean-reversion risks objectively."""
 
 _PREPROCESSOR_CACHE = collections.OrderedDict()
 _GEMINI_CACHE = _PREPROCESSOR_CACHE  # Backward compatibility alias
@@ -172,7 +176,7 @@ class MacroPreprocessor:
             return ""
         try:
             prompt = (
-                f"Computed COT (Commitment of Traders) data:\n{json.dumps(cot_signals)}\n\n"
+                f"Computed COT (Commitment of Traders) data:\n{json.dumps(cot_signals, sort_keys=True)}\n\n"
                 f"Produce a concise 2-3 sentence summary of current institutional positioning "
                 f"across markets, highlighting extreme/overcrowded positions and their implications for reversal risk. "
                 f"Do not invent new figures, synthesize strictly from the data above."
@@ -180,8 +184,20 @@ class MacroPreprocessor:
             cached = _check_cache(prompt)
             if cached and isinstance(cached, str):
                 return cached
+
+            client_model = getattr(self.client, "model", None)
+            client_prov = getattr(self.client, "provider_name", None)
+            padded_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+                COT_PRECOMPUTE_SYSTEM_PROMPT,
+                model_name=client_model,
+                provider_name=client_prov,
+                task_role="cot_precompute",
+                force=True,
+            )
             narrative = await self.client.generate_content(
-                system_prompt="You are a concise institutional positioning analyst.", user_message=prompt
+                system_prompt=padded_sys,
+                user_message=prompt,
+                task_role="cot_precompute",
             )
             if isinstance(narrative, str):
                 _set_cache(prompt, narrative)

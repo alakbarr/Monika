@@ -44,11 +44,8 @@ class NewsDigestProcessor(
         self._classification_verifier = get_client_for_task("news_classification_verifier", settings)
         self._classification_escalation = get_client_for_task("news_classification_escalation", settings)
 
-        # Hybrid Event-Driven 5-Day Macro Context Cache
-        self._macro_context_cache: Optional[str] = None
-        self._macro_context_cache_time: Optional[datetime] = None
-        self._last_known_brief_id: Optional[int] = None
-        self._last_known_breaking_id: Optional[int] = None
+        # Hybrid Event-Driven 5-Day Macro Context Cache (shared singleton state via MacroContextMixin)
+        # Note: Retained as class properties on MacroContextMixin to preserve singleton state across instances.
 
         # Backward compatibility aliases
         self._flash_lite = self._classifier

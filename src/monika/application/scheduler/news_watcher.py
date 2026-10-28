@@ -410,7 +410,8 @@ class NewsWatcher:
                     classify_timeout = float(
                         self.settings.get("news_classification", {}).get("watcher_timeout_seconds", 90.0)
                     )
-                    processor = NewsDigestProcessor(self.settings)
+                    processor = getattr(self, "_news_processor", None) or NewsDigestProcessor(self.settings)
+                    self._news_processor = processor
                     async with get_session() as session:
                         try:
                             async with asyncio.timeout(classify_timeout):
@@ -503,9 +504,13 @@ class NewsWatcher:
         if actionable_breaking_items:
             # When actionable breaking news occurs, invalidate macro context cache reactively
             try:
-                from monika.application.analysis.prefetch.news_digest import NewsDigestProcessor
+                from monika.application.analysis.prefetch.news_digest.macro_context import (
+                    invalidate_global_macro_context_cache,
+                )
 
-                NewsDigestProcessor(self.settings).invalidate_macro_context_cache()
+                invalidate_global_macro_context_cache()
+                if getattr(self, "_news_processor", None) is not None:
+                    self._news_processor.invalidate_macro_context_cache()
                 from monika.application.analysis.prefetch.macro_preprocessor import clear_cache as clear_macro_cache
 
                 clear_macro_cache()

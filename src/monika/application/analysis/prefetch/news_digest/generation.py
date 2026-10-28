@@ -39,6 +39,11 @@ from monika.application.analysis.prefetch.news_digest.summaries import (
 )
 
 
+NEWS_DIGEST_VERIFIER_SYSTEM_PROMPT = """=== MONIKA NEWS DIGEST CONSISTENCY VERIFIER ===
+You are an editorial reviewer evaluating trading news digests for internal consistency, factual coherence, and contradictory claims across macro and currency-specific sections.
+Identify any glaring logical contradictions or conflicting market bias statements that would compromise trading decisions."""
+
+
 class NewsDigestGenerationMixin(_NewsDigestMixinBase):
     """Mixin providing digest generation, currency signal synthesis, and cache operations."""
 
@@ -767,7 +772,21 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
             except Exception as jev_gate_err:
                 logger.debug(f"Digest Jev gating check bypassed: {jev_gate_err}")
 
-            return await self._verifier.classify_json(prompt=prompt, schema=DIGEST_CONSISTENCY_SCHEMA)
+            verifier_model = getattr(self._verifier, "model", None)
+            verifier_prov = getattr(self._verifier, "provider_name", None)
+            verifier_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+                NEWS_DIGEST_VERIFIER_SYSTEM_PROMPT,
+                model_name=verifier_model,
+                provider_name=verifier_prov,
+                task_role="news_digest_verifier",
+                force=True,
+            )
+            return await self._verifier.classify_json(
+                prompt=prompt,
+                system_prompt=verifier_sys,
+                schema=DIGEST_CONSISTENCY_SCHEMA,
+                task_role="news_digest_verifier",
+            )
         except Exception as e:
             logger.debug(f"Consistency check failed: {e}")
             return None

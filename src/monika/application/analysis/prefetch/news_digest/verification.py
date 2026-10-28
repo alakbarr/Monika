@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from monika.core.primitives.clock import ensure_utc
 from monika.domain.market.news_impact_keywords import SHOCK_KEYWORDS
 from monika.infrastructure.database.models import NewsItem
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 from monika.application.analysis.prefetch.news_digest.base import (
     _NewsDigestMixinBase,
     logger,
@@ -49,6 +50,11 @@ Classification hierarchy:
 - LOW / NONE: Market opinion, technical analysis, retrospective editorial, or single-stock/minor token noise.
 
 Evaluate purely on the factual evidence and 5-day macro context. Prioritize objective reasoning before deciding impact."""
+
+NEWS_BOUNDARY_CALIBRATION_SYSTEM_PROMPT = """=== MONIKA HIGH/MEDIUM BOUNDARY CALIBRATION EDITOR ===
+You are a senior macro calibration editor for FX, Commodities (Gold/Oil), and Crypto (Bitcoin) trading signals.
+Your mandate is strictly to evaluate whether each news item represents a direct, immediate market-moving catalyst (HIGH) or routine consensus data/structural economic analysis (MEDIUM/LOW).
+Assign the exact TARGET IMPACT objectively based on institutional market impact criteria."""
 
 
 class NewsClassificationVerificationMixin(_NewsDigestMixinBase):
@@ -115,9 +121,21 @@ class NewsClassificationVerificationMixin(_NewsDigestMixinBase):
             f'"confidence":0.8,"surprise_magnitude":"none","currencies":["USD"],'
             f'"sentiments":[],"key_data_point":""}}]'
         )
+        escalation_model = getattr(self._classification_escalation, "model", None)
+        escalation_prov = getattr(self._classification_escalation, "provider_name", None)
+        padded_escalation_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+            NEWS_ESCALATION_SYSTEM_PROMPT,
+            model_name=escalation_model,
+            provider_name=escalation_prov,
+            task_role="news_classification_escalation",
+            force=True,
+        )
         try:
             result = await self._classification_escalation.classify_json(
-                prompt=prompt, system_prompt=NEWS_ESCALATION_SYSTEM_PROMPT, schema=NEWS_CLASSIFICATION_SCHEMA
+                prompt=prompt,
+                system_prompt=padded_escalation_sys,
+                schema=NEWS_CLASSIFICATION_SCHEMA,
+                task_role="news_classification_escalation",
             )
         except Exception as e:
             logger.warning(f"[NewsClassification] Re-verification failed (non-fatal): {e}")
@@ -180,9 +198,21 @@ class NewsClassificationVerificationMixin(_NewsDigestMixinBase):
             'Respond JSON array: [{"index":1,"news_id":123,"reasoning":"...","impact":"HIGH","confidence":0.8,'
             '"surprise_magnitude":"none","currencies":["USD"],"sentiments":[],"key_data_point":""}]'
         )
+        escalation_model = getattr(self._classification_escalation, "model", None)
+        escalation_prov = getattr(self._classification_escalation, "provider_name", None)
+        padded_escalation_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+            NEWS_ESCALATION_SYSTEM_PROMPT,
+            model_name=escalation_model,
+            provider_name=escalation_prov,
+            task_role="news_classification_escalation",
+            force=True,
+        )
         try:
             result = await self._classification_escalation.classify_json(
-                prompt=prompt, system_prompt=NEWS_ESCALATION_SYSTEM_PROMPT, schema=NEWS_CLASSIFICATION_SCHEMA
+                prompt=prompt,
+                system_prompt=padded_escalation_sys,
+                schema=NEWS_CLASSIFICATION_SCHEMA,
+                task_role="news_classification_escalation",
             )
         except Exception as e:
             logger.warning(f"[NewsClassification] Escalation re-verify failed (non-fatal, keeping original): {e}")
@@ -273,6 +303,15 @@ ITEMS:
 
 Respond JSON array of objects:
 [{{"index": 1, "target_impact": "MEDIUM", "reason": "Structural economic analysis without immediate catalyst"}}]"""
+            verifier_model = getattr(self._classification_verifier, "model", None)
+            verifier_prov = getattr(self._classification_verifier, "provider_name", None)
+            padded_verifier_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+                NEWS_BOUNDARY_CALIBRATION_SYSTEM_PROMPT,
+                model_name=verifier_model,
+                provider_name=verifier_prov,
+                task_role="news_classification_verifier",
+                force=True,
+            )
             try:
                 is_typesafe = getattr(self._classification_verifier, "provider_name", None) == "typesafe"
                 if is_typesafe:
@@ -301,9 +340,19 @@ Respond JSON array of objects:
                             for j in range(len(chunk))
                         ]
                     else:
-                        result = await self._classification_verifier.classify_json(prompt=prompt, schema=verify_schema)
+                        result = await self._classification_verifier.classify_json(
+                            prompt=prompt,
+                            system_prompt=padded_verifier_sys,
+                            schema=verify_schema,
+                            task_role="news_classification_verifier",
+                        )
                 else:
-                    result = await self._classification_verifier.classify_json(prompt=prompt, schema=verify_schema)
+                    result = await self._classification_verifier.classify_json(
+                        prompt=prompt,
+                        system_prompt=padded_verifier_sys,
+                        schema=verify_schema,
+                        task_role="news_classification_verifier",
+                    )
                 if not result:
                     continue
                 if isinstance(result, dict):

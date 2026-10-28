@@ -6655,7 +6655,10 @@
 - **Path**: [`src/monika/application/analysis/prefetch/news_digest/macro_context.py`](src/monika/application/analysis/prefetch/news_digest/macro_context.py)
 - **Classes**:
   - `class MacroContextMixin(_NewsDigestMixinBase)`: Mixin providing 5-day macro context, calendar impact priors, and headline relevance.
-    - `invalidate_macro_context_cache() -> None` - *Explicitly invalidate in-memory 5-day macro context cache.*
+    - `invalidate_macro_context_cache() -> None` - *Explicitly invalidate in-memory 5-day macro context cache across all instances.*
+- **Top-Level Functions**:
+  - `get_macro_cache_lock() -> asyncio.Lock`: Return the event-loop-scoped lock serializing macro context cache operations.
+  - `invalidate_global_macro_context_cache() -> None`: Explicitly invalidate global in-memory 5-day macro context cache across all instances.
 
 #### `processor.py` - *Aggregated NewsDigestProcessor combining modular domain mixins.*
 - **Path**: [`src/monika/application/analysis/prefetch/news_digest/processor.py`](src/monika/application/analysis/prefetch/news_digest/processor.py)
