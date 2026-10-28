@@ -82,7 +82,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     # Check: Stage 2 asset score jauh lebih tinggi dari Stage 1 macro score
                     if submitted_pi >= 8 and brief_pi_score <= 4 and decision in ("buy", "sell"):
                         if not (
-                            priced_in_override
+                            isinstance(priced_in_override, dict)
                             and all(
                                 priced_in_override.get(k)
                                 for k in ["override_reason", "why_stage1_wrong", "post_event_evidence"]
@@ -97,7 +97,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                             )
 
                     if brief_pi_score >= 8 and submitted_pi <= 4 and decision in ("buy", "sell"):
-                        if priced_in_override and all(
+                        if isinstance(priced_in_override, dict) and all(
                             priced_in_override.get(k)
                             for k in ["override_reason", "why_stage1_wrong", "post_event_evidence"]
                         ):
@@ -1477,7 +1477,19 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
 
         # EXTRACT NEW PRICED-IN AND NEWS FIELDS
         priced_in_score = inp.get("priced_in_score")
-        priced_in_override_justification = inp.get("priced_in_override_justification")
+        raw_pi_override = inp.get("priced_in_override_justification")
+        if raw_pi_override is None:
+            priced_in_override_justification = None
+        elif isinstance(raw_pi_override, dict):
+            priced_in_override_justification = _json.dumps(raw_pi_override) if raw_pi_override else None
+        elif isinstance(raw_pi_override, str):
+            priced_in_override_justification = raw_pi_override.strip() or None
+        elif hasattr(raw_pi_override, "model_dump") and callable(getattr(raw_pi_override, "model_dump")):
+            dump_fn = getattr(raw_pi_override, "model_dump")
+            d = dump_fn(mode="json")
+            priced_in_override_justification = _json.dumps(d) if d else None
+        else:
+            priced_in_override_justification = str(raw_pi_override)
         confluence_score = inp.get("confluence_score")
         confluence_factors = inp.get("confluence_factors")
         key_news_events_considered = inp.get("key_news_events_considered", [])

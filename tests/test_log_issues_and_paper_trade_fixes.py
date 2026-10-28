@@ -286,3 +286,145 @@ def test_confluence_factors_microstructure_and_pattern_recognized():
     repaired = coerce_tool_arguments({"confluence_factors": ["order_flow", "pattern_similarity"]}, pdef)
     assert "microstructure_ok" in repaired["confluence_factors"]
     assert "historical_pattern_consensus" in repaired["confluence_factors"]
+
+
+@pytest.mark.asyncio
+async def test_submit_asset_analysis_priced_in_override_dict_serialization(db_session):
+    """Verify submit_asset_analysis serializes dictionary priced_in_override_justification to JSON text."""
+    import json
+    from sqlalchemy import select
+
+    executor = ToolExecutor(session=db_session, symbol="XTIUSD")
+    executor.called_tools.add("get_price_history")
+    executor.called_tools.add("get_technical_indicators")
+
+    override_dict = {
+        "override_reason": "Not applicable: no directional trade is being submitted, no priced-in override requested.",
+        "why_stage1_wrong": "Not applicable",
+        "post_event_evidence": "Not applicable",
+    }
+    payload = {
+        "symbol": "XTIUSD",
+        "decision": "wait",
+        "confidence": 0.86,
+        "entry_condition": {"type": "market", "price": 99.61, "detail": "No entry inside H4 FVG"},
+        "invalidation": "WAIT thesis invalidated by H4 CHOCH",
+        "reevaluation_trigger": {
+            "type": "price_level",
+            "detail": "Re-evaluate BUY after H4 bullish MSS",
+            "price": 100.3333,
+            "direction": "above",
+            "symbol": "XTIUSD",
+        },
+        "rationale": "WAIT. XTIUSD ground truth: 99.61, priced-in score is 8/10.",
+        "priced_in_score": 8,
+        "priced_in_override_justification": override_dict,
+        "confluence_score": 0,
+        "playbook_id": "xtiusd_s_vwap_dev10_asian_playbook",
+    }
+
+    res = await executor.execute("submit_asset_analysis", payload)
+    assert res.get("status") == "saved", f"Expected saved status, got: {res}"
+    analysis_id = res.get("analysis_id")
+    assert analysis_id is not None
+
+    saved_row = (await db_session.execute(select(AssetAnalysis).where(AssetAnalysis.id == analysis_id))).scalar_one()
+    assert isinstance(saved_row.priced_in_override_justification, str)
+    decoded = json.loads(saved_row.priced_in_override_justification)
+    assert decoded["override_reason"] == override_dict["override_reason"]
+    assert decoded["why_stage1_wrong"] == override_dict["why_stage1_wrong"]
+    assert decoded["post_event_evidence"] == override_dict["post_event_evidence"]
+
+
+@pytest.mark.asyncio
+async def test_submit_asset_analysis_priced_in_override_idempotent_retry(db_session):
+    """Verify idempotent update within same session serializes updated override dictionary."""
+    import json
+    from sqlalchemy import select
+
+    executor = ToolExecutor(session=db_session, symbol="XBRUSD")
+    executor.called_tools.add("get_price_history")
+    executor.called_tools.add("get_technical_indicators")
+
+    payload = {
+        "symbol": "XBRUSD",
+        "decision": "wait",
+        "confidence": 0.86,
+        "invalidation": "Thesis invalidated above 110.20",
+        "rationale": "Initial WAIT rationale",
+        "priced_in_score": 8,
+        "priced_in_override_justification": {
+            "override_reason": "No override requested. Score 8/10 is binding hard block.",
+            "why_stage1_wrong": "Initial why wrong assessment",
+            "post_event_evidence": "No post-event evidence",
+        },
+    }
+
+    res1 = await executor.execute("submit_asset_analysis", payload)
+    assert res1.get("status") == "saved"
+    analysis_id = res1.get("analysis_id")
+
+    # Retry/update in same execution session
+    payload_retry = dict(payload)
+    payload_retry["confidence"] = 0.90
+    payload_retry["priced_in_override_justification"] = {
+        "override_reason": "No override requested. Score 8/10 is binding hard block.",
+        "why_stage1_wrong": "Updated why wrong assessment on retry",
+        "post_event_evidence": "Confirmed no post-event evidence",
+    }
+    res2 = await executor.execute("submit_asset_analysis", payload_retry)
+    assert res2.get("status") == "saved"
+    assert res2.get("analysis_id") == analysis_id
+
+    updated_row = (await db_session.execute(select(AssetAnalysis).where(AssetAnalysis.id == analysis_id))).scalar_one()
+    assert isinstance(updated_row.priced_in_override_justification, str)
+    decoded = json.loads(updated_row.priced_in_override_justification)
+    assert decoded["why_stage1_wrong"] == "Updated why wrong assessment on retry"
+
+
+@pytest.mark.asyncio
+async def test_submit_asset_analysis_priced_in_override_string_and_none_serialization(db_session):
+    """Verify submit_asset_analysis handles string, empty dict, and None without failure."""
+    from sqlalchemy import select
+
+    executor = ToolExecutor(session=db_session, symbol="EURUSD")
+    executor.called_tools.add("get_price_history")
+    executor.called_tools.add("get_technical_indicators")
+
+    # Case 1: String justification
+    payload_str = {
+        "symbol": "EURUSD",
+        "decision": "wait",
+        "confidence": 0.70,
+        "invalidation": "Invalid above 1.1000",
+        "rationale": "WAIT rationale",
+        "priced_in_score": 8,
+        "priced_in_override_justification": "Explicit text justification for market priced in status",
+    }
+    res_str = await executor.execute("submit_asset_analysis", payload_str)
+    assert res_str.get("status") == "saved"
+    row_str = (
+        await db_session.execute(select(AssetAnalysis).where(AssetAnalysis.id == res_str["analysis_id"]))
+    ).scalar_one()
+    assert isinstance(row_str.priced_in_override_justification, str)
+    assert "Explicit text justification" in row_str.priced_in_override_justification
+
+    # Case 2: None / omitted justification
+    executor2 = ToolExecutor(session=db_session, symbol="GBPUSD")
+    executor2.called_tools.add("get_price_history")
+    executor2.called_tools.add("get_technical_indicators")
+    payload_none = {
+        "symbol": "GBPUSD",
+        "decision": "wait",
+        "confidence": 0.60,
+        "invalidation": "Invalid below 1.2500",
+        "rationale": "WAIT rationale",
+        "priced_in_score": 3,
+        "priced_in_override_justification": None,
+    }
+    res_none = await executor2.execute("submit_asset_analysis", payload_none)
+    assert res_none.get("status") == "saved"
+    row_none = (
+        await db_session.execute(select(AssetAnalysis).where(AssetAnalysis.id == res_none["analysis_id"]))
+    ).scalar_one()
+    assert row_none.priced_in_override_justification is None
