@@ -268,6 +268,12 @@ export function useAgentChatWs() {
               },
             ]);
             break;
+
+          case 'session_reset':
+            setIsProcessing(false);
+            setActiveToolEvents([]);
+            setMessages([DEFAULT_WELCOME]);
+            break;
         }
       } catch (err) {
         console.error('Failed processing WebSocket message:', err);
@@ -368,7 +374,11 @@ export function useAgentChatWs() {
   );
 
   const clearMessages = useCallback(() => {
-    setMessages([]);
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ type: 'reset_session' }));
+    }
+    setMessages([DEFAULT_WELCOME]);
+    setActiveToolEvents([]);
   }, []);
 
   return {

@@ -650,6 +650,7 @@ llm:
   default_provider: gemini
   embedding_model: gemini-embedding-2
   per_turn_timeout_seconds: 90.0
+  chat_sticky_model: true  # Keep model affinity consistent across chat turns to maximize KV cache reuse
   credential_pool:
     enabled: true
     exponential_backoff: true

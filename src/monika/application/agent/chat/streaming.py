@@ -570,14 +570,7 @@ class StreamingMixin(_ChatAgentMixinBase):
                     r"^/(analyze|analisis|deep|reasoning|complex|tier3)\s+", "", user_message, flags=re.IGNORECASE
                 )
 
-            if preference == "auto":
-                complexity = await self._classify_query_complexity(clean_message)
-                if complexity == "deep_research":
-                    preference = "deep_research"
-                elif complexity == "complex":
-                    preference = "tier_deep"
-                else:
-                    preference = "tier_lite"
+            preference = await self._resolve_tier_with_sticky(clean_message, preference)
 
             # Integrate session-scoped planning (Wave 3) — fully wired
             session_plan = SessionPlan.get_or_create(session_id or "default")

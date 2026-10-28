@@ -295,3 +295,65 @@ async def test_chat_agent_conversational_inquiry_does_not_hijack_adhoc(mock_get_
         assert pending is None
         assert "Tentu! Analisis XAUUSD" in reply
         agent._run_tier_medium.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("monika.interfaces.telegram.chat_agent.get_session")
+async def test_chat_agent_reset_session(mock_get_session):
+    mock_session = create_mock_async_session()
+    mock_exec_res = MagicMock()
+    mock_exec_res.rowcount = 5
+    mock_session.execute = AsyncMock(return_value=mock_exec_res)
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__.return_value = mock_session
+    mock_get_session.return_value = mock_ctx
+
+    agent = ChatAgent(settings={}, user_id="user_reset_test")
+    agent._pending_actions["act_1"] = PendingAction("act_1", "order", {}, "desc")
+    agent._steer_queue.append("steer guidance")
+    agent._consecutive_denials = 2
+    agent._active_session_tier = "tier_deep"
+
+    deleted = await agent.reset()
+
+    assert deleted == 5
+    assert len(agent._pending_actions) == 0
+    assert len(agent._steer_queue) == 0
+    assert agent._consecutive_denials == 0
+    assert agent._active_session_tier is None
+    mock_session.execute.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("monika.interfaces.telegram.chat_agent.get_session")
+async def test_chat_agent_sticky_session_routing(mock_get_session):
+    mock_session = create_mock_async_session()
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__.return_value = mock_session
+    mock_get_session.return_value = mock_ctx
+
+    agent = ChatAgent(settings={"llm": {"chat_sticky_model": True}}, user_id="user_sticky_test")
+    agent._save_message = AsyncMock()
+    agent._load_history = AsyncMock(return_value=[])
+    agent._build_system_prompt = AsyncMock(return_value="System Prompt")
+    agent._run_tier_medium = AsyncMock(return_value={"reply": "Reply medium"})
+    agent._run_tier_lite = AsyncMock(return_value={"reply": "Reply lite"})
+
+    # First turn: classified as medium
+    with patch.object(agent, "_classify_query_complexity", new=AsyncMock(return_value="medium")):
+        reply1, _ = await agent.handle("Pertanyaan analisis sedang")
+        assert "Reply medium" in reply1
+        assert agent._active_session_tier == "tier_medium"
+
+    # Second turn: simple greeting ("halo").
+    # With sticky session enabled, it should STICK to tier_medium, avoiding KV cache destruction!
+    with patch.object(agent, "_classify_query_complexity", new=AsyncMock(return_value="simple")):
+        reply2, _ = await agent.handle("halo selamat pagi")
+        assert "Reply medium" in reply2  # Executed via tier_medium
+        assert agent._active_session_tier == "tier_medium"
+
+    # Third turn: explicit prefix override (/fast)
+    with patch.object(agent, "_classify_query_complexity", new=AsyncMock(return_value="simple")):
+        reply3, _ = await agent.handle("/fast apa kabar")
+        assert "Reply lite" in reply3
+        assert agent._active_session_tier == "tier_lite"

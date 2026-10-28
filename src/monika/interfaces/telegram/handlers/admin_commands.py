@@ -217,6 +217,43 @@ class TelegramAdminCommandsMixin(_TelegramBotMixinBase):
             parse_mode=ParseMode.MARKDOWN,
         )
 
+    async def _cmd_reset(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not update.message or not update.effective_user:
+            return
+        if not self._is_authorized(update):
+            return await self._reject_unauthorized(update)
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        user_id = str(update.effective_user.id)
+        chat_id = update.effective_chat.id if update.effective_chat else int(user_id)
+        thread_id = getattr(update.message, "message_thread_id", None)
+        session_id = None
+
+        if isinstance(thread_id, int) and hasattr(self, "topic_manager") and self.topic_manager:
+            session_id = await self.topic_manager.get_session_for_topic(chat_id, thread_id)
+            agent_key = session_id or f"tg_topic_{chat_id}_{thread_id}"
+        else:
+            agent_key = user_id
+
+        deleted_count = 0
+        if hasattr(self, "_chat_agents") and agent_key in self._chat_agents:
+            agent = self._chat_agents[agent_key]
+            deleted_count = await agent.reset(agent_key)
+            del self._chat_agents[agent_key]
+        else:
+            from monika.application.agent.chat_agent import ChatAgent
+
+            temp_agent = ChatAgent(self.settings, agent_key)
+            deleted_count = await temp_agent.reset(agent_key)
+
+        await update.message.reply_text(
+            "♻️ <b>Sesi Percakapan Berhasil Direset</b>\n"
+            f"• Sebanyak <b>{deleted_count}</b> pesan obrolan telah dibersihkan dari memori konteks.\n"
+            "• Seluruh pending proposal dan model state telah dikembalikan ke awal.\n"
+            "• Anda dapat memulai diskusi atau analisis baru.",
+            parse_mode=ParseMode.HTML,
+        )
+
     async def _cmd_backup(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message:
             return

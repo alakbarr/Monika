@@ -114,14 +114,7 @@ class TelegramChatAgent(CoreChatAgent, metaclass=_TelegramChatAgentMeta):
                     r"^/(analyze|analisis|deep|reasoning|complex|tier3)\s+", "", user_message, flags=re.IGNORECASE
                 )
 
-            if preference == "auto":
-                complexity = await self._classify_query_complexity(clean_message)
-                if complexity == "deep_research":
-                    preference = "deep_research"
-                elif complexity == "complex":
-                    preference = "tier_deep"
-                else:
-                    preference = "tier_lite"
+            preference = await self._resolve_tier_with_sticky(clean_message, preference)
 
             selected_tools = self._tool_router.route_tools_for_query(clean_message)
             needs_tools = bool(selected_tools) or bool(

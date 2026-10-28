@@ -125,6 +125,58 @@ class ChatAgent(
         self._last_turn_streamed: bool = False
         self._last_intercepted_pending: Optional[PendingAction] = None
 
+        # Sticky Session Model Affinity (preserves KV cache across multi-turn dialogue)
+        self._active_session_tier: Optional[str] = None
+        self._active_session_model: Optional[str] = None
+
+    async def reset(self, session_id: Optional[Union[str, int]] = None, hard_delete: bool = True) -> int:
+        """
+        Hard-resets current chat session:
+        1. Purges conversation history from database & SessionDbWal.
+        2. Clears all pending actions, charts, files, and session approvals.
+        3. Clears denial breaker, steer queue, and sticky model affinity.
+        """
+        target_id = str(session_id) if session_id is not None else str(self.user_id)
+        deleted_count = await self.reset_session(target_id, hard_delete=hard_delete)
+        self.reset_state()
+        logger.info(f"[ChatAgent] Hard reset complete for user/session '{target_id}' ({deleted_count} msgs deleted).")
+        return deleted_count
+
+    def reset_state(self) -> None:
+        """Resets all in-memory operational state without dropping database history."""
+        self._pending_actions.clear()
+        self._pending_charts.clear()
+        self._pending_files.clear()
+        self._session_approvals.clear()
+        self._consecutive_denials = 0
+        self._proposals_paused = False
+        self._steer_queue.clear()
+        self._hard_cancelled = False
+        self._active_session_tier = None
+        self._active_session_model = None
+
+    async def _resolve_tier_with_sticky(self, clean_message: str, preference: Optional[str] = "auto") -> str:
+        """Resolves model tier respecting manual overrides, deep research intent, and sticky session affinity."""
+        pref = preference or "auto"
+        if pref != "auto":
+            self._active_session_tier = pref
+            return pref
+
+        complexity = await self._classify_query_complexity(clean_message)
+        if complexity == "deep_research":
+            return "deep_research"
+
+        is_sticky_enabled = self.settings.get("llm", {}).get("chat_sticky_model", True)
+        if is_sticky_enabled and self._active_session_tier and self._active_session_tier != "deep_research":
+            return self._active_session_tier
+
+        resolved_tier = (
+            "tier_lite" if complexity == "simple" else ("tier_medium" if complexity == "medium" else "tier_deep")
+        )
+        if is_sticky_enabled:
+            self._active_session_tier = resolved_tier
+        return resolved_tier
+
     def is_busy(self) -> bool:
         """Check if chat agent is currently processing a turn."""
         return self._active_task is not None and not self._active_task.done()
@@ -305,6 +357,9 @@ class ChatAgent(
                 r"^/(analyze|analisis|deep|reasoning|complex|tier3)\s+", "", user_message, flags=re.IGNORECASE
             )
 
+        if preference != "auto":
+            self._active_session_tier = preference
+
         # Check hard cancel state
         if self._hard_cancelled:
             self._hard_cancelled = False
@@ -446,15 +501,7 @@ class ChatAgent(
                     return f"{reply_text}\n\n_[SystemAgentLoop | LangGraph Isolated Pipeline]_", None
 
             self._last_intercepted_pending = None
-            complexity = await self._classify_query_complexity(clean_message)
-            if complexity == "deep_research":
-                preference = "deep_research"
-            elif complexity == "simple":
-                preference = "tier_lite"
-            elif complexity == "medium":
-                preference = "tier_medium"
-            else:
-                preference = "tier_deep"
+            preference = await self._resolve_tier_with_sticky(clean_message, preference)
 
         client = (
             self._client_research

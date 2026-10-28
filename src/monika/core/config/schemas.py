@@ -92,6 +92,9 @@ class LLMConfig(SubscriptableConfig):
     model_catalog: dict[str, Any] | None = None
     credential_pool: dict[str, Any] | None = None
     per_turn_timeout_seconds: float | None = Field(default=90.0, ge=5.0, le=600.0)
+    chat_sticky_model: bool | None = Field(
+        default=True, description="Keep model affinity consistent across chat turns to maximize KV cache reuse"
+    )
 
 
 class SchedulerConfig(SubscriptableConfig):

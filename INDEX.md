@@ -5168,6 +5168,8 @@
 - **Classes**:
   - `class ChatAgent(ActionStateMixin, ActionExecutionMixin, PromptBuilderMixin, StreamingMixin, ExecutionTiersMixin, HistoryMixin)`: Mengelola sesi percakapan dengan AI untuk user Telegram tertentu.
     - `__init__(settings: dict, user_id: int | str, is_admin: bool, ...)`
+    - `async reset(session_id: Optional[Union[str, int]], hard_delete: bool) -> int` - *Hard-resets current chat session:*
+    - `reset_state() -> None` - *Resets all in-memory operational state without dropping database history.*
     - `is_busy() -> bool` - *Check if chat agent is currently processing a turn.*
     - `steer(guidance: str) -> str` - *Tier 1 Interruption: Injects guidance into current active turn without aborting.*
     - `redirect(new_task: str) -> bool` - *Tier 2 Interruption: Gracefully cancels the current ongoing turn and sets up redirect message.*
@@ -5181,6 +5183,7 @@
 - **Path**: [`src/monika/application/agent/chat/history.py`](src/monika/application/agent/chat/history.py)
 - **Classes**:
   - `class HistoryMixin(_ChatAgentMixinBase)`: Mixin managing database persistence and context window history loading.
+    - `async reset_session(session_id: Optional[Union[str, int]], hard_delete: bool) -> int` - *Membersihkan atau mereset riwayat percakapan sesi dari basis data dan SessionDbWal.*
 
 #### `pending_actions.py` - *PendingAction data structure for human-in-the-loop action proposals.*
 - **Path**: [`src/monika/application/agent/chat/pending_actions.py`](src/monika/application/agent/chat/pending_actions.py)

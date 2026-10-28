@@ -167,6 +167,10 @@ class ChatCommandRouter:
             self.renderer.console.clear()
             return CommandResult(handled=True)
 
+        if cmd in ("/reset", "/new"):
+            await self._handle_reset_command()
+            return CommandResult(handled=True)
+
         if cmd == "/theme":
             self._handle_theme_switch(arg)
             return CommandResult(handled=True)
@@ -283,6 +287,7 @@ class ChatCommandRouter:
             ("/cron", "[list|add|remove]", "View and manage autonomous background cron jobs"),
             ("/export", "[filepath?]", "Export conversation transcript to Markdown or JSON"),
             ("/clear", "None", "Clear terminal screen display"),
+            ("/reset", "None", "Reset conversation history and in-memory session memory"),
             ("/exit, /quit", "None", "Terminate interactive session and disconnect"),
         ]
 
@@ -314,6 +319,24 @@ class ChatCommandRouter:
 
         console.print(kb_table)
         console.print()
+
+    async def _handle_reset_command(self) -> None:
+        """Reset conversation history and in-memory state for current CLI session."""
+        from monika.core.config.settings import load_settings
+        from monika.application.agent.chat_agent import ChatAgent
+
+        self.renderer.console.clear()
+        try:
+            settings = load_settings()
+            agent = ChatAgent(settings=settings, user_id=self.session_id)
+            deleted = await agent.reset(self.session_id)
+            self.renderer.render_notice(
+                f"Sesi percakapan direset. {deleted} riwayat pesan dibersihkan dari memori.",
+                level="success",
+            )
+        except Exception as err:
+            logger.debug(f"[ChatCommandRouter] Reset session failed: {err}")
+            self.renderer.render_notice("Sesi percakapan direset (tampilan dibersihkan).", level="info")
 
     def _handle_theme_switch(self, theme_name: str) -> None:
         """Switch palette across renderer and prompt manager."""

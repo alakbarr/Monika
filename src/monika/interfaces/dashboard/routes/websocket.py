@@ -563,6 +563,20 @@ async def websocket_agent_chat(websocket: WebSocket):
                 )
                 continue
 
+            if event_type in ("reset_session", "clear_session", "clear"):
+                if turn_task and not turn_task.done():
+                    turn_task.cancel()
+                deleted_count = await agent.reset(session_id=session_id)
+                await websocket.send_json(
+                    {
+                        "type": "session_reset",
+                        "session_id": session_id,
+                        "deleted_messages": deleted_count,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+                continue
+
             elif event_type == "approval_response":
                 user_role_level = ROLE_HIERARCHY.get(role, 0) if role is not None else 0
                 if user_role_level < ROLE_HIERARCHY.get(Role.OPERATOR, 1):
