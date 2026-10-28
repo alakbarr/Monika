@@ -60,7 +60,7 @@ def kill_process_tree(pid: Optional[int]) -> bool:
     # 2. Fallback for Windows or if psutil was not installed / failed
     if not killed:
         try:
-            if sys.platform == "win32":
+            if platform.system().lower() == "windows":
                 cmd = ["taskkill", "/F", "/T", "/PID", str(pid)]
                 subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
                 killed = True

@@ -540,6 +540,7 @@ def test_role_provider_override_gemini_3_8_flash_and_openrouter_coexistence():
     from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
 
     settings = copy.deepcopy(load_settings())
+    settings["llm"]["model_catalog"]["gemini-3.8-flash"]["provider"] = "openrouter"
     settings["llm"]["task_roles"]["news_digest"] = {
         "primary": "gemini-3.8-flash",
         "provider": "gemini",
