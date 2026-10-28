@@ -9,6 +9,7 @@ import os
 import platform
 import signal
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -59,7 +60,7 @@ def kill_process_tree(pid: Optional[int]) -> bool:
     # 2. Fallback for Windows or if psutil was not installed / failed
     if not killed:
         try:
-            if platform.system().lower() == "windows":
+            if sys.platform == "win32":
                 cmd = ["taskkill", "/F", "/T", "/PID", str(pid)]
                 subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
                 killed = True
@@ -125,7 +126,7 @@ class BaseScraper:
 
     def _detect_browser_major_version(self, browser_bin: str | None = None) -> str:
         """Mendeteksi versi mayor browser (Chrome/Edge) terpasang untuk menyelaraskan User-Agent dengan Client Hints."""
-        if platform.system().lower() == "windows":
+        if sys.platform == "win32":
             try:
                 import winreg
 

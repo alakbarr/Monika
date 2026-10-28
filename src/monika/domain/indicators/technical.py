@@ -1131,9 +1131,9 @@ def compute_vwap(
         w = int(window)
         if has_vol:
             pv = tp * vol
-            cum_pv = pv.rolling(w).sum()
-            cum_vol = vol.rolling(w).sum()
-            fallback_tp = tp.rolling(w).mean()
+            cum_pv = pd.Series(pv.rolling(w).sum())
+            cum_vol = pd.Series(vol.rolling(w).sum())
+            fallback_tp = pd.Series(tp.rolling(w).mean())
             vwap = np.where(cum_vol > 1e-12, cum_pv / np.maximum(cum_vol, 1e-12), fallback_tp)
             return pd.Series(vwap, index=close.index, dtype=float).fillna(tp)
         else:
@@ -1315,10 +1315,10 @@ def compute_ichimoku_series(
     l = low.astype(float)
     c = close.astype(float)
 
-    tenkan = (h.rolling(tk_p).max() + l.rolling(tk_p).min()) / 2.0
-    kijun = (h.rolling(kj_p).max() + l.rolling(kj_p).min()) / 2.0
-    senkou_a = ((tenkan + kijun) / 2.0).shift(kj_p)
-    senkou_b = ((h.rolling(sb_p).max() + l.rolling(sb_p).min()) / 2.0).shift(kj_p)
+    tenkan = (pd.Series(h.rolling(tk_p).max()) + pd.Series(l.rolling(tk_p).min())) / 2.0
+    kijun = (pd.Series(h.rolling(kj_p).max()) + pd.Series(l.rolling(kj_p).min())) / 2.0
+    senkou_a = pd.Series((tenkan + kijun) / 2.0).shift(kj_p)
+    senkou_b = pd.Series((pd.Series(h.rolling(sb_p).max()) + pd.Series(l.rolling(sb_p).min())) / 2.0).shift(kj_p)
     chikou = c.shift(-kj_p)
 
     return {

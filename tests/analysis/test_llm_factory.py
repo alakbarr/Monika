@@ -534,11 +534,24 @@ def test_get_client_for_task_role_alias_resolution():
 
 
 def test_role_provider_override_gemini_3_8_flash_and_openrouter_coexistence():
+    import copy
     from monika.core.config.settings import load_settings
     from monika.infrastructure.providers.gemini_provider import GeminiProvider
     from monika.infrastructure.providers.openrouter_provider import OpenRouterProvider
 
-    settings = load_settings()
+    settings = copy.deepcopy(load_settings())
+    settings["llm"]["task_roles"]["news_digest"] = {
+        "primary": "gemini-3.8-flash",
+        "provider": "gemini",
+    }
+    settings["llm"]["task_roles"]["news_digest_macro_overview"] = {
+        "primary": "gemini-3.8-flash",
+        "provider": "gemini",
+    }
+    settings["llm"]["task_roles"]["debate_judge"] = {
+        "primary": "gemini-3.8-flash",
+        "provider": "openrouter",
+    }
     factory = LLMFactory(settings)
 
     # Catalog default for gemini-3.8-flash remains openrouter
