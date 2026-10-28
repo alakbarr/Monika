@@ -272,6 +272,14 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         prompt_cache_strategy="gemini_context",
         supports_native_thinking=True,
     ),
+    "gemini-3-flash-preview": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=16384,
+        context_window=2097152,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
     "gemini-2.5-pro": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
@@ -281,6 +289,14 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         supports_native_thinking=True,
     ),
     "gemini-2.5-flash": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=65536,
+        context_window=1048576,
+        prompt_cache_strategy="gemini_context",
+        supports_native_thinking=True,
+    ),
+    "gemini-2.5-flash-lite": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
         max_output_tokens=65536,
@@ -391,6 +407,13 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         context_window=256000,
         supports_native_thinking=True,
     ),
+    "deepseek-v4.1-flash-1017": ModelCapabilities(
+        supports_caching=True,
+        supports_structured_output=True,
+        max_output_tokens=32768,
+        context_window=256000,
+        supports_native_thinking=True,
+    ),
     "deepseek-v4-flash": ModelCapabilities(
         supports_caching=True,
         supports_structured_output=True,
@@ -478,7 +501,7 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         supports_native_thinking=True,
     ),
     "glm-5.3-flash": ModelCapabilities(
-        supports_caching=False,
+        supports_caching=True,
         supports_structured_output=True,
         max_output_tokens=16384,
         context_window=128000,
@@ -1316,7 +1339,7 @@ MODEL_CAPABILITIES: Dict[str, ModelCapabilities] = {
         context_window=16000,
     ),
     "free": ModelCapabilities(
-        supports_caching=True,
+        supports_caching=False,
         supports_structured_output=True,
         max_output_tokens=8192,
         context_window=128000,

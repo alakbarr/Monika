@@ -687,12 +687,11 @@ class OpenAIProvider(BaseLLMClient):
             kwargs["extra_headers"] = {**affinity_headers, **extra_headers}
 
         # Auto-populate prompt_cache_key clamped to 64 chars when supported
+        sub = getattr(self, "sub_task", None) or kwargs.pop("sub_task", None)
         if "prompt_cache_key" not in kwargs and self._supports_prompt_cache_key(provider_name):
-            raw_key = (
-                getattr(self, "session_id", None)
-                or getattr(self, "_session_affinity_id", None)
-                or f"monika_{getattr(self, 'role', 'default')}"
-            )
+            base_role = getattr(self, "role", None) or getattr(self, "task_role", "default")
+            role_part = f"{base_role}:{sub}" if sub else base_role
+            raw_key = getattr(self, "session_id", None) or f"monika_{role_part}"
             key_str = str(raw_key).strip()
             if not key_str.startswith("monika_"):
                 key_str = f"monika_{key_str}"

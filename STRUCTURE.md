@@ -2789,6 +2789,7 @@ Monika/
 │   │       ├── llm/
 │   │       │   └── test_kv_cache_invariance.py
 │   │       └── providers/
+│   │           ├── test_provider_telemetry_invariants.py
 │   │           └── test_provider_thinking_replay_and_immutability.py
 │   ├── utils/
 │   │   ├── __init__.py
@@ -3129,4 +3130,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2832
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2833

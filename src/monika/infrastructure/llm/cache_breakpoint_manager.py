@@ -20,8 +20,8 @@ class CacheBreakpointManager:
     MAX_BREAKPOINTS = 4  # Hard limit per Anthropic API spec
 
     MIN_CACHEABLE_CHARS = 4200  # ~1,050 tokens (Anthropic/OpenAI 1,024 token threshold guarantee)
-    GEMINI_3_MIN_CACHEABLE_CHARS = 16500  # ~4,125 tokens (Gemini 3 implicit cache 4,096 token requirement)
-    GEMINI_25_MIN_CACHEABLE_CHARS = 8400  # ~2,100 tokens (Gemini 2.5 implicit cache 2,048 token requirement)
+    GEMINI_3_MIN_CACHEABLE_CHARS = 21000  # ~4,660 tokens (target >= 4,096 * 1.15 tokens under ~4.5 chars/tok)
+    GEMINI_25_MIN_CACHEABLE_CHARS = 10500  # ~2,330 tokens (target >= 2,048 * 1.15 tokens under ~4.5 chars/tok)
 
     CANONICAL_TIER0_ANCHOR = """
 === CANONICAL SYSTEM GOVERNANCE: UNIFIED TIER-0 SYSTEM ANCHOR & INSTITUTIONAL EXECUTION INVARIANTS ===

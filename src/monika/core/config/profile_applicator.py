@@ -74,6 +74,7 @@ ALL_TASK_ROLES = [
     "jev_confluence_gate",
     "jev_session_timing_gate",
     "jev_debate_evaluator",
+    "strategy_discovery",
     "voice_transcription",
 ]
 ALL_49_ROLES = ALL_TASK_ROLES

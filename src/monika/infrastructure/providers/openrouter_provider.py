@@ -490,6 +490,12 @@ class OpenRouterProvider(OpenAIProvider):
                 provider_order = ["DeepSeek", "Together", "Fireworks", "DeepInfra"]
             elif "anthropic" in model_lower or "claude" in model_lower:
                 provider_order = ["Anthropic"]
+            elif "gemini" in model_lower or "google" in model_lower:
+                provider_order = ["Google", "Google AI Studio"]
+            elif "glm" in model_lower or "z-ai" in model_lower:
+                provider_order = ["Zhipu", "DeepInfra", "Together"]
+            elif "minimax" in model_lower:
+                provider_order = ["MiniMax", "Together"]
             elif "qwen" in model_lower:
                 provider_order = ["Together", "Fireworks", "DeepInfra", "Novita"]
             elif "meta-llama" in model_lower or "llama" in model_lower:
