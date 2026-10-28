@@ -476,8 +476,11 @@ class DataSyncMixin(_TuiMixinBase):
         self._cost_usd = float(tokens.get("total_cost_usd", 0.0) or 0.0)
 
         # Cache efficiency
-        total_in = self._input_tokens + self._cached_tokens
-        self._cache_hit_rate = (self._cached_tokens / total_in * 100.0) if total_in > 0 else 0.0
+        self._cache_hit_rate = (
+            min(100.0, max(0.0, self._cached_tokens / float(self._input_tokens) * 100.0))
+            if self._input_tokens > 0
+            else 0.0
+        )
         self._context_used = self._input_tokens + self._output_tokens
 
         # Dynamic context window gauge (from ContextTracker)

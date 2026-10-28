@@ -37,10 +37,9 @@ class PromptCacheTracker:
         )
 
     def get_hit_rate(self) -> float:
-        total_eligible = self.total_input_tokens + self.total_cache_read_tokens
-        if total_eligible <= 0:
+        if self.total_input_tokens <= 0:
             return 0.0
-        return self.total_cache_read_tokens / total_eligible
+        return min(1.0, max(0.0, self.total_cache_read_tokens / float(self.total_input_tokens)))
 
     def get_summary(self) -> Dict[str, Any]:
         return {

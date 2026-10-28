@@ -64,15 +64,14 @@ class TokenAuditor:
             sum_out = int(row.sum_output)
             sum_thinking = int(row.sum_thinking)
             sum_cached = int(row.sum_cached)
-            effective_in = sum_in if sum_in >= sum_cached else (sum_in + sum_cached)
-            cache_hit_rate = min(100.0, round((sum_cached / effective_in * 100.0), 2)) if effective_in > 0 else 0.0
+            cache_hit_rate = min(100.0, round((sum_cached / sum_in * 100.0), 2)) if sum_in > 0 else 0.0
             pure_content = max(0, sum_out - sum_thinking)
             thinking_pct = round((sum_thinking / sum_out * 100.0), 2) if sum_out > 0 else 0.0
 
             return {
                 "time_window_hours": hours,
                 "total_calls": int(row.total_calls),
-                "input_tokens": effective_in,
+                "input_tokens": sum_in,
                 "output_tokens": sum_out,
                 "thinking_tokens": sum_thinking,
                 "pure_content_tokens": pure_content,
@@ -325,14 +324,13 @@ class TokenAuditor:
                 m = dict(r._mapping)
                 sum_in = int(m["sum_input"] or 0)
                 sum_cached = int(m["sum_cached"] or 0)
-                effective_in = sum_in if sum_in >= sum_cached else (sum_in + sum_cached)
-                cache_hit_rate = min(100.0, round((sum_cached / effective_in * 100.0), 2)) if effective_in > 0 else 0.0
+                cache_hit_rate = min(100.0, round((sum_cached / sum_in * 100.0), 2)) if sum_in > 0 else 0.0
                 results.append(
                     {
                         "subsystem": m["subsystem"],
                         "slot_name": m["slot_name"],
                         "calls": m["call_count"],
-                        "sum_input": effective_in,
+                        "sum_input": sum_in,
                         "sum_output": int(m["sum_output"] or 0),
                         "sum_total": int(m["sum_total"] or 0),
                         "sum_cached": sum_cached,
@@ -357,10 +355,7 @@ class TokenAuditor:
             sum_input = int(row_g.sum_input) if row_g else 0
             sum_cached = int(row_g.sum_cached) if row_g else 0
             sum_creation = int(row_g.sum_cache_creation) if row_g else 0
-            effective_input = sum_input if sum_input >= sum_cached else (sum_input + sum_cached)
-            global_hit_rate = (
-                min(100.0, round((sum_cached / effective_input * 100.0), 2)) if effective_input > 0 else 0.0
-            )
+            global_hit_rate = min(100.0, round((sum_cached / sum_input * 100.0), 2)) if sum_input > 0 else 0.0
 
             stmt_models = (
                 select(
@@ -379,13 +374,12 @@ class TokenAuditor:
                 m = dict(r._mapping)
                 m_in = int(m["sum_input"] or 0)
                 m_cached = int(m["sum_cached"] or 0)
-                m_effective_in = m_in if m_in >= m_cached else (m_in + m_cached)
-                m_hit_rate = min(100.0, round((m_cached / m_effective_in * 100.0), 2)) if m_effective_in > 0 else 0.0
+                m_hit_rate = min(100.0, round((m_cached / m_in * 100.0), 2)) if m_in > 0 else 0.0
                 model_breakdown.append(
                     {
                         "model_name": m["model_name"],
                         "calls": m["calls"],
-                        "input_tokens": m_effective_in,
+                        "input_tokens": m_in,
                         "cached_tokens": m_cached,
                         "cache_hit_rate_pct": m_hit_rate,
                     }
@@ -397,10 +391,10 @@ class TokenAuditor:
             return {
                 "time_window_hours": hours,
                 "total_calls": int(row_g.total_calls) if row_g else 0,
-                "total_input_tokens": effective_input,
+                "total_input_tokens": sum_input,
                 "cache_read_tokens": sum_cached,
                 "cache_creation_tokens": sum_creation,
-                "uncached_input_tokens": max(0, effective_input - sum_cached),
+                "uncached_input_tokens": max(0, sum_input - sum_cached),
                 "global_cache_hit_rate_pct": global_hit_rate,
                 "estimated_savings_usd": est_savings,
                 "model_cache_breakdown": model_breakdown,

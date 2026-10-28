@@ -571,13 +571,13 @@ async def get_prompt_cache_metrics(limit: int = Query(20, ge=1, le=100)):
             for cid, grp in list(cycle_groups.items())[:limit]:
                 inp = grp["input_tokens"]
                 cached = grp["cached_tokens"]
-                hit_rate = round((cached / inp * 100), 2) if inp > 0 else 0.0
+                hit_rate = min(100.0, round((cached / inp * 100), 2)) if inp > 0 else 0.0
                 grp["hit_rate_pct"] = hit_rate
                 cycles.append(grp)
     except Exception as e:
         logger.debug(f"Failed to fetch prompt cache metrics: {e}")
 
-    overall_hit_rate = round((total_cached / total_input * 100), 2) if total_input > 0 else 0.0
+    overall_hit_rate = min(100.0, round((total_cached / total_input * 100), 2)) if total_input > 0 else 0.0
     return {
         "overall_hit_rate_pct": overall_hit_rate,
         "total_cached_tokens": total_cached,

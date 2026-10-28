@@ -704,8 +704,7 @@ class OpenAIProvider(BaseLLMClient):
         if use_streaming:
             call_kwargs = dict(kwargs)
             call_kwargs["stream"] = True
-            if provider_name != "deepseek":
-                call_kwargs["stream_options"] = {"include_usage": True}
+            call_kwargs["stream_options"] = {"include_usage": True}
             raw_response = await self._call_chat_completions_with_recovery(call_kwargs)
             if raw_response is None:
                 return None
@@ -737,8 +736,8 @@ class OpenAIProvider(BaseLLMClient):
             if not cached:
                 cached = int(usage.get("prompt_cache_hit_tokens", 0) or 0)
 
-            cache_creation = int(usage.get("prompt_cache_miss_tokens", 0) or 0)
-            if not cache_creation and isinstance(details, dict):
+            cache_creation = 0
+            if isinstance(details, dict):
                 cache_creation = int(details.get("cache_creation_tokens", 0) or 0)
 
             comp_details = usage.get("completion_tokens_details") or {}
@@ -774,9 +773,8 @@ class OpenAIProvider(BaseLLMClient):
             if isinstance(hit_val, (int, float)):
                 cached = int(hit_val)
 
-        cache_creation = getattr(usage, "prompt_cache_miss_tokens", 0)
-        cache_creation = int(cache_creation) if isinstance(cache_creation, (int, float)) else 0
-        if not cache_creation and details:
+        cache_creation = 0
+        if details:
             cc_val = (
                 getattr(details, "cache_creation_tokens", 0)
                 if not isinstance(details, dict)

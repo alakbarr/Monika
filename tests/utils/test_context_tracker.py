@@ -25,8 +25,8 @@ def test_context_tracker_record_usage():
     assert tracker.get_used_tokens() == 12000
     # 12,000 / 200,000 = 0.06
     assert pytest.approx(tracker.get_utilization_ratio(), 0.001) == 0.06
-    # 5,000 / 15,000 = 33.33%
-    assert pytest.approx(tracker.get_cache_hit_rate(), 0.1) == 33.33
+    # 5,000 / 10,000 = 50.00% (input_tokens represents total prompt tokens)
+    assert pytest.approx(tracker.get_cache_hit_rate(), 0.1) == 50.00
     assert not tracker.is_approaching_limit(0.8)
 
 

@@ -1017,6 +1017,7 @@ class AgentHarness:
 
         active_tools: list[dict] = [dict(t) for t in tools] if tools else []
         active_tools.sort(key=lambda t: str(t.get("name", "")))
+        task_role = getattr(self.llm_client, "role", None) or stage_name
 
         if hasattr(self, "repeat_tool_guard") and self.repeat_tool_guard:
             self.repeat_tool_guard.reset_on_user_turn()
@@ -1567,6 +1568,7 @@ class AgentHarness:
                                 input_tokens=total_input_tokens,
                                 output_tokens=total_output_tokens,
                                 session=session,
+                                task_role=task_role,
                                 cached_tokens=total_cached_tokens,
                                 thinking_tokens=total_thinking_tokens,
                                 is_direct_free_tier=False if is_paid else None,
@@ -1646,6 +1648,7 @@ class AgentHarness:
                                 input_tokens=total_input_tokens,
                                 output_tokens=total_output_tokens,
                                 session=session,
+                                task_role=task_role,
                                 cached_tokens=total_cached_tokens,
                                 thinking_tokens=total_thinking_tokens,
                                 is_direct_free_tier=False if is_paid else None,
@@ -2895,6 +2898,7 @@ class AgentHarness:
                     input_tokens=total_input_tokens,
                     output_tokens=total_output_tokens,
                     session=session,
+                    task_role=task_role,
                     cached_tokens=total_cached_tokens,
                     thinking_tokens=total_thinking_tokens,
                     is_direct_free_tier=False if is_paid else None,

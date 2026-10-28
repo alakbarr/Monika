@@ -305,7 +305,11 @@ class TypeSafeProvider(BaseLLMClient):
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                     cached_tokens=cached_tokens,
-                    latency_ms=latency_ms,
+                    task_role=getattr(self, "role", None) or kwargs.get("task_role"),
+                    subsystem=getattr(self, "subsystem", None),
+                    symbol=getattr(self, "symbol", None),
+                    cycle_id=getattr(self, "cycle_id", None),
+                    execution_time_ms=latency_ms,
                     session=kwargs.get("session"),
                 )
                 return parse_jev_response_to_dict(response, schema=schema)

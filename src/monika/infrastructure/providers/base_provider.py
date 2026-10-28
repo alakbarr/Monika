@@ -540,7 +540,7 @@ class BaseLLMClient(LlmPort, ABC):
             return "debate_bull"
         if "judge" in txt:
             return "debate_judge"
-        if "news_class" in txt or "classify" in txt:
+        if "news_class" in txt:
             return "news_classification"
         if "digest_macro" in txt or "macro_overview" in txt:
             return "news_digest_macro_overview"

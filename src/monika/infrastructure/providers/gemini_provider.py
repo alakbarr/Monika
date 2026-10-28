@@ -681,11 +681,13 @@ class GeminiProvider(BaseLLMClient):
                     cached = usage.get("cachedContentTokenCount", 0) or 0
                     thoughts = usage.get("thoughtsTokenCount", 0) or 0
                     if inp > 0 or outp > 0:
+                        resolved_role = kwargs.get("task_role") or getattr(self, "role", None)
                         await self._save_token_usage(
                             self.model,
-                            "generate",
+                            kwargs.get("task_name", "generate"),
                             inp,
                             outp,
+                            task_role=resolved_role,
                             cached_tokens=cached,
                             thinking_tokens=thoughts,
                             is_direct_free_tier=is_free_attempt,
@@ -726,11 +728,13 @@ class GeminiProvider(BaseLLMClient):
                                     rec_cached = rec_usage.get("cachedContentTokenCount", 0) or 0
                                     rec_thoughts = rec_usage.get("thoughtsTokenCount", 0) or 0
                                     if rec_inp > 0 or rec_outp > 0:
+                                        resolved_role = kwargs.get("task_role") or getattr(self, "role", None)
                                         await self._save_token_usage(
                                             self.model,
-                                            "generate",
+                                            kwargs.get("task_name", "generate"),
                                             rec_inp,
                                             rec_outp,
+                                            task_role=resolved_role,
                                             cached_tokens=rec_cached,
                                             thinking_tokens=rec_thoughts,
                                             is_direct_free_tier=is_free_attempt,
@@ -774,11 +778,13 @@ class GeminiProvider(BaseLLMClient):
                         cached = usage.get("cachedContentTokenCount", 0) or 0
                         thoughts = usage.get("thoughtsTokenCount", 0) or 0
                         if inp > 0 or outp > 0:
+                            resolved_role = kwargs.get("task_role") or getattr(self, "role", None)
                             await self._save_token_usage(
                                 self.model,
-                                "generate",
+                                kwargs.get("task_name", "generate"),
                                 inp,
                                 outp,
+                                task_role=resolved_role,
                                 cached_tokens=cached,
                                 thinking_tokens=thoughts,
                                 is_direct_free_tier=is_free_attempt,
@@ -1494,13 +1500,15 @@ class GeminiProvider(BaseLLMClient):
         if total_input_tokens > 0 or total_output_tokens > 0:
             from monika.infrastructure.database.db import get_session as _gs
 
+            chat_role = getattr(self, "role", None) or "chat_telegram"
             async with _gs() as session:
                 await self._save_token_usage(
                     self.model,
-                    "chat_telegram",
+                    chat_role,
                     total_input_tokens,
                     total_output_tokens,
                     session,
+                    task_role=chat_role,
                     cached_tokens=total_cached_tokens,
                     thinking_tokens=total_thinking_tokens,
                     is_direct_free_tier=not any_turn_paid,

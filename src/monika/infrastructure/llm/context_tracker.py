@@ -119,10 +119,9 @@ class ContextTracker:
 
     def get_cache_hit_rate(self) -> float:
         """Percentage of input tokens served from cache."""
-        total_in = self.input_tokens + self.cached_tokens
-        if total_in <= 0:
+        if self.input_tokens <= 0:
             return 0.0
-        return (self.cached_tokens / float(total_in)) * 100.0
+        return min(100.0, max(0.0, (self.cached_tokens / float(self.input_tokens)) * 100.0))
 
     def is_approaching_limit(self, threshold: float = 0.8) -> bool:
         """Returns True if used tokens exceed the given threshold ratio."""
