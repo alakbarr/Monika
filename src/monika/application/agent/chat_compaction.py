@@ -54,48 +54,35 @@ class ChatMicroCompactor:
             return messages
 
         result = [dict(m) for m in messages]
-        compacted_count = 0
 
-        # Walk from oldest to newest, compact assistant messages only
-        for i in range(len(result)):
-            if total_tokens <= threshold:
-                break
+        # Option A: Append-only summary boundary.
+        # Do NOT mutate historical assistant turns in-place (maintains KV prompt-cache invariance).
+        # Check if an append-only summary boundary has already been injected.
+        if any(
+            m.get("_summary_boundary") or "[Ringkasan respons sebelumnya:" in str(m.get("content", "")) for m in result
+        ):
+            return result
 
-            msg = result[i]
-            if msg.get("role") != "assistant":
-                continue  # NEVER compact user messages
-            if msg.get("_compacted"):
-                continue  # Already compacted
+        # Summarize older assistant turns into a single append-only summary boundary
+        assistant_contents = [
+            str(m.get("content", ""))
+            for m in result
+            if m.get("role") == "assistant" and estimate_tokens(str(m.get("content", ""))) > 50
+        ]
 
-            original_content = str(msg.get("content", ""))
-            original_tokens = estimate_tokens(original_content)
-
-            if original_tokens <= 50:
-                continue  # Too short to compress meaningfully
-
-            # Compress: extract key info, then summarize
-            summary = self._summarize_assistant(original_content)
-            ts_tag = ""
-            msg_ts = msg.get("timestamp") or msg.get("created_at")
-            if msg_ts:
-                ts_str = msg_ts.isoformat() if hasattr(msg_ts, "isoformat") else str(msg_ts)
-                ts_tag = f'<temporal_boundary timestamp="{ts_str}"/>\n'
-
-            result[i] = {
-                **msg,
+        if assistant_contents:
+            combined = "\n".join(assistant_contents)
+            summary = self._summarize_assistant(combined)
+            summary_msg = {
                 "role": "assistant",
-                "content": f"{ts_tag}[Ringkasan respons sebelumnya: {summary}]",
+                "content": f"[Ringkasan respons sebelumnya: {summary}]",
                 "_compacted": True,
+                "_summary_boundary": True,
             }
-
-            saved_tokens = original_tokens - estimate_tokens(summary)
-            total_tokens -= saved_tokens
-            compacted_count += 1
-
-        if compacted_count > 0:
+            result.append(summary_msg)
             logger.info(
-                f"Chat micro-compaction: compacted {compacted_count} assistant turns, "
-                f"history now ~{total_tokens} tokens"
+                f"Chat append-only compaction: appended summary turn, "
+                f"preserved {len(messages)} historical turns byte-identical"
             )
 
         return result

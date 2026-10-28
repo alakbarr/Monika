@@ -545,7 +545,15 @@ class ChatAgent(
         try:
             async with get_session() as session:
                 history = await self._load_history(session, session_id=session_id)
-                await self._save_message(session, "user", clean_message, session_id=session_id)
+                db_message = (
+                    re.sub(
+                        r"<volatile_overlay>[\s\S]*?</volatile_overlay>\s*|<context_snapshot>[\s\S]*?</context_snapshot>\s*",
+                        "",
+                        clean_message,
+                    ).strip()
+                    or clean_message
+                )
+                await self._save_message(session, "user", db_message, session_id=session_id)
                 system_prompt = await self._build_system_prompt(session)
                 executor = ToolExecutor(session, settings=self.settings)
                 executor.is_admin = getattr(self, "is_admin", False)

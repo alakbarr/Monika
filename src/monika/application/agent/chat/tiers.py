@@ -23,6 +23,87 @@ from monika.infrastructure.database.models import UserMarketIntel
 
 from monika.application.agent.chat.base import _ChatAgentMixinBase, logger
 
+TIER_LITE_TOOL_NAMES: tuple[str, ...] = (
+    "get_account_info",
+    "get_market_quote",
+    "get_market_session",
+    "get_open_positions",
+    "get_paper_trading_performance",
+    "get_system_health",
+)
+
+TIER_MEDIUM_TOOL_NAMES: tuple[str, ...] = (
+    "calculate_position_size",
+    "get_account_info",
+    "get_asset_analysis",
+    "get_atr",
+    "get_chart",
+    "get_economic_calendar",
+    "get_fundamental_brief",
+    "get_market_quote",
+    "get_market_regime",
+    "get_market_session",
+    "get_multi_timeframe_summary",
+    "get_news_digest",
+    "get_open_positions",
+    "get_paper_trading_performance",
+    "get_price_history",
+    "get_risk_state",
+    "get_smc_zones",
+    "get_technical_indicators",
+)
+
+TIER_DEEP_TOOL_NAMES: tuple[str, ...] = (
+    "calculate_confluence",
+    "calculate_position_size",
+    "detect_candlestick_patterns",
+    "get_account_info",
+    "get_asset_analysis",
+    "get_atr",
+    "get_central_bank_expectations",
+    "get_chart",
+    "get_cot_report",
+    "get_daily_range_context",
+    "get_debate_statistics",
+    "get_dxy",
+    "get_economic_calendar",
+    "get_fibonacci_levels",
+    "get_fundamental_brief",
+    "get_market_chronicle",
+    "get_market_quote",
+    "get_market_regime",
+    "get_market_session",
+    "get_multi_timeframe_summary",
+    "get_news_digest",
+    "get_open_positions",
+    "get_order_blocks",
+    "get_paper_trading_performance",
+    "get_pnl_summary",
+    "get_price_history",
+    "get_price_momentum",
+    "get_risk_state",
+    "get_smc_zones",
+    "get_spread_snapshot",
+    "get_structure_breaks",
+    "get_swing_points",
+    "get_system_health",
+    "get_technical_indicators",
+    "get_timesfm_forecast",
+    "propose_action",
+)
+
+_INTERACTIVE_MAP = {t.get("name"): t for t in OPERATOR_INTERACTIVE_TOOLS if t.get("name")}
+
+
+def _build_tier_tools(names: tuple[str, ...]) -> list[dict[str, Any]]:
+    matched = [_INTERACTIVE_MAP[n] for n in names if n in _INTERACTIVE_MAP]
+    return sorted(matched, key=lambda t: str(t.get("name", "")))
+
+
+TIER_LITE_TOOLS: list[dict[str, Any]] = _build_tier_tools(TIER_LITE_TOOL_NAMES)
+TIER_MEDIUM_TOOLS: list[dict[str, Any]] = _build_tier_tools(TIER_MEDIUM_TOOL_NAMES)
+TIER_DEEP_TOOLS: list[dict[str, Any]] = _build_tier_tools(TIER_DEEP_TOOL_NAMES)
+
 
 class ExecutionTiersMixin(_ChatAgentMixinBase):
     """Mixin providing multi-tier model execution strategies."""
@@ -193,11 +274,14 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
     async def _run_tier_lite(
         self, system_prompt, history, message, tool_executor=None, image_bytes: Optional[bytes] = None
     ) -> dict:
-        """Lite tier path untuk query sederhana menggunakan lean prompt (~150 token)."""
-        selected_tools = self._tool_router.route_tools_for_query(message)
-        if selected_tools:
-            selected_tools = sorted(selected_tools, key=lambda t: str(t.get("name", "")))
+        """Lite tier path untuk query sederhana menggunakan lean prompt yang di-anchor (~1024 token)."""
+        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
+        selected_tools = TIER_LITE_TOOLS
         lean_sys = self._build_lean_system_prompt()
+        lean_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+            lean_sys, task_role="chat_telegram", force=True
+        )
         payload = self._format_user_message_payload(message, image_bytes)
         response = await self._client_lite.run_chat_loop(
             system_prompt=lean_sys,
@@ -211,10 +295,8 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
     async def _run_tier_medium(
         self, system_prompt, history, message, tool_executor=None, image_bytes: Optional[bytes] = None
     ) -> dict:
-        """Medium tier path untuk query menengah."""
-        selected_tools = self._tool_router.route_tools_for_query(message)
-        if selected_tools:
-            selected_tools = sorted(selected_tools, key=lambda t: str(t.get("name", "")))
+        """Medium tier path untuk query menengah dengan tools analitis statis terurut."""
+        selected_tools = TIER_MEDIUM_TOOLS
         sys_prompt, user_msg = self._prepare_cache_invariant_prompt(system_prompt, message)
         payload = self._format_user_message_payload(user_msg, image_bytes)
         response = await self._client_medium.run_chat_loop(
@@ -229,11 +311,9 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
     async def _run_tier_deep(
         self, system_prompt, history, message, tool_executor=None, image_bytes: Optional[bytes] = None
     ) -> dict:
-        """Deep tier path untuk analisis mendalam."""
+        """Deep tier path untuk analisis mendalam dengan tools institusional statis terurut."""
         system_prompt = self._inject_macro_playbooks(system_prompt, user_query=message)
-        selected_tools = self._tool_router.route_tools_for_query(message)
-        if selected_tools:
-            selected_tools = sorted(selected_tools, key=lambda t: str(t.get("name", "")))
+        selected_tools = TIER_DEEP_TOOLS
         sys_prompt, user_msg = self._prepare_cache_invariant_prompt(system_prompt, message)
         payload = self._format_user_message_payload(user_msg, image_bytes)
         response = await self._client_deep.run_chat_loop(

@@ -1506,20 +1506,20 @@ class OpenAIProvider(BaseLLMClient):
 
         norm_msgs = self._normalize_messages(messages)
         if dynamic_sys and norm_msgs:
-            first_user_idx = next((i for i, m in enumerate(norm_msgs) if m.get("role") == "user"), None)
-            if first_user_idx is not None:
-                first_user = dict(norm_msgs[first_user_idx])
-                user_content = first_user.get("content", "")
+            last_user_idx = max((i for i, m in enumerate(norm_msgs) if m.get("role") == "user"), default=None)
+            if last_user_idx is not None:
+                last_user = dict(norm_msgs[last_user_idx])
+                user_content = last_user.get("content", "")
                 if "<context_snapshot>" not in str(user_content):
                     if isinstance(user_content, str):
-                        first_user["content"] = (
+                        last_user["content"] = (
                             f"{user_content}\n\n<context_snapshot>\n{dynamic_sys}\n</context_snapshot>"
                         )
                     elif isinstance(user_content, list):
-                        first_user["content"] = list(user_content) + [
+                        last_user["content"] = list(user_content) + [
                             {"type": "text", "text": f"\n\n<context_snapshot>\n{dynamic_sys}\n</context_snapshot>"}
                         ]
-                norm_msgs[first_user_idx] = first_user
+                norm_msgs[last_user_idx] = last_user
 
         if is_openrouter and is_claude_or_qwen:
             from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager

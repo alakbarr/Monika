@@ -328,7 +328,7 @@ class ChatCommandRouter:
         self.renderer.console.clear()
         try:
             settings = load_settings()
-            agent = ChatAgent(settings=settings, user_id=self.session_id)
+            agent = ChatAgent(settings=settings, user_id=self.session_id, interface="cli")
             deleted = await agent.reset(self.session_id)
             self.renderer.render_notice(
                 f"Sesi percakapan direset. {deleted} riwayat pesan dibersihkan dari memori.",
