@@ -30,7 +30,7 @@ async def make_portfolio_decision(
         "Do NOT override rejection criteria based on subjective reasoning.\n\n"
         'Return JSON: {"approval": boolean, "recommended_risk_multiplier": float, "reason": string}'
     )
-    user_msg = f"Symbol: {symbol}\nRisk Debates: {json.dumps(risk_debate_states)}\nPortfolio State: {json.dumps(actual_risk_state)}"
+    user_msg = f"Symbol: {symbol}\nRisk Debates: {json.dumps(risk_debate_states, sort_keys=True)}\nPortfolio State: {json.dumps(actual_risk_state, sort_keys=True)}"
 
     schema = {
         "type": "object",
@@ -43,7 +43,12 @@ async def make_portfolio_decision(
     }
 
     try:
-        resp = await client.generate_content(system_prompt=sys_prompt, user_message=user_msg, response_schema=schema)
+        resp = await client.generate_content(
+            system_prompt=sys_prompt,
+            user_message=user_msg,
+            response_schema=schema,
+            task_role="portfolio_manager_per_trade",
+        )
         if not resp:
             raise ValueError("Empty response from LLM")
         data = extract_and_parse_json(resp) if isinstance(resp, str) else (resp if isinstance(resp, dict) else None)

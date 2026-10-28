@@ -20,6 +20,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
 from monika.application.analysis.tools.mixins.base import _ToolExecutorMixinBase, logger
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
+RISK_GATE_BASE_SYSTEM_PROMPT = (
+    "You are a quantitative risk specialist. Evaluate structural levels, invalidation, and R:R.\n"
+    "Enforce rigorous capital preservation, mathematical verification of risk metrics, "
+    "and deterministic adherence to sizing and drawdown constraints."
+)
+
+RISK_GATE_SYSTEM_PROMPT = CacheBreakpointManager.pad_system_prompt_to_threshold(
+    RISK_GATE_BASE_SYSTEM_PROMPT,
+    task_role="risk_gate",
+    force=True,
+)
 from monika.infrastructure.database.models import (
     ActivityLog,
     AssetAnalysis,
@@ -736,24 +749,29 @@ class SystemToolsMixin(_ToolExecutorMixinBase):
         from monika.infrastructure.providers.llm_factory import get_client_for_task
 
         runner = IsolatedSubagentRunner(settings=self.settings)
+        task_role = None
         if role == "macro_specialist":
             client = get_client_for_task("stage1_fundamental", self.settings)
             tools = MACRO_ANALYSIS_TOOLS
             sys_prompt = "You are an institutional macro specialist. Deliver concise, evidence-grounded macro analysis."
+            task_role = "stage1_fundamental"
         elif role == "sentiment_specialist":
             client = get_client_for_task("sentiment_analyst", self.settings)
             tools = MACRO_ANALYSIS_TOOLS
             sys_prompt = "You are a market sentiment specialist. Deliver concise sentiment and positioning analysis."
+            task_role = "sentiment_analyst"
         elif role == "risk_specialist":
             client = get_client_for_task("risk_gate", self.settings)
             tools = ASSET_CORE_TOOLS
-            sys_prompt = "You are a quantitative risk specialist. Evaluate structural levels, invalidation, and R:R."
+            sys_prompt = RISK_GATE_SYSTEM_PROMPT
+            task_role = "risk_gate"
         else:
             client = get_client_for_task("stage2_per_asset_primary", self.settings)
             tools = ASSET_CORE_TOOLS
             sys_prompt = (
                 "You are an SMC technical specialist. Analyze market structure, order blocks, and key liquidity zones."
             )
+            task_role = "stage2_per_asset_primary"
 
         user_content = f"Symbol: {symbol}\nTask: {prompt}" if symbol else prompt
         messages = [{"role": "user", "content": user_content}]
@@ -774,6 +792,7 @@ class SystemToolsMixin(_ToolExecutorMixinBase):
             session=self.session,
             fork_parent_context=bool(fork_parent and parent_messages),
             parent_messages=parent_messages,
+            task_role=task_role,
         )
 
         return {

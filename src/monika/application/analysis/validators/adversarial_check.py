@@ -7,9 +7,27 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.models import AssetAnalysis, SystemConfig
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.AdversarialCheck")
+
+ADVERSARIAL_BASE_SYSTEM_PROMPT = (
+    "You are a skeptical risk-desk reviewer performing a final pre-trade challenge.\n"
+    "Your mandate is objective risk discovery and finding fatal flaws or severe unhedged vulnerabilities in trade hypotheses.\n"
+    "MANDATORY EVALUATION RULES:\n"
+    "1. Prioritize addressing deterministic red flags before evaluating general market mechanics.\n"
+    "2. hard_block=true ONLY for objective disqualifications (mathematical errors, direct self-contradiction, "
+    "missing/unclear invalidation conditions, or priced_in_score >= 9 without override justification).\n"
+    "3. recommend_block=true for significant, non-fatal risk factors.\n"
+    "4. Formulate strongest_counter_argument, hard_block, and recommend_block FIRST before deciding overall_quality and final approve."
+)
+
+ADVERSARIAL_SYSTEM_PROMPT = CacheBreakpointManager.pad_system_prompt_to_threshold(
+    ADVERSARIAL_BASE_SYSTEM_PROMPT,
+    task_role="adversarial_check",
+    force=True,
+)
 
 ADVERSARIAL_SCHEMA = {
     "type": "object",
@@ -142,7 +160,18 @@ async def run_adversarial_check(session: AsyncSession, analysis: AssetAnalysis, 
         except Exception as fs_err:
             logger.debug(f"[AdversarialCheck] Could not build fact sheet: {fs_err}")
 
-        prompt = f"""
+        prompt = f"""QUALITY SEVERITY ANCHORS (mandatory reference for overall_quality):
+- high: Zero unresolved deterministic red flags; rationale cites concrete price/structure levels; bull/bear stress tests are specific and verifiable.
+- medium: Exactly 1 minor concern exists (e.g. marginal R:R just above minimum threshold, or 1 mild red flag sufficiently justified in rationale).
+- low: 2+ deterministic red flags lack adequate justification, OR rationale is generic/non-specific to current market structure, OR contains unaddressed contradictions with priced-in score or macro brief.
+
+EVALUATION CHECKLIST & INSTRUCTIONS:
+- Find the STRONGEST argument against this specific trade. Prioritize addressing the deterministic red flags above before seeking other arguments.
+- hard_block=true ONLY for objective disqualifications (mathematical errors, direct self-contradiction, missing/unclear invalidation conditions, or priced_in_score >= 9 without override justification).
+- recommend_block=true for significant, non-fatal risk factors.
+- Formulate strongest_counter_argument, hard_block, and recommend_block FIRST before deciding overall_quality and final approve.
+
+Trade Setup & Invalidation Parameters:
 Symbol: {analysis.symbol}
 Direction: {analysis.decision.upper()}
 Confluence Score: {analysis.confluence_score}/14
@@ -155,21 +184,11 @@ SL: {analysis.stop_loss}  TP: {analysis.take_profit}
 Deterministic red flags already detected by the system:
 {chr(10).join(deterministic_flags) if deterministic_flags else "none"}
 
-QUALITY SEVERITY ANCHORS (mandatory reference for overall_quality):
-- high: Zero unresolved deterministic red flags; rationale cites concrete price/structure levels; bull/bear stress tests are specific and verifiable.
-- medium: Exactly 1 minor concern exists (e.g. marginal R:R just above minimum threshold, or 1 mild red flag sufficiently justified in rationale).
-- low: 2+ deterministic red flags lack adequate justification, OR rationale is generic/non-specific to current market structure, OR contains unaddressed contradictions with priced-in score or macro brief.
-
 Full Rationale (verbatim, do not paraphrase):
 {rationale_for_prompt}
 
 RAW FACT SHEET (ground truth from database — use to verify rationale claims):
 {fact_sheet_str if fact_sheet_str else "unavailable"}
-
-Find the STRONGEST argument against this specific trade. Prioritize addressing the deterministic red flags above before seeking other arguments.
-hard_block=true ONLY for objective disqualifications (mathematical errors, direct self-contradiction, missing/unclear invalidation conditions, or priced_in_score >= 9 without override justification).
-recommend_block=true for significant, non-fatal risk factors.
-Formulate strongest_counter_argument, hard_block, and recommend_block FIRST before deciding overall_quality and final approve.
 """
         import hashlib
 
@@ -187,13 +206,34 @@ Formulate strongest_counter_argument, hard_block, and recommend_block FIRST befo
 
         adv_jev_q = build_adversarial_check_questions(analysis.symbol)
 
-        result_str = await client.generate_content(
-            system_prompt="You are a skeptical risk-desk reviewer performing a final pre-trade challenge.",
-            user_message=prompt,
-            response_schema=ADVERSARIAL_SCHEMA,
-            jev_questions=adv_jev_q,
-            temperature=0.0,
+        client_model = getattr(client, "model", None)
+        client_prov = getattr(client, "provider_name", None)
+        padded_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+            ADVERSARIAL_SYSTEM_PROMPT,
+            model_name=client_model,
+            provider_name=client_prov,
+            task_role="adversarial_check",
+            force=True,
         )
+
+        if hasattr(client, "generate_content"):
+            result_str = await client.generate_content(
+                system_prompt=padded_sys,
+                user_message=prompt,
+                response_schema=ADVERSARIAL_SCHEMA,
+                jev_questions=adv_jev_q,
+                temperature=0.0,
+                task_role="adversarial_check",
+            )
+        else:
+            result_str = await client.classify_json(
+                prompt=prompt,
+                system_prompt=padded_sys,
+                schema=ADVERSARIAL_SCHEMA,
+                temperature=0.0,
+                task_role="adversarial_check",
+                jev_questions=adv_jev_q,
+            )
         if not result_str or not result_str.strip():
             raise RuntimeError("Empty response received from adversarial check LLM")
 
@@ -255,13 +295,34 @@ Formulate strongest_counter_argument, hard_block, and recommend_block FIRST befo
             from monika.core.primitives.jev_primitives import build_adversarial_check_questions
 
             retry_jev_q = build_adversarial_check_questions(analysis.symbol)
-            result_str = await client.generate_content(
-                system_prompt="You are a skeptical risk-desk reviewer performing a final pre-trade challenge.",
-                user_message=retry_prompt,
-                response_schema=ADVERSARIAL_SCHEMA,
-                jev_questions=retry_jev_q,
-                temperature=0.0,
+            client_model = getattr(client, "model", None)
+            client_prov = getattr(client, "provider_name", None)
+            padded_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+                ADVERSARIAL_SYSTEM_PROMPT,
+                model_name=client_model,
+                provider_name=client_prov,
+                task_role="adversarial_check",
+                force=True,
             )
+
+            if hasattr(client, "generate_content"):
+                result_str = await client.generate_content(
+                    system_prompt=padded_sys,
+                    user_message=retry_prompt,
+                    response_schema=ADVERSARIAL_SCHEMA,
+                    jev_questions=retry_jev_q,
+                    temperature=0.0,
+                    task_role="adversarial_check",
+                )
+            else:
+                result_str = await client.classify_json(
+                    prompt=retry_prompt,
+                    system_prompt=padded_sys,
+                    schema=ADVERSARIAL_SCHEMA,
+                    temperature=0.0,
+                    task_role="adversarial_check",
+                    jev_questions=retry_jev_q,
+                )
             if result_str:
                 result = _safe_parse(result_str)
                 primary_risk = result.get("primary_risk_category")

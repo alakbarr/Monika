@@ -5,9 +5,25 @@ from typing import Any, Optional
 
 import monika.core.primitives.clock as clock
 from monika.core.paths import resolve_config_path
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.TradeReflector")
+
+TRADE_REFLECTION_BASE_SYSTEM_PROMPT = (
+    "You are an institutional trading post-mortem forensic analyst. Your mission is objective root-cause identification.\n"
+    "MANDATORY INSTRUCTIONS:\n"
+    "1. TAXONOMY DISCIPLINE: Use ONLY tags from the provided enum `LESSON_TAG_TAXONOMY`.\n"
+    "2. ANTI-PLATITUDE CONSTRAINT: Generic platitudes ('be more careful', 'stick to the plan', 'market was choppy') are strictly prohibited. Every lesson must isolate a specific structural, timing, or macro cause (e.g. 'Entered before H4 FVG mitigation', 'Ignored DXY bullish impulse into resistance').\n"
+    "3. FORENSIC ADJUDICATION: If `adversarial_check_verdict` is present in enrichment data, evaluate whether its adversarial warning was accurate or false alarm, and document this inside `alpha_lesson`.\n"
+    "4. SEPARATION OF PROCESS VS OUTCOME: A losing trade can have a sound process, and a winning trade can be bad process (lucky). Classify `outcome_process_classification` honestly."
+)
+
+TRADE_REFLECTION_SYSTEM_PROMPT = CacheBreakpointManager.pad_system_prompt_to_threshold(
+    TRADE_REFLECTION_BASE_SYSTEM_PROMPT,
+    task_role="trade_reflection",
+    force=True,
+)
 
 LESSON_TAG_TAXONOMY = [
     "sl_too_tight",
@@ -379,17 +395,30 @@ class TradeReflector:
             f"Enrichment Data: {json.dumps(enrichment)}"
         )
 
-        sys_prompt = (
-            "You are an institutional trading post-mortem forensic analyst. Your mission is objective root-cause identification.\n"
-            "MANDATORY INSTRUCTIONS:\n"
-            "1. TAXONOMY DISCIPLINE: Use ONLY tags from the provided enum `LESSON_TAG_TAXONOMY`.\n"
-            "2. ANTI-PLATITUDE CONSTRAINT: Generic platitudes ('be more careful', 'stick to the plan', 'market was choppy') are strictly prohibited. Every lesson must isolate a specific structural, timing, or macro cause (e.g. 'Entered before H4 FVG mitigation', 'Ignored DXY bullish impulse into resistance').\n"
-            "3. FORENSIC ADJUDICATION: If `adversarial_check_verdict` is present in enrichment data, evaluate whether its adversarial warning was accurate or false alarm, and document this inside `alpha_lesson`.\n"
-            "4. SEPARATION OF PROCESS VS OUTCOME: A losing trade can have a sound process, and a winning trade can be bad process (lucky). Classify `outcome_process_classification` honestly."
+        client_model = getattr(client, "model", None)
+        client_prov = getattr(client, "provider_name", None)
+        padded_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+            TRADE_REFLECTION_SYSTEM_PROMPT,
+            model_name=client_model,
+            provider_name=client_prov,
+            task_role="trade_reflection",
+            force=True,
         )
-        resp = await client.generate_content(
-            system_prompt=sys_prompt, user_message=user_msg, response_schema=REFLECTION_SCHEMA
-        )
+
+        if hasattr(client, "generate_content"):
+            resp = await client.generate_content(
+                system_prompt=padded_sys,
+                user_message=user_msg,
+                response_schema=REFLECTION_SCHEMA,
+                task_role="trade_reflection",
+            )
+        else:
+            resp = await client.classify_json(
+                prompt=user_msg,
+                system_prompt=padded_sys,
+                schema=REFLECTION_SCHEMA,
+                task_role="trade_reflection",
+            )
 
         data = self._parse_reflection_payload(resp)
 
@@ -406,9 +435,20 @@ class TradeReflector:
                 f"Provide an improved, strictly concrete reflection with non-generic lessons matching actual outcome."
             )
             try:
-                resp = await client.generate_content(
-                    system_prompt=sys_prompt, user_message=refine_msg, response_schema=REFLECTION_SCHEMA
-                )
+                if hasattr(client, "generate_content"):
+                    resp = await client.generate_content(
+                        system_prompt=padded_sys,
+                        user_message=refine_msg,
+                        response_schema=REFLECTION_SCHEMA,
+                        task_role="trade_reflection",
+                    )
+                else:
+                    resp = await client.classify_json(
+                        prompt=refine_msg,
+                        system_prompt=padded_sys,
+                        schema=REFLECTION_SCHEMA,
+                        task_role="trade_reflection",
+                    )
                 data = self._parse_reflection_payload(resp)
                 is_valid, critique = self._verify_reflection_quality(data, reflection.was_profitable)
             except Exception as retry_err:

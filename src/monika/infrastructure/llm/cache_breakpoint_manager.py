@@ -264,8 +264,8 @@ This constitution establishes immutable operating standards for all participants
         1. Target provider does not support prompt caching (Groq, Ollama, etc.).
         2. Prompt naturally exceeds the provider's minimum cache threshold.
         """
-        prov = (provider_name or "").lower()
-        mod = (model_name or "").lower()
+        prov = provider_name.lower() if isinstance(provider_name, str) else ""
+        mod = model_name.lower() if isinstance(model_name, str) else ""
 
         # Non-caching providers or local inference: never inject padding anchor
         if any(p in prov for p in ("ollama", "groq", "vllm", "local")):
@@ -295,8 +295,8 @@ This constitution establishes immutable operating standards for all participants
         raw = (system_prompt or "").strip()
 
         # 1. Non-caching providers or local inference: never inject padding anchor
-        prov = (provider_name or "").lower()
-        mod = (model_name or "").lower()
+        prov = provider_name.lower() if isinstance(provider_name, str) else ""
+        mod = model_name.lower() if isinstance(model_name, str) else ""
         if any(p in prov for p in ("ollama", "groq", "vllm", "local")):
             return raw
 

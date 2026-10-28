@@ -2562,7 +2562,9 @@ Monika/
 │   │   └── test_timesfm_engine.py
 │   ├── llm/
 │   │   ├── test_debate_cache_invariance.py
+│   │   ├── test_news_cache_invariance.py
 │   │   ├── test_prompt_layout_discipline.py
+│   │   ├── test_risk_cache_invariance.py
 │   │   └── test_shared_model_anchor.py
 │   ├── logging_observability/
 │   │   ├── __init__.py
@@ -3135,4 +3137,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 268 | **Total Tracked Files**: 2837
+**Total Tracked Directories**: 268 | **Total Tracked Files**: 2839

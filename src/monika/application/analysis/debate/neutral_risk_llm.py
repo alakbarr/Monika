@@ -36,7 +36,7 @@ EVALUATION MANDATES:
    - Step down sizing (0.5 - 0.8) if open exposure is high, drawdown is building (daily_pnl < -1.0%), or liquidity conditions are mixed.
    - Recommend a multiplier in [0.4, 1.5]. (Exact numeric clamping is handled deterministically by the system).
 Return JSON with 'risk_profile_assessment' (terse qualitative breakdown of heat, exposure, and structural edge), 'recommended_multiplier', 'veto_trade'."""
-    user_msg = f"Symbol: {symbol} | Minimum Required R:R Ratio: {min_rr}\nContext: {json.dumps(strict_context)}"
+    user_msg = f"Symbol: {symbol} | Minimum Required R:R Ratio: {min_rr}\nContext: {json.dumps(strict_context, sort_keys=True)}"
     try:
         from monika.core.primitives.jev_primitives import build_risk_gate_neutral_questions
 
@@ -49,6 +49,7 @@ Return JSON with 'risk_profile_assessment' (terse qualitative breakdown of heat,
             temperature=0.1,
             response_schema=RISK_SCHEMA,
             jev_questions=jev_q,
+            task_role="risk_gate_neutral",
         )
         if not resp:
             raise ValueError("Empty response from LLM")

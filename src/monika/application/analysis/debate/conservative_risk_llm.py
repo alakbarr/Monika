@@ -34,7 +34,7 @@ EVALUATION MANDATES (apply and cite specifically):
    - If portfolio_heat_pct > 3.0%: recommended_multiplier <= 0.5.
    - Baseline sizing is heavily defensive (0.3 to 0.7), only allowing up to 1.0 if confluence_score >= 10/14 and macro alignment is impeccable.
 Return JSON with 'risk_profile_assessment' (cite rule/threat evaluated: tail risk, rollover freeze, or concentration), 'recommended_multiplier', 'veto_trade'."""
-    user_msg = f"Symbol: {symbol}\nContext: {json.dumps(strict_context)}"
+    user_msg = f"Symbol: {symbol}\nContext: {json.dumps(strict_context, sort_keys=True)}"
     try:
         from monika.core.primitives.jev_primitives import build_risk_gate_conservative_questions
 
@@ -42,7 +42,11 @@ Return JSON with 'risk_profile_assessment' (cite rule/threat evaluated: tail ris
         jev_q = build_risk_gate_conservative_questions(symbol, direction=direction)
 
         resp = await client.generate_content(
-            system_prompt=sys_prompt, user_message=user_msg, response_schema=RISK_SCHEMA, jev_questions=jev_q
+            system_prompt=sys_prompt,
+            user_message=user_msg,
+            response_schema=RISK_SCHEMA,
+            jev_questions=jev_q,
+            task_role="risk_gate_conservative",
         )
         if not resp:
             raise ValueError("Empty response from LLM")

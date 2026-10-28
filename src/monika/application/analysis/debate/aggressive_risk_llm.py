@@ -32,7 +32,7 @@ APPLY THESE RULES:
 2. Do NOT veto solely because of daily_pnl_pct or open_positions count.
 3. recommended_multiplier: 1.0-2.0 if confluence_score >= 9, else 0.75-1.25.
 Return JSON with 'risk_profile_assessment' (cite the specific rule if triggered), 'recommended_multiplier', 'veto_trade'."""
-    user_msg = f"Symbol: {symbol}\nContext: {json.dumps(strict_context)}"
+    user_msg = f"Symbol: {symbol}\nContext: {json.dumps(strict_context, sort_keys=True)}"
     try:
         from monika.core.primitives.jev_primitives import build_risk_gate_aggressive_questions
 
@@ -45,6 +45,7 @@ Return JSON with 'risk_profile_assessment' (cite the specific rule if triggered)
             temperature=0.1,
             response_schema=RISK_SCHEMA,
             jev_questions=jev_q,
+            task_role="risk_gate_aggressive",
         )
         if not resp:
             raise ValueError("Empty response from LLM")

@@ -15,8 +15,27 @@ from datetime import datetime
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from monika.application.graph.nodes.risk.rejection_auditor import audit_trade_rejection
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
 logger = logging.getLogger("TradingAgent.Graph.Risk.PortfolioSynthesis")
+
+PORTFOLIO_SYNTHESIS_BASE_SYSTEM_PROMPT = (
+    "You are an institutional Chief Risk Officer and Portfolio Synthesis Specialist.\n"
+    "Your objective is to evaluate multi-asset portfolio risk, cross-asset correlation heat, "
+    "and systemic concentration when multiple trade opportunities arise simultaneously.\n\n"
+    "CORE PRINCIPLES:\n"
+    "1. PRESERVE CAPITAL: Correlated positions in the same direction compound tail risk. Prefer diversifying or reducing exposure.\n"
+    "2. SIZE ADJUSTMENTS OVER HARD EXCLUSION: Prefer reducing position sizes via proportional multipliers (0.1 to 1.0) "
+    "when multiple trades have solid edge but moderate correlation.\n"
+    "3. MACRO & DIRECTIVE CONGRUENCE: Honor operator directives and macro sentiment filters strictly.\n"
+    "4. DETERMINISTIC JSON: Always output valid structured JSON conforming to the requested schema without commentary."
+)
+
+PORTFOLIO_SYNTHESIS_SYSTEM_PROMPT = CacheBreakpointManager.pad_system_prompt_to_threshold(
+    PORTFOLIO_SYNTHESIS_BASE_SYSTEM_PROMPT,
+    task_role="portfolio_synthesis",
+    force=True,
+)
 
 
 async def ai_portfolio_synthesis(
@@ -39,11 +58,7 @@ async def ai_portfolio_synthesis(
     trade_summaries = []
     proposed_trades = []
     for sym, r in actionable:
-        trade_summaries.append(
-            f"- {sym} {r.get('decision', '?').upper()}: "
-            f"confidence={r.get('confidence', 0):.0%}, "
-            f"analysis_id={r.get('analysis_id', '?')}"
-        )
+        trade_summaries.append(f"- {sym} {r.get('decision', '?').upper()}: confidence={r.get('confidence', 0):.0%}")
         proposed_trades.append(
             {
                 "symbol": sym,
@@ -142,7 +157,22 @@ Respond in JSON:
     }
 
     client = get_client_for_task("portfolio_synthesis", settings)
-    result = await client.classify_json(prompt=prompt, schema=PORTFOLIO_SYNTHESIS_SCHEMA, temperature=0.0)
+    client_model = getattr(client, "model", None)
+    client_prov = getattr(client, "provider_name", None)
+    padded_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+        PORTFOLIO_SYNTHESIS_SYSTEM_PROMPT,
+        model_name=client_model,
+        provider_name=client_prov,
+        task_role="portfolio_synthesis",
+        force=True,
+    )
+    result = await client.classify_json(
+        prompt=prompt,
+        system_prompt=padded_sys,
+        schema=PORTFOLIO_SYNTHESIS_SCHEMA,
+        temperature=0.0,
+        task_role="portfolio_synthesis",
+    )
     if result:
         return result
 
