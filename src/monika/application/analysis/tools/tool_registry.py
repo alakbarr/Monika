@@ -104,6 +104,7 @@ class ProgressiveToolRegistry:
             "get_treasury_yields",
             "get_fedwatch_probabilities",
             "get_eia_oil_inventory",
+            "diff_central_bank_documents",
         ],
         "TECHNICAL": [
             "get_price_history",

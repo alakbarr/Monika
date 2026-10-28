@@ -45,16 +45,27 @@ class UniversalCentralBankDiffer:
     async def diff_cb_documents(
         self,
         bank: str = "FED",
-        doc_type: str = "MINUTES",
+        doc_type: Optional[str] = None,
         current_date: Optional[datetime] = None,
         previous_date: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         """
         Extracts consecutive documents and performs sentence-level redline diffing.
-        Answers: What changed in the meeting minutes compared to the previous meeting?
+        Answers: What changed in the monetary statement/minutes compared to the previous meeting?
         """
-        bank_clean = bank.strip().upper()
-        doc_clean = doc_type.strip().upper()
+        bank_clean = bank.strip().upper() if bank else "FED"
+        if not doc_type:
+            # Auto-detect latest available doc_type for this bank
+            latest_type_stmt = (
+                select(CentralBankDocument.doc_type)
+                .where(CentralBankDocument.bank == bank_clean)
+                .order_by(CentralBankDocument.meeting_date.desc())
+                .limit(1)
+            )
+            detected_type = (await self.session.execute(latest_type_stmt)).scalar_one_or_none()
+            doc_clean = detected_type.strip().upper() if detected_type else "STATEMENT"
+        else:
+            doc_clean = doc_type.strip().upper()
 
         # Ensure documents are available via JIT if router configured
         if self.router is not None:
@@ -98,17 +109,27 @@ class UniversalCentralBankDiffer:
                 },
             }
 
+        def _extract_paras(doc: CentralBankDocument) -> List[str]:
+            if isinstance(doc.paragraphs_json, list):
+                return doc.paragraphs_json
+            if isinstance(doc.paragraphs_json, str):
+                try:
+                    parsed = json.loads(doc.paragraphs_json)
+                    if isinstance(parsed, list):
+                        return parsed
+                except Exception:
+                    pass
+            if doc.full_text:
+                return doc.full_text.split("\n\n")
+            return []
+
         prev_doc = docs[1]
-        prev_paras = (
-            json.loads(prev_doc.paragraphs_json) if prev_doc.paragraphs_json else prev_doc.full_text.split("\n\n")
-        )
+        prev_paras = _extract_paras(prev_doc)
         prev_title = prev_doc.title
         prev_date_str = prev_doc.meeting_date.strftime("%Y-%m-%d")
         prev_score = prev_doc.hawkish_dovish_score or 0.0
 
-        curr_paras = (
-            json.loads(curr_doc.paragraphs_json) if curr_doc.paragraphs_json else curr_doc.full_text.split("\n\n")
-        )
+        curr_paras = _extract_paras(curr_doc)
         curr_score = curr_doc.hawkish_dovish_score or 0.0
 
         # Run sentence diffing
@@ -128,6 +149,7 @@ class UniversalCentralBankDiffer:
             )
 
         return {
+            "status": "success",
             "bank": bank_clean,
             "doc_type": doc_clean,
             "current_meeting": {

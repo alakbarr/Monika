@@ -223,6 +223,7 @@ class FundamentalStage:
                     macro_blocks = []
                     for k in (
                         "central_bank_rates",
+                        "cb_redline_diff",
                         "dxy",
                         "bond_yields",
                         "vix",

@@ -601,7 +601,7 @@ async def handle_diff_central_bank_documents(args: dict, **ctx) -> dict:
 
     differ = UniversalCentralBankDiffer(session)
     bank = args.get("bank", "FED")
-    doc_type = args.get("doc_type", "MINUTES")
+    doc_type = args.get("doc_type")
     return await differ.diff_cb_documents(bank=bank, doc_type=doc_type)
 
 

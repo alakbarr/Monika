@@ -32,6 +32,7 @@ PREFETCH_KEY_TO_TOOL: dict[str, str] = {
     "treasury_auction_results": "get_treasury_auction_results",
     "macro_cross_report_synthesis": "get_macro_cross_report_synthesis",
     "g10_macro_divergence": "get_g10_macro_divergence",
+    "cb_redline_diff": "diff_central_bank_documents",
 }
 
 CORE_STAGE1_PREFETCH_TOOLS: frozenset[str] = frozenset(
@@ -124,6 +125,9 @@ class Stage1DataBundler:
             "treasury_auction_results": self.executor.execute("get_treasury_auction_results", {"tenor": "10Y"}),
             "macro_cross_report_synthesis": self.executor.execute("get_macro_cross_report_synthesis", {}),
             "g10_macro_divergence": self.executor.execute("get_g10_macro_divergence", {"pair": "EURUSD"}),
+            "cb_redline_diff": self.executor.execute(
+                "diff_central_bank_documents", {"bank": "FED", "doc_type": "STATEMENT"}
+            ),
         }
 
         # Extra parallel zero-browser real-time feeds
@@ -567,6 +571,20 @@ class Stage1DataBundler:
                     and item.get("bank")
                     and (item.get("rate_pct") is not None or item.get("rate") is not None)
                 }
+
+        # 4b. Central Bank Redline Shift
+        cb_diff = data.get("cb_redline_diff", {})
+        if isinstance(cb_diff, dict) and cb_diff.get("status") == "success":
+            shift = cb_diff.get("monetary_tone_shift", {})
+            mods = cb_diff.get("redline_modifications", {})
+            add_samples = "; ".join([s.replace("+ [NEW] ", "") for s in mods.get("key_additions", [])[:2]])
+            diff_summary = (
+                f"{cb_diff.get('bank')} {cb_diff.get('doc_type')}: {shift.get('classification')} "
+                f"(Delta: {shift.get('delta_score', 0.0):+.2f})"
+            )
+            if add_samples:
+                diff_summary += f" | Key Additions: {add_samples}"
+            terminal["central_bank_redline_shift"] = diff_summary
 
         # 5. Crypto Funding Rate (if present)
         f_rate = data.get("funding_rate", {})

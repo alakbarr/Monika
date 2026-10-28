@@ -217,7 +217,8 @@ class PostReleaseAnalyzer:
         )
 
         # Build surprise context for LLM
-        surprise_context = self._build_surprise_context(new_events)
+        cb_diff_summary = await self._fetch_cb_redline_summary(new_events)
+        surprise_context = self._build_surprise_context(new_events, cb_diff_summary=cb_diff_summary)
 
         # Calculate price settlement target time (15 min from event time)
         valid_times: list[datetime] = []
@@ -255,7 +256,53 @@ class PostReleaseAnalyzer:
             self._background_tasks.add(task)
             task.add_done_callback(self._background_tasks.discard)
 
-    def _build_surprise_context(self, events: list) -> str:
+    async def _fetch_cb_redline_summary(self, events: list[Any]) -> Optional[str]:
+        """Fetch central bank redline statement delta if any event is a monetary decision."""
+        cb_map = {"USD": "FED", "EUR": "ECB", "GBP": "BOE", "JPY": "BOJ"}
+        target_banks: set[str] = set()
+        for e in events:
+            ev_name = str(getattr(e, "event_name", "")).lower()
+            ev_curr = str(getattr(e, "currency", "")).upper()
+            if any(
+                kw in ev_name
+                for kw in ("interest rate", "rate decision", "fomc", "monetary policy", "statement", "fed funds")
+            ):
+                bank = cb_map.get(ev_curr)
+                if bank:
+                    target_banks.add(bank)
+
+        if not target_banks:
+            return None
+
+        from monika.application.analysis.calculators.universal_cb_differ import UniversalCentralBankDiffer
+        from monika.infrastructure.database.db import get_session
+
+        diff_summaries: list[str] = []
+        try:
+            async with get_session(read_only=True) as session:
+                differ = UniversalCentralBankDiffer(session)
+                for bank in target_banks:
+                    res = await differ.diff_cb_documents(bank=bank, doc_type="STATEMENT")
+                    if res.get("status") == "success":
+                        shift = res.get("monetary_tone_shift", {})
+                        mods = res.get("redline_modifications", {})
+                        additions = mods.get("key_additions", [])[:3]
+                        deletions = mods.get("key_deletions", [])[:3]
+                        block = [
+                            f"• {bank} Statement Stance: {shift.get('classification')} (Delta: {shift.get('delta_score', 0.0):+.2f})",
+                            f"  Summary: {shift.get('summary', '')}",
+                        ]
+                        if additions:
+                            block.append("  Key Additions: " + " | ".join(additions))
+                        if deletions:
+                            block.append("  Key Deletions: " + " | ".join(deletions))
+                        diff_summaries.append("\n".join(block))
+        except Exception as ex:
+            logger.debug(f"[PostReleaseAnalyzer] CB diff fetch non-fatal: {ex}")
+
+        return "\n[CENTRAL BANK STATEMENT REDLINE DELTA]\n" + "\n\n".join(diff_summaries) if diff_summaries else None
+
+    def _build_surprise_context(self, events: list, cb_diff_summary: Optional[str] = None) -> str:
         """Build rich context about the data release for LLM injection."""
         lines = [
             "\n[POST-RELEASE ANALYSIS — ECONOMIC DATA JUST RELEASED]",
@@ -282,6 +329,9 @@ class PostReleaseAnalyzer:
             except Exception:
                 pass
             lines.append(line)
+
+        if cb_diff_summary:
+            lines.append(cb_diff_summary)
 
         lines.extend(
             [

@@ -85,7 +85,7 @@ class ChatToolRouter:
     )
 
     MACRO_PATTERNS = re.compile(
-        r"\b(makro|macro|fundamental|berita|news|fomc|cpi|nfp|fed|fedwatch|kalender|calendar|dxy|dollar|dolar|greenback|vix|yield|treasury|suku\s*bunga|interest\s*rate|cot|sesi|session|eia|inventory|cadangan\s*minyak|dot\s*plot|sep|rate\s*cut|rate\s*hike|inflasi|inflation|pce|gdp|ppi|pengangguran|unemployment|payroll|hawkish|dovish|press\s*conference|konferensi\s*pers|bank\s*sentral|central\s*bank|kebijakan\s*moneter|monetary\s*policy|market|pasar|kondisi\s*pasar|situasi\s*pasar|keadaan\s*pasar|event|events|agenda|volatil\w*|powell|lagarde|ueda|bailey|bi_rate|bank\s*indonesia|idr|usdidr|rupiah|jisdor|bps|earnings|laba\s*perusahaan|corporate\s*earnings|eps)\b|\b(kenapa|mengapa|alasan|penyebab)\b.*\b(naik|turun|rally|drop|lonjak|anjlok|menguat|melemah)\b",
+        r"\b(makro|macro|fundamental|berita|news|fomc|cpi|nfp|fed|fedwatch|kalender|calendar|dxy|dollar|dolar|greenback|vix|yield|treasury|suku\s*bunga|interest\s*rate|cot|sesi|session|eia|inventory|cadangan\s*minyak|dot\s*plot|sep|rate\s*cut|rate\s*hike|inflasi|inflation|pce|gdp|ppi|pengangguran|unemployment|payroll|hawkish|dovish|press\s*conference|konferensi\s*pers|bank\s*sentral|central\s*bank|kebijakan\s*moneter|monetary\s*policy|statement|minutes|notulen|redline|diff|market|pasar|kondisi\s*pasar|situasi\s*pasar|keadaan\s*pasar|event|events|agenda|volatil\w*|powell|lagarde|ueda|bailey|bi_rate|bank\s*indonesia|idr|usdidr|rupiah|jisdor|bps|earnings|laba\s*perusahaan|corporate\s*earnings|eps)\b|\b(kenapa|mengapa|alasan|penyebab)\b.*\b(naik|turun|rally|drop|lonjak|anjlok|menguat|melemah)\b",
         re.IGNORECASE,
     )
 
@@ -240,6 +240,7 @@ class ChatToolRouter:
             "web_search",
             "save_market_intelligence",
             "list_active_intelligence",
+            "diff_central_bank_documents",
         ],
         re.compile(r"^/(research|riset)\b", re.IGNORECASE): [
             "web_search",
@@ -255,6 +256,7 @@ class ChatToolRouter:
             "get_smc_zones",
             "save_market_intelligence",
             "list_active_intelligence",
+            "diff_central_bank_documents",
             "archive_market_intelligence",
             "propose_action",
             "get_fedwatch_probabilities",
@@ -775,6 +777,7 @@ class ChatToolRouter:
                 "get_smc_zones",
                 "save_market_intelligence",
                 "list_active_intelligence",
+                "diff_central_bank_documents",
                 "archive_market_intelligence",
                 "propose_action",
                 "get_fedwatch_probabilities",
@@ -1102,6 +1105,7 @@ class ChatToolRouter:
                     "search_academic",
                     "save_market_intelligence",
                     "list_active_intelligence",
+                    "diff_central_bank_documents",
                 ]
             )
 

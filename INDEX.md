@@ -5922,7 +5922,7 @@
 - **Classes**:
   - `class UniversalCentralBankDiffer`: Institutional central bank statement and minutes redline comparison engine.
     - `__init__(session: AsyncSession, router: Optional[Any])`
-    - `async diff_cb_documents(bank: str, doc_type: str, current_date: Optional[datetime], ...) -> Dict[str, Any]` - *Extracts consecutive documents and performs sentence-level redline diffing.*
+    - `async diff_cb_documents(bank: str, doc_type: Optional[str], current_date: Optional[datetime], ...) -> Dict[str, Any]` - *Extracts consecutive documents and performs sentence-level redline diffing.*
 
 #### `universal_liquidity_analyzer.py` - *Universal Systemic Liquidity, Credit Stress & Debt Auction Analyzer (Async).*
 - **Path**: [`src/monika/application/analysis/calculators/universal_liquidity_analyzer.py`](src/monika/application/analysis/calculators/universal_liquidity_analyzer.py)
