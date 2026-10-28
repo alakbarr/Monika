@@ -2270,6 +2270,8 @@ class AgentHarness:
 
                 # a. Progressive Anti-Oscillation Loop Guard (Hash-based + Sliding Window)
                 suppress_threshold = int(self.settings.get("repeat_tool_suppress_threshold", 2))
+                if c_name in ("calculate_position_size", "calculate_size", "get_optimal_intraday_levels"):
+                    suppress_threshold = max(suppress_threshold, 4)
                 call_sig = self.compute_tool_signature(c_name, c_input)
                 total_sig_counts[call_sig] = total_sig_counts.get(call_sig, 0) + 1
 

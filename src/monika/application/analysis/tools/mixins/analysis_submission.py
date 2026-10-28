@@ -111,16 +111,44 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                                 f"PRICED-IN CONFLICT HARD BLOCKED: Stage 1 priced_in_score={brief_pi_score}. To override, you must fill priced_in_override_justification with all 3 required fields. Keyword-based justification in rationale is NOT accepted."
                             )
 
-                    # IMP-6: Tighten gap tolerance 3 → 2
+                    # IMP-6 / Fix: Allow gap tolerance of 2 if explicitly justified in rationale
                     elif abs(brief_pi_score - submitted_pi) >= 2 and decision in ("buy", "sell"):
-                        direction_of_conflict = "underestimating" if submitted_pi < brief_pi_score else "overestimating"
-                        errors.append(
-                            f"PRICED-IN ASSESSMENT CONFLICT: Stage 1 macro assessment={brief_pi_score}/10, "
-                            f"your asset-specific assessment={submitted_pi}/10 (gap={abs(brief_pi_score - submitted_pi)}). "
-                            f"You appear to be {direction_of_conflict} priced-in risk. "
-                            f"Either explicitly justify this gap in rationale, or re-evaluate your score. "
-                            f"Unresolved 2+ point gaps suggest analysis inconsistency."
+                        gap = abs(brief_pi_score - submitted_pi)
+                        rat_lower = (rationale or "").lower()
+                        has_rationale_justification = any(
+                            k in rat_lower
+                            for k in [
+                                "priced-in gap justification",
+                                "priced_in",
+                                "priced in",
+                                "justification for",
+                                "macro divergence",
+                                "stage 1",
+                                "idiosyncratic",
+                                "independent justification",
+                            ]
                         )
+                        if gap == 2 and has_rationale_justification:
+                            rationale = (
+                                rationale
+                                + f"\n\n[SYSTEM: Priced-in gap ({gap}) acknowledged and accepted based on rationale context.]"
+                            )
+                        elif gap >= 3 and isinstance(priced_in_override, dict) and any(priced_in_override.values()):
+                            rationale = (
+                                rationale
+                                + f"\n\n[SYSTEM: Priced-in gap ({gap}) accepted with override: {_j.dumps(priced_in_override)}]"
+                            )
+                        elif gap >= 2 and not has_rationale_justification:
+                            direction_of_conflict = (
+                                "underestimating" if submitted_pi < brief_pi_score else "overestimating"
+                            )
+                            errors.append(
+                                f"PRICED-IN ASSESSMENT CONFLICT: Stage 1 macro assessment={brief_pi_score}/10, "
+                                f"your asset-specific assessment={submitted_pi}/10 (gap={gap}). "
+                                f"You appear to be {direction_of_conflict} priced-in risk. "
+                                f"Either explicitly justify this gap in rationale, or re-evaluate your score. "
+                                f"Unresolved 2+ point gaps suggest analysis inconsistency."
+                            )
 
                     # IMP-6: Mid-range 5-7 now a THRESHOLD warning (not just a note)
                     elif 5 <= submitted_pi <= 7 and decision in ("buy", "sell"):

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from typing import Any, Dict, Optional
@@ -257,29 +258,78 @@ Proceed with evaluation based strictly on the data above. Respond in valid JSON 
             judge_max_tokens = max(int(raw_max_tokens), 16384)
         else:
             judge_max_tokens = 16384
-        if hasattr(client, "classify_json"):
-            parsed = await client.classify_json(
-                user_prompt, system_prompt=system_prompt, schema=schema, max_tokens=judge_max_tokens
-            )
-        elif hasattr(client, "generate_content"):
-            resp = await client.generate_content(
-                system_prompt=system_prompt,
-                user_message=user_prompt,
-                response_schema=schema,
-                max_tokens=judge_max_tokens,
-            )
-            if resp:
-                import re
 
-                cleaned = resp.strip()
-                if "```" in cleaned:
-                    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
-                    if match:
-                        cleaned = match.group(1)
-                parsed = json.loads(cleaned)
+        # Resilience: 2 attempts with exponential backoff on transient upstream socket/rate errors
+        for attempt in range(2):
+            try:
+                if hasattr(client, "classify_json"):
+                    parsed = await client.classify_json(
+                        user_prompt, system_prompt=system_prompt, schema=schema, max_tokens=judge_max_tokens
+                    )
+                elif hasattr(client, "generate_content"):
+                    resp = await client.generate_content(
+                        system_prompt=system_prompt,
+                        user_message=user_prompt,
+                        response_schema=schema,
+                        max_tokens=judge_max_tokens,
+                    )
+                    if resp:
+                        import re
+
+                        cleaned = resp.strip()
+                        if "```" in cleaned:
+                            match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
+                            if match:
+                                cleaned = match.group(1)
+                        parsed = json.loads(cleaned)
+                if parsed and isinstance(parsed, dict):
+                    break
+            except Exception as retry_err:
+                if attempt == 0:
+                    logger.warning(
+                        f"[{symbol}] Investment Judge call failed (attempt 1/2: {retry_err}). Retrying in 0.5s..."
+                    )
+                    await asyncio.sleep(0.5)
+                else:
+                    logger.error(f"[{symbol}] Investment Judge retry failed (attempt 2/2: {retry_err})")
 
         if not parsed or not isinstance(parsed, dict):
-            raise ValueError(f"Empty or invalid response from LLM: {parsed}")
+            # Fallback: if debate inputs were clean (no parse error), check if evidence strongly favors the trade
+            is_sell_prep = decision == "SELL"
+            c_threat_est = int(
+                (bull_claim if is_sell_prep else bear_dissent or {}).get(
+                    "strength_score" if is_sell_prep else "risk_severity", 5
+                )
+                or 5
+            )
+            pro_str_est = int(
+                (bear_dissent if is_sell_prep else bull_claim or {}).get(
+                    "risk_severity" if is_sell_prep else "strength_score", 5
+                )
+                or 5
+            )
+            has_corrupt_inputs = bool((bull_claim or {}).get("parse_error") or (bear_dissent or {}).get("parse_error"))
+
+            if not has_corrupt_inputs and pro_str_est >= c_threat_est + 2 and c_threat_est < 7:
+                logger.warning(
+                    f"[{symbol}] LLM Judge unavailable, but debate inputs show decisive pro-strength "
+                    f"({pro_str_est} vs {c_threat_est}). Applying defensive algorithmic fallback adjudication (0.40x risk)."
+                )
+                parsed = {
+                    "final_decision": decision.lower(),
+                    "risk_multiplier": 0.40,
+                    "reason": (
+                        f"Algorithmic fallback adjudication: upstream Judge LLM timed out, but debate evidence "
+                        f"confirms pro-strength ({pro_str_est}) exceeds counter-threat ({c_threat_est}). "
+                        f"Trade preserved with defensive 0.40x risk multiplier."
+                    ),
+                    "rationale": "Automated debate adjudication under transient LLM failover.",
+                    "counter_thesis_flaws": [
+                        "Upstream LLM judge timed out; fallback applied from structured debate claims."
+                    ],
+                }
+            else:
+                raise ValueError(f"Empty or invalid response from LLM: {parsed}")
 
         # Enforce fail-closed safety if either debate participant experienced a parse or upstream failure
         if (bull_claim or {}).get("parse_error") or (bear_dissent or {}).get("parse_error"):

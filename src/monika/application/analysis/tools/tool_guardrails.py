@@ -242,6 +242,11 @@ class AntiOscillationGuard:
         total_count = self._counts.get(sig, 0) + 1
 
         threshold = getattr(self, "threshold", 2)
+        if tool_name in ("calculate_position_size", "calculate_size", "get_optimal_intraday_levels"):
+            # Sizing and intraday calculators are pure functions without side-effects;
+            # allow testing different brackets/risk parameters up to 4 calls before suppressing.
+            threshold = max(threshold, 5)
+
         if self._consecutive_count >= threshold or recent_count >= threshold or total_count >= (threshold + 1):
             return GuardrailVerdict(
                 allowed=False,

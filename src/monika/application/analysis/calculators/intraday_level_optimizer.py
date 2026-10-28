@@ -179,6 +179,19 @@ async def compute_optimal_levels(
     tp_min = float(adr_ctx.get("target_tp_min_distance", adr_val * 0.5))
     tp_max = float(adr_ctx.get("target_tp_max_distance", adr_val * 0.8)) * (3.0 if is_swing else 1.0)
     sl_max = float(adr_ctx.get("target_sl_max_distance", adr_val * 0.35)) * (2.0 if is_swing else 1.0)
+
+    # Defensive harmonization: if ATR noise floor exceeds the ADR-based SL ceiling
+    # (e.g. pre-event range squeeze or volatility expansion), dynamically harmonize the ceiling
+    # so floor and ceiling never form an empty set.
+    raw_min_sl = atr * min_sl_mult
+    if raw_min_sl > sl_max:
+        effective_sl_ceiling = max(sl_max, raw_min_sl * 1.25)
+        logger.info(
+            f"[{symbol}] Harmonizing SL ceiling from {sl_max:.5f} to {effective_sl_ceiling:.5f} "
+            f"to accommodate ATR noise floor ({raw_min_sl:.5f})"
+        )
+        sl_max = effective_sl_ceiling
+
     tp_mid, tp_width = (tp_min + tp_max) / 2.0, max(tp_max - tp_min, 1e-9)
 
     # TimesFM 3.0 Reachability Integration
