@@ -669,20 +669,11 @@ def test_deep_repair_tool_arguments_metadata_and_strict_validation():
 
 @pytest.mark.asyncio
 async def test_chat_agent_tiers_static_tool_ordering():
-    """ChatAgent tiers sort selected_tools canonically by name for KV cache invariance."""
-    from monika.application.agent.chat.tiers import ExecutionTiersMixin
+    """ChatAgent tiers pass static canonical sorted tools for KV cache invariance."""
+    from monika.application.agent.chat.tiers import ExecutionTiersMixin, TIER_LITE_TOOLS
 
     agent = ExecutionTiersMixin()
     agent.settings = {}
-    agent._tool_router = MagicMock()
-    # Return tools in reverse alphabetical order
-    agent._tool_router.route_tools_for_query = MagicMock(
-        return_value=[
-            {"name": "zebra_scanner"},
-            {"name": "alpha_finder"},
-            {"name": "beta_rater"},
-        ]
-    )
     agent._build_lean_system_prompt = MagicMock(return_value="lean prompt")
     agent._format_user_message_payload = MagicMock(return_value="user payload")
 
@@ -695,5 +686,6 @@ async def test_chat_agent_tiers_static_tool_ordering():
     call_kwargs = mock_lite_client.run_chat_loop.call_args.kwargs
     passed_tools = call_kwargs["tools"]
     tool_names = [t["name"] for t in passed_tools]
-    # Tools must be sorted canonically by name!
-    assert tool_names == ["alpha_finder", "beta_rater", "zebra_scanner"]
+    # Tools must be static per tier and sorted canonically by name!
+    assert passed_tools == TIER_LITE_TOOLS
+    assert tool_names == sorted(tool_names)

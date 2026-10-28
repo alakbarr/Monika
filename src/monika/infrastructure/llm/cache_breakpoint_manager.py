@@ -243,7 +243,7 @@ This constitution establishes immutable operating standards for all participants
         }
 
     @classmethod
-    def get_min_cacheable_chars(cls, model_name: str = "") -> int:
+    def get_min_cacheable_chars(cls, model_name: Optional[str] = None) -> int:
         """Returns required minimum characters for Anthropic / Gemini / provider prompt caching."""
         m = (model_name or "").lower()
         if "gemini-3" in m or "haiku" in m or "opus-4-5" in m or "opus-4.5" in m:
@@ -256,7 +256,11 @@ This constitution establishes immutable operating standards for all participants
 
     @classmethod
     def should_inject_anchor(
-        cls, model_name: str = "", provider_name: str = "", current_prompt_chars: int = 0, force: bool = False
+        cls,
+        model_name: Optional[str] = None,
+        provider_name: Optional[str] = None,
+        current_prompt_chars: int = 0,
+        force: bool = False,
     ) -> bool:
         """
         Determines whether CANONICAL_TIER0_ANCHOR should be injected.
@@ -285,8 +289,8 @@ This constitution establishes immutable operating standards for all participants
     def pad_system_prompt_to_threshold(
         cls,
         system_prompt: str,
-        model_name: str = "",
-        provider_name: str = "",
+        model_name: Optional[str] = None,
+        provider_name: Optional[str] = None,
         force: bool = False,
         task_role: Optional[str] = None,
         settings: Optional[Dict[str, Any]] = None,

@@ -188,7 +188,7 @@ flowchart TD
 - **FR-10.1 (Point-in-Time Backtest Engine):** Zero-lookahead historical bar stepping with execution friction modeling and Walk-Forward Optimization (WFO).
 - **FR-10.2 (Alpha Arena Head-to-Head Tournament):** Automated Elo rating tournament (`alpha_arena.py`) evaluating competing LLM models across standardized financial cases.
 - **FR-10.3 (Golden Scenario Fixture Matrix):** Curated library of 65 historical market events (macro surprises, news escalations, liquidity traps, debt crises) for deterministic model evaluation.
-- **FR-10.4 (Token Drift & Cost Tracking):** Measures reasoning degradation, schema compliance, prompt cache hit rates, and input/output cost deltas per model.
+- **FR-10.4 (Token Drift & Cost Tracking):** Measures reasoning degradation, schema compliance, prompt cache hit rates (calculated as normalized `cache_read_tokens / total_input_tokens` without denominator double-counting), and input/output cost deltas per model.
 
 ### FR-11: Observability, User Interfaces & Executive Reporting
 - **FR-11.1 (React 19 Web Dashboard):** Real-time telemetry, portfolio equity curves, open positions, factor heatmaps, and LangGraph DAG execution trees.

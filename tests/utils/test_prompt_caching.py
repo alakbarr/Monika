@@ -56,8 +56,8 @@ def test_cache_tracker_metrics():
     assert summary["total_turns"] == 2
     assert summary["total_input_tokens"] == 1500
     assert summary["total_cache_read_tokens"] == 2000
-    # Hit rate = 2000 / (1500 + 2000) = 2000 / 3500 ~= 0.5714
-    assert 0.57 < summary["cache_hit_rate"] < 0.58
+    # Hit rate = min(1.0, 2000 / 1500) = 1.0 (100% normalized)
+    assert summary["cache_hit_rate"] == 1.0
 
 
 def test_apply_4breakpoint_cache_never_exceeds_four():

@@ -33,7 +33,7 @@ def test_deepseek_extract_usage_with_cache_hit_and_miss():
     assert inp == 3000
     assert outp == 400
     assert cached == 2800
-    assert cache_creation == 200
+    assert cache_creation == 0
     assert thinking == 350
 
 

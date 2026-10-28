@@ -247,15 +247,19 @@ async def test_openai_first_user_immutability_and_reasoning_replay():
     sent_msgs = captured_kwargs.get("messages", [])
     # First message is system prompt
     assert sent_msgs[0]["role"] == "system"
-    # Second message is user with context_snapshot injected in sent_msgs only
+    # Second message is user (historical turn 0) - context_snapshot must not be injected here
     assert sent_msgs[1]["role"] == "user"
-    assert "<context_snapshot>" in sent_msgs[1]["content"]
+    assert "<context_snapshot>" not in str(sent_msgs[1]["content"])
 
     # Third message is assistant with reasoning_content preserved
     ast_msg = sent_msgs[2]
     assert ast_msg["role"] == "assistant"
     assert ast_msg.get("reasoning_content") == "Calculating RSI over 14 bars..."
     assert ast_msg.get("content") == "RSI is currently 58.2."
+
+    # Fourth message is the active/last user turn where context_snapshot is injected
+    assert sent_msgs[3]["role"] == "user"
+    assert "<context_snapshot>" in str(sent_msgs[3]["content"])
 
 
 # ---------------------------------------------------------------------------

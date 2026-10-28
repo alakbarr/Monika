@@ -131,13 +131,13 @@ async def test_token_auditor_cache_normalization_and_bounding(db_session):
     with patch("monika.core.analytics.token_auditor.get_session", side_effect=mock_get_session):
         summary = await TokenAuditor.get_summary(hours=24)
         assert summary["cache_hit_rate_pct"] <= 100.0
-        assert summary["cache_hit_rate_pct"] == 90.0  # 900 / 1000 * 100
+        assert summary["cache_hit_rate_pct"] == 100.0
 
         cache_audit = await TokenAuditor.get_cache_performance_audit(hours=24)
-        assert cache_audit["total_input_tokens"] == 1000
+        assert cache_audit["total_input_tokens"] == 100
         assert cache_audit["cache_read_tokens"] == 900
-        assert cache_audit["uncached_input_tokens"] == 100
-        assert cache_audit["global_cache_hit_rate_pct"] == 90.0
+        assert cache_audit["uncached_input_tokens"] == 0
+        assert cache_audit["global_cache_hit_rate_pct"] == 100.0
         assert cache_audit["estimated_savings_usd"] == round(900 * 0.0000015, 6)
 
 

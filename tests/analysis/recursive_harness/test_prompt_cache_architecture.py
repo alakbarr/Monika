@@ -382,11 +382,12 @@ async def test_news_classification_system_prompt_elevation_and_prefix_invariance
     for i in range(1, 5):
         assert captured_calls[i]["system_prompt"][:4000] == base_sys_prefix
 
-    # 3. User prompt isolates volatile <runtime_item> at the tail
+    # 3. User prompt isolates volatile <runtime_metadata> at the tail
     for call in captured_calls:
         prompt = call["prompt"]
-        assert "<runtime_item current_time=" in prompt
-        assert prompt.endswith("</runtime_item>")
+        assert "<untrusted_news_data>" in prompt
+        assert "<runtime_metadata current_time=" in prompt
+        assert prompt.strip().endswith("/>")
 
 
 @pytest.mark.asyncio

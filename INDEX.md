@@ -12420,9 +12420,9 @@
     - `get_canonical_debate_system_prompt(include_discipline: bool) -> str` - *Returns the byte-identical canonical debate system prompt shared across all debate and risk personas.*
     - `build_shared_debate_user_message(fact_sheet: Any, original_context: Any, append_ledger: Optional[Dict[str, Any]], ...) -> str` - *Constructs a three-segment debate user message designed for prefix-cache sharing:*
     - `compute_disjoint_cache_metrics(uncached_input_tokens: int, cache_read_tokens: int, cache_write_tokens: int, ...) -> Dict[str, float | int]` - *Computes accurate disjoint KV prompt cache metrics:*
-    - `get_min_cacheable_chars(model_name: str) -> int` - *Returns required minimum characters for Anthropic / Gemini / provider prompt caching.*
-    - `should_inject_anchor(model_name: str, provider_name: str, current_prompt_chars: int, ...) -> bool` - *Determines whether CANONICAL_TIER0_ANCHOR should be injected.*
-    - `pad_system_prompt_to_threshold(system_prompt: str, model_name: str, provider_name: str, ...) -> str` - *Pads system prompts with canonical invariant rules or shared model anchor for small roles.*
+    - `get_min_cacheable_chars(model_name: Optional[str]) -> int` - *Returns required minimum characters for Anthropic / Gemini / provider prompt caching.*
+    - `should_inject_anchor(model_name: Optional[str], provider_name: Optional[str], current_prompt_chars: int, ...) -> bool` - *Determines whether CANONICAL_TIER0_ANCHOR should be injected.*
+    - `pad_system_prompt_to_threshold(system_prompt: str, model_name: Optional[str], provider_name: Optional[str], ...) -> str` - *Pads system prompts with canonical invariant rules or shared model anchor for small roles.*
     - `wrap_system_tiers(tier1_immutable: str, tier2_session_stable: str, tier3_cycle_stable: str, ...) -> List[Dict[str, Any]]` - *Wraps system prompt tiers into structured Anthropic content blocks with cache_control.*
     - `find_completed_transaction_endpoints(messages: List[Dict[str, Any]]) -> List[int]` - *Finds the message indices that represent the clean end of a completed tool transaction.*
     - `apply_to_messages(messages: List[Dict[str, Any]], max_message_breakpoints: int, checkpoint_turn_index: Optional[int], ...) -> List[Dict[str, Any]]` - *Applies sliding cache breakpoints to the endpoints of the last completed tool transactions.*

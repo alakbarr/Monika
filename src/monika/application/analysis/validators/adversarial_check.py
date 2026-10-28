@@ -234,10 +234,15 @@ RAW FACT SHEET (ground truth from database — use to verify rationale claims):
                 task_role="adversarial_check",
                 jev_questions=adv_jev_q,
             )
-        if not result_str or not result_str.strip():
+        if not result_str:
+            raise RuntimeError("Empty response received from adversarial check LLM")
+        if isinstance(result_str, str) and not result_str.strip():
             raise RuntimeError("Empty response received from adversarial check LLM")
 
-        result = _safe_parse(result_str)
+        if isinstance(result_str, dict):
+            result = result_str
+        else:
+            result = _safe_parse(result_str)
         if not result:
             raise RuntimeError("Unparseable response received from adversarial check LLM")
         # Synthesize meaningful explanations from Jev category if free-text is empty or YES/NO

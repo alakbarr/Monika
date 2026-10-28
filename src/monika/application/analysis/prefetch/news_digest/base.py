@@ -30,10 +30,10 @@ class _NewsDigestMixinBase:
         _verifier: Any
         _classification_verifier: Any
         _classification_escalation: Any
-        _macro_context_cache: Optional[str]
-        _macro_context_cache_time: Optional[datetime]
-        _last_known_brief_id: Optional[int]
-        _last_known_breaking_id: Optional[int]
+        _macro_context_cache: Any
+        _macro_context_cache_time: Any
+        _last_known_brief_id: Any
+        _last_known_breaking_id: Any
         _flash_lite: Any
         _flash: Any
         CLASSIFICATION_FEW_SHOT_EXAMPLES: str
