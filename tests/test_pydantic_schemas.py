@@ -699,3 +699,103 @@ def test_phase11_pydantic_hardening_invariants():
         SubmitAssetAnalysisSchema(
             symbol="EURUSD", decision="wait", confidence=0.7, rationale="Test", invalidation="Test", confluence_score=-1
         )
+
+
+def test_priced_in_override_and_specialist_adjudication_resilience():
+    """Verify robust handling of priced_in_override_justification and specialist_adjudication."""
+    import pytest
+    from pydantic import ValidationError
+    from monika.application.analysis.schemas import (
+        PricedInOverrideJustification,
+        SpecialistAdjudication,
+        SubmitAssetAnalysisSchema,
+    )
+
+    # 1. SpecialistAdjudication non-conflict strings coerce cleanly without detecting conflict
+    for s in ["no conflict", "none", "n/a", "not applicable", "none needed", "no disagreement"]:
+        sa = SpecialistAdjudication.model_validate(s)
+        assert sa.conflict_detected is False
+        assert SubmitAssetAnalysisSchema.validate_specialist_adjudication_field(s) is None
+
+    # Substantive conflict string creates conflict detection
+    conflict_s = "Strong divergence between technical H4 structure and daily macro trend"
+    sa_conflict = SpecialistAdjudication.model_validate(conflict_s)
+    assert sa_conflict.conflict_detected is True
+    assert sa_conflict.resolution_path == "cancel_setup"
+
+    # 2. PricedInOverrideJustification non-applicable indicators normalize to None
+    for s in ["not applicable", "no override", "none needed", "not needed", "none", "n/a", "null"]:
+        assert SubmitAssetAnalysisSchema.validate_override_justification_field(s) is None
+
+    # Substantive string expands into structured model
+    substantive_str = "Fresh institutional order flow absorbed the sell side liquidity completely"
+    p_obj = PricedInOverrideJustification.model_validate(substantive_str)
+    assert p_obj.override_reason == substantive_str
+    assert "superseded" in p_obj.why_stage1_wrong
+
+    # Short/trivial string raises ValueError in direct model instantiation
+    with pytest.raises(ValueError, match="too short"):
+        PricedInOverrideJustification.model_validate("short string")
+
+    # 3. Aliasing for substantive override keys
+    d_alias = {
+        "justification": "Market repriced on unexpected GDP growth numbers",
+        "detail": "Prior news completely faded",
+        "post_event_evidence": "Breakout confirmed on high volume",
+    }
+    p_alias = PricedInOverrideJustification.model_validate(d_alias)
+    assert p_alias.override_reason == "Market repriced on unexpected GDP growth numbers"
+
+    # 4. Fail-closed safety invariant: score >= 8 without override MUST raise ValidationError for buy/sell
+    with pytest.raises(ValidationError):
+        SubmitAssetAnalysisSchema(
+            symbol="EURUSD",
+            decision="buy",
+            direction="buy",
+            confidence=0.8,
+            confluence_score=10,
+            confluence_factors=["h4_trend_aligned"],
+            timeframe="H1",
+            entry_condition={"type": "market", "detail": "buy now"},
+            stop_loss=1.0500,
+            take_profit=1.0700,
+            rationale="Strong trend",
+            invalidation="Break 1.0500",
+            macro_narrative="Bullish euro",
+            risk_sentiment="risk-on",
+            macro_regime="risk_on",
+            checklist={"bias_vs_narrative_match": True, "contradiction_existed": False},
+            reevaluation_trigger={"type": "time", "detail": "tomorrow"},
+            strongest_counter_thesis="Counter thesis detail",
+            priced_in_score=9,
+            priced_in_override_justification={"override_reason": None},
+        )
+
+    # 5. Exact warning log reproduction: wait decision with empty override fields normalizes to None and succeeds!
+    payload_exact = {
+        "symbol": "BTCUSD",
+        "decision": "wait",
+        "confidence": 0.7,
+        "confluence_score": 6,
+        "confluence_factors": ["h4_trend_aligned"],
+        "timeframe": "H1",
+        "entry_condition": {"type": "market", "detail": "wait for pullback"},
+        "stop_loss": 60000.0,
+        "take_profit": 70000.0,
+        "rationale": "Consolidating near resistance",
+        "invalidation": "Break 60000",
+        "macro_narrative": "Crypto consolidating",
+        "risk_sentiment": "mixed",
+        "macro_regime": "mixed",
+        "checklist": {"bias_vs_narrative_match": True, "contradiction_existed": False},
+        "reevaluation_trigger": {"type": "time", "detail": "next 4h bar"},
+        "strongest_counter_thesis": "Could break resistance earlier",
+        "priced_in_score": 2,
+        "priced_in_override_justification": {
+            "override_reason": None,
+            "why_stage1_wrong": None,
+            "post_event_evidence": None,
+        },
+    }
+    res_s = SubmitAssetAnalysisSchema.model_validate(payload_exact)
+    assert res_s.priced_in_override_justification is None

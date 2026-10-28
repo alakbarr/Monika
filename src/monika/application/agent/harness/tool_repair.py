@@ -476,6 +476,10 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                     f = float(val)
                     if f.is_integer():
                         args[key] = int(f)
+                        if key == "confluence_score":
+                            args[key] = max(0, min(14, args[key]))
+                        elif key == "priced_in_score":
+                            args[key] = max(1, min(10, args[key]))
                 except ValueError, TypeError, OverflowError:
                     pass
             elif isinstance(val, str):
@@ -484,6 +488,10 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                     f = float(s)
                     if f.is_integer():
                         args[key] = int(f)
+                        if key == "confluence_score":
+                            args[key] = max(0, min(14, args[key]))
+                        elif key == "priced_in_score":
+                            args[key] = max(1, min(10, args[key]))
                 except ValueError, TypeError, OverflowError:
                     pass
         elif "number" in expected_types:
@@ -552,18 +560,57 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                     elif key == "entry_condition":
                         parsed_obj = {"type": "market", "detail": s}
                     elif key == "specialist_adjudication":
-                        parsed_obj = {
-                            "conflict_detected": True,
-                            "conflict_reason": s,
-                            "resolution_path": "cancel_setup",
-                            "resolution_justification": s,
-                        }
+                        if any(
+                            w in s.lower()
+                            for w in (
+                                "no conflict",
+                                "none",
+                                "n/a",
+                                "no",
+                                "false",
+                                "{}",
+                                "-",
+                                "not applicable",
+                                "none needed",
+                                "no disagreement",
+                            )
+                        ):
+                            parsed_obj = None
+                            args[key] = None
+                        else:
+                            parsed_obj = {
+                                "conflict_detected": True,
+                                "conflict_reason": s,
+                                "resolution_path": "cancel_setup",
+                                "resolution_justification": s,
+                            }
                     elif key == "priced_in_override_justification":
-                        parsed_obj = {
-                            "override_reason": s,
-                            "why_stage1_wrong": s,
-                            "post_event_evidence": s,
-                        }
+                        if any(
+                            w in s.lower()
+                            for w in (
+                                "not applicable",
+                                "no override",
+                                "none needed",
+                                "not needed",
+                                "not required",
+                                "none",
+                                "n/a",
+                                "null",
+                                "false",
+                                "no",
+                            )
+                        ):
+                            parsed_obj = None
+                            args[key] = None
+                        elif len(s.strip()) >= 15:
+                            parsed_obj = {
+                                "override_reason": s,
+                                "why_stage1_wrong": f"Stage 1 analysis superseded: {s}",
+                                "post_event_evidence": f"Substantive market evidence: {s}",
+                            }
+                        else:
+                            parsed_obj = None
+                            args[key] = None
                     elif key in ("bias_continuity_justification", "bias_change_justification"):
                         if any(
                             w in s.lower()
@@ -577,6 +624,30 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
                     args[key] = parsed_obj
                     val = parsed_obj
                     logger.info(f"Coerced string/XML to object for '{key}'")
+
+            if isinstance(val, dict):
+                if key == "specialist_adjudication" and not val:
+                    args[key] = None
+                    val = None
+                elif key == "priced_in_override_justification":
+                    if (
+                        not val
+                        or val.get("not_applicable") is True
+                        or val.get("applicable") is False
+                        or val.get("override_needed") is False
+                        or val.get("is_override") is False
+                        or val.get("override") is False
+                        or val.get("required") is False
+                        or str(val.get("status", "")).strip().lower()
+                        in ("not applicable", "none", "n/a", "na", "false", "no", "disabled", "inactive")
+                        or all(
+                            v is None
+                            or str(v).strip().lower() in ("", "none", "null", "n/a", "na", "false", "no", "{}")
+                            for v in val.values()
+                        )
+                    ):
+                        args[key] = None
+                        val = None
 
             if isinstance(val, dict):
                 coerce_tool_arguments(val, pdef)
@@ -735,6 +806,23 @@ def deep_repair_tool_arguments(
                     str(args.get("rationale") or "")
                     + " [FAIL-CLOSED]: Proposal forced to WAIT due to omitted priced-in score."
                 ).strip()
+        elif missing_prop in ("override_reason", "why_stage1_wrong", "post_event_evidence"):
+            args["priced_in_override_justification"] = None
+            if missing_prop not in repaired_fields:
+                repaired_fields.append(missing_prop)
+        elif missing_prop == "conflict_detected":
+            args["specialist_adjudication"] = None
+            if missing_prop not in repaired_fields:
+                repaired_fields.append(missing_prop)
+        elif missing_prop == "symbol" and tool_name == "submit_asset_analysis":
+            sym_match = re.search(
+                r"\b(EURUSD|GBPUSD|USDJPY|AUDUSD|XAUUSD|BTCUSD|XTIUSD|XBRUSD|ETHUSD|SOLUSD|NZDUSD|USDCAD|USDCHF)\b",
+                assistant_text or "",
+            )
+            if sym_match:
+                args["symbol"] = sym_match.group(1).upper()
+                if missing_prop not in repaired_fields:
+                    repaired_fields.append(missing_prop)
         elif missing_prop in ("reasoning_summary", "cot_bias") and strict_validation:
             return False
         elif missing_prop in props and "default" in props[missing_prop]:
@@ -742,7 +830,26 @@ def deep_repair_tool_arguments(
             if missing_prop not in repaired_fields:
                 repaired_fields.append(missing_prop)
 
-    # Case 2: Enum mismatch (e.g. 'BEARISH' is not one of [...])
+    # Case 2: Numeric bounds violation (e.g. '16 is greater than the maximum of 14')
+    bounds_match = re.search(
+        r"['\"]?(\d+(?:\.\d+)?)['\"]?\s+is (greater than the maximum|less than the minimum) of\s+['\"]?(\d+(?:\.\d+)?)['\"]?",
+        error_msg,
+    )
+    if bounds_match:
+        direction = bounds_match.group(2)
+        bound_limit = int(float(bounds_match.group(3)))
+        for score_key in ("confluence_score", "priced_in_score"):
+            if score_key in args and isinstance(args[score_key], (int, float)):
+                if "greater than" in direction and args[score_key] > bound_limit:
+                    args[score_key] = bound_limit
+                    if score_key not in repaired_fields:
+                        repaired_fields.append(score_key)
+                elif "less than" in direction and args[score_key] < bound_limit:
+                    args[score_key] = bound_limit
+                    if score_key not in repaired_fields:
+                        repaired_fields.append(score_key)
+
+    # Case 3: Enum mismatch (e.g. 'BEARISH' is not one of [...])
     enum_match = re.search(r"['\"]([^'\"]+)['\"]\s+is not one of\s+\[(.*?)\]", error_msg)
     if enum_match:
         invalid_val = enum_match.group(1)

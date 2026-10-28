@@ -120,14 +120,33 @@ async def test_evaluate_debate_generate_content_empty_response_fallback():
         mock_client,
         symbol="XAUUSD",
         original_context={"decision": "buy", "market_regime": "ranging"},
-        bull_claim={"strength_score": 6},
-        bear_dissent={"risk_severity": 4},
+        bull_claim={"strength_score": 5},
+        bear_dissent={"risk_severity": 5},
     )
 
     assert verdict["parse_error"] is True
     assert verdict["final_decision"] == "avoid"
     assert verdict["fail_closed_triggered"] is True
     assert "Empty or invalid response" in verdict["reason"]
+
+
+@pytest.mark.asyncio
+async def test_evaluate_debate_generate_content_empty_response_decisive_fallback():
+    mock_client = MagicMock(spec=["generate_content"])
+    mock_client.generate_content = AsyncMock(return_value="")
+
+    # When pro-strength (6) outweighs counter-threat (4) by >= 2, apply defensive algorithmic fallback
+    verdict = await evaluate_debate(
+        mock_client,
+        symbol="XAUUSD",
+        original_context={"decision": "buy", "market_regime": "ranging"},
+        bull_claim={"strength_score": 6},
+        bear_dissent={"risk_severity": 4},
+    )
+
+    assert verdict["final_decision"] == "buy"
+    assert verdict["risk_multiplier"] == 0.40
+    assert "Algorithmic fallback adjudication" in verdict["reason"]
 
 
 @pytest.mark.asyncio

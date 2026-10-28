@@ -225,7 +225,26 @@ class SpecialistAdjudication(BaseModel):
     def coerce_specialist_adjudication(cls, data: Any) -> Any:
         if isinstance(data, str):
             s = data.strip()
-            if not s or s.lower() in ("none", "null", "n/a", "no", "false", "{}"):
+            if (
+                not s
+                or s.lower()
+                in (
+                    "none",
+                    "null",
+                    "n/a",
+                    "no",
+                    "false",
+                    "{}",
+                    "-",
+                    "no conflict",
+                    "not applicable",
+                    "none needed",
+                    "no disagreement",
+                )
+                or any(
+                    term in s.lower() for term in ("no conflict", "no disagreement", "not applicable", "none needed")
+                )
+            ):
                 return {
                     "conflict_detected": False,
                     "conflict_reason": None,
@@ -405,7 +424,20 @@ class PricedInOverrideJustification(BaseModel):
                 "post_event_evidence": f"Substantive market evidence: {s}",
             }
         if isinstance(data, dict):
-            reason = coerce_str(data.get("override_reason") or data.get("reason"))
+            reason = coerce_str(
+                data.get("override_reason")
+                or data.get("reason")
+                or data.get("justification")
+                or data.get("override_justification")
+                or data.get("detail")
+                or data.get("explanation")
+                or data.get("rationale")
+                or data.get("override")
+                or data.get("notes")
+                or data.get("comment")
+                or data.get("why_stage1_wrong")
+                or data.get("post_event_evidence")
+            )
             why_wrong = coerce_str(data.get("why_stage1_wrong"))
             evidence = coerce_str(data.get("post_event_evidence"))
             if not reason:
@@ -842,7 +874,24 @@ class SubmitAssetAnalysisSchema(BaseModel):
             return None
         if isinstance(v, str):
             s = v.strip().lower()
-            if not s or s in ("none", "null", "n/a", "no", "false", "{}"):
+            if (
+                not s
+                or s
+                in (
+                    "none",
+                    "null",
+                    "n/a",
+                    "no",
+                    "false",
+                    "{}",
+                    "-",
+                    "no conflict",
+                    "not applicable",
+                    "none needed",
+                    "no disagreement",
+                )
+                or any(term in s for term in ("no conflict", "no disagreement", "not applicable", "none needed"))
+            ):
                 return None
         if isinstance(v, dict) and not v:
             return None
@@ -855,10 +904,53 @@ class SubmitAssetAnalysisSchema(BaseModel):
             return None
         if isinstance(v, str):
             s = v.strip().lower()
-            if not s or s in ("none", "null", "n/a", "no", "false", "{}"):
+            if (
+                not s
+                or s
+                in (
+                    "none",
+                    "null",
+                    "n/a",
+                    "na",
+                    "no",
+                    "false",
+                    "{}",
+                    "-",
+                    "not applicable",
+                    "n/a - wait",
+                    "no override",
+                    "not required",
+                    "none needed",
+                    "not needed",
+                )
+                or s.startswith(("not applicable", "no override", "none needed", "not required", "not needed"))
+            ):
                 return None
-        if isinstance(v, dict) and not v:
-            return None
+            return v
+        if isinstance(v, dict):
+            if not v:
+                return None
+            if (
+                v.get("not_applicable") is True
+                or v.get("applicable") is False
+                or v.get("override_needed") is False
+                or v.get("is_override") is False
+                or v.get("override") is False
+                or v.get("required") is False
+                or str(v.get("status", "")).strip().lower()
+                in ("not applicable", "none", "n/a", "na", "false", "no", "disabled", "inactive")
+            ):
+                return None
+            all_trivial = True
+            for val in v.values():
+                if val is not None:
+                    s_val = str(val).strip().lower()
+                    if s_val not in ("", "none", "null", "n/a", "na", "false", "no", "{}"):
+                        all_trivial = False
+                        break
+            if all_trivial:
+                return None
+            return v
         return v
 
     invalidation_price: Optional[float] = Field(
@@ -963,6 +1055,26 @@ class SubmitAssetAnalysisSchema(BaseModel):
                 data["invalidation"] = (
                     f"Wait thesis invalid if {data.get('symbol', 'asset')} structure breaks or upon 4h cycle timeout."
                 )
+
+        # 6. Clean priced_in_override_justification for non-directional decisions if non-substantive
+        if decision in ("wait", "avoid"):
+            pi_val = data.get("priced_in_override_justification")
+            if isinstance(pi_val, str):
+                s_pi = pi_val.strip().lower()
+                if len(s_pi) < 15 or any(
+                    term in s_pi
+                    for term in (
+                        "not applicable",
+                        "n/a",
+                        "no override",
+                        "none needed",
+                        "not needed",
+                        "not required",
+                        "no trade",
+                        "wait",
+                    )
+                ):
+                    data["priced_in_override_justification"] = None
 
         return data
 

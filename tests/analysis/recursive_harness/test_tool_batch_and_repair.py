@@ -8,6 +8,7 @@ from monika.application.agent.harness.tool_repair import (
     repair_tool_name,
     repair_tool_arguments,
     coerce_tool_arguments,
+    deep_repair_tool_arguments,
 )
 
 
@@ -186,3 +187,100 @@ def test_xml_arg_tag_repair():
     repaired = repair_tool_arguments(xml_str)
     assert repaired["symbol"] == "EURUSD"
     assert repaired["timeframe"] == "H4"
+
+
+def test_coerce_tool_arguments_scores_clamping():
+    """Verify confluence_score (0-14) and priced_in_score (1-10) are clamped appropriately."""
+    schema = {
+        "type": "object",
+        "properties": {
+            "confluence_score": {"type": "integer"},
+            "priced_in_score": {"type": "integer"},
+        },
+    }
+    args = {"confluence_score": 16, "priced_in_score": 15}
+    coerced = coerce_tool_arguments(args, schema)
+    assert coerced["confluence_score"] == 14
+    assert coerced["priced_in_score"] == 10
+
+    args_low = {"confluence_score": -2, "priced_in_score": 0}
+    coerced_low = coerce_tool_arguments(args_low, schema)
+    assert coerced_low["confluence_score"] == 0
+    assert coerced_low["priced_in_score"] == 1
+
+
+def test_coerce_tool_arguments_object_resilience():
+    """Verify specialist_adjudication and priced_in_override_justification resilience."""
+    schema = {
+        "type": "object",
+        "properties": {
+            "specialist_adjudication": {"type": "object"},
+            "priced_in_override_justification": {"type": "object"},
+        },
+    }
+
+    # Non-conflict string coerces to None
+    args1 = {"specialist_adjudication": "no conflict"}
+    coerce_tool_arguments(args1, schema)
+    assert args1["specialist_adjudication"] is None
+
+    # Empty dict or not applicable flags coerce to None
+    args2 = {"priced_in_override_justification": {"not_applicable": True}}
+    coerce_tool_arguments(args2, schema)
+    assert args2["priced_in_override_justification"] is None
+
+    # All-null dict coerces to None
+    args3 = {
+        "priced_in_override_justification": {
+            "override_reason": None,
+            "why_stage1_wrong": None,
+            "post_event_evidence": None,
+        }
+    }
+    coerce_tool_arguments(args3, schema)
+    assert args3["priced_in_override_justification"] is None
+
+
+def test_deep_repair_tool_arguments_enhanced_recovery():
+    """Verify deep repair handles missing override_reason, conflict_detected, symbol, and bounds."""
+    schema = {
+        "type": "object",
+        "properties": {
+            "symbol": {"type": "string"},
+            "confluence_score": {"type": "integer"},
+            "priced_in_override_justification": {"type": ["object", "null"]},
+            "specialist_adjudication": {"type": ["object", "null"]},
+        },
+    }
+
+    # Bounds violation
+    args_bounds = {"confluence_score": 16}
+    assert deep_repair_tool_arguments(
+        "submit_asset_analysis", args_bounds, schema, "'16' is greater than the maximum of 14"
+    )
+    assert args_bounds["confluence_score"] == 14
+
+    # Missing override_reason in child object -> set override to None
+    args_override = {"priced_in_override_justification": {}}
+    assert deep_repair_tool_arguments(
+        "submit_asset_analysis", args_override, schema, "'override_reason' is a required property"
+    )
+    assert args_override["priced_in_override_justification"] is None
+
+    # Missing conflict_detected in child object -> set adjudication to None
+    args_conflict = {"specialist_adjudication": {}}
+    assert deep_repair_tool_arguments(
+        "submit_asset_analysis", args_conflict, schema, "'conflict_detected' is a required property"
+    )
+    assert args_conflict["specialist_adjudication"] is None
+
+    # Missing symbol recovered from assistant text
+    args_sym = {}
+    assert deep_repair_tool_arguments(
+        "submit_asset_analysis",
+        args_sym,
+        schema,
+        "'symbol' is a required property",
+        assistant_text="Based on current momentum, we recommend waiting on EURUSD until session opens.",
+    )
+    assert args_sym["symbol"] == "EURUSD"
