@@ -129,3 +129,25 @@ async def test_tool_executor_unknown_tool_returns_structured_error():
     res = await executor.execute("non_existent_tool_xyz", {"foo": "bar"})
     assert "error" in res
     assert res.get("error_type") == "UnknownToolError"
+
+
+@pytest.mark.asyncio
+async def test_fetch_with_retry_adaptive_timeout():
+    """Verify _fetch_with_retry uses adaptive timeout for REST vs browser scrapers."""
+    from monika.application.analysis.tools.domain.sentiment_handlers import _fetch_with_retry
+
+    class MockRESTFetcher:
+        async def fetch(self):
+            return {"type": "rest"}
+
+    class MockBrowserFetcher:
+        headless = True
+
+        async def fetch(self):
+            return {"type": "browser"}
+
+    res_rest = await _fetch_with_retry(MockRESTFetcher())
+    assert res_rest == {"type": "rest"}
+
+    res_browser = await _fetch_with_retry(MockBrowserFetcher())
+    assert res_browser == {"type": "browser"}

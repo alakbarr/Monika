@@ -13,7 +13,8 @@ logger = logging.getLogger("TradingAgent.SentimentHandlers")
 
 @retryable(max_retries=2, base_delay=0.5)
 async def _fetch_with_retry(fetcher: Any) -> Any:
-    async with asyncio.timeout(3.5):
+    timeout_sec = 15.0 if hasattr(fetcher, "headless") else 6.0
+    async with asyncio.timeout(timeout_sec):
         return await fetcher.fetch()
 
 

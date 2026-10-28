@@ -17,6 +17,12 @@ logger = logging.getLogger("TradingAgent.Utils.Retry")
 F = TypeVar("F", bound=Callable[..., Any])
 
 
+def _format_exception(exc: BaseException) -> str:
+    """Format exception with both type and message, avoiding empty strings for TimeoutError/etc."""
+    msg = str(exc).strip()
+    return f"{type(exc).__name__}: {msg}" if msg else type(exc).__name__
+
+
 def _calculate_delay(
     attempt: int,
     base_delay: float,
@@ -74,12 +80,12 @@ def retryable(
                         last_exc = exc
                         if attempt >= max_retries:
                             log.error(
-                                f"[Retry] Max retries ({max_retries}) exhausted for async function '{func.__name__}': {exc}"
+                                f"[Retry] Max retries ({max_retries}) exhausted for async function '{func.__name__}': {_format_exception(exc)}"
                             )
                             raise
                         delay = _calculate_delay(attempt, base_delay, max_delay, backoff_factor, jitter)
                         log.warning(
-                            f"[Retry] Transient error in async '{func.__name__}' (attempt {attempt + 1}/{max_retries}): {exc}. Retrying in {delay:.2f}s..."
+                            f"[Retry] Transient error in async '{func.__name__}' (attempt {attempt + 1}/{max_retries}): {_format_exception(exc)}. Retrying in {delay:.2f}s..."
                         )
                         if on_retry_callback is not None:
                             try:
@@ -105,12 +111,12 @@ def retryable(
                         last_exc = exc
                         if attempt >= max_retries:
                             log.error(
-                                f"[Retry] Max retries ({max_retries}) exhausted for sync function '{func.__name__}': {exc}"
+                                f"[Retry] Max retries ({max_retries}) exhausted for sync function '{func.__name__}': {_format_exception(exc)}"
                             )
                             raise
                         delay = _calculate_delay(attempt, base_delay, max_delay, backoff_factor, jitter)
                         log.warning(
-                            f"[Retry] Transient error in sync '{func.__name__}' (attempt {attempt + 1}/{max_retries}): {exc}. Retrying in {delay:.2f}s..."
+                            f"[Retry] Transient error in sync '{func.__name__}' (attempt {attempt + 1}/{max_retries}): {_format_exception(exc)}. Retrying in {delay:.2f}s..."
                         )
                         if on_retry_callback is not None:
                             try:

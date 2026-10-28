@@ -5,7 +5,7 @@ Unit tests for the retry_decorator utility.
 import asyncio
 import pytest
 from unittest.mock import MagicMock
-from monika.core.primitives.retry import retryable, _calculate_delay
+from monika.core.primitives.retry import _calculate_delay, _format_exception, retryable
 
 
 def test_calculate_delay_exponential_and_max():
@@ -104,3 +104,38 @@ def test_sync_retryable_unhandled_exception():
 
     with pytest.raises(KeyError):
         strict_task()
+
+
+def test_format_exception():
+    assert _format_exception(TimeoutError()) == "TimeoutError"
+    assert _format_exception(asyncio.TimeoutError()) == "TimeoutError"
+    assert _format_exception(Exception()) == "Exception"
+    assert _format_exception(ValueError("Invalid token")) == "ValueError: Invalid token"
+
+
+@pytest.mark.asyncio
+async def test_retry_logs_exception_type_for_empty_message():
+    import io
+    import logging
+
+    log_stream = io.StringIO()
+    test_logger = logging.getLogger("TestRetryEmptyMsg")
+    test_logger.setLevel(logging.WARNING)
+    handler = logging.StreamHandler(log_stream)
+    test_logger.addHandler(handler)
+
+    calls = 0
+
+    @retryable(max_retries=1, base_delay=0.01, jitter=False, logger_instance=test_logger)
+    async def task_raising_empty_timeout():
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise TimeoutError()
+        return "ok"
+
+    res = await task_raising_empty_timeout()
+    assert res == "ok"
+    log_content = log_stream.getvalue()
+    assert "TimeoutError" in log_content
+    assert ": . Retrying in" not in log_content
