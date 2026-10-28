@@ -8,6 +8,7 @@ import time
 from typing import Any, List, Optional
 
 from bs4 import BeautifulSoup
+from DrissionPage.errors import ContextLostError, ElementLostError
 
 from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
 from monika.infrastructure.data_ingestion.scrapers.models import FedMeeting, FedProbability
@@ -137,6 +138,27 @@ class FedWatchScraper(BaseScraper):
                 logger.warning(f"Headed fallback for CME FedWatch encountered error: {fallback_err}")
 
         return iframe
+
+    def _wait_for_quikstrike_settled(self, iframe: Any, timeout: float = 3.0) -> None:
+        """
+        Wait for ASP.NET AJAX asynchronous postback to complete in QuikStrike iframe.
+        Prevents CDP StaleElementReference / ElementLostError during tab navigation.
+        """
+        start = time.time()
+        time.sleep(0.1)
+        while time.time() - start < timeout:
+            if getattr(self, "is_closed", False):
+                break
+            try:
+                in_prm = iframe.run_js(
+                    "return typeof Sys !== 'undefined' && Boolean(Sys.WebForms) && Boolean(Sys.WebForms.PageRequestManager) "
+                    "&& Sys.WebForms.PageRequestManager.getInstance().get_isInAsyncPostBack();"
+                )
+                if in_prm is not True:
+                    break
+            except Exception:
+                break
+            time.sleep(0.05)
 
     def _find_probability_table(self, soup: BeautifulSoup) -> Optional[Any]:
         """Dynamically detect CME FedWatch probability table by inspecting headers and content."""
@@ -288,131 +310,163 @@ class FedWatchScraper(BaseScraper):
                 if getattr(self, "is_closed", False):
                     break
                 tab_id = f"ctl00_MainContent_ucViewControl_IntegratedFedWatchTool_uccv_lvMeetings_ctrl{i}_lbMeeting"
-                tab_ele = iframe.ele(f'xpath://a[@id="{tab_id}"]', timeout=3)
 
-                if not tab_ele:
+                meeting_parsed = False
+                tab_found = False
+                max_tab_retries = 3
+
+                for attempt in range(max_tab_retries):
+                    if getattr(self, "is_closed", False):
+                        break
+                    try:
+                        tab_ele = iframe.ele(f'xpath://a[@id="{tab_id}"]', timeout=3)
+                        if not tab_ele:
+                            break
+                        tab_found = True
+
+                        meeting_date = tab_ele.text
+                        logger.info(f"Scraping meeting: {meeting_date}")
+
+                        # Klik tab via JavaScript dispatch untuk mencegah race condition CDP & stale element
+                        tab_ele.click(by_js=True)
+                        self._wait_for_quikstrike_settled(iframe, timeout=3.0)
+
+                        html = iframe.html
+                        try:
+                            soup = BeautifulSoup(html, "lxml")
+                        except Exception:
+                            soup = BeautifulSoup(html, "html.parser")
+
+                        table = self._find_probability_table(soup)
+
+                        if table:
+                            rows = table.find_all("tr")
+
+                            probs_raw = []
+                            current_rate = None
+
+                            # Cari tingkat suku bunga saat ini
+                            for row in rows:
+                                cols = row.find_all(["th", "td"])
+                                texts = [c.get_text(strip=True) for c in cols]
+                                if len(texts) >= 5 and "(Current)" in texts[0]:
+                                    raw_target = texts[0].replace(" (Current)", "")
+                                    if "-" in raw_target:
+                                        parts = raw_target.split("-")
+                                        try:
+                                            current_rate = _normalize_rate_pct(float(parts[1]))
+                                        except ValueError:
+                                            pass
+                                    break
+
+                            if current_rate is None:
+                                fallback_val = self._get_fallback_policy_rate()
+                                current_rate = _normalize_rate_pct(fallback_val)
+                                logger.warning(
+                                    f"[FedWatch] Target rate marker not found in table, using rate {current_rate:.2f}%"
+                                )
+
+                            for row in rows:
+                                cols = row.find_all(["th", "td"])
+                                texts = [c.get_text(strip=True) for c in cols]
+
+                                if len(texts) >= 5 and "-" in texts[0]:
+                                    target_range = texts[0].replace(" (Current)", "")
+                                    prob_str = texts[1].replace(",", ".").replace("%", "")
+
+                                    def _parse_pct(val_str):
+                                        try:
+                                            return float(val_str.replace(",", ".").replace("%", "").strip())
+                                        except ValueError, TypeError, AttributeError:
+                                            return None
+
+                                    try:
+                                        prob_val = float(prob_str)
+                                        if prob_val > 0:
+                                            probs_raw.append(
+                                                {
+                                                    "target": target_range,
+                                                    "prob": prob_val,
+                                                    "prior_1d": _parse_pct(texts[2]) if len(texts) > 2 else None,
+                                                    "prior_1w": _parse_pct(texts[3]) if len(texts) > 3 else None,
+                                                    "prior_1m": _parse_pct(texts[4]) if len(texts) > 4 else None,
+                                                }
+                                            )
+                                    except ValueError:
+                                        pass
+
+                            # Hitung probabilitas tindakan Fed
+                            final_probs = []
+                            for p in probs_raw:
+                                target_str = p["target"]
+                                if "-" in target_str:
+                                    try:
+                                        upper_bound = _normalize_rate_pct(float(target_str.split("-")[1]))
+                                    except ValueError:
+                                        continue
+                                else:
+                                    continue
+
+                                diff = upper_bound - current_rate
+
+                                action = "N/A"
+                                if abs(diff) < 0.125:
+                                    action = "HOLD"
+                                elif diff < 0:
+                                    bps = int(round(abs(diff) * 100.0 / 25.0) * 25.0)
+                                    action = f"CUT {bps} bps"
+                                else:
+                                    bps = int(round(diff * 100.0 / 25.0) * 25.0)
+                                    action = f"HIKE {bps} bps"
+
+                                final_probs.append(
+                                    FedProbability(
+                                        target_range=p["target"],
+                                        probability=p["prob"],
+                                        action=action,
+                                        prior_1d=p.get("prior_1d"),
+                                        prior_1w=p.get("prior_1w"),
+                                        prior_1m=p.get("prior_1m"),
+                                    )
+                                )
+
+                            if final_probs:
+                                top = sorted(final_probs, key=lambda x: x.probability, reverse=True)[0]
+                                most_likely = f"{top.action} ({top.probability}%)"
+                                meetings.append(
+                                    FedMeeting(
+                                        meeting_date=meeting_date,
+                                        current_rate_ref=round(current_rate / 100.0, 2),
+                                        probabilities=final_probs,
+                                        most_likely=most_likely,
+                                    )
+                                )
+                            meeting_parsed = True
+                            break
+                        else:
+                            logger.warning(
+                                f"Could not find probability table for {meeting_date} (attempt {attempt + 1}/{max_tab_retries})"
+                            )
+                            time.sleep(0.5)
+
+                    except (ElementLostError, ContextLostError) as ele_err:
+                        logger.warning(
+                            f"[FedWatch] Tab {i} hit transient DOM/AJAX update (attempt {attempt + 1}/{max_tab_retries}): {ele_err}"
+                        )
+                        time.sleep(0.5)
+                        try:
+                            fresh_iframe = page_obj.get_frame('xpath://iframe[contains(@src, "quikstrike")]')
+                            if fresh_iframe:
+                                iframe = fresh_iframe
+                        except Exception:
+                            pass
+                    except Exception as tab_err:
+                        logger.warning(f"[FedWatch] Tab {i} error (attempt {attempt + 1}/{max_tab_retries}): {tab_err}")
+                        time.sleep(0.5)
+
+                if not meeting_parsed and not tab_found:
                     logger.info(f"Meeting tab {i} not found, stopping pagination.")
                     break
-
-                meeting_date = tab_ele.text
-                logger.info(f"Scraping meeting: {meeting_date}")
-
-                # Klik tab (meskipun itu tab pertama)
-                tab_ele.click()
-                time.sleep(1.5)  # Tunggu postback QuikStrike
-
-                html = iframe.html
-                try:
-                    soup = BeautifulSoup(html, "lxml")
-                except Exception:
-                    soup = BeautifulSoup(html, "html.parser")
-
-                table = self._find_probability_table(soup)
-
-                if table:
-                    rows = table.find_all("tr")
-
-                    probs_raw = []
-                    current_rate = None
-
-                    # Cari tingkat suku bunga saat ini
-                    for row in rows:
-                        cols = row.find_all(["th", "td"])
-                        texts = [c.get_text(strip=True) for c in cols]
-                        if len(texts) >= 5 and "(Current)" in texts[0]:
-                            raw_target = texts[0].replace(" (Current)", "")
-                            if "-" in raw_target:
-                                parts = raw_target.split("-")
-                                try:
-                                    current_rate = _normalize_rate_pct(float(parts[1]))
-                                except ValueError:
-                                    pass
-                            break
-
-                    if current_rate is None:
-                        fallback_val = self._get_fallback_policy_rate()
-                        current_rate = _normalize_rate_pct(fallback_val)
-                        logger.warning(
-                            f"[FedWatch] Target rate marker not found in table, using rate {current_rate:.2f}%"
-                        )
-
-                    for row in rows:
-                        cols = row.find_all(["th", "td"])
-                        texts = [c.get_text(strip=True) for c in cols]
-
-                        if len(texts) >= 5 and "-" in texts[0]:
-                            target_range = texts[0].replace(" (Current)", "")
-                            prob_str = texts[1].replace(",", ".").replace("%", "")
-
-                            def _parse_pct(val_str):
-                                try:
-                                    return float(val_str.replace(",", ".").replace("%", "").strip())
-                                except ValueError, TypeError, AttributeError:
-                                    return None
-
-                            try:
-                                prob_val = float(prob_str)
-                                if prob_val > 0:
-                                    probs_raw.append(
-                                        {
-                                            "target": target_range,
-                                            "prob": prob_val,
-                                            "prior_1d": _parse_pct(texts[2]) if len(texts) > 2 else None,
-                                            "prior_1w": _parse_pct(texts[3]) if len(texts) > 3 else None,
-                                            "prior_1m": _parse_pct(texts[4]) if len(texts) > 4 else None,
-                                        }
-                                    )
-                            except ValueError:
-                                pass
-
-                    # Hitung probabilitas tindakan Fed
-                    final_probs = []
-                    for p in probs_raw:
-                        target_str = p["target"]
-                        if "-" in target_str:
-                            try:
-                                upper_bound = _normalize_rate_pct(float(target_str.split("-")[1]))
-                            except ValueError:
-                                continue
-                        else:
-                            continue
-
-                        diff = upper_bound - current_rate
-
-                        action = "N/A"
-                        if abs(diff) < 0.125:
-                            action = "HOLD"
-                        elif diff < 0:
-                            bps = int(round(abs(diff) * 100.0 / 25.0) * 25.0)
-                            action = f"CUT {bps} bps"
-                        else:
-                            bps = int(round(diff * 100.0 / 25.0) * 25.0)
-                            action = f"HIKE {bps} bps"
-
-                        final_probs.append(
-                            FedProbability(
-                                target_range=p["target"],
-                                probability=p["prob"],
-                                action=action,
-                                prior_1d=p.get("prior_1d"),
-                                prior_1w=p.get("prior_1w"),
-                                prior_1m=p.get("prior_1m"),
-                            )
-                        )
-
-                    if final_probs:
-                        top = sorted(final_probs, key=lambda x: x.probability, reverse=True)[0]
-                        most_likely = f"{top.action} ({top.probability}%)"
-                        meetings.append(
-                            FedMeeting(
-                                meeting_date=meeting_date,
-                                current_rate_ref=round(current_rate / 100.0, 2),
-                                probabilities=final_probs,
-                                most_likely=most_likely,
-                            )
-                        )
-                else:
-                    logger.warning(f"Could not find probability table for {meeting_date}")
 
         except Exception as e:
             logger.error(f"Error fetching CME FedWatch: {e}")

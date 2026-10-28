@@ -146,3 +146,39 @@ class TestFedWatchScraper:
             assert meetings[0].meeting_date == "Dec 16, 2026"
             assert meetings[0].current_rate_ref == 0.05
             assert len(meetings[0].probabilities) == 2
+
+    @patch("monika.infrastructure.data_ingestion.scrapers.macro.cme_fedwatch.BaseScraper._initialize_browser")
+    @patch("time.sleep", return_value=None)
+    def test_fetch_probabilities_element_lost_retry(self, mock_sleep, mock_init):
+        """Verify scraper gracefully retries and recovers when ElementLostError occurs during tab click."""
+        from DrissionPage.errors import ElementLostError
+
+        mock_page = MagicMock()
+        mock_init.return_value = mock_page
+        scraper = FedWatchScraper()
+
+        mock_iframe = MagicMock()
+        mock_page.get_frame.return_value = mock_iframe
+        mock_tab = MagicMock()
+        mock_tab.text = "Jan 27, 2027"
+
+        mock_tab.click.side_effect = [ElementLostError("Transient DOM refresh"), None]
+        mock_iframe.ele.side_effect = lambda sel, timeout=None: mock_tab if "ctrl0" in sel else None
+
+        mock_iframe.html = """
+        <html>
+            <table>
+                <thead>
+                    <tr><th>TARGET RATE</th><th>PROBABILITY</th><th>PRIOR DAY</th><th>1 WEEK</th><th>1 MONTH</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>4.50-4.75 (Current)</td><td>25.0%</td><td></td><td></td><td></td></tr>
+                    <tr><td>4.25-4.50</td><td>75.0%</td><td></td><td></td><td></td></tr>
+                </tbody>
+            </table>
+        </html>
+        """
+        meetings = scraper.fetch_probabilities()
+        assert len(meetings) == 1
+        assert meetings[0].meeting_date == "Jan 27, 2027"
+        assert mock_tab.click.call_count == 2

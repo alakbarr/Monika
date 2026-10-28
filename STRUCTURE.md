@@ -2228,6 +2228,7 @@ Monika/
 │   │   ├── test_arbitrator_borderline_guard.py
 │   │   ├── test_audit_sota_enhancements.py
 │   │   ├── test_candidate_lessons_shadow_validation.py
+│   │   ├── test_cb_differ_wiring.py
 │   │   ├── test_central_bank_rates.py
 │   │   ├── test_chart_workspace_and_stage2_integration.py
 │   │   ├── test_chronicle_curator.py
@@ -3141,4 +3142,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 268 | **Total Tracked Files**: 2843
+**Total Tracked Directories**: 268 | **Total Tracked Files**: 2844
