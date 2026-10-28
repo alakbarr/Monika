@@ -198,7 +198,17 @@ This constitution establishes immutable operating standards for all participants
 
         segment_b = ""
         if append_ledger:
-            segment_b_str = json.dumps(append_ledger, indent=2, sort_keys=True, default=str)
+            # Chronological order across debate turns
+            chrono_order = ("bull_claim", "bear_dissent", "bull_rebuttal", "bear_rebuttal")
+            ordered_ledger: Dict[str, Any] = {}
+            for k in chrono_order:
+                if k in append_ledger:
+                    ordered_ledger[k] = append_ledger[k]
+            for k, v in append_ledger.items():
+                if k not in ordered_ledger:
+                    ordered_ledger[k] = v
+
+            segment_b_str = json.dumps(ordered_ledger, indent=2, sort_keys=False, default=str)
             segment_b = f"[DEBATE_LEDGER]:\n{segment_b_str}\n\n"
 
         directive_clean = task_directive.strip()

@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Optional
 
+from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.AdjudicationVerifier")
@@ -65,18 +66,22 @@ async def verify_adjudication(
     """
     client = get_client_for_task("stage2_adjudicator", settings)
 
-    trust_str = f"Specialist Trust Weights: {json.dumps(specialist_trust_weights)}" if specialist_trust_weights else ""
+    trust_str = (
+        f"Specialist Trust Weights: {json.dumps(specialist_trust_weights, sort_keys=True)}"
+        if specialist_trust_weights
+        else ""
+    )
     context_extras = []
     if confluence_score is not None:
         context_extras.append(f"Confluence Score: {confluence_score}")
     if effective_threshold is not None:
         context_extras.append(f"Effective Confluence Threshold: {effective_threshold}")
     if reeval_trigger:
-        context_extras.append(f"Re-evaluation Trigger: {json.dumps(reeval_trigger)}")
+        context_extras.append(f"Re-evaluation Trigger: {json.dumps(reeval_trigger, sort_keys=True)}")
     extras_str = " | ".join(context_extras) if context_extras else ""
 
-    user_prompt = f"""Specialist biases for {symbol}: {json.dumps(specialist_biases)}
-Specialist confidence: {json.dumps(specialist_confidence)}
+    user_prompt = f"""Specialist biases for {symbol}: {json.dumps(specialist_biases, sort_keys=True)}
+Specialist confidence: {json.dumps(specialist_confidence, sort_keys=True)}
 {trust_str}
 {extras_str}
 
@@ -87,12 +92,19 @@ Rationale: {rationale[:1500]}"""
         from monika.core.primitives.jev_primitives import build_adjudication_questions
 
         adjudication_jev_q = build_adjudication_questions()
+        padded_system_prompt = CacheBreakpointManager.pad_system_prompt_to_threshold(
+            ADJUDICATION_SYSTEM_PROMPT,
+            task_role="stage2_adjudicator",
+            model_name=getattr(client, "model", ""),
+            force=True,
+        )
         result = await client.classify_json(
             prompt=user_prompt,
-            system_prompt=ADJUDICATION_SYSTEM_PROMPT,
+            system_prompt=padded_system_prompt,
             schema=ADJUDICATION_VERIFY_SCHEMA,
             jev_questions=adjudication_jev_q,
             temperature=0.0,
+            task_role="stage2_adjudicator",
         )
         if not result or not isinstance(result, dict):
             return {

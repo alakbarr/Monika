@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Dict, Union
+from typing import Any, Dict, Optional, Union
 
 from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 from monika.infrastructure.llm.prompt_disciplines import get_universal_execution_discipline
@@ -22,7 +22,12 @@ def _clean_json_str(s: str) -> str:
 
 
 async def generate_bear_dissent(
-    client: BaseLLMClient, symbol: str, original_context: dict, bull_claim: dict, fact_sheet: Union[str, Dict[str, Any]]
+    client: BaseLLMClient,
+    symbol: str,
+    original_context: dict,
+    bull_claim: dict,
+    fact_sheet: Union[str, Dict[str, Any]],
+    rebuttal: Optional[Dict[str, Any]] = None,
 ) -> dict:
     decision = str(original_context.get("decision", "buy")).lower()
     is_long = decision in ("buy", "long")
@@ -94,9 +99,11 @@ async def generate_bear_dissent(
         "Generate bear analysis based strictly on the setup and Fact Sheet above. "
         "Return valid JSON strictly matching the schema."
     )
-    append_ledger = {
+    append_ledger: Dict[str, Any] = {
         "bull_claim": bull_claim,
     }
+    if rebuttal:
+        append_ledger["bull_rebuttal"] = rebuttal
     base_user_msg = CacheBreakpointManager.build_shared_debate_user_message(
         fact_sheet=fact_sheet,
         original_context=original_context,

@@ -75,6 +75,8 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                 },
             )
 
+        fact_sheet = deb.get("fact_sheet") or {}
+
         async with semaphore:
             try:
                 async with asyncio.timeout(45.0):
@@ -85,12 +87,11 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                         verified_bull_claim,
                         bear_dissent,
                         bull_rebuttal=bull_rebuttal,
+                        fact_sheet=fact_sheet,
                     )
 
                 # Enforce Specialized Swarm Desk Risk Veto if triggered
-                desk_verdict = deb.get("desk_specialist_verdict") or (deb.get("fact_sheet") or {}).get(
-                    "desk_specialist_verdict", {}
-                )
+                desk_verdict = deb.get("desk_specialist_verdict") or fact_sheet.get("desk_specialist_verdict", {})
                 if desk_verdict.get("risk_veto"):
                     veto_reasons = "; ".join(
                         desk_verdict.get("veto_reasons") or ["Specialized desk risk veto enforced"]

@@ -247,15 +247,19 @@ async def test_bear_dissent_round_2_evaluates_rebuttal():
         },
     }
     captured_context = {}
+    captured_rebuttal = None
 
-    async def mock_bear(client, sym, ctx, claim, fs):
-        nonlocal captured_context
+    async def mock_bear(client, sym, ctx, claim, fs, rebuttal=None):
+        nonlocal captured_context, captured_rebuttal
         captured_context = ctx
+        captured_rebuttal = rebuttal
         return {"risk_severity": 4, "dissent": "conceding minor risk at 1.0850"}
 
     with patch("monika.application.graph.nodes.debate.bear_dissent_node.generate_bear_dissent", side_effect=mock_bear):
         res = await bear_dissent_node(state, config)
-        assert "bull_rebuttal" in captured_context
+        assert captured_rebuttal is not None
+        assert "rebuttal" in captured_rebuttal
+        assert "bull_rebuttal" not in captured_context
         deb = res["debate_states"]["EURUSD"]
         # In round 2, needs_rebuttal must be False to terminate cyclic loop
         assert deb["needs_rebuttal"] is False

@@ -57,19 +57,18 @@ async def bear_dissent_node(state: TradingState, config: Optional[RunnableConfig
         rebuttal_claim = (
             deb.get("bull_rebuttal") or deb.get("bear_rebuttal") or deb.get("rebuttal") or deb.get("pro_rebuttal")
         )
-        context_to_use = dict(original_context)
-        claim_to_use = dict(verified_bull_claim)
         rebuttal_completed = bool(rebuttal_claim or deb.get("rebuttal_completed", False))
-        if rebuttal_claim:
-            context_to_use["bull_rebuttal"] = rebuttal_claim
-            context_to_use["rebuttal"] = rebuttal_claim
-            claim_to_use["rebuttal"] = rebuttal_claim
 
         async with semaphore:
             try:
                 async with asyncio.timeout(45.0):
                     bear_dissent = await generate_bear_dissent(
-                        bear_client, sym, context_to_use, claim_to_use, fact_sheet
+                        bear_client,
+                        sym,
+                        original_context,
+                        verified_bull_claim,
+                        fact_sheet,
+                        rebuttal=rebuttal_claim,
                     )
 
                 if not _is_grounded(
