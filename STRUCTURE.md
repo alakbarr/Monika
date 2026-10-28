@@ -2561,6 +2561,7 @@ Monika/
 │   │   ├── test_technical.py
 │   │   └── test_timesfm_engine.py
 │   ├── llm/
+│   │   ├── test_chat_cache_invariance.py
 │   │   ├── test_debate_cache_invariance.py
 │   │   ├── test_jev_schema_invariance.py
 │   │   ├── test_news_cache_invariance.py
@@ -3138,4 +3139,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 268 | **Total Tracked Files**: 2840
+**Total Tracked Directories**: 268 | **Total Tracked Files**: 2841

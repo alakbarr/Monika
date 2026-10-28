@@ -654,6 +654,9 @@ llm:
   small_roles_anchor:
     enabled: true
     opt_out_roles: []
+  cache_warming:
+    enabled: true
+    min_savings_threshold_usd: 0.05
   credential_pool:
     enabled: true
     exponential_backoff: true

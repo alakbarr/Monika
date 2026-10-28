@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, AsyncGenerator, Callable, Optional
+from typing import Any, AsyncGenerator, Callable, Coroutine, Optional
 
 from monika.application.analysis.stages.fundamental_stage import FundamentalStage
 from monika.application.analysis.stages.per_asset_stage import PerAssetStage
@@ -56,6 +56,10 @@ class CycleScheduler:
         self._running = False
         self._stop_event = asyncio.Event()
         self._background_tasks: set[asyncio.Task] = set()
+
+        from monika.infrastructure.llm.cache_warmer import CacheWarmer
+
+        self.cache_warmer = CacheWarmer(self.settings)
 
     @property
     def fundamental_stage(self) -> Any:
@@ -534,10 +538,63 @@ class CycleScheduler:
                 except Exception as e:
                     logger.error(f"Weekly edge assessment failed: {e}")
 
+    def schedule_cache_warm(
+        self,
+        session_id: str,
+        prompt_tokens: int,
+        warm_cost: float,
+        miss_cost: float,
+        warm_coro_fn: Callable[[], Coroutine[Any, Any, None]],
+        phase: str = "active",
+        ttl_ms: Optional[float] = None,
+    ) -> bool:
+        """
+        Schedules economic background cache warming for an LLM prompt.
+        Guaranteed LLM-only, never places orders, and failures never block cycle execution.
+        """
+        try:
+            if not hasattr(self, "cache_warmer") or not self.cache_warmer:
+                return False
+
+            # Kill-switch gate: never warm if kill-switch is active
+            trading_cfg = (
+                self.settings.get("trading", {})
+                if isinstance(self.settings, dict)
+                else getattr(self.settings, "trading", {})
+            )
+            if trading_cfg is None:
+                trading_cfg = {}
+            kill_switch = (
+                trading_cfg.get("kill_switch_active", False)
+                if isinstance(trading_cfg, dict)
+                else getattr(trading_cfg, "kill_switch_active", False)
+            )
+            if kill_switch:
+                logger.info(f"[CycleScheduler] Kill-switch active; skipping cache warm for session '{session_id}'")
+                return False
+
+            return self.cache_warmer.schedule_warm(
+                session_id=session_id,
+                prompt_tokens=prompt_tokens,
+                warm_cost=warm_cost,
+                miss_cost=miss_cost,
+                warm_coro_fn=warm_coro_fn,
+                phase=phase,
+                ttl_ms=ttl_ms,
+            )
+        except Exception as e:
+            logger.warning(f"[CycleScheduler] Cache warming schedule failed for session '{session_id}': {e}")
+            return False
+
     def stop(self) -> None:
         self._running = False
         self._reports_running = False
         self._stop_event.set()
+        if hasattr(self, "cache_warmer") and self.cache_warmer:
+            try:
+                self.cache_warmer.cancel_all()
+            except Exception as e:
+                logger.warning(f"Error cancelling cache warmer tasks: {e}")
         logger.info("Cycle scheduler stop requested.")
 
     async def _run_daily_calibrations(self) -> None:

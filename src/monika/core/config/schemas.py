@@ -91,6 +91,13 @@ class SmallRolesAnchorConfig(SubscriptableConfig):
     opt_out_roles: list[str] = Field(default_factory=list, description="Roles excluded from shared static anchor")
 
 
+class CacheWarmingConfig(SubscriptableConfig):
+    enabled: bool = Field(default=True, description="Enable economic background cache warming")
+    min_savings_threshold_usd: float = Field(
+        default=0.05, ge=0.0, description="Minimum expected savings to trigger warm"
+    )
+
+
 class LLMConfig(SubscriptableConfig):
     task_roles: dict[str, TaskRoleConfig] | None = None
     providers: dict[str, Any] | None = None
@@ -101,6 +108,7 @@ class LLMConfig(SubscriptableConfig):
         default=True, description="Keep model affinity consistent across chat turns to maximize KV cache reuse"
     )
     small_roles_anchor: SmallRolesAnchorConfig | None = Field(default_factory=SmallRolesAnchorConfig)
+    cache_warming: CacheWarmingConfig | None = Field(default_factory=CacheWarmingConfig)
 
 
 class SchedulerConfig(SubscriptableConfig):

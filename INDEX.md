@@ -535,6 +535,7 @@
   - `class PaperTradingConfig(SubscriptableConfig)`
   - `class TaskRoleConfig(BaseModel)`
   - `class SmallRolesAnchorConfig(SubscriptableConfig)`
+  - `class CacheWarmingConfig(SubscriptableConfig)`
   - `class LLMConfig(SubscriptableConfig)`
   - `class SchedulerConfig(SubscriptableConfig)`
   - `class ExecutionConfig(SubscriptableConfig)`
@@ -10376,6 +10377,7 @@
     - `async run_once(forced: bool) -> dict`
     - `async start() -> None`
     - `async run_scheduled_reports_loop() -> None` - *Menjalankan laporan harian + kalibrasi pada jam lokal tetap setiap*
+    - `schedule_cache_warm(session_id: str, prompt_tokens: int, warm_cost: float, ...) -> bool` - *Schedules economic background cache warming for an LLM prompt.*
     - `stop() -> None`
 
 #### `detached_cron_worker.py` - *Detached Background Cron Scheduler Worker with Deliveries Database.*
@@ -12442,7 +12444,7 @@
 - **Path**: [`src/monika/infrastructure/llm/cache_warmer.py`](src/monika/infrastructure/llm/cache_warmer.py)
 - **Classes**:
   - `class CacheWarmer`: Active economic prompt cache warmer.
-    - `__init__(settings: Optional[dict], default_ttl_ms: float)`
+    - `__init__(settings: Optional[Any], default_ttl_ms: float)`
     - `is_replayable(model_name: str, thinking_enabled: bool, adaptive_thinking: bool) -> bool`
     - `evaluate_decision(prompt_tokens: int, warm_cost: float, miss_cost: float, ...) -> Dict[str, Any]`
     - `schedule_warm(session_id: str, prompt_tokens: int, warm_cost: float, ...) -> bool` - *Schedules a background cache warming coroutine if economically rational.*
