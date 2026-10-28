@@ -117,6 +117,7 @@ class CacheBreakpointManager:
 """
 
     CANONICAL_INVARIANT_RULES = CANONICAL_TIER0_ANCHOR
+    CANONICAL_INSTITUTIONAL_ANCHOR: Optional[str] = None
 
     UNIVERSAL_DEBATE_CONSTITUTION = """
 === UNIVERSAL ADVERSARIAL MULTI-AGENT DEBATE & RISK CONSTITUTION ===
@@ -166,8 +167,10 @@ This constitution establishes immutable operating standards for all participants
         anchor = cls.CANONICAL_TIER0_ANCHOR.strip()
         constitution = cls.UNIVERSAL_DEBATE_CONSTITUTION.strip()
         if include_discipline:
-            disc = get_universal_execution_discipline().strip()
-            return f"{anchor}\n\n---\n\n{constitution}\n\n{disc}"
+            if cls.CANONICAL_INSTITUTIONAL_ANCHOR is None:
+                disc = get_universal_execution_discipline().strip()
+                cls.CANONICAL_INSTITUTIONAL_ANCHOR = f"{anchor}\n\n---\n\n{constitution}\n\n{disc}"
+            return cls.CANONICAL_INSTITUTIONAL_ANCHOR
         return f"{anchor}\n\n---\n\n{constitution}"
 
     @classmethod
@@ -270,24 +273,82 @@ This constitution establishes immutable operating standards for all participants
 
     @classmethod
     def pad_system_prompt_to_threshold(
-        cls, system_prompt: str, model_name: str = "", provider_name: str = "", force: bool = False
+        cls,
+        system_prompt: str,
+        model_name: str = "",
+        provider_name: str = "",
+        force: bool = False,
+        task_role: Optional[str] = None,
+        settings: Optional[Dict[str, Any]] = None,
     ) -> str:
-        """Pads system prompts with canonical invariant rules only when close to cache threshold (or force=True)."""
+        """Pads system prompts with canonical invariant rules or shared model anchor for small roles."""
         raw = (system_prompt or "").strip()
-        min_chars = cls.get_min_cacheable_chars(model_name)
+
+        # 1. Non-caching providers or local inference: never inject padding anchor
+        prov = (provider_name or "").lower()
+        mod = (model_name or "").lower()
+        if any(p in prov for p in ("ollama", "groq", "vllm", "local")):
+            return raw
+
+        # 2. DeepSeek has 64-token KV disk cache unit; do not inject large anchor
+        if "deepseek" in prov or "deepseek" in mod:
+            return raw
+
+        # 3. Guard against double insertion
+        prefix_check = cls.CANONICAL_TIER0_ANCHOR.strip()[:80]
+        if raw.startswith(prefix_check) or raw.startswith("[GOVERNANCE_ANCHOR"):
+            return raw
+
+        # 4. Extract small_roles_anchor settings
+        anchor_enabled = True
+        opt_out_roles: List[str] = []
+        if settings is not None:
+            llm_cfg = (
+                settings.get("llm")
+                if (isinstance(settings, dict) or hasattr(settings, "get"))
+                else getattr(settings, "llm", None)
+            )
+            if llm_cfg is not None:
+                sra = (
+                    llm_cfg.get("small_roles_anchor")
+                    if (isinstance(llm_cfg, dict) or hasattr(llm_cfg, "get"))
+                    else getattr(llm_cfg, "small_roles_anchor", None)
+                )
+                if sra is not None:
+                    if isinstance(sra, dict) or hasattr(sra, "get"):
+                        anchor_enabled = bool(sra.get("enabled", True))
+                        opt_out_roles = list(sra.get("opt_out_roles", []))
+                    else:
+                        anchor_enabled = bool(getattr(sra, "enabled", True))
+                        opt_out_roles = list(getattr(sra, "opt_out_roles", []))
+
+        if not anchor_enabled:
+            return raw
+
+        if task_role and task_role in opt_out_roles:
+            return raw
+
+        min_chars = cls.get_min_cacheable_chars(mod)
         if force:
             min_chars = max(min_chars, cls.GEMINI_3_MIN_CACHEABLE_CHARS)
 
+        # 5. Shared model anchor for small roles or forced
+        needs_small_roles_anchor = force or (bool(task_role) and anchor_enabled and len(raw) < min_chars)
+        if needs_small_roles_anchor:
+            anchor = cls.get_canonical_debate_system_prompt(include_discipline=True)
+            return f"{anchor}\n\n=== ROLE DIRECTIVE ===\n\n{raw}"
+
+        # 6. Generic padding discipline for prompt without task_role
         if not cls.should_inject_anchor(
             model_name=model_name, provider_name=provider_name, current_prompt_chars=len(raw), force=force
         ):
             return raw
 
         # SOTA Cache Discipline:
-        # Only pad if prompt is within striking distance (>= 70% of min_chars threshold),
+        # Only pad if prompt is within striking distance (>= 70% of min_chars threshold or >= 10,000 chars),
         # unless forced (e.g. for high-frequency small classification tasks that require caching).
         if not force:
-            min_activation_chars = int(min_chars * 0.70)
+            min_activation_chars = min(int(min_chars * 0.70), 10000)
             if len(raw) < min_activation_chars:
                 return raw
 

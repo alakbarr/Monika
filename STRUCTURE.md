@@ -2787,6 +2787,7 @@ Monika/
 │   │   │       └── test_stage2_session_concurrency.py
 │   │   └── infrastructure/
 │   │       ├── llm/
+│   │       │   ├── test_cache_threshold_and_capabilities.py
 │   │       │   └── test_kv_cache_invariance.py
 │   │       └── providers/
 │   │           ├── test_provider_telemetry_invariants.py
@@ -3130,4 +3131,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2833
+**Total Tracked Directories**: 267 | **Total Tracked Files**: 2834

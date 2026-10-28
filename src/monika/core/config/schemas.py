@@ -86,6 +86,11 @@ class TaskRoleConfig(BaseModel, extra="allow"):
     thinking: Any | None = None
 
 
+class SmallRolesAnchorConfig(SubscriptableConfig):
+    enabled: bool = Field(default=True, description="Enable shared static anchor system for small-prompt roles")
+    opt_out_roles: list[str] = Field(default_factory=list, description="Roles excluded from shared static anchor")
+
+
 class LLMConfig(SubscriptableConfig):
     task_roles: dict[str, TaskRoleConfig] | None = None
     providers: dict[str, Any] | None = None
@@ -95,6 +100,7 @@ class LLMConfig(SubscriptableConfig):
     chat_sticky_model: bool | None = Field(
         default=True, description="Keep model affinity consistent across chat turns to maximize KV cache reuse"
     )
+    small_roles_anchor: SmallRolesAnchorConfig | None = Field(default_factory=SmallRolesAnchorConfig)
 
 
 class SchedulerConfig(SubscriptableConfig):
