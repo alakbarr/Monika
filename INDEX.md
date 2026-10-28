@@ -711,6 +711,7 @@
   - `build_exit_review_prescreen(symbol: str, direction: str, thesis: str) -> dict[str, Union[Noul, Score]]`: Pre-screen questions for PositionExitReviewer to avoid full Stage 2 runs if thesis remains intact.
   - `build_scenario_branch_questions() -> dict[str, Union[Choice, Score]]`: Scenario Tree branch classifier for dominant market path and conviction.
   - `build_adversarial_check_questions(symbol: str) -> dict[str, Union[Choice, Noul, Score]]`: Structured System One questions for adversarial trade checks.
+  - `build_trigger_validator_questions(symbol: str, trigger_type: str) -> dict[str, Union[Noul, Score]]`: System One validation questions for trade triggers before execution.
   - `async classify_news_batch_with_jev(client: Any, batch: list, now_utc: Any, ...) -> list[dict[str, Any]] | None`: Classifies a batch of NewsItem instances using TypeSafe Jev System One in parallel.
 
 #### `prompt_primitives.py`

@@ -316,20 +316,20 @@ def build_news_classification_questions() -> dict[str, Union[Choice, Score, Noul
     }
 
 
-def build_prescreen_questions(symbol: str) -> dict[str, Union[Noul, Score]]:
+def build_prescreen_questions(symbol: str = "") -> dict[str, Union[Noul, Score]]:
     """
     Fast prescreen check determining whether an asset setup warrants full Stage 2 analysis.
     """
     return {
         "decision": Noul(
-            instructions=f"Should we proceed with full Stage 2 deep analysis for {symbol} right now?",
+            instructions="Should we proceed with full Stage 2 deep analysis for the target symbol right now?",
             criteria={
                 "true": "Market is open, volatility/VIX is manageable, price is near actionable support/resistance or clear technical setup exists",
                 "false": "Risk is paused, market closed for this asset, ADX dead/flat, VIX extreme (>35), or no setup nearby",
             },
         ),
         "opportunity_score": Score(
-            instructions=f"Rate the immediate setup quality and opportunity for {symbol}",
+            instructions="Rate the immediate setup quality and opportunity for the target symbol",
             criteria=[
                 "Dead / unpromising — avoid analyzing",
                 "Marginal — only analyze if spare compute available",
@@ -487,12 +487,15 @@ def build_realtime_news_questions(open_positions: list[str] | None = None) -> di
             ],
         ),
         "threatens_positions": Noul(
-            instructions=f"Does this headline introduce immediate sharp adverse volatility threat to open positions in {symbols_text}?"
+            instructions="Does this headline introduce immediate sharp adverse volatility threat to active open positions specified in state?"
         ),
         "requires_circuit_breaker": Noul(
             instructions="Is this an extreme systemic shock requiring emergency circuit breaker or stop tightening?"
         ),
     }
+
+
+build_news_realtime_questions = build_realtime_news_questions
 
 
 def build_fundamental_verifier_questions() -> dict[str, Union[Noul, Score, Choice]]:
@@ -644,20 +647,20 @@ def build_digest_consistency_questions() -> dict[str, Union[Noul, Score, Choice]
     }
 
 
-def build_position_guard_questions(symbol: str, direction: str) -> dict[str, Union[Noul, Score]]:
+def build_position_guard_questions(symbol: str = "", direction: str = "") -> dict[str, Union[Noul, Score]]:
     """
     Real-time position threat assessment questions for PositionGuardian.
     """
     return {
         "adverse_momentum": Noul(
-            instructions=f"Given the current market data, is there strong adverse momentum against our {direction} position in {symbol}?",
+            instructions="Given the current market data and position details in state, is there strong adverse momentum against our open position?",
             criteria={
                 "true": "Price moving sharply against position direction, volume increasing, key level broken",
                 "false": "Normal fluctuation, consolidation, or favorable momentum",
             },
         ),
         "sl_threat_level": Score(
-            instructions=f"How close is the current price action to threatening the stop-loss of our {direction} {symbol} position?",
+            instructions="How close is current price action to threatening the stop-loss of the open position?",
             criteria=[
                 "Safe — price well within favorable zone",
                 "Normal — standard volatility, no immediate concern",
@@ -666,9 +669,12 @@ def build_position_guard_questions(symbol: str, direction: str) -> dict[str, Uni
             ],
         ),
         "should_tighten_stop": Noul(
-            instructions=f"Based on current volatility and price structure, should the trailing stop for {symbol} be tightened?"
+            instructions="Based on current volatility and price structure, should the trailing stop for the position be tightened?"
         ),
     }
+
+
+build_position_guardian_questions = build_position_guard_questions
 
 
 def build_telegram_intent_questions() -> dict[str, Union[Choice, Noul]]:
@@ -704,14 +710,14 @@ def build_telegram_intent_questions() -> dict[str, Union[Choice, Noul]]:
     }
 
 
-def build_risk_gate_neutral_questions(symbol: str, direction: str) -> dict[str, Union[Score, Noul, Choice]]:
+def build_risk_gate_neutral_questions(symbol: str = "", direction: str = "") -> dict[str, Union[Score, Noul, Choice]]:
     """
     System One questions for neutral/balanced risk gate evaluation.
     Replaces generative LLM with structured score & confidence gating.
     """
     return {
         "risk_reward_balance": Score(
-            instructions=f"Rate the risk-reward balance of this proposed {direction} trade on {symbol}",
+            instructions="Rate the risk-reward balance of this proposed trade on the target symbol",
             criteria=[
                 "Strongly favorable — clear asymmetric opportunity with well-defined risk",
                 "Mildly favorable — reasonable setup with acceptable risk parameters",
@@ -720,28 +726,28 @@ def build_risk_gate_neutral_questions(symbol: str, direction: str) -> dict[str, 
             ],
         ),
         "position_sizing_appropriate": Noul(
-            instructions=f"Is the proposed position size appropriate given current portfolio exposure and volatility for {symbol}?",
+            instructions="Is the proposed position size appropriate given current portfolio exposure and volatility for the target symbol?",
             criteria={
                 "true": "Position size is within acceptable bounds considering portfolio diversification and current volatility",
                 "false": "Position size is too large relative to portfolio, or creates dangerous concentration",
             },
         ),
         "timing_acceptable": Noul(
-            instructions=f"Is the timing of this {direction} entry on {symbol} acceptable from a balanced risk perspective?",
+            instructions="Is the timing of this entry on the target symbol acceptable from a balanced risk perspective?",
             criteria={
                 "true": "Entry at reasonable price level, not chasing, volatility conditions manageable",
                 "false": "Chasing extended move, entering ahead of known high-impact event, or volatile conditions advise waiting",
             },
         ),
         "portfolio_correlation_safe": Noul(
-            instructions=f"Would adding {symbol} {direction} maintain healthy portfolio diversification?",
+            instructions="Would adding this trade maintain healthy portfolio diversification?",
             criteria={
                 "true": "Low correlation with existing positions, adds diversification benefit",
                 "false": "High correlation with existing positions, amplifies portfolio risk",
             },
         ),
         "overall_approval": Choice(
-            instructions=f"What is the balanced risk assessment verdict for this {symbol} {direction} trade?",
+            instructions="What is the balanced risk assessment verdict for this proposed trade on the target symbol?",
             criteria={
                 "approve": "Risk-reward acceptable, position sizing and timing appropriate — proceed",
                 "approve_with_reduced_size": "Generally acceptable but recommend smaller position due to concentration or volatility",
@@ -752,20 +758,25 @@ def build_risk_gate_neutral_questions(symbol: str, direction: str) -> dict[str, 
     }
 
 
-def build_risk_gate_conservative_questions(symbol: str, direction: str) -> dict[str, Union[Score, Noul, Choice]]:
+build_trade_risk_questions = build_risk_gate_neutral_questions
+
+
+def build_risk_gate_conservative_questions(
+    symbol: str = "", direction: str = ""
+) -> dict[str, Union[Score, Noul, Choice]]:
     """
     System One questions for conservative risk evaluation (capital preservation priority).
     """
     return {
         "veto_trade": Noul(
-            instructions=f"Based on worst-case downside risk and tail risk, should this {direction} trade on {symbol} be vetoed entirely?",
+            instructions="Based on worst-case downside risk and tail risk, should this trade on the target symbol be vetoed entirely?",
             criteria={
                 "true": "VETO trade: excessive exposure, recent streak loss, high correlation, or extreme downside threat",
                 "false": "Do not veto: downside risk is within acceptable parameters",
             },
         ),
         "risk_level": Choice(
-            instructions=f"What is the conservative risk severity level for {symbol} {direction}?",
+            instructions="What is the conservative risk severity level for the proposed trade on the target symbol?",
             criteria={
                 "LOW": "Low risk — standard trade with well-protected stop loss",
                 "MEDIUM": "Medium risk — moderate volatility or minor concentration concern",
@@ -794,20 +805,25 @@ def build_risk_gate_conservative_questions(symbol: str, direction: str) -> dict[
     }
 
 
-def build_risk_gate_aggressive_questions(symbol: str, direction: str) -> dict[str, Union[Score, Noul, Choice]]:
+build_conservative_risk_questions = build_risk_gate_conservative_questions
+
+
+def build_risk_gate_aggressive_questions(
+    symbol: str = "", direction: str = ""
+) -> dict[str, Union[Score, Noul, Choice]]:
     """
     System One questions for aggressive risk persona (alpha capture & asymmetric upside).
     """
     return {
         "veto_trade": Noul(
-            instructions=f"Is this proposed {direction} trade on {symbol} structurally flawed beyond repair?",
+            instructions="Is this proposed trade on the target symbol structurally flawed beyond repair?",
             criteria={
                 "true": "VETO: stop loss is not beyond structure, R:R < 1.5, or trade contradicts major structural trend",
                 "false": "Do not veto: setup has valid technical premise and structural edge",
             },
         ),
         "reward_asymmetry": Score(
-            instructions=f"Rate the reward asymmetry and opportunity quality for {symbol} {direction}",
+            instructions="Rate the reward asymmetry and opportunity quality for the proposed trade on the target symbol",
             criteria=[
                 "Weak asymmetry — marginal edge, skip or scale down",
                 "Fair asymmetry — acceptable standard setup (R:R ~ 1.5:1)",
@@ -826,10 +842,13 @@ def build_risk_gate_aggressive_questions(symbol: str, direction: str) -> dict[st
             },
         ),
         "momentum_alignment": Noul(
-            instructions=f"Does underlying higher-timeframe momentum and market structure strongly support this {direction} move?",
+            instructions="Does underlying higher-timeframe momentum and market structure strongly support this directional move?",
             criteria={"true": "Momentum and trend alignment verified", "false": "Counter-trend or low-momentum chop"},
         ),
     }
+
+
+build_aggressive_risk_questions = build_risk_gate_aggressive_questions
 
 
 def build_pattern_context_questions(
@@ -840,7 +859,7 @@ def build_pattern_context_questions(
     """
     return {
         "relevance": Choice(
-            instructions=f"Rate the macroeconomic relevance and comparability of the historical period {match_date_str} to current conditions for {symbol}:",
+            instructions="Rate the macroeconomic relevance and comparability of the historical match period to current conditions for the target symbol:",
             criteria={
                 "high": "Strongly comparable macro regime, similar monetary policy cycle, and aligned volatility",
                 "medium": "Partially comparable with minor diverging drivers, but structural price dynamics hold",
@@ -848,7 +867,7 @@ def build_pattern_context_questions(
             },
         ),
         "is_macro_driver_similar": Noul(
-            instructions=f"Are the underlying macroeconomic drivers for {symbol} around {match_date_str} structurally similar to current drivers?",
+            instructions="Are the underlying macroeconomic drivers for the target symbol around the historical match period structurally similar to current drivers?",
             criteria={
                 "true": "Similar inflation, rate trajectory, or risk sentiment environment",
                 "false": "Opposite policy direction, crisis-driven distortion, or unrelated structural regime",
@@ -872,14 +891,14 @@ def build_confluence_gate_questions(symbol: str = "", setup_type: str = "") -> d
     """
     return {
         "confluence_passed": Noul(
-            instructions=f"Does the proposed {setup_type} setup on {symbol} satisfy minimal multi-factor confluence?",
+            instructions="Does the proposed setup on the target symbol satisfy minimal multi-factor confluence?",
             criteria={
                 "true": "Confluence satisfied: technical alignment, supportive macro/regime, acceptable risk profile",
                 "false": "Confluence insufficient: isolated signal, diverging indicators, or unaligned macro",
             },
         ),
         "action": Choice(
-            instructions=f"Recommended action for {symbol} {setup_type}:",
+            instructions="Recommended action for the proposed setup on the target symbol:",
             criteria={
                 "PROCEED": "Execute setup as planned",
                 "WAIT_PULLBACK": "Direction valid but price extended — wait for retracement",
@@ -887,7 +906,7 @@ def build_confluence_gate_questions(symbol: str = "", setup_type: str = "") -> d
             },
         ),
         "confluence_strength": Score(
-            instructions=f"Rate the overall multi-factor confluence strength for {symbol}",
+            instructions="Rate the overall multi-factor confluence strength for the target symbol",
             criteria=[
                 "Weak / Marginal — only 1 primary indicator aligned",
                 "Moderate — 2-3 aligned factors across technicals and regime",
@@ -906,14 +925,14 @@ def build_session_timing_questions(
     """
     return {
         "timing_favorable": Noul(
-            instructions=f"Is the current timing ({session} session, {minutes_to_close}m to close) favorable for opening new positions?",
+            instructions="Is the current timing and time-to-close favorable for opening new positions based on session state?",
             criteria={
                 "true": "Active liquid trading window with tight spreads and good market depth",
                 "false": "Illiquid period, rollover spread widening, or session close chop",
             },
         ),
         "liquidity_risk": Choice(
-            instructions=f"What is the liquidity and spread widening risk in {session}?",
+            instructions="What is the liquidity and spread widening risk in the current session?",
             criteria={
                 "LOW": "Tight spreads, deep institutional liquidity",
                 "MODERATE": "Normal spreads, standard retail liquidity",
@@ -964,20 +983,22 @@ def build_debate_evaluator_questions() -> dict[str, Union[Noul, Choice, Score]]:
     }
 
 
-def build_exit_review_prescreen(symbol: str, direction: str, thesis: str = "") -> dict[str, Union[Noul, Score]]:
+def build_exit_review_prescreen(
+    symbol: str = "", direction: str = "", thesis: str = ""
+) -> dict[str, Union[Noul, Score]]:
     """
     Pre-screen questions for PositionExitReviewer to avoid full Stage 2 runs if thesis remains intact.
     """
     return {
         "thesis_still_valid": Noul(
-            instructions=f"Is the original trading thesis for {direction} {symbol} still valid given current market conditions?",
+            instructions="Is the original trading thesis for the open position still valid given current market conditions?",
             criteria={
                 "true": "Key levels holding, no major contrary catalyst, original rationale intact",
                 "false": "Key invalidation level breached, major contrary catalyst occurred, or thesis premise no longer holds",
             },
         ),
         "exit_urgency": Score(
-            instructions=f"How urgently should we consider exiting the {direction} {symbol} position?",
+            instructions="How urgently should we consider exiting the open position on the target symbol?",
             criteria=[
                 "No urgency — thesis intact, position performing well",
                 "Low urgency — minor concerns but thesis holds",
@@ -987,6 +1008,9 @@ def build_exit_review_prescreen(symbol: str, direction: str, thesis: str = "") -
             ],
         ),
     }
+
+
+build_exit_prescreen_questions = build_exit_review_prescreen
 
 
 def build_scenario_branch_questions() -> dict[str, Union[Choice, Score]]:
@@ -1022,7 +1046,7 @@ def build_adversarial_check_questions(symbol: str = "") -> dict[str, Union[Choic
     """
     return {
         "approve": Noul(
-            instructions=f"Based on the analysis and deterministic risk flags for {symbol}, is this trade proposal approved to proceed?",
+            instructions="Based on the analysis and deterministic risk flags for the target symbol, is this trade proposal approved to proceed?",
             criteria={
                 "true": "Trade proposal has sound logic, acceptable risk-reward, and no fatal flaws",
                 "false": "Trade proposal has major flaws, contradictions, or unacceptably elevated risk",
@@ -1060,6 +1084,31 @@ def build_adversarial_check_questions(symbol: str = "") -> dict[str, Union[Choic
                 "volatility_shock": "High event risk, upcoming news shock, or VIX extreme",
                 "thesis_inconsistency": "Internal contradiction in directional reasoning",
             },
+        ),
+    }
+
+
+def build_trigger_validator_questions(symbol: str = "", trigger_type: str = "") -> dict[str, Union[Noul, Score]]:
+    """
+    System One validation questions for trade triggers before execution.
+    Decoupled from asset-specific dynamic variables for invariant schema caching.
+    """
+    return {
+        "is_still_valid": Noul(
+            instructions="Is this trade trigger still structurally valid and actionable given current price action and elapsed time in state?",
+            criteria={
+                "true": "Setup intact, price within valid entry tolerance, market structure holding",
+                "false": "Invalidated by adverse price movement, elapsed time, or broken structure",
+            },
+        ),
+        "invalidation_risk": Score(
+            instructions="Rate the risk that this trigger has been invalidated by market regime change or adverse price action",
+            criteria=[
+                "No risk — setup intact",
+                "Low risk — minor deviation",
+                "Moderate risk — requires fresh check",
+                "High risk — conditions severely invalidated",
+            ],
         ),
     }
 

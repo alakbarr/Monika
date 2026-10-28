@@ -1299,8 +1299,14 @@ class FallbackClientWrapper(BaseLLMClient):
                     # Adapt Jev-specific arguments if falling back to generative LLM provider
                     if provider != "typesafe":
                         jev_q = safe_kwargs.get("jev_questions")
-                        if isinstance(jev_q, dict):
-                            from monika.core.primitives.jev_primitives import jev_questions_to_schema
+                        if isinstance(jev_q, (dict, list)):
+                            from monika.core.primitives.jev_primitives import (
+                                jev_questions_to_schema,
+                                list_to_jev_questions,
+                            )
+
+                            if isinstance(jev_q, list):
+                                jev_q = list_to_jev_questions(jev_q)
 
                             if method_name == "classify_json" and not safe_kwargs.get("schema"):
                                 safe_kwargs["schema"] = jev_questions_to_schema(jev_q)
@@ -1310,7 +1316,11 @@ class FallbackClientWrapper(BaseLLMClient):
                         # If user prompt is empty but structured state is provided, synthesize state prompt
                         if "state" in safe_kwargs:
                             st_val = safe_kwargs.get("state")
-                            st_str = json.dumps(st_val, indent=2) if isinstance(st_val, (dict, list)) else str(st_val)
+                            st_str = (
+                                json.dumps(st_val, indent=2, sort_keys=True)
+                                if isinstance(st_val, (dict, list))
+                                else str(st_val)
+                            )
                             if method_name == "classify_json":
                                 if safe_args and (safe_args[0] == "" or safe_args[0] is None):
                                     safe_args[0] = f"Evaluate the following state context:\n{st_str}"
