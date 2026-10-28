@@ -9,6 +9,7 @@ Macro context builder, calendar priors, and pre-filtering relevance checks.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import json
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,15 +39,18 @@ class MacroContextMixin(_NewsDigestMixinBase):
         self._last_known_brief_id = None
         self._last_known_breaking_id = None
 
-    async def _build_5day_macro_context(self, session: AsyncSession, now_utc: datetime) -> str:
+    async def _build_7day_macro_grounding_context(self, session: AsyncSession, now_utc: datetime) -> str:
         """
-        Membangun ringkasan narasi makro dan tema-tema berita signifikan dari 5 hari terakhir (120 jam)
-        dengan arsitektur Hybrid Event-Driven Caching (TTL default 60 menit + Reactive Invalidation saat
-        terdapat FundamentalBrief baru atau berita BREAKING baru).
+        Membangun ringkasan narasi makro institusional dan grounding pasar yang komprehensif:
+        1. Macro Core dari FundamentalBrief (Regime, Risk Sentiment, Biases, Priced-In Consensus, Invalidation).
+        2. Kalender Ekonomi Berdampak Tinggi (HIGH) 7 hari ke depan (Immediate 24-48h vs Rest of Week).
+        3. Riwayat Berita Berdampak Tinggi (HIGH + BREAKING) 7 hari terakhir dengan deduplikasi Jaccard.
+        4. Kronik Makro Struktural 60 hari terakhir.
+        Dilengkapi Hybrid Event-Driven Caching (TTL 60 menit + Reactive Invalidation).
         """
-        from sqlalchemy import func, select
+        from sqlalchemy import desc, select
 
-        from monika.infrastructure.database.models import FundamentalBrief, NewsItem
+        from monika.infrastructure.database.models import EconomicCalendar, FundamentalBrief, NewsItem
 
         # Check for reactive invalidation triggers (new brief or new breaking news)
         try:
@@ -81,41 +85,107 @@ class MacroContextMixin(_NewsDigestMixinBase):
                 return self._macro_context_cache
 
         try:
-            # 1. Ambil brief fundamental terbaru untuk baseline regime & bias
+            # 1. Macro Core dari FundamentalBrief terbaru
             brief = (
                 await session.execute(select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1))
             ).scalar_one_or_none()
 
-            macro_summary = "Regime: BALANCED | Risk: NEUTRAL | Biases: Mixed"
+            macro_core_lines = []
             if brief:
-                regime = getattr(brief, "macro_regime", "mixed")
-                risk = getattr(brief, "risk_sentiment", "mixed")
+                regime = str(getattr(brief, "macro_regime", "mixed")).upper()
+                risk = str(getattr(brief, "risk_sentiment", "mixed")).upper()
                 cb = getattr(brief, "currency_bias", {}) or {}
                 if isinstance(cb, dict) and cb:
-                    bias_str = ", ".join([f"{k}:{v}" for k, v in cb.items() if v != "neutral"][:6])
+                    bias_str = ", ".join([f"{k}:{v}" for k, v in cb.items() if v != "neutral"][:8])
                 else:
                     bias_str = "Balanced"
-                macro_summary = f"Regime: {str(regime).upper()} | Risk: {str(risk).upper()} | Biases: {bias_str}"
+                macro_core_lines.append(f"• REGIME & BIAS: Regime={regime} | Risk={risk} | Biases={bias_str}")
 
-            try:
-                from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
+                s_json = getattr(brief, "structured_json", None)
+                if s_json and isinstance(s_json, str):
+                    try:
+                        b_data = json.loads(s_json)
+                        # Priced-in assessment
+                        pi = b_data.get("priced_in_assessment", {})
+                        if isinstance(pi, dict):
+                            dom = pi.get("dominant_driver", "")
+                            score = pi.get("priced_in_score", 5)
+                            fw = pi.get("fedwatch_shift_summary", "")
+                            unpriced = pi.get("key_unpriced_drivers", [])
+                            if dom:
+                                macro_core_lines.append(f"• PRICED-IN CONSENSUS (Score {score}/10): {dom}")
+                            if fw:
+                                macro_core_lines.append(f"• FEDWATCH / RATE EXPECTATIONS: {fw}")
+                            if unpriced and isinstance(unpriced, list):
+                                macro_core_lines.append(f"• KEY UNPRICED VULNERABILITY: {unpriced[0]}")
 
-                c_writer = ChronicleWriter(self.settings)
-                c_bullets = await c_writer.get_condensed_chronicle_bullets(session, limit=4)
-                if c_bullets:
-                    macro_summary += f"\nActive Structural Chronicles:\n{c_bullets}"
-            except Exception:
-                pass
+                        # Invalidation conditions
+                        inv = b_data.get("invalidation_conditions", {})
+                        if isinstance(inv, dict) and inv:
+                            inv_sample = [f"{k}: {v[:90]}" for k, v in list(inv.items())[:3]]
+                            macro_core_lines.append(f"• THESIS INVALIDATION THRESHOLDS: {' | '.join(inv_sample)}")
 
-            # 2. Ambil berita HIGH/BREAKING dari 5 hari terakhir (120 jam)
-            five_days_ago = now_utc - timedelta(days=5)
+                        # Key upcoming risks
+                        risks = b_data.get("key_upcoming_risks", [])
+                        if isinstance(risks, list) and risks:
+                            risk_strs = []
+                            for r in risks[:3]:
+                                if isinstance(r, dict):
+                                    ev = r.get("event", "")
+                                    tm = r.get("time", "")
+                                    risk_strs.append(f"{ev} ({tm})")
+                            if risk_strs:
+                                macro_core_lines.append(f"• KEY MACRO RISKS MONITORED: {' | '.join(risk_strs)}")
+                    except Exception as _b_err:
+                        logger.debug(f"Failed to parse structured_json in brief: {_b_err}")
+            else:
+                macro_core_lines.append("• REGIME & BIAS: Regime=BALANCED | Risk=NEUTRAL | Biases=Balanced")
+
+            macro_core_block = "\n".join(macro_core_lines)
+
+            # 2. Upcoming High-Impact Economic Calendar (Next 7 Days)
+            cal_stmt = (
+                select(EconomicCalendar)
+                .where(
+                    EconomicCalendar.event_time >= now_utc,
+                    EconomicCalendar.event_time <= now_utc + timedelta(days=7),
+                    EconomicCalendar.impact.in_(["high", "HIGH"]),
+                )
+                .order_by(EconomicCalendar.event_time)
+                .limit(16)
+            )
+            cal_rows = (await session.execute(cal_stmt)).scalars().all()
+
+            imm_lines, week_lines = [], []
+            cutoff_48h = now_utc + timedelta(hours=48)
+            for c in cal_rows:
+                if not c.event_time:
+                    continue
+                c_utc = ensure_utc(c.event_time) or c.event_time
+                t_str = c_utc.strftime("%m-%d %H:%M UTC")
+                fc_str = f"Forecast: {c.forecast}" if c.forecast else "No Frcst"
+                pv_str = f"Prev: {c.previous}" if c.previous else "No Prev"
+                line = f"• [{c.currency or 'MACRO'}] {c.event_name} ({t_str}) | {fc_str} | {pv_str}"
+                if c_utc <= cutoff_48h:
+                    imm_lines.append(line)
+                else:
+                    week_lines.append(line)
+
+            cal_block = "[NEXT 24-48H IMMEDIATE CATALYSTS AWAITED]:\n" + (
+                "\n".join(imm_lines) if imm_lines else "• No high-impact releases scheduled in next 48h."
+            )
+            if week_lines:
+                cal_block += "\n[REST OF THE WEEK MAJOR RISK EVENTS]:\n" + "\n".join(week_lines[:5])
+
+            # 3. 7-Day History of HIGH + BREAKING News (deduplicated)
+            seven_days_ago = now_utc - timedelta(days=7)
             recent_high_items = (
                 await session.execute(
                     select(NewsItem.title, NewsItem.currency_tags, NewsItem.impact, NewsItem.fetched_at)
-                    .where(NewsItem.fetched_at >= five_days_ago)
+                    .where(NewsItem.fetched_at >= seven_days_ago)
                     .where(NewsItem.impact.in_(["BREAKING", "HIGH"]))
-                    .order_by(NewsItem.fetched_at.desc())
-                    .limit(30)
+                    .order_by(desc(NewsItem.fetched_at))
+                    .limit(40)
                 )
             ).all()
 
@@ -126,7 +196,7 @@ class MacroContextMixin(_NewsDigestMixinBase):
                 if not t:
                     continue
                 # Filter similar titles to keep the theme list compact and high-signal
-                if any(_jaccard_title_similarity(t, st) > 0.45 for st in seen_titles):
+                if any(_jaccard_title_similarity(t, st) > 0.40 for st in seen_titles):
                     continue
                 seen_titles.append(t)
                 cur = row[1] or "MACRO"
@@ -134,14 +204,14 @@ class MacroContextMixin(_NewsDigestMixinBase):
                 r_utc = ensure_utc(row[3]) if row[3] else None
                 age_days = max(0, round((now_utc - r_utc).total_seconds() / 86400, 1)) if r_utc else 0
                 theme_lines.append(f"• [{cur}] ({imp}, {age_days}d ago): {t[:110]}")
-                if len(theme_lines) >= 8:
+                if len(theme_lines) >= 12:
                     break
 
             themes_block = (
-                "\n".join(theme_lines) if theme_lines else "• No dominant multi-day shock recorded in recent 5 days."
+                "\n".join(theme_lines) if theme_lines else "• No dominant multi-day shock recorded in recent 7 days."
             )
 
-            # SOTA Memory Grounding: Inject active structural chronicles (ongoing wars, central bank leadership, tariffs)
+            # 4. SOTA Memory Grounding: Active structural chronicles (ongoing wars, central bank leadership, tariffs)
             chronicle_block = ""
             try:
                 from monika.application.analysis.memory.chronicle_writer import ChronicleWriter
@@ -156,22 +226,28 @@ class MacroContextMixin(_NewsDigestMixinBase):
                 logger.debug(f"Failed to fetch chronicle in news context: {_c_err}")
 
             context = (
-                f"--- 5-DAY MACRO NARRATIVE & MARKET THEMES CONTEXT ---\n"
+                f"=== MONIKA 7-DAY MACRO GROUNDING & 5-DAY MACRO NARRATIVE CONTEXT ===\n"
                 f"{chronicle_block}"
-                f"PREVAILING BASELINE: {macro_summary}\n"
-                f"ESTABLISHED 5-DAY HIGH-IMPACT THEMES & CATALYSTS:\n"
-                f"{themes_block}\n\n"
-                f"TEMPORAL EVALUATION INSTRUCTIONS FOR THIS BATCH:\n"
-                f"1. NARRATIVE EXHAUSTION / REHASH: If a news item merely repeats or provides speculative commentary on an already established theme above without new quantitative data, formal actions, or fresh dates, cap at MEDIUM or LOW (tag with 'NARRATIVE_EXHAUSTION').\n"
-                f"2. FRESH CATALYST / SHOCK: If a news item introduces concrete NEW measures, retaliatory escalations, or unexpected deviations from the established baseline above, classify as HIGH or BREAKING (tag with 'FRESH_CATALYST').\n"
-                f"3. DAMPENER / DE-ESCALATION: If a news item eases active market tension (e.g. negotiation progress, tariff exemption, diplomatic pause, ceasefire), classify whether it acts as a risk relief dampener (tag with 'DEESCALATION_RELIEF')."
+                f"INSTITUTIONAL MACRO BASELINE:\n{macro_core_block}\n\n"
+                f"UPCOMING HIGH-IMPACT ECONOMIC CALENDAR (CONSENSUS BENCHMARKS):\n{cal_block}\n\n"
+                f"ESTABLISHED 7-DAY HIGH-IMPACT THEMES & HISTORICAL SHOCKS:\n{themes_block}\n\n"
+                f"TEMPORAL GROUNDING RULES FOR THIS BATCH:\n"
+                f"1. REHASH / ALREADY KNOWN: If an item merely repeats or comments on an ongoing 7-day theme or known conflict without fresh concrete quantitative data/unprecedented actions, cap at MEDIUM or LOW (tag 'NARRATIVE_EXHAUSTION').\n"
+                f"2. IN-LINE DATA: If scheduled data release meets consensus/forecast above, cap at HIGH or MEDIUM (tag 'PRICED_IN', NEVER mark BREAKING).\n"
+                f"3. EXTREME DATA SURPRISE: If scheduled data release deviates significantly from the calendar forecast above (surprise_magnitude='large'), classify as BREAKING (tag 'FRESH_CATALYST').\n"
+                f"4. UNPRECEDENTED SHOCK: If a news item introduces concrete NEW emergency measures, retaliatory escalations, or unprecedented actions not in chronicles/themes above, classify as BREAKING (tag 'FRESH_CATALYST').\n"
+                f"5. DAMPENER / DE-ESCALATION: If a news item eases active market tension (e.g. negotiation progress, tariff exemption, ceasefire), classify whether it acts as a risk relief dampener (tag 'DEESCALATION_RELIEF')."
             )
             self._macro_context_cache = context
             self._macro_context_cache_time = now_utc
             return context
         except Exception as e:
-            logger.debug(f"Failed to build 5-day macro context (non-fatal): {e}")
-            return "--- 5-DAY MACRO CONTEXT ---\nEvaluate news items objectively based on fresh catalysts vs market consensus."
+            logger.debug(f"Failed to build 7-day macro grounding context (non-fatal): {e}")
+            return "=== 7-DAY MACRO CONTEXT ===\nEvaluate news items objectively based on fresh catalysts vs market consensus."
+
+    async def _build_5day_macro_context(self, session: AsyncSession, now_utc: datetime) -> str:
+        """Backwards compatibility alias for _build_7day_macro_grounding_context."""
+        return await self._build_7day_macro_grounding_context(session, now_utc)
 
     async def _get_calendar_impact_priors(
         self, session: AsyncSession, batch: list[NewsItem], now_utc: datetime

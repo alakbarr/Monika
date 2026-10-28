@@ -242,7 +242,9 @@ This constitution establishes immutable operating standards for all participants
         return cls.MIN_CACHEABLE_CHARS  # ~1,050 tokens default (Sonnet 3.5/3.7 / OpenAI 1,024 threshold)
 
     @classmethod
-    def should_inject_anchor(cls, model_name: str = "", provider_name: str = "", current_prompt_chars: int = 0) -> bool:
+    def should_inject_anchor(
+        cls, model_name: str = "", provider_name: str = "", current_prompt_chars: int = 0, force: bool = False
+    ) -> bool:
         """
         Determines whether CANONICAL_TIER0_ANCHOR should be injected.
         Eliminates 4,125 token padding waste when:
@@ -257,6 +259,9 @@ This constitution establishes immutable operating standards for all participants
             return False
 
         min_chars = cls.get_min_cacheable_chars(mod)
+        if force:
+            min_chars = max(min_chars, cls.GEMINI_3_MIN_CACHEABLE_CHARS)
+
         # If prompt is already large enough naturally to trigger caching, skip anchor
         if current_prompt_chars >= min_chars:
             return False
@@ -270,9 +275,11 @@ This constitution establishes immutable operating standards for all participants
         """Pads system prompts with canonical invariant rules only when close to cache threshold (or force=True)."""
         raw = (system_prompt or "").strip()
         min_chars = cls.get_min_cacheable_chars(model_name)
+        if force:
+            min_chars = max(min_chars, cls.GEMINI_3_MIN_CACHEABLE_CHARS)
 
         if not cls.should_inject_anchor(
-            model_name=model_name, provider_name=provider_name, current_prompt_chars=len(raw)
+            model_name=model_name, provider_name=provider_name, current_prompt_chars=len(raw), force=force
         ):
             return raw
 

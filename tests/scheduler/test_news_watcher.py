@@ -54,7 +54,7 @@ class TestNewsWatcher:
     async def test_run_once_with_news_fallback(self, mock_processor, mock_get_session, settings):
         watcher = NewsWatcher(settings)
 
-        news_high = self._make_news("nuclear attack on major city", impact="HIGH")
+        news_high = self._make_news("nuclear attack on major city", impact="BREAKING")
         news_med = self._make_news("us cpi shows inflation cooling", impact="MEDIUM")
         news_none = self._make_news("random stuff", impact="LOW")
 
@@ -271,9 +271,40 @@ class TestNewsWatcher:
         import logging
 
         watcher = NewsWatcher(settings)
-        news_high = self._make_news("major geopolitical crisis breaks out", impact="HIGH")
-        watcher._fetch_new_news = AsyncMock(return_value=[news_high])
+        news_breaking = self._make_news("major geopolitical crisis breaks out", impact="BREAKING")
+        watcher._fetch_new_news = AsyncMock(return_value=[news_breaking])
         watcher._get_affected_symbols = MagicMock(return_value=["XAUUSD"])
+        watcher._trigger_reanalysis = AsyncMock()
+
+        mock_session = create_mock_async_session()
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [news_breaking]
+        mock_session.execute.return_value = mock_result
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__.return_value = mock_session
+        mock_get_session.return_value = mock_ctx
+
+        processor_instance = mock_processor.return_value
+        processor_instance.classify_unscored_news = AsyncMock()
+
+        with caplog.at_level(logging.INFO):
+            result = await watcher.run_once()
+
+        assert result["reanalysis_triggered"] is True
+        assert any("BREAKING NEWS DETECTED" in rec.message and rec.levelno == logging.INFO for rec in caplog.records)
+
+    @pytest.mark.asyncio
+    @patch("monika.application.scheduler.news_watcher.get_session")
+    @patch("monika.application.analysis.prefetch.news_digest.NewsDigestProcessor")
+    async def test_run_once_high_impact_does_not_trigger_reanalysis(
+        self, mock_processor, mock_get_session, settings, caplog
+    ):
+        import logging
+
+        watcher = NewsWatcher(settings)
+        news_high = self._make_news("fed speaker gives routine rate guidance", impact="HIGH")
+        watcher._fetch_new_news = AsyncMock(return_value=[news_high])
+        watcher._get_affected_symbols = MagicMock(return_value=["USDJPY"])
         watcher._trigger_reanalysis = AsyncMock()
 
         mock_session = create_mock_async_session()
@@ -290,8 +321,10 @@ class TestNewsWatcher:
         with caplog.at_level(logging.INFO):
             result = await watcher.run_once()
 
-        assert result["reanalysis_triggered"] is True
-        assert any("BREAKING NEWS DETECTED" in rec.message and rec.levelno == logging.INFO for rec in caplog.records)
+        assert result["reanalysis_triggered"] is False
+        assert result["high_impact_found"] == 1
+        watcher._trigger_reanalysis.assert_not_called()
+        assert any("High-impact news recorded" in rec.message for rec in caplog.records)
 
     @pytest.mark.asyncio
     @patch("monika.application.scheduler.news_watcher.get_session")

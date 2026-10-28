@@ -327,7 +327,7 @@ class AgentLifecycleMixin:
             _launch_task(
                 "DailyReportScheduler", self.cycle_scheduler.run_scheduled_reports_loop, "daily_report_scheduler"
             )
-            _launch_task("SessionTrigger", self.cycle_scheduler.run_session_trigger_loop, "session_trigger")
+            # SessionTrigger loop disabled: trading sessions are governed by scheduled LangGraph full cycles
         if self.news_watcher:
             _launch_task("NewsWatcher", self.news_watcher.start, "news_watcher")
         if self.digest_slice_scheduler and hasattr(self.digest_slice_scheduler, "start"):

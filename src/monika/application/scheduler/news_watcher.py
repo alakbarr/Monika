@@ -435,8 +435,12 @@ class NewsWatcher:
                         else []
                     )
 
-                # FIX: HIGH impact juga trigger re-analisis
-                high_items = [n for n in classified if n.impact in ("BREAKING", "HIGH")]
+                # SOTA News Trigger Architecture:
+                # ONLY BREAKING news triggers emergency Stage 2 reanalysis.
+                # HIGH impact news (routine policy hints, expected data, general developments)
+                # is saved & logged, but does NOT interrupt trading or burn tokens.
+                breaking_items = [n for n in classified if n.impact == "BREAKING"]
+                high_items = [n for n in classified if n.impact == "HIGH"]
                 medium_items = [n for n in classified if n.impact == "MEDIUM"]
 
         except Exception as e:
@@ -458,12 +462,17 @@ class NewsWatcher:
             # istilah lunak seperti "recession"/"financial crisis") — regex tanpa validasi
             # berlapis (calendar prior, magnitude cross-check, dedup) jauh lebih rawan false
             # positive, dan false positive di jalur ini langsung memicu forced full-cycle rerun.
+            breaking_items = [
+                n for n in new_items if getattr(n, "impact", None) == "BREAKING" or await self._is_shock_only_strict(n)
+            ]
             high_items = [
                 n
                 for n in new_items
-                if getattr(n, "impact", None) in ("BREAKING", "HIGH") or await self._is_shock_only_strict(n)
+                if n not in breaking_items and (getattr(n, "impact", None) == "HIGH" or self._is_high_impact(n))
             ]
-            medium_items = [n for n in new_items if n not in high_items and self._is_medium_impact(n)]
+            medium_items = [
+                n for n in new_items if n not in breaking_items and n not in high_items and self._is_medium_impact(n)
+            ]
             fallback_mode = True
         else:
             fallback_mode = False
@@ -472,7 +481,8 @@ class NewsWatcher:
 
         result = {
             "new_items": len(new_items),
-            "high_impact_found": len(high_items),
+            "breaking_items_found": len(breaking_items),
+            "high_impact_found": len(breaking_items) + len(high_items),
             "medium_impact_found": len(medium_items),
             "reanalysis_triggered": False,
             "affected_symbols": [],
@@ -480,17 +490,17 @@ class NewsWatcher:
 
         # Narrative Exhaustion Filter: If breaking candidate is tagged NARRATIVE_EXHAUSTION without FRESH_CATALYST,
         # it is an old story repeating; do not trigger an emergency cycle interruption.
-        actionable_high_items = []
-        for n in high_items:
+        actionable_breaking_items = []
+        for n in breaking_items:
             sentiments_str = n.sentiment or ""
             if "NARRATIVE_EXHAUSTION" in sentiments_str and "FRESH_CATALYST" not in sentiments_str:
                 logger.info(
                     f"NewsWatcher: Suppressing emergency rerun for '{n.title[:60]}' (tagged NARRATIVE_EXHAUSTION)."
                 )
             else:
-                actionable_high_items.append(n)
+                actionable_breaking_items.append(n)
 
-        if actionable_high_items:
+        if actionable_breaking_items:
             # When actionable breaking news occurs, invalidate macro context cache reactively
             try:
                 from monika.application.analysis.prefetch.news_digest import NewsDigestProcessor
@@ -503,10 +513,10 @@ class NewsWatcher:
                 pass
 
             logger.info(
-                f"BREAKING NEWS DETECTED ({len(actionable_high_items)} items): "
-                + " | ".join(n.title[:60] for n in actionable_high_items[:3])
+                f"BREAKING NEWS DETECTED ({len(actionable_breaking_items)} items): "
+                + " | ".join(n.title[:60] for n in actionable_breaking_items[:3])
             )
-            affected = self._get_affected_symbols(actionable_high_items)
+            affected = self._get_affected_symbols(actionable_breaking_items)
             result["affected_symbols"] = affected
             result["reanalysis_triggered"] = True
 
@@ -514,7 +524,7 @@ class NewsWatcher:
                 from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
 
                 top_items_text = "\n".join(
-                    [f"• [{n.impact}] {n.title} ({n.source or 'News'})" for n in actionable_high_items[:3]]
+                    [f"• [{n.impact}] {n.title} ({n.source or 'News'})" for n in actionable_breaking_items[:3]]
                 )
                 symbols_text = f"Simbol terdampak: {', '.join(affected)}" if affected else "Simbol: Multi-aset/Makro"
                 notif_msg = f"[BREAKING NEWS] Terdeteksi berita berdampak tinggi:\n{top_items_text}\n{symbols_text}\nEvaluasi risiko dan re-analisis otomatis dipicu."
@@ -525,8 +535,8 @@ class NewsWatcher:
             async with get_session() as session:
                 await self._log(
                     session,
-                    f"Breaking news detected: {len(actionable_high_items)} high-impact items — "
-                    f"affected: {affected} | top: {actionable_high_items[0].title[:80]}",
+                    f"Breaking news detected: {len(actionable_breaking_items)} breaking items — "
+                    f"affected: {affected} | top: {actionable_breaking_items[0].title[:80]}",
                     category="analysis",
                 )
                 try:
@@ -537,8 +547,8 @@ class NewsWatcher:
                         event_type="trigger.news_shock",
                         payload={
                             "affected_symbols": affected,
-                            "items_count": len(actionable_high_items),
-                            "top_title": actionable_high_items[0].title[:100] if actionable_high_items else "",
+                            "items_count": len(actionable_breaking_items),
+                            "top_title": actionable_breaking_items[0].title[:100] if actionable_breaking_items else "",
                         },
                         correlation_id=f"news_{int(datetime.now(timezone.utc).timestamp())}",
                         actor="news_watcher",
@@ -547,10 +557,22 @@ class NewsWatcher:
                     pass
 
             t = asyncio.create_task(
-                self._trigger_reanalysis(actionable_high_items, affected, fallback_mode=fallback_mode)
+                self._trigger_reanalysis(actionable_breaking_items, affected, fallback_mode=fallback_mode)
             )
             self._background_tasks.add(t)
             t.add_done_callback(self._background_tasks.discard)
+
+        elif high_items:
+            logger.info(
+                f"[NewsWatcher] High-impact news recorded ({len(high_items)} items, no emergency rerun): "
+                + high_items[0].title[:70]
+            )
+            async with get_session() as session:
+                await self._log(
+                    session,
+                    f"High-impact news (informative): {len(high_items)} items — top: {high_items[0].title[:80]}",
+                    category="analysis",
+                )
 
         elif medium_items:
             logger.info(f"Medium-impact news: {len(medium_items)} items — " + medium_items[0].title[:60])

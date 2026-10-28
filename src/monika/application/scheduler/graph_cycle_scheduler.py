@@ -330,8 +330,9 @@ class GraphCycleScheduler(CycleScheduler):
         return (-before_min * 60) <= delta_seconds <= (after_min * 60)
 
     async def _should_run_session_trigger(self) -> tuple[bool, str]:
-        if not self.settings.get("trading", {}).get("schedule", {}).get("session_trigger_enabled", True):
+        if not self.settings.get("trading", {}).get("schedule", {}).get("session_trigger_enabled", False):
             return False, "session_trigger_disabled_by_config"
+        return False, "session_trigger_disabled"
 
         now = datetime.now(timezone.utc)
         weekday = now.weekday()
@@ -478,15 +479,10 @@ class GraphCycleScheduler(CycleScheduler):
                     await lease_mgr.release_lease(sym, holder_id=session_holder_id)
 
     async def run_session_trigger_loop(self) -> None:
+        """Deprecated: Market session open trigger loop has been disabled in favor of scheduled LangGraph full cycles."""
         self._session_trigger_running = True
-        logger.info("[SessionTrigger] Loop started.")
+        logger.info("[SessionTrigger] Session trigger loop is disabled (handled by scheduled full cycles).")
         while self._session_trigger_running:
-            try:
-                trigger_result = await self.run_session_trigger()
-                if trigger_result.get("status") == "executed":
-                    logger.info(f"Session trigger completed: {trigger_result}")
-            except Exception as e:
-                logger.error(f"Error in session trigger loop: {e}")
             for _ in range(60):
                 if not self._session_trigger_running:
                     break
