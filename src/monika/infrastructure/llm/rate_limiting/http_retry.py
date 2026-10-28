@@ -103,6 +103,8 @@ class RateLimitError(APIStatusError):
 
 
 _CIRCUIT_BREAKER: dict[str, float] = {}
+_CIRCUIT_BREAKER_FAILURES: dict[str, int] = {}
+CIRCUIT_BREAKER_THRESHOLD: int = 3
 
 
 def _jittered_delay(base_delay: float, attempt: int, max_delay: float = 60.0) -> float:
@@ -162,7 +164,7 @@ async def fetch_with_retry(
     """
     effective_timeout = timeout_seconds if timeout_seconds is not None else (kwargs.get("timeout_sec") or timeout)
     if effective_timeout:
-        conn_timeout = min(10.0, float(effective_timeout), max(5.0, float(effective_timeout) * 0.6))
+        conn_timeout = min(10.0, float(effective_timeout), max(7.0, float(effective_timeout) * 0.7))
     else:
         conn_timeout = 10.0
     timeout_obj = aiohttp.ClientTimeout(total=effective_timeout, connect=conn_timeout, sock_connect=conn_timeout)
@@ -244,8 +246,10 @@ async def fetch_with_retry(
                             return {"_error": True, "_status": resp.status, "_body": body, "_url": safe_url}
                         return None
 
-                    if use_circuit_breaker and domain in _CIRCUIT_BREAKER:
-                        _CIRCUIT_BREAKER.pop(domain, None)
+                    if use_circuit_breaker:
+                        _CIRCUIT_BREAKER_FAILURES[domain] = 0
+                        if domain in _CIRCUIT_BREAKER:
+                            _CIRCUIT_BREAKER.pop(domain, None)
 
                     if response_type == "text":
                         return await resp.text()
@@ -259,12 +263,20 @@ async def fetch_with_retry(
             err_msg = str(e) if str(e).strip() else type(e).__name__
             err_msg = re.sub(r"(key|token|secret|password|auth)=([^\s&]+)", r"\1=***", err_msg, flags=re.IGNORECASE)
             err_msg = re.sub(r"sk-[a-zA-Z0-9_\-]+", "sk-***", err_msg)
-            logger.warning(f"Request failed (attempt {attempt + 1}/{max_retries}): {err_msg}, retry in {wait:.1f}s")
+            if attempt < max_retries - 1:
+                logger.warning(f"Request failed (attempt {attempt + 1}/{max_retries}): {err_msg}, retry in {wait:.1f}s")
+            else:
+                logger.warning(f"Request failed (attempt {attempt + 1}/{max_retries}): {err_msg}")
             await asyncio.sleep(wait)
 
     logger.error(f"Failed to fetch {safe_url} after {max_retries} attempts")
     if use_circuit_breaker:
-        _CIRCUIT_BREAKER[domain] = time.time() + 60.0
+        _CIRCUIT_BREAKER_FAILURES[domain] = _CIRCUIT_BREAKER_FAILURES.get(domain, 0) + 1
+        if _CIRCUIT_BREAKER_FAILURES[domain] >= CIRCUIT_BREAKER_THRESHOLD:
+            _CIRCUIT_BREAKER[domain] = time.time() + 60.0
+            logger.warning(
+                f"Circuit breaker TRIPPED for {domain} after {_CIRCUIT_BREAKER_FAILURES[domain]} consecutive failures (open 60s)"
+            )
     if return_error_info:
         return {"_error": True, "_status": 0, "_body": "All retries exhausted", "_url": safe_url}
     return None

@@ -187,3 +187,84 @@ class TestHTTPRetry:
         for _ in range(50):
             ra = _jitter_retry_after(10.0)
             assert 9.0 <= ra <= 10.0
+
+    @pytest.mark.asyncio
+    @patch("monika.infrastructure.api.http_retry.aiohttp.ClientSession")
+    @patch("monika.infrastructure.api.http_retry.asyncio.sleep", new_callable=AsyncMock)
+    async def test_circuit_breaker_consecutive_failure_threshold(self, mock_sleep, mock_session_cls):
+        from monika.infrastructure.api.http_retry import (
+            _CIRCUIT_BREAKER,
+            _CIRCUIT_BREAKER_FAILURES,
+            CIRCUIT_BREAKER_THRESHOLD,
+        )
+
+        domain = "test-cb-threshold.com"
+        _CIRCUIT_BREAKER.pop(domain, None)
+        _CIRCUIT_BREAKER_FAILURES.pop(domain, None)
+
+        mock_resp = MagicMock()
+        mock_resp.status = 500
+
+        mock_req_ctx = AsyncMock()
+        mock_req_ctx.__aenter__.return_value = mock_resp
+
+        mock_session = MagicMock()
+        mock_session.request.return_value = mock_req_ctx
+        mock_session_cls.return_value.__aenter__.return_value = mock_session
+
+        # 1st failure: consecutive failure = 1, circuit breaker should NOT trip yet
+        res1 = await fetch_with_retry(f"http://{domain}/api", max_retries=1, base_delay=0)
+        assert res1 is None
+        assert _CIRCUIT_BREAKER_FAILURES.get(domain) == 1
+        assert domain not in _CIRCUIT_BREAKER
+
+        # 2nd failure: consecutive failure = 2, still should NOT trip
+        res2 = await fetch_with_retry(f"http://{domain}/api", max_retries=1, base_delay=0)
+        assert res2 is None
+        assert _CIRCUIT_BREAKER_FAILURES.get(domain) == 2
+        assert domain not in _CIRCUIT_BREAKER
+
+        # 3rd failure (hits threshold): circuit breaker trips!
+        res3 = await fetch_with_retry(f"http://{domain}/api", max_retries=1, base_delay=0)
+        assert res3 is None
+        assert _CIRCUIT_BREAKER_FAILURES.get(domain) == CIRCUIT_BREAKER_THRESHOLD
+        assert domain in _CIRCUIT_BREAKER
+
+        # 4th call: circuit breaker is open, should be skipped immediately without request
+        mock_session.request.reset_mock()
+        res4 = await fetch_with_retry(f"http://{domain}/api", max_retries=1, base_delay=0)
+        assert res4 is None
+        mock_session.request.assert_not_called()
+
+        # Clean up
+        _CIRCUIT_BREAKER.pop(domain, None)
+        _CIRCUIT_BREAKER_FAILURES.pop(domain, None)
+
+    @pytest.mark.asyncio
+    @patch("monika.infrastructure.api.http_retry.aiohttp.ClientSession")
+    @patch("monika.infrastructure.api.http_retry.asyncio.sleep", new_callable=AsyncMock)
+    async def test_circuit_breaker_resets_on_success(self, mock_sleep, mock_session_cls):
+        from monika.infrastructure.api.http_retry import (
+            _CIRCUIT_BREAKER,
+            _CIRCUIT_BREAKER_FAILURES,
+        )
+
+        domain = "test-cb-reset.com"
+        _CIRCUIT_BREAKER_FAILURES[domain] = 2
+
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value={"ok": True})
+
+        mock_req_ctx = AsyncMock()
+        mock_req_ctx.__aenter__.return_value = mock_resp
+
+        mock_session = MagicMock()
+        mock_session.request.return_value = mock_req_ctx
+        mock_session_cls.return_value.__aenter__.return_value = mock_session
+
+        _CIRCUIT_BREAKER.pop(domain, None)
+        res = await fetch_with_retry(f"http://{domain}/api", use_circuit_breaker=True, max_retries=1)
+        assert res == {"ok": True}
+        assert _CIRCUIT_BREAKER_FAILURES.get(domain) == 0
+        assert domain not in _CIRCUIT_BREAKER

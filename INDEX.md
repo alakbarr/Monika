@@ -10423,7 +10423,7 @@
     - `stop() -> None` - *Stop scheduler and cleanly close checkpointer connection pool.*
     - `async aclose() -> None` - *Async teardown method to cleanly close checkpointer connection pool.*
     - `async run_session_trigger() -> dict`
-    - `async run_session_trigger_loop() -> None`
+    - `async run_session_trigger_loop() -> None` - *Deprecated: Market session open trigger loop has been disabled in favor of scheduled LangGraph full cycles.*
     - `async run_once(forced: bool) -> dict`
     - `async cleanup_user_market_intel(cycle_id: str) -> dict` - *Post-cycle lifecycle cleanup for UserMarketIntel.*
     - `async run_memory_lifecycle_gc() -> dict` - *Executes daily Ebbinghaus-decay memory garbage collection pass on PostgreSQL records.*
@@ -11654,8 +11654,8 @@
   - `class CentralBankWatchFetcher`: Fetcher ekspektasi suku bunga & sovereign bond yields untuk 5 bank sentral utama.
     - `__init__(session: AsyncSession)`
     - `async fetch_expectations() -> Dict[str, Dict[str, Any]]` - *Mengambil probabilitas suku bunga (Hike, Hold, Cut) & tanggal rapat berikutnya.*
-    - `async fetch_sovereign_yields() -> Dict[str, float]` - *Mengambil yield obligasi sovereign 2Y & 10Y dari tabel Sovereign Yield Curve Monitor.*
-    - `async fetch_all() -> Dict[str, Any]` - *Menjalankan pengambilan ekspektasi suku bunga dan sovereign yield sekaligus.*
+    - `async fetch_sovereign_yields(force: bool, cache_ttl_sec: float) -> Dict[str, float]` - *Mengambil yield obligasi sovereign 2Y & 10Y dari tabel Sovereign Yield Curve Monitor.*
+    - `async fetch_all(cache_ttl_sec: float) -> Dict[str, Any]` - *Menjalankan pengambilan ekspektasi suku bunga dan sovereign yield sekaligus.*
 
 #### `cftc_cot.py` - *CFTC COT Report Fetcher (Async).*
 - **Path**: [`src/monika/infrastructure/data_ingestion/sources/cftc_cot.py`](src/monika/infrastructure/data_ingestion/sources/cftc_cot.py)

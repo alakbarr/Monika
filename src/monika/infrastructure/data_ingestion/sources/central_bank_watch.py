@@ -15,6 +15,7 @@ Sumber data agregat ini tidak memerlukan browser headless (pure HTTP aiohttp).
 
 import logging
 import re
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
@@ -57,6 +58,8 @@ class CentralBankWatchFetcher:
     Berjalan cepat tanpa browser headless via HTTP async retry.
     """
 
+    _sovereign_yields_cache: tuple[float, Dict[str, float]] = (0.0, {})
+
     def __init__(self, session: AsyncSession):
         self.session = session
 
@@ -69,8 +72,9 @@ class CentralBankWatchFetcher:
             CBW_BASE_URL,
             headers=DEFAULT_HEADERS,
             response_type="text",
-            timeout=10,
-            max_retries=1,
+            timeout=15,
+            max_retries=2,
+            base_delay=0.5,
         )
         if not html or not isinstance(html, str):
             logger.warning("CentralBankWatch: Gagal mengambil HTML ekspektasi suku bunga")
@@ -210,17 +214,29 @@ class CentralBankWatchFetcher:
 
         return extracted
 
-    async def fetch_sovereign_yields(self) -> Dict[str, float]:
+    async def fetch_sovereign_yields(self, force: bool = False, cache_ttl_sec: float = 0.0) -> Dict[str, float]:
         """
         Mengambil yield obligasi sovereign 2Y & 10Y dari tabel Sovereign Yield Curve Monitor.
         Menyimpan record DE_2Y, DE_10Y, UK_2Y, UK_10Y, AU_2Y, AU_10Y, JP_2Y, JP_10Y, US_2Y, US_10Y ke BondYieldData.
         """
+        if (
+            not force
+            and cache_ttl_sec > 0
+            and (time.time() - self._sovereign_yields_cache[0]) < cache_ttl_sec
+            and self._sovereign_yields_cache[1]
+        ):
+            logger.debug(
+                f"CentralBankWatch: Menggunakan data kurva yield sovereign dari cache recente (< {cache_ttl_sec:.0f}s)"
+            )
+            return dict(self._sovereign_yields_cache[1])
+
         html = await fetch_with_retry(
             CBW_YIELD_URL,
             headers=DEFAULT_HEADERS,
             response_type="text",
-            timeout=10,
-            max_retries=1,
+            timeout=15,
+            max_retries=2,
+            base_delay=0.5,
         )
         if not html or not isinstance(html, str):
             logger.warning("CentralBankWatch: Gagal mengambil HTML kurva yield sovereign")
@@ -301,15 +317,16 @@ class CentralBankWatchFetcher:
                 logger.debug(f"CentralBankWatch: Lewati baris yield {country_text}: {row_err}")
 
         if yields_found:
+            CentralBankWatchFetcher._sovereign_yields_cache = (time.time(), dict(yields_found))
             await safe_commit(self.session, label="CentralBankWatch.yields")
             logger.info(f"CentralBankWatch: Berhasil simpan kurva yield: {yields_found}")
 
         return yields_found
 
-    async def fetch_all(self) -> Dict[str, Any]:
+    async def fetch_all(self, cache_ttl_sec: float = 300.0) -> Dict[str, Any]:
         """Menjalankan pengambilan ekspektasi suku bunga dan sovereign yield sekaligus."""
         exp = await self.fetch_expectations()
-        yld = await self.fetch_sovereign_yields()
+        yld = await self.fetch_sovereign_yields(cache_ttl_sec=cache_ttl_sec)
         return {
             "expectations": exp,
             "yields": yld,

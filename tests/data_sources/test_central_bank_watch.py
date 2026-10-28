@@ -262,3 +262,30 @@ async def test_central_bank_watch_card_class_matcher(db_session):
         assert res["FED"]["current_rate"] == 5.25
         assert res["FED"]["prob_hold"] == 85.0
         assert res["FED"]["prob_cut"] == 15.0
+
+
+@pytest.mark.asyncio
+async def test_central_bank_watch_sovereign_yields_cache(db_session):
+    """Memastikan bahwa sovereign yields menggunakan in-memory cache jika cache_ttl_sec > 0."""
+    fetcher = CentralBankWatchFetcher(db_session)
+    CentralBankWatchFetcher._sovereign_yields_cache = (0.0, {})
+
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.central_bank_watch.fetch_with_retry", new_callable=AsyncMock
+    ) as mock_http:
+        mock_http.return_value = SAMPLE_CBW_YIELD_HTML
+
+        # First call: cache miss, hits HTTP
+        res1 = await fetcher.fetch_sovereign_yields(cache_ttl_sec=300.0)
+        assert res1.get("US_10Y") == 4.35
+        assert mock_http.call_count == 1
+
+        # Second call with cache_ttl_sec: cache hit, does NOT call HTTP
+        res2 = await fetcher.fetch_sovereign_yields(cache_ttl_sec=300.0)
+        assert res2.get("US_10Y") == 4.35
+        assert mock_http.call_count == 1
+
+        # Third call with force=True: ignores cache and calls HTTP
+        res3 = await fetcher.fetch_sovereign_yields(force=True, cache_ttl_sec=300.0)
+        assert res3.get("US_10Y") == 4.35
+        assert mock_http.call_count == 2

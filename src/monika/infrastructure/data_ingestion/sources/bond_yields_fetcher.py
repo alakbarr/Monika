@@ -72,7 +72,7 @@ class BondYieldFetcher:
         }
 
         try:
-            async with asyncio.timeout(25.0):
+            async with asyncio.timeout(35.0):
                 # 1. Fetch DE_10Y & DE_2Y via ECB Data Portal API (High-frequency daily Euro AAA Yields)
                 try:
                     ecb_10y_saved = await self._fetch_ecb_yield(ECB_AAA_YIELD_URL, "DE_10Y")
@@ -95,7 +95,7 @@ class BondYieldFetcher:
                     from monika.infrastructure.data_ingestion.sources.central_bank_watch import CentralBankWatchFetcher
 
                     cbw_fetcher = CentralBankWatchFetcher(self.session)
-                    cbw_yields = await cbw_fetcher.fetch_sovereign_yields()
+                    cbw_yields = await cbw_fetcher.fetch_sovereign_yields(cache_ttl_sec=300.0)
                     for k in ("UK_10Y", "UK_2Y", "JP_10Y", "JP_2Y", "AU_10Y", "AU_2Y"):
                         if k in cbw_yields:
                             results[k] = 1
@@ -119,7 +119,7 @@ class BondYieldFetcher:
                 else:
                     logger.debug("FRED_API_KEY not configured, skipping FRED international bond yields fetch")
         except TimeoutError:
-            logger.warning("BondYieldFetcher: Fetch process hit 25s timeout limit; returning partial results")
+            logger.warning("BondYieldFetcher: Fetch process hit 35s timeout limit; returning partial results")
 
         return results
 
@@ -135,8 +135,9 @@ class BondYieldFetcher:
             url=url,
             method="GET",
             params=params,
-            timeout_seconds=8,
-            max_retries=1,
+            timeout_seconds=10,
+            max_retries=2,
+            base_delay=0.5,
             headers={"Accept": "text/csv"},
             response_type="text",
         )
@@ -199,7 +200,7 @@ class BondYieldFetcher:
             "sort_order": "desc",
             "limit": str(limit),
         }
-        data = await fetch_with_retry(FRED_BASE_URL, params=params, timeout=8, max_retries=1)
+        data = await fetch_with_retry(FRED_BASE_URL, params=params, timeout=10, max_retries=2, base_delay=0.5)
         if not data or not isinstance(data, dict):
             return -1
 
