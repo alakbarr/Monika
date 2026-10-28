@@ -631,7 +631,6 @@ class FundamentalStage:
             compressed_json = prefetched_json
 
         actual_user_message += f"\n\n[PRE-FETCHED DATA]\nThe following data has already been fetched for you to analyze. Do not re-fetch it unless you need different parameters:\n{compressed_json}"
-        actual_user_message += f'\n\n[SYSTEM: Current date/time is {current_utc_str}. Use this as ground truth for "now" — do not infer from tool timestamps alone.]'
 
         if weekend_btc_only_mode:
             weekend_context = (
@@ -671,6 +670,11 @@ class FundamentalStage:
                 if item.get("full_content"):
                     intel_block.append(f"  Details: {item.get('full_content')[:500]}")
             actual_user_message += "\n".join(intel_block)
+
+        actual_user_message += (
+            f"\n\n[EXECUTION_METADATA]: Current date/time is {current_utc_str}. "
+            f'Use this as ground truth for "now" — do not infer from tool timestamps alone.'
+        )
 
         # IMP-9: Exponential backoff retry for transient API failures
         analysis_cfg = self.settings.get("analysis", {}) or self.settings.get("claude", {})
@@ -1638,7 +1642,6 @@ INSTRUCTIONS:
 
             now_utc = clock.now()
             user_prompt = (
-                f"CURRENT TIME: {now_utc.strftime('%Y-%m-%d %H:%M UTC')}\n"
                 f"INCOMING CATALYST TYPE: {catalyst_type}\n"
                 f"AFFECTED CURRENCIES CANDIDATES: {affected_currencies or 'Global/All'}\n\n"
                 f"--- INCOMING MARKET CATALYST ---\n{catalyst_text.strip()}\n\n"
@@ -1648,7 +1651,8 @@ INSTRUCTIONS:
                 f"Confidence: {current_brief.confidence}\n"
                 f"Current Currency Bias: {json.dumps(curr_bias)}\n"
                 f"Baseline Narrative: {narrative_text}\n\n"
-                "Task: Evaluate this catalyst against the baseline. Does it reinforce, contradict, or is it noise? Output valid JSON."
+                "Task: Evaluate this catalyst against the baseline. Does it reinforce, contradict, or is it noise? Output valid JSON.\n\n"
+                f"[EXECUTION_METADATA]: Current time is {now_utc.strftime('%Y-%m-%d %H:%M UTC')}"
             )
 
             res = None

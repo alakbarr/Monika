@@ -1069,21 +1069,16 @@ class StrategySynthesisScheduler:
 
             client = get_client_for_task("strategy_discovery", self.settings)
             prompt = (
-                f"You are an elite institutional quantitative trading engineer. Write a Python EdgeStrategy subclass for trading on {symbol}.\n"
-                f"Class Name: {class_name}\n"
-                f'strategy_id: "{raw_id}"\n'
-                f'applicable_symbols: {{"{symbol}"}}\n'
-                f"Trading Concept: {concept}\n"
-                f"{market_context_str}\n"
-                f"STRICT SKELETON (Class attributes and constructor must strictly match):\n"
+                "You are an elite institutional quantitative trading engineer. Write a Python EdgeStrategy subclass conforming to the following specification.\n\n"
+                "STRICT SKELETON (Class attributes and constructor must strictly match):\n"
                 f"```python\n"
                 f"from monika.application.analysis.strategies.base_strategy import EdgeStrategy, EdgeSignal\n"
                 f"from sqlalchemy.ext.asyncio import AsyncSession\n"
                 f"from typing import Optional, Dict, Any, List\n"
                 f"import math, numpy as np, pandas as pd, datetime, logging, decimal\n\n"
-                f"class {class_name}(EdgeStrategy):\n"
-                f'    strategy_id: str = "{raw_id}"\n'
-                f'    applicable_symbols: set = {{"{symbol}"}}\n'
+                "class <TargetClassName>(EdgeStrategy):\n"
+                '    strategy_id: str = "<target_strategy_id>"\n'
+                '    applicable_symbols: set = {"<target_symbol>"}\n'
                 f'    compatible_regimes: set = {{"TREND", "STRONG_TREND", "RANGE", "WEAK_TREND", "VOLATILE_CHOP"}}\n'
                 f"    factor_family: str = \"trend\"  # choose from 'trend', 'momentum', 'reversal', 'breakout', 'volatility'\n\n"
                 f"    def __init__(self, settings: Optional[Dict[str, Any]] = None, *args, **kwargs) -> None:\n"
@@ -1105,12 +1100,19 @@ class StrategySynthesisScheduler:
                 f"- CANDLE ACCESS: get_historical_candles() returns a list of dictionaries (CandleDict). Directly use pd.DataFrame(candles) or candle['close']. NEVER use dunder attributes like .__dict__ or .__class__.\n"
                 f"- PANDAS COMPATIBILITY: NEVER use .fillna(method='ffill') or .fillna(method='bfill') as the 'method' parameter is removed in pandas 2.1+. Always use .ffill() and .bfill() directly.\n"
                 f"- NUMERICAL STABILITY: Always sanitize NaNs/Infs using scalar targets e.g. .replace([np.inf, -np.inf], np.nan).ffill().bfill().fillna(0.0) or min_periods=1 in rolling. NEVER pass a Series, DataFrame, or method call as the replacement value to .replace([np.inf, -np.inf], ...).\n"
-                f"- MANDATORY METHOD: You MUST implement 'async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:' directly inside class {class_name}.\n"
+                "- MANDATORY METHOD: You MUST implement 'async def evaluate(self, session: AsyncSession, symbol: str, settings: Dict[str, Any]) -> EdgeSignal:' directly inside the target strategy class.\n"
                 f"- RISK CONTROL: When emitting a trade signal, calculate dynamic ATR-based or structural stop_loss and take_profit (e.g. 1.2-1.5x ATR for SL, 2.4-3.5x ATR for TP). Never leave them unspecified.\n"
                 f"- ERROR RESILIENCE: Wrap indicator calculations inside evaluate() in try-except blocks and return EdgeSignal(..., valid=False, rationale=f'Calculation error: {{e}}', tags=['error']) if an unexpected exception occurs.\n"
                 f"- VARIABLE COMPLETENESS: Every indicator or price variable used in conditions MUST be explicitly defined and assigned locally before being referenced.\n"
                 f"- TOKEN COMPLETION: Ensure the full class definition and evaluate() method are completely closed and return an EdgeSignal. Never truncate the response.\n"
-                f"- Return pure python code inside ```python ``` blocks only, no extra commentary."
+                f"- Return pure python code inside ```python ``` blocks only, no extra commentary.\n\n"
+                f"[SYNTHESIS TARGET SPECIFICATION & DYNAMIC METADATA]:\n"
+                f"Target Trading Symbol: {symbol}\n"
+                f"Class Name: {class_name}\n"
+                f'strategy_id: "{raw_id}"\n'
+                f'applicable_symbols: {{"{symbol}"}}\n'
+                f"Trading Concept: {concept}\n"
+                f"{market_context_str}"
             )
             current_prompt = prompt
             for attempt in range(2):

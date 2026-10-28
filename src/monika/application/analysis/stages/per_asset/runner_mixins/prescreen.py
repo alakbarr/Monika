@@ -15,6 +15,13 @@ from monika.application.analysis.stages.per_asset.runner_mixins.base import (
 
 logger = logging.getLogger("TradingAgent.PerAssetStage")
 
+PRESCREEN_SYSTEM_PROMPT = """You are Monika's rapid pre-screening opportunity evaluator.
+Your role is to assess whether market conditions, technical volatility, and current regime warrant full in-depth analysis.
+Adhere strictly to the required decision rules and schema:
+1. Return decision 'YES' if price is within striking distance of strong S/R zones, active volatility, or valid trend setup.
+2. Return decision 'NO' if market is closed, risk is paused, momentum is dead (<12 ADX), or extreme uncontrollable volatility exists.
+Provide concise, objective evaluations."""
+
 
 class PrescreenMixin(_RunnerMixinBase):
     """Mixin handling fast LLM pre-screening and price-action momentum filters."""
@@ -385,10 +392,26 @@ Rule:
             if hasattr(self._haiku_client, "thinking_level"):
                 self._haiku_client.thinking_level = "none"
             from monika.core.primitives.jev_primitives import build_prescreen_questions
+            from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
             prescreen_jev_q = build_prescreen_questions(symbol)
+            model_name = getattr(self._haiku_client, "model", "")
+            provider_name = getattr(self._haiku_client, "provider", "")
+            padded_system_prompt = CacheBreakpointManager.pad_system_prompt_to_threshold(
+                PRESCREEN_SYSTEM_PROMPT,
+                model_name=model_name,
+                provider_name=provider_name,
+                task_role="stage2_prescreen",
+                force=True,
+                settings=getattr(self, "settings", None),
+            )
+
             resp = await self._haiku_client.classify_json(
-                prompt=prompt, schema=PRESCREEN_SCHEMA, jev_questions=prescreen_jev_q, temperature=0.0
+                prompt=prompt,
+                system_prompt=padded_system_prompt,
+                schema=PRESCREEN_SCHEMA,
+                jev_questions=prescreen_jev_q,
+                temperature=0.0,
             )
             if resp and "reason" not in resp and "opportunity_score" in resp:
                 resp["reason"] = f"opportunity_score={resp['opportunity_score']}"

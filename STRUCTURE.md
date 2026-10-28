@@ -2560,6 +2560,9 @@ Monika/
 │   │   ├── test_structure.py
 │   │   ├── test_technical.py
 │   │   └── test_timesfm_engine.py
+│   ├── llm/
+│   │   ├── test_prompt_layout_discipline.py
+│   │   └── test_shared_model_anchor.py
 │   ├── logging_observability/
 │   │   ├── __init__.py
 │   │   ├── test_activity_logger.py
@@ -3131,4 +3134,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 267 | **Total Tracked Files**: 2834
+**Total Tracked Directories**: 268 | **Total Tracked Files**: 2836

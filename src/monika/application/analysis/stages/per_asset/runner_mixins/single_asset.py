@@ -318,9 +318,13 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         # Bundling data teknikal untuk mengurangi panggilan tool
         if bundle_success:
             trimmed_msg = self._build_trimmed_user_message(symbol)
-            user_message = f"{trimmed_msg}\n\n[PRE-FETCHED DATA]\n{data_bundle or ''}"
+            parts = [trimmed_msg]
             if context_blocks:
-                user_message += "\n\n" + "\n".join(f"[{label}]\n{content}" for label, content in context_blocks)
+                parts.append("\n".join(f"[{label}]\n{content}" for label, content in context_blocks))
+            parts.append(f"[PRE-FETCHED SYMBOL DATA]\n{data_bundle or ''}")
+            if tool_order_guidance:
+                parts.append(f"[TOOL ORDER GUIDANCE]\n{tool_order_guidance}")
+            user_message = "\n\n".join(parts)
             logger.info(
                 f"[{symbol}] Data bundle injected ({len(data_bundle or '')} chars), verbose instructions removed"
             )

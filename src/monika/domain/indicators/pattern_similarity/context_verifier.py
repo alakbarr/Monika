@@ -32,33 +32,40 @@ VERDICT_JSON_SCHEMA = {
 }
 
 
+PATTERN_VERIFIER_SYSTEM_PROMPT = """You are Monika's Principal Macroeconomic Historian.
+Evaluate whether the macroeconomic drivers during a historical chart pattern match are truly comparable to the current market environment.
+
+CORE PRINCIPLES & INSTRUCTIONS:
+1. If Recorded Chronicle Context is 'None recorded', USE YOUR INTRINSIC KNOWLEDGE of financial market history for the specified historical date. What were the dominant macroeconomic forces at that time?
+2. Did the price trajectory following this historical pattern happen under economic drivers that make sense in today's context, or were they driven by completely unique/opposite macro conditions?
+3. Return a JSON object matching this schema:
+{
+    "relevance": "high" | "medium" | "low",
+    "historical_context_summary": "1-2 sentences summarizing market drivers around the historical date",
+    "is_macro_driver_similar": true | false,
+    "adjustment_factor": 0.0 to 1.0 (multiplier for outcome weight),
+    "verdict_reason": "concise explanation (max 2 sentences)"
+}"""
+
+
 class PatternContextVerifier:
     """Verifies macro context comparability for top historical chart pattern matches."""
 
-    PROMPT_TEMPLATE = """You are Monika's Principal Macroeconomic Historian.
-Evaluate whether the macroeconomic drivers during a historical chart pattern match are truly comparable to the current market environment.
+    PROMPT_TEMPLATE = """Evaluate whether the following historical chart pattern match is comparable to current market conditions.
 
-CURRENT CONDITIONS ({current_date}):
-{current_context_summary}
-
-HISTORICAL MATCH ({match_date_str}, Symbol: {symbol}):
+HISTORICAL MATCH ATTRIBUTES:
+- Symbol: {symbol}
 - Pattern Shape Similarity: {similarity:.1%}
 - Historical Volatility Level: {hist_vix:.1f} ({hist_vix_cat})
 - Historical USD Trend: {hist_dxy_trend}
 - Historical Asset Position: {hist_asset_trend}
 - Recorded Chronicle Context: {recorded_chronicle}
 
-INSTRUCTIONS:
-1. If Recorded Chronicle Context is 'None recorded', USE YOUR INTRINSIC KNOWLEDGE of financial market history for {match_date_str}. What were the dominant macroeconomic forces at that time?
-2. Did the price trajectory following this historical pattern happen under economic drivers that make sense in today's context, or were they driven by completely unique/opposite macro conditions?
-3. Return a JSON object matching this schema:
-{{
-    "relevance": "high" | "medium" | "low",
-    "historical_context_summary": "1-2 sentences summarizing market drivers around {match_date_str}",
-    "is_macro_driver_similar": true | false,
-    "adjustment_factor": 0.0 to 1.0 (multiplier for outcome weight),
-    "verdict_reason": "concise explanation (max 2 sentences)"
-}}"""
+[EXECUTION_METADATA & TIMING]:
+- Historical Match Date: {match_date_str}
+- Current Assessment Date: {current_date}
+- Current Market Conditions:
+{current_context_summary}"""
 
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
@@ -144,6 +151,7 @@ INSTRUCTIONS:
             resp = await asyncio.wait_for(
                 llm_client.classify_json(
                     prompt=prompt,
+                    system_prompt=PATTERN_VERIFIER_SYSTEM_PROMPT,
                     schema=VERDICT_JSON_SCHEMA,
                     jev_questions=jev_q,
                 ),

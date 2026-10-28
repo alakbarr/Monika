@@ -293,14 +293,22 @@ class ContextCompressor:
             return messages
 
         content = first_msg.get("content")
-        if not isinstance(content, str) or "[PRE-FETCHED DATA]" not in content:
+        if not isinstance(content, str):
+            return messages
+
+        marker = None
+        for m in ("[PRE-FETCHED SYMBOL DATA]", "[PRE-FETCHED DATA]"):
+            if m in content:
+                marker = m
+                break
+        if not marker:
             return messages
 
         if "[PRE-FETCHED DATA DISTILLED]" in content:
             return messages
 
-        # Split before and after [PRE-FETCHED DATA]
-        parts = content.split("[PRE-FETCHED DATA]")
+        # Split before and after marker
+        parts = content.split(marker, 1)
         prefix = parts[0]
         bundle_body = parts[1]
 

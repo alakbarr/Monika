@@ -337,6 +337,14 @@ class DynamicSubagentPool:
         Dynamically analyzes user research query and decomposes it into a tailored roster
         of specialist subagents with specialized prompts and domain-isolated toolsets.
         """
+        from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
+        # Ensure deep_research base_system_prompt includes CANONICAL_TIER0_ANCHOR to guarantee >4096 tokens
+        anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR
+        prefix_check = anchor.strip()[:80]
+        if not base_system_prompt.strip().startswith(prefix_check):
+            base_system_prompt = f"{anchor}\n\n=== SPECIALIST RESEARCH DIRECTIVE ===\n\n{base_system_prompt}"
+
         q_lower = query.lower()
         tools_by_name = {t.get("name"): t for t in available_tools if t.get("name")}
 

@@ -18,6 +18,19 @@ from monika.infrastructure.llm.prompt_compressor import estimate_tokens, truncat
 
 logger = logging.getLogger("TradingAgent.ContextCompaction")
 
+COMPACTION_SYSTEM_PROMPT = """You are Monika's Context Compaction Engine.
+Condense intermediate conversation history, market observations, and tool observations into dense, structured XML sections preserving:
+1. <active_orders_levels>: Active orders, tickets, open positions, entry/SL/TP levels.
+2. <smc_structure>: Market structure (BOS, ChoCH, unmitigated order blocks, unfilled FVGs).
+3. <indicators_state>: Decisive indicator readings (ATR14, RSI, DXY, VIX, key support/resistance).
+4. <macro_news_catalysts>: High-impact economic releases, Fed/central bank sentiment, geopolitical catalysts.
+5. <specialist_consensus_dissents>: Divergence or consensus between technical, macro, sentiment, and quant analysts.
+6. <rejected_setups_lessons>: Invalidated setups, veto reasons, and lessons learned.
+7. <risk_gate_drawdown>: Risk gate status, daily drawdown consumption, portfolio exposure limits.
+8. <pending_triggers>: Active alerts and pending breakout/retest triggers.
+Output ONLY structured content enclosed in <compacted-summary>...</compacted-summary>.
+If the conversation already contains a <compacted-summary> block, merge newer information into a single consolidated summary."""
+
 
 def spill_tool_output(
     tool_output: str, tool_name: str = "tool", threshold_chars: int = 5000, spill_dir: str = "data/tool_spill"
@@ -1190,6 +1203,7 @@ class ContextCompactionEngine:
         settings: Optional[dict] = None,
         system_prompt: Optional[Any] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
+        active_client: Optional[Any] = None,
     ) -> List[Dict[str, Any]]:
         """
         Layer 2 Synthesis with Model Offload and Warm-Prefix Replay.
@@ -1206,44 +1220,50 @@ class ContextCompactionEngine:
             return messages
 
         try:
+            from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
             from monika.infrastructure.providers.llm_factory import get_client_for_task
 
             cfg = settings or self.settings or {}
-            client = get_client_for_task("context_compaction", cfg)
+            client = active_client or get_client_for_task("context_compaction", cfg)
             if client:
                 system_msgs = [m for m in messages if m.get("role") in ("system", "developer")]
                 non_sys = [m for m in messages if m.get("role") not in ("system", "developer")]
                 if len(non_sys) > 4:
                     first_turn = non_sys[0]
                     recent_turns = non_sys[-3:]
+                    turns_to_compact = non_sys[1:-3]
 
-                    # WARM-PREFIX REPLAY:
-                    # Pass the exact prefix from the conversation so provider reuses cached KV state
-                    compaction_instruction = (
-                        "You are the context compaction engine for this trading agent. "
-                        "Condense the intermediate analysis and tool observations ABOVE into dense, structured XML sections preserving:\n"
-                        "1. <active_orders_levels>: Active orders, tickets, open positions, entry/SL/TP levels.\n"
-                        "2. <smc_structure>: Market structure (BOS, ChoCH, unmitigated order blocks, unfilled FVGs).\n"
-                        "3. <indicators_state>: Decisive indicator readings (ATR14, RSI, DXY, VIX, key support/resistance).\n"
-                        "4. <macro_news_catalysts>: High-impact economic releases, Fed/central bank sentiment, geopolitical catalysts.\n"
-                        "5. <specialist_consensus_dissents>: Divergence or consensus between technical, macro, sentiment, and quant analysts.\n"
-                        "6. <rejected_setups_lessons>: Invalidated setups, veto reasons, and lessons learned.\n"
-                        "7. <risk_gate_drawdown>: Risk gate status, daily drawdown consumption, portfolio exposure limits.\n"
-                        "8. <pending_triggers>: Active alerts and pending breakout/retest triggers.\n"
-                        "Output ONLY structured content enclosed in <compacted-summary>...</compacted-summary>.\n"
-                        "If the conversation already contains a <compacted-summary> block, merge newer information into a single consolidated summary."
+                    model_name = getattr(client, "model", "")
+                    provider_name = getattr(client, "provider", "")
+                    compaction_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+                        COMPACTION_SYSTEM_PROMPT,
+                        model_name=model_name,
+                        provider_name=provider_name,
+                        task_role="context_compaction",
+                        force=True,
+                        settings=cfg,
                     )
+                    effective_system_prompt = system_prompt if system_prompt is not None else compaction_sys
 
-                    replay_messages = list(system_msgs + non_sys)
-                    replay_messages.append({"role": "user", "content": compaction_instruction})
+                    turns_text = "\n\n".join(
+                        f"[{m.get('role', 'user').upper()}]:\n{str(m.get('content', ''))}"
+                        for m in turns_to_compact
+                        if m.get("content")
+                    )
+                    compaction_user_msg = (
+                        "Condense the following intermediate analysis and tool observations into dense, structured XML sections:\n\n"
+                        f"{turns_text}\n\n"
+                        "Output ONLY structured content enclosed in <compacted-summary>...</compacted-summary>."
+                    )
+                    compaction_messages = [{"role": "user", "content": compaction_user_msg}]
 
                     summary = None
                     if hasattr(client, "run_tool_agent"):
                         try:
                             resp = await client.run_tool_agent(
-                                messages=replay_messages,
+                                messages=compaction_messages,
                                 tools=tools if tools is not None else [],
-                                system_prompt=system_prompt,
+                                system_prompt=effective_system_prompt,
                             )
                             if resp:
                                 if hasattr(resp, "choices") and resp.choices:
@@ -1257,13 +1277,26 @@ class ContextCompactionEngine:
                         except Exception:
                             pass
 
-                    if not summary:
-                        # Fallback to generate with concise summary prompt
-                        prompt_text = f"{compaction_instruction}\n\nRecent context:\n"
-                        for m in non_sys[1:-3]:
-                            c = m.get("content")
-                            prompt_text += f"{m.get('role')}: {str(c)[:300]}\n"
-                        summary = await client.generate(prompt=prompt_text)
+                    if not summary and hasattr(client, "generate_content"):
+                        try:
+                            resp = await client.generate_content(
+                                system_prompt=effective_system_prompt,
+                                user_message=compaction_user_msg,
+                            )
+                            if isinstance(resp, dict):
+                                summary = resp.get("content") or resp.get("text")
+                            elif isinstance(resp, str):
+                                summary = resp
+                        except Exception:
+                            pass
+
+                    if not summary and hasattr(client, "generate"):
+                        try:
+                            summary = await client.generate(
+                                prompt=f"{effective_system_prompt}\n\n{compaction_user_msg}"
+                            )
+                        except Exception:
+                            pass
 
                     if summary and len(summary.strip()) > 10:
                         clean_summary = summary.strip()
@@ -1302,8 +1335,6 @@ class ContextCompactionEngine:
                 messages,
                 context_window=context_window,
                 settings=settings,
-                system_prompt=system_prompt,
-                tools=tools,
             )
             if compacted is not messages:
                 return compacted
