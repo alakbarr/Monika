@@ -58,6 +58,10 @@ class IgnoreNetworkErrorFilter(logging.Filter):
         return True
 
 
+# Suppress raw traceback dump on transient upstream network hiccups from Updater
+logging.getLogger("telegram.ext.Updater").addFilter(IgnoreNetworkErrorFilter())
+
+
 class TelegramBot(
     TelegramFormatterMixin,
     TelegramCallbackHandlerMixin,
@@ -281,9 +285,15 @@ class TelegramBot(
             await self._app.initialize()
             await self._app.start()
             if self._app.updater:
+
+                def _error_cb(exc: Any) -> None:
+                    if self._app:
+                        self._app.create_task(self._app.process_error(error=exc, update=None))
+
                 await self._app.updater.start_polling(
                     allowed_updates=["message", "callback_query"],
                     drop_pending_updates=False,
+                    error_callback=_error_cb,
                 )
             try:
                 from telegram import BotCommand

@@ -318,3 +318,78 @@ class TestTelegramBot:
         assert update.message.reply_text.call_count >= 1
         call_args = update.message.reply_text.call_args[0][0]
         assert "Executive Quant Tearsheet" in call_args
+
+    @pytest.mark.asyncio
+    @patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "123:test", "TELEGRAM_ADMIN_CHAT_ID": "123"})
+    @patch("monika.interfaces.telegram.bot.ApplicationBuilder")
+    async def test_start_passes_error_callback_and_routes_to_process_error(self, mock_builder):
+        """Verify start_polling receives an error_callback that delegates to app.process_error."""
+        mock_app = AsyncMock()
+        mock_app.add_handler = MagicMock()
+        mock_app.add_error_handler = MagicMock()
+        mock_app.create_task = MagicMock()
+        mock_app.process_error = MagicMock()
+        mock_app.start = AsyncMock()
+        mock_app.initialize = AsyncMock()
+        mock_app.stop = AsyncMock()
+        mock_app.updater.start_polling = AsyncMock()
+        mock_app.updater.stop = AsyncMock()
+        mock_builder.return_value.token.return_value.build.return_value = mock_app
+
+        bot = TelegramBot({})
+
+        import asyncio
+
+        async def run_and_cancel():
+            task = asyncio.create_task(bot.start())
+            await asyncio.sleep(0.05)
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        await run_and_cancel()
+        mock_app.updater.start_polling.assert_called_once()
+        _, kwargs = mock_app.updater.start_polling.call_args
+        assert "error_callback" in kwargs
+        error_cb = kwargs["error_callback"]
+        assert callable(error_cb)
+
+        # Trigger error_cb with a mock exception
+        from telegram.error import NetworkError
+
+        test_err = NetworkError("Bad Gateway")
+        error_cb(test_err)
+        mock_app.create_task.assert_called_once()
+        mock_app.process_error.assert_called_once_with(error=test_err, update=None)
+
+    def test_ignore_network_error_filter(self):
+        """Verify IgnoreNetworkErrorFilter suppresses NetworkError/Bad Gateway and allows others."""
+        import logging
+        from monika.interfaces.telegram.bot import IgnoreNetworkErrorFilter
+        from telegram.error import NetworkError
+
+        flt = IgnoreNetworkErrorFilter()
+
+        # Record with NetworkError
+        try:
+            raise NetworkError("Bad Gateway")
+        except Exception:
+            import sys
+
+            rec_net = logging.LogRecord("test", logging.ERROR, "test.py", 10, "msg", (), sys.exc_info())
+            assert flt.filter(rec_net) is False
+
+        # Record with ValueError (non-network)
+        try:
+            raise ValueError("Something unexpected")
+        except Exception:
+            import sys
+
+            rec_val = logging.LogRecord("test", logging.ERROR, "test.py", 10, "msg", (), sys.exc_info())
+            assert flt.filter(rec_val) is True
+
+        # Record without exc_info
+        rec_plain = logging.LogRecord("test", logging.INFO, "test.py", 10, "msg", (), None)
+        assert flt.filter(rec_plain) is True
