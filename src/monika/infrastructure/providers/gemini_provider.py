@@ -9,7 +9,7 @@ from typing import Any, ClassVar, Literal, Optional
 
 from dotenv import load_dotenv
 
-from monika.infrastructure.llm.rate_limiting.gemini_rate_limiter import GeminiRateLimiter
+from monika.infrastructure.llm.rate_limiting.gemini_rate_limiter import GeminiRateLimiter, canonical_gemini_model_name
 from monika.infrastructure.llm.rate_limiting.http_retry import (
     APIStatusError,
     RateLimitError,
@@ -200,7 +200,8 @@ class GeminiProvider(BaseLLMClient):
     """
 
     BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
-    _key_cooldowns: dict[str, float] = {}
+    _key_cooldowns: dict[Any, float] = {}
+    _cooling_models: dict[str, set[str]] = {}
     _key_index: ClassVar[int] = 0
 
     def __init__(
@@ -218,6 +219,7 @@ class GeminiProvider(BaseLLMClient):
         self.resolved_model = GEMINI_MODEL_ALIASES.get(model, model)
         self.thinking_level = thinking_level or "none"
         self.resolved_thinking_level = GEMINI_THINKING_LEVEL_MAP.get(str(self.thinking_level).lower(), "MINIMAL")
+        self.canonical_model = canonical_gemini_model_name(self.model)
         self.gemini_tier = kwargs.get("gemini_tier") or kwargs.get("tier")
         if not self.gemini_tier:
             if "pro" in self.model.lower() or "argon" in self.model.lower() or "ultra" in self.model.lower():
@@ -270,6 +272,35 @@ class GeminiProvider(BaseLLMClient):
         if api_key.startswith("ya29."):
             self.paid_api_key = api_key
 
+    def _is_key_cooling(self, api_key: Optional[str], now: float) -> bool:
+        if not api_key:
+            return False
+        canon = getattr(self, "canonical_model", None) or canonical_gemini_model_name(self.model)
+
+        # 1. Global RPD lockout across all models
+        if ("ALL", api_key) in self.__class__._key_cooldowns:
+            if self.__class__._key_cooldowns[("ALL", api_key)] > now:
+                return True
+            self.__class__._key_cooldowns.pop(("ALL", api_key), None)
+
+        # 2. Model-specific key cooldown
+        if (canon, api_key) in self.__class__._key_cooldowns:
+            if self.__class__._key_cooldowns[(canon, api_key)] > now:
+                return True
+            self.__class__._key_cooldowns.pop((canon, api_key), None)
+
+        # 3. Legacy string key check with model isolation filter
+        if api_key in self.__class__._key_cooldowns:
+            if self.__class__._key_cooldowns[api_key] > now:
+                cooling_for = self.__class__._cooling_models.get(api_key, set())
+                # If this key is only cooling for other models, it is available for this model
+                if cooling_for and canon not in cooling_for:
+                    return False
+                return True
+            self.__class__._key_cooldowns.pop(api_key, None)
+            self.__class__._cooling_models.pop(api_key, None)
+        return False
+
     def _is_paid_key(self, api_key: Optional[str]) -> bool:
         """Menentukan apakah API key yang digunakan adalah GEMINI_PAID_API_KEY (berbayar)."""
         if not api_key:
@@ -311,10 +342,7 @@ class GeminiProvider(BaseLLMClient):
                     return token
             except Exception:
                 pass
-            if self.paid_api_key and (
-                self.paid_api_key not in self.__class__._key_cooldowns
-                or self.__class__._key_cooldowns[self.paid_api_key] <= now
-            ):
+            if self.paid_api_key and not self._is_key_cooling(self.paid_api_key, now):
                 return self.paid_api_key
             logger.warning(
                 f"Model {self.model} called but GEMINI_PAID_API_KEY is empty or cooling down. Fallback to free key."
@@ -325,9 +353,7 @@ class GeminiProvider(BaseLLMClient):
             sticky_key = getattr(self, "_sticky_session_key", None)
             if (
                 sticky_key
-                and (
-                    sticky_key not in self.__class__._key_cooldowns or self.__class__._key_cooldowns[sticky_key] <= now
-                )
+                and not self._is_key_cooling(sticky_key, now)
                 and (
                     not self.free_api_keys
                     or sticky_key == self.free_api_keys[GeminiProvider._key_index % len(self.free_api_keys)]
@@ -339,17 +365,12 @@ class GeminiProvider(BaseLLMClient):
             if self.free_api_keys:
                 for offset in range(len(self.free_api_keys)):
                     candidate = self.free_api_keys[(GeminiProvider._key_index + offset) % len(self.free_api_keys)]
-                    if (
-                        candidate not in self.__class__._key_cooldowns
-                        or self.__class__._key_cooldowns[candidate] <= now
-                    ):
+                    if not self._is_key_cooling(candidate, now):
                         GeminiProvider._key_index = (GeminiProvider._key_index + offset) % len(self.free_api_keys)
                         self._sticky_session_key = candidate
                         return candidate
 
-            if self.api_key and (
-                self.api_key not in self.__class__._key_cooldowns or self.__class__._key_cooldowns[self.api_key] <= now
-            ):
+            if self.api_key and not self._is_key_cooling(self.api_key, now):
                 self._sticky_session_key = self.api_key
                 return self.api_key
 
@@ -358,13 +379,11 @@ class GeminiProvider(BaseLLMClient):
             for _ in range(len(self.free_api_keys)):
                 key = self.free_api_keys[GeminiProvider._key_index % len(self.free_api_keys)]
                 GeminiProvider._key_index += 1
-                if key not in self.__class__._key_cooldowns or self.__class__._key_cooldowns[key] <= now:
+                if not self._is_key_cooling(key, now):
                     return key
 
         # 3. Check explicit self.api_key if provided and not in active cooldown
-        if self.api_key and (
-            self.api_key not in self.__class__._key_cooldowns or self.__class__._key_cooldowns[self.api_key] <= now
-        ):
+        if self.api_key and not self._is_key_cooling(self.api_key, now):
             return self.api_key
 
         # 3. Rotate through Antigravity Free Accounts Pool (9 free accounts)
@@ -379,14 +398,18 @@ class GeminiProvider(BaseLLMClient):
 
         # 4. If all free keys are in cooldown, pick the one that expires earliest
         if self.free_api_keys:
-            earliest_key = min(self.free_api_keys, key=lambda k: self.__class__._key_cooldowns.get(k, 0))
+            canon = getattr(self, "canonical_model", None) or canonical_gemini_model_name(self.model)
+            earliest_key = min(
+                self.free_api_keys,
+                key=lambda k: max(
+                    self.__class__._key_cooldowns.get((canon, k), 0),
+                    self.__class__._key_cooldowns.get(k, 0),
+                ),
+            )
             return earliest_key
 
         # 5. Fallback to paid key if available
-        if self.paid_api_key and (
-            self.paid_api_key not in self.__class__._key_cooldowns
-            or self.__class__._key_cooldowns[self.paid_api_key] <= now
-        ):
+        if self.paid_api_key and not self._is_key_cooling(self.paid_api_key, now):
             return self.paid_api_key
 
         return self.api_key or self.paid_api_key
@@ -422,7 +445,13 @@ class GeminiProvider(BaseLLMClient):
         )
 
     @classmethod
-    def _handle_rate_limit_error(cls, api_key: str, error: Exception, method_name: str = "generate") -> None:
+    def _handle_rate_limit_error(
+        cls,
+        api_key: str,
+        error: Exception,
+        method_name: str = "generate",
+        model_name: str = "",
+    ) -> None:
         """
         Klasifikasi presisi rate limit & transient overload Google Gemini API:
         - RPD (24h): Hanya jika respon eksplisit memuat indikator limit/kuota harian.
@@ -476,7 +505,13 @@ class GeminiProvider(BaseLLMClient):
         )
 
         retry_after = getattr(error, "retry_after", None)
-        if retry_after is not None and retry_after > 0:
+        m_retry_delay = re.search(r'"retrydelay":\s*"([\d\.]+)s"', body_lower)
+        if m_retry_delay:
+            try:
+                cooldown_sec = float(m_retry_delay.group(1)) + 2.0
+            except ValueError, TypeError:
+                cooldown_sec = 65.0
+        elif retry_after is not None and retry_after > 0:
             cooldown_sec = float(retry_after) + 2.0
         else:
             m = re.search(r"try again in ([\d\.]+)s", body_lower) or re.search(r"retry after (\d+)", body_lower)
@@ -490,7 +525,17 @@ class GeminiProvider(BaseLLMClient):
             else:
                 cooldown_sec = 65.0
 
-        cls._key_cooldowns[api_key] = time.time() + cooldown_sec
+        until = time.time() + (86400.0 if is_rpd else cooldown_sec)
+        canon = canonical_gemini_model_name(model_name)
+        if is_rpd:
+            cls._key_cooldowns[("ALL", api_key)] = until
+            cls._key_cooldowns[api_key] = until
+        elif canon:
+            cls._key_cooldowns[(canon, api_key)] = until
+            cls._key_cooldowns[api_key] = until
+            cls._cooling_models.setdefault(api_key, set()).add(canon)
+        else:
+            cls._key_cooldowns[api_key] = until
         cls.rotate_api_key()
         if api_key.startswith("ya29."):
             try:
@@ -837,11 +882,12 @@ class GeminiProvider(BaseLLMClient):
                                     return part["text"]
 
             except RateLimitError as e:
-                self._handle_rate_limit_error(api_key, e, "generate")
+                self._handle_rate_limit_error(api_key, e, "generate", model_name=self.model)
                 continue
             except (StreamTimeoutError, StreamSafetyTimeoutError) as e:
                 logger.warning(f"Gemini generate streaming timeout on {self.model}: {e}")
-                self._key_cooldowns[api_key] = time.time() + 15.0
+                canon_m = getattr(self, "canonical_model", None) or canonical_gemini_model_name(self.model)
+                self._key_cooldowns[(canon_m, api_key)] = time.time() + 15.0
                 if use_streaming:
                     try:
                         logger.info(f"Gemini {self.model} attempting non-streaming fallback for generate...")
@@ -869,7 +915,7 @@ class GeminiProvider(BaseLLMClient):
                 raise
             except Exception as e:
                 if self._is_transient_error(e):
-                    self._handle_rate_limit_error(api_key, e, "generate")
+                    self._handle_rate_limit_error(api_key, e, "generate", model_name=self.model)
                     continue
                 clean_msg = format_api_error_summary(getattr(e, "status", 500), getattr(e, "body", "") or str(e))
                 logger.warning(
@@ -1209,11 +1255,12 @@ class GeminiProvider(BaseLLMClient):
                     else:
                         last_req_err = "Empty/failed response from Gemini API"
             except RateLimitError as e:
-                self._handle_rate_limit_error(api_key, e, "run_tool_agent")
+                self._handle_rate_limit_error(api_key, e, "run_tool_agent", model_name=self.model)
                 last_req_err = e
             except (StreamTimeoutError, StreamSafetyTimeoutError) as e:
                 logger.warning(f"Gemini run_tool_agent streaming timeout on {self.model}: {e}")
-                self._key_cooldowns[api_key] = time.time() + 15.0
+                canon_m = getattr(self, "canonical_model", None) or canonical_gemini_model_name(self.model)
+                self._key_cooldowns[(canon_m, api_key)] = time.time() + 15.0
                 last_req_err = e
                 if use_streaming:
                     try:
@@ -1240,7 +1287,7 @@ class GeminiProvider(BaseLLMClient):
             except Exception as e:
                 last_req_err = e
                 if self._is_transient_error(e):
-                    self._handle_rate_limit_error(api_key, e, "run_tool_agent")
+                    self._handle_rate_limit_error(api_key, e, "run_tool_agent", model_name=self.model)
                     continue
                 clean_msg = format_api_error_summary(getattr(e, "status", 500), getattr(e, "body", "") or str(e))
                 logger.warning(

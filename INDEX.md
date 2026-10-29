@@ -12200,6 +12200,12 @@
   - `upgrade() -> None`: Upgrade schema: Add is_paid and cost_source columns and indexes to token_usage_log.
   - `downgrade() -> None`: Downgrade schema: Drop indexes and columns is_paid and cost_source from token_usage_log.
 
+#### `0014_widen_source_strategy_id.py` - *widen source_strategy_id in asset_analysis to varchar 100*
+- **Path**: [`src/monika/infrastructure/database/migrations/versions/0014_widen_source_strategy_id.py`](src/monika/infrastructure/database/migrations/versions/0014_widen_source_strategy_id.py)
+- **Top-Level Functions**:
+  - `upgrade() -> None`: Upgrade schema: Expand source_strategy_id from VARCHAR(50) to VARCHAR(100).
+  - `downgrade() -> None`: Downgrade schema: Shrink source_strategy_id from VARCHAR(100) to VARCHAR(50).
+
 #### `c83c5e451412_sync_schema_indexes_types_and_.py` - *sync_schema_indexes_types_and_constraints*
 - **Path**: [`src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py`](src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py)
 - **Top-Level Functions**:
@@ -12733,11 +12739,13 @@
 - **Classes**:
   - `class GeminiRateLimiter`
     - `__init__(session)`
-    - `async try_acquire(model: str) -> bool` - *Ambil (acquire) satu slot kuota secara atomik. Return True jika sukses.*
-    - `async check_quota(model: str) -> bool` - *Cek ketersediaan kuota tanpa mengurangi saldo.*
-    - `async consume_quota(model: str) -> bool` - *Deprecated: gunakan try_acquire() saja.*
+    - `async try_acquire(model: str, api_key: Optional[str]) -> bool` - *Ambil (acquire) satu slot kuota secara atomik. Return True jika sukses.*
+    - `async check_quota(model: str, api_key: Optional[str]) -> bool` - *Cek ketersediaan kuota tanpa mengurangi saldo.*
+    - `async consume_quota(model: str, api_key: Optional[str]) -> bool` - *Deprecated: gunakan try_acquire() saja.*
     - `async get_usage(model: str) -> dict` - *Ambil statistik penggunaan harian terkini.*
 - **Top-Level Functions**:
+  - `get_today_pt() -> str`: Mengembalikan tanggal hari ini dalam zona waktu US/Pacific (sinkron dengan server Google AI Studio).
+  - `canonical_gemini_model_name(model_name: str) -> str`: Normalisasi nama model Gemini ke bentuk kanonikal (menghapus prefix gc/, ag/, google/, dll).
   - `get_quota_for_model(model_name: str) -> dict`
   - `configure_from_settings(settings: dict) -> None`
 
@@ -13155,9 +13163,9 @@
 - **Path**: [`src/monika/infrastructure/providers/llm_factory.py`](src/monika/infrastructure/providers/llm_factory.py)
 - **Classes**:
   - `class ProviderCircuitBreaker`: Tracks consecutive 5xx/timeouts and permanent entitlement errors across providers.
-    - `is_provider_available(provider: str) -> bool`
-    - `record_provider_success(provider: str) -> None`
-    - `record_provider_failure(provider: str, is_server_or_timeout: bool, reason: str) -> None`
+    - `is_provider_available(provider: str, model: Optional[str]) -> bool`
+    - `record_provider_success(provider: str, model: Optional[str]) -> None`
+    - `record_provider_failure(provider: str, is_server_or_timeout: bool, reason: str, ...) -> None`
     - `blacklist_model(provider: str, model: str, reason: str, ...) -> None`
     - `is_model_blacklisted(provider: str, model: str) -> bool`
     - `reset() -> None`

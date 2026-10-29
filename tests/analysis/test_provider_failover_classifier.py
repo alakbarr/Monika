@@ -140,3 +140,73 @@ async def test_streaming_heartbeat_monitor():
     monitor.stop()
 
     assert pulse_count >= 2
+
+
+def test_gemini_429_transient_with_retry_delay_does_not_trip_hard_quota():
+    """Verify Google Gemini 429 response with retryDelay is classified as TRANSIENT, not HARD QUOTA."""
+    import json
+    from monika.infrastructure.providers.provider_failover_classifier import FailoverReason, classify_error
+
+    google_429_body = json.dumps(
+        {
+            "error": {
+                "code": 429,
+                "message": "You exceeded your current quota, please check your plan and billing details.",
+                "status": "RESOURCE_EXHAUSTED",
+                "details": [
+                    {
+                        "@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                        "violations": [
+                            {
+                                "quotaMetric": "generativelanguage.googleapis.com/generate_requests_per_model",
+                                "quotaId": "GenerateRequestsPerMinutePerProjectPerModel",
+                                "quotaDimensions": {"model": "gemini-3.5-flash-lite"},
+                            }
+                        ],
+                    },
+                    {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "14s"},
+                ],
+            }
+        }
+    )
+
+    class MockGoogleAPIError(Exception):
+        def __init__(self, msg, body):
+            super().__init__(msg)
+            self.body = body
+            self.status = 429
+
+    err = MockGoogleAPIError("HTTP 429 RESOURCE_EXHAUSTED: You exceeded your current quota", google_429_body)
+    reason, detail = classify_error(err)
+    assert reason == FailoverReason.TRANSIENT_RATE_LIMIT
+    assert reason.is_hard_quota_exhausted is False
+
+
+def test_provider_circuit_breaker_model_isolation():
+    """Verify ProviderCircuitBreaker isolates failure of one model without tripping another model."""
+    from monika.infrastructure.providers.llm_factory import ProviderCircuitBreaker
+
+    ProviderCircuitBreaker.reset()
+    provider = "gemini"
+    pro_model = "gemini-2.5-pro"
+    flash_model = "gemini-3.5-flash-lite"
+
+    # Both models available initially
+    assert ProviderCircuitBreaker.is_provider_available(provider, model=pro_model) is True
+    assert ProviderCircuitBreaker.is_provider_available(provider, model=flash_model) is True
+
+    # 3 failures on Pro model
+    ProviderCircuitBreaker.record_provider_failure(
+        provider, is_server_or_timeout=True, reason="timeout", model=pro_model
+    )
+    ProviderCircuitBreaker.record_provider_failure(
+        provider, is_server_or_timeout=True, reason="timeout", model=pro_model
+    )
+    ProviderCircuitBreaker.record_provider_failure(
+        provider, is_server_or_timeout=True, reason="503 overload", model=pro_model
+    )
+
+    # Pro model circuit is now OPEN
+    assert ProviderCircuitBreaker.is_provider_available(provider, model=pro_model) is False
+    # Flash model circuit MUST remain available (CLOSED)
+    assert ProviderCircuitBreaker.is_provider_available(provider, model=flash_model) is True

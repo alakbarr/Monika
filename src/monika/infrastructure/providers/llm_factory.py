@@ -73,7 +73,8 @@ class ProviderCircuitBreaker:
     COOLDOWN_SECONDS: float = 60.0
 
     @classmethod
-    def is_provider_available(cls, provider: str) -> bool:
+    def is_provider_available(cls, provider: str, model: Optional[str] = None) -> bool:
+        # Check provider-level circuit
         state = cls._states.get(provider, "CLOSED")
         if state == "OPEN":
             now = time.time()
@@ -84,28 +85,69 @@ class ProviderCircuitBreaker:
                 )
                 return True
             return False
+
+        # If model is specified, check model-level circuit
+        if model:
+            key = f"{provider}:{model}"
+            m_state = cls._states.get(key, "CLOSED")
+            if m_state == "OPEN":
+                now = time.time()
+                if now >= cls._open_until.get(key, 0.0):
+                    cls._states[key] = "HALF_OPEN"
+                    logger.info(
+                        f"[CircuitBreaker] Model '{key}' transitioning OPEN -> HALF_OPEN (canary probe allowed)"
+                    )
+                    return True
+                return False
+
         return True
 
     @classmethod
-    def record_provider_success(cls, provider: str) -> None:
+    def record_provider_success(cls, provider: str, model: Optional[str] = None) -> None:
         if cls._consecutive_failures.get(provider, 0) > 0 or cls._states.get(provider) != "CLOSED":
             logger.info(f"[CircuitBreaker] Provider '{provider}' healthy. Circuit CLOSED.")
         cls._consecutive_failures[provider] = 0
         cls._states[provider] = "CLOSED"
         cls._open_until.pop(provider, None)
 
+        if model:
+            key = f"{provider}:{model}"
+            if cls._consecutive_failures.get(key, 0) > 0 or cls._states.get(key) != "CLOSED":
+                logger.info(f"[CircuitBreaker] Model '{key}' healthy. Circuit CLOSED.")
+            cls._consecutive_failures[key] = 0
+            cls._states[key] = "CLOSED"
+            cls._open_until.pop(key, None)
+
     @classmethod
-    def record_provider_failure(cls, provider: str, is_server_or_timeout: bool = True, reason: str = "") -> None:
+    def record_provider_failure(
+        cls,
+        provider: str,
+        is_server_or_timeout: bool = True,
+        reason: str = "",
+        model: Optional[str] = None,
+    ) -> None:
         if is_server_or_timeout:
-            cnt = cls._consecutive_failures.get(provider, 0) + 1
-            cls._consecutive_failures[provider] = cnt
-            if cnt >= cls.FAILURE_THRESHOLD:
-                cls._states[provider] = "OPEN"
-                cls._open_until[provider] = time.time() + cls.COOLDOWN_SECONDS
-                logger.warning(
-                    f"[CircuitBreaker] Provider '{provider}' circuit OPEN ({cnt} consecutive server/timeout errors). "
-                    f"Cooldown for {cls.COOLDOWN_SECONDS:.0f}s. Reason: {reason}"
-                )
+            if model:
+                key = f"{provider}:{model}"
+                cnt = cls._consecutive_failures.get(key, 0) + 1
+                cls._consecutive_failures[key] = cnt
+                if cnt >= cls.FAILURE_THRESHOLD:
+                    cls._states[key] = "OPEN"
+                    cls._open_until[key] = time.time() + cls.COOLDOWN_SECONDS
+                    logger.warning(
+                        f"[CircuitBreaker] Model '{key}' circuit OPEN ({cnt} consecutive server/timeout errors). "
+                        f"Cooldown for {cls.COOLDOWN_SECONDS:.0f}s. Reason: {reason}"
+                    )
+            else:
+                cnt = cls._consecutive_failures.get(provider, 0) + 1
+                cls._consecutive_failures[provider] = cnt
+                if cnt >= cls.FAILURE_THRESHOLD:
+                    cls._states[provider] = "OPEN"
+                    cls._open_until[provider] = time.time() + cls.COOLDOWN_SECONDS
+                    logger.warning(
+                        f"[CircuitBreaker] Provider '{provider}' circuit OPEN ({cnt} consecutive server/timeout errors). "
+                        f"Cooldown for {cls.COOLDOWN_SECONDS:.0f}s. Reason: {reason}"
+                    )
 
     @classmethod
     def blacklist_model(cls, provider: str, model: str, reason: str, duration: float = 1800.0) -> None:
@@ -1175,7 +1217,7 @@ class FallbackClientWrapper(BaseLLMClient):
                     )
                     continue
 
-            if not ProviderCircuitBreaker.is_provider_available(provider):
+            if not ProviderCircuitBreaker.is_provider_available(provider, model=model):
                 logger.info(
                     f"[{self.task_role}] Skipping {slot_name} '{model}' — provider '{provider}' circuit is OPEN"
                 )
@@ -1398,10 +1440,10 @@ class FallbackClientWrapper(BaseLLMClient):
 
                     raw_budget = getattr(client, "thinking_budget", None)
                     model_thinking_budget = (
-                        raw_budget
+                        int(raw_budget)
                         if isinstance(raw_budget, (int, float))
                         else (
-                            self._dynamic_thinking_budget
+                            int(self._dynamic_thinking_budget)
                             if isinstance(self._dynamic_thinking_budget, (int, float))
                             else None
                         )
@@ -1482,7 +1524,7 @@ class FallbackClientWrapper(BaseLLMClient):
                     self.model = model
                     self._active_slot = slot_name
                     self.thinking_level = getattr(client, "thinking_level", self.thinking_level)
-                    ProviderCircuitBreaker.record_provider_success(provider)
+                    ProviderCircuitBreaker.record_provider_success(provider, model=model)
                     # Reset backoff count and clear cooldown for this slot on success
                     self._slot_backoff_count[slot_name] = 0
                     self._slot_cooldowns.pop(slot_name, None)
@@ -1571,7 +1613,7 @@ class FallbackClientWrapper(BaseLLMClient):
                     logger.warning(f"{last_error}. Trying next fallback...")
 
                     ProviderCircuitBreaker.record_provider_failure(
-                        provider, is_server_or_timeout=True, reason="timeout"
+                        provider, is_server_or_timeout=True, reason="timeout", model=model
                     )
 
                     cnt = self._slot_backoff_count.get(slot_name, 0)
@@ -1729,7 +1771,7 @@ class FallbackClientWrapper(BaseLLMClient):
                         FailoverReason.NETWORK_CONNECTION,
                     )
                     ProviderCircuitBreaker.record_provider_failure(
-                        provider, is_server_or_timeout=is_server_or_timeout, reason=reason.value
+                        provider, is_server_or_timeout=is_server_or_timeout, reason=reason.value, model=model
                     )
                     if reason in (
                         FailoverReason.AUTH_PERMANENT,

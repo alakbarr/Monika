@@ -149,6 +149,28 @@ def classify_error(error: Exception) -> Tuple[FailoverReason, str]:
             return FailoverReason.AUTH_TRANSIENT, "Auth token expired — refreshable"
         return FailoverReason.AUTH_PERMANENT, "API key permanently invalid"
 
+    # 3b. Transient Rate Limits with delay hint (MUST check before generic hard quota)
+    # Providers (e.g. Google Gemini) often emit canned quota strings:
+    # "You exceeded your current quota, please check your plan and billing details"
+    # alongside RetryInfo (e.g. retryDelay: "14s") or quotaId (GenerateRequestsPerMinute).
+    # If a delay hint or per-minute indicator is present, this is a transient burst limit.
+    body = getattr(error, "body", "") or ""
+    full_text = f"{msg} {body}" if (body and body not in msg) else msg
+    has_delay_hint = bool(
+        re.search(r'"retrydelay":\s*"[\d\.]+s"', full_text, re.IGNORECASE)
+        or re.search(r"try again in [\d\.]+s", full_text, re.IGNORECASE)
+        or re.search(r"retry.?after", full_text, re.IGNORECASE)
+        or re.search(r"requests.?per.?minute|tokens.?per.?minute|RPM|TPM", full_text, re.IGNORECASE)
+        or re.search(r"generaterequestsperminute|per_minute", full_text, re.IGNORECASE)
+        or getattr(error, "retry_after", None)
+    )
+    if has_delay_hint:
+        if re.search(r"retry.?after|model|provider", full_text, re.IGNORECASE) and not re.search(
+            r"requests.?per.?minute|tokens.?per.?minute|RPM|TPM|retrydelay", full_text, re.IGNORECASE
+        ):
+            return FailoverReason.RATE_LIMIT_MODEL, "Model-level rate limit"
+        return FailoverReason.TRANSIENT_RATE_LIMIT, "Transient rate limit (RPM/TPM with delay hint)"
+
     # 4. Hard Quota & Billing
     if _HARD_QUOTA_PATTERNS.search(msg):
         return FailoverReason.HARD_QUOTA_EXHAUSTED, "Hard quota / credits depleted for provider"
