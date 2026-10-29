@@ -2544,6 +2544,7 @@ Monika/
 │   │   ├── test_context_hygiene.py
 │   │   ├── test_debate_convergence.py
 │   │   ├── test_debate_subgraph.py
+│   │   ├── test_debate_timeout_repro.py
 │   │   ├── test_dual_checkpointer.py
 │   │   ├── test_duplicate_entry_guard.py
 │   │   ├── test_reactive_graph.py
@@ -3158,4 +3159,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 272 | **Total Tracked Files**: 2856
+**Total Tracked Directories**: 272 | **Total Tracked Files**: 2857
