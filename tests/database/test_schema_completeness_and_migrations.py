@@ -78,8 +78,8 @@ def test_alembic_migration_chain_continuity():
 
     assert len(visited) == len(nodes), f"Broken chain! Total nodes: {len(nodes)}, Visited in sequence: {len(visited)}"
     assert visited[0] == "t1a2b3c4d5e6", f"Expected root revision to be t1a2b3c4d5e6, got {visited[0]}"
-    assert visited[-1] == "0014_widen_source_strategy_id", (
-        f"Expected head revision to be 0014_widen_source_strategy_id, got {visited[-1]}"
+    assert visited[-1] == "0015_decision_refl_pos_idx", (
+        f"Expected head revision to be 0015_decision_refl_pos_idx, got {visited[-1]}"
     )
 
 
@@ -374,3 +374,69 @@ def test_migration_0012_widens_alembic_version_num_on_postgres():
     assert col_name == "version_num"
     assert isinstance(col_type, sa.String)
     assert col_type.length == 64
+
+
+def test_migration_0015_decision_reflections_position_id_index():
+    """Verify migration 0015 idempotently creates and drops ix_decision_reflections_position_id."""
+    _ensure_mock_alembic()
+    created_indexes: list[tuple[str, str, list[str], bool]] = []
+    dropped_indexes: list[tuple[str, str | None]] = []
+
+    class MockOp0015:
+        @staticmethod
+        def get_bind():
+            return object()
+
+        @staticmethod
+        def create_index(idx_name, table_name, cols, unique=False, **kw):
+            created_indexes.append((idx_name, table_name, list(cols), bool(unique)))
+
+        @staticmethod
+        def drop_index(idx_name, table_name=None, **kw):
+            dropped_indexes.append((idx_name, table_name))
+
+    mig_path = os.path.join(
+        os.path.dirname(__file__),
+        "../../src/monika/infrastructure/database/migrations/versions/0015_decision_refl_pos_idx.py",
+    )
+    spec = importlib.util.spec_from_file_location("mig_0015", mig_path)
+    assert spec is not None and spec.loader is not None
+    mod: Any = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    setattr(mod, "op", MockOp0015)
+
+    orig_inspect = sa.inspect
+    try:
+        current_indexes: list[dict[str, str]] = []
+
+        def mock_insp(conn):
+            class MockInsp:
+                def get_table_names(self):
+                    return ["decision_reflections"]
+
+                def get_indexes(self, t_name):
+                    return list(current_indexes)
+
+            return MockInsp()
+
+        sa.inspect = mock_insp
+        mod.upgrade()
+        assert created_indexes == [
+            ("ix_decision_reflections_position_id", "decision_reflections", ["position_id"], False)
+        ]
+
+        # Idempotent second upgrade should not recreate existing index
+        current_indexes.append({"name": "ix_decision_reflections_position_id"})
+        mod.upgrade()
+        assert len(created_indexes) == 1
+
+        # Downgrade drops existing index
+        mod.downgrade()
+        assert dropped_indexes == [("ix_decision_reflections_position_id", "decision_reflections")]
+
+        # Idempotent second downgrade should not drop missing index
+        current_indexes.clear()
+        mod.downgrade()
+        assert len(dropped_indexes) == 1
+    finally:
+        sa.inspect = orig_inspect

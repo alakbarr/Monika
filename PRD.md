@@ -229,7 +229,7 @@ flowchart TD
 
 ## 6. Data Schema & Persistence Model
 
-Managed via **PostgreSQL 16+** (with SQLite trial-tier support) using async SQLAlchemy 2.0 and tracked through versioned Alembic migrations up to head `0014_widen_source_and_symbol_columns` across 75 mapped tables.
+Managed via **PostgreSQL 16+** (with SQLite trial-tier support) using async SQLAlchemy 2.0 and tracked through versioned Alembic migrations up to head `0015_decision_refl_pos_idx` across 75 mapped tables.
 
 ### Database Entity Architecture
 ```
