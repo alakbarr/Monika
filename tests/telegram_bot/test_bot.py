@@ -37,7 +37,20 @@ class TestTelegramBot:
         mock_app.stop = AsyncMock()
         mock_app.updater.start_polling = AsyncMock()
         mock_app.updater.stop = AsyncMock()
-        mock_builder.return_value.token.return_value.build.return_value = mock_app
+
+        builder_inst = mock_builder.return_value
+        builder_inst.token.return_value = builder_inst
+        builder_inst.connect_timeout.return_value = builder_inst
+        builder_inst.read_timeout.return_value = builder_inst
+        builder_inst.write_timeout.return_value = builder_inst
+        builder_inst.pool_timeout.return_value = builder_inst
+        builder_inst.get_updates_connect_timeout.return_value = builder_inst
+        builder_inst.get_updates_read_timeout.return_value = builder_inst
+        builder_inst.get_updates_write_timeout.return_value = builder_inst
+        builder_inst.connection_pool_size.return_value = builder_inst
+        builder_inst.proxy.return_value = builder_inst
+        builder_inst.get_updates_proxy.return_value = builder_inst
+        builder_inst.build.return_value = mock_app
 
         bot = TelegramBot({})
 
@@ -334,7 +347,20 @@ class TestTelegramBot:
         mock_app.stop = AsyncMock()
         mock_app.updater.start_polling = AsyncMock()
         mock_app.updater.stop = AsyncMock()
-        mock_builder.return_value.token.return_value.build.return_value = mock_app
+
+        builder_inst = mock_builder.return_value
+        builder_inst.token.return_value = builder_inst
+        builder_inst.connect_timeout.return_value = builder_inst
+        builder_inst.read_timeout.return_value = builder_inst
+        builder_inst.write_timeout.return_value = builder_inst
+        builder_inst.pool_timeout.return_value = builder_inst
+        builder_inst.get_updates_connect_timeout.return_value = builder_inst
+        builder_inst.get_updates_read_timeout.return_value = builder_inst
+        builder_inst.get_updates_write_timeout.return_value = builder_inst
+        builder_inst.connection_pool_size.return_value = builder_inst
+        builder_inst.proxy.return_value = builder_inst
+        builder_inst.get_updates_proxy.return_value = builder_inst
+        builder_inst.build.return_value = mock_app
 
         bot = TelegramBot({})
 
@@ -393,3 +419,92 @@ class TestTelegramBot:
         # Record without exc_info
         rec_plain = logging.LogRecord("test", logging.INFO, "test.py", 10, "msg", (), None)
         assert flt.filter(rec_plain) is True
+
+    @patch("monika.interfaces.telegram.bot.ApplicationBuilder")
+    def test_init_with_timeouts_and_proxy(self, mock_builder):
+        """Verify custom timeouts and proxy URL are passed to ApplicationBuilder."""
+        b_inst = mock_builder.return_value
+        b_inst.token.return_value = b_inst
+        b_inst.connect_timeout.return_value = b_inst
+        b_inst.read_timeout.return_value = b_inst
+        b_inst.write_timeout.return_value = b_inst
+        b_inst.pool_timeout.return_value = b_inst
+        b_inst.get_updates_connect_timeout.return_value = b_inst
+        b_inst.get_updates_read_timeout.return_value = b_inst
+        b_inst.get_updates_write_timeout.return_value = b_inst
+        b_inst.connection_pool_size.return_value = b_inst
+        b_inst.proxy.return_value = b_inst
+        b_inst.get_updates_proxy.return_value = b_inst
+        b_inst.build.return_value = MagicMock()
+
+        custom_settings = {
+            "telegram": {
+                "connect_timeout": 15.0,
+                "read_timeout": 30.0,
+                "write_timeout": 12.0,
+                "pool_timeout": 8.0,
+                "get_updates_read_timeout": 40.0,
+                "proxy_url": "http://127.0.0.1:8080",
+            }
+        }
+        with patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "123:test"}):
+            bot = TelegramBot(custom_settings)
+            assert bot._consecutive_network_errors == 0
+            b_inst.connect_timeout.assert_called_with(15.0)
+            b_inst.read_timeout.assert_called_with(30.0)
+            b_inst.write_timeout.assert_called_with(12.0)
+            b_inst.pool_timeout.assert_called_with(8.0)
+            b_inst.get_updates_read_timeout.assert_called_with(40.0)
+            b_inst.proxy.assert_called_with("http://127.0.0.1:8080")
+            b_inst.get_updates_proxy.assert_called_with("http://127.0.0.1:8080")
+
+    @pytest.mark.asyncio
+    async def test_on_telegram_error_tiered_logging(self):
+        """Verify transient network errors log at debug for 1-2 attempts and warning at 3+ attempts."""
+        from telegram.error import NetworkError
+
+        bot = TelegramBot({})
+        mock_ctx = MagicMock()
+        mock_ctx.error = NetworkError("Bad Gateway")
+
+        with patch("monika.interfaces.telegram.bot.logger") as mock_logger:
+            # 1st failure -> debug
+            await bot._on_telegram_error(None, mock_ctx)
+            assert bot._consecutive_network_errors == 1
+            mock_logger.debug.assert_called_once()
+            mock_logger.warning.assert_not_called()
+
+            # 2nd failure -> debug
+            mock_logger.reset_mock()
+            await bot._on_telegram_error(None, mock_ctx)
+            assert bot._consecutive_network_errors == 2
+            mock_logger.debug.assert_called_once()
+            mock_logger.warning.assert_not_called()
+
+            # 3rd failure -> warning (consolidated notice)
+            mock_logger.reset_mock()
+            await bot._on_telegram_error(None, mock_ctx)
+            assert bot._consecutive_network_errors == 3
+            mock_logger.warning.assert_called_once()
+            assert "consecutive failures: 3" in mock_logger.warning.call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_on_any_update_connection_recovery(self):
+        """Verify update interceptor logs recovery info and resets consecutive failure count."""
+        bot = TelegramBot({})
+        bot._consecutive_network_errors = 5
+
+        update = MagicMock()
+        context = MagicMock()
+
+        with patch("monika.interfaces.telegram.bot.logger") as mock_logger:
+            await bot._on_any_update(update, context)
+            assert bot._consecutive_network_errors == 0
+            mock_logger.info.assert_called_once()
+            assert "recovered successfully after 5 network blips" in mock_logger.info.call_args[0][0]
+
+            # Second update when counter is 0 should not log recovery info again
+            mock_logger.reset_mock()
+            await bot._on_any_update(update, context)
+            assert bot._consecutive_network_errors == 0
+            mock_logger.info.assert_not_called()

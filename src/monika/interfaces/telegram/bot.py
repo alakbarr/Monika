@@ -29,6 +29,7 @@ from telegram.ext import (
     CommandHandler,
     ContextTypes,
     MessageHandler,
+    TypeHandler,
     filters,
 )
 from monika.interfaces.telegram.base import _TelegramBotMixinBase
@@ -125,12 +126,37 @@ class TelegramBot(
         self._last_send_per_chat: dict[int, float] = {}
         self._offline_queue_file: str = os.path.join("data", "telegram_offline_queue.jsonl")
         self._background_tasks: set[asyncio.Task[Any]] = set()
+        self._consecutive_network_errors: int = 0
 
         if not self.token or self.token.startswith("your_"):
             logger.warning("TELEGRAM_BOT_TOKEN not set — bot will not connect")
             self._app = None
         else:
-            self._app = ApplicationBuilder().token(self.token).build()
+            tg_cfg = (self.settings or {}).get("telegram", {})
+            proxy_url = os.getenv("TELEGRAM_PROXY") or tg_cfg.get("proxy_url")
+            connect_timeout = float(tg_cfg.get("connect_timeout", 10.0))
+            read_timeout = float(tg_cfg.get("read_timeout", 20.0))
+            write_timeout = float(tg_cfg.get("write_timeout", 10.0))
+            pool_timeout = float(tg_cfg.get("pool_timeout", 5.0))
+            get_updates_read_timeout = float(tg_cfg.get("get_updates_read_timeout", 25.0))
+
+            builder = (
+                ApplicationBuilder()
+                .token(self.token)
+                .connect_timeout(connect_timeout)
+                .read_timeout(read_timeout)
+                .write_timeout(write_timeout)
+                .pool_timeout(pool_timeout)
+                .get_updates_connect_timeout(connect_timeout)
+                .get_updates_read_timeout(get_updates_read_timeout)
+                .get_updates_write_timeout(write_timeout)
+                .connection_pool_size(100)
+            )
+            if proxy_url:
+                builder = builder.proxy(proxy_url).get_updates_proxy(proxy_url)
+                logger.info(f"[TelegramBot] Routing Telegram traffic via configured proxy: {proxy_url}")
+
+            self._app = builder.build()
             self._register_handlers()
 
     @property
@@ -146,6 +172,8 @@ class TelegramBot(
         app = self._app
         if not app:
             return
+        # Global update hook (group -1) to track connection recovery
+        app.add_handler(TypeHandler(Update, self._on_any_update), group=-1)
         # Direct commands
         app.add_handler(CommandHandler("start", self._cmd_start))
         app.add_handler(CommandHandler("help", self._cmd_help))
@@ -251,8 +279,17 @@ class TelegramBot(
         # Centralized error handler
         app.add_error_handler(self._on_telegram_error)
 
+    async def _on_any_update(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Global interceptor to detect and log network recovery when polling resumes."""
+        if self._consecutive_network_errors > 0:
+            logger.info(
+                f"[TelegramBot] Telegram API connection recovered successfully after "
+                f"{self._consecutive_network_errors} network blips."
+            )
+            self._consecutive_network_errors = 0
+
     async def _on_telegram_error(self, update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Centralized Telegram error handler with Conflict backoff recovery."""
+        """Centralized Telegram error handler with Conflict backoff recovery and tiered logging."""
         error = context.error
         if error is None:
             return
@@ -267,7 +304,18 @@ class TelegramBot(
                 await asyncio.sleep(15.0)
                 return
             elif isinstance(error, (NetworkError, TimedOut)):
-                logger.debug(f"[TelegramBot] Transient network/timeout error: {error}")
+                self._consecutive_network_errors += 1
+                if self._consecutive_network_errors in (3, 10, 25, 50) or (
+                    self._consecutive_network_errors > 50 and self._consecutive_network_errors % 50 == 0
+                ):
+                    logger.warning(
+                        f"[TelegramBot] Telegram API connection unreachable (consecutive failures: "
+                        f"{self._consecutive_network_errors}, reason: {error}). Polling retry loop is active."
+                    )
+                else:
+                    logger.debug(
+                        f"[TelegramBot] Transient network/timeout error (attempt #{self._consecutive_network_errors}): {error}"
+                    )
                 return
         except Exception:
             pass
