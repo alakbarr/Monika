@@ -40,13 +40,17 @@ async def test_stage1_data_bundler():
         assert "get_funding_rate" in satisfied_tools
         assert "get_bond_yield_spreads" in satisfied_tools
         assert "get_central_bank_expectations" in satisfied_tools
-        # Verify executor was called for multiple tools (20 stage1 tools + 1 FedWatch repricing shift)
-        assert mock_executor_instance.execute.call_count == 21
+        assert "diff_central_bank_documents" in satisfied_tools
+        # Verify executor was called for multiple tools (21 stage1 tools + 1 FedWatch repricing shift)
+        assert mock_executor_instance.execute.call_count == 22
         mock_executor_instance.execute.assert_any_call("get_dxy", {})
         mock_executor_instance.execute.assert_any_call("get_vix", {})
         mock_executor_instance.execute.assert_any_call("get_funding_rate", {})
         mock_executor_instance.execute.assert_any_call("get_bond_yield_spreads", {})
         mock_executor_instance.execute.assert_any_call("get_central_bank_expectations", {})
+        mock_executor_instance.execute.assert_any_call(
+            "diff_central_bank_documents", {"bank": "FED", "doc_type": "STATEMENT"}
+        )
 
         # Verify compressor was called
         mock_compress.assert_called_once()
