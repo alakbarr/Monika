@@ -77,7 +77,10 @@ async def websocket_live_feed(websocket: WebSocket):
 
     if not _is_origin_allowed(websocket, is_localhost):
         logger.warning(f"[Dashboard WS] Disallowed Origin '{websocket.headers.get('origin')}' from {client_host}")
-        await websocket.close(code=1008, reason="Forbidden: Origin not allowed")
+        try:
+            await websocket.close(code=1008, reason="Forbidden: Origin not allowed")
+        except Exception:
+            pass
         return
 
     from monika.interfaces.dashboard.ws_ticket import get_ws_ticket_manager
@@ -111,7 +114,10 @@ async def websocket_live_feed(websocket: WebSocket):
         except PermissionError:
             if client_key:
                 logger.warning(f"[Dashboard WS] Unauthorized connection attempt from {client_host}")
-                await websocket.close(code=1008, reason="Unauthorized: Invalid API key")
+                try:
+                    await websocket.close(code=1008, reason="Unauthorized: Invalid API key")
+                except Exception:
+                    pass
                 return
             authenticated = False
 
@@ -130,18 +136,30 @@ async def websocket_live_feed(websocket: WebSocket):
                         )
                         authenticated = True
                     else:
-                        await websocket.close(code=1008, reason="Unauthorized: Expired or invalid ticket")
+                        try:
+                            await websocket.close(code=1008, reason="Unauthorized: Expired or invalid ticket")
+                        except Exception:
+                            pass
                         return
                 else:
                     token = auth_msg.get("token") or auth_msg.get("api_key") or ""
                     role = resolve_role(str(token), is_localhost=is_localhost)
                     authenticated = True
             else:
-                await websocket.close(code=1008, reason="Unauthorized: Expected authenticate message")
+                try:
+                    await websocket.close(code=1008, reason="Unauthorized: Expected authenticate message")
+                except Exception:
+                    pass
                 return
+        except WebSocketDisconnect:
+            logger.info(f"[Dashboard WS] Client disconnected during handshake from {client_host}")
+            return
         except (asyncio.TimeoutError, json.JSONDecodeError, PermissionError) as auth_err:
             logger.warning(f"[Dashboard WS] Handshake auth failed from {client_host}: {auth_err}")
-            await websocket.close(code=1008, reason="Unauthorized: Authentication handshake failed")
+            try:
+                await websocket.close(code=1008, reason="Unauthorized: Authentication handshake failed")
+            except Exception:
+                pass
             return
 
     queue: asyncio.Queue = asyncio.Queue(maxsize=1000)
@@ -376,7 +394,10 @@ async def websocket_agent_chat(websocket: WebSocket):
 
     if not _is_origin_allowed(websocket, is_localhost):
         logger.warning(f"[AgentChat WS] Disallowed Origin '{websocket.headers.get('origin')}' from {client_host}")
-        await websocket.close(code=1008, reason="Forbidden: Origin not allowed")
+        try:
+            await websocket.close(code=1008, reason="Forbidden: Origin not allowed")
+        except Exception:
+            pass
         return
 
     from monika.interfaces.dashboard.ws_ticket import get_ws_ticket_manager
@@ -410,7 +431,10 @@ async def websocket_agent_chat(websocket: WebSocket):
         except PermissionError as e:
             if client_key:
                 logger.warning(f"[AgentChat WS] Unauthorized attempt from {client_host}: {e}")
-                await websocket.close(code=1008, reason="Unauthorized: Invalid API key")
+                try:
+                    await websocket.close(code=1008, reason="Unauthorized: Invalid API key")
+                except Exception:
+                    pass
                 return
             authenticated = False
 
@@ -429,18 +453,30 @@ async def websocket_agent_chat(websocket: WebSocket):
                         )
                         authenticated = True
                     else:
-                        await websocket.close(code=1008, reason="Unauthorized: Expired or invalid ticket")
+                        try:
+                            await websocket.close(code=1008, reason="Unauthorized: Expired or invalid ticket")
+                        except Exception:
+                            pass
                         return
                 else:
                     token = auth_msg.get("token") or auth_msg.get("api_key") or ""
                     role = resolve_role(str(token), is_localhost=is_localhost)
                     authenticated = True
             else:
-                await websocket.close(code=1008, reason="Unauthorized: Expected authenticate message")
+                try:
+                    await websocket.close(code=1008, reason="Unauthorized: Expected authenticate message")
+                except Exception:
+                    pass
                 return
+        except WebSocketDisconnect:
+            logger.info(f"[AgentChat WS] Client disconnected during handshake from {client_host}")
+            return
         except (asyncio.TimeoutError, json.JSONDecodeError, PermissionError) as auth_err:
             logger.warning(f"[AgentChat WS] Handshake auth failed from {client_host}: {auth_err}")
-            await websocket.close(code=1008, reason="Unauthorized: Authentication handshake failed")
+            try:
+                await websocket.close(code=1008, reason="Unauthorized: Authentication handshake failed")
+            except Exception:
+                pass
             return
 
     session_id = (
@@ -465,67 +501,67 @@ async def websocket_agent_chat(websocket: WebSocket):
     except Exception as _cfg_err:
         logger.debug(f"[AgentChat WS] Failed to resolve tier models: {_cfg_err}")
 
-    await websocket.send_json(
-        {
-            "type": "connection_established",
-            "role": role.value if role else "viewer",
-            "session_id": session_id,
-            "tier_models": tier_models,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-    )
-    try:
-        from monika.domain.risk.approval_hub import ApprovalHub
-
-        open_reqs = ApprovalHub.get_instance().get_open_requests()
-        if open_reqs:
-            await websocket.send_json(
-                {
-                    "type": "open_approvals",
-                    "requests": open_reqs,
-                }
-            )
-    except Exception:
-        pass
-
-    from monika.core.config.settings import load_settings
-
-    raw_settings = get_dashboard_dependency("settings") or load_settings()
-    settings: dict = dict(raw_settings) if isinstance(raw_settings, dict) else raw_settings.model_dump()
-    from monika.application.agent.chat_agent import ChatAgent
-
-    agent = ChatAgent(settings=settings, user_id=session_id, is_admin=(role == Role.ADMIN))
-
-    tools_used: list[str] = []
-
-    async def tool_event_hook(event_type: str, data: dict):
-        if event_type == "start":
-            tool_name = data.get("tool", "")
-            if tool_name not in tools_used:
-                tools_used.append(tool_name)
-            await websocket.send_json(
-                {
-                    "type": "tool_start",
-                    "tool": tool_name,
-                    "input": data.get("input", {}),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                }
-            )
-        elif event_type == "result":
-            await websocket.send_json(
-                {
-                    "type": "tool_result",
-                    "tool": data.get("tool", ""),
-                    "summary": data.get("summary", ""),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                }
-            )
-
-    agent.set_tool_event_listener(tool_event_hook)
-
     turn_task: Optional[asyncio.Task] = None
 
     try:
+        await websocket.send_json(
+            {
+                "type": "connection_established",
+                "role": role.value if role else "viewer",
+                "session_id": session_id,
+                "tier_models": tier_models,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+        try:
+            from monika.domain.risk.approval_hub import ApprovalHub
+
+            open_reqs = ApprovalHub.get_instance().get_open_requests()
+            if open_reqs:
+                await websocket.send_json(
+                    {
+                        "type": "open_approvals",
+                        "requests": open_reqs,
+                    }
+                )
+        except Exception:
+            pass
+
+        from monika.core.config.settings import load_settings
+
+        raw_settings = get_dashboard_dependency("settings") or load_settings()
+        settings: dict = dict(raw_settings) if isinstance(raw_settings, dict) else raw_settings.model_dump()
+        from monika.application.agent.chat_agent import ChatAgent
+
+        agent = ChatAgent(settings=settings, user_id=session_id, is_admin=(role == Role.ADMIN))
+
+        tools_used: list[str] = []
+
+        async def tool_event_hook(event_type: str, data: dict):
+            if event_type == "start":
+                tool_name = data.get("tool", "")
+                if tool_name not in tools_used:
+                    tools_used.append(tool_name)
+                await websocket.send_json(
+                    {
+                        "type": "tool_start",
+                        "tool": tool_name,
+                        "input": data.get("input", {}),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+            elif event_type == "result":
+                await websocket.send_json(
+                    {
+                        "type": "tool_result",
+                        "tool": data.get("tool", ""),
+                        "summary": data.get("summary", ""),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+
+        agent.set_tool_event_listener(tool_event_hook)
+
         while True:
             raw_data = await websocket.receive_text()
             if raw_data == "ping":

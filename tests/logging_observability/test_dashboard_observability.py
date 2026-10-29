@@ -361,3 +361,15 @@ def test_override_risk_validation_bounds(client):
             "/api/v1/actions/override-risk", headers={"X-API-Key": "ops_key"}, json={"max_daily_drawdown_percent": 0.2}
         )
         assert res.status_code == 422
+
+
+def test_websocket_agent_chat_disconnect_during_handshake_clean(client):
+    """Verify client disconnecting during /ws/agent-chat handshake exits gracefully without ASGI exception."""
+    with client.websocket_connect("/ws/agent-chat") as ws:
+        ws.close(1000)
+
+
+def test_websocket_live_feed_disconnect_during_handshake_clean(client):
+    """Verify client disconnecting during /ws/live-feed handshake exits gracefully without ASGI exception."""
+    with client.websocket_connect("/ws/live-feed") as ws:
+        ws.close(1000)
