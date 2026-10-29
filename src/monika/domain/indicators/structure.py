@@ -145,6 +145,35 @@ def find_swings(df: pd.DataFrame, swing_window: int = 5) -> tuple[pd.DataFrame, 
     timestamps = list(df.index)
     total_len = len(df)
 
+    # Fast path: Native Rust C-ABI accelerator
+    from monika.core.native.rust_bridge import find_swings_f64
+
+    fast_swings = find_swings_f64(prices_high, prices_low, n)
+    if fast_swings is not None:
+        sh_idx, sl_idx = fast_swings
+        highs_idx = [
+            {
+                "timestamp": timestamps[i],
+                "price": float(prices_high[i]),
+                "confirmed_at": timestamps[i + n],
+                "confirmation_lag_bars": n,
+            }
+            for i in sh_idx
+        ]
+        lows_idx = [
+            {
+                "timestamp": timestamps[i],
+                "price": float(prices_low[i]),
+                "confirmed_at": timestamps[i + n],
+                "confirmation_lag_bars": n,
+            }
+            for i in sl_idx
+        ]
+        swing_highs = pd.DataFrame(highs_idx) if highs_idx else pd.DataFrame(columns=columns)
+        swing_lows = pd.DataFrame(lows_idx) if lows_idx else pd.DataFrame(columns=columns)
+        logger.debug(f"Found {len(swing_highs)} swing highs, {len(swing_lows)} swing lows")
+        return swing_highs, swing_lows
+
     for i in range(n, total_len - n):
         # Task 5.1: Skip inside bars
         prev_high = prices_high[i - 1]

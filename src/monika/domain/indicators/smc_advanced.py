@@ -225,11 +225,14 @@ def detect_breaker_blocks(
     # If swings not provided, extract quick swing highs/lows
     if swings is None:
         swings = []
+        highs_arr = np.asarray(df["high"], dtype=float)
+        lows_arr = np.asarray(df["low"], dtype=float)
+        idx_list = list(df.index)
         for i in range(2, len(df) - 2):
-            if df["high"].iloc[i] == df["high"].iloc[i - 2 : i + 3].max():
-                swings.append({"type": "high", "price": float(df["high"].iloc[i]), "time": str(df.index[i])})
-            if df["low"].iloc[i] == df["low"].iloc[i - 2 : i + 3].min():
-                swings.append({"type": "low", "price": float(df["low"].iloc[i]), "time": str(df.index[i])})
+            if highs_arr[i] == highs_arr[i - 2 : i + 3].max():
+                swings.append({"type": "high", "price": float(highs_arr[i]), "time": str(idx_list[i])})
+            if lows_arr[i] == lows_arr[i - 2 : i + 3].min():
+                swings.append({"type": "low", "price": float(lows_arr[i]), "time": str(idx_list[i])})
 
     for ob in order_blocks:
         ob_type = str(

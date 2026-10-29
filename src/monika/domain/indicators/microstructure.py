@@ -60,6 +60,13 @@ def compute_vpin(
     prices = np.asarray(trades_df[price_col], dtype=np.float64)
     volumes = np.asarray(trades_df["volume"], dtype=np.float64)
 
+    # Fast path: Native Rust C-ABI accelerator
+    from monika.core.native.rust_bridge import vpin_fractional_f64
+
+    fast_vpin = vpin_fractional_f64(prices, volumes, float(bucket_volume), int(n_buckets))
+    if fast_vpin is not None:
+        return float(fast_vpin)
+
     # Bulk volume classification (BVC)
     price_changes = np.diff(prices, prepend=prices[0])
     buy_pct = np.where(price_changes > 0, 1.0, np.where(price_changes < 0, 0.0, 0.5))
@@ -168,27 +175,35 @@ def compute_kyle_lambda(
     if price_changes is None or signed_volume is None or len(price_changes) < window or len(signed_volume) < window:
         return pd.Series(dtype=float)
 
-    def _ols_slope_intercept(y: np.ndarray, x: np.ndarray) -> float:
-        if len(y) < 3:
-            return 0.0
-        x_mean = np.mean(x)
-        y_mean = np.mean(y)
-        x_dm = x - x_mean
-        denom = float(np.sum(x_dm * x_dm))
-        if denom < 1e-12:
-            return 0.0
-        y_dm = y - y_mean
-        return float(np.sum(x_dm * y_dm) / denom)
-
-    res = pd.Series(index=price_changes.index, dtype=float)
     y_vals = np.asarray(price_changes, dtype=np.float64)
     x_vals = np.asarray(signed_volume, dtype=np.float64)
 
-    for i in range(window - 1, len(price_changes)):
-        sl = slice(i - window + 1, i + 1)
-        res.iloc[i] = _ols_slope_intercept(y_vals[sl], x_vals[sl])
+    # Fast path: Native Rust C-ABI accelerator
+    from monika.core.native.rust_bridge import kyle_lambda_ols_f64
 
-    return res.fillna(0.0)
+    fast_kyle = kyle_lambda_ols_f64(y_vals, x_vals, int(window))
+    if fast_kyle is not None:
+        return pd.Series(fast_kyle, index=price_changes.index).fillna(0.0)
+
+    # Vectorized NumPy fallback (sliding_window_view)
+    n = len(y_vals)
+    out = np.zeros(n, dtype=np.float64)
+    if n >= window and window >= 3:
+        from numpy.lib.stride_tricks import sliding_window_view
+
+        y_win = sliding_window_view(y_vals, window)
+        x_win = sliding_window_view(x_vals, window)
+        x_mean = np.mean(x_win, axis=1, keepdims=True)
+        y_mean = np.mean(y_win, axis=1, keepdims=True)
+        x_dm = x_win - x_mean
+        y_dm = y_win - y_mean
+        denom = np.sum(x_dm * x_dm, axis=1)
+        num = np.sum(x_dm * y_dm, axis=1)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            slopes = np.where(denom >= 1e-12, num / denom, 0.0)
+        out[window - 1 :] = np.nan_to_num(slopes, nan=0.0, posinf=0.0, neginf=0.0)
+
+    return pd.Series(out, index=price_changes.index).fillna(0.0)
 
 
 def get_microstructure_metrics(

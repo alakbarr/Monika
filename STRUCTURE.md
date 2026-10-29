@@ -869,6 +869,14 @@ Monika/
 │       │   ├── contracts/
 │       │   │   ├── __init__.py
 │       │   │   └── plugin.py
+│       │   ├── native/
+│       │   │   ├── monika_core_rs/
+│       │   │   │   ├── src/
+│       │   │   │   │   └── lib.rs
+│       │   │   │   ├── Cargo.lock
+│       │   │   │   └── Cargo.toml
+│       │   │   ├── __init__.py
+│       │   │   └── rust_bridge.py
 │       │   ├── primitives/
 │       │   │   ├── __init__.py
 │       │   │   ├── clock.py
@@ -2426,6 +2434,8 @@ Monika/
 │   │   ├── test_settings_llm.py
 │   │   ├── test_settings_task_roles.py
 │   │   └── test_skill_risk_contract_sync.py
+│   ├── core/
+│   │   └── test_rust_native_bridge.py
 │   ├── data_sources/
 │   │   ├── __init__.py
 │   │   ├── test_bond_yields.py
@@ -3147,4 +3157,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 268 | **Total Tracked Files**: 2849
+**Total Tracked Directories**: 272 | **Total Tracked Files**: 2855

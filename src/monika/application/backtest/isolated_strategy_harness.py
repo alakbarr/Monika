@@ -277,9 +277,10 @@ class ZeroLookaheadSliceSession(AsyncSession):
                 return self._data[0] if (self._is_asc and self._data) else (self._data[-1] if self._data else None)
 
         try:
-            stmt_str = str(stmt.compile(compile_kwargs={"literal_binds": True})).upper()
+            comp_str = str(stmt.compile(compile_kwargs={"literal_binds": True}))
         except Exception:
-            stmt_str = str(stmt).upper()
+            comp_str = str(stmt)
+        stmt_str = comp_str.upper()
         h1_candles = self.candle_cache.get((self.symbol, "H1"), [])
         last_close = float(h1_candles[-1].close) if h1_candles else 1.0
 
@@ -288,13 +289,14 @@ class ZeroLookaheadSliceSession(AsyncSession):
             if "ATR" in stmt_str:
                 atr_val = last_close * 0.005
                 if len(h1_candles) >= 15:
+                    recent_h1 = h1_candles[-15:]
                     trs = [
                         max(
-                            h1_candles[j].high - h1_candles[j].low,
-                            abs(h1_candles[j].high - h1_candles[j - 1].close),
-                            abs(h1_candles[j].low - h1_candles[j - 1].close),
+                            recent_h1[j].high - recent_h1[j].low,
+                            abs(recent_h1[j].high - recent_h1[j - 1].close),
+                            abs(recent_h1[j].low - recent_h1[j - 1].close),
                         )
-                        for j in range(1, len(h1_candles))
+                        for j in range(1, len(recent_h1))
                     ]
                     atr_val = float(np.mean(trs[-14:])) if trs else atr_val
                 mock_row = MockIndicatorRow(
@@ -414,11 +416,6 @@ class ZeroLookaheadSliceSession(AsyncSession):
         #    exactly like a database without those rows. Falling through to the
         #    candle branch would hand the strategy candle rows where it expects
         #    zone rows, which fails with an unrelated AttributeError.
-        try:
-            compiled_stmt = stmt.compile(compile_kwargs={"literal_binds": True})
-            comp_str = str(compiled_stmt)
-        except Exception:
-            comp_str = stmt_str
         m_from = _re.search(r"FROM\s+([a-zA-Z_][\w]*)", comp_str)
         source_table = (m_from.group(1) if m_from else "").lower()
         if source_table and source_table != "price_ohlcv":
@@ -445,8 +442,6 @@ class ZeroLookaheadSliceSession(AsyncSession):
         is_asc = " ASC" in stmt_str or "ASCENDING" in stmt_str
         filtered = list(candles)
         try:
-            compiled = stmt.compile(compile_kwargs={"literal_binds": True})
-            comp_str = str(compiled)
             m_gte = _re.search(r"timestamp\s*>=\s*'([^']+)'", comp_str, _re.IGNORECASE)
             m_lt = _re.search(r"timestamp\s*<\s*'([^']+)'", comp_str, _re.IGNORECASE)
             m_lte = _re.search(r"timestamp\s*<=\s*'([^']+)'", comp_str, _re.IGNORECASE)
@@ -474,7 +469,8 @@ class ZeroLookaheadSliceSession(AsyncSession):
                 filtered = [c for c in filtered if (ct := _get_time(c)) is not None and ct < t_lt]
             if m_lte:
                 t_lte = datetime.fromisoformat(m_lte.group(1)).replace(tzinfo=timezone.utc)
-                filtered = [c for c in filtered if (ct := _get_time(c)) is not None and ct <= t_lte]
+                if not (filtered and (last_ct := _get_time(filtered[-1])) is not None and last_ct <= t_lte):
+                    filtered = [c for c in filtered if (ct := _get_time(c)) is not None and ct <= t_lte]
         except Exception:
             pass
 
@@ -622,17 +618,18 @@ class IsolatedStrategyBacktestHarness:
         """Compute Wilder's ATR over a candle slice."""
         if len(candles) < period + 1:
             return float(candles[-1].close) * 0.005 if candles else 0.001
+        sub = candles[-(period + 1) :]
         tr_list = []
-        for j in range(1, len(candles)):
-            c = candles[j]
-            prev_c = candles[j - 1]
+        for j in range(1, len(sub)):
+            c = sub[j]
+            prev_c = sub[j - 1]
             tr = max(
                 c.high - c.low,
                 abs(c.high - prev_c.close),
                 abs(c.low - prev_c.close),
             )
             tr_list.append(tr)
-        return float(np.mean(tr_list[-period:])) if tr_list else float(candles[-1].close) * 0.005
+        return float(np.mean(tr_list)) if tr_list else float(candles[-1].close) * 0.005
 
     def _resolve_sl_tp(
         self,
@@ -1177,6 +1174,8 @@ class IsolatedStrategyBacktestHarness:
 
         h4_candles = resample_candles(candles, 4)
         d1_candles = resample_candles(candles, 24)
+        h4_idx = 0
+        d1_idx = 0
 
         i = 15
         while i < len(candles) - 2:
@@ -1184,9 +1183,15 @@ class IsolatedStrategyBacktestHarness:
                 await asyncio.sleep(0)
             current_bar = candles[i]
             cur_time = current_bar.get("time") or datetime.now(timezone.utc)
+
+            while h4_idx < len(h4_candles) and (h4_candles[h4_idx].get("time") or cur_time) <= cur_time:
+                h4_idx += 1
+            while d1_idx < len(d1_candles) and (d1_candles[d1_idx].get("time") or cur_time) <= cur_time:
+                d1_idx += 1
+
             h1_slice = candles[: i + 1]
-            h4_slice = [c for c in h4_candles if (c.get("time") or cur_time) <= cur_time]
-            d1_slice = [c for c in d1_candles if (c.get("time") or cur_time) <= cur_time]
+            h4_slice = h4_candles[:h4_idx]
+            d1_slice = d1_candles[:d1_idx]
 
             slice_cache: Dict[tuple[str, str], List[CandleDict]] = {
                 (self.symbol, "H1"): h1_slice,

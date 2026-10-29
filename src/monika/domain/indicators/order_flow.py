@@ -165,29 +165,30 @@ class OrderFlowEngine:
                 vpin=None,
             )
 
-        cvd = 0.0
-        cvd_series: List[float] = []
-        prev_dir = 1
+        if len(volumes) < len(prices):
+            volumes = list(volumes) + [1.0] * (len(prices) - len(volumes))
+        elif len(volumes) > len(prices):
+            volumes = list(volumes[: len(prices)])
 
-        for i in range(len(prices)):
-            p = prices[i]
-            vol = volumes[i] if i < len(volumes) else 1.0
+        prices_arr = np.asarray(prices, dtype=np.float64)
+        volumes_arr = np.asarray(volumes, dtype=np.float64)
 
-            if i == 0:
-                direction = 1
-            else:
-                prev_p = prices[i - 1]
-                if p > prev_p:
-                    direction = 1
-                elif p < prev_p:
-                    direction = -1
-                else:
-                    direction = prev_dir
+        from monika.core.native.rust_bridge import tick_rule_cvd_f64
 
-            prev_dir = direction
-            delta = direction * vol
-            cvd += delta
-            cvd_series.append(cvd)
+        fast_cvd = tick_rule_cvd_f64(prices_arr, volumes_arr)
+        if fast_cvd is not None:
+            cvd_series = fast_cvd.tolist()
+        else:
+            diffs = np.diff(prices_arr, prepend=prices_arr[0])
+            raw_dirs = np.where(diffs > 0.0, 1.0, np.where(diffs < 0.0, -1.0, 0.0))
+            raw_dirs[0] = 1.0
+            nonzero_mask = raw_dirs != 0.0
+            idx = np.where(nonzero_mask, np.arange(len(prices_arr)), 0)
+            np.maximum.accumulate(idx, out=idx)
+            dirs = raw_dirs[idx]
+            cvd_series = np.cumsum(dirs * volumes_arr).tolist()
+
+        cvd = float(cvd_series[-1]) if cvd_series else 0.0
 
         # Evaluasi divergensi (penyerapan institusi) berbasis delta lokal
         divergence = "NONE"

@@ -48,6 +48,7 @@ IGNORED_DIRS: Set[str] = {
     ".hypothesis",
     "synthesized",
     "mt5_slippage_defense",
+    "target",
 }
 
 IGNORED_FILES: Set[str] = {
@@ -69,6 +70,12 @@ IGNORED_EXTENSIONS: Set[str] = {
     ".sqlite",
     ".wal",
     ".shm",
+    ".dll",
+    ".so",
+    ".dylib",
+    ".lib",
+    ".exp",
+    ".pdb",
 }
 
 

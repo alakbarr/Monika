@@ -58,46 +58,46 @@ class MonteCarloStressTester:
             ruin_drawdown_pct = ruin_drawdown_pct / 100.0
 
         returns_arr = np.array(trade_returns, dtype=float)
-        simulated_max_dds = []
-        final_equities = []
-
         ruin_barrier = initial_equity * (1.0 - ruin_drawdown_pct)
-        ruin_count = 0
         use_replacement = mode.lower() == "bootstrap"
         is_block = mode.lower() in ("block_bootstrap", "cbb")
         n = len(returns_arr)
         block_size = max(2, int(np.sqrt(n))) if is_block else 1
 
-        for _ in range(num_simulations):
-            if is_block:
-                # Circular Block Bootstrap (Politis & Romano 1994) to preserve dependency structures
-                sampled_list = []
-                while len(sampled_list) < n:
-                    start_idx = self.rng.integers(0, n)
-                    indices = [(start_idx + i) % n for i in range(block_size)]
-                    sampled_list.extend(returns_arr[indices])
-                sampled = np.array(sampled_list[:n])
-            else:
-                # Permutation (replace=False) atau Bootstrap (replace=True)
-                sampled = self.rng.choice(returns_arr, size=n, replace=use_replacement)
+        if is_block:
+            n_blocks = (n + block_size - 1) // block_size
+            starts = self.rng.integers(0, n, size=(num_simulations, n_blocks))
+            offsets = np.arange(block_size)
+            idx_mat = ((starts[:, :, None] + offsets) % n).reshape(num_simulations, -1)[:, :n]
+            sampled_matrix = returns_arr[idx_mat]
+        elif use_replacement:
+            sampled_matrix = self.rng.choice(returns_arr, size=(num_simulations, n), replace=True)
+        else:
+            sampled_matrix = self.rng.permuted(np.broadcast_to(returns_arr, (num_simulations, n)), axis=1)
 
-            # Hitung kurva ekuitas dengan t=0 initial equity, clamp ke 0.0 untuk proteksi ruin
-            equity_curve = initial_equity * np.cumprod(np.maximum(0.0, 1.0 + sampled))
-            full_curve = np.insert(equity_curve, 0, initial_equity)
-            final_equities.append(float(full_curve[-1]))
+        from monika.core.native.rust_bridge import eval_equity_paths_f64
 
-            # Hitung drawdown
-            running_max = np.maximum.accumulate(full_curve)
-            drawdowns = (running_max - full_curve) / running_max
-            max_sim_dd = float(np.max(drawdowns))
-            simulated_max_dds.append(max_sim_dd * 100.0)
+        fast_res = eval_equity_paths_f64(sampled_matrix, float(initial_equity), float(ruin_drawdown_pct))
+        if fast_res is not None:
+            simulated_max_dds, final_equities, ruin_count = fast_res
+        else:
+            mult_matrix = np.maximum(0.0, 1.0 + sampled_matrix)
+            equity_curves = initial_equity * np.cumprod(mult_matrix, axis=1)
+            init_col = np.full((num_simulations, 1), initial_equity, dtype=np.float64)
+            full_curves = np.hstack([init_col, equity_curves])
+            final_equities = full_curves[:, -1]
 
-            # Path ruin check (ruin if drawdown from peak exceeds ruin_drawdown_pct or equity breaches initial barrier)
-            if max_sim_dd >= ruin_drawdown_pct or np.min(full_curve) < ruin_barrier:
-                ruin_count += 1
+            running_max = np.maximum.accumulate(full_curves, axis=1)
+            drawdowns = (running_max - full_curves) / running_max
+            max_sim_dds = np.max(drawdowns, axis=1)
+            simulated_max_dds = max_sim_dds * 100.0
 
-        simulated_max_dds.sort()
-        final_equities.sort()
+            min_equities = np.min(full_curves, axis=1)
+            ruin_mask = (max_sim_dds >= ruin_drawdown_pct) | (min_equities < ruin_barrier)
+            ruin_count = int(np.sum(ruin_mask))
+
+        simulated_max_dds = np.sort(simulated_max_dds)
+        final_equities = np.sort(final_equities)
 
         p5_dd = np.percentile(simulated_max_dds, 5)
         p50_dd = np.percentile(simulated_max_dds, 50)

@@ -119,6 +119,19 @@ class SystemDoctor:
         else:
             self._record("Supervisor", "Primary-Daemon", "INFO", "No active primary daemon PID lock.")
 
+        # 5. Native Rust Accelerator status check
+        from monika.core.native.rust_bridge import is_rust_accelerator_available
+
+        if is_rust_accelerator_available():
+            self._record("Environment", "Native-Accelerator", "OK", "Rust C-ABI native kernel (monika_core_rs) active.")
+        else:
+            self._record(
+                "Environment",
+                "Native-Accelerator",
+                "INFO",
+                "Vectorized NumPy fallback active (monika_core_rs binary not loaded).",
+            )
+
     async def check_directories(self) -> None:
         """Verify required directories exist and are writable."""
         from monika.core.paths import get_repo_root

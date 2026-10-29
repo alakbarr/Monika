@@ -11,6 +11,7 @@
 - [`src/monika/core/calibration`](#folder-srcmonikacorecalibration)
 - [`src/monika/core/config`](#folder-srcmonikacoreconfig)
 - [`src/monika/core/contracts`](#folder-srcmonikacorecontracts)
+- [`src/monika/core/native`](#folder-srcmonikacorenative)
 - [`src/monika/core/primitives`](#folder-srcmonikacoreprimitives)
 - [`src/monika/core/risk`](#folder-srcmonikacorerisk)
 - [`src/monika/core/security`](#folder-srcmonikacoresecurity)
@@ -613,6 +614,23 @@
     - `async on_circuit_breaker(event: CircuitBreakerEvent) -> None`
     - `async on_config_reload(new_config: Dict[str, Any]) -> None` - *Handle live configuration updates on SIGHUP or settings watcher.*
     - `async on_stop() -> None` - *Orderly resource teardown, cancel background loops, flush outbox.*
+
+### Folder: `src/monika/core/native` <a id="folder-srcmonikacorenative"></a>
+
+#### `__init__.py`
+- **Path**: [`src/monika/core/native/__init__.py`](src/monika/core/native/__init__.py)
+
+#### `rust_bridge.py`
+- **Path**: [`src/monika/core/native/rust_bridge.py`](src/monika/core/native/rust_bridge.py)
+- **Top-Level Functions**:
+  - `is_rust_accelerator_available() -> bool`: Check if the native Rust accelerator is compiled, loadable, and enabled.
+  - `vpin_fractional_f64(prices: np.ndarray, volumes: np.ndarray, bucket_volume: float, ...) -> Optional[float]`: Compute VPIN using Rust fractional volume bucket slicing kernel.
+  - `kyle_lambda_ols_f64(y_vals: np.ndarray, x_vals: np.ndarray, window: int) -> Optional[np.ndarray]`: Compute rolling Kyle's Lambda OLS slope using Rust kernel.
+  - `tick_rule_cvd_f64(prices: np.ndarray, volumes: np.ndarray) -> Optional[np.ndarray]`: Compute Tick Rule Cumulative Volume Delta (CVD) series using Rust kernel.
+  - `find_swings_f64(highs: np.ndarray, lows: np.ndarray, window: int) -> Optional[tuple[np.ndarray, np.ndarray]]`: Detect fractal swing highs and swing lows using Rust kernel.
+  - `find_swing_pivots_f64(highs: np.ndarray, lows: np.ndarray, order: int) -> Optional[list[dict[str, Any]]]`: Detect alternating swing pivots using Rust kernel.
+  - `eval_equity_paths_f64(sampled_matrix: np.ndarray, initial_equity: float, ruin_drawdown_pct: float) -> Optional[tuple[np.ndarray, np.ndarray, int]]`: Evaluate equity paths, max drawdowns, and ruin occurrences using Rust kernel.
+  - `cscv_pbo_from_chunks_f64(chunk_sums: np.ndarray, chunk_sq_sums: np.ndarray, chunk_counts: np.ndarray, ...) -> Optional[tuple[int, np.ndarray]]`: Compute CSCV Combinatorial Purged Cross-Validation PBO using Rust kernel.
 
 ### Folder: `src/monika/core/primitives` <a id="folder-srcmonikacoreprimitives"></a>
 

@@ -176,3 +176,12 @@ ai_cost_analysis*.md
 benchmark_report*.md
 /model_*.csv
 /model_quadrant_analysis.html
+
+# Native Rust Accelerator Build Artifacts
+**/target/
+*.dll
+*.so
+*.dylib
+*.lib
+*.exp
+*.pdb

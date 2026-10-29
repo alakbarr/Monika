@@ -243,44 +243,62 @@ def probability_of_backtest_overfitting(
     else:
         selected_combos = all_combos
 
-    underperforming_count = 0
-    oos_ranks = []
+    chunk_sums = np.zeros((s, N), dtype=np.float64)
+    chunk_sq_sums = np.zeros((s, N), dtype=np.float64)
+    chunk_counts = np.zeros(s, dtype=np.uintp)
 
-    for is_indices in selected_combos:
-        is_set = set(is_indices)
-        oos_indices = [idx for idx in range(s) if idx not in is_set]
+    for i, c in enumerate(chunks):
+        c_mat = arr[c, :]
+        chunk_sums[i, :] = np.sum(c_mat, axis=0)
+        chunk_sq_sums[i, :] = np.sum(c_mat * c_mat, axis=0)
+        chunk_counts[i] = len(c)
 
-        is_rows = np.concatenate([chunks[i] for i in is_indices])
-        oos_rows = np.concatenate([chunks[j] for j in oos_indices])
+    combos_arr = np.ascontiguousarray(selected_combos, dtype=np.uintp)
 
-        is_mat = arr[is_rows, :]
-        oos_mat = arr[oos_rows, :]
+    from monika.core.native.rust_bridge import cscv_pbo_from_chunks_f64
 
-        is_mean = np.mean(is_mat, axis=0)
-        is_std = np.std(is_mat, axis=0, ddof=1)
-        with np.errstate(divide="ignore", invalid="ignore"):
-            is_sr = np.where(is_std > 1e-12, is_mean / is_std, -np.inf)
+    fast_cscv = cscv_pbo_from_chunks_f64(chunk_sums, chunk_sq_sums, chunk_counts, combos_arr)
+    if fast_cscv is not None:
+        underperforming_count, oos_ranks = fast_cscv
+    else:
+        underperforming_count = 0
+        oos_ranks = []
 
-        oos_mean = np.mean(oos_mat, axis=0)
-        oos_std = np.std(oos_mat, axis=0, ddof=1)
-        with np.errstate(divide="ignore", invalid="ignore"):
-            oos_sr = np.where(oos_std > 1e-12, oos_mean / oos_std, -np.inf)
+        for is_indices in selected_combos:
+            is_set = set(is_indices)
+            oos_indices = [idx for idx in range(s) if idx not in is_set]
 
-        best_is_strat = int(np.argmax(is_sr))
-        oos_val = oos_sr[best_is_strat]
-        valid_oos = oos_sr[~np.isnan(oos_sr) & ~np.isneginf(oos_sr)]
-        if len(valid_oos) > 0:
-            rank_oos = float(np.sum(valid_oos <= oos_val) / len(valid_oos))
-        else:
-            rank_oos = 0.5
+            is_rows = np.concatenate([chunks[i] for i in is_indices])
+            oos_rows = np.concatenate([chunks[j] for j in oos_indices])
 
-        oos_ranks.append(rank_oos)
-        if rank_oos <= 0.50:
-            underperforming_count += 1
+            is_mat = arr[is_rows, :]
+            oos_mat = arr[oos_rows, :]
+
+            is_mean = np.mean(is_mat, axis=0)
+            is_std = np.std(is_mat, axis=0, ddof=1)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                is_sr = np.where(is_std > 1e-12, is_mean / is_std, -np.inf)
+
+            oos_mean = np.mean(oos_mat, axis=0)
+            oos_std = np.std(oos_mat, axis=0, ddof=1)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                oos_sr = np.where(oos_std > 1e-12, oos_mean / oos_std, -np.inf)
+
+            best_is_strat = int(np.argmax(is_sr))
+            oos_val = oos_sr[best_is_strat]
+            valid_oos = oos_sr[~np.isnan(oos_sr) & ~np.isneginf(oos_sr)]
+            if len(valid_oos) > 0:
+                rank_oos = float(np.sum(valid_oos <= oos_val) / len(valid_oos))
+            else:
+                rank_oos = 0.5
+
+            oos_ranks.append(rank_oos)
+            if rank_oos <= 0.50:
+                underperforming_count += 1
 
     total_eval = len(selected_combos)
     pbo = float(underperforming_count / total_eval) if total_eval > 0 else 0.0
-    median_rank = float(np.median(oos_ranks)) if oos_ranks else 0.5
+    median_rank = float(np.median(oos_ranks)) if len(oos_ranks) > 0 else 0.5
 
     return {
         "pbo": round(pbo, 4),

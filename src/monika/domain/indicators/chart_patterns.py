@@ -28,6 +28,13 @@ def find_swing_pivots(highs: np.ndarray, lows: np.ndarray, order: int = 5) -> Li
     Identifies alternating swing highs and swing lows using a local rolling window.
     order: number of bars on either side that must be lower (for peak) or higher (for trough).
     """
+    # Fast path: Native Rust C-ABI accelerator
+    from monika.core.native.rust_bridge import find_swing_pivots_f64
+
+    fast_pivots = find_swing_pivots_f64(highs, lows, order)
+    if fast_pivots is not None:
+        return fast_pivots
+
     n = len(highs)
     pivots = []
     for i in range(order, n - order):
