@@ -875,6 +875,13 @@ class GraphCycleScheduler(CycleScheduler):
             except Exception as e:
                 logger.error(f"Post-cycle DB cleanup failed: {e}")
 
+            # Memory Lifecycle GC (decay & archival pass)
+            try:
+                gc_report = await self.run_memory_lifecycle_gc()
+                logger.debug(f"Post-cycle memory lifecycle GC completed: {gc_report}")
+            except Exception as e:
+                logger.debug(f"Post-cycle memory lifecycle GC skip (non-fatal): {e}")
+
             # Cost projection check (cost tracking itself sudah dilakukan di execution_node.py)
             try:
                 from monika.core.analytics.cost_tracker import CostTracker

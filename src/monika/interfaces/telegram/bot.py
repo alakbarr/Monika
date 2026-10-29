@@ -63,6 +63,20 @@ class IgnoreNetworkErrorFilter(logging.Filter):
 logging.getLogger("telegram.ext.Updater").addFilter(IgnoreNetworkErrorFilter())
 
 
+class _BoundedChatAgentsDict(dict):
+    """Limits the number of concurrent ChatAgent instances in memory to prevent RAM exhaustion."""
+
+    def __init__(self, maxsize: int = 100, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.maxsize = maxsize
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        if key not in self and len(self) >= self.maxsize:
+            oldest_key = next(iter(self))
+            self.pop(oldest_key, None)
+        super().__setitem__(key, value)
+
+
 class TelegramBot(
     TelegramFormatterMixin,
     TelegramCallbackHandlerMixin,
@@ -108,7 +122,7 @@ class TelegramBot(
         from monika.interfaces.telegram.topic_manager import TopicManager
         from monika.interfaces.telegram.voice_handler import VoiceHandler
 
-        self._chat_agents: dict[Any, ChatAgent] = {}
+        self._chat_agents: dict[Any, ChatAgent] = _BoundedChatAgentsDict(maxsize=100)
         self.topic_manager = TopicManager()
         self.voice_handler = VoiceHandler(bot=self, settings=self.settings)
 

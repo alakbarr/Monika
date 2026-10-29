@@ -765,6 +765,8 @@ class IsolatedStrategyBacktestHarness:
         d1_idx = 0
 
         while i < len(primary_candles) - 5:
+            if i % 25 == 0:
+                await asyncio.sleep(0)
             current_bar = primary_candles[i]
             cur_time = current_bar.get("time") or datetime.now(timezone.utc)
 

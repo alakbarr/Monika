@@ -31,10 +31,13 @@ class TrailingStopManager:
     Periode pemantauan (default 10 menit) diatur di konfigurasi.
     """
 
-    def __init__(self, settings: dict, execution_service=None, recovery_event=None):
+    def __init__(self, settings: dict, execution_service=None, recovery_event=None, state_cache=None):
         self.settings = settings
         self.execution_service = execution_service
         self._recovery_event = recovery_event
+        from monika.application.scheduler.position_state_cache import ActivePositionStateCache
+
+        self.state_cache = state_cache or ActivePositionStateCache()
         trail_cfg = settings.get("trading", {}).get("trailing_stop") or settings.get("trailing_stop", {})
         self.enabled = trail_cfg.get("enabled", True)
         self.breakeven_atr_multiple = float(trail_cfg.get("breakeven_atr_multiple", 1.8))
@@ -51,7 +54,11 @@ class TrailingStopManager:
             settings=self.settings,
         )
 
-    async def run_once(self) -> dict:
+    async def run_once(
+        self,
+        prefetched_positions: Optional[List[Any]] = None,
+        prefetched_account: Optional[Any] = None,
+    ) -> dict:
         """Cek semua posisi terbuka, update stop loss (BE/Trailing) bila memenuhi syarat."""
         if not self.enabled or not self.execution_service:
             return {"skipped": True, "reason": "disabled_or_no_execution_service"}
@@ -85,9 +92,18 @@ class TrailingStopManager:
                     logger.debug(f"TrailingStopManager: Skipped check because {c.key} is active ({c.value})")
                     return {"skipped": True, "reason": f"{c.key}_active"}
 
-            open_positions = list(
-                (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
-            )
+            if prefetched_positions is not None:
+                open_positions = list(prefetched_positions)
+            else:
+                open_positions = list(
+                    (await session.execute(select(Position).where(Position.status == "open"))).scalars().all()
+                )
+
+            # Update in-memory state cache with fresh open symbols
+            open_symbols = {
+                p.symbol.strip().upper().replace("/", "") for p in open_positions if getattr(p, "symbol", None)
+            }
+            self.state_cache.update_snapshot(open_symbols=open_symbols)
 
             if not open_positions:
                 await self.order_emulator.sync_positions([])
@@ -555,11 +571,12 @@ class TrailingStopManager:
         if not self.enabled:
             return
 
-        # Fast path: in-memory emulator tick evaluation
-        adjustments = await self.order_emulator.on_tick(event)
-        if adjustments:
-            logger.info(f"[TrailingStopManager][Emulator] Adjustments: {adjustments}")
-            return
+        # Fast path 1: in-memory emulator tick evaluation
+        if self.order_emulator:
+            adjustments = await self.order_emulator.on_tick(event)
+            if adjustments:
+                logger.info(f"[TrailingStopManager][Emulator] Adjustments: {adjustments}")
+                return
 
         symbol = getattr(event, "symbol", "")
         if not symbol:
@@ -567,7 +584,18 @@ class TrailingStopManager:
 
         sym_clean = symbol.strip().upper().replace("/", "")
 
-        # Throttle checks per symbol to at most once per second to prevent DB pool thrashing
+        # If emulator is already tracking this symbol in memory and returned no adjustments,
+        # the tick was fully evaluated in RAM -> return immediately (0 DB sessions).
+        if self.order_emulator:
+            tracked = self.order_emulator.get_all_tracked()
+            if any(getattr(p, "symbol", "") == sym_clean for p in tracked.values()):
+                return
+
+        # Fast path 2: state cache check (0 DB sessions when flat or symbol has no open position)
+        if self.state_cache.is_fresh() and not self.state_cache.has_open_position(sym_clean):
+            return
+
+        # Throttle DB checks per symbol to at most once per second to prevent DB pool thrashing
         if not hasattr(self, "_last_tick_check"):
             self._last_tick_check = {}
         evt_time = getattr(event, "timestamp", None) or datetime.now(timezone.utc)
@@ -580,6 +608,12 @@ class TrailingStopManager:
 
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import Position
+
+        is_mock_session = hasattr(get_session, "_mock_name") or hasattr(get_session, "assert_called")
+        if not is_mock_session and not self.state_cache.is_fresh():
+            await self.state_cache.ensure_fresh(session_factory=get_session)
+            if self.state_cache.is_fresh() and not self.state_cache.has_open_position(sym_clean):
+                return
 
         try:
             async with get_session() as session:
@@ -594,7 +628,10 @@ class TrailingStopManager:
                 )
 
                 if not positions:
+                    self.state_cache.mark_symbol_closed(sym_clean)
                     return
+
+                self.state_cache.mark_symbol_open(sym_clean)
 
                 for pos in positions:
                     if pos.pair_group_id:

@@ -257,18 +257,46 @@ if %EXIT_CODE% equ 0 (
     exit /b 0
 )
 
+if %EXIT_CODE% equ 2 (
+    echo.
+    echo ============================================================
+    echo [*] Emergency restart requested (exit code 2).
+    echo [*] Automatically restarting Monika trading daemon in 5 seconds...
+    echo ============================================================
+    %SystemRoot%\System32\timeout.exe /t 5 >nul 2>&1 || ping 127.0.0.1 -n 6 >nul 2>&1
+    goto :run_loop
+)
+
+if "%MONIKA_AUTO_RESTART%"=="1" (
+    echo.
+    echo ============================================================
+    echo [*] MONIKA_AUTO_RESTART=1 active.
+    echo [*] Automatically restarting Monika trading daemon in 5 seconds...
+    echo ============================================================
+    %SystemRoot%\System32\timeout.exe /t 5 >nul 2>&1 || ping 127.0.0.1 -n 6 >nul 2>&1
+    goto :run_loop
+)
+
 echo.
 echo ============================================================
 echo [!] Monika agent exited with code %EXIT_CODE%.
 echo ============================================================
-echo   [R] Retry running Monika
+echo   [R] Retry running Monika (Default - auto-restart in 15s)
 echo   [D] Run Doctor diagnostics and auto-repair (doctor --fix)
 echo   [S] Run Setup Wizard to reconfigure settings
 echo   [T] Switch Package Tier (Trial ^<--^> Full)
 echo   [Q] Quit
 echo ============================================================
 set "ERR_CHOICE=r"
-set /p ERR_CHOICE="Select an action [R=Retry / D=Doctor / S=Setup / T=Switch Tier / Q=Quit, default: R]: "
+%SystemRoot%\System32\choice.exe /c RDSTQ /n /t 15 /d R /m "Select an action [R/D/S/T/Q, auto-retry in 15s, default: R]: " 2>nul
+if %ERRORLEVEL% equ 1 set "ERR_CHOICE=r"
+if %ERRORLEVEL% equ 2 set "ERR_CHOICE=d"
+if %ERRORLEVEL% equ 3 set "ERR_CHOICE=s"
+if %ERRORLEVEL% equ 4 set "ERR_CHOICE=t"
+if %ERRORLEVEL% equ 5 set "ERR_CHOICE=q"
+if %ERRORLEVEL% equ 0 (
+    set /p ERR_CHOICE="Select an action [R=Retry / D=Doctor / S=Setup / T=Switch Tier / Q=Quit, default: R]: "
+)
 
 if /i "!ERR_CHOICE!"=="d" (
     echo.

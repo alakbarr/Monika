@@ -788,6 +788,7 @@ Monika/
 │       │   │   ├── playbook_curator.py
 │       │   │   ├── position_exit_reviewer.py
 │       │   │   ├── position_guardian.py
+│       │   │   ├── position_state_cache.py
 │       │   │   ├── position_supervisor.py
 │       │   │   ├── post_release_analyzer.py
 │       │   │   ├── scraper_runner.py
@@ -2453,6 +2454,7 @@ Monika/
 │   │   ├── test_hybrid_state.py
 │   │   ├── test_migration_0010_downgrade.py
 │   │   ├── test_models.py
+│   │   ├── test_phase4_memory_and_cleanup.py
 │   │   ├── test_repositories.py
 │   │   ├── test_schema_completeness_and_migrations.py
 │   │   ├── test_session_fts_and_rewind.py
@@ -2557,6 +2559,7 @@ Monika/
 │   │   ├── test_microstructure.py
 │   │   ├── test_pattern_similarity.py
 │   │   ├── test_phase10_regression.py
+│   │   ├── test_phase3_performance_and_vectorization.py
 │   │   ├── test_qlib_and_wq_factors.py
 │   │   ├── test_regime_detector.py
 │   │   ├── test_structure.py
@@ -2676,6 +2679,7 @@ Monika/
 │   │   ├── test_playbook_curator.py
 │   │   ├── test_position_exit_reviewer.py
 │   │   ├── test_position_guardian_kill_switch_latch.py
+│   │   ├── test_position_state_cache.py
 │   │   ├── test_post_release_analyzer.py
 │   │   ├── test_report_and_safehaven.py
 │   │   ├── test_scraper_runner.py
@@ -3143,4 +3147,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 268 | **Total Tracked Files**: 2845
+**Total Tracked Directories**: 268 | **Total Tracked Files**: 2849

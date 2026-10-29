@@ -1453,7 +1453,7 @@ class StrategySynthesisScheduler:
                 logger.debug(f"[StrategySynthesis] Ruff formatting skipped for {strategy_id}: {fe}")
 
             file_path.write_text(formatted_code, encoding="utf-8")
-            lint_ok, lint_err = self._lint_check_code(formatted_code)
+            lint_ok, lint_err = await asyncio.to_thread(self._lint_check_code, formatted_code)
             if not lint_ok:
                 logger.error(f"[StrategySynthesis] Post-write lint verification failed for {strategy_id}: {lint_err}")
                 if file_path.exists():

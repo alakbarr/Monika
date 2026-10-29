@@ -68,12 +68,14 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             settings: Dictionary konfigurasi lengkap atau khusus trading.
         """
         super().__init__(session=session, settings=settings)
+        self._last_analyzed_candle: dict[tuple[str, str], tuple[Any, float, float, float]] = {}
+        self._last_analysis_counts: dict[tuple[str, str], dict[str, int]] = {}
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    async def analyze(self, symbol: str, timeframe: str) -> dict[str, int]:
+    async def analyze(self, symbol: str, timeframe: str, force: bool = False) -> dict[str, int]:
         """
         Menjalankan analisis struktur pasar (Swing, S/R, Liq, FVG, OB, BOS).
 
@@ -81,8 +83,6 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             Dict metrik jumlah data yang tersimpan.
         """
         try:
-            await self._prune_old_data(symbol, timeframe)
-
             df = await self._load_ohlcv(symbol, timeframe)
             if df is None or len(df) < (self.swing_window * 2 + 3):
                 logger.warning(f"Insufficient data for structure analysis: {symbol}/{timeframe}")
@@ -94,6 +94,25 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
                     "order_blocks": 0,
                     "struct_breaks": 0,
                 }
+
+            # Candle timestamp & OHLC delta-check to eliminate redundant DB rewrites
+            last_ts = df.index[-1]
+            last_high = float(df["high"].iloc[-1])
+            last_low = float(df["low"].iloc[-1])
+            last_close = float(df["close"].iloc[-1])
+            candle_sig = (last_ts, last_high, last_low, last_close)
+
+            if not force:
+                cached_sig = self._last_analyzed_candle.get((symbol, timeframe))
+                if cached_sig == candle_sig:
+                    cached_counts = self._last_analysis_counts.get((symbol, timeframe))
+                    if cached_counts is not None:
+                        logger.debug(
+                            f"Structure delta-check: {symbol}/{timeframe} candle unchanged ({last_ts}), skipping recompute."
+                        )
+                        return dict(cached_counts)
+
+            await self._prune_old_data(symbol, timeframe)
 
             if not self.session:
                 return {}
@@ -179,6 +198,9 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             }
             if self.session:
                 await self.session.commit()
+
+            self._last_analyzed_candle[(symbol, timeframe)] = candle_sig
+            self._last_analysis_counts[(symbol, timeframe)] = dict(counts)
 
             logger.debug(
                 f"Structure analysis {symbol}/{timeframe}: "

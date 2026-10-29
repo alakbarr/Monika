@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from monika.application.scheduler.order_reconciler import OrderReconciler
     from monika.application.scheduler.position_exit_reviewer import PositionExitReviewer
     from monika.application.scheduler.position_guardian import PositionGuardian
+    from monika.application.scheduler.position_state_cache import ActivePositionStateCache
     from monika.application.scheduler.position_supervisor import PositionSupervisor
     from monika.application.scheduler.post_release_analyzer import PostReleaseAnalyzer
     from monika.application.scheduler.strategy_synthesis_scheduler import StrategySynthesisScheduler
@@ -67,6 +68,7 @@ class AgentBuilderMixin:
     position_guardian: Optional[PositionGuardian]
     order_reconciler: Optional[OrderReconciler]
     active_calendar_poller: Optional[ActiveCalendarPoller]
+    position_state_cache: Optional[ActivePositionStateCache]
     trailing_stop_manager: Optional[TrailingStopManager]
     position_supervisor: Optional[PositionSupervisor]
     digest_slice_scheduler: Optional[DigestSliceScheduler]
@@ -195,10 +197,21 @@ class AgentBuilderMixin:
             recovery_event=self._recovery_complete,
         )
 
+        from monika.application.scheduler.position_state_cache import get_position_state_cache
+        from monika.core.paths import DATA_DIR
+
+        self.position_state_cache = get_position_state_cache()
+        self.position_state_cache.update_snapshot(
+            open_symbols=set(),
+            orphan_symbols=set(),
+            disk_kill_active=(DATA_DIR / "kill_switch.flag").exists(),
+        )
+
         self.position_guardian = PositionGuardian(
             self.settings,
             execution_service=self.execution_service,
             recovery_event=self._recovery_complete,
+            state_cache=self.position_state_cache,
         )
         from monika.application.scheduler.order_reconciler import OrderReconciler
 
@@ -218,6 +231,7 @@ class AgentBuilderMixin:
             self.settings,
             execution_service=self.execution_service,
             recovery_event=self._recovery_complete,
+            state_cache=self.position_state_cache,
         )
 
         try:
@@ -229,9 +243,19 @@ class AgentBuilderMixin:
             )
             if self.position_guardian is not None and hasattr(self.position_guardian, "check_and_protect"):
                 guardian = self.position_guardian
+                _last_guardian_time = [0.0]
+                _last_pos_count = [0]
 
                 async def _guardian_eval(pos: Any, acct: Any) -> None:
-                    await guardian.check_and_protect()
+                    # Deduplicate 10s evaluation: run at most once per 60s unless position count changes
+                    import time
+
+                    now_m = time.monotonic()
+                    pos_count = len(pos) if pos else 0
+                    if pos_count != _last_pos_count[0] or (now_m - _last_guardian_time[0]) >= 60.0:
+                        _last_guardian_time[0] = now_m
+                        _last_pos_count[0] = pos_count
+                        await guardian.check_and_protect()
 
                 self.position_supervisor.register_evaluator(
                     "position_guardian",
@@ -241,6 +265,23 @@ class AgentBuilderMixin:
                 trailing_mgr = self.trailing_stop_manager
 
                 async def _trailing_eval(pos: Any, acct: Any) -> None:
+                    # Ensure state cache stays fresh across 10s supervisor cycles (including paper-trading DB positions)
+                    if not trailing_mgr.state_cache.is_fresh():
+                        await trailing_mgr.state_cache.ensure_fresh()
+                    # Deduplicate: if no open positions in MT5 and no open positions in DB cache, skip redundant polling
+                    if not pos and not trailing_mgr.state_cache.has_any_open_positions:
+                        if trailing_mgr.order_emulator and trailing_mgr.order_emulator.get_all_tracked():
+                            await trailing_mgr.order_emulator.sync_positions([])
+                        return
+
+                    # Merge MT5 snapshot symbols into state cache
+                    if pos:
+                        open_syms = trailing_mgr.state_cache.open_symbols | {
+                            str(p.get("symbol", "")).strip().upper().replace("/", "")
+                            for p in pos
+                            if isinstance(p, dict) and p.get("symbol")
+                        }
+                        trailing_mgr.state_cache.update_snapshot(open_symbols=open_syms)
                     await trailing_mgr.run_once()
 
                 self.position_supervisor.register_evaluator(

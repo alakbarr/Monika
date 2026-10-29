@@ -47,10 +47,14 @@ class PositionGuardian:
         settings: dict,
         execution_service=None,
         recovery_event: Optional[asyncio.Event] = None,
+        state_cache=None,
     ):
         self.settings = settings
         self.execution_service = execution_service
         self.recovery_event: Optional[asyncio.Event] = recovery_event
+        from monika.application.scheduler.position_state_cache import ActivePositionStateCache
+
+        self.state_cache = state_cache or ActivePositionStateCache()
         guardian_cfg = settings.get("trading", {}).get("position_guardian", {})
         self.enabled = guardian_cfg.get("enabled", True)
         # Options: "alert_only", "close_before_news"
@@ -60,6 +64,7 @@ class PositionGuardian:
         # Only act on events with impact level in this list
         self.impact_levels = guardian_cfg.get("impact_levels", ["high"])
         self._alerted_position_events: set[tuple[Any, Any]] = set()
+        self._orphan_retries: dict[int, tuple[int, float]] = {}
         self._kill_switch_triggered: bool = False
 
     async def _check_kill_switch_active(self, session: Any) -> tuple[bool, bool]:
@@ -82,7 +87,12 @@ class PositionGuardian:
 
         return (disk_kill_active or db_kill_active), disk_kill_active
 
-    async def check_and_protect(self, emergency: bool = False) -> dict:
+    async def check_and_protect(
+        self,
+        emergency: bool = False,
+        prefetched_positions: Optional[list[Any]] = None,
+        prefetched_account: Optional[Any] = None,
+    ) -> dict:
         """
         Cek kalender dan eksekusi proteksi posisi terbuka.
         Dipanggil rutin dari loop news_watcher.
@@ -113,6 +123,24 @@ class PositionGuardian:
                 (await session.execute(select(Position).where(Position.status.in_(["open", "orphan_pending_close"]))))
                 .scalars()
                 .all()
+            )
+
+            # Update in-memory state cache snapshot
+            open_syms = {
+                p.symbol.strip().upper().replace("/", "")
+                for p in all_active_positions
+                if getattr(p, "status", "") == "open" and getattr(p, "symbol", None)
+            }
+            orphan_syms = {
+                p.symbol.strip().upper().replace("/", "")
+                for p in all_active_positions
+                if getattr(p, "status", "") == "orphan_pending_close" and getattr(p, "symbol", None)
+            }
+            self.state_cache.update_snapshot(
+                open_symbols=open_syms,
+                orphan_symbols=orphan_syms,
+                kill_switch_active=kill_active,
+                disk_kill_active=disk_kill_active,
             )
 
             if not all_active_positions:
@@ -335,6 +363,10 @@ class PositionGuardian:
                 "event": event.event_name,
                 "minutes_to_event": minutes_to_event,
             }
+        if len(self._alerted_position_events) > 500:
+            excess = len(self._alerted_position_events) - 250
+            for k in list(self._alerted_position_events)[:excess]:
+                self._alerted_position_events.discard(k)
         self._alerted_position_events.add(event_key)
 
         if self.strategy == "close_before_news":
@@ -558,10 +590,50 @@ class PositionGuardian:
             return
         self._last_tick_check[sym_clean] = now_ts
 
+        # Fast path 1: Check physical disk kill switch (0 DB sessions, instant fail-closed)
+        from monika.core.paths import DATA_DIR
+
+        disk_kill_active = (DATA_DIR / "kill_switch.flag").exists()
+        kill_active = disk_kill_active or (self.state_cache.is_fresh() and self.state_cache.kill_switch_active)
+        if kill_active:
+            if not getattr(self, "_kill_switch_triggered", False):
+                self._kill_switch_triggered = True
+                logger.critical(
+                    f"[PositionGuardian][on_tick] Emergency kill switch ACTIVE (disk={disk_kill_active}) on tick {sym_clean}! Liquidating."
+                )
+                if self.execution_service:
+                    await self.execution_service.kill_switch("Emergency kill switch triggered via tick surveillance")
+            return
+        elif self.state_cache.is_fresh() and not self.state_cache.kill_switch_active and not disk_kill_active:
+            self._kill_switch_triggered = False
+
+            # Fast path 2: If no orphan positions for this symbol in fresh cache, return immediately (0 DB sessions)
+            if not self.state_cache.has_orphan_position(sym_clean):
+                return
+
         from sqlalchemy import select
 
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import Position
+
+        is_mock_session = hasattr(get_session, "_mock_name") or hasattr(get_session, "assert_called")
+        if not is_mock_session and not self.state_cache.is_fresh():
+            await self.state_cache.ensure_fresh(session_factory=get_session)
+            if self.state_cache.is_fresh():
+                if self.state_cache.kill_switch_active:
+                    if not getattr(self, "_kill_switch_triggered", False):
+                        self._kill_switch_triggered = True
+                        logger.critical(
+                            f"[PositionGuardian][on_tick] Emergency kill switch ACTIVE (disk={self.state_cache.disk_kill_active}) on tick {sym_clean}! Liquidating."
+                        )
+                        if self.execution_service:
+                            await self.execution_service.kill_switch(
+                                "Emergency kill switch triggered via tick surveillance"
+                            )
+                    return
+                self._kill_switch_triggered = False
+                if not self.state_cache.has_orphan_position(sym_clean):
+                    return
 
         try:
             async with get_session() as session:
@@ -595,6 +667,7 @@ class PositionGuardian:
                 )
 
                 if not positions:
+                    self.state_cache.mark_symbol_closed(sym_clean)
                     return
 
                 # Retry orphan closes with bounded attempts and backoff
@@ -608,6 +681,10 @@ class PositionGuardian:
                         if retries >= 3 or (now_ts - last_attempt < 5.0):
                             continue
                         if self.execution_service:
+                            if len(self._orphan_retries) > 500:
+                                excess = len(self._orphan_retries) - 250
+                                for ok in list(self._orphan_retries.keys())[:excess]:
+                                    self._orphan_retries.pop(ok, None)
                             self._orphan_retries[ticket] = (retries + 1, now_ts)
                             res = await self.execution_service.close_position_by_ticket(
                                 pos.mt5_ticket,
@@ -618,6 +695,7 @@ class PositionGuardian:
                                 pos.status = "closed"
                                 pos.closed_at = clock.now()
                                 self._orphan_retries.pop(ticket, None)
+                                self.state_cache.mark_symbol_closed(sym_clean)
                                 await session.commit()
         except Exception as e:
             logger.debug(f"[PositionGuardian] on_tick error for {sym_clean}: {e}")

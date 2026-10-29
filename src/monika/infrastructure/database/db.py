@@ -388,6 +388,16 @@ def _get_write_lock() -> asyncio.Lock:
     except RuntimeError:
         loop = None
     if loop not in _SQLITE_WRITE_LOCKS:
+        if len(_SQLITE_WRITE_LOCKS) > 32:
+            dead_loops = [
+                lp for lp in _SQLITE_WRITE_LOCKS if lp is not None and getattr(lp, "is_closed", lambda: False)()
+            ]
+            for dl in dead_loops:
+                _SQLITE_WRITE_LOCKS.pop(dl, None)
+            if len(_SQLITE_WRITE_LOCKS) > 32:
+                unlocked = [lp for lp, lk in _SQLITE_WRITE_LOCKS.items() if not lk.locked()]
+                for ul in unlocked[:16]:
+                    _SQLITE_WRITE_LOCKS.pop(ul, None)
         _SQLITE_WRITE_LOCKS[loop] = asyncio.Lock()
     return _SQLITE_WRITE_LOCKS[loop]
 
@@ -499,6 +509,13 @@ class _ExecutionLocksDict(dict):
                 if isinstance(k, tuple) and len(k) == 2 and k[1] == key:
                     return v
         return super().__getitem__(key)
+
+    def setdefault(self, key: Any, default: Any = None) -> asyncio.Lock:
+        if key not in self and len(self) >= 512:
+            unlocked = [k for k, lk in list(self.items()) if isinstance(lk, asyncio.Lock) and not lk.locked()]
+            for uk in unlocked[:256]:
+                self.pop(uk, None)
+        return super().setdefault(key, default)
 
 
 _IN_MEMORY_EXECUTION_LOCKS: dict[Any, asyncio.Lock] = _ExecutionLocksDict()

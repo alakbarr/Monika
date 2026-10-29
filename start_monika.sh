@@ -206,17 +206,38 @@ while true; do
         exit 0
     fi
 
+    if [ $EXIT_CODE -eq 2 ]; then
+        echo ""
+        echo "============================================================"
+        echo "[*] Emergency restart requested (exit code 2)."
+        echo "[*] Automatically restarting Monika trading daemon in 5 seconds..."
+        echo "============================================================"
+        sleep 5
+        continue
+    fi
+
+    if [ "${MONIKA_AUTO_RESTART:-0}" = "1" ]; then
+        echo ""
+        echo "============================================================"
+        echo "[*] MONIKA_AUTO_RESTART=1 active."
+        echo "[*] Automatically restarting Monika trading daemon in 5 seconds..."
+        echo "============================================================"
+        sleep 5
+        continue
+    fi
+
     echo ""
     echo "============================================================"
     echo "[!] Monika agent exited with code ${EXIT_CODE}."
     echo "============================================================"
-    echo "  [R] Retry running Monika"
+    echo "  [R] Retry running Monika (Default - auto-restart in 15s)"
     echo "  [D] Run Doctor diagnostics and auto-repair (doctor --fix)"
     echo "  [S] Run Setup Wizard to reconfigure settings"
     echo "  [T] Switch Package Tier (Trial <--> Full)"
     echo "  [Q] Quit"
     echo "============================================================"
-    read -r -p "Select an action [R/D/S/T/Q, default: R]: " ERR_CHOICE || true
+    ERR_CHOICE=""
+    read -r -t 15 -p "Select an action [R/D/S/T/Q, auto-retry in 15s, default: R]: " ERR_CHOICE || true
     ERR_CHOICE=$(echo "${ERR_CHOICE:-r}" | tr '[:upper:]' '[:lower:]')
 
     case "$ERR_CHOICE" in

@@ -274,9 +274,9 @@ def protect_live_telegram_in_tests(monkeypatch, request):
 
 
 @pytest.fixture(autouse=True)
-def protect_llm_provider_network_and_pools(monkeypatch):
+def protect_llm_provider_network_and_pools(monkeypatch, request):
     """
-    Mencegah provider LLM (OpenRouter, OpenAI, dll.) menginstansiasi AsyncOpenAI transport nyata
+    Mencegah provider LLM (OpenRouter, OpenAI, Gemini, dll.) menginstansiasi transport jaringan nyata
     dan membersihkan client pool antar pengujian untuk mencegah kebocoran socket / transport unclosed.
     """
     try:
@@ -307,6 +307,27 @@ def protect_llm_provider_network_and_pools(monkeypatch):
         monkeypatch.setattr("openai.AsyncOpenAI", MagicMock(side_effect=make_mock_async_openai))
     except Exception:
         pass
+
+    is_live_or_network = (
+        request.node.get_closest_marker("live") is not None or request.node.get_closest_marker("network") is not None
+    )
+    if not is_live_or_network:
+        try:
+            from unittest.mock import AsyncMock
+            import monika.infrastructure.providers.gemini_provider as gem_mod
+
+            monkeypatch.setattr(
+                gem_mod,
+                "streaming_request",
+                AsyncMock(side_effect=RuntimeError("Offline test environment: live Gemini streaming blocked")),
+            )
+            monkeypatch.setattr(
+                gem_mod,
+                "fetch_with_retry",
+                AsyncMock(return_value=None),
+            )
+        except Exception:
+            pass
 
     yield
 

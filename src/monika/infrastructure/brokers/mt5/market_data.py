@@ -611,11 +611,10 @@ class MT5MarketDataMixin(MT5MixinBase):
         Fetch latest ticks asynchronously through the serialized worker queue if available,
         preventing concurrent thread-affine COM crashes in MetaTrader5 DLL.
         """
-        if hasattr(self, "_run_in_executor"):
-            return await self._run_in_executor(self._fetch_ticks_sync, symbols, priority=PRIORITY_NORMAL, timeout=5.0)
-        loop = asyncio.get_running_loop()
-        executor = getattr(self, "_executor", None)
-        return await loop.run_in_executor(executor, self._fetch_ticks_sync, symbols)
+        res = await self._run(self._fetch_ticks_sync, symbols, priority=PRIORITY_NORMAL, timeout=5.0)
+        if isinstance(res, list):
+            return res
+        return []
 
     def _tick_poller_worker(
         self,

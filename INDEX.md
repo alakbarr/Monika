@@ -10510,11 +10510,34 @@
 - **Path**: [`src/monika/application/scheduler/position_guardian.py`](src/monika/application/scheduler/position_guardian.py)
 - **Classes**:
   - `class PositionGuardian`: Memeriksa kalender ekonomi untuk event high-impact dan melindungi posisi.
-    - `__init__(settings: dict, execution_service, recovery_event: Optional[asyncio.Event])`
-    - `async check_and_protect(emergency: bool) -> dict` - *Cek kalender dan eksekusi proteksi posisi terbuka.*
+    - `__init__(settings: dict, execution_service, recovery_event: Optional[asyncio.Event], ...)`
+    - `async check_and_protect(emergency: bool, prefetched_positions: Optional[list[Any]], prefetched_account: Optional[Any]) -> dict` - *Cek kalender dan eksekusi proteksi posisi terbuka.*
     - `async check_friday_close_protection() -> dict` - *Executed between 20:00-21:30 UTC every Friday.*
     - `async on_tick(event: Any) -> None` - *EventBus subscriber handler for TickPriceEvent.*
     - `async evaluate_position_threat_with_jev(position: Any, current_price: Optional[float]) -> dict` - *Sub-100ms real-time position threat assessment via TypeSafe Jev System One.*
+
+#### `position_state_cache.py` - *Package: monika.application.scheduler*
+- **Path**: [`src/monika/application/scheduler/position_state_cache.py`](src/monika/application/scheduler/position_state_cache.py)
+- **Classes**:
+  - `class ActivePositionStateCache`: In-memory state cache of active positions and kill switch status.
+    - `__init__(ttl_seconds: float) -> None`
+    - `is_fresh(now_mono: Optional[float]) -> bool` - *Returns True if cache was refreshed within ttl_seconds.*
+    - `invalidate() -> None` - *Force the cache to be considered stale immediately.*
+    - `mark_symbol_open(symbol: str) -> None` - *Record a symbol as having an active position.*
+    - `mark_symbol_closed(symbol: str) -> None` - *Remove a symbol from open and orphan tracking.*
+    - `update_snapshot(open_symbols: Set[str], orphan_symbols: Optional[Set[str]], kill_switch_active: Optional[bool], ...) -> None` - *Synchronously update the snapshot from an external authoritative source (e.g., PositionSupervisor).*
+    - `kill_switch_active() -> bool` - *True if either database or disk kill switch is latched.*
+    - `disk_kill_active() -> bool` - *True if physical kill_switch.flag exists on disk.*
+    - `has_any_open_positions() -> bool` - *True if there is at least one tracked open position.*
+    - `open_symbols() -> Set[str]` - *Set of currently tracked open position symbols.*
+    - `orphan_symbols() -> Set[str]` - *Set of currently tracked orphan position symbols.*
+    - `has_open_position(symbol: str) -> bool` - *Check if an open position exists for the given symbol.*
+    - `has_orphan_position(symbol: str) -> bool` - *Check if an orphan position exists for the given symbol.*
+    - `has_active_or_orphan_position(symbol: str) -> bool` - *Check if an open or orphan position exists for the given symbol.*
+    - `async ensure_fresh(session_factory: Any) -> None` - *Refreshes cache from database if TTL expired.*
+- **Top-Level Functions**:
+  - `get_position_state_cache() -> ActivePositionStateCache`: Singleton getter for shared application-wide ActivePositionStateCache.
+  - `reset_position_state_cache() -> None`: Reset singleton cache for test isolation and environment reloads.
 
 #### `position_supervisor.py` - *Unified Position Supervisor (Phase 8 - I1).*
 - **Path**: [`src/monika/application/scheduler/position_supervisor.py`](src/monika/application/scheduler/position_supervisor.py)
@@ -10591,8 +10614,8 @@
 - **Path**: [`src/monika/application/scheduler/trailing_stop_manager.py`](src/monika/application/scheduler/trailing_stop_manager.py)
 - **Classes**:
   - `class TrailingStopManager`: Mengelola trailing stop otomatis untuk setiap posisi terbuka.
-    - `__init__(settings: dict, execution_service, recovery_event)`
-    - `async run_once() -> dict` - *Cek semua posisi terbuka, update stop loss (BE/Trailing) bila memenuhi syarat.*
+    - `__init__(settings: dict, execution_service, recovery_event, ...)`
+    - `async run_once(prefetched_positions: Optional[List[Any]], prefetched_account: Optional[Any]) -> dict` - *Cek semua posisi terbuka, update stop loss (BE/Trailing) bila memenuhi syarat.*
     - `async start() -> None` - *Looping pemantauan trailing stop (continuous).*
     - `stop() -> None`
     - `async on_tick(event: Any) -> None` - *EventBus subscriber handler for TickPriceEvent.*
@@ -10691,7 +10714,7 @@
 - **Classes**:
   - `class MarketStructureService(DomainMarketStructureAnalyzer)`: Application Service that detects and persists market structure primitives.
     - `__init__(session: Any, settings: Optional[dict])` - *Args:*
-    - `async analyze(symbol: str, timeframe: str) -> dict[str, int]` - *Menjalankan analisis struktur pasar (Swing, S/R, Liq, FVG, OB, BOS).*
+    - `async analyze(symbol: str, timeframe: str, force: bool) -> dict[str, int]` - *Menjalankan analisis struktur pasar (Swing, S/R, Liq, FVG, OB, BOS).*
     - `async analyze_all(symbols: list[str], timeframes: list[str]) -> dict[str, dict[str, int]]` - *Menjalankan analisis untuk kumpulan symbol dan timeframe.*
     - `async get_structure_snapshot(symbol: str, timeframe: str) -> dict` - *Snapshot ringkas struktur pasar (Swings, S/R, FVG, dll).*
 

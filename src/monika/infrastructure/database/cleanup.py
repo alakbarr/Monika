@@ -13,22 +13,30 @@ from monika.infrastructure.database.models import (
     ActivityLog,
     AssetAnalysis,
     ConfluenceFactorOutcome,
+    CycleEvent,
+    CyclePerformance,
+    DebateTranscript,
     EconomicCalendar,
     FundamentalBrief,
     FVGZone,
     LiquidityZone,
+    MacroLiquidityCreditMetric,
     NewsDigest,
     NewsItem,
     OrderBlock,
+    OrderEvent,
     OrderLog,
+    PatternScreeningCache,
     PrescreenLog,
     PriceOHLCV,
     RiskState,
     StructureBreak,
     SwingPoint,
     TechnicalIndicator,
+    TimesFMForecast,
     TokenUsageLog,
     TradingEvent,
+    TradingStateLog,
     VIXData,
 )
 
@@ -89,6 +97,14 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
     prescreen_days = int(retention_cfg.get("prescreen_log", 30))
     digest_days = int(retention_cfg.get("news_digest", 30))
     trading_event_days = int(retention_cfg.get("trading_events", 90))
+    cycle_perf_days = int(retention_cfg.get("cycle_performance", 60))
+    timesfm_days = int(retention_cfg.get("timesfm_forecasts", 30))
+    debate_days = int(retention_cfg.get("debate_transcripts", 30))
+    macro_liq_days = int(retention_cfg.get("macro_liquidity_credit_metrics", 90))
+    pattern_days = int(retention_cfg.get("pattern_screening_cache", 14))
+    cycle_event_days = int(retention_cfg.get("cycle_events", 30))
+    order_event_days = int(retention_cfg.get("order_events", 90))
+    state_log_days = int(retention_cfg.get("trading_state_logs", 30))
 
     now = datetime.now(timezone.utc)
     total_deleted = 0
@@ -149,6 +165,14 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
             (PrescreenLog, "checked_at", prescreen_days, "PrescreenLog"),
             (NewsDigest, "generated_at", digest_days, "NewsDigest"),
             (TradingEvent, "ts_created", trading_event_days, "TradingEvent"),
+            (CyclePerformance, "cycle_at", cycle_perf_days, "CyclePerformance"),
+            (TimesFMForecast, "generated_at", timesfm_days, "TimesFMForecast"),
+            (DebateTranscript, "created_at", debate_days, "DebateTranscript"),
+            (MacroLiquidityCreditMetric, "record_date", macro_liq_days, "MacroLiquidityCreditMetric"),
+            (PatternScreeningCache, "screened_at", pattern_days, "PatternScreeningCache"),
+            (CycleEvent, "timestamp", cycle_event_days, "CycleEvent"),
+            (OrderEvent, "timestamp", order_event_days, "OrderEvent"),
+            (TradingStateLog, "recorded_at", state_log_days, "TradingStateLog"),
         ]
 
         for model, col_name, days, label in other_targets:
@@ -286,6 +310,19 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
                 logger.info(f"MarketChronicle weekly consolidation successful: {chronicle_res.get('stats')}")
         except Exception as chron_err:
             logger.debug(f"MarketChronicle lifecycle maintenance skip: {chron_err}")
+
+        # ---- LangGraph Checkpointer Disk Database Pruning ----
+        try:
+            from monika.core.paths import BASE_DIR
+            from monika.infrastructure.database.db import is_running_under_test_suite
+            from monika.infrastructure.graph.checkpointers.sqlite_checkpointer import SqliteCheckpointSaver
+
+            cp_db_path = BASE_DIR / ".agent_state" / "checkpoints.sqlite"
+            if not is_running_under_test_suite() and cp_db_path.exists():
+                checkpointer = SqliteCheckpointSaver(db_path=str(cp_db_path))
+                await checkpointer.aprune_disk_checkpoints(max_threads=500, retention_days=7)
+        except Exception as cp_err:
+            logger.debug(f"SqliteCheckpointSaver disk pruning skip: {cp_err}")
 
         await session.commit()
         if total_deleted > 0:

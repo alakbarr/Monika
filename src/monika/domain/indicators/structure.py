@@ -19,6 +19,7 @@ For persistence and loading orchestration, see monika.application.services.marke
 
 from __future__ import annotations
 
+import bisect
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -28,6 +29,22 @@ import numpy as np
 import pandas as pd
 
 logger = logging.getLogger("TradingAgent.Structure")
+
+
+def _search_ts(timestamps: list[datetime], target_ts: Any, side: str = "right") -> int:
+    """Find index in sorted timestamps list using bisect, ensuring timezone alignment."""
+    if not timestamps or target_ts is None:
+        return 0
+    ref_tz = getattr(timestamps[0], "tzinfo", None)
+    t = target_ts.to_pydatetime() if hasattr(target_ts, "to_pydatetime") else target_ts
+    t_tz = getattr(t, "tzinfo", None)
+    if ref_tz is not None and t_tz is None:
+        t = t.replace(tzinfo=timezone.utc)
+    elif ref_tz is None and t_tz is not None:
+        t = t.replace(tzinfo=None)
+    if side == "left":
+        return bisect.bisect_left(timestamps, t)
+    return bisect.bisect_right(timestamps, t)
 
 
 @dataclass
@@ -116,45 +133,50 @@ def find_swings(df: pd.DataFrame, swing_window: int = 5) -> tuple[pd.DataFrame, 
         Tuple of DataFrames (swing_highs, swing_lows) containing [timestamp, price].
     """
     n = max(1, swing_window)
+    columns = ["timestamp", "price", "confirmed_at", "confirmation_lag_bars"]
+    if len(df) < 2 * n + 1:
+        return pd.DataFrame(columns=columns), pd.DataFrame(columns=columns)
+
     highs_idx: list[dict[str, Any]] = []
     lows_idx: list[dict[str, Any]] = []
 
     prices_high = np.asarray(df["high"], dtype=float)
     prices_low = np.asarray(df["low"], dtype=float)
-    timestamps = df.index.tolist()
+    timestamps = list(df.index)
+    total_len = len(df)
 
-    for i in range(n, len(df) - n):
+    for i in range(n, total_len - n):
         # Task 5.1: Skip inside bars
         prev_high = prices_high[i - 1]
         prev_low = prices_low[i - 1]
-        is_inside = bool(prices_high[i] <= prev_high and prices_low[i] >= prev_low)
-
-        if is_inside:
+        if prices_high[i] <= prev_high and prices_low[i] >= prev_low:
             continue
 
-        window_h = list(prices_high[i - n : i]) + list(prices_high[i + 1 : i + n + 1])
-        window_l = list(prices_low[i - n : i]) + list(prices_low[i + 1 : i + n + 1])
+        h_val = prices_high[i]
+        l_val = prices_low[i]
 
-        if prices_high[i] > max(window_h):
+        max_surrounding_h = max(prices_high[i - n : i].max(), prices_high[i + 1 : i + n + 1].max())
+        if h_val > max_surrounding_h:
             highs_idx.append(
                 {
                     "timestamp": timestamps[i],
-                    "price": float(prices_high[i]),
-                    "confirmed_at": timestamps[i + n],
-                    "confirmation_lag_bars": n,
-                }
-            )
-        if prices_low[i] < min(window_l):
-            lows_idx.append(
-                {
-                    "timestamp": timestamps[i],
-                    "price": float(prices_low[i]),
+                    "price": float(h_val),
                     "confirmed_at": timestamps[i + n],
                     "confirmation_lag_bars": n,
                 }
             )
 
-    columns = ["timestamp", "price", "confirmed_at", "confirmation_lag_bars"]
+        min_surrounding_l = min(prices_low[i - n : i].min(), prices_low[i + 1 : i + n + 1].min())
+        if l_val < min_surrounding_l:
+            lows_idx.append(
+                {
+                    "timestamp": timestamps[i],
+                    "price": float(l_val),
+                    "confirmed_at": timestamps[i + n],
+                    "confirmation_lag_bars": n,
+                }
+            )
+
     swing_highs = pd.DataFrame(highs_idx) if highs_idx else pd.DataFrame(columns=columns)
     swing_lows = pd.DataFrame(lows_idx) if lows_idx else pd.DataFrame(columns=columns)
 
@@ -177,15 +199,15 @@ def find_sr_zones(
     """
     all_points: list[tuple[float, Any]] = []
     if not swing_highs.empty and "price" in swing_highs.columns:
-        prices_h = [float(p) for p in swing_highs["price"].astype(float).tolist()]
+        prices_h = swing_highs["price"].to_numpy(dtype=float)
         ts_h = swing_highs["timestamp"].tolist()
         for p, t in zip(prices_h, ts_h):
-            all_points.append((p, t))
+            all_points.append((float(p), t))
     if not swing_lows.empty and "price" in swing_lows.columns:
-        prices_l = [float(p) for p in swing_lows["price"].astype(float).tolist()]
+        prices_l = swing_lows["price"].to_numpy(dtype=float)
         ts_l = swing_lows["timestamp"].tolist()
         for p, t in zip(prices_l, ts_l):
-            all_points.append((p, t))
+            all_points.append((float(p), t))
 
     if not all_points:
         return []
@@ -256,23 +278,60 @@ def find_liquidity_zones(
     zones: list[LiquidityZoneData] = []
     now = datetime.now(timezone.utc)
 
+    if len(df) == 0:
+        if not swing_highs.empty and "price" in swing_highs.columns:
+            prices = swing_highs["price"].to_numpy(dtype=float)
+            for p in prices:
+                price = float(p)
+                zones.append(
+                    LiquidityZoneData(
+                        symbol=symbol,
+                        timeframe=timeframe,
+                        zone_high=round(price + price * 0.001, 5),
+                        zone_low=price,
+                        type="above_swing_high",
+                        identified_at=now,
+                    )
+                )
+        if not swing_lows.empty and "price" in swing_lows.columns:
+            prices = swing_lows["price"].to_numpy(dtype=float)
+            for p in prices:
+                price = float(p)
+                zones.append(
+                    LiquidityZoneData(
+                        symbol=symbol,
+                        timeframe=timeframe,
+                        zone_high=price,
+                        zone_low=round(price - price * 0.001, 5),
+                        type="below_swing_low",
+                        identified_at=now,
+                    )
+                )
+        return zones[-10:]
+
+    highs = np.asarray(df["high"], dtype=float)
+    lows = np.asarray(df["low"], dtype=float)
+    closes = np.asarray(df["close"], dtype=float) if "close" in df.columns else highs
+    timestamps = [t.to_pydatetime() if hasattr(t, "to_pydatetime") else t for t in df.index]
+
     # Dynamic buffer based on ATR
     atr_val = 0.0
     if len(df) >= 14:
-        tr_series = np.maximum(
-            df["high"] - df["low"],
-            np.maximum((df["high"] - df["close"].shift(1)).abs(), (df["low"] - df["close"].shift(1)).abs()),
-        )
-        atr_val = float(np.mean(tr_series[-14:]))
+        tr_1 = highs[1:] - lows[1:]
+        tr_2 = np.abs(highs[1:] - closes[:-1])
+        tr_3 = np.abs(lows[1:] - closes[:-1])
+        tr_series = np.maximum(tr_1, np.maximum(tr_2, tr_3))
+        atr_val = float(np.mean(tr_series[-14:])) if len(tr_series) >= 14 else 0.0
 
     # Unswept highs
-    if not swing_highs.empty:
-        for _, row in swing_highs.iterrows():
-            ts = row["timestamp"]
-            price = float(np.asarray(row["price"]).item())
+    if not swing_highs.empty and "price" in swing_highs.columns:
+        sh_prices = swing_highs["price"].to_numpy(dtype=float)
+        sh_timestamps = swing_highs["timestamp"].tolist()
+        for ts, price_val in zip(sh_timestamps, sh_prices):
+            price = float(price_val)
             buffer = (atr_val * 0.15) if atr_val > 0 else (price * 0.001)
-            subsequent_df = df[df.index > ts]
-            if subsequent_df.empty or float(np.max(np.asarray(subsequent_df["high"], dtype=float))) <= price:
+            idx = _search_ts(timestamps, ts, side="right")
+            if idx >= len(highs) or float(highs[idx:].max()) <= price:
                 zones.append(
                     LiquidityZoneData(
                         symbol=symbol,
@@ -285,13 +344,14 @@ def find_liquidity_zones(
                 )
 
     # Unswept lows
-    if not swing_lows.empty:
-        for _, row in swing_lows.iterrows():
-            ts = row["timestamp"]
-            price = float(np.asarray(row["price"]).item())
+    if not swing_lows.empty and "price" in swing_lows.columns:
+        sl_prices = swing_lows["price"].to_numpy(dtype=float)
+        sl_timestamps = swing_lows["timestamp"].tolist()
+        for ts, price_val in zip(sl_timestamps, sl_prices):
+            price = float(price_val)
             buffer = (atr_val * 0.15) if atr_val > 0 else (price * 0.001)
-            subsequent_df = df[df.index > ts]
-            if subsequent_df.empty or float(np.min(np.asarray(subsequent_df["low"], dtype=float))) >= price:
+            idx = _search_ts(timestamps, ts, side="right")
+            if idx >= len(lows) or float(lows[idx:].min()) >= price:
                 zones.append(
                     LiquidityZoneData(
                         symbol=symbol,
@@ -316,18 +376,30 @@ def check_fvg_filled(
 ) -> Optional[datetime]:
     """Mengecek apakah FVG sudah terisi (50% mitigated) oleh pergerakan candle sesudahnya."""
     gap_mid = (gap_high + gap_low) / 2.0
-    for i in range(start_idx, len(ohlcv)):
-        candle = ohlcv.iloc[i]
-        if direction == "bullish":
-            # Filled when price trades down into 50% of the gap
-            if candle["low"] <= gap_mid:
-                ts = candle["timestamp"]
-                return ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
-        else:  # bearish
-            # Filled when price trades up into 50% of the gap
-            if candle["high"] >= gap_mid:
-                ts = candle["timestamp"]
-                return ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
+    n = len(ohlcv)
+    if start_idx >= n:
+        return None
+
+    lows = np.asarray(ohlcv["low"], dtype=float)
+    highs = np.asarray(ohlcv["high"], dtype=float)
+
+    if "timestamp" in ohlcv.columns:
+        ts_source = ohlcv["timestamp"]
+        get_ts = lambda idx: ts_source.iloc[idx]
+    else:
+        ts_source = ohlcv.index
+        get_ts = lambda idx: ts_source[idx]
+
+    if direction == "bullish":
+        hits = np.flatnonzero(lows[start_idx:] <= gap_mid)
+        if len(hits) > 0:
+            ts = get_ts(start_idx + int(hits[0]))
+            return ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
+    else:
+        hits = np.flatnonzero(highs[start_idx:] >= gap_mid)
+        if len(hits) > 0:
+            ts = get_ts(start_idx + int(hits[0]))
+            return ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
     return None
 
 
@@ -342,15 +414,19 @@ def find_fvg(
     An FVG is marked filled when price retraces into the gap.
     """
     zones: list[FVGData] = []
-    ohlcv = df.reset_index()  # bring timestamp into column
-    n = len(ohlcv)
-
+    n = len(df)
     if n < 3:
         return zones
 
+    highs = np.asarray(df["high"], dtype=float)
+    lows = np.asarray(df["low"], dtype=float)
+    timestamps = [t.to_pydatetime() if hasattr(t, "to_pydatetime") else t for t in df.index]
+    ts_array = np.asarray(df.index)
+
     # Compute ATR (14-period rolling mean of true range)
-    high_low = df["high"] - df["low"]
-    atr = pd.Series(high_low.rolling(window=14, min_periods=1).mean(), index=df.index).bfill().reset_index(drop=True)
+    high_low = highs - lows
+    atr_series = pd.Series(high_low, dtype=float).rolling(window=14, min_periods=1).mean()
+    atr = np.asarray(atr_series, dtype=float)
 
     # Check if existing old FVGs are filled by current dataframe
     if existing_fvgs:
@@ -361,14 +437,17 @@ def find_fvg(
             formed_at = item.formed_at
             filled_at = item.filled_at
             if filled_at is None:
-                # Find if any candle strictly after formed_at in df fills it
-                ts_formed = pd.Timestamp(formed_at)
-                after_mask = ohlcv["timestamp"] > ts_formed
-                if bool(after_mask.any()):
-                    start_idx = int(np.argmax(np.asarray(after_mask, dtype=bool)))
-                    check_filled = check_fvg_filled(ohlcv, start_idx, g_high, g_low, direction)
-                    if check_filled:
-                        filled_at = check_filled
+                start_idx = _search_ts(timestamps, formed_at, side="right")
+                if start_idx < n:
+                    gap_mid = (g_high + g_low) / 2.0
+                    if direction == "bullish":
+                        hits = np.flatnonzero(lows[start_idx:] <= gap_mid)
+                        if len(hits) > 0:
+                            filled_at = timestamps[start_idx + int(hits[0])]
+                    else:
+                        hits = np.flatnonzero(highs[start_idx:] >= gap_mid)
+                        if len(hits) > 0:
+                            filled_at = timestamps[start_idx + int(hits[0])]
             zones.append(
                 FVGData(
                     symbol=symbol,
@@ -382,22 +461,25 @@ def find_fvg(
             )
 
     for i in range(n - 2):
-        candle_1 = ohlcv.iloc[i]
-        candle_3 = ohlcv.iloc[i + 2]
-
-        ts_formed = candle_3["timestamp"]
-        formed_dt = ts_formed.to_pydatetime() if hasattr(ts_formed, "to_pydatetime") else ts_formed
-        current_atr = atr.iloc[i + 2] if (i + 2) < len(atr) else (atr.iloc[-1] if len(atr) > 0 else 0.0)
+        candle_1_high = highs[i]
+        candle_1_low = lows[i]
+        candle_3_high = highs[i + 2]
+        candle_3_low = lows[i + 2]
+        formed_dt = timestamps[i + 2]
+        current_atr = atr[i + 2] if (i + 2) < len(atr) else (atr[-1] if len(atr) > 0 else 0.0)
 
         # Bullish FVG
-        if candle_3["low"] > candle_1["high"]:
-            gap_low = float(candle_1["high"])
-            gap_high = float(candle_3["low"])
+        if candle_3_low > candle_1_high:
+            gap_low = float(candle_1_high)
+            gap_high = float(candle_3_low)
             gap_size = gap_high - gap_low
 
             # Only persist if gap size >= 30% of current ATR
             if gap_size >= current_atr * 0.3:
-                filled_at = check_fvg_filled(ohlcv, i + 3, gap_high, gap_low, "bullish")
+                gap_mid = (gap_high + gap_low) / 2.0
+                sub_lows = lows[i + 3 :]
+                hits = np.flatnonzero(sub_lows <= gap_mid)
+                filled_at = timestamps[i + 3 + int(hits[0])] if len(hits) > 0 else None
 
                 zones.append(
                     FVGData(
@@ -412,13 +494,16 @@ def find_fvg(
                 )
 
         # Bearish FVG
-        elif candle_3["high"] < candle_1["low"]:
-            gap_high = float(candle_1["low"])
-            gap_low = float(candle_3["high"])
+        elif candle_3_high < candle_1_low:
+            gap_high = float(candle_1_low)
+            gap_low = float(candle_3_high)
             gap_size = gap_high - gap_low
 
             if gap_size >= current_atr * 0.3:
-                filled_at = check_fvg_filled(ohlcv, i + 3, gap_high, gap_low, "bearish")
+                gap_mid = (gap_high + gap_low) / 2.0
+                sub_highs = highs[i + 3 :]
+                hits = np.flatnonzero(sub_highs >= gap_mid)
+                filled_at = timestamps[i + 3 + int(hits[0])] if len(hits) > 0 else None
 
                 zones.append(
                     FVGData(
@@ -464,20 +549,22 @@ def find_order_blocks(
             else:
                 bearish_obs.append(ob_data)
 
-    ohlcv = df.reset_index()
-    n = len(ohlcv)
+    n = len(df)
     if n < 10:
         return bullish_obs + bearish_obs
 
-    highs = np.asarray(ohlcv["high"], dtype=float)
-    lows = np.asarray(ohlcv["low"], dtype=float)
-    closes = np.asarray(ohlcv["close"], dtype=float)
+    opens = np.asarray(df["open"], dtype=float)
+    highs = np.asarray(df["high"], dtype=float)
+    lows = np.asarray(df["low"], dtype=float)
+    closes = np.asarray(df["close"], dtype=float)
+    timestamps = [t.to_pydatetime() if hasattr(t, "to_pydatetime") else t for t in df.index]
+    ts_array = np.asarray(df.index)
 
-    trs = []
-    for i in range(1, len(closes)):
-        tr = max(float(highs[i] - lows[i]), abs(float(highs[i] - closes[i - 1])), abs(float(lows[i] - closes[i - 1])))
-        trs.append(tr)
-    atr = sum(trs[-14:]) / min(14, len(trs)) if trs else 0.0
+    tr_1 = highs[1:] - lows[1:]
+    tr_2 = np.abs(highs[1:] - closes[:-1])
+    tr_3 = np.abs(lows[1:] - closes[:-1])
+    trs = np.maximum(tr_1, np.maximum(tr_2, tr_3))
+    atr = float(np.mean(trs[-14:])) if len(trs) >= 14 else (float(np.mean(trs)) if len(trs) > 0 else 0.0)
 
     if atr == 0.0:
         return bullish_obs + bearish_obs
@@ -487,68 +574,55 @@ def find_order_blocks(
     new_bearish: list[OrderBlockData] = []
 
     for i in range(2, n - 5):
-        candle = ohlcv.iloc[i]
+        c_open = opens[i]
+        c_close = closes[i]
+        c_high = highs[i]
+        c_low = lows[i]
         impulse_end = min(i + 5, n - 1)
 
         # Bullish OB: bearish candle followed by impulse bullish move
-        if candle["close"] < candle["open"]:
-            body_size = candle["open"] - candle["close"]
-            impulse_high = ohlcv.iloc[i + 1 : impulse_end + 1]["high"].max()
-            impulse_move = impulse_high - candle["high"]
+        if c_close < c_open:
+            body_size = c_open - c_close
+            impulse_high = highs[i + 1 : impulse_end + 1].max()
+            impulse_move = impulse_high - c_high
 
             if impulse_move > max(body_size * 2, atr * 1.5):
                 confirm_idx = min(i + 10, n - 1)
-                post_impulse_low = ohlcv.iloc[i + 1 : confirm_idx + 1]["low"].min()
-                if post_impulse_low > candle["low"]:
-                    formed_dt = (
-                        candle["timestamp"].to_pydatetime()
-                        if hasattr(candle["timestamp"], "to_pydatetime")
-                        else candle["timestamp"]
-                    )
-                    confirmed_dt = (
-                        ohlcv.iloc[confirm_idx]["timestamp"].to_pydatetime()
-                        if hasattr(ohlcv.iloc[confirm_idx]["timestamp"], "to_pydatetime")
-                        else ohlcv.iloc[confirm_idx]["timestamp"]
-                    )
+                post_impulse_low = lows[i + 1 : confirm_idx + 1].min()
+                if post_impulse_low > c_low:
+                    formed_dt = timestamps[i]
+                    confirmed_dt = timestamps[confirm_idx]
                     new_bullish.append(
                         OrderBlockData(
                             symbol=symbol,
                             timeframe=timeframe,
                             direction="bullish",
-                            price_high=float(candle["high"]),
-                            price_low=float(candle["low"]),
+                            price_high=float(c_high),
+                            price_low=float(c_low),
                             formed_at=formed_dt,
                             confirmed_at=confirmed_dt,
                         )
                     )
 
         # Bearish OB: bullish candle followed by impulse bearish move
-        if candle["close"] > candle["open"]:
-            body_size = candle["close"] - candle["open"]
-            impulse_low = ohlcv.iloc[i + 1 : impulse_end + 1]["low"].min()
-            impulse_move = candle["low"] - impulse_low
+        if c_close > c_open:
+            body_size = c_close - c_open
+            impulse_low = lows[i + 1 : impulse_end + 1].min()
+            impulse_move = c_low - impulse_low
 
             if impulse_move > max(body_size * 2, atr * 1.5):
                 confirm_idx = min(i + 10, n - 1)
-                post_impulse_high = ohlcv.iloc[i + 1 : confirm_idx + 1]["high"].max()
-                if post_impulse_high < candle["high"]:
-                    formed_dt = (
-                        candle["timestamp"].to_pydatetime()
-                        if hasattr(candle["timestamp"], "to_pydatetime")
-                        else candle["timestamp"]
-                    )
-                    confirmed_dt = (
-                        ohlcv.iloc[confirm_idx]["timestamp"].to_pydatetime()
-                        if hasattr(ohlcv.iloc[confirm_idx]["timestamp"], "to_pydatetime")
-                        else ohlcv.iloc[confirm_idx]["timestamp"]
-                    )
+                post_impulse_high = highs[i + 1 : confirm_idx + 1].max()
+                if post_impulse_high < c_high:
+                    formed_dt = timestamps[i]
+                    confirmed_dt = timestamps[confirm_idx]
                     new_bearish.append(
                         OrderBlockData(
                             symbol=symbol,
                             timeframe=timeframe,
                             direction="bearish",
-                            price_high=float(candle["high"]),
-                            price_low=float(candle["low"]),
+                            price_high=float(c_high),
+                            price_low=float(c_low),
                             formed_at=formed_dt,
                             confirmed_at=confirmed_dt,
                         )
@@ -558,24 +632,19 @@ def find_order_blocks(
     bullish_obs += new_bullish
     bearish_obs += new_bearish
     all_obs = bullish_obs + bearish_obs
+
     for ob in all_obs:
-        ob_ts = pd.Timestamp(ob.formed_at)
-        if ob_ts.tzinfo is None:
-            ob_ts = ob_ts.tz_localize("UTC")
-
-        ts_series = pd.to_datetime(ohlcv["timestamp"], utc=True)
-        future_bars = ohlcv[ts_series > ob_ts]
-        ob_mid = (ob.price_high + ob.price_low) / 2.0
-
-        for _, bar in future_bars.iterrows():
-            bar_ts = pd.Timestamp(str(bar["timestamp"])).to_pydatetime()
-            if isinstance(bar_ts, datetime):
-                if ob.direction == "bullish" and float(np.asarray(bar["low"]).item()) <= ob_mid:
-                    ob.mitigated_at = bar_ts
-                    break
-                elif ob.direction == "bearish" and float(np.asarray(bar["high"]).item()) >= ob_mid:
-                    ob.mitigated_at = bar_ts
-                    break
+        idx = _search_ts(timestamps, ob.formed_at, side="right")
+        if idx < n:
+            ob_mid = (ob.price_high + ob.price_low) / 2.0
+            if ob.direction == "bullish":
+                hits = np.flatnonzero(lows[idx:] <= ob_mid)
+                if len(hits) > 0:
+                    ob.mitigated_at = timestamps[idx + int(hits[0])]
+            elif ob.direction == "bearish":
+                hits = np.flatnonzero(highs[idx:] >= ob_mid)
+                if len(hits) > 0:
+                    ob.mitigated_at = timestamps[idx + int(hits[0])]
 
     unmitigated_bullish = [
         ob for ob in sorted(bullish_obs, key=lambda x: x.formed_at, reverse=True) if ob.mitigated_at is None
@@ -605,10 +674,19 @@ def detect_structure_breaks(
     """
     breaks: list[StructureBreakData] = []
     swings: list[tuple[Any, float, str]] = []
-    for _, row in swing_highs.iterrows():
-        swings.append((row["timestamp"], float(np.asarray(row["price"]).item()), "high"))
-    for _, row in swing_lows.iterrows():
-        swings.append((row["timestamp"], float(np.asarray(row["price"]).item()), "low"))
+    if not swing_highs.empty and "timestamp" in swing_highs.columns:
+        p_h = swing_highs["price"].to_numpy(dtype=float)
+        t_h = swing_highs["timestamp"].tolist()
+        for t, p in zip(t_h, p_h):
+            swings.append((t, float(p), "high"))
+    if not swing_lows.empty and "timestamp" in swing_lows.columns:
+        p_l = swing_lows["price"].to_numpy(dtype=float)
+        t_l = swing_lows["timestamp"].tolist()
+        for t, p in zip(t_l, p_l):
+            swings.append((t, float(p), "low"))
+
+    if not swings:
+        return []
 
     swings.sort(key=lambda x: x[0])
     current_trend = "ranging"
@@ -617,15 +695,30 @@ def detect_structure_breaks(
     last_low: Optional[float] = None
     last_low_ts: Any = None
 
+    closes = np.asarray(df["close"], dtype=float)
+    ts_array = np.asarray(df.index)
+    timestamps = [t.to_pydatetime() if hasattr(t, "to_pydatetime") else t for t in df.index]
+
     for ts, price, typ in swings:
         if typ == "high":
             if last_high and price > last_high:
-                subsequent = df.loc[df.index >= last_high_ts] if last_high_ts is not None else df.loc[df.index <= ts]
-                breaking_candles = subsequent.loc[(subsequent.index <= ts) & (subsequent["close"] > last_high)]
-                if breaking_candles.empty:
-                    breaking_candles = subsequent.loc[subsequent["close"] > last_high]
-                if not breaking_candles.empty:
-                    break_ts = pd.to_datetime(breaking_candles.index[0]).to_pydatetime()
+                if last_high_ts is not None:
+                    start_i = _search_ts(timestamps, last_high_ts, side="left")
+                else:
+                    start_i = 0
+                end_i = _search_ts(timestamps, ts, side="right")
+
+                hits = np.flatnonzero(closes[start_i:end_i] > last_high)
+                break_idx = None
+                if len(hits) > 0:
+                    break_idx = start_i + int(hits[0])
+                else:
+                    hits_fallback = np.flatnonzero(closes[start_i:] > last_high)
+                    if len(hits_fallback) > 0:
+                        break_idx = start_i + int(hits_fallback[0])
+
+                if break_idx is not None and break_idx < len(timestamps):
+                    break_ts = timestamps[break_idx]
                     break_type = "ChoCH" if current_trend == "bearish" else "BOS"
                     breaks.append(
                         StructureBreakData(
@@ -644,12 +737,23 @@ def detect_structure_breaks(
             last_high_ts = ts
         else:
             if last_low and price < last_low:
-                subsequent = df.loc[df.index >= last_low_ts] if last_low_ts is not None else df.loc[df.index <= ts]
-                breaking_candles = subsequent.loc[(subsequent.index <= ts) & (subsequent["close"] < last_low)]
-                if breaking_candles.empty:
-                    breaking_candles = subsequent.loc[subsequent["close"] < last_low]
-                if not breaking_candles.empty:
-                    break_ts = pd.to_datetime(breaking_candles.index[0]).to_pydatetime()
+                if last_low_ts is not None:
+                    start_i = _search_ts(timestamps, last_low_ts, side="left")
+                else:
+                    start_i = 0
+                end_i = _search_ts(timestamps, ts, side="right")
+
+                hits = np.flatnonzero(closes[start_i:end_i] < last_low)
+                break_idx = None
+                if len(hits) > 0:
+                    break_idx = start_i + int(hits[0])
+                else:
+                    hits_fallback = np.flatnonzero(closes[start_i:] < last_low)
+                    if len(hits_fallback) > 0:
+                        break_idx = start_i + int(hits_fallback[0])
+
+                if break_idx is not None and break_idx < len(timestamps):
+                    break_ts = timestamps[break_idx]
                     break_type = "ChoCH" if current_trend == "bullish" else "BOS"
                     breaks.append(
                         StructureBreakData(

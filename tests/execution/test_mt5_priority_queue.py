@@ -3,6 +3,7 @@ import threading
 import time
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
+from monika.core.exceptions import BrokerConnectionError
 from monika.infrastructure.brokers.mt5_client import (
     MT5Client,
     PRIORITY_CRITICAL,
@@ -74,7 +75,7 @@ async def test_mt5_disconnect_drains_pending_futures():
     # Trigger disconnect while pending_task is guaranteed in queue
     with patch("monika.infrastructure.brokers.mt5_client._disconnect", return_value=None):
         await client.disconnect()
-    await t_block
+    await asyncio.gather(t_block, return_exceptions=True)
 
     # Pending task must receive ConnectionError instead of hanging forever
     with pytest.raises(ConnectionError, match="MT5 disconnected"):
@@ -131,4 +132,74 @@ async def test_mt5_executor_self_healing_after_shutdown():
     assert getattr(client._executor, "_shutdown", False) is False
 
     # Clean up
+    await client.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_mt5_priority_queue_bounded_rejection():
+    """Verify that bounded PriorityQueue(maxsize=256) rejects overflow with BrokerConnectionError."""
+    client = MT5Client()
+    blocker_started = threading.Event()
+
+    def slow_blocker():
+        blocker_started.set()
+        time.sleep(0.5)
+        return "blocker_done"
+
+    # Start slow blocker to hold worker thread
+    t_block = asyncio.create_task(client._run(slow_blocker, priority=PRIORITY_BACKGROUND))
+    while not blocker_started.is_set():
+        await asyncio.sleep(0.005)
+
+    # Queue should now have maxsize=256
+    queue = client._ensure_worker()
+    assert queue.maxsize == 256
+
+    loop = asyncio.get_running_loop()
+    # Directly fill queue to capacity (256 items) with unique counters
+    i = 0
+    while not queue.full():
+        i += 1
+        fut = loop.create_future()
+        queue.put_nowait((10, i, lambda: 1, (), {}, fut))
+
+    # The 257th item must raise BrokerConnectionError immediately (fail-closed)
+    with pytest.raises(BrokerConnectionError, match="MT5 worker queue full"):
+        await client._run(lambda: 1, priority=PRIORITY_STANDARD)
+
+    await client.disconnect()
+    await asyncio.gather(t_block, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_mt5_consecutive_timeouts_heals_worker():
+    """Verify that 3 consecutive timeouts reset the worker ThreadPoolExecutor and mark client disconnected."""
+    client = MT5Client()
+    client._connected = True
+
+    def hanging_task():
+        time.sleep(0.1)
+        return "done"
+
+    initial_executor = client._executor
+
+    # First 2 timeouts
+    with pytest.raises(TimeoutError):
+        await client._run(hanging_task, timeout=0.01)
+    assert client._consecutive_timeouts == 1
+    assert client._connected is True
+
+    with pytest.raises(TimeoutError):
+        await client._run(hanging_task, timeout=0.01)
+    assert client._consecutive_timeouts == 2
+    assert client._connected is True
+
+    # 3rd timeout triggers healing
+    with pytest.raises(TimeoutError):
+        await client._run(hanging_task, timeout=0.01)
+
+    assert client._connected is False
+    assert client._consecutive_timeouts == 0
+    assert client._executor is not initial_executor
+
     await client.disconnect()

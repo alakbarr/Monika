@@ -53,6 +53,8 @@ class MarketDataScheduler:
         mt5_cfg = settings.get("trading", {}).get("mt5", {})
         self.timeframes: list[str] = mt5_cfg.get("timeframes", ["M15", "H1", "H4", "D1"])
         self._last_sync_time: Optional[datetime] = None
+        self._structure_candle_cache: dict[tuple[str, str], tuple[Any, float, float, float]] = {}
+        self._structure_counts_cache: dict[tuple[str, str], dict[str, int]] = {}
 
     async def sync_now(self, session: Optional[AsyncSession] = None) -> dict:
         """
@@ -158,6 +160,8 @@ class MarketDataScheduler:
                 except Exception:
                     pass
                 analyzer = MarketStructureAnalyzer(sess, self.settings)
+                analyzer._last_analyzed_candle = self._structure_candle_cache
+                analyzer._last_analysis_counts = self._structure_counts_cache
                 struct_results = await analyzer.analyze_all(target_symbols, indicator_timeframes)
                 summary["structure"] = {k: sum(v.values()) for k, v in struct_results.items()}
 

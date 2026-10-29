@@ -107,15 +107,16 @@ def test_core_trading_tasks_presence():
 
 
 def test_mark_clean_shutdown(tmp_path):
+    flag_path = str(tmp_path / "clean_shutdown.flag")
+    with patch("monika.application.agent.task_registry.CLEAN_SHUTDOWN_FLAG", flag_path):
+        mark_clean_shutdown()
+        assert os.path.exists(flag_path)
+
+        with open(flag_path, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+            assert len(content) > 0
     if os.path.exists(CLEAN_SHUTDOWN_FLAG):
         os.remove(CLEAN_SHUTDOWN_FLAG)
-
-    mark_clean_shutdown()
-    assert os.path.exists(CLEAN_SHUTDOWN_FLAG)
-
-    with open(CLEAN_SHUTDOWN_FLAG, "r", encoding="utf-8") as f:
-        content = f.read().strip()
-        assert len(content) > 0
 
 
 @pytest.mark.asyncio
@@ -151,19 +152,21 @@ async def test_run_with_restart_transient_db_retries():
 async def test_run_with_restart_healthy_uptime_resets_counter():
     """Verify that a task running healthily for >= 300s resets its restart counter."""
     import asyncio
+    import time as real_time
 
     shutdown_event = asyncio.Event()
-    simulated_now = 1000.0
+    real_monotonic = real_time.monotonic
+    simulated_offset = 0.0
     attempts = 0
 
     def mock_monotonic():
-        return simulated_now
+        return real_monotonic() + simulated_offset
 
     async def long_running_task():
-        nonlocal attempts, simulated_now
+        nonlocal attempts, simulated_offset
         attempts += 1
         # Advance simulated time by 310s (exceeds 300s healthy uptime threshold)
-        simulated_now += 310.0
+        simulated_offset += 310.0
         if attempts <= 4:
             raise RuntimeError("Intermittent transient network error")
         shutdown_event.set()

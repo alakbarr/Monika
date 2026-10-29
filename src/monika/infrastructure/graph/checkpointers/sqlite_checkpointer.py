@@ -24,6 +24,7 @@ class SqliteCheckpointSaver(InMemorySaver):
 
     def __init__(self, db_path: Optional[str] = None):
         super().__init__()
+        self._put_counter: int = 0
         if db_path is None:
             from monika.core.paths import BASE_DIR
 
@@ -150,6 +151,24 @@ class SqliteCheckpointSaver(InMemorySaver):
                 write_keys = [k for k in self.writes if k[0] == t_id]
                 for wk in write_keys:
                     self.writes.pop(wk, None)
+                blobs_dict = getattr(self, "blobs", None)
+                if isinstance(blobs_dict, dict):
+                    blob_keys = [bk for bk in blobs_dict if isinstance(bk, tuple) and len(bk) > 0 and bk[0] == t_id]
+                    for bk in blob_keys:
+                        blobs_dict.pop(bk, None)
+
+        blobs_dict = getattr(self, "blobs", None)
+        if isinstance(blobs_dict, dict):
+            active_threads = set(self.storage.keys())
+            orphan_keys = [
+                bk for bk in blobs_dict if isinstance(bk, tuple) and len(bk) > 0 and bk[0] not in active_threads
+            ]
+            for ok in orphan_keys:
+                blobs_dict.pop(ok, None)
+            if len(blobs_dict) > max_threads * 20:
+                excess_blobs = len(blobs_dict) - (max_threads * 20)
+                for bk in list(blobs_dict.keys())[:excess_blobs]:
+                    blobs_dict.pop(bk, None)
 
     def _load_from_sqlite(self):
         """Restore previous checkpoints and writes into memory state (capped at 50 threads)."""
@@ -212,6 +231,12 @@ class SqliteCheckpointSaver(InMemorySaver):
         versions: ChannelVersions = new_versions or {}
         res = super().put(config, checkpoint, metadata, new_versions=versions)
         self._prune_memory_cache(50)
+        self._put_counter += 1
+        if self._put_counter % 100 == 0:
+            try:
+                self.prune_disk_checkpoints(max_threads=500, retention_days=7)
+            except Exception as e:
+                logger.debug(f"[SqliteCheckpointer] Auto disk pruning error: {e}")
         try:
             cfg: Dict[str, Any] = getattr(config, "get", lambda k, d=None: {})("configurable", {}) or {}
             thread_id = cfg.get("thread_id", "")
@@ -266,6 +291,12 @@ class SqliteCheckpointSaver(InMemorySaver):
         versions: ChannelVersions = new_versions or {}
         res = super().put(config, checkpoint, metadata, new_versions=versions)
         self._prune_memory_cache(50)
+        self._put_counter += 1
+        if self._put_counter % 100 == 0:
+            try:
+                await self.aprune_disk_checkpoints(max_threads=500, retention_days=7)
+            except Exception as e:
+                logger.debug(f"[SqliteCheckpointer] Auto disk pruning error: {e}")
         try:
             cfg: Dict[str, Any] = getattr(config, "get", lambda k, d=None: {})("configurable", {}) or {}
             thread_id = cfg.get("thread_id", "")
@@ -346,6 +377,8 @@ class SqliteCheckpointSaver(InMemorySaver):
         task_path: str = "",
     ) -> None:
         super().put_writes(config, writes, task_id, task_path=task_path)
+        if len(self.writes) > 200:
+            self._prune_memory_cache(50)
         try:
             cfg = getattr(config, "get", lambda k, d=None: {})("configurable", {}) or {}
             thread_id = str(cfg.get("thread_id", ""))
@@ -389,6 +422,8 @@ class SqliteCheckpointSaver(InMemorySaver):
         task_path: str = "",
     ) -> None:
         super().put_writes(config, writes, task_id, task_path=task_path)
+        if len(self.writes) > 200:
+            self._prune_memory_cache(50)
         try:
             cfg = getattr(config, "get", lambda k, d=None: {})("configurable", {}) or {}
             thread_id = str(cfg.get("thread_id", ""))
