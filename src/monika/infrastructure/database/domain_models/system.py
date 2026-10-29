@@ -40,6 +40,11 @@ class RiskState(Base):
     reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     unpause_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    @property
+    def daily_drawdown_pct(self) -> float:
+        """Fallback property for daily drawdown percentage (computed when equity unknown)."""
+        return 0.0
+
 
 class TelegramConversation(Base):
     """Riwayat chat Telegram untuk konteks AI."""

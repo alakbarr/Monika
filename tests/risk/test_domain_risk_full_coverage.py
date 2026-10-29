@@ -1496,6 +1496,33 @@ async def test_risk_gate_and_evaluators_full_coverage(tmp_path: Path) -> None:
                 v_prop_ok = await gate.evaluate_proposal(_MockSession(fail_exec=True), prop_buy, 10000.0)
                 assert v_prop_ok.approved is True
 
+    # Real RiskState ORM instance with dollar current_drawdown (regression test for AttributeError daily_drawdown_pct)
+    from monika.infrastructure.database.domain_models.system import RiskState as RealRiskState
+
+    real_st_ok = RealRiskState(
+        id=99,
+        date=datetime.now(UTC),
+        daily_pnl=-50.0,
+        current_drawdown=-50.0,
+        trading_paused=False,
+    )
+    with patch.object(gate, "_get_risk_state", AsyncMock(return_value=real_st_ok)):
+        with patch.object(gate, "evaluate", AsyncMock(return_value=verdict_ok)):
+            v_real_ok = await gate.evaluate_proposal(_MockSession(fail_exec=True), prop_buy, 10000.0)
+            assert v_real_ok.approved is True
+
+    real_st_breach = RealRiskState(
+        id=100,
+        date=datetime.now(UTC),
+        daily_pnl=-500.0,
+        current_drawdown=-500.0,
+        trading_paused=False,
+    )
+    with patch.object(gate, "_get_risk_state", AsyncMock(return_value=real_st_breach)):
+        v_real_breach = await gate.evaluate_proposal(_MockSession(), prop_buy, 10000.0)
+        assert v_real_breach.approved is False
+        assert any("Drawdown ceiling breach" in str(r) for r in v_real_breach.rejection_reasons)
+
     with patch.object(gate, "_get_risk_state", AsyncMock(side_effect=RuntimeError("state err"))):
         v_prop_err = await gate.evaluate_proposal(_MockSession(), prop_buy, 10000.0)
         assert v_prop_err.approved is False

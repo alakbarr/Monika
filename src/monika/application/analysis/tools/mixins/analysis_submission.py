@@ -1525,7 +1525,19 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
 
         invalidation_price = inp.get("invalidation_price")
         invalidation_direction = inp.get("invalidation_direction")
-        playbook_id = inp.get("playbook_id") or inp.get("source_strategy_id")
+        raw_playbook_id = inp.get("playbook_id") or inp.get("source_strategy_id")
+        playbook_id = None
+        if raw_playbook_id:
+            s_pb = str(raw_playbook_id).strip()
+            if (
+                s_pb
+                and s_pb.lower() not in ("none", "null", "n/a", "no", "false")
+                and not s_pb.lower().startswith(("none_", "none ", "no_"))
+            ):
+                import re
+
+                m_pb = re.match(r"^([a-zA-Z0-9_-]+)", s_pb)
+                playbook_id = (m_pb.group(1).strip() if m_pb else s_pb)[:50]
         if playbook_id:
             logger.info(f"[{symbol}] AssetAnalysis linked to empirical playbook: {playbook_id}")
 
@@ -1592,7 +1604,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 existing.ssvp_cds_score_at_analysis = context_cds_score
                 existing.decision_source = "llm_stage2"
                 if playbook_id:
-                    existing.source_strategy_id = str(playbook_id).strip()
+                    existing.source_strategy_id = playbook_id
                 existing_rationale = existing.rationale or ""
                 if key_news_events_considered:
                     news_strs = [str(x).strip() for x in key_news_events_considered if str(x).strip()]
@@ -1636,7 +1648,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             context_snapshot_id=context_snapshot_id,
             ssvp_cds_score_at_analysis=context_cds_score,
             decision_source="llm_stage2",
-            source_strategy_id=str(playbook_id).strip() if playbook_id else None,
+            source_strategy_id=playbook_id,
         )
 
         # Ambil harga terkini saat AI menyimpan analisis

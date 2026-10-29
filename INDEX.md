@@ -12048,6 +12048,7 @@
 - **Path**: [`src/monika/infrastructure/database/domain_models/system.py`](src/monika/infrastructure/database/domain_models/system.py)
 - **Classes**:
   - `class RiskState(Base)`: Status risk harian — drawdown, PnL, pause status.
+    - `daily_drawdown_pct() -> float` - *Fallback property for daily drawdown percentage (computed when equity unknown).*
   - `class TelegramConversation(Base)`: Riwayat chat Telegram untuk konteks AI.
   - `class TelegramTopicBinding(Base)`: Pemetaan forum topic Telegram ke session ChatAgent.
   - `class ActivityLog(Base)`: Log semua aktivitas sistem untuk audit.

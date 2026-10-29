@@ -587,6 +587,12 @@ class RiskGate(
                 rejection_reasons=rejections,
             )
 
+        eq = (
+            account_equity
+            or getattr(proposal, "account_equity", None)
+            or float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+        )
+
         # PR-3: Validate against registered runtime invariants
         try:
             from monika.domain.risk.invariants import get_global_invariant_registry
@@ -594,8 +600,15 @@ class RiskGate(
             current_dd_pct = 0.0
             try:
                 state = await self._get_risk_state(session)
-                if state and state.daily_drawdown_pct is not None:
-                    current_dd_pct = float(state.daily_drawdown_pct)
+                if state is not None:
+                    dd_pct = getattr(state, "daily_drawdown_pct", None)
+                    if dd_pct is not None and float(dd_pct) > 0.0:
+                        current_dd_pct = float(dd_pct)
+                    elif hasattr(state, "current_drawdown") and state.current_drawdown is not None:
+                        current_dd = float(state.current_drawdown)
+                        current_dd_pct = (abs(current_dd) / eq * 100.0) if (current_dd < 0 and eq > 0) else 0.0
+                    elif isinstance(state, dict):
+                        current_dd_pct = float(state.get("daily_drawdown_pct") or 0.0)
             except Exception:
                 logger.error("Failed to fetch risk state for invariant validation", exc_info=True)
                 if session is not None:
@@ -665,11 +678,6 @@ class RiskGate(
                 rejection_reasons=[],
             )
 
-        eq = (
-            account_equity
-            or proposal.account_equity
-            or float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
-        )
         if proposal.direction == "BUY":
             if proposal.stop_loss >= proposal.entry_price:
                 return RiskVerdict(

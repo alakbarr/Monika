@@ -804,17 +804,24 @@ class SubmitAssetAnalysisSchema(BaseModel):
     def validate_playbook_id_field(cls, v):
         if v is None:
             return None
+        if isinstance(v, dict):
+            name = v.get("name") or v.get("playbook_id") or v.get("id")
+            if not name:
+                return None
+            v = str(name).strip()
         if isinstance(v, str):
             clean = v.strip()
             if not clean or clean.lower() in ("none", "null", "n/a", "no", "false"):
                 return None
-            return clean
-        if isinstance(v, dict):
-            name = v.get("name") or v.get("playbook_id") or v.get("id")
-            if name:
-                return str(name).strip()
-            return None
-        return str(v).strip()
+            if clean.lower().startswith(("none_", "none ", "no_")):
+                return None
+            import re
+
+            m = re.match(r"^([a-zA-Z0-9_-]+)", clean)
+            if m:
+                return m.group(1).strip()[:50]
+            return clean[:50]
+        return str(v).strip()[:50]
 
     @field_validator("invalidation", "news_impact_assessment", "rationale", mode="before")
     @classmethod

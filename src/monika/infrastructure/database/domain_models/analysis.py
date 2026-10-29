@@ -129,7 +129,7 @@ class AssetAnalysis(Base):
     # Phase 3 Context tracking
     decision_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     arbitration_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    source_strategy_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
+    source_strategy_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
     pair_group_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
     was_debate_modified: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True, default=False)
     was_ssvp_suppressed: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True, default=False)

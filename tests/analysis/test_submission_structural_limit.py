@@ -158,3 +158,70 @@ async def test_submission_allows_wait_decision_during_chop_squeeze():
     assert "Analysis saved successfully." in res.get("message", "")
     # Volatility regime gate should not even invoke chop calculation for wait decision
     mock_chop_fn.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_submission_cleans_and_bounds_long_playbook_id():
+    """Verify that submit_asset_analysis cleans commentary and bounds long playbook_id/source_strategy_id."""
+    session = create_mock_async_session()
+    settings = {"trading": {"risk": {}}}
+
+    tool = ToolExecutor(session=session, settings=settings, symbol="USDJPY")
+    tool.called_tools.add("get_price_history")
+
+    long_commentary_id = (
+        "usdjpy_jpy_tokyo_ema25_bounce_playbook (triggered but REJECTED - its SL 157.862 is only 0.43x H4 ATR, "
+        "violating the mandatory 1.0x ATR buffer)"
+    )
+
+    inp = {
+        "symbol": "USDJPY",
+        "decision": "wait",
+        "confidence": 0.65,
+        "priced_in_score": 5,
+        "invalidation": "Long-side thesis invalidated by H4 close below 157.698",
+        "rationale": "USDJPY waiting for compliant bracket.",
+        "playbook_id": long_commentary_id,
+    }
+
+    added_objects = []
+    session.add = lambda obj: added_objects.append(obj)
+
+    with (
+        patch.object(tool, "_cross_validate_priced_in", AsyncMock(return_value=(inp["rationale"], None))),
+        patch.object(tool, "_cross_validate_directional_coherence", AsyncMock(return_value=inp["rationale"])),
+        patch.object(tool, "_validate_ssvp_and_context_drift", AsyncMock(return_value=("snap_1", 0.85))),
+    ):
+        res = await tool.execute("submit_asset_analysis", inp)
+
+    assert res.get("status") == "saved"
+    assert res.get("decision") == "wait"
+    assert len(added_objects) > 0
+    saved_analysis = added_objects[0]
+    assert saved_analysis.source_strategy_id == "usdjpy_jpy_tokyo_ema25_bounce_playbook"
+    assert len(saved_analysis.source_strategy_id) <= 50
+
+    # Also test none_executed pattern
+    tool2 = ToolExecutor(session=session, settings=settings, symbol="AUDUSD")
+    tool2.called_tools.add("get_price_history")
+    added_objects.clear()
+
+    inp2 = {
+        "symbol": "AUDUSD",
+        "decision": "wait",
+        "confidence": 0.72,
+        "priced_in_score": 2,
+        "invalidation": "H4 close < 0.70457",
+        "rationale": "AUDUSD waiting.",
+        "playbook_id": "none_executed__audusd_sydney_fade_bb15_playbook_rejected",
+    }
+    with (
+        patch.object(tool2, "_cross_validate_priced_in", AsyncMock(return_value=(inp2["rationale"], None))),
+        patch.object(tool2, "_cross_validate_directional_coherence", AsyncMock(return_value=inp2["rationale"])),
+        patch.object(tool2, "_validate_ssvp_and_context_drift", AsyncMock(return_value=("snap_2", 0.85))),
+    ):
+        res2 = await tool2.execute("submit_asset_analysis", inp2)
+
+    assert res2.get("status") == "saved"
+    saved_analysis2 = added_objects[0]
+    assert saved_analysis2.source_strategy_id is None

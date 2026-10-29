@@ -145,7 +145,7 @@ class FedWatchScraper(BaseScraper):
         Prevents CDP StaleElementReference / ElementLostError during tab navigation.
         """
         start = time.time()
-        time.sleep(0.1)
+        time.sleep(0.25)
         while time.time() - start < timeout:
             if getattr(self, "is_closed", False):
                 break
@@ -157,7 +157,8 @@ class FedWatchScraper(BaseScraper):
                 if in_prm is not True:
                     break
             except Exception:
-                break
+                time.sleep(0.1)
+                continue
             time.sleep(0.05)
 
     def _find_probability_table(self, soup: BeautifulSoup) -> Optional[Any]:
@@ -453,16 +454,26 @@ class FedWatchScraper(BaseScraper):
                         logger.warning(
                             f"[FedWatch] Tab {i} hit transient DOM/AJAX update (attempt {attempt + 1}/{max_tab_retries}): {ele_err}"
                         )
-                        time.sleep(0.5)
+                        time.sleep(0.5 * (attempt + 1))
                         try:
-                            fresh_iframe = page_obj.get_frame('xpath://iframe[contains(@src, "quikstrike")]')
+                            fresh_iframe = page_obj.get_frame(
+                                'xpath://iframe[contains(@src, "quikstrike")]'
+                            ) or self._locate_quikstrike_iframe(max_wait_seconds=5)
                             if fresh_iframe:
                                 iframe = fresh_iframe
                         except Exception:
                             pass
                     except Exception as tab_err:
                         logger.warning(f"[FedWatch] Tab {i} error (attempt {attempt + 1}/{max_tab_retries}): {tab_err}")
-                        time.sleep(0.5)
+                        time.sleep(0.5 * (attempt + 1))
+                        try:
+                            fresh_iframe = page_obj.get_frame(
+                                'xpath://iframe[contains(@src, "quikstrike")]'
+                            ) or self._locate_quikstrike_iframe(max_wait_seconds=5)
+                            if fresh_iframe:
+                                iframe = fresh_iframe
+                        except Exception:
+                            pass
 
                 if not meeting_parsed and not tab_found:
                     logger.info(f"Meeting tab {i} not found, stopping pagination.")
