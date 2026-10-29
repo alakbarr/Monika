@@ -155,7 +155,7 @@ flowchart TD
 
 ### FR-5: MetaTrader 5 Broker Connectivity & Execution
 - **FR-5.1 (Native IPC & Containerized Wine Bridge):** High-speed Python IPC on Windows hosts; Docker/Wine RPC bridge for Linux VPS deployments.
-- **FR-5.2 (MQL5 EA Dead-Man's Switch):** Independent Expert Advisor (`AIAgent_EA.mq5`) monitoring `heartbeat.txt`. Automatically protects open capital if the Python daemon hangs or disconnects for $>120$ seconds.
+- **FR-5.2 (MQL5 EA Dead-Man's Switch):** Independent Expert Advisor (`AIAgent_EA.mq5`) monitoring `heartbeat.txt`. Automatically protects open capital if the Python daemon hangs or disconnects for $>240$ seconds.
 - **FR-5.3 (Paper Trading Graduation Protocol):** Default strict paper trading (`paper_trading.enabled: true`). Switching to live money requires at least 50 validated paper trades with win rate $\ge 55\%$.
 - **FR-5.4 (Order Idempotency & Reconciliation):** Cryptographic idempotency keys prevent duplicate order dispatches; periodic reconciliation audits local state against live broker records.
 

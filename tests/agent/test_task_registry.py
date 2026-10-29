@@ -6,14 +6,17 @@ import os
 import sys
 import types
 import pytest
+from unittest.mock import patch
 from monika.application.agent.task_registry import (
+    CLEAN_SHUTDOWN_FLAG,
     CORE_TRADING_TASKS,
+    EmergencyExitCoordinator,
     TaskDefinition,
     TaskRegistry,
+    _run_with_restart,
     get_emergency_exit_code,
-    set_emergency_exit_code,
     mark_clean_shutdown,
-    CLEAN_SHUTDOWN_FLAG,
+    set_emergency_exit_code,
 )
 
 
@@ -113,3 +116,70 @@ def test_mark_clean_shutdown(tmp_path):
     with open(CLEAN_SHUTDOWN_FLAG, "r", encoding="utf-8") as f:
         content = f.read().strip()
         assert len(content) > 0
+
+
+@pytest.mark.asyncio
+async def test_run_with_restart_transient_db_retries():
+    """Verify that 'could not connect to database' is treated as transient and retried."""
+    import asyncio
+
+    shutdown_event = asyncio.Event()
+    attempts = 0
+
+    async def failing_db_task():
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            raise RuntimeError("could not connect to database: connection refused")
+        shutdown_event.set()
+
+    with patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier"):
+        await _run_with_restart(
+            name="TickStream",
+            coro_factory=failing_db_task,
+            shutdown_event=shutdown_event,
+            max_restarts=5,
+            base_delay=0.01,
+            max_delay=0.05,
+        )
+
+    assert attempts == 3
+    assert shutdown_event.is_set()
+
+
+@pytest.mark.asyncio
+async def test_run_with_restart_healthy_uptime_resets_counter():
+    """Verify that a task running healthily for >= 300s resets its restart counter."""
+    import asyncio
+
+    shutdown_event = asyncio.Event()
+    simulated_now = 1000.0
+    attempts = 0
+
+    def mock_monotonic():
+        return simulated_now
+
+    async def long_running_task():
+        nonlocal attempts, simulated_now
+        attempts += 1
+        # Advance simulated time by 310s (exceeds 300s healthy uptime threshold)
+        simulated_now += 310.0
+        if attempts <= 4:
+            raise RuntimeError("Intermittent transient network error")
+        shutdown_event.set()
+
+    with (
+        patch("monika.application.agent.task_registry._time.monotonic", side_effect=mock_monotonic),
+        patch("monika.infrastructure.notifications.telegram_notifier.AgentNotifier"),
+    ):
+        await _run_with_restart(
+            name="PositionGuardian",
+            coro_factory=long_running_task,
+            shutdown_event=shutdown_event,
+            max_restarts=3,  # With 4 errors, if counter did not reset, it would have aborted at attempt 3!
+            base_delay=0.01,
+            max_delay=0.05,
+        )
+
+    assert attempts == 5
+    assert shutdown_event.is_set()

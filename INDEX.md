@@ -550,6 +550,7 @@
   - `class SecurityConfig(SubscriptableConfig)`
   - `class DatabaseConfig(SubscriptableConfig)`
   - `class TelegramConfig(SubscriptableConfig)`
+  - `class GuardianConfig(SubscriptableConfig)`
   - `class TradingAgentConfig(SubscriptableConfig)`
     - `validate_all_sections() -> TradingAgentConfig`
 
@@ -5554,6 +5555,7 @@
     - `stop() -> None` - *Signal and join the Guardian child process.*
 - **Top-Level Functions**:
   - `trigger_emergency_kill(source: str) -> bool`: Trip the emergency kill switch flags immediately across filesystem.
+  - `clear_stale_heartbeat_kill_flag(flag_path: Optional[Path]) -> bool`: Inspect disk kill switch flag. If it was generated solely due to a transient process
 
 #### `scraper_loop.py` - *File: src/monika/application/agent/monitors/scraper_loop.py*
 - **Path**: [`src/monika/application/agent/monitors/scraper_loop.py`](src/monika/application/agent/monitors/scraper_loop.py)
@@ -11152,7 +11154,7 @@
     - `get_common_path() -> str` - *Return path to MT5 common files directory as string.*
     - `async run_forever() -> None` - *Tulis heartbeat setiap HEARTBEAT_INTERVAL_SECONDS terus-menerus.*
     - `stop() -> None`
-    - `check_ea_alive() -> tuple[bool, int]` - *Periksa apakah EA baru-baru ini menulis file heartbeat-nya (EA masih aktif).*
+    - `check_ea_alive(stale_threshold_seconds: Optional[float]) -> tuple[bool, int]` - *Periksa apakah EA baru-baru ini menulis file heartbeat-nya (EA masih aktif).*
     - `set_watchdog_factory(factory: Callable[..., Any]) -> None`
     - `get_watchdog(check_interval_seconds: float) -> Any` - *PR-16: Returns an active EAWatchdog instance bound to this manager.*
 

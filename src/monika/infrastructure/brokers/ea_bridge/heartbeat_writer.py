@@ -6,7 +6,7 @@
 Heartbeat Writer — Menjaga dead-man's switch EA tetap terpenuhi.
 
 Sesuai spesifikasi §10: Backend Python secara periodik menulis file heartbeat
-yang dibaca oleh EA MT5. Jika file heartbeat usang (> 120 detik), EA akan menutup
+yang dibaca oleh EA MT5. Jika file heartbeat usang (> 240 detik), EA akan menutup
 semua posisi sebagai pengamanan darurat.
 
 Modul ini berjalan sebagai task background asyncio.
@@ -41,7 +41,7 @@ HEARTBEAT_FILENAME = "ai_agent_heartbeat.txt"
 LEGACY_HEARTBEAT_FILENAME = "claude_agent_heartbeat.txt"
 EA_HEARTBEAT_FILENAME = "ea_heartbeat.txt"
 HEARTBEAT_INTERVAL_SECONDS = 20  # Write every 20s (EA timeout is 10min)
-EA_STALE_THRESHOLD_SECONDS = 120  # Alert if EA heartbeat is >2min old
+EA_STALE_THRESHOLD_SECONDS = 240  # Alert if EA heartbeat is >4min old
 
 
 class HeartbeatManager:
@@ -79,31 +79,33 @@ class HeartbeatManager:
         self._running = False
         self._stop_event.set()
 
+    def _write_heartbeat_sync(self, payload_str: str) -> None:
+        """Internal synchronous helper to write heartbeat file atomics."""
+        self.common_path.mkdir(parents=True, exist_ok=True)
+        for hb_file in (self.heartbeat_file, self.legacy_heartbeat_file):
+            tmp_file = hb_file.with_name(f"{hb_file.name}.tmp")
+            for attempt in range(5):
+                try:
+                    tmp_file.write_text(payload_str, encoding="utf-8")
+                    os.replace(tmp_file, hb_file)
+                    break
+                except PermissionError, OSError:
+                    if attempt < 4:
+                        time.sleep(0.5)
+                    else:
+                        raise
+                finally:
+                    if tmp_file.exists():
+                        try:
+                            tmp_file.unlink()
+                        except OSError:
+                            pass
+
     def _write_heartbeat(self) -> None:
         """Tulis timestamp Unix saat ini ke file heartbeat (universal dan legacy untuk kompatibilitas)."""
         try:
-            self.common_path.mkdir(parents=True, exist_ok=True)
             ts = int(time.time())
-
-            # Tulis ke file universal dan legacy (menggunakan UTF-8/ANSI standar secara atomik)
-            for hb_file in (self.heartbeat_file, self.legacy_heartbeat_file):
-                tmp_file = hb_file.with_name(f"{hb_file.name}.tmp")
-                for attempt in range(5):
-                    try:
-                        tmp_file.write_text(str(ts), encoding="utf-8")
-                        os.replace(tmp_file, hb_file)
-                        break
-                    except PermissionError, OSError:
-                        if attempt < 4:
-                            time.sleep(0.5)
-                        else:
-                            raise
-                    finally:
-                        if tmp_file.exists():
-                            try:
-                                tmp_file.unlink()
-                            except OSError:
-                                pass
+            self._write_heartbeat_sync(str(ts))
             self._consecutive_write_failures = 0
             logger.debug(f"Heartbeat written: {ts}")
         except Exception as e:
@@ -121,7 +123,7 @@ class HeartbeatManager:
                 except Exception:
                     pass
 
-    def check_ea_alive(self) -> tuple[bool, int]:
+    def check_ea_alive(self, stale_threshold_seconds: Optional[float] = None) -> tuple[bool, int]:
         """Periksa apakah EA baru-baru ini menulis file heartbeat-nya (EA masih aktif)."""
         try:
             if not self.ea_heartbeat_file.exists():
@@ -149,8 +151,9 @@ class HeartbeatManager:
             ea_ts = int(content)
             stale = int(time.time()) - ea_ts
 
-            if stale > EA_STALE_THRESHOLD_SECONDS:
-                logger.warning(f"EA heartbeat stale: {stale}s old (threshold={EA_STALE_THRESHOLD_SECONDS}s)")
+            threshold = stale_threshold_seconds if stale_threshold_seconds is not None else EA_STALE_THRESHOLD_SECONDS
+            if stale > threshold:
+                logger.warning(f"EA heartbeat stale: {stale}s old (threshold={threshold}s)")
                 return False, stale
 
             return True, stale

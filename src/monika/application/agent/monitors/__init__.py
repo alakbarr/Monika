@@ -7,7 +7,11 @@ from monika.application.agent.monitors.db_health import run_db_health_check
 from monika.application.agent.monitors.drawdown_monitor import run_floating_drawdown_monitor
 from monika.application.agent.monitors.margin_monitor import run_margin_monitor
 from monika.application.agent.monitors.paper_trade_monitor import run_paper_trade_monitor
-from monika.application.agent.monitors.process_guardian import GuardianSupervisor, trigger_emergency_kill
+from monika.application.agent.monitors.process_guardian import (
+    GuardianSupervisor,
+    clear_stale_heartbeat_kill_flag,
+    trigger_emergency_kill,
+)
 from monika.application.agent.monitors.scraper_loop import run_scraper_loop
 from monika.application.agent.monitors.startup_watchdog import StartupWatchdog, global_startup_watchdog
 
@@ -19,6 +23,7 @@ __all__ = [
     "run_margin_monitor",
     "StartupWatchdog",
     "global_startup_watchdog",
+    "clear_stale_heartbeat_kill_flag",
     "GuardianSupervisor",
     "trigger_emergency_kill",
 ]

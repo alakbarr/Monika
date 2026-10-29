@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 
 from .base import MT5MixinBase
 from .constants import (
+    BrokerConnectionError,
     MT5ProfileMismatchError,
     PRIORITY_BACKGROUND,
     PRIORITY_CRITICAL,
@@ -104,6 +105,8 @@ class MT5ConnectionMixin(MT5MixinBase):
 
         self.pending_action_manager = PendingActionManager()
         self.mt5_fail_count = 0
+        self._default_ipc_timeout: float = 30.0
+        self._consecutive_timeouts: int = 0
         self._trade_mode: Optional[int] = None
 
     def get_current_gateway_params(self) -> tuple[str, int, str, str]:
@@ -325,7 +328,7 @@ class MT5ConnectionMixin(MT5MixinBase):
         if not hasattr(self, "_executor") or self._executor is None or getattr(self._executor, "_shutdown", False):
             self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="MT5Worker")
         if self._priority_queue is None or self._worker_task is None or self._worker_task.done():
-            self._priority_queue = asyncio.PriorityQueue()
+            self._priority_queue = asyncio.PriorityQueue(maxsize=256)
             self._worker_task = loop.create_task(self._priority_worker_loop())
         return self._priority_queue
 
@@ -412,15 +415,50 @@ class MT5ConnectionMixin(MT5MixinBase):
         self._queue_counter += 1
         eff_priority = self._resolve_priority(fn, priority)
         future = loop.create_future()
+        work_item = (eff_priority, self._queue_counter, fn, args, kwargs, future)
 
-        await queue.put((eff_priority, self._queue_counter, fn, args, kwargs, future))
+        try:
+            queue.put_nowait(work_item)
+        except asyncio.QueueFull:
+            raise BrokerConnectionError("MT5 worker queue full (256 items) — terminal IPC may be stalled")
 
-        if timeout is not None:
-            try:
-                return await asyncio.wait_for(asyncio.shield(future), timeout=timeout)
-            except asyncio.TimeoutError:
-                future.cancel()
-                fn_name = getattr(fn, "__name__", str(fn))
-                logger.warning(f"[MT5Client] Operation {fn_name} exceeded timeout {timeout}s; future cancelled.")
-                raise TimeoutError(f"MT5 operation {fn_name} timed out")
-        return await future
+        effective_timeout = timeout if timeout is not None else getattr(self, "_default_ipc_timeout", 30.0)
+        try:
+            result = await asyncio.wait_for(asyncio.shield(future), timeout=effective_timeout)
+            self._consecutive_timeouts = 0
+            return result
+        except asyncio.TimeoutError:
+            future.cancel()
+            self._consecutive_timeouts += 1
+            fn_name = getattr(fn, "__name__", str(fn))
+            logger.warning(
+                f"[MT5Client] Operation {fn_name} exceeded timeout {effective_timeout}s "
+                f"(consecutive timeouts: {self._consecutive_timeouts}); future cancelled."
+            )
+            if self._consecutive_timeouts >= 3:
+                self._connected = False
+                logger.critical(
+                    "[MT5Client] 3 consecutive timeouts detected on MT5 worker. "
+                    "Resetting worker executor and marking MT5 disconnected."
+                )
+                try:
+                    self._executor.shutdown(wait=False, cancel_futures=True)
+                except Exception:
+                    pass
+                self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="MT5Worker-Healed")
+                self._consecutive_timeouts = 0
+            raise TimeoutError(f"MT5 operation {fn_name} timed out")
+
+    async def _run_in_executor(
+        self,
+        fn: Any,
+        *args: Any,
+        priority: Optional[int] = None,
+        timeout: Optional[float] = None,
+        **kwargs: Any,
+    ) -> Any:
+        """
+        Executes synchronous MT5 calls through the serialized priority queue worker,
+        providing serialization across all MT5 COM/IPC calls.
+        """
+        return await self._run(fn, *args, priority=priority, timeout=timeout, **kwargs)

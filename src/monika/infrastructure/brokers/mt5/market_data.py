@@ -594,6 +594,29 @@ class MT5MarketDataMixin(MT5MixinBase):
         self._tick_poller_stop_event = None
         logger.info("[MT5Client] Sub-second tick poller stopped.")
 
+    def _fetch_ticks_sync(self, symbols: list[str]) -> list[tuple[str, Any]]:
+        """Fetch latest ticks synchronously for a list of symbols."""
+        results: list[tuple[str, Any]] = []
+        for symbol in symbols:
+            try:
+                tick = _get_last_tick(symbol)
+                if tick is not None:
+                    results.append((symbol, tick))
+            except Exception as sym_err:
+                logger.debug(f"[MT5TickPoller] Error sampling {symbol}: {sym_err}")
+        return results
+
+    async def _poll_ticks(self, symbols: list[str]) -> list[tuple[str, Any]]:
+        """
+        Fetch latest ticks asynchronously through the serialized worker queue if available,
+        preventing concurrent thread-affine COM crashes in MetaTrader5 DLL.
+        """
+        if hasattr(self, "_run_in_executor"):
+            return await self._run_in_executor(self._fetch_ticks_sync, symbols, priority=PRIORITY_NORMAL, timeout=5.0)
+        loop = asyncio.get_running_loop()
+        executor = getattr(self, "_executor", None)
+        return await loop.run_in_executor(executor, self._fetch_ticks_sync, symbols)
+
     def _tick_poller_worker(
         self,
         symbols: list[str],
@@ -609,42 +632,41 @@ class MT5MarketDataMixin(MT5MixinBase):
         while stop_event and not stop_event.is_set():
             try:
                 if self._connected:
-                    for symbol in symbols:
+                    ticks = self._fetch_ticks_sync(symbols)
+                    for symbol, tick in ticks:
                         try:
-                            tick = _get_last_tick(symbol)
-                            if tick is not None:
-                                bid = float(getattr(tick, "bid", 0.0) or 0.0)
-                                ask = float(getattr(tick, "ask", 0.0) or 0.0)
-                                last = float(getattr(tick, "last", 0.0) or 0.0)
-                                if bid <= 0 and ask <= 0:
-                                    continue
-                                prev = self._last_ticks.get(symbol)
-                                # Deduplication on unchanged tick: only publish if bid or ask changed
-                                if prev is None or prev[0] != bid or prev[1] != ask:
-                                    self._last_ticks[symbol] = (bid, ask)
-                                    spread = round(ask - bid, 5) if ask > bid else 0.0
-                                    evt = TickPriceEvent(
-                                        symbol=symbol,
-                                        bid=bid,
-                                        ask=ask,
-                                        last=last,
-                                        spread=spread,
-                                    )
-                                    if event_bus:
-                                        if loop and loop.is_running():
-                                            event_bus.publish_threadsafe(evt, loop=loop)
-                                        else:
-                                            try:
-                                                subs = event_bus.get_subscribers(type(evt))
-                                                for s in subs:
-                                                    import inspect
+                            bid = float(getattr(tick, "bid", 0.0) or 0.0)
+                            ask = float(getattr(tick, "ask", 0.0) or 0.0)
+                            last = float(getattr(tick, "last", 0.0) or 0.0)
+                            if bid <= 0 and ask <= 0:
+                                continue
+                            prev = self._last_ticks.get(symbol)
+                            # Deduplication on unchanged tick: only publish if bid or ask changed
+                            if prev is None or prev[0] != bid or prev[1] != ask:
+                                self._last_ticks[symbol] = (bid, ask)
+                                spread = round(ask - bid, 5) if ask > bid else 0.0
+                                evt = TickPriceEvent(
+                                    symbol=symbol,
+                                    bid=bid,
+                                    ask=ask,
+                                    last=last,
+                                    spread=spread,
+                                )
+                                if event_bus:
+                                    if loop and loop.is_running():
+                                        event_bus.publish_threadsafe(evt, loop=loop)
+                                    else:
+                                        try:
+                                            subs = event_bus.get_subscribers(type(evt))
+                                            for s in subs:
+                                                import inspect
 
-                                                    if not inspect.iscoroutinefunction(s.handler):
-                                                        s.handler(evt)
-                                            except Exception:
-                                                pass
+                                                if not inspect.iscoroutinefunction(s.handler):
+                                                    s.handler(evt)
+                                        except Exception:
+                                            pass
                         except Exception as sym_err:
-                            logger.debug(f"[MT5TickPoller] Error sampling {symbol}: {sym_err}")
+                            logger.debug(f"[MT5TickPoller] Error processing tick for {symbol}: {sym_err}")
             except Exception as loop_err:
                 logger.debug(f"[MT5TickPoller] Poller iteration error: {loop_err}")
 

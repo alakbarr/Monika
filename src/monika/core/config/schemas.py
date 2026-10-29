@@ -233,6 +233,11 @@ class TelegramConfig(SubscriptableConfig):
     enabled: bool | None = False
 
 
+class GuardianConfig(SubscriptableConfig):
+    heartbeat_stale_threshold_seconds: float | None = Field(default=240.0, ge=30.0, le=1800.0)
+    port: int | None = Field(default=8001, ge=1024, le=65535)
+
+
 class TradingAgentConfig(SubscriptableConfig):
     installation_tier: str | None = Field(default="trial", pattern="^(trial|full|unconfigured)$")
     app_name: str | None = None
@@ -251,6 +256,8 @@ class TradingAgentConfig(SubscriptableConfig):
     security: SecurityConfig | None = None
     database: DatabaseConfig | None = None
     telegram: TelegramConfig | None = None
+    guardian: GuardianConfig | None = None
+    system: dict[str, Any] | None = Field(default_factory=dict)
     plugins: dict[str, Any] | None = Field(default_factory=dict)
     learning: dict[str, Any] | None = Field(default_factory=dict)
     adversarial_check: dict[str, Any] | None = Field(default_factory=dict)

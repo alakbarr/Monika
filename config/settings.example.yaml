@@ -3332,3 +3332,10 @@ harness:
   enable_legacy_turn6_tool_stubbing: false  # When false, maintains 100% byte-stable tool schemas across turns to preserve KV-cache
   preserve_tool_prefix: true                # Appends dynamically loaded tools after baseline tools to prevent shifting indices at token 0
   enable_prefetch_distillation: false       # When false, avoids rewriting token 0 prefetch data to maintain full KV-cache hit rate
+
+# ==============================================================================
+# Multi-Process Guardian & Emergency Watchdog
+# ==============================================================================
+guardian:
+  heartbeat_stale_threshold_seconds: 240.0
+  port: 8001

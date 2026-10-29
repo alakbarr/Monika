@@ -59,10 +59,10 @@ class EAWatchdog:
         Returns:
             (is_healthy: bool, stale_seconds: int)
         """
-        alive, stale = self.hb_manager.check_ea_alive()
+        alive, stale = self.hb_manager.check_ea_alive(stale_threshold_seconds=self.stale_threshold)
         self._last_stale_seconds = stale
 
-        if not alive:
+        if not alive or (stale >= 0 and stale > self.stale_threshold):
             self._consecutive_failures += 1
             self._is_ea_alive = False
             reason = (

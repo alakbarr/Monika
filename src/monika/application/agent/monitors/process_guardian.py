@@ -28,13 +28,14 @@ import signal
 import sys
 import threading
 import time
+import traceback
 from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger("TradingAgent.ProcessGuardian")
 
 DEFAULT_GUARDIAN_PORT = 8001
-HEARTBEAT_STALE_THRESHOLD_SECONDS = 60.0
+HEARTBEAT_STALE_THRESHOLD_SECONDS = 240.0
 
 
 def _get_data_dir() -> Path:
@@ -75,11 +76,60 @@ def trigger_emergency_kill(source: str = "Guardian") -> bool:
         return False
 
 
+def clear_stale_heartbeat_kill_flag(flag_path: Optional[Path] = None) -> bool:
+    """
+    Inspect disk kill switch flag. If it was generated solely due to a transient process
+    heartbeat staleness / hang ('HeartbeatStale_*'), archive it to guardian_restart.json
+    and remove the kill flag so Monika can restart safely without false liquidation.
+    Financial kill switch flags (DrawdownMonitor, MarginMonitor, Manual, etc.) or
+    malformed files remain untouched (fail-closed).
+    """
+    target_flag = flag_path if flag_path is not None else _get_kill_flag_path()
+    if not target_flag.exists():
+        return False
+    try:
+        content = target_flag.read_text(encoding="utf-8").strip()
+        payload = json.loads(content)
+        source = str(payload.get("source", ""))
+        if source.startswith("HeartbeatStale_"):
+            restart_path = _get_data_dir() / "guardian_restart.json"
+            restart_path.write_text(
+                json.dumps(
+                    {
+                        "source": source,
+                        "archived_timestamp": time.time(),
+                        "original_payload": payload,
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            target_flag.unlink(missing_ok=True)
+            logger.warning(
+                f"[ProcessGuardian] Cleared stale HeartbeatStale flag from previous process hang ({source}). "
+                f"Archived diagnostic state to {restart_path}"
+            )
+            return True
+        else:
+            logger.critical(
+                f"[ProcessGuardian] Active financial/manual kill switch flag detected ({source}); "
+                "preserving flag (fail-closed)."
+            )
+            return False
+    except Exception as e:
+        logger.critical(
+            f"[ProcessGuardian] Unparseable kill switch flag detected at {target_flag}; "
+            f"preserving flag for financial safety (fail-closed): {e}"
+        )
+        return False
+
+
 class GuardianRequestHandler(http.server.BaseHTTPRequestHandler):
     """Lightweight HTTP request handler for Guardian emergency endpoints."""
 
     primary_pid: Optional[int] = None
     shutdown_flag: Optional[threading.Event] = None
+    stale_threshold: float = HEARTBEAT_STALE_THRESHOLD_SECONDS
 
     def log_message(self, format: str, *args: Any) -> None:
         # Suppress standard noisy access logging
@@ -105,11 +155,12 @@ class GuardianRequestHandler(http.server.BaseHTTPRequestHandler):
         hb_path = _get_heartbeat_path()
         age = None
         is_fresh = False
+        threshold = getattr(self, "stale_threshold", HEARTBEAT_STALE_THRESHOLD_SECONDS)
         if hb_path.exists():
             try:
                 last_hb = float(hb_path.read_text(encoding="utf-8").strip())
                 age = round(time.time() - last_hb, 2)
-                is_fresh = age < HEARTBEAT_STALE_THRESHOLD_SECONDS
+                is_fresh = age < threshold
             except Exception:
                 pass
 
@@ -120,6 +171,7 @@ class GuardianRequestHandler(http.server.BaseHTTPRequestHandler):
             "guardian_pid": os.getpid(),
             "primary_pid": self.primary_pid,
             "primary_heartbeat_age_seconds": age,
+            "heartbeat_stale_threshold_seconds": threshold,
             "primary_alive": is_fresh,
             "kill_switch_active": kill_active,
         }
@@ -173,6 +225,7 @@ def _run_guardian_loop(
     port: int,
     primary_pid: int,
     stop_event: Any,
+    stale_threshold: float = HEARTBEAT_STALE_THRESHOLD_SECONDS,
 ) -> None:
     """
     Target entrypoint executed inside the dedicated child OS process.
@@ -190,6 +243,7 @@ def _run_guardian_loop(
 
     handler_class = GuardianRequestHandler
     handler_class.primary_pid = primary_pid
+    handler_class.stale_threshold = stale_threshold
 
     local_stop = threading.Event()
     handler_class.shutdown_flag = local_stop
@@ -218,10 +272,10 @@ def _run_guardian_loop(
                 try:
                     last_hb = float(hb_path.read_text(encoding="utf-8").strip())
                     age = time.time() - last_hb
-                    if age > HEARTBEAT_STALE_THRESHOLD_SECONDS:
+                    if age > stale_threshold:
                         logger.critical(
                             f"[GuardianProcess] WARNING: Primary trading loop unresponsive! "
-                            f"Heartbeat age: {age:.1f}s > {HEARTBEAT_STALE_THRESHOLD_SECONDS}s. "
+                            f"Heartbeat age: {age:.1f}s > {stale_threshold:.1f}s. "
                             f"Triggering emergency kill switch!"
                         )
                         trigger_emergency_kill(source=f"HeartbeatStale_{age:.0f}s")
@@ -276,10 +330,34 @@ class GuardianSupervisor:
         self._stop_event: Optional[Any] = None
         self._hb_thread: Optional[threading.Thread] = None
         self._async_task: Optional[asyncio.Task[Any]] = None
+        self._heartbeat_task: Optional[asyncio.Task[None]] = None
+        self._last_loop_tick_monotonic: float = time.monotonic()
+        self._lag_watchdog_thread: Optional[threading.Thread] = None
+        self._lag_watchdog_stop: threading.Event = threading.Event()
         self._running = False
+
+        raw_env_threshold = os.getenv("GUARDIAN_HEARTBEAT_TIMEOUT_SECONDS")
+        if raw_env_threshold:
+            try:
+                resolved_threshold = float(raw_env_threshold)
+            except ValueError:
+                resolved_threshold = HEARTBEAT_STALE_THRESHOLD_SECONDS
+        else:
+            guardian_cfg = self.settings.get("guardian") or self.settings.get("system", {}).get("guardian") or {}
+            if isinstance(guardian_cfg, dict):
+                resolved_threshold = float(
+                    guardian_cfg.get("heartbeat_stale_threshold_seconds", HEARTBEAT_STALE_THRESHOLD_SECONDS)
+                )
+            else:
+                resolved_threshold = float(
+                    getattr(guardian_cfg, "heartbeat_stale_threshold_seconds", HEARTBEAT_STALE_THRESHOLD_SECONDS)
+                )
+        self.heartbeat_stale_threshold_seconds = resolved_threshold
 
     def start(self) -> None:
         """Spawn the independent Guardian process."""
+        clear_stale_heartbeat_kill_flag()
+
         if self._running:
             return
 
@@ -295,7 +373,7 @@ class GuardianSupervisor:
 
         self._process = multiprocessing.Process(
             target=_run_guardian_loop,
-            args=(self.port, primary_pid, self._stop_event),
+            args=(self.port, primary_pid, self._stop_event, self.heartbeat_stale_threshold_seconds),
             daemon=True,
             name="guardian-process",
         )
@@ -306,10 +384,18 @@ class GuardianSupervisor:
         # Start periodic heartbeat writer directly inside the main asyncio loop
         try:
             loop = asyncio.get_running_loop()
-            self._async_task = loop.create_task(
+            self._last_loop_tick_monotonic = time.monotonic()
+            self._heartbeat_task = self._async_task = loop.create_task(
                 self.start_async_heartbeat(),
                 name="guardian-async-heartbeat",
             )
+            self._lag_watchdog_stop.clear()
+            self._lag_watchdog_thread = threading.Thread(
+                target=self._lag_watchdog_loop,
+                daemon=True,
+                name="event-loop-lag-watchdog",
+            )
+            self._lag_watchdog_thread.start()
         except RuntimeError:
             self._hb_thread = threading.Thread(
                 target=self._heartbeat_writer_loop,
@@ -321,9 +407,14 @@ class GuardianSupervisor:
     def _write_heartbeat(self) -> None:
         hb_path = _get_heartbeat_path()
         try:
-            hb_path.write_text(str(time.time()), encoding="utf-8")
+            tmp_path = hb_path.with_name(f"{hb_path.name}.tmp")
+            tmp_path.write_text(str(time.time()), encoding="utf-8")
+            tmp_path.replace(hb_path)
         except Exception:
-            pass
+            try:
+                hb_path.write_text(str(time.time()), encoding="utf-8")
+            except Exception:
+                pass
 
     def _heartbeat_writer_loop(self) -> None:
         while self._running:
@@ -333,6 +424,7 @@ class GuardianSupervisor:
     async def start_async_heartbeat(self, stop_event: Optional[asyncio.Event] = None) -> None:
         """Periodic heartbeat writer executing directly inside the main asyncio event loop."""
         while self._running:
+            self._last_loop_tick_monotonic = time.monotonic()
             self._write_heartbeat()
             if stop_event:
                 try:
@@ -343,10 +435,34 @@ class GuardianSupervisor:
             else:
                 await asyncio.sleep(5.0)
 
+    def _lag_watchdog_loop(self) -> None:
+        """Background watchdog thread monitoring main asyncio event-loop lag."""
+        last_dump_time = 0.0
+        while self._running and not self._lag_watchdog_stop.is_set():
+            self._lag_watchdog_stop.wait(5.0)
+            if not self._running or self._lag_watchdog_stop.is_set():
+                break
+            lag = time.monotonic() - self._last_loop_tick_monotonic
+            now = time.monotonic()
+            if lag > 30.0 and (now - last_dump_time) > 30.0:
+                last_dump_time = now
+                main_thread_id = threading.main_thread().ident
+                frames = sys._current_frames()
+                if main_thread_id is not None and main_thread_id in frames:
+                    stack_str = "".join(traceback.format_stack(frames[main_thread_id]))
+                else:
+                    stack_str = "Main thread not found in active frames"
+                logger.warning(
+                    f"[GuardianSupervisor] Event loop lag detected ({lag:.1f}s) — main thread stack:\n{stack_str}"
+                )
+
     def stop(self) -> None:
         """Signal and join the Guardian child process."""
         self._running = False
-        if hasattr(self, "_async_task") and self._async_task:
+        self._lag_watchdog_stop.set()
+        if self._heartbeat_task and not self._heartbeat_task.done():
+            self._heartbeat_task.cancel()
+        if hasattr(self, "_async_task") and self._async_task and not self._async_task.done():
             self._async_task.cancel()
         if self._stop_event:
             self._stop_event.set()
@@ -369,6 +485,7 @@ class GuardianSupervisor:
 __all__ = [
     "DEFAULT_GUARDIAN_PORT",
     "HEARTBEAT_STALE_THRESHOLD_SECONDS",
+    "clear_stale_heartbeat_kill_flag",
     "trigger_emergency_kill",
     "GuardianRequestHandler",
     "GuardianSupervisor",

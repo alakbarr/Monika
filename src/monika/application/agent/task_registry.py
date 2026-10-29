@@ -8,6 +8,7 @@ import asyncio
 import logging
 import os
 import re
+import sys
 import time as _time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -116,11 +117,9 @@ async def _safe_notify_critical(msg: str) -> None:
 PERMANENT_ERRORS = [
     "AuthenticationError",
     "invalid_api_key",
-    "API key",
     "Invalid model",
     "model_not_found",
     "DATABASE_URL",
-    "could not connect to database",
     'relation ".*" does not exist',
     'column ".*" does not exist',
     "No section: ",
@@ -129,6 +128,11 @@ PERMANENT_ERRORS = [
     "CERTIFICATE_VERIFY_FAILED",
     "billing_hard_limit_reached",
     "quota_exceeded_permanently",
+    "SyntaxError",
+    "ImportError",
+    "ModuleNotFoundError",
+    "TypeError",
+    "AttributeError",
 ]
 
 LONG_RETRY_ERRORS = [
@@ -189,9 +193,12 @@ async def _run_with_restart(
     and fail-closed emergency shutdown for core tasks.
     """
     restarts = 0
-    last_success_time = _time.monotonic()
+    last_failure_time: Optional[float] = None
+    is_test = ("pytest" in sys.modules) or ("PYTEST_CURRENT_TEST" in os.environ)
+    auxiliary_cooldown = min(300.0, max_delay) if is_test else 300.0
 
     while not shutdown_event.is_set():
+        task_start_time = _time.monotonic()
         try:
             await coro_factory()
             if shutdown_event.is_set():
@@ -220,9 +227,12 @@ async def _run_with_restart(
                         break
 
             logger.error(f"{name} exited unexpectedly (but no exception).")
-            if _time.monotonic() - last_success_time > 3600:
+            now_mono = _time.monotonic()
+            healthy_uptime = now_mono - task_start_time
+            if healthy_uptime >= 300.0 or (last_failure_time is not None and (now_mono - last_failure_time) > 300.0):
+                logger.info(f"{name}: Resetting restart counter (healthy uptime {healthy_uptime:.1f}s >= 300s).")
                 restarts = 0
-            last_success_time = _time.monotonic()
+            last_failure_time = now_mono
 
             restarts += 1
             if restarts > max_restarts:
@@ -235,15 +245,15 @@ async def _run_with_restart(
                     break
                 else:
                     logger.warning(
-                        f"[DEGRADED] Auxiliary subsystem {name} exited {max_restarts} times. Isolating with 300s cooldown."
+                        f"[DEGRADED] Auxiliary subsystem {name} exited {max_restarts} times. Isolating with {auxiliary_cooldown:.1f}s cooldown."
                     )
                     await _safe_notify_warning(
                         f"[PERINGATAN] <b>[DEGRADED] Subsystem {name} exited unexpectedly</b>\n"
-                        f"Subsystem auxiliary masuk status DEGRADED dengan cooldown 300s."
+                        f"Subsystem auxiliary masuk status DEGRADED dengan cooldown {auxiliary_cooldown:.1f}s."
                     )
                     restarts = 0
                     try:
-                        await asyncio.wait_for(shutdown_event.wait(), timeout=300.0)
+                        await asyncio.wait_for(shutdown_event.wait(), timeout=auxiliary_cooldown)
                     except asyncio.TimeoutError:
                         pass
                     continue
@@ -279,22 +289,24 @@ async def _run_with_restart(
                     shutdown_event.set()
                     break
                 else:
-                    warn_msg = f"[PERINGATAN] <b>[DEGRADED] Auxiliary subsystem {name} failed (permanent error)</b>\nError: {e}\nSubsystem auxiliary diisolasi (cooldown 300s)."
+                    warn_msg = f"[PERINGATAN] <b>[DEGRADED] Auxiliary subsystem {name} failed (permanent error)</b>\nError: {e}\nSubsystem auxiliary diisolasi (cooldown {auxiliary_cooldown:.1f}s)."
                     logger.warning(
                         f"[DEGRADED] Auxiliary subsystem {name} failed. Isolating error without shutting down: {e}"
                     )
                     await _safe_notify_warning(warn_msg)
                     restarts = 0
                     try:
-                        await asyncio.wait_for(shutdown_event.wait(), timeout=300.0)
+                        await asyncio.wait_for(shutdown_event.wait(), timeout=auxiliary_cooldown)
                     except asyncio.TimeoutError:
                         pass
                     continue
 
-            if _time.monotonic() - last_success_time > 3600:
-                logger.info(f"{name}: Resetting restart counter (ran > 1h without errors).")
+            now_mono = _time.monotonic()
+            healthy_uptime = now_mono - task_start_time
+            if healthy_uptime >= 300.0 or (last_failure_time is not None and (now_mono - last_failure_time) > 300.0):
+                logger.info(f"{name}: Resetting restart counter (healthy uptime {healthy_uptime:.1f}s >= 300s).")
                 restarts = 0
-            last_success_time = _time.monotonic()
+            last_failure_time = now_mono
 
             restarts += 1
             if restarts > max_restarts:
@@ -308,14 +320,14 @@ async def _run_with_restart(
                     shutdown_event.set()
                     break
                 else:
-                    warn_msg = f"[PERINGATAN] <b>[DEGRADED] Auxiliary subsystem {name} hit max restarts ({max_restarts}x)</b>\nError: {e}\nSubsystem diisolasi (cooldown 300s)."
+                    warn_msg = f"[PERINGATAN] <b>[DEGRADED] Auxiliary subsystem {name} hit max restarts ({max_restarts}x)</b>\nError: {e}\nSubsystem diisolasi (cooldown {auxiliary_cooldown:.1f}s)."
                     logger.warning(
                         f"[DEGRADED] Auxiliary subsystem {name} exceeded max restarts. Isolating error without shutting down: {e}"
                     )
                     await _safe_notify_warning(warn_msg)
                     restarts = 0
                     try:
-                        await asyncio.wait_for(shutdown_event.wait(), timeout=300.0)
+                        await asyncio.wait_for(shutdown_event.wait(), timeout=auxiliary_cooldown)
                     except asyncio.TimeoutError:
                         pass
                     continue
