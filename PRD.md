@@ -54,7 +54,7 @@ Monika is engineered around five immutable pillars:
 ```
 
 1. **"AI Proposes, Mechanical Fortress Disposes"**: AI agents produce structured proposals (`SubmitAssetAnalysisSchema`), never direct broker orders. Every proposal must pass mathematical validation through `RiskGate` before reaching the broker execution bridge.
-2. **Separation of Concerns**: Indicators (ATR, RSI, Moving Averages), structural zones (Fair Value Gaps, Swing Pivots), and position lot sizes are computed strictly by deterministic Python modules. The LLM is never permitted to calculate lot sizes or pip measurements mentally.
+2. **Separation of Concerns**: Indicators (ATR, RSI, Moving Averages), structural zones (Fair Value Gaps, Swing Pivots), microstructure toxicity/impact metrics (VPIN, Kyle's Lambda, Tick CVD), and position lot sizes are computed strictly by deterministic Python/NumPy modules and the zero-dependency Native Rust C-ABI Accelerator (`monika_core_rs` via `src/monika/core/native/rust_bridge.py`, with 100% parity vectorized NumPy fallback). The LLM is never permitted to calculate lot sizes or pip measurements mentally.
 3. **Capital Preservation Above All**: Protecting trading capital takes precedence over generating alpha. If market conditions are ambiguous, volatile, or anomalous, the correct and praised action is `WAIT` or `NO TRADE`.
 4. **Comprehensive Auditability**: Every prompt payload, tool execution, token expenditure, debate argument, judicial verdict, and broker order ticket is permanently logged into PostgreSQL.
 5. **Dual-System Cognition**: High-frequency reflexive responses (fast news reaction, hard session cutoffs) are handled by System 1 (JEV), freeing System 2 (LangGraph) for deliberate, multi-turn macroeconomic and technical synthesis.
@@ -118,16 +118,16 @@ flowchart TD
 - **FR-1.5 (Thematic News Clustering & Sentiment):** Deduplicates and clusters headlines from Kitco, Bloomberg, Reuters, FXStreet, and TradingView, computing entity-level sentiment and macro threat indexes.
 
 ### FR-2: Microstructure, Quantitative Indicators & Alpha Zoo
-- **FR-2.1 (Classical Quantitative Indicators):** Deterministic computation of EMAs, SMAs, RSI (14), Wilder's ATR (14), Bollinger Bands, and Average Daily Range (ADR).
+- **FR-2.1 (Classical Quantitative Indicators):** Deterministic computation of EMAs, SMAs, RSI (14), Wilder's ATR (14), Bollinger Bands, and Average Daily Range (ADR), with timeframe-aware candle delta-checking and incremental 2-bar database persistence (`TechnicalIndicatorService`) to eliminate redundant recalculation.
 - **FR-2.2 (Smart Money Concepts / SMC):**
-  - Swing Highs and Swing Lows (Fractal pivots).
+  - Swing Highs and Swing Lows (Fractal pivots accelerated via `monika_core_rs` C-ABI `find_swings_f64` and `find_swing_pivots_f64` with vectorized NumPy fallback).
   - Break of Structure (BOS) and Change of Character (CHoCH).
-  - Fair Value Gaps (FVG) tracked by mitigation state (unfilled, partially filled, mitigated).
+  - Fair Value Gaps (FVG) and Order Blocks tracked by mitigation state (unfilled, partially filled, mitigated) with candle delta-checking (`MarketStructureService`).
   - Liquidity Pools (buy-side and sell-side liquidity clusters and sweeps).
 - **FR-2.3 (Alpha Zoo & Formula Factor Engine):**
   - **WorldQuant 101:** Full implementation of WorldQuant's 101 quantitative alpha formulas (`wq_alpha_001.py` through `wq_alpha_101.py`).
   - **Qlib 158:** High-capacity feature library comprising 158 normalized financial factors.
-  - **Microstructure & Academic Factors:** Cointegration testing, Copula tail risk estimation, and Extreme Value Theory (EVT) calculations.
+  - **Microstructure & Academic Factors:** Native Rust C-ABI (`monika_core_rs`) and vectorized NumPy computation of Volume-Synchronized Probability of Informed Trading (VPIN fractional bucket slicing), Kyle's Lambda rolling OLS price impact, Lee-Ready Tick-Rule Cumulative Volume Delta (CVD), Roll Effective Spread, Amihud Illiquidity, Cointegration testing, Copula tail risk estimation, and Extreme Value Theory (EVT) calculations.
 - **FR-2.4 (Deep Volatility Forecasting):** Optional integration with **Google TimesFM 3.0** generating forward-looking quantile volatility bounds ($q_{0.1}$ to $q_{0.9}$) for intraday boundary guidance.
 
 ### FR-3: Multi-Agent Adversarial Debate & Cognitive Synthesis
@@ -182,10 +182,10 @@ flowchart TD
 ### FR-9: System 1 (JEV) Fast-Reflex Architecture
 - **FR-9.1 (Sub-Second Reflex Trigger):** Fast-path evaluation pipeline executing rule-based triggers without invoking multi-turn LLM debates.
 - **FR-9.2 (Session Timing & Confluence Gates):** Validates killzones (London Open, New York Open, Asian session) and confluence filters.
-- **FR-9.3 (Real-Time Position Guard):** Monitors active floating positions against sudden liquidity grabs, triggering emergency trailing stops or partial exits.
+- **FR-9.3 (Real-Time Position Guard):** Monitors active floating positions against sudden liquidity grabs, triggering emergency trailing stops or partial exits. Uses an event-driven `ActivePositionStateCache` (`EventBus` subscription + 5-second TTL fallback) so `TrailingStopManager.on_tick` and `PositionGuardian.on_tick` incur zero database queries when flat.
 
 ### FR-10: Research, Alpha Arena & Multi-Layer Benchmark Harness
-- **FR-10.1 (Point-in-Time Backtest Engine):** Zero-lookahead historical bar stepping with execution friction modeling and Walk-Forward Optimization (WFO).
+- **FR-10.1 (Point-in-Time Backtest Engine):** Zero-lookahead historical bar stepping (`IsolatedStrategyBacktestHarness` & single-compile `ZeroLookaheadSliceSession` with monotonic HTF cursors), execution friction modeling, Walk-Forward Optimization (WFO), and Rust C-ABI accelerated Monte Carlo stress testing (`eval_equity_paths_f64`) and Combinatorially Symmetric Cross-Validation (CSCV) Probability of Backtest Overfitting (`cscv_pbo_from_chunks_f64`).
 - **FR-10.2 (Alpha Arena Head-to-Head Tournament):** Automated Elo rating tournament (`alpha_arena.py`) evaluating competing LLM models across standardized financial cases.
 - **FR-10.3 (Golden Scenario Fixture Matrix):** Curated library of 65 historical market events (macro surprises, news escalations, liquidity traps, debt crises) for deterministic model evaluation.
 - **FR-10.4 (Token Drift & Cost Tracking):** Measures reasoning degradation, schema compliance, prompt cache hit rates (calculated as normalized `cache_read_tokens / total_input_tokens` without denominator double-counting), and input/output cost deltas per model.
@@ -201,7 +201,8 @@ flowchart TD
 
 ### NFR-1: Reliability & Fault Tolerance
 - **Fail-Closed Default:** Unhandled exceptions or data dropouts immediately abort evaluation to a `NO TRADE` state.
-- **Process Supervision:** Daemon wrapped in auto-restart loops with exponential backoff and single-instance PID locking (`trading_agent.pid`).
+- **24/7 Self-Healing Process Supervision:** Daemon wrapped in auto-restart supervision (`ProcessGuardian` and `TaskRegistry`) with exponential backoff, single-instance PID locking (`trading_agent.pid`), and a 300-second healthy-uptime restart counter decay. Process hang signals (`HeartbeatStale`) trigger automatic daemon respawn without tripping a permanent financial kill-switch, whereas financial/operator kill-switches (`POST /api/v1/kill`, `DrawdownMonitor`, `MarginMonitor`) remain strictly fail-closed until explicitly healed.
+- **Bounded Memory & Automated Storage Hygiene:** In-memory execution locks, alert deduplication sets, and LangGraph `SqliteCheckpointSaver` blob caches enforce hard capacity ceilings, complemented by daily batched retention pruning (`cleanup_old_data()`) across high-growth time-series and telemetry tables.
 
 ### NFR-2: Security & Credential Hygiene
 - **Zero Exposure of Secrets:** `.env` and credential files must never be read, parsed, or printed by LLMs or committed to source control.
@@ -221,14 +222,14 @@ flowchart TD
   - **Fail-Safe Zero-Compromise on Capital Protection (§1):** Mechanical capital protection paths — including deterministic `RiskGate`, `PositionGuardian` emergency stop-loss tightening / trailing stops, emergency kill-switch (`POST /api/v1/kill`), and MT5 EA watchdog (`AIAgent_EA.mq5`) — are deterministic, non-LLM paths and are NEVER paused, throttled, or compromised by AI budget state.
 
 ### NFR-5: Portability & Cross-Platform Operation
-- **Primary Windows Execution:** Native MT5 execution on Windows 10/11 or Windows Server.
-- **Linux Headless Support:** Supported via Docker/Wine RPC bridge (`deploy/Dockerfile.mt5-wine`).
+- **Primary Windows Execution:** Native MT5 execution on Windows 10/11 or Windows Server, with SHA-256 shadow-copy DLL loading (`rust_bridge.py`) so `monika_core_rs.dll` is never file-locked during 24/7 operation.
+- **Linux Headless Support:** Supported via Docker/Wine RPC bridge (`deploy/Dockerfile.mt5-wine`), with automatic, zero-friction fallback to 100%-parity vectorized NumPy kernels when the native Rust binary is absent or disabled (`MONIKA_DISABLE_RUST_ACCEL=1`).
 
 ---
 
 ## 6. Data Schema & Persistence Model
 
-Managed via **PostgreSQL 16+** using async SQLAlchemy 2.0 and tracked through 9 Alembic migrations (`0001` through `0008` and schema sync `c83c5e451412` across 74 mapped tables).
+Managed via **PostgreSQL 16+** (with SQLite trial-tier support) using async SQLAlchemy 2.0 and tracked through versioned Alembic migrations up to head `0014_widen_source_and_symbol_columns` across 75 mapped tables.
 
 ### Database Entity Architecture
 ```
