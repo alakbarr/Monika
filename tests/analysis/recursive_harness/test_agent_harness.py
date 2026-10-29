@@ -591,9 +591,9 @@ async def test_harness_anti_laziness_allows_wait_with_suffixed_prefetch_tools(du
 
 
 def test_harness_per_turn_timeout_setting_default(dummy_client):
-    """Verify AgentHarness initializes per_turn_timeout_seconds from settings or default 90.0."""
+    """Verify AgentHarness initializes per_turn_timeout_seconds from settings or default 360.0."""
     harness_default = AgentHarness(dummy_client)
-    assert harness_default.per_turn_timeout_seconds == 90.0
+    assert harness_default.per_turn_timeout_seconds == 360.0
 
     harness_custom = AgentHarness(dummy_client, settings={"llm": {"per_turn_timeout_seconds": 45.0}})
     assert harness_custom.per_turn_timeout_seconds == 45.0
