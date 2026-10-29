@@ -135,7 +135,7 @@ class AgentHarness:
         self.max_context_chars = max_context_chars
         self.db_session = db_session
         self.per_turn_timeout_seconds = float(
-            (self.settings or {}).get("llm", {}).get("per_turn_timeout_seconds", 90.0)
+            (self.settings or {}).get("llm", {}).get("per_turn_timeout_seconds", 360.0)
         )
         self.compactor = ContextCompactionEngine(self.settings)
         from monika.application.analysis.tools.tool_guardrails import ToolGuardrailController
@@ -1004,7 +1004,10 @@ class AgentHarness:
             except Exception as e:
                 logger.debug(f"Failed to attach harness to lease for {stage_symbol}: {e}")
 
-        turn_timeout = float(kwargs.get("turn_timeout_seconds") or getattr(self, "per_turn_timeout_seconds", 90.0))
+        turn_timeout = float(kwargs.get("turn_timeout_seconds") or getattr(self, "per_turn_timeout_seconds", 360.0))
+        client_thinking = getattr(self.llm_client, "thinking_level", None)
+        if client_thinking and str(client_thinking).lower() not in ("none", "off", ""):
+            turn_timeout = max(turn_timeout, 420.0)
 
         # Minify tool definitions to eliminate verbose schema bloat across multi-turn ReAct loop
         if tools:
@@ -1092,10 +1095,15 @@ class AgentHarness:
         stage_timeout_seconds = kwargs.get("stage_timeout_seconds")
         if not stage_timeout_seconds:
             is_benchmark = self.settings.get("_benchmark_mode", False)
-            default_timeout = 600.0 if is_benchmark else 180.0
-            stage_timeout_seconds = self.settings.get("stage_timeout_seconds", default_timeout)
-            if is_benchmark and stage_timeout_seconds < 600.0:
-                stage_timeout_seconds = 600.0
+            client_thinking = getattr(self.llm_client, "thinking_level", None)
+            is_thinking_client = client_thinking and str(client_thinking).lower() not in ("none", "off", "")
+            is_macro_or_fundamental = (
+                stage_name in ("fundamental", "macro", "benchmark_stage1_fundamental") or "macro" in stage_name
+            )
+            default_timeout = 900.0 if (is_benchmark or is_macro_or_fundamental or is_thinking_client) else 600.0
+            stage_timeout_seconds = float(self.settings.get("stage_timeout_seconds") or default_timeout)
+            if stage_timeout_seconds < default_timeout:
+                stage_timeout_seconds = default_timeout
         _wrapup_injected = False
         _stage_start_time = asyncio.get_event_loop().time()
 
@@ -1415,7 +1423,7 @@ class AgentHarness:
                             async with TurnLivenessWatchdog(
                                 turn_id=f"{stage_name}_{turns}",
                                 timeout_seconds=turn_timeout,
-                                stall_timeout_seconds=min(60.0, max(15.0, turn_timeout * 0.65)),
+                                stall_timeout_seconds=min(180.0, max(30.0, turn_timeout * 0.65)),
                                 abort_on_hang=True,
                             ) as watchdog:
                                 _watchdog_ref = watchdog

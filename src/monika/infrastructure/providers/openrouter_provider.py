@@ -321,7 +321,7 @@ class OpenRouterProvider(OpenAIProvider):
                     .get("llm", {})
                     .get("providers", {})
                     .get("openrouter", {})
-                    .get("timeout_seconds", 120.0)
+                    .get("timeout_seconds", 360.0)
                 )
                 self.__class__._client_pool[api_key] = AsyncOpenAI(
                     api_key=api_key,

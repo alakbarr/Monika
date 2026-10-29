@@ -156,7 +156,7 @@ class AnthropicProvider(BaseLLMClient):
         else:
             provider_cfg = (settings or {}).get("llm", {}).get("providers", {}).get("anthropic", {})
             max_retries = provider_cfg.get("max_retries", 3)
-            timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
+            timeout_sec = float(provider_cfg.get("timeout_seconds", 360.0))
             client_kwargs: dict[str, Any] = {"max_retries": max_retries, "timeout": timeout_sec}
             if auth_token:
                 client_kwargs["auth_token"] = auth_token
@@ -178,7 +178,7 @@ class AnthropicProvider(BaseLLMClient):
         try:
             provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get("anthropic", {})
             max_retries = provider_cfg.get("max_retries", 3)
-            timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
+            timeout_sec = float(provider_cfg.get("timeout_seconds", 360.0))
             self.client = anthropic.AsyncAnthropic(api_key=api_key, max_retries=max_retries, timeout=timeout_sec)
         except Exception as e:
             logger.debug("Failed to re-initialize Anthropic client on key update: %s", e)
@@ -207,9 +207,9 @@ class AnthropicProvider(BaseLLMClient):
         provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get("anthropic", {})
         stream_cfg = provider_cfg.get("streaming", {})
         return StreamConfig(
-            idle_timeout=float(stream_cfg.get("idle_timeout_seconds", 30.0)),
-            safety_timeout=float(stream_cfg.get("safety_timeout_seconds", 600.0)),
-            first_chunk_timeout=float(stream_cfg.get("first_chunk_timeout_seconds", 60.0)),
+            idle_timeout=float(stream_cfg.get("idle_timeout_seconds", 120.0)),
+            safety_timeout=float(stream_cfg.get("safety_timeout_seconds", 1200.0)),
+            first_chunk_timeout=float(stream_cfg.get("first_chunk_timeout_seconds", 300.0)),
         )
 
     async def _consume_anthropic_stream(self, create_kwargs: dict, config: Optional[StreamConfig] = None):

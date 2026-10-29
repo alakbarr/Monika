@@ -160,3 +160,76 @@ def test_startup_check_task_roles_complete_and_legacy_backfill():
     legacy_raw["llm"]["task_roles"].pop("macro_chronicle_curator", None)
     reloaded = load_settings(legacy_raw)
     assert "macro_chronicle_curator" in reloaded["llm"]["task_roles"]
+
+
+def test_future_proof_resolve_stale_timeout_floor():
+    """Verify timeout floor is dynamic, capability-based, and model-agnostic."""
+    from monika.infrastructure.providers.capabilities import resolve_stale_timeout_floor
+
+    # 1. Any future unknown model name with high thinking level gets 600s
+    assert resolve_stale_timeout_floor("future-provider/hyper-model-9", thinking_level="high") == 600.0
+    assert resolve_stale_timeout_floor("unknown-vendor/model-x", thinking_level="max") == 600.0
+    assert resolve_stale_timeout_floor("unknown-vendor/model-x", thinking_level="medium") == 360.0
+
+    # 2. Large thinking budget (>= 8192) dynamically triggers 600s
+    assert resolve_stale_timeout_floor("unseen-model", thinking_budget=16384) == 600.0
+
+    # 3. Generic reasoning keywords across any provider get >= 360s
+    assert resolve_stale_timeout_floor("custom/qwen-3-deep-reasoning") == 360.0
+    assert resolve_stale_timeout_floor("local/llama-4-reasoner") == 360.0
+
+    # 4. Standard non-thinking model defaults to standard timeout
+    assert resolve_stale_timeout_floor("gemini-3.5-flash-lite", default_timeout=45.0) == 45.0
+
+
+@pytest.mark.asyncio
+async def test_future_model_run_agent_reasoning_timeout_protection():
+    """Verify ANY model with thinking: high is floored to >=300s without hardcoded names."""
+    import asyncio
+    from unittest.mock import AsyncMock, patch, MagicMock
+    from monika.infrastructure.providers.llm_factory import LLMFactory, FallbackClientWrapper
+
+    settings = {
+        "llm": {
+            "model_catalog": {"future-frontier-v2": {"provider": "openrouter"}},
+            "task_roles": {
+                "stage1_fundamental": {
+                    "primary": "future-frontier-v2",
+                    "thinking": "high",
+                    "per_model_timeout_seconds": 120.0,
+                    "max_tool_turns": 4,
+                }
+            },
+        }
+    }
+
+    factory = LLMFactory(settings)
+    wrapper = FallbackClientWrapper(
+        factory=factory,
+        primary="future-frontier-v2",
+        fallbacks=[],
+        role_config=settings["llm"]["task_roles"]["stage1_fundamental"],
+        task_role="stage1_fundamental",
+    )
+
+    client_future = MagicMock()
+    client_future.thinking_level = "high"
+
+    async def _mock_run_agent(*args, **kwargs):
+        return {"success": True, "final_text": "future_synthesis"}
+
+    client_future.run_agent = AsyncMock(side_effect=_mock_run_agent)
+
+    with patch.object(factory, "_create_client_instance", return_value=client_future):
+        with patch("asyncio.wait_for", wraps=asyncio.wait_for) as mock_wait_for:
+            result = await wrapper.run_agent(
+                session=MagicMock(),
+                system_prompt="sys",
+                user_message="user",
+                tools=[],
+            )
+            assert result["success"] is True
+            assert mock_wait_for.called
+            _, call_kwargs = mock_wait_for.call_args
+            actual_timeout = call_kwargs.get("timeout")
+            assert actual_timeout >= 300.0, f"Expected timeout >= 300.0s, got {actual_timeout}s"

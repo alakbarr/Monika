@@ -49,7 +49,7 @@ class DeepSeekProvider(OpenAIProvider):
                 .get("llm", {})
                 .get("providers", {})
                 .get("deepseek", {})
-                .get("timeout_seconds", 120.0)
+                .get("timeout_seconds", 360.0)
             )
             self.client = AsyncOpenAI(
                 api_key=self.api_key, base_url="https://api.deepseek.com/v1", timeout=timeout, max_retries=2

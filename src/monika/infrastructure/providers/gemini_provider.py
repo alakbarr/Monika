@@ -516,9 +516,9 @@ class GeminiProvider(BaseLLMClient):
         provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get("gemini", {})
         stream_cfg = provider_cfg.get("streaming", {})
         return StreamConfig(
-            idle_timeout=float(stream_cfg.get("idle_timeout_seconds", 45.0)),
-            safety_timeout=float(stream_cfg.get("safety_timeout_seconds", 600.0)),
-            first_chunk_timeout=float(stream_cfg.get("first_chunk_timeout_seconds", 90.0)),
+            idle_timeout=float(stream_cfg.get("idle_timeout_seconds", 120.0)),
+            safety_timeout=float(stream_cfg.get("safety_timeout_seconds", 1200.0)),
+            first_chunk_timeout=float(stream_cfg.get("first_chunk_timeout_seconds", 300.0)),
         )
 
     def set_thinking_budget(self, budget: int) -> None:
@@ -650,7 +650,7 @@ class GeminiProvider(BaseLLMClient):
                 return None
 
         stream_config = self._build_stream_config()
-        timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
+        timeout_sec = float(provider_cfg.get("timeout_seconds", 360.0))
         max_attempts = min(max(len(self.free_api_keys) if self.free_api_keys else 1, 1), 5)
         for attempt in range(max_attempts):
             api_key = self._get_api_key(sticky=True)
@@ -1167,7 +1167,7 @@ class GeminiProvider(BaseLLMClient):
         api_key = ""
         stream_config = self._build_stream_config()
         headers: dict[str, str] = {}
-        timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
+        timeout_sec = float(provider_cfg.get("timeout_seconds", 360.0))
         max_attempts = min(max(len(self.free_api_keys) if self.free_api_keys else 1, 1), 5)
         for attempt in range(max_attempts):
             api_key = self._get_api_key(sticky=True)

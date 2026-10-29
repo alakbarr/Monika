@@ -136,7 +136,7 @@ class ExecutionTiersMixin(_ChatAgentMixinBase):
         pool = DynamicSubagentPool(
             settings=self.settings,
             max_concurrency=4,
-            default_timeout=75.0,
+            default_timeout=360.0,
         )
 
         prompt_for_subagents = (

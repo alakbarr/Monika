@@ -13104,7 +13104,7 @@
 - **Top-Level Functions**:
   - `get_model_capabilities(model_name: Optional[str]) -> ModelCapabilities`: Look up capabilities for a model with prefix/substring matching and graceful default fallback.
   - `resolve_effective_context_window(model_name: Optional[str], provider_name: Optional[str], settings: Optional[dict], ...) -> int`: Multi-Tier Context Window Resolution Cascade:
-  - `resolve_stale_timeout_floor(model_name: Optional[str], default_timeout: float) -> float`: Enforces minimum timeout floors for reasoning models to prevent premature disconnects.
+  - `resolve_stale_timeout_floor(model_name: Optional[str], default_timeout: float, thinking_level: Optional[str], ...) -> float`: Enforces minimum timeout floors for reasoning models to prevent premature disconnects.
   - `clamp_reasoning_effort(model_name: str, requested_effort: str) -> str`: Maps requested reasoning effort ('high', 'medium', 'low') to the closest supported
   - `resolve_effective_max_tokens(model_name: Optional[str], provider_name: Optional[str], requested_max_tokens: Optional[int], ...) -> int`: Multi-Tier Max Output Tokens Resolution Cascade:
 

@@ -21,7 +21,7 @@ from monika.application.agent.harness.agent_harness import AgentHarness
 
 logger = logging.getLogger("TradingAgent.IsolatedSubagent")
 
-DEFAULT_TIMEOUT = 300  # 5 minutes per specialist
+DEFAULT_TIMEOUT = 600  # 10 minutes per specialist
 HEARTBEAT_INTERVAL = 30  # Check liveness every 30s
 
 _subagent_depth: contextvars.ContextVar[int] = contextvars.ContextVar("_subagent_depth", default=0)

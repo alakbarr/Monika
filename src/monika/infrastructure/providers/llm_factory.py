@@ -1125,17 +1125,22 @@ class FallbackClientWrapper(BaseLLMClient):
         if explicit_timeout is not None:
             per_model_timeout = float(explicit_timeout)
         elif method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages"]:
-            max_turns = float((self.role_config or {}).get("max_tool_turns", 15))
+            max_turns = float((self.role_config or {}).get("max_tool_turns") or 15)
             cfg_pm_timeout = (self.role_config or {}).get("per_model_timeout_seconds")
             if cfg_pm_timeout is not None:
                 per_model_timeout = float(cfg_pm_timeout)
             else:
                 per_model_timeout = max(300.0, max_turns * 45.0)
         elif self.task_role in HOT_PATH_ROLES:
-            max_turns = float((self.role_config or {}).get("max_tool_turns", 3))
-            per_model_timeout = max(45.0, min(120.0, max_turns * 30.0))
+            max_turns = float((self.role_config or {}).get("max_tool_turns") or 3)
+            cfg_pm_timeout = (self.role_config or {}).get("per_model_timeout_seconds")
+            if cfg_pm_timeout is not None:
+                per_model_timeout = float(cfg_pm_timeout)
+            else:
+                per_model_timeout = max(180.0, max_turns * 45.0)
         else:
-            per_model_timeout = 180.0
+            cfg_pm_timeout = (self.role_config or {}).get("per_model_timeout_seconds")
+            per_model_timeout = float(cfg_pm_timeout) if cfg_pm_timeout is not None else 360.0
 
         for slot_name, model in models_to_try:
             # If budget is paused, bypass paid models and execute only free tier models
@@ -1247,6 +1252,7 @@ class FallbackClientWrapper(BaseLLMClient):
                     client.thinking_budget = 0
 
             slot_retries = 0
+            slot_timeout = per_model_timeout
             method = getattr(client, method_name, None)
             while True:
                 try:
@@ -1378,8 +1384,69 @@ class FallbackClientWrapper(BaseLLMClient):
                     except Exception as sig_err:
                         logger.debug(f"[LLMDispatch] signature filter notice: {sig_err}")
 
+                    # Model-agnostic dynamic timeout floor:
+                    # SOTA reasoning engines and multi-turn loops need sufficient time budget.
+                    # Evaluates thinking level, thinking budget, and role turns dynamically without hardcoding model names.
+                    from monika.infrastructure.providers.capabilities import resolve_stale_timeout_floor
+
+                    raw_lvl = getattr(client, "thinking_level", None)
+                    model_thinking_level = (
+                        raw_lvl
+                        if isinstance(raw_lvl, str)
+                        else (self.thinking_level if isinstance(self.thinking_level, str) else None)
+                    )
+
+                    raw_budget = getattr(client, "thinking_budget", None)
+                    model_thinking_budget = (
+                        raw_budget
+                        if isinstance(raw_budget, (int, float))
+                        else (
+                            self._dynamic_thinking_budget
+                            if isinstance(self._dynamic_thinking_budget, (int, float))
+                            else None
+                        )
+                    )
+
+                    caps = getattr(client, "capabilities", None)
+                    supports_native_thinking = getattr(caps, "supports_native_thinking", False) is True
+
+                    if explicit_timeout is not None:
+                        slot_timeout = per_model_timeout
+                    elif method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages"]:
+                        role_turns = float((self.role_config or {}).get("max_tool_turns") or 15)
+                        model_floor = resolve_stale_timeout_floor(
+                            model_name=model,
+                            default_timeout=0.0,
+                            thinking_level=model_thinking_level,
+                            thinking_budget=model_thinking_budget,
+                            supports_native_thinking=supports_native_thinking,
+                        )
+                        is_thinking_active = (
+                            (model_thinking_level and str(model_thinking_level).lower() not in ("none", "off", ""))
+                            or bool(model_thinking_budget and model_thinking_budget > 0)
+                            or model_floor >= 180.0
+                        )
+                        if is_thinking_active:
+                            slot_timeout = max(per_model_timeout, model_floor, role_turns * 90.0, 600.0)
+                        else:
+                            slot_timeout = max(per_model_timeout, role_turns * 45.0, 300.0)
+                    else:
+                        model_floor = resolve_stale_timeout_floor(
+                            model_name=model,
+                            default_timeout=per_model_timeout,
+                            thinking_level=model_thinking_level,
+                            thinking_budget=model_thinking_budget,
+                            supports_native_thinking=supports_native_thinking,
+                        )
+                        is_thinking_active = (
+                            (model_thinking_level and str(model_thinking_level).lower() not in ("none", "off", ""))
+                            or bool(model_thinking_budget and model_thinking_budget > 0)
+                            or model_floor >= 180.0
+                        )
+                        slot_timeout = max(per_model_timeout, model_floor, 360.0 if is_thinking_active else 180.0)
+
                     call_coro: Any = method(*safe_args, **safe_kwargs)
-                    result = await asyncio.wait_for(call_coro, timeout=per_model_timeout)
+                    result = await asyncio.wait_for(call_coro, timeout=slot_timeout)
 
                     if method_name in ["run_agent", "run_chat_loop", "run_agent_from_messages", "run_tool_agent"]:
                         if isinstance(result, dict) and result.get("success") is False:
@@ -1498,7 +1565,7 @@ class FallbackClientWrapper(BaseLLMClient):
                     detail = (
                         f" ({timeout_err})"
                         if isinstance(timeout_err, (StreamTimeoutError, StreamSafetyTimeoutError))
-                        else f" after {per_model_timeout:.0f}s"
+                        else f" after {slot_timeout:.0f}s"
                     )
                     last_error = f"Model {model} ({slot_name}) timed out in {method_name}{detail}"
                     logger.warning(f"{last_error}. Trying next fallback...")

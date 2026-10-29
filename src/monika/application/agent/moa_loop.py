@@ -267,7 +267,7 @@ class MoARuntime:
         self,
         llm_caller: Optional[Callable[[Dict[str, Any], List[Dict[str, Any]]], str]] = None,
         default_preset: str = "trading_quant_moa",
-        default_timeout: float = 30.0,
+        default_timeout: float = 180.0,
         trace_dir: Optional[str] = None,
         settings: Optional[Dict[str, Any]] = None,
         strict_fail_closed: bool = False,
@@ -390,6 +390,13 @@ class MoARuntime:
         proposers = preset.get("proposers", [])
         aggregator = preset.get("aggregator", {})
         timeout_sec = timeout or self.default_timeout
+        has_reasoning = any(
+            any(k in str(p.get("model", "")).lower() for k in ("reasoning", "thinking", "o1", "o3", "r1", "argon"))
+            or bool(p.get("thinking_level") or p.get("thinking_budget"))
+            for p in proposers
+        )
+        if has_reasoning:
+            timeout_sec = max(timeout_sec, 360.0)
         history_msgs = list(history or [])
         is_strict = self.strict_fail_closed if strict_fail_closed is None else strict_fail_closed
 

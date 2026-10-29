@@ -84,7 +84,7 @@ class ZAIProvider(OpenAIProvider):
                 from openai import AsyncOpenAI
 
                 max_retries = provider_cfg.get("max_retries", 3)
-                timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
+                timeout_sec = float(provider_cfg.get("timeout_seconds", 360.0))
                 self.client = AsyncOpenAI(
                     api_key=self.api_key,
                     base_url=self.base_url,

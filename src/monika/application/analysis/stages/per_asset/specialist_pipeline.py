@@ -333,10 +333,25 @@ class SpecialistPipelineMixin:
 
             # ── H3: Isolated Subagent Execution ──
             async def run_specialist_isolated(role, client, prompt, data_view):
+                specialist_timeout = 360.0
+                thinking_lvl = getattr(client, "thinking_level", None)
+                thinking_budget = getattr(client, "thinking_budget", None)
+                caps = getattr(client, "capabilities", None)
+                supports_native_thinking = getattr(caps, "supports_native_thinking", False)
+                if (
+                    (thinking_lvl and str(thinking_lvl).lower() not in ("none", "off", ""))
+                    or (thinking_budget and thinking_budget > 0)
+                    or supports_native_thinking
+                ):
+                    specialist_timeout = 600.0
+
                 try:
-                    return await asyncio.wait_for(run_specialist_with_schema(client, prompt, data_view), timeout=180.0)
+                    return await asyncio.wait_for(
+                        run_specialist_with_schema(client, prompt, data_view),
+                        timeout=specialist_timeout,
+                    )
                 except asyncio.TimeoutError:
-                    logger.error(f"[{symbol}] Specialist {role} timed out after 180s")
+                    logger.error(f"[{symbol}] Specialist {role} timed out after {specialist_timeout:.0f}s")
                     return {
                         "directional_bias": "UNAVAILABLE",
                         "confidence": "LOW",

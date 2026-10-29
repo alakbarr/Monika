@@ -118,7 +118,7 @@ class GroqProvider(OpenAIProvider):
                     .get("llm", {})
                     .get("providers", {})
                     .get("groq", {})
-                    .get("timeout_seconds", 120.0)
+                    .get("timeout_seconds", 360.0)
                 )
                 self.__class__._client_pool[api_key] = AsyncOpenAI(
                     api_key=api_key, base_url="https://api.groq.com/openai/v1", timeout=timeout, max_retries=2

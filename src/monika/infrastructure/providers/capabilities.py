@@ -1655,26 +1655,44 @@ def resolve_effective_context_window(
 
 
 def resolve_stale_timeout_floor(
-    model_name: Optional[str],
+    model_name: Optional[str] = None,
     default_timeout: float = 30.0,
+    thinking_level: Optional[str] = None,
+    thinking_budget: Optional[int] = None,
+    supports_native_thinking: Optional[bool] = None,
 ) -> float:
     """
     Enforces minimum timeout floors for reasoning models to prevent premature disconnects.
-    Frontier reasoning engines (o1, o3, R1, Sonnet 3.7 Thinking, Gemini Pro Thinking)
-    require 180s - 600s timeout floors.
+    Evaluates thinking_level, thinking_budget, and native thinking capabilities dynamically,
+    making timeout allocation future-proof and model-agnostic across any provider.
     """
+    # 1. Dynamic capability: explicit thinking level or thinking budget
+    if thinking_level and str(thinking_level).lower() not in ("none", "off", ""):
+        lvl = str(thinking_level).lower()
+        if lvl in ("high", "max", "extended", "xhigh"):
+            return max(default_timeout, 600.0)
+        return max(default_timeout, 360.0)
+
+    if thinking_budget is not None and thinking_budget > 0:
+        if thinking_budget >= 8192:
+            return max(default_timeout, 600.0)
+        return max(default_timeout, 360.0)
+
+    if supports_native_thinking:
+        return max(default_timeout, 360.0)
+
     if not model_name:
         return default_timeout
 
     clean = model_name.strip().lower()
 
-    # Extreme reasoning models (up to 10 min)
-    if any(k in clean for k in ("o1-pro", "o3", "deepseek-reasoner", "r1-full", "opus-5-thinking")):
-        return max(default_timeout, 300.0)
+    # Generic reasoning/thinking suffixes or tags used across providers
+    if any(k in clean for k in ("reasoning", "reasoner", "thinking", "thought")):
+        return max(default_timeout, 360.0)
 
-    # Standard reasoning models (up to 3 min)
-    if any(k in clean for k in ("o1", "r1", "thinking", "reasoning", "sonnet-3-7", "sonnet-5")):
-        return max(default_timeout, 180.0)
+    # Common frontier reasoning architectures
+    if any(k in clean for k in ("o1", "o3", "o4", "r1", "argon")):
+        return max(default_timeout, 360.0)
 
     return default_timeout
 

@@ -270,7 +270,7 @@ class OpenAIProvider(BaseLLMClient):
 
             provider_cfg = (settings or {}).get("llm", {}).get("providers", {}).get("openai", {})
             max_retries = provider_cfg.get("max_retries", 3)
-            timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
+            timeout_sec = float(provider_cfg.get("timeout_seconds", 360.0))
             if self.api_key:
                 self.client = AsyncOpenAI(api_key=self.api_key, max_retries=max_retries, timeout=timeout_sec)
             else:
@@ -295,7 +295,7 @@ class OpenAIProvider(BaseLLMClient):
 
             provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get(self._get_provider_name(), {})
             max_retries = provider_cfg.get("max_retries", 3)
-            timeout_sec = float(provider_cfg.get("timeout_seconds", 120.0))
+            timeout_sec = float(provider_cfg.get("timeout_seconds", 360.0))
             base_url = getattr(self.client, "base_url", None) if self.client is not None else None
             client_kwargs: dict[str, Any] = {"api_key": api_key, "max_retries": max_retries, "timeout": timeout_sec}
             if base_url:
@@ -468,13 +468,11 @@ class OpenAIProvider(BaseLLMClient):
         llm_cfg = (self.settings or {}).get("llm", {})
         provider_cfg = llm_cfg.get(provider_name, {}) or llm_cfg.get("providers", {}).get(provider_name, {})
         stream_cfg = provider_cfg.get("streaming", {})
-        default_idle = 15.0 if provider_name == "groq" else (60.0 if provider_name == "deepseek" else 45.0)
-        default_first = (
-            30.0 if provider_name == "groq" else (120.0 if provider_name in ["openrouter", "deepseek"] else 90.0)
-        )
+        default_idle = 30.0 if provider_name == "groq" else 120.0
+        default_first = 60.0 if provider_name == "groq" else 300.0
         return StreamConfig(
             idle_timeout=float(stream_cfg.get("idle_timeout_seconds", default_idle)),
-            safety_timeout=float(stream_cfg.get("safety_timeout_seconds", 180.0)),
+            safety_timeout=float(stream_cfg.get("safety_timeout_seconds", 1200.0)),
             first_chunk_timeout=float(stream_cfg.get("first_chunk_timeout_seconds", default_first)),
         )
 

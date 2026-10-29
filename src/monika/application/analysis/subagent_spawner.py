@@ -32,7 +32,7 @@ class SubagentSpec:
     query: str
     tools: List[Dict[str, Any]] = field(default_factory=list)
     task_role: str = "deep_research"
-    timeout_seconds: float = 60.0
+    timeout_seconds: float = 360.0
     max_distilled_tokens: int = 1500
     tool_executor: Optional[Any] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -131,10 +131,25 @@ class SubagentWorker:
                     raw_text = await client.generate(prompt=f"{self.spec.system_prompt}\n\n{self.spec.query}")
                     return {"reply": raw_text}
 
-            # Enforce strict execution timeout
+            # Enforce execution timeout with reasoning-aware loose headroom
+            effective_timeout = float(self.spec.timeout_seconds)
+            if effective_timeout >= 10.0:
+                thinking_lvl = getattr(client, "thinking_level", None)
+                thinking_budget = getattr(client, "thinking_budget", None)
+                caps = getattr(client, "capabilities", None)
+                supports_native_thinking = getattr(caps, "supports_native_thinking", False)
+                if (
+                    (thinking_lvl and str(thinking_lvl).lower() not in ("none", "off", ""))
+                    or (thinking_budget and thinking_budget > 0)
+                    or supports_native_thinking
+                ):
+                    effective_timeout = max(effective_timeout, 600.0)
+                else:
+                    effective_timeout = max(effective_timeout, 360.0)
+
             raw_res = await asyncio.wait_for(
                 _execute(),
-                timeout=self.spec.timeout_seconds,
+                timeout=effective_timeout,
             )
 
             elapsed = time.monotonic() - start_t
@@ -244,7 +259,7 @@ class DynamicSubagentPool:
         self,
         settings: Optional[dict] = None,
         max_concurrency: int = 4,
-        default_timeout: float = 75.0,
+        default_timeout: float = 360.0,
         max_spawn_depth: int = 2,
     ):
         self.settings = settings or {}

@@ -398,7 +398,7 @@ def load_settings(
                 )
                 role_default: dict[str, Any] = {
                     "primary": "gemini-3.5-flash-lite",
-                    "per_model_timeout_seconds": 120.0,
+                    "per_model_timeout_seconds": 600.0,
                     "thinking": {
                         "primary": "high",
                         "fallback_1": "high",
