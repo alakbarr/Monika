@@ -757,8 +757,15 @@ class SpecialistPipelineMixin:
                 "confluence_score seems unsupported by listed factors, priced_in_score >= 7 without "
                 "clear justification in rationale, or rationale contradicts SL/TP direction."
             )
-            anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
-            anchored_sys = f"{anchor}\n\n---\n\n{base_sys}"
+            sec_mod = getattr(secondary, "model", "")
+            sec_prov = getattr(secondary, "provider_name", "") or getattr(secondary, "_get_provider_name", lambda: "")()
+            anchored_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+                base_sys,
+                model_name=sec_mod,
+                provider_name=sec_prov,
+                task_role="stage2_second_opinion",
+                settings=self.settings,
+            )
             result = await secondary.classify_json(
                 prompt=f"Trade proposal:\n{json.dumps(structured_summary, indent=2)}",
                 system_prompt=anchored_sys,

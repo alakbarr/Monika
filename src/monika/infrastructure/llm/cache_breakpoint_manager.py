@@ -275,6 +275,10 @@ This constitution establishes immutable operating standards for all participants
         if any(p in prov for p in ("ollama", "groq", "vllm", "local")):
             return False
 
+        # Non-caching router models (e.g. openrouter/free, :free): never inject padding anchor
+        if mod in ("openrouter/free", "free") or mod.endswith(":free") or ":free" in mod:
+            return False
+
         min_chars = cls.get_min_cacheable_chars(mod)
         if force:
             min_chars = max(min_chars, cls.GEMINI_3_MIN_CACHEABLE_CHARS)
@@ -302,6 +306,10 @@ This constitution establishes immutable operating standards for all participants
         prov = provider_name.lower() if isinstance(provider_name, str) else ""
         mod = model_name.lower() if isinstance(model_name, str) else ""
         if any(p in prov for p in ("ollama", "groq", "vllm", "local")):
+            return raw
+
+        # Non-caching router models (e.g. openrouter/free, :free): never inject padding anchor
+        if mod in ("openrouter/free", "free") or mod.endswith(":free") or ":free" in mod:
             return raw
 
         # 2. DeepSeek has 64-token KV disk cache unit; do not inject large anchor

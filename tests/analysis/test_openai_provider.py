@@ -337,3 +337,143 @@ async def test_openai_run_agent_from_messages_tool_tracking():
                 assert res["success"] is True
                 assert res["tool_calls_made"] == 1
                 assert res["turns"] == 2
+
+
+@pytest.mark.asyncio
+async def test_openai_classify_json_recovers_from_raw_xml_tool_call():
+    """Reproduces production bug where openrouter/free model emits <dots_function_call> XML,
+    and proves that attempt 1 injects critical correction and recovers when JSON is returned."""
+    provider = OpenAIProvider(model="openrouter/free", api_key="test-key")
+    provider.client = AsyncMock()
+
+    xml_tool_call = (
+        "<dots_function_call>\n"
+        '<invoke name="get_market_quote">\n'
+        '<parameter="symbol">GBPUSD\n'
+        "</parameter>\n"
+        "</invoke>\n"
+        "</dots_function_call>"
+    )
+    valid_json = json.dumps({"agree": True, "disagreement_category": "none", "reason": "confluence verified"})
+
+    captured_prompts = []
+
+    async def fake_generate_content(sys_prompt, user_msg, response_schema=None, **kwargs):
+        captured_prompts.append((sys_prompt, user_msg, response_schema))
+        if len(captured_prompts) == 1:
+            return xml_tool_call
+        return valid_json
+
+    with patch.object(provider, "generate_content", side_effect=fake_generate_content):
+        result = await provider.classify_json(
+            prompt="Trade proposal: GBPUSD",
+            system_prompt="You are a skeptical second-opinion reviewer.",
+            schema={"type": "object"},
+        )
+
+    assert result is not None
+    assert result["agree"] is True
+    assert result["reason"] == "confluence verified"
+    assert len(captured_prompts) == 2
+
+    # Verify attempt 1 prompt received the critical anti-tool-call correction
+    attempt_1_user_msg = captured_prompts[1][1]
+    assert "[CRITICAL CORRECTION]" in attempt_1_user_msg
+    assert "Tools are NOT available in this evaluation mode" in attempt_1_user_msg
+    assert "<dots_function_call>" in attempt_1_user_msg
+
+
+@pytest.mark.asyncio
+async def test_openai_classify_json_fails_closed_when_both_attempts_fail():
+    """When both attempts fail to produce parseable JSON, classify_json returns None gracefully."""
+    provider = OpenAIProvider(model="openrouter/free", api_key="test-key")
+    provider.client = AsyncMock()
+
+    xml_tool_call = '<dots_function_call><invoke name="get_market_quote"><parameter="symbol">GBPUSD</parameter></invoke></dots_function_call>'
+
+    with patch.object(provider, "generate_content", new_callable=AsyncMock) as mock_gen:
+        mock_gen.return_value = xml_tool_call
+        result = await provider.classify_json(
+            prompt="Trade proposal: GBPUSD",
+            system_prompt="You are a skeptical second-opinion reviewer.",
+            schema={"type": "object"},
+        )
+
+    assert result is None
+    assert mock_gen.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_openai_classify_json_defaults_schema_when_none():
+    """When schema is None (e.g. from OutputVerifier), classify_json passes effective_schema to generate_content."""
+    provider = OpenAIProvider(model="openrouter/free", api_key="test-key")
+    provider.client = AsyncMock()
+
+    captured_schema = []
+
+    async def fake_generate_content(sys_prompt, user_msg, response_schema=None, **kwargs):
+        captured_schema.append(response_schema)
+        return json.dumps({"decision": "buy", "is_verified": True})
+
+    with patch.object(provider, "generate_content", side_effect=fake_generate_content):
+        result = await provider.classify_json(
+            prompt="Fix decision",
+            system_prompt="Output Verifier",
+            schema=None,
+        )
+
+    assert result == {"decision": "buy", "is_verified": True}
+    assert captured_schema == [{"type": "object"}]
+
+
+@pytest.mark.asyncio
+async def test_openrouter_free_strips_cache_anchor_padding():
+    """When provider model is openrouter/free, cache anchor padding is stripped so free models only receive the clean role directive."""
+    from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
+    provider = OpenAIProvider(model="openrouter/free", api_key="test-key")
+    provider.client = AsyncMock()
+
+    raw_sys = "=== CLOSED-LOOP QUANTITATIVE RISK & VERIFICATION AUDITOR ===\nReview trading decision."
+    padded_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
+        raw_sys, model_name="gemini-3.5-flash-lite", provider_name="gemini", force=True
+    )
+    assert "=== ROLE DIRECTIVE ===" in padded_sys
+
+    with patch.object(provider, "_create_chat_completion", new_callable=AsyncMock) as mock_create:
+        choice = MagicMock()
+        choice.message = MagicMock(role="assistant", content=json.dumps({"ok": True}))
+        mock_resp = MagicMock(choices=[choice], usage=None)
+        mock_create.return_value = mock_resp
+
+        await provider.generate_content(
+            system_prompt=padded_sys,
+            user_message="Audit proposal",
+            response_schema={"type": "object"},
+        )
+
+        assert mock_create.called
+        call_kwargs = mock_create.call_args[0][0]
+        sys_msg = [m for m in call_kwargs["messages"] if m["role"] == "system"][0]
+        # Must only contain the clean role directive, NOT the 21,000 char anchor
+        assert sys_msg["content"] == raw_sys
+        assert "=== CANONICAL SYSTEM GOVERNANCE" not in sys_msg["content"]
+
+
+def test_cache_breakpoint_manager_skips_openrouter_free():
+    """CacheBreakpointManager never injects padding anchors into openrouter/free or :free models."""
+    from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
+
+    raw = "You are a second opinion reviewer."
+    res1 = CacheBreakpointManager.pad_system_prompt_to_threshold(
+        raw, model_name="openrouter/free", provider_name="openrouter", force=True
+    )
+    assert res1 == raw
+
+    res2 = CacheBreakpointManager.pad_system_prompt_to_threshold(
+        raw, model_name="google/gemini-2.0-flash-exp:free", provider_name="openrouter", force=True
+    )
+    assert res2 == raw
+
+    assert CacheBreakpointManager.should_inject_anchor(model_name="openrouter/free", force=True) is False
+    assert CacheBreakpointManager.should_inject_anchor(model_name="meta-llama/llama-3.3-70b:free", force=True) is False

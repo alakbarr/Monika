@@ -67,7 +67,12 @@ class OutputVerifier:
                     "and emit a strictly compliant JSON trading decision conforming to the schema."
                 )
                 static_verifier_sys = CacheBreakpointManager.pad_system_prompt_to_threshold(
-                    raw_verifier_sys, model_name=model_name, provider_name=prov_name, force=True
+                    raw_verifier_sys,
+                    model_name=model_name,
+                    provider_name=prov_name,
+                    force=True,
+                    task_role="output_verifier",
+                    settings=getattr(self, "settings", None),
                 )
                 error_context = f"[TARGET SYMBOL]: {symbol}\n[VERIFICATION FAILURES]:\n" + "\n".join(
                     f"- {f}" for f in failures

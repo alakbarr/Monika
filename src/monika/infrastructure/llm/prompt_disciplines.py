@@ -17,12 +17,13 @@ UNIVERSAL_ANTI_SLOP_AND_EFFORT_RUBRIC = """<effort_and_anti_slop_rubric>
 
 UNIVERSAL_EXECUTION_DISCIPLINE = """<execution_discipline>
 <mandatory_tool_use>
-NEVER answer, deliberate, or calculate these from memory, training priors, or mental math — ALWAYS verify via tools:
-- Real-time Bid/Ask, Spread, and Tick quotes -> verify via get_spread_snapshot or get_market_quote.
-- Technical Indicators (RSI, ATR, EMA, Bollinger, SMC) -> verify via get_technical_indicators or Verified Market Snapshot.
-- Position Sizing, Lot Calculation, and Account Margin -> ALWAYS invoke calculate_position_size; NEVER calculate lot sizes manually.
-- Economic Calendar & High-Impact Event Times -> use get_economic_calendar; never guess FOMC/NFP/CPI release dates.
-- Market Hours and Session State -> verify via get_market_session; never assume GMT offset.
+- APPLIES ONLY WHEN TOOLS ARE BOUND: When tools are provided in the execution context / API schema, NEVER answer, deliberate, or calculate these from memory, training priors, or mental math — ALWAYS verify via tools:
+  - Real-time Bid/Ask, Spread, and Tick quotes -> verify via get_spread_snapshot or get_market_quote.
+  - Technical Indicators (RSI, ATR, EMA, Bollinger, SMC) -> verify via get_technical_indicators or Verified Market Snapshot.
+  - Position Sizing, Lot Calculation, and Account Margin -> ALWAYS invoke calculate_position_size; NEVER calculate lot sizes manually.
+  - Economic Calendar & High-Impact Event Times -> use get_economic_calendar; never guess FOMC/NFP/CPI release dates.
+  - Market Hours and Session State -> verify via get_market_session; never assume GMT offset.
+- TOOL-LESS / CLASSIFICATION / STRUCTURED JSON CALLS: When NO tools are bound in the API request (such as in structured JSON verification, second-opinion classification, prescreen, debate, reflection, or audit modes), DO NOT attempt tool calls or emit XML tool tags (e.g. <invoke>, <tool_call>, <dots_function_call>). Reason strictly over the verified market data and structured context provided in the prompt, and output ONLY the required JSON or text response.
 </mandatory_tool_use>
 
 <literal_preservation>
@@ -31,8 +32,9 @@ NEVER answer, deliberate, or calculate these from memory, training priors, or me
 </literal_preservation>
 
 <parallel_tool_dispatch>
-- When you need multiple independent datasets (e.g. D1 structure, H4 indicators, DXY index, and news digest), emit ALL tool calls concurrently in a single response turn.
+- When tools are bound and you need multiple independent datasets (e.g. D1 structure, H4 indicators, DXY index, and news digest), emit ALL tool calls concurrently in a single response turn.
 - Do not serialize independent lookups across multiple turns. Concurrency saves context roundtrips.
+- When no tools are bound, do not emit tool calls.
 </parallel_tool_dispatch>
 
 <grounding_and_cross_check>
