@@ -103,6 +103,70 @@ def test_gemini_handle_rate_limit_classification():
     GeminiProvider._key_cooldowns.clear()
 
 
+def test_gemini_rpd_per_model_isolation():
+    """Memverifikasi bahwa RPD hanya meng-cooldown model yang bersangkutan, bukan seluruh model pada key tersebut."""
+    import time
+    from monika.infrastructure.api.http_retry import RateLimitError
+
+    GeminiProvider.clear_cooldowns()
+
+    test_key = "AIzaSyTestRPDIsolation_123"
+    err_rpd = RateLimitError(
+        "HTTP 429",
+        '{"error": {"code": 429, "message": "Resource has been exhausted", '
+        '"details": [{"violations": [{"description": "Quota exceeded for quota metric '
+        "'GenerateContent requests per day per project per model'\"}]}]}}",
+    )
+
+    # 1. Trigger RPD on Gemini 3.8 Flash
+    GeminiProvider._handle_rate_limit_error(test_key, err_rpd, "generate", model_name="gemini-3.8-flash")
+
+    # Cooldown should be stored specifically for ('gemini-3.8-flash', test_key)
+    assert ("gemini-3.8-flash", test_key) in GeminiProvider._key_cooldowns
+    assert "gemini-3.8-flash" in GeminiProvider._cooling_models.get(test_key, set())
+    # Global string key must NOT be locked out across other models
+    assert ("ALL", test_key) not in GeminiProvider._key_cooldowns
+
+    p_38 = GeminiProvider("gemini-3.8-flash", free_api_keys=[test_key])
+    p_35 = GeminiProvider("gemini-3.5-flash", free_api_keys=[test_key])
+    p_30 = GeminiProvider("gemini-3-flash", free_api_keys=[test_key])
+
+    now = time.time()
+    # 3.8 is cooling down
+    assert p_38._is_key_cooling(test_key, now) is True
+    # 3.5 and 3.0 are NOT cooling down and can still use the key
+    assert p_35._is_key_cooling(test_key, now) is False
+    assert p_30._is_key_cooling(test_key, now) is False
+
+    # Key selection returns the active key for 3.5
+    assert p_35._get_api_key() == test_key
+    assert p_30._get_api_key() == test_key
+
+    GeminiProvider.clear_cooldowns()
+
+
+def test_gemini_model_cooldown_expiration_cleanup():
+    """Memverifikasi bahwa saat cooldown spesifik model kedaluwarsa, namanya dibersihkan dari _cooling_models."""
+    GeminiProvider.clear_cooldowns()
+    test_key = "AIzaSyExpirationCleanup_456"
+
+    p_35 = GeminiProvider("gemini-3.5-flash", free_api_keys=[test_key])
+    p_38 = GeminiProvider("gemini-3.8-flash", free_api_keys=[test_key])
+
+    GeminiProvider._key_cooldowns[("gemini-3.5-flash", test_key)] = 100.0
+    GeminiProvider._key_cooldowns[("gemini-3.8-flash", test_key)] = 200.0
+    GeminiProvider._cooling_models[test_key] = {"gemini-3.5-flash", "gemini-3.8-flash"}
+
+    # At t=150: 3.5 is expired, 3.8 is still cooling
+    assert p_35._is_key_cooling(test_key, 150.0) is False
+    # Verify gemini-3.5-flash was cleaned up from _cooling_models
+    assert "gemini-3.5-flash" not in GeminiProvider._cooling_models.get(test_key, set())
+    # 3.8 still cooling
+    assert p_38._is_key_cooling(test_key, 150.0) is True
+
+    GeminiProvider.clear_cooldowns()
+
+
 def test_gemini_block_detection():
     """Memverifikasi deteksi safety block dan blockReason pada respons Gemini."""
     from monika.infrastructure.providers.gemini_provider import _check_gemini_block

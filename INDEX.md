@@ -12745,6 +12745,7 @@
     - `async get_usage(model: str) -> dict` - *Ambil statistik penggunaan harian terkini.*
 - **Top-Level Functions**:
   - `get_today_pt() -> str`: Mengembalikan tanggal hari ini dalam zona waktu US/Pacific (sinkron dengan server Google AI Studio).
+  - `seconds_until_midnight_pt() -> float`: Mengembalikan durasi (detik) hingga tengah malam berikutnya di zona waktu US/Pacific (waktu reset kuota harian Google).
   - `canonical_gemini_model_name(model_name: str) -> str`: Normalisasi nama model Gemini ke bentuk kanonikal (menghapus prefix gc/, ag/, google/, dll).
   - `get_quota_for_model(model_name: str) -> dict`
   - `configure_from_settings(settings: dict) -> None`
@@ -13142,6 +13143,7 @@
   - `class GeminiProvider(BaseLLMClient)`: Klien async untuk Gemini API.
     - `__init__(model: str, max_tokens: int, max_tool_turns: int, ...)`
     - `set_api_key(api_key: str) -> None` - *Update active API key on this GeminiProvider instance.*
+    - `clear_cooldowns() -> None` - *Clear all active cooldowns across models and keys.*
     - `rotate_api_key() -> None` - *Rotates active key index to the next free API key, called ONLY on 429/503 quota errors.*
     - `set_thinking_budget(budget: int) -> None` - *Sets thinking budget and resolves corresponding Gemini thinking level.*
     - `async generate(prompt: str, system: Any, temperature: Optional[float], ...) -> Optional[str]`

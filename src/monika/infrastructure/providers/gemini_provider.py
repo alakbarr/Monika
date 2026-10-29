@@ -9,7 +9,11 @@ from typing import Any, ClassVar, Literal, Optional
 
 from dotenv import load_dotenv
 
-from monika.infrastructure.llm.rate_limiting.gemini_rate_limiter import GeminiRateLimiter, canonical_gemini_model_name
+from monika.infrastructure.llm.rate_limiting.gemini_rate_limiter import (
+    GeminiRateLimiter,
+    canonical_gemini_model_name,
+    seconds_until_midnight_pt,
+)
 from monika.infrastructure.llm.rate_limiting.http_retry import (
     APIStatusError,
     RateLimitError,
@@ -272,6 +276,12 @@ class GeminiProvider(BaseLLMClient):
         if api_key.startswith("ya29."):
             self.paid_api_key = api_key
 
+    @classmethod
+    def clear_cooldowns(cls) -> None:
+        """Clear all active cooldowns across models and keys."""
+        cls._key_cooldowns.clear()
+        cls._cooling_models.clear()
+
     def _is_key_cooling(self, api_key: Optional[str], now: float) -> bool:
         if not api_key:
             return False
@@ -288,6 +298,10 @@ class GeminiProvider(BaseLLMClient):
             if self.__class__._key_cooldowns[(canon, api_key)] > now:
                 return True
             self.__class__._key_cooldowns.pop((canon, api_key), None)
+            if api_key in self.__class__._cooling_models:
+                self.__class__._cooling_models[api_key].discard(canon)
+                if not self.__class__._cooling_models[api_key]:
+                    self.__class__._cooling_models.pop(api_key, None)
 
         # 3. Legacy string key check with model isolation filter
         if api_key in self.__class__._key_cooldowns:
@@ -396,16 +410,28 @@ class GeminiProvider(BaseLLMClient):
         except Exception:
             pass
 
-        # 4. If all free keys are in cooldown, pick the one that expires earliest
+        # 4. If all free keys are in cooldown, pick the one that expires earliest for this model
         if self.free_api_keys:
             canon = getattr(self, "canonical_model", None) or canonical_gemini_model_name(self.model)
-            earliest_key = min(
-                self.free_api_keys,
-                key=lambda k: max(
-                    self.__class__._key_cooldowns.get((canon, k), 0),
-                    self.__class__._key_cooldowns.get(k, 0),
-                ),
-            )
+
+            def _get_key_cooldown_exp(k: str) -> float:
+                if ("ALL", k) in self.__class__._key_cooldowns:
+                    exp = self.__class__._key_cooldowns[("ALL", k)]
+                    if exp > now:
+                        return exp
+                if (canon, k) in self.__class__._key_cooldowns:
+                    exp = self.__class__._key_cooldowns[(canon, k)]
+                    if exp > now:
+                        return exp
+                if k in self.__class__._key_cooldowns:
+                    exp = self.__class__._key_cooldowns[k]
+                    if exp > now:
+                        cooling_for = self.__class__._cooling_models.get(k, set())
+                        if not cooling_for or canon in cooling_for:
+                            return exp
+                return 0.0
+
+            earliest_key = min(self.free_api_keys, key=_get_key_cooldown_exp)
             return earliest_key
 
         # 5. Fallback to paid key if available
@@ -462,6 +488,8 @@ class GeminiProvider(BaseLLMClient):
         body = getattr(error, "body", "") or str(error)
         body_lower = body.lower()
         status = getattr(error, "status", None) or getattr(error, "status_code", None)
+        canon = canonical_gemini_model_name(model_name)
+        now = time.time()
 
         is_rpd = any(
             k in body_lower
@@ -476,15 +504,52 @@ class GeminiProvider(BaseLLMClient):
             ]
         )
         if is_rpd:
-            cls._key_cooldowns[api_key] = time.time() + 86400
-            if api_key.startswith("ya29."):
+            retry_after = getattr(error, "retry_after", None)
+            m_retry_delay = re.search(r'"retrydelay":\s*"([\d\.]+)s"', body_lower)
+            if m_retry_delay:
                 try:
-                    from monika.infrastructure.auth.antigravity_bridge import mark_antigravity_account_cooldown
+                    cooldown_sec = float(m_retry_delay.group(1)) + 2.0
+                except ValueError, TypeError:
+                    cooldown_sec = (seconds_until_midnight_pt() + 60.0) if canon else 86400.0
+            elif retry_after is not None and retry_after > 0:
+                cooldown_sec = float(retry_after) + 2.0
+            elif canon:
+                cooldown_sec = seconds_until_midnight_pt() + 60.0
+            else:
+                cooldown_sec = 86400.0
 
-                    mark_antigravity_account_cooldown(api_key, 86400.0)
-                except Exception:
-                    pass
-            logger.error(f"Gemini key hit RPD quota in {method_name} ({mask_credential(api_key)}). Cooldown 24h.")
+            until = now + cooldown_sec
+            if canon:
+                cls._key_cooldowns[(canon, api_key)] = until
+                cls._key_cooldowns[api_key] = until
+                cls._cooling_models.setdefault(api_key, set()).add(canon)
+                cls.rotate_api_key()
+                if api_key.startswith("ya29."):
+                    try:
+                        from monika.infrastructure.auth.antigravity_bridge import mark_antigravity_account_cooldown
+
+                        mark_antigravity_account_cooldown(api_key, cooldown_sec, model=canon)
+                    except Exception:
+                        pass
+                logger.error(
+                    f"Gemini key hit RPD quota for model '{canon}' in {method_name} ({mask_credential(api_key)}). "
+                    f"Model cooldown {cooldown_sec / 3600.0:.1f}h until reset."
+                )
+            else:
+                cls._key_cooldowns[api_key] = until
+                cls._key_cooldowns[("ALL", api_key)] = until
+                cls.rotate_api_key()
+                if api_key.startswith("ya29."):
+                    try:
+                        from monika.infrastructure.auth.antigravity_bridge import mark_antigravity_account_cooldown
+
+                        mark_antigravity_account_cooldown(api_key, cooldown_sec)
+                    except Exception:
+                        pass
+                logger.error(
+                    f"Gemini key hit RPD quota in {method_name} ({mask_credential(api_key)}). "
+                    f"Cooldown {cooldown_sec / 3600.0:.1f}h."
+                )
             return
 
         is_overload = status in (500, 502, 503, 504, 529) or any(
@@ -525,12 +590,8 @@ class GeminiProvider(BaseLLMClient):
             else:
                 cooldown_sec = 65.0
 
-        until = time.time() + (86400.0 if is_rpd else cooldown_sec)
-        canon = canonical_gemini_model_name(model_name)
-        if is_rpd:
-            cls._key_cooldowns[("ALL", api_key)] = until
-            cls._key_cooldowns[api_key] = until
-        elif canon:
+        until = now + cooldown_sec
+        if canon:
             cls._key_cooldowns[(canon, api_key)] = until
             cls._key_cooldowns[api_key] = until
             cls._cooling_models.setdefault(api_key, set()).add(canon)
@@ -541,7 +602,7 @@ class GeminiProvider(BaseLLMClient):
             try:
                 from monika.infrastructure.auth.antigravity_bridge import mark_antigravity_account_cooldown
 
-                mark_antigravity_account_cooldown(api_key, cooldown_sec)
+                mark_antigravity_account_cooldown(api_key, cooldown_sec, model=canon or None)
             except Exception:
                 pass
 
@@ -888,6 +949,8 @@ class GeminiProvider(BaseLLMClient):
                 logger.warning(f"Gemini generate streaming timeout on {self.model}: {e}")
                 canon_m = getattr(self, "canonical_model", None) or canonical_gemini_model_name(self.model)
                 self._key_cooldowns[(canon_m, api_key)] = time.time() + 15.0
+                if canon_m:
+                    self._cooling_models.setdefault(api_key, set()).add(canon_m)
                 if use_streaming:
                     try:
                         logger.info(f"Gemini {self.model} attempting non-streaming fallback for generate...")
@@ -1261,6 +1324,8 @@ class GeminiProvider(BaseLLMClient):
                 logger.warning(f"Gemini run_tool_agent streaming timeout on {self.model}: {e}")
                 canon_m = getattr(self, "canonical_model", None) or canonical_gemini_model_name(self.model)
                 self._key_cooldowns[(canon_m, api_key)] = time.time() + 15.0
+                if canon_m:
+                    self._cooling_models.setdefault(api_key, set()).add(canon_m)
                 last_req_err = e
                 if use_streaming:
                     try:

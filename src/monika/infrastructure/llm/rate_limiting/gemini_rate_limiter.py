@@ -30,6 +30,15 @@ def get_today_pt() -> str:
     return datetime.now(PT_TZ).strftime("%Y-%m-%d")
 
 
+def seconds_until_midnight_pt() -> float:
+    """Mengembalikan durasi (detik) hingga tengah malam berikutnya di zona waktu US/Pacific (waktu reset kuota harian Google)."""
+    from datetime import timedelta
+
+    now_pt = datetime.now(PT_TZ)
+    next_midnight = (now_pt + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return max(60.0, (next_midnight - now_pt).total_seconds())
+
+
 def canonical_gemini_model_name(model_name: str) -> str:
     """Normalisasi nama model Gemini ke bentuk kanonikal (menghapus prefix gc/, ag/, google/, dll)."""
     if not model_name:

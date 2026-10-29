@@ -217,7 +217,7 @@ def refresh_antigravity_token(refresh_token: str | dict[str, Any], timeout: floa
 
 
 _antigravity_round_robin_idx: int = 0
-_antigravity_account_cooldowns: dict[str, float] = {}
+_antigravity_account_cooldowns: dict[Any, float] = {}
 
 
 def mark_antigravity_account_cooldown(
@@ -226,13 +226,22 @@ def mark_antigravity_account_cooldown(
     *,
     account_id: str | None = None,
     duration_seconds: float | None = None,
+    model: str | None = None,
 ) -> None:
     """Mark an account (email or token) on cooldown after rate limit (HTTP 429) or transient error."""
     target = account_id or identifier
     duration = duration_seconds if duration_seconds is not None else cooldown_seconds
     if target:
+        canon_m = ""
+        if model:
+            from monika.infrastructure.llm.rate_limiting.gemini_rate_limiter import canonical_gemini_model_name
+
+            canon_m = canonical_gemini_model_name(model)
         with _antigravity_pool_lock:
-            _antigravity_account_cooldowns[target.strip().lower()] = time.time() + duration
+            if canon_m:
+                _antigravity_account_cooldowns[(target.strip().lower(), canon_m)] = time.time() + duration
+            else:
+                _antigravity_account_cooldowns[target.strip().lower()] = time.time() + duration
 
 
 def get_antigravity_pool_summary() -> dict[str, Any]:
@@ -286,13 +295,26 @@ def resolve_antigravity_access_token(
     is_paid_request = tier == "paid" or (bool(model) and ("argon" in str(model).lower() or "pro" in str(model).lower()))
 
     with _antigravity_pool_lock:
+        canon_m = ""
+        if model:
+            from monika.infrastructure.llm.rate_limiting.gemini_rate_limiter import canonical_gemini_model_name
+
+            canon_m = canonical_gemini_model_name(model)
 
         def is_healthy(acc: dict[str, Any]) -> bool:
             email = (acc.get("email") or "").strip().lower()
             tok = (acc.get("access_token") or "").strip()
-            cd_email = _antigravity_account_cooldowns.get(email, 0)
-            cd_tok = _antigravity_account_cooldowns.get(tok, 0)
-            return cd_email <= now and cd_tok <= now
+            # 1. Global account-level cooldown check
+            if _antigravity_account_cooldowns.get(email, 0) > now or _antigravity_account_cooldowns.get(tok, 0) > now:
+                return False
+            # 2. Model-specific cooldown check
+            if canon_m:
+                if (
+                    _antigravity_account_cooldowns.get((email, canon_m), 0) > now
+                    or _antigravity_account_cooldowns.get((tok, canon_m), 0) > now
+                ):
+                    return False
+            return True
 
         paid_accs = [a for a in accounts if a.get("tier") == "paid"]
         free_accs = [a for a in accounts if a.get("tier") != "paid"]

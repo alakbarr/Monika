@@ -263,6 +263,30 @@ def test_gemini_provider_oauth_cooldown():
         assert args[0] == "ya29.rate_limited_token"
 
 
+def test_antigravity_model_specific_cooldown(mock_vault):
+    """Verify that an account on cooldown for model A can still serve model B if model-specific."""
+    clear_oauth_accounts("antigravity")
+    acc = {
+        "email": "free_multi@gmail.com",
+        "access_token": "ya29.multi",
+        "refresh_token": "1//ref_multi",
+        "tier": "free",
+        "expires_at": time.time() + 3600,
+    }
+    save_oauth_account("antigravity", acc)
+
+    # Mark cooldown ONLY for gemini-3.8-flash
+    mark_antigravity_account_cooldown("free_multi@gmail.com", 60.0, model="gemini-3.8-flash")
+
+    # For gemini-3.8-flash: should be in cooldown (returns None)
+    tok_38 = resolve_antigravity_access_token(tier="free", model="gemini-3.8-flash")
+    assert tok_38 is None
+
+    # For gemini-3.5-flash: should be healthy and available!
+    tok_35 = resolve_antigravity_access_token(tier="free", model="gemini-3.5-flash")
+    assert tok_35 == "ya29.multi"
+
+
 def test_cli_show_auth_status_with_pool(mock_vault, capsys):
     """Verify CLI show_auth_status renders when multi-account pool exists."""
     paid_acc = {
