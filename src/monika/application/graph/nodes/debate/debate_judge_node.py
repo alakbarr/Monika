@@ -12,7 +12,10 @@ from langchain_core.runnables.config import RunnableConfig
 from monika.application.analysis.debate.adjustment_validator import validate_and_apply_judge_adjustments
 from monika.application.analysis.debate.investment_judge import evaluate_debate
 from monika.application.analysis.memory.decision_log import DecisionLogger
-from monika.application.graph.nodes.debate.helpers import sync_facade_patches
+from monika.application.graph.nodes.debate.helpers import (
+    resolve_debate_timeout,
+    sync_facade_patches,
+)
 from monika.application.graph.state import TradingState
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import AssetAnalysis
@@ -55,31 +58,37 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
     async def _process_single(sym: str, r: dict):
         deb = debate_states.get(sym, {})
         verified_bull_claim = deb.get("verified_bull_claim")
-        bear_dissent = deb.get("bear_dissent") or {}
+        bear_dissent = deb.get("bear_dissent")
         bull_rebuttal = (
             deb.get("bull_rebuttal") or deb.get("bear_rebuttal") or deb.get("rebuttal") or deb.get("pro_rebuttal")
         )
         original_context = deb.get("original_context")
         analysis_id = r.get("analysis_id")
 
-        if not original_context or not verified_bull_claim:
-            logger.warning(f"[{sym}] Missing bull advocacy or original context — failing closed.")
+        if not original_context or not verified_bull_claim or not bear_dissent:
+            missing_reason = (
+                "missing_bull_advocacy"
+                if not verified_bull_claim
+                else ("missing_bear_dissent" if not bear_dissent else "missing_original_context")
+            )
+            logger.warning(f"[{sym}] {missing_reason} — failing closed.")
             return (
                 sym,
                 None,
                 {
                     "final_decision": "avoid",
                     "decision": "wait",
-                    "reason": "missing_bull_advocacy",
+                    "reason": missing_reason,
                     "risk_multiplier": 0.0,
                 },
             )
 
         fact_sheet = deb.get("fact_sheet") or {}
 
+        turn_timeout = resolve_debate_timeout(settings, judge_client)
         async with semaphore:
             try:
-                async with asyncio.timeout(45.0):
+                async with asyncio.timeout(turn_timeout):
                     verdict = await evaluate_debate(
                         judge_client,
                         sym,

@@ -358,6 +358,47 @@ async def inject_telemetry_reliability_into_fact_sheet(session, fact_sheet: dict
     return fact_sheet
 
 
+def resolve_debate_timeout(settings: Optional[Dict[str, Any]] = None, client: Any = None) -> float:
+    """
+    Resolve the execution timeout for a debate LLM call.
+    Considers settings (agent_architecture.debate_turn_timeout_seconds or llm.per_turn_timeout_seconds)
+    and dynamically enforces floor based on client thinking level / budget via resolve_stale_timeout_floor.
+    """
+    cfg = settings or {}
+    debate_cfg = cfg.get("agent_architecture", {}) if isinstance(cfg.get("agent_architecture"), dict) else {}
+    llm_cfg = cfg.get("llm", {}) if isinstance(cfg.get("llm"), dict) else {}
+
+    raw_timeout = (
+        debate_cfg.get("debate_turn_timeout_seconds")
+        or debate_cfg.get("turn_timeout_seconds")
+        or llm_cfg.get("per_turn_timeout_seconds")
+    )
+    configured = float(raw_timeout) if raw_timeout is not None else 360.0
+
+    if client is not None:
+        try:
+            from monika.infrastructure.providers.capabilities import resolve_stale_timeout_floor
+
+            model_name = getattr(client, "model", None)
+            thinking_level = getattr(client, "thinking_level", None)
+            thinking_budget = getattr(client, "thinking_budget", None)
+            caps = getattr(client, "capabilities", None)
+            supports_native_thinking = getattr(caps, "supports_native_thinking", False) if caps else False
+
+            floor = resolve_stale_timeout_floor(
+                model_name=model_name,
+                default_timeout=configured,
+                thinking_level=thinking_level,
+                thinking_budget=thinking_budget,
+                supports_native_thinking=supports_native_thinking,
+            )
+            return max(configured, floor)
+        except Exception as e:
+            logger.debug(f"Failed to resolve dynamic thinking timeout floor: {e}")
+
+    return configured
+
+
 _FACADE_BASELINE_ATTRS: Dict[str, Any] = {}
 
 
@@ -400,6 +441,7 @@ def sync_facade_patches():
         "analyze_risk_aggressive_llm",
         "analyze_risk_neutral_llm",
         "make_portfolio_decision",
+        "resolve_debate_timeout",
     ]
 
     global _FACADE_BASELINE_ATTRS

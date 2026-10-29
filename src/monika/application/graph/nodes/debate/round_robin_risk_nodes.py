@@ -35,6 +35,7 @@ from monika.application.graph.nodes.debate.helpers import (
     _get_correlated_exposure_summary,
     _get_recent_sl_streak,
     compute_actual_risk_state,
+    resolve_debate_timeout,
     sync_facade_patches,
 )
 from monika.application.graph.state import TradingState
@@ -139,17 +140,18 @@ async def conservative_risk_node(state: TradingState, config: Optional[RunnableC
                         return sym, {"conservative": cons_risk}
                     else:
                         client = get_client_for_task("risk_gate_conservative", settings)
+                        turn_timeout = resolve_debate_timeout(settings, client)
                         try:
                             from monika.application.analysis.debate.multi_persona_risk_llm import (
                                 analyze_risk_multi_persona_llm,
                             )
 
-                            async with asyncio.timeout(45.0):
+                            async with asyncio.timeout(turn_timeout):
                                 batch_eval = await analyze_risk_multi_persona_llm(client, sym, strict_context)
                             return sym, batch_eval
                         except Exception as b_err:
                             logger.debug(f"[{sym}] Multi-persona batch fallback: {b_err}")
-                            async with asyncio.timeout(45.0):
+                            async with asyncio.timeout(turn_timeout):
                                 cons_risk = await analyze_risk_conservative_llm(client, sym, strict_context)
                             return sym, {"conservative": cons_risk}
             except Exception as e:
@@ -210,7 +212,8 @@ async def aggressive_risk_node(state: TradingState, config: Optional[RunnableCon
                         agg_risk = analyze_risk_aggressive(strict_context, min_rr_ratio=min_rr)
                     else:
                         client = get_client_for_task("risk_gate_aggressive", settings)
-                        async with asyncio.timeout(45.0):
+                        turn_timeout = resolve_debate_timeout(settings, client)
+                        async with asyncio.timeout(turn_timeout):
                             agg_risk = await analyze_risk_aggressive_llm(client, sym, strict_context)
 
                     return sym, agg_risk
@@ -269,7 +272,8 @@ async def neutral_risk_node(state: TradingState, config: Optional[RunnableConfig
                         neu_risk = analyze_risk_neutral(strict_context, min_rr_ratio=min_rr)
                     else:
                         client = get_client_for_task("risk_gate_neutral", settings)
-                        async with asyncio.timeout(45.0):
+                        turn_timeout = resolve_debate_timeout(settings, client)
+                        async with asyncio.timeout(turn_timeout):
                             neu_risk = await analyze_risk_neutral_llm(client, sym, strict_context)
 
                     return sym, neu_risk
@@ -323,7 +327,8 @@ async def portfolio_judge_node(state: TradingState, config: Optional[RunnableCon
                         pm_decision = make_portfolio_decision_deterministic(single_risk_debate)
                     else:
                         client = get_client_for_task("portfolio_manager_per_trade", settings)
-                        async with asyncio.timeout(45.0):
+                        turn_timeout = resolve_debate_timeout(settings, client)
+                        async with asyncio.timeout(turn_timeout):
                             pm_decision = await make_portfolio_decision(
                                 client, sym, single_risk_debate, actual_risk_state_with_intel
                             )

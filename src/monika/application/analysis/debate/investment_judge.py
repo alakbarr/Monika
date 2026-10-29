@@ -102,6 +102,20 @@ async def evaluate_debate(
     bull_rebuttal: Optional[dict] = None,
     fact_sheet: Optional[Any] = None,
 ) -> dict:
+    if not bull_claim or not bear_dissent or not original_context:
+        missing_name = "bull_claim" if not bull_claim else ("bear_dissent" if not bear_dissent else "original_context")
+        logger.warning(
+            f"[{symbol}] Incomplete debate inputs ({missing_name} missing). Enforcing fail-closed capital protection."
+        )
+        return {
+            "final_decision": "avoid",
+            "decision": "wait",
+            "risk_multiplier": 0.0,
+            "reason": f"CRITICAL: Missing debate input ({missing_name}). Trade avoided.",
+            "fail_closed_triggered": True,
+            "regime_weights_used": resolve_regime_weights(original_context or {}),
+        }
+
     from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
     system_prompt = CacheBreakpointManager.get_canonical_debate_system_prompt()
@@ -214,27 +228,27 @@ Proceed with evaluation based strictly on the data above. Respond in valid JSON 
 
         bb = DebateBlackboard(symbol=symbol, fact_sheet=original_context)
         b_thesis = (
-            bull_claim.get("thesis")
-            or bull_claim.get("bull_thesis")
-            or bull_claim.get("argument")
-            or str(bull_claim)[:300]
+            (bull_claim or {}).get("thesis")
+            or (bull_claim or {}).get("bull_thesis")
+            or (bull_claim or {}).get("argument")
+            or str(bull_claim or "")[:300]
         )
         bb.add_bull_thesis(
             b_thesis,
-            confidence=float(bull_claim.get("strength_score", 5.0) or 5.0) / 10.0,
-            claim_dict=bull_claim,
+            confidence=float((bull_claim or {}).get("strength_score", 5.0) or 5.0) / 10.0,
+            claim_dict=bull_claim or {},
         )
         br_thesis = (
-            bear_dissent.get("counter_thesis")
-            or bear_dissent.get("bear_dissent")
-            or bear_dissent.get("bear_thesis")
-            or bear_dissent.get("argument")
-            or str(bear_dissent)[:300]
+            (bear_dissent or {}).get("counter_thesis")
+            or (bear_dissent or {}).get("bear_dissent")
+            or (bear_dissent or {}).get("bear_thesis")
+            or (bear_dissent or {}).get("argument")
+            or str(bear_dissent or "")[:300]
         )
         bb.add_bear_thesis(
             br_thesis,
-            confidence=float(bear_dissent.get("risk_severity", 5.0) or 5.0) / 10.0,
-            claim_dict=bear_dissent,
+            confidence=float((bear_dissent or {}).get("risk_severity", 5.0) or 5.0) / 10.0,
+            claim_dict=bear_dissent or {},
         )
         debate_payload["sparse_blackboard"] = bb.render_sparse_summary()
     except Exception as bb_err:

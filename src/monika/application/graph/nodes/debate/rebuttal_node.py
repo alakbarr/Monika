@@ -10,7 +10,11 @@ from langchain_core.runnables.config import RunnableConfig
 
 from monika.application.analysis.debate.bear_analyst import generate_bear_rebuttal
 from monika.application.analysis.debate.bull_analyst import generate_bull_rebuttal
-from monika.application.graph.nodes.debate.helpers import _is_grounded, sync_facade_patches
+from monika.application.graph.nodes.debate.helpers import (
+    _is_grounded,
+    resolve_debate_timeout,
+    sync_facade_patches,
+)
 from monika.application.graph.state import TradingState
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
@@ -66,10 +70,12 @@ async def rebuttal_node(state: TradingState, config: Optional[RunnableConfig] = 
         decision = str(original_context.get("decision", "buy")).lower()
         is_sell = decision in ("sell", "short")
 
+        turn_client = bear_client if is_sell else bull_client
+        turn_timeout = resolve_debate_timeout(settings, turn_client)
         async with semaphore:
             try:
                 logger.info(f"[{sym}] Executing round 2 dialectic rebuttal (direction={decision.upper()})...")
-                async with asyncio.timeout(45.0):
+                async with asyncio.timeout(turn_timeout):
                     if is_sell:
                         rebuttal_res = await generate_bear_rebuttal(
                             bear_client, sym, original_context, fact_sheet, bear_dissent, verified_bull_claim

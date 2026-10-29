@@ -20,6 +20,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import yaml
 
+from monika.application.graph.nodes.debate.helpers import resolve_debate_timeout
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.TeamCompiler")
@@ -171,8 +172,9 @@ class TeamCompiler:
         }
 
         if client is not None and hasattr(client, "generate_content"):
+            turn_timeout = resolve_debate_timeout(settings, client)
             try:
-                async with asyncio.timeout(45.0):
+                async with asyncio.timeout(turn_timeout):
                     raw_resp = await client.generate_content(
                         system_prompt=role.system_prompt,
                         user_message=user_msg,

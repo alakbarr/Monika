@@ -9,7 +9,11 @@ from typing import Any, Dict, Optional
 from langchain_core.runnables.config import RunnableConfig
 
 from monika.application.analysis.debate.bear_analyst import generate_bear_dissent
-from monika.application.graph.nodes.debate.helpers import _is_grounded, sync_facade_patches
+from monika.application.graph.nodes.debate.helpers import (
+    _is_grounded,
+    resolve_debate_timeout,
+    sync_facade_patches,
+)
 from monika.application.graph.state import TradingState
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
@@ -59,9 +63,10 @@ async def bear_dissent_node(state: TradingState, config: Optional[RunnableConfig
         )
         rebuttal_completed = bool(rebuttal_claim or deb.get("rebuttal_completed", False))
 
+        turn_timeout = resolve_debate_timeout(settings, bear_client)
         async with semaphore:
             try:
-                async with asyncio.timeout(45.0):
+                async with asyncio.timeout(turn_timeout):
                     bear_dissent = await generate_bear_dissent(
                         bear_client,
                         sym,

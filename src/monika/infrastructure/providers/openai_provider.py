@@ -498,75 +498,106 @@ class OpenAIProvider(BaseLLMClient):
         extra_fields: dict[str, Any] = {}
 
         stream_iter = stream.__aiter__()
-        while True:
-            effective_timeout = config.first_chunk_timeout if is_first_chunk else config.idle_timeout
-            try:
-                chunk = await asyncio.wait_for(stream_iter.__anext__(), timeout=effective_timeout)
-            except StopAsyncIteration:
-                break
-            except asyncio.TimeoutError:
+        try:
+            while True:
+                effective_timeout = config.first_chunk_timeout if is_first_chunk else config.idle_timeout
+                try:
+                    chunk = await asyncio.wait_for(stream_iter.__anext__(), timeout=effective_timeout)
+                except StopAsyncIteration:
+                    break
+                except asyncio.TimeoutError:
+                    now = time.monotonic()
+                    timeout_type = "first chunk" if is_first_chunk else "idle"
+                    raise StreamTimeoutError(
+                        f"OpenAI streaming {timeout_type} timeout ({effective_timeout:.0f}s) "
+                        f"for {self.model} after {chunks_received} chunks",
+                        idle_seconds=now - last_event_time,
+                        chunks_received=chunks_received,
+                    )
+
                 now = time.monotonic()
-                timeout_type = "first chunk" if is_first_chunk else "idle"
-                raise StreamTimeoutError(
-                    f"OpenAI streaming {timeout_type} timeout ({effective_timeout:.0f}s) "
-                    f"for {self.model} after {chunks_received} chunks",
-                    idle_seconds=now - last_event_time,
-                    chunks_received=chunks_received,
-                )
+                if (now - start_time) > config.safety_timeout:
+                    raise StreamSafetyTimeoutError(
+                        f"OpenAI stream safety timeout {config.safety_timeout:.0f}s exceeded for {self.model}",
+                        idle_seconds=now - last_event_time,
+                        chunks_received=chunks_received,
+                    )
 
-            now = time.monotonic()
-            if (now - start_time) > config.safety_timeout:
-                raise StreamSafetyTimeoutError(
-                    f"OpenAI stream safety timeout {config.safety_timeout:.0f}s exceeded for {self.model}",
-                    idle_seconds=now - last_event_time,
-                    chunks_received=chunks_received,
-                )
+                last_event_time = now
+                chunks_received += 1
+                is_first_chunk = False
 
-            last_event_time = now
-            chunks_received += 1
-            is_first_chunk = False
+                if hasattr(chunk, "usage") and chunk.usage:
+                    usage = chunk.usage
 
-            if hasattr(chunk, "usage") and chunk.usage:
-                usage = chunk.usage
+                if hasattr(chunk, "model") and chunk.model:
+                    served_model = chunk.model
 
-            if hasattr(chunk, "model") and chunk.model:
-                served_model = chunk.model
+                extra_fields = {}
+                for choice in getattr(chunk, "choices", None) or []:
+                    delta = getattr(choice, "delta", None)
+                    if delta:
+                        if getattr(delta, "content", None):
+                            content += delta.content
+                        if getattr(delta, "reasoning_content", None):
+                            reasoning += delta.reasoning_content
+                        elif getattr(delta, "reasoning", None):
+                            reasoning += delta.reasoning
 
-            extra_fields = {}
-            for choice in getattr(chunk, "choices", None) or []:
-                delta = getattr(choice, "delta", None)
-                if delta:
-                    if getattr(delta, "content", None):
-                        content += delta.content
-                    if getattr(delta, "reasoning_content", None):
-                        reasoning += delta.reasoning_content
-                    elif getattr(delta, "reasoning", None):
-                        reasoning += delta.reasoning
+                        for k in ("thought_signature", "thought", "reasoning_details", "extra_content"):
+                            val = getattr(delta, k, None)
+                            if val:
+                                extra_fields[k] = val
 
-                    for k in ("thought_signature", "thought", "reasoning_details", "extra_content"):
-                        val = getattr(delta, k, None)
-                        if val:
-                            extra_fields[k] = val
+                        tc_list = getattr(delta, "tool_calls", None) or []
+                        for tc in tc_list:
+                            idx = getattr(tc, "index", 0)
+                            if idx not in tool_calls_dict:
+                                tool_calls_dict[idx] = {
+                                    "id": getattr(tc, "id", "") or "",
+                                    "name": getattr(getattr(tc, "function", None), "name", "") or "",
+                                    "arguments": "",
+                                }
+                            fn = getattr(tc, "function", None)
+                            if fn and getattr(fn, "arguments", None):
+                                tool_calls_dict[idx]["arguments"] += fn.arguments
+                            if getattr(tc, "id", None) and not tool_calls_dict[idx]["id"]:
+                                tool_calls_dict[idx]["id"] = tc.id
+                            if fn and getattr(fn, "name", None) and not tool_calls_dict[idx]["name"]:
+                                tool_calls_dict[idx]["name"] = fn.name
 
-                    tc_list = getattr(delta, "tool_calls", None) or []
-                    for tc in tc_list:
-                        idx = getattr(tc, "index", 0)
-                        if idx not in tool_calls_dict:
-                            tool_calls_dict[idx] = {
-                                "id": getattr(tc, "id", "") or "",
-                                "name": getattr(getattr(tc, "function", None), "name", "") or "",
-                                "arguments": "",
-                            }
-                        fn = getattr(tc, "function", None)
-                        if fn and getattr(fn, "arguments", None):
-                            tool_calls_dict[idx]["arguments"] += fn.arguments
-                        if getattr(tc, "id", None) and not tool_calls_dict[idx]["id"]:
-                            tool_calls_dict[idx]["id"] = tc.id
-                        if fn and getattr(fn, "name", None) and not tool_calls_dict[idx]["name"]:
-                            tool_calls_dict[idx]["name"] = fn.name
+                    if getattr(choice, "finish_reason", None):
+                        finish_reason = choice.finish_reason
+        finally:
+            import inspect
 
-                if getattr(choice, "finish_reason", None):
-                    finish_reason = choice.finish_reason
+            resp = getattr(stream, "response", None)
+            resp_aclose = getattr(resp, "aclose", None)
+            if callable(resp_aclose):
+                try:
+                    res = resp_aclose()
+                    if inspect.isawaitable(res):
+                        await res
+                except Exception:
+                    pass
+            else:
+                stream_aclose = getattr(stream, "aclose", None)
+                if callable(stream_aclose):
+                    try:
+                        res = stream_aclose()
+                        if inspect.isawaitable(res):
+                            await res
+                    except Exception:
+                        pass
+                else:
+                    stream_close = getattr(stream, "close", None)
+                    if callable(stream_close):
+                        try:
+                            res = stream_close()
+                            if inspect.isawaitable(res):
+                                await res
+                        except Exception:
+                            pass
 
         tool_calls_objs = []
         for idx in sorted(tool_calls_dict.keys()):
@@ -819,6 +850,13 @@ class OpenAIProvider(BaseLLMClient):
             static_sys = system[0]
             dynamic_sys = str(system[1]).strip() if system[1] else ""
         flat_sys = _flatten_system_prompt(static_sys)
+        if (self.model in ("openrouter/free", "free") or ":free" in str(self.model).lower()) and isinstance(
+            flat_sys, str
+        ):
+            if "=== ROLE DIRECTIVE ===\n\n" in flat_sys:
+                flat_sys = flat_sys.split("=== ROLE DIRECTIVE ===\n\n", 1)[1]
+            elif "\n\n---\n\n" in flat_sys and flat_sys.startswith("=== CANONICAL SYSTEM GOVERNANCE"):
+                flat_sys = flat_sys.split("\n\n---\n\n", 1)[1]
         if flat_sys:
             provider_name = self._get_provider_name()
             is_openrouter = (
@@ -996,7 +1034,16 @@ class OpenAIProvider(BaseLLMClient):
         **kwargs: Any,
     ) -> Optional[str]:
         messages = []
-        if system_prompt:
+        eff_sys = system_prompt
+        if (self.model in ("openrouter/free", "free") or ":free" in str(self.model).lower()) and isinstance(
+            eff_sys, str
+        ):
+            if "=== ROLE DIRECTIVE ===\n\n" in eff_sys:
+                eff_sys = eff_sys.split("=== ROLE DIRECTIVE ===\n\n", 1)[1]
+            elif "\n\n---\n\n" in eff_sys and eff_sys.startswith("=== CANONICAL SYSTEM GOVERNANCE"):
+                eff_sys = eff_sys.split("\n\n---\n\n", 1)[1]
+
+        if eff_sys:
             provider_name = self._get_provider_name()
             is_openrouter = (
                 provider_name in ("openrouter", "9router")
@@ -1007,11 +1054,11 @@ class OpenAIProvider(BaseLLMClient):
                 messages.append(
                     {
                         "role": "system",
-                        "content": [{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
+                        "content": [{"type": "text", "text": eff_sys, "cache_control": {"type": "ephemeral"}}],
                     }
                 )
             else:
-                messages.append({"role": "system", "content": system_prompt})
+                messages.append({"role": "system", "content": eff_sys})
         messages.append({"role": "user", "content": user_message})
         eff_temp = temperature if temperature is not None else self.kwargs.get("temperature", self.default_temperature)
         provider_name = self._get_provider_name()
@@ -1048,7 +1095,11 @@ class OpenAIProvider(BaseLLMClient):
                 # as upstream inference engines often reject/strip it. Prompt-enforced JSON is 100% reliable.
                 if self.thinking_level == "none" and not is_array_schema:
                     kwargs["response_format"] = {"type": "json_object"}
-                json_hint = f"\n\nYou MUST return valid JSON conforming to this schema without commentary, preamble, or markdown wrapper:\n{json.dumps(response_schema)}"
+                json_hint = (
+                    f"\n\nYou MUST return valid JSON conforming to this schema without commentary, preamble, or markdown wrapper. "
+                    f"Do NOT emit XML tags, function call tags, or tool calls (e.g. <invoke>, <tool_call>, <dots_function_call>). "
+                    f"Output ONLY the raw JSON object:\n{json.dumps(response_schema)}"
+                )
                 user_msg = kwargs["messages"][-1]["content"]
                 if isinstance(user_msg, str):
                     kwargs["messages"][-1]["content"] += json_hint
@@ -1057,7 +1108,11 @@ class OpenAIProvider(BaseLLMClient):
             elif is_groq:
                 if not is_array_schema:
                     kwargs["response_format"] = {"type": "json_object"}
-                json_hint = f"\n\nYou MUST return valid JSON conforming to this schema:\n{json.dumps(response_schema)}"
+                json_hint = (
+                    f"\n\nYou MUST return valid JSON conforming to this schema without commentary, preamble, or markdown wrapper. "
+                    f"Do NOT emit XML tags, function call tags, or tool calls (e.g. <invoke>, <tool_call>, <dots_function_call>). "
+                    f"Output ONLY the raw JSON object:\n{json.dumps(response_schema)}"
+                )
                 user_msg = kwargs["messages"][-1]["content"]
                 if isinstance(user_msg, str):
                     kwargs["messages"][-1]["content"] += json_hint
@@ -1252,16 +1307,33 @@ class OpenAIProvider(BaseLLMClient):
     ) -> Optional[dict]:
         if not self.client:
             return None
+
+        # Positional schema handling: classify_json(prompt, schema_dict)
+        actual_schema = schema
+        actual_sys_prompt = system_prompt
+        if isinstance(actual_sys_prompt, dict) and actual_schema is None:
+            actual_schema = actual_sys_prompt
+            actual_sys_prompt = None
+
         sys_prompt = (
-            system_prompt
-            or "You are a data classification assistant. Always output valid JSON conforming to the schema requested."
+            str(actual_sys_prompt)
+            if actual_sys_prompt
+            else "You are a data classification assistant. Always output valid JSON conforming to the schema requested."
         )
+
+        effective_schema = actual_schema if actual_schema is not None else {"type": "object"}
+
+        current_prompt = prompt
         for attempt in range(2):
             try:
                 # If attempt > 0 (retry after parse failure or truncated output), expand token budget moderately
                 override_tokens = min(int(max_tokens or 4096) * 2, 8192) if attempt > 0 else max_tokens
                 result_text = await self.generate_content(
-                    sys_prompt, prompt, response_schema=schema, temperature=temperature, max_tokens=override_tokens
+                    sys_prompt,
+                    current_prompt,
+                    response_schema=effective_schema,
+                    temperature=temperature,
+                    max_tokens=override_tokens,
                 )
                 if not result_text:
                     if attempt == 0:
@@ -1280,6 +1352,24 @@ class OpenAIProvider(BaseLLMClient):
                 logger.warning(f"[{self.model}] classify_json: parse failed on text: {result_text[:250]}")
                 if attempt == 0:
                     await asyncio.sleep(1.0)
+                    is_tool_call_hallucination = any(
+                        tag in result_text
+                        for tag in ("<invoke", "<dots_function_call", "<function_calls", "<tool_call")
+                    )
+                    if is_tool_call_hallucination:
+                        correction_suffix = (
+                            "\n\n[CRITICAL CORRECTION]: Your previous response attempted to invoke a tool via XML tags. "
+                            "Tools are NOT available in this evaluation mode. Do NOT emit any tool calls, function calls, "
+                            "or XML tags (<invoke>, <tool_call>, <dots_function_call>). "
+                            "Evaluate strictly based on the provided context and return ONLY a valid JSON object."
+                        )
+                    else:
+                        correction_suffix = (
+                            "\n\n[CRITICAL CORRECTION]: Your previous response could not be parsed as valid JSON. "
+                            "Do NOT emit preamble, commentary, markdown wrappers, or XML tags. "
+                            "Output ONLY a raw, syntactically valid JSON object."
+                        )
+                    current_prompt = prompt + correction_suffix
                     continue
                 return None
             except Exception as e:

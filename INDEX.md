@@ -9835,6 +9835,7 @@
   - `async compute_actual_risk_state(session, settings: dict, mt5_client) -> Dict[str, Any]`: Menghitung actual_risk_state (equity, daily_pnl_pct, portfolio_heat_pct).
   - `async inject_coherence_and_intel(session, sym: str, bull_thesis: str, ...) -> Tuple[str, List[Dict[str, Any]]]`: Menginjeksi CDS Context Divergence Score alert & user operator market intel ke thesis.
   - `async inject_telemetry_reliability_into_fact_sheet(session, fact_sheet: dict) -> dict`: Injects specialist trust weights and news classification accuracy into the debate FactSheet.
+  - `resolve_debate_timeout(settings: Optional[Dict[str, Any]], client: Any) -> float`: Resolve the execution timeout for a debate LLM call.
   - `sync_facade_patches()`: Propagate any monkey-patched module attributes from debate_node facade to sub-agent modules.
 
 #### `rebuttal_node.py`
@@ -12248,6 +12249,12 @@
 - **Top-Level Functions**:
   - `upgrade() -> None`: Upgrade schema: Expand source_strategy_id from VARCHAR(50) to VARCHAR(100).
   - `downgrade() -> None`: Downgrade schema: Shrink source_strategy_id from VARCHAR(100) to VARCHAR(50).
+
+#### `0015_decision_refl_pos_idx.py` - *add missing index on decision_reflections.position_id*
+- **Path**: [`src/monika/infrastructure/database/migrations/versions/0015_decision_refl_pos_idx.py`](src/monika/infrastructure/database/migrations/versions/0015_decision_refl_pos_idx.py)
+- **Top-Level Functions**:
+  - `upgrade() -> None`: Upgrade schema: Add ix_decision_reflections_position_id index on decision_reflections(position_id).
+  - `downgrade() -> None`: Downgrade schema: Drop ix_decision_reflections_position_id index on decision_reflections.
 
 #### `c83c5e451412_sync_schema_indexes_types_and_.py` - *sync_schema_indexes_types_and_constraints*
 - **Path**: [`src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py`](src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py)

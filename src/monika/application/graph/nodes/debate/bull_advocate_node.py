@@ -11,7 +11,12 @@ from langchain_core.runnables.config import RunnableConfig
 
 from monika.application.analysis.debate.bull_analyst import generate_bull_advocacy
 from monika.application.analysis.debate.fact_sheet import build_fact_sheet
-from monika.application.graph.nodes.debate.helpers import _is_grounded, inject_coherence_and_intel, sync_facade_patches
+from monika.application.graph.nodes.debate.helpers import (
+    _is_grounded,
+    inject_coherence_and_intel,
+    resolve_debate_timeout,
+    sync_facade_patches,
+)
 from monika.application.graph.state import TradingState
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import AssetAnalysis
@@ -113,7 +118,8 @@ async def bull_advocate_node(state: TradingState, config: Optional[RunnableConfi
                         "desk_specialist_verdict": desk_verdict,
                     }
 
-                    async with asyncio.timeout(45.0):
+                    turn_timeout = resolve_debate_timeout(settings, bull_client)
+                    async with asyncio.timeout(turn_timeout):
                         verified_bull_claim = await generate_bull_advocacy(
                             bull_client, sym, original_context, fact_sheet
                         )
