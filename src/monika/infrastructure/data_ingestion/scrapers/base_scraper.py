@@ -19,6 +19,57 @@ from typing import Any, Optional
 
 logger = logging.getLogger("TradingAgent.Scraper")
 
+_DRISSIONPAGE_SEARCH_PATCHED = False
+
+
+def _apply_drissionpage_cdp_search_patch() -> None:
+    """
+    Safely patch DrissionPage ChromiumBase._find_elements to handle transient CDP searchId
+    desynchronization errors during page navigation, redirects, and frame reconstruction.
+    """
+    global _DRISSIONPAGE_SEARCH_PATCHED
+    if _DRISSIONPAGE_SEARCH_PATCHED:
+        return
+    try:
+        from DrissionPage._elements.none_element import NoneElement
+        from DrissionPage._pages.chromium_base import ChromiumBase
+
+        orig_find = ChromiumBase._find_elements
+
+        def _safe_find_elements(
+            self: Any,
+            locator: Any,
+            timeout: Any,
+            index: Any = 1,
+            relative: Any = False,
+            raise_err: Any = None,
+        ) -> Any:
+            try:
+                return orig_find(
+                    self,
+                    locator,
+                    timeout,
+                    index=index,
+                    relative=relative,
+                    raise_err=raise_err,
+                )
+            except KeyError as e:
+                if "searchId" in str(e):
+                    logger.debug(f"[BaseScraper] Handled transient CDP searchId race condition for locator '{locator}'")
+                    try:
+                        return NoneElement(self) if index is not None else []
+                    except Exception:
+                        return None if index is not None else []
+                raise
+
+        ChromiumBase._find_elements = _safe_find_elements
+        _DRISSIONPAGE_SEARCH_PATCHED = True
+    except Exception as patch_err:
+        logger.debug(f"[BaseScraper] Could not apply DrissionPage search patch: {patch_err}")
+
+
+_apply_drissionpage_cdp_search_patch()
+
 _PROFILE_LOCKS_GUARD = threading.Lock()
 _PROFILE_LOCKS: dict[str, threading.RLock] = {}
 _ACTIVE_BROWSER_PIDS: set[int] = set()
@@ -447,7 +498,19 @@ class BaseScraper:
             page_obj.get(url)
 
             if wait_selector:
-                if page_obj.wait.ele_displayed(wait_selector, timeout=timeout):
+                wait_success = False
+                try:
+                    wait_success = bool(page_obj.wait.ele_displayed(wait_selector, timeout=timeout))
+                except KeyError as ke:
+                    if "searchId" in str(ke):
+                        logger.warning(
+                            f"[BaseScraper] Caught transient searchId race during wait for {wait_selector}, re-checking..."
+                        )
+                        wait_success = bool(page_obj.ele(wait_selector, timeout=2))
+                    else:
+                        raise
+
+                if wait_success:
                     return True
 
                 # Jika selector belum muncul, periksa apakah ada Cloudflare challenge
@@ -466,7 +529,8 @@ class BaseScraper:
             return True
 
         except Exception as e:
-            logger.warning(f"Navigation failed: {e}")
+            err_msg = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
+            logger.warning(f"Navigation failed: {err_msg}")
             return False if disable_fallback else self._fallback(url, wait_selector)
 
     def _fallback(self, url: str, wait_selector: Optional[str] = None) -> bool:

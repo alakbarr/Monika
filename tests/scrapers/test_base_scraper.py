@@ -79,6 +79,86 @@ class TestBaseScraper:
 
     @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumPage")
     @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumOptions")
+    def test_navigate_handles_searchid_keyerror_and_recovers(self, mock_options, mock_page):
+        scraper = BaseScraper(headless=True)
+
+        mock_wait = MagicMock()
+        mock_wait.ele_displayed.side_effect = KeyError("searchId")
+        scraper.page.wait = mock_wait
+
+        mock_ele = MagicMock()
+        scraper.page.ele.return_value = mock_ele
+
+        res = scraper.navigate_with_fallback("http://test.com", "div.content")
+
+        assert res is True
+        scraper.page.ele.assert_called_with("div.content", timeout=2)
+
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumPage")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumOptions")
+    def test_navigate_handles_searchid_keyerror_and_fails_if_ele_missing(self, mock_options, mock_page):
+        scraper = BaseScraper(headless=True)
+
+        mock_wait = MagicMock()
+        mock_wait.ele_displayed.side_effect = KeyError("searchId")
+        scraper.page.wait = mock_wait
+        scraper.page.ele.return_value = None
+        scraper.page.html = "<html><body>No element here</body></html>"
+
+        with patch.object(scraper, "_fallback", return_value=False) as mock_fallback:
+            res = scraper.navigate_with_fallback("http://test.com", "div.content")
+            assert res is False
+            mock_fallback.assert_called_once_with("http://test.com", "div.content")
+
+    def test_drissionpage_cdp_search_patch_behavior(self):
+        from DrissionPage._elements.none_element import NoneElement
+        from DrissionPage._pages.chromium_base import ChromiumBase
+
+        class DummyBase(ChromiumBase):
+            def __init__(self):
+                self._none_ele_value = None
+                self._none_ele_return_value = False
+
+        dummy = DummyBase()
+
+        # Save current _find_elements
+        orig_method = ChromiumBase._find_elements
+
+        def mock_broken_find(self, *args, **kwargs):
+            raise KeyError("searchId")
+
+        try:
+            # Re-wrap with test mock to simulate DrissionPage CDP failure
+            ChromiumBase._find_elements = mock_broken_find
+            from monika.infrastructure.data_ingestion import scrapers
+            import monika.infrastructure.data_ingestion.scrapers.base_scraper as bs_mod
+
+            bs_mod._DRISSIONPAGE_SEARCH_PATCHED = False
+            bs_mod._apply_drissionpage_cdp_search_patch()
+
+            # Test single element lookup (index=1) returns NoneElement
+            result_single = dummy._find_elements("div.test", timeout=1, index=1)
+            assert isinstance(result_single, NoneElement)
+
+            # Test multiple elements lookup (index=None) returns empty list
+            result_multi = dummy._find_elements("div.test", timeout=1, index=None)
+            assert result_multi == []
+
+            # Other KeyError should still raise
+            def mock_other_keyerror(self, *args, **kwargs):
+                raise KeyError("other_key")
+
+            ChromiumBase._find_elements = mock_other_keyerror
+            bs_mod._DRISSIONPAGE_SEARCH_PATCHED = False
+            bs_mod._apply_drissionpage_cdp_search_patch()
+
+            with pytest.raises(KeyError, match="other_key"):
+                dummy._find_elements("div.test", timeout=1)
+        finally:
+            ChromiumBase._find_elements = orig_method
+
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumPage")
+    @patch("monika.infrastructure.data_ingestion.scrapers.base_scraper.ChromiumOptions")
     def test_close(self, mock_options, mock_page):
         scraper = BaseScraper()
         scraper.close()
