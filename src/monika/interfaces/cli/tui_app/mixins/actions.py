@@ -100,13 +100,11 @@ class ActionsMixin(_TuiMixinBase):
         async with get_session() as session:
             await TradingService.pause_trading(session, reason="TUI Pause Action", actor="tui_operator")
         try:
-            import aiohttp
-
-            settings = load_settings()
-            port = settings.get("dashboard", {}).get("port", 8000)
-            async with aiohttp.ClientSession() as http_sess:
+            headers = {"X-API-Key": self.api_key} if getattr(self, "api_key", None) else {}
+            base_url = (getattr(self, "api_url", None) or "http://127.0.0.1:8000").rstrip("/")
+            async with aiohttp.ClientSession(headers=headers) as http_sess:
                 await http_sess.post(
-                    f"http://127.0.0.1:{port}/api/v1/actions/pause",
+                    f"{base_url}/api/v1/actions/pause",
                     timeout=aiohttp.ClientTimeout(total=1.0),
                 )
         except Exception:
@@ -135,13 +133,11 @@ class ActionsMixin(_TuiMixinBase):
         async with get_session() as session:
             await TradingService.emergency_kill(session, reason="TUI Emergency Kill", actor="tui_operator")
         try:
-            import aiohttp
-
-            settings = load_settings()
-            port = settings.get("dashboard", {}).get("port", 8000)
-            async with aiohttp.ClientSession() as http_sess:
+            headers = {"X-API-Key": self.api_key} if getattr(self, "api_key", None) else {}
+            base_url = (getattr(self, "api_url", None) or "http://127.0.0.1:8000").rstrip("/")
+            async with aiohttp.ClientSession(headers=headers) as http_sess:
                 await http_sess.post(
-                    f"http://127.0.0.1:{port}/api/v1/kill",
+                    f"{base_url}/api/v1/kill",
                     timeout=aiohttp.ClientTimeout(total=1.0),
                 )
         except Exception:
@@ -277,13 +273,11 @@ class ActionsMixin(_TuiMixinBase):
             async with get_session() as session:
                 await TradingService.resume_trading(session, actor="tui_operator")
             try:
-                import aiohttp
-
-                settings = load_settings()
-                port = settings.get("dashboard", {}).get("port", 8000)
-                async with aiohttp.ClientSession() as http_sess:
+                headers = {"X-API-Key": self.api_key} if getattr(self, "api_key", None) else {}
+                base_url = (getattr(self, "api_url", None) or "http://127.0.0.1:8000").rstrip("/")
+                async with aiohttp.ClientSession(headers=headers) as http_sess:
                     await http_sess.post(
-                        f"http://127.0.0.1:{port}/api/v1/actions/resume",
+                        f"{base_url}/api/v1/actions/resume",
                         timeout=aiohttp.ClientTimeout(total=1.0),
                     )
             except Exception:

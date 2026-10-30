@@ -467,11 +467,12 @@ class TelegramMarketCommandsMixin(_TelegramBotMixinBase):
         sym = args[0].strip().upper().replace("/", "")
         factor_name = args[1].strip().lower()
 
+        from monika.domain.indicators.micro_alpha_zoo import MicroAlphaZoo
+
         try:
             import pandas as pd
             from sqlalchemy import select
 
-            from monika.domain.indicators.micro_alpha_zoo import MicroAlphaZoo
             from monika.infrastructure.database.db import get_session
             from monika.infrastructure.database.models import PriceOHLCV
 
@@ -529,6 +530,13 @@ class TelegramMarketCommandsMixin(_TelegramBotMixinBase):
                 f"<i>{html.escape(desc)}</i>"
             )
             await update.message.reply_text(resp, parse_mode=ParseMode.HTML)
+        except KeyError:
+            available = ", ".join(f"<code>{m.name}</code>" for m in MicroAlphaZoo.list_factors())
+            await update.message.reply_text(
+                f"[ERROR] Faktor <code>{factor_name}</code> tidak ditemukan di MicroAlphaZoo.\n\n"
+                f"Faktor yang tersedia:\n{available}",
+                parse_mode=ParseMode.HTML,
+            )
         except Exception as exc:
             logger.error(f"Error computing /alpha {factor_name} on {sym}: {exc}", exc_info=True)
             await update.message.reply_text(

@@ -137,6 +137,14 @@ class ChatCommandRouter:
         self.api_key = api_key or os.getenv("DASHBOARD_API_KEY", "")
         self.session_id = session_id
 
+    def _build_headers(self) -> Dict[str, str]:
+        """Build authenticated HTTP headers for daemon API calls."""
+        headers: Dict[str, str] = {}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+            headers["X-API-Key"] = self.api_key
+        return headers
+
     async def handle(
         self,
         input_text: str,
@@ -390,8 +398,8 @@ class ChatCommandRouter:
         console = self.renderer.console
 
         health_data: Optional[Dict[str, Any]] = None
-        url = f"{self.api_url}/api/health"
-        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        url = f"{self.api_url}/api/v1/health"
+        headers = self._build_headers()
 
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=2.0)) as session:
@@ -399,7 +407,7 @@ class ChatCommandRouter:
                     if resp.status == 200:
                         health_data = await resp.json()
         except Exception as e:
-            logger.debug(f"Failed to query /api/health: {e}")
+            logger.debug(f"Failed to query /api/v1/health: {e}")
 
         table = Table(
             title=f"[bold {p.primary}]{GLYPH_AGENT} SYSTEM TELEMETRY & HEALTH STATUS[/]",
@@ -448,17 +456,25 @@ class ChatCommandRouter:
         p = self.renderer.palette
         console = self.renderer.console
 
-        positions: List[Dict[str, Any]] = []
-        url = f"{self.api_url}/api/positions?status=open"
-        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        positions_raw: Any = []
+        url = f"{self.api_url}/api/v1/positions?status=open"
+        headers = self._build_headers()
 
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=2.5)) as session:
                 async with session.get(url, headers=headers) as resp:
                     if resp.status == 200:
-                        positions = await resp.json()
+                        positions_raw = await resp.json()
         except Exception as e:
-            logger.debug(f"Failed to fetch /api/positions: {e}")
+            logger.debug(f"Failed to fetch /api/v1/positions: {e}")
+
+        positions: List[Dict[str, Any]] = []
+        if isinstance(positions_raw, list):
+            positions = [p for p in positions_raw if isinstance(p, dict)]
+        elif isinstance(positions_raw, dict):
+            extracted = positions_raw.get("positions") or positions_raw.get("data") or []
+            if isinstance(extracted, list):
+                positions = [p for p in extracted if isinstance(p, dict)]
 
         if not positions:
             self.renderer.render_notice("No open positions found or gateway unreachable.", level="info")
@@ -610,7 +626,7 @@ class ChatCommandRouter:
     async def _post_api(self, endpoint: str, payload: Optional[Dict[str, Any]] = None) -> Tuple[bool, str]:
         """Send HTTP POST request to dashboard API."""
         url = f"{self.api_url}{endpoint}"
-        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        headers = self._build_headers()
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=4.0)) as session:
                 async with session.post(url, json=payload or {}, headers=headers) as resp:
@@ -636,11 +652,11 @@ class ChatCommandRouter:
             return
 
         self.prompt_manager.update_telemetry(mode=mode_upper)
-        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        headers = self._build_headers()
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=3.0)) as session:
                 await session.put(
-                    f"{self.api_url}/api/config/settings",
+                    f"{self.api_url}/api/v1/config/settings",
                     json={"paper_trading": {"enabled": (mode_upper == "PAPER")}},
                     headers=headers,
                 )
@@ -708,7 +724,11 @@ class ChatCommandRouter:
     async def _handle_cycle_command(self, arg: str) -> None:
         """Trigger immediate analysis and trading cycle."""
         symbol = arg.strip().upper() if arg.strip() else None
-        payload: Dict[str, Any] = {"force": True, "context": "Triggered via CLI /cycle"}
+        payload: Dict[str, Any] = {
+            "forced": True,
+            "reason": "Triggered via CLI /cycle",
+            "context": "Triggered via CLI /cycle",
+        }
         if symbol:
             payload["symbol"] = symbol
         ok, msg = await self._post_api("/api/v1/actions/trigger-cycle", payload)

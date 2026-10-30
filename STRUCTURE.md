@@ -2326,6 +2326,7 @@ Monika/
 │   │   ├── test_regime_b_confluence_verification.py
 │   │   ├── test_sandbox_runner.py
 │   │   ├── test_scenario_tree.py
+│   │   ├── test_score_uplift_and_harness_persistence.py
 │   │   ├── test_session_search.py
 │   │   ├── test_signal_arbitrator_bayesian_pooling.py
 │   │   ├── test_signal_arbitrator_confirmation.py
@@ -3160,4 +3161,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 272 | **Total Tracked Files**: 2858
+**Total Tracked Directories**: 272 | **Total Tracked Files**: 2859

@@ -272,6 +272,7 @@ def format_help_slip(commands: Dict[str, str], width: int = DEFAULT_SLIP_WIDTH) 
             [
                 "status",
                 "positions",
+                "orders",
                 "close",
                 "closeall",
                 "trailing",
@@ -287,6 +288,10 @@ def format_help_slip(commands: Dict[str, str], width: int = DEFAULT_SLIP_WIDTH) 
                 "pipeline",
                 "brief",
                 "analysis",
+                "chart",
+                "smc",
+                "factors",
+                "alpha",
                 "steer",
                 "intel",
                 "research",

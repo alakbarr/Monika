@@ -36,7 +36,7 @@ class TelegramAdminCommandsMixin(_TelegramBotMixinBase):
             return await self._reject_unauthorized(update)
         await update.message.chat.send_action(ChatAction.TYPING)
         args = ctx.args or []
-        if not args:
+        if not args or not args[0].isdigit():
             await update.message.reply_text(
                 "Usage: `/counterfactual <trade_id> [sl_pips_delta] [tp_pips_delta]`\nContoh: `/counterfactual 123 10.0` (simulasi jika SL 10 pips lebih lebar)",
                 parse_mode=ParseMode.MARKDOWN,
@@ -90,7 +90,16 @@ class TelegramAdminCommandsMixin(_TelegramBotMixinBase):
         await update.message.chat.send_action(ChatAction.TYPING)
         args = ctx.args or []
         month = args[0] if args else None
-        year = int(args[1]) if len(args) > 1 else None
+        year = None
+        if len(args) > 1:
+            try:
+                year = int(args[1])
+            except ValueError:
+                await update.message.reply_text(
+                    f"[ERROR] Format tahun '{args[1]}' tidak valid. Gunakan angka tahun, contoh: `/chronicle Jan 2026`",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+                return
         from monika.application.analysis.tools.handlers.trade_intel import handle_get_market_chronicle
 
         res = await handle_get_market_chronicle({"month": month, "year": year or 2026, "limit": 10})

@@ -134,6 +134,11 @@ DIRECT_COMMANDS: dict[str, dict] = {
     "account": {"type": CommandType.DIRECT, "admin_only": False},
     "tasks": {"type": CommandType.DIRECT, "admin_only": False},
     "debate": {"type": CommandType.DIRECT, "admin_only": False},
+    "orders": {"type": CommandType.DIRECT, "admin_only": False},
+    "chart": {"type": CommandType.DIRECT, "admin_only": False},
+    "smc": {"type": CommandType.DIRECT, "admin_only": False},
+    "factors": {"type": CommandType.DIRECT, "admin_only": False},
+    "alpha": {"type": CommandType.DIRECT, "admin_only": False},
 }
 
 COMMAND_HELP: dict[str, str] = {
@@ -206,6 +211,11 @@ COMMAND_HELP: dict[str, str] = {
     "export_chat": "[Export] Ekspor riwayat percakapan format ShareGPT JSON",
     "undo": "[Undo] Hapus giliran obrolan terakhir dari konteks AI",
     "cron": "[Cron] Jadwal tugas otomatis & cron expressions: /cron",
+    "orders": "[Orders] Daftar pending order MT5 aktif & tombol pembatalan",
+    "chart": "[Chart] Buat grafik candlestick OHLCV teknikal: /chart <simbol> [timeframe]",
+    "smc": "[SMC] Visualisasi zona Smart Money Concepts (OB & FVG): /smc <simbol> [timeframe]",
+    "factors": "[Factors] Rincian faktor konfluensi dan scoring multi-timeframe: /factors <simbol>",
+    "alpha": "[Alpha] Evaluasi sinyal Alpha Zoo kuantitatif: /alpha <simbol> <factor_name>",
     "(any text)": "[Chat] Diskusi dengan asisten AI terkait pasar dan trading",
 }
 

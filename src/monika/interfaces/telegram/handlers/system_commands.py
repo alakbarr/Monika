@@ -96,34 +96,25 @@ class TelegramSystemCommandsMixin(_TelegramBotMixinBase):
         if not update.message:
             return
         if not self._is_authorized(update):
-            return await self._reject_unauthorized(update)
-        from monika.interfaces.telegram.command_router import CommandRouter
-
-        help_text = CommandRouter.build_help_text()
-        if len(help_text) <= 3900:
+            uid = update.effective_user.id if update.effective_user else "N/A"
             await update.message.reply_text(
-                help_text,
+                f"[AKSES TERBATAS] Akun Telegram Anda (`{uid}`) belum terhubung dengan akun trading.\n\n"
+                f"Gunakan perintah /start untuk petunjuk awal atau `/pair <KODE_OTP>` untuk verifikasi akun.",
                 parse_mode=ParseMode.MARKDOWN,
             )
             return
+        from monika.interfaces.telegram.command_router import CommandRouter
 
-        chunks: list[str] = []
-        current: list[str] = []
-        current_len = 0
-        for line in help_text.splitlines(keepends=True):
-            if current_len + len(line) > 3900:
-                chunks.append("".join(current))
-                current = [line]
-                current_len = len(line)
-            else:
-                current.append(line)
-                current_len += len(line)
-        if current:
-            chunks.append("".join(current))
+        help_text = CommandRouter.build_help_text()
+        chunks = self._chunk_text(help_text)
 
         for chunk in chunks:
-            if chunk.strip():
+            if not chunk.strip():
+                continue
+            try:
                 await update.message.reply_text(chunk, parse_mode=ParseMode.MARKDOWN)
+            except Exception:
+                await update.message.reply_text(chunk)
 
     async def _cmd_stats(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.message:
