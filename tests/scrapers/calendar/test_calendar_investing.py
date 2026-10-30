@@ -4,6 +4,12 @@ from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing i
 
 
 class TestInvestingCalendarScraper:
+    def setup_method(self):
+        InvestingCalendarScraper.clear_cache()
+
+    def teardown_method(self):
+        InvestingCalendarScraper.clear_cache()
+
     @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
     def test_fetch_events_fail_navigate(self, mock_init):
         mock_page = MagicMock()
@@ -174,3 +180,83 @@ class TestInvestingCalendarScraper:
         scraper._load_all_calendar_rows()
         # Verify run_js was used to query tr count efficiently
         assert mock_page.run_js.called
+
+    def test_shared_memory_and_disk_cache(self, tmp_path, monkeypatch):
+        test_cache_file = tmp_path / "test_calendar_cache.json"
+        monkeypatch.setattr(InvestingCalendarScraper, "CACHE_FILE", test_cache_file)
+        InvestingCalendarScraper.clear_cache()
+
+        from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent
+
+        sample_event = CalendarEvent(
+            time="2026-10-31T10:00:00Z",
+            currency="USD",
+            impact="High",
+            event_name="Federal Reserve Decision",
+            actual="5.25%",
+            forecast="5.25%",
+            previous="5.50%",
+        )
+
+        # 1. Initially cache is empty
+        assert InvestingCalendarScraper.get_cached_events(fast_mode=False, time_filter="This Week") is None
+
+        # 2. Save cache
+        InvestingCalendarScraper.save_cached_events(False, "This Week", [sample_event])
+        assert test_cache_file.exists()
+
+        # 3. Retrieve from memory
+        cached = InvestingCalendarScraper.get_cached_events(fast_mode=False, time_filter="This Week")
+        assert cached is not None
+        assert len(cached) == 1
+        assert cached[0].event_name == "Federal Reserve Decision"
+
+        # 4. Clear memory only and verify disk fallback loads it
+        with InvestingCalendarScraper._CACHE_LOCK:
+            InvestingCalendarScraper._SHARED_CACHE.clear()
+        disk_cached = InvestingCalendarScraper.get_cached_events(fast_mode=False, time_filter="This Week")
+        assert disk_cached is not None
+        assert len(disk_cached) == 1
+        assert disk_cached[0].currency == "USD"
+
+    @patch("monika.infrastructure.data_ingestion.scrapers.calendar.calendar_investing.BaseScraper._initialize_browser")
+    def test_lazy_browser_initialization(self, mock_init, tmp_path, monkeypatch):
+        test_cache_file = tmp_path / "test_calendar_cache_lazy.json"
+        monkeypatch.setattr(InvestingCalendarScraper, "CACHE_FILE", test_cache_file)
+        InvestingCalendarScraper.clear_cache()
+
+        mock_page = MagicMock()
+        mock_init.return_value = mock_page
+
+        from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent
+
+        sample_event = CalendarEvent(
+            time="2026-10-31T12:00:00Z",
+            currency="EUR",
+            impact="High",
+            event_name="CPI Data",
+        )
+        InvestingCalendarScraper.save_cached_events(False, "This Week", [sample_event])
+
+        # When cache hits with lazy_browser=True, browser must NEVER be initialized!
+        scraper = InvestingCalendarScraper(headless=True, lazy_browser=True)
+        assert scraper.page is None
+        events = scraper.fetch_events(fast_mode=False, time_filter="This Week")
+        assert len(events) == 1
+        assert events[0].event_name == "CPI Data"
+        mock_init.assert_not_called()
+        scraper.close()
+
+    def test_cleanup_profile_cache_bloat(self, tmp_path, monkeypatch):
+        mock_base = tmp_path / "data" / "sessions" / "browser_profile" / "test_bloated_profile"
+        mock_cache = mock_base / "Default" / "Cache"
+        mock_cache.mkdir(parents=True, exist_ok=True)
+        # Create a dummy large file (> 100MB)
+        large_file = mock_cache / "data_0"
+        large_file.write_bytes(b"0" * 105 * 1024 * 1024)
+
+        monkeypatch.setattr("os.getcwd", lambda: str(tmp_path))
+
+        cleaned = InvestingCalendarScraper.cleanup_profile_cache_bloat("test_bloated_profile")
+        assert cleaned > 100 * 1024 * 1024
+        assert not mock_cache.exists()

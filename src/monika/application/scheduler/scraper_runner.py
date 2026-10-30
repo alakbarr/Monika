@@ -251,16 +251,30 @@ class ScraperRunner:
                 InvestingCalendarScraper,
             )
 
-            scraper = self._register_scraper(InvestingCalendarScraper(headless=True))
+            scraper = self._register_scraper(InvestingCalendarScraper(headless=True, lazy_browser=True))
             try:
-                return scraper.fetch_events(fast_mode=False)
+                now_utc = datetime.now(timezone.utc)
+                # Intraday scrape fokus pada "This Week" (minggu berjalan) untuk kecepatan dan reliabilitas maksimal
+                events = scraper.fetch_events(fast_mode=False, time_filter="This Week")
+                # Pada akhir pekan atau Jumat malam (>= 18 UTC), sertakan juga data "Next Week" untuk forward planning
+                if now_utc.weekday() >= 4 and (now_utc.weekday() > 4 or now_utc.hour >= 18) and events:
+                    try:
+                        nw_events = scraper.fetch_events(fast_mode=False, time_filter="Next Week")
+                        if nw_events:
+                            existing_hashes = {f"{e.time}_{e.currency}_{e.event_name}" for e in events}
+                            for nw in nw_events:
+                                if f"{nw.time}_{nw.currency}_{nw.event_name}" not in existing_hashes:
+                                    events.append(nw)
+                    except Exception as nw_err:
+                        logger.debug(f"Optional next week calendar fetch note: {nw_err}")
+                return events
             finally:
                 self._unregister_scraper(scraper)
                 scraper.close()
 
-        # 1. Coba Investing.com (Provider Utama, timeout 90s)
+        # 1. Coba Investing.com (Provider Utama, timeout 120s)
         try:
-            events = await asyncio.wait_for(self._run_in_executor(_fetch_investing), timeout=90.0)
+            events = await asyncio.wait_for(self._run_in_executor(_fetch_investing), timeout=120.0)
         except (asyncio.TimeoutError, Exception) as inv_err:
             inv_err_msg = type(inv_err).__name__ if not str(inv_err) else f"{type(inv_err).__name__}: {inv_err}"
             logger.warning(f"InvestingCalendarScraper failed or timed out: {inv_err_msg}")

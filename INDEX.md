@@ -11474,7 +11474,12 @@
 - **Path**: [`src/monika/infrastructure/data_ingestion/scrapers/calendar/calendar_investing.py`](src/monika/infrastructure/data_ingestion/scrapers/calendar/calendar_investing.py)
 - **Classes**:
   - `class InvestingCalendarScraper(BaseScraper)`
-    - `__init__(headless, profile_name)`
+    - `__init__(headless: bool, profile_name: Optional[str], lazy_browser: bool)`
+    - `cleanup_profile_cache_bloat(profile_name: Optional[str]) -> int` - *Membersihkan cache HTTP dan GPU browser sementara jika ukurannya melebihi 100MB,*
+    - `ensure_browser() -> Any` - *Inisialisasi proses browser Chromium sesuai kebutuhan saat lazy_browser=True.*
+    - `clear_cache() -> None` - *Membersihkan seluruh cache kalender (in-memory dan disk).*
+    - `get_cached_events(fast_mode: bool, time_filter: Optional[str]) -> Optional[List[CalendarEvent]]` - *Mengambil data event kalender dari cache (memory atau disk) tanpa membuka Chromium.*
+    - `save_cached_events(fast_mode: bool, time_filter: Optional[str], events: List[CalendarEvent]) -> None` - *Menyimpan data event kalender ke cache memori bersama dan file disk secara atomik.*
     - `fetch_events(fast_mode: bool, time_filter: Optional[str], force_refresh: bool) -> List[CalendarEvent]`
 
 ### Folder: `src/monika/infrastructure/data_ingestion/scrapers/macro` <a id="folder-srcmonikainfrastructuredataingestionscrapersmacro"></a>

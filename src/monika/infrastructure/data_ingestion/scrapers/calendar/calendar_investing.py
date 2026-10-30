@@ -2,25 +2,222 @@
 # File: scrapers/calendar/calendar_investing.py
 # ==============================================================================
 
+import json
 import logging
+import os
 import re
+import shutil
+import threading
 import time
+from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from bs4 import BeautifulSoup
 
-from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
+from monika.infrastructure.data_ingestion.scrapers.base_scraper import (
+    BaseScraper,
+    ProfileLock,
+    _PROFILE_LOCKS,
+    _PROFILE_LOCKS_GUARD,
+    PROFILE_LOCK_TIMEOUT_SECONDS,
+)
 from monika.infrastructure.data_ingestion.scrapers.models import CalendarEvent
 
 logger = logging.getLogger("TradingAgent.InvestingScraper")
 
 
 class InvestingCalendarScraper(BaseScraper):
-    def __init__(self, headless=True, profile_name="investing_calendar"):
-        super().__init__(headless, profile_name, load_mode="eager", no_imgs=True)
+    CACHE_TTL_SECONDS: float = 900.0  # 15 minutes TTL
+    CACHE_FILE: Path = Path(os.getcwd()) / "data" / "cache" / "investing_calendar.json"
+    _SHARED_CACHE: Dict[Tuple[bool, str], Tuple[float, List[CalendarEvent]]] = {}
+    _CACHE_LOCK = threading.Lock()
+
+    def __init__(
+        self,
+        headless: bool = True,
+        profile_name: Optional[str] = "investing_calendar",
+        lazy_browser: bool = False,
+    ):
+        self.lazy_browser = lazy_browser
         self.target_url = "https://www.investing.com/economic-calendar/"
-        self._cache: Dict[Tuple[bool, str], Tuple[float, List[CalendarEvent]]] = {}
+        # Retain instance cache attribute for backwards compatibility
+        self._cache = self._SHARED_CACHE
+
+        if not lazy_browser:
+            if profile_name:
+                self.cleanup_profile_cache_bloat(profile_name)
+            super().__init__(headless, profile_name, load_mode="eager", no_imgs=True)
+        else:
+            self.headless = headless
+            self.profile_name = profile_name
+            self.load_mode = "eager"
+            self.no_imgs = True
+            self._temp_profile_dir = None
+            self.is_closed = False
+            self.browser_pid: Optional[int] = None
+            self._browser_pid: Optional[int] = None
+            self._close_lock = threading.Lock()
+            self._profile_lock: Optional[ProfileLock] = None
+            self._acquired_profile_lock: bool = False
+            self.page: Any = None
+
+    @classmethod
+    def cleanup_profile_cache_bloat(cls, profile_name: Optional[str] = "investing_calendar") -> int:
+        """
+        Membersihkan cache HTTP dan GPU browser sementara jika ukurannya melebihi 100MB,
+        mencegah pembengkakan direktori profil yang memperlambat startup Chromium.
+        """
+        if not profile_name:
+            return 0
+        base_dir = Path(os.getcwd())
+        profile_dir = base_dir / "data" / "sessions" / "browser_profile" / profile_name
+        if not profile_dir.exists():
+            return 0
+
+        disposable_subdirs = [
+            profile_dir / "Default" / "Cache",
+            profile_dir / "Default" / "Code Cache",
+            profile_dir / "Default" / "GPUCache",
+            profile_dir / "Default" / "Service Worker" / "CacheStorage",
+            profile_dir / "GrShaderCache",
+            profile_dir / "ShaderCache",
+        ]
+
+        total_size = 0
+        for d in disposable_subdirs:
+            if d.exists():
+                for f in d.rglob("*"):
+                    if f.is_file():
+                        try:
+                            total_size += f.stat().st_size
+                        except Exception:
+                            pass
+
+        cleaned_bytes = 0
+        if total_size > 100 * 1024 * 1024:
+            for d in disposable_subdirs:
+                if d.exists():
+                    try:
+                        shutil.rmtree(d, ignore_errors=True)
+                        cleaned_bytes += total_size
+                    except Exception:
+                        pass
+            logger.info(
+                f"[InvestingCalendarScraper] Pruned {total_size / (1024 * 1024):.1f}MB of disposable browser cache from profile '{profile_name}'."
+            )
+        return cleaned_bytes
+
+    def ensure_browser(self) -> Any:
+        """Inisialisasi proses browser Chromium sesuai kebutuhan saat lazy_browser=True."""
+        if getattr(self, "page", None) is not None or getattr(self, "is_closed", False):
+            return self.page
+
+        if self.profile_name:
+            with _PROFILE_LOCKS_GUARD:
+                if self.profile_name not in _PROFILE_LOCKS:
+                    _PROFILE_LOCKS[self.profile_name] = ProfileLock(self.profile_name)
+                self._profile_lock = _PROFILE_LOCKS[self.profile_name]
+
+            acquired = self._profile_lock.acquire(timeout=PROFILE_LOCK_TIMEOUT_SECONDS)
+            if acquired:
+                self._acquired_profile_lock = True
+            else:
+                logger.warning(
+                    f"[InvestingCalendarScraper] Profile lock '{self.profile_name}' could not be acquired "
+                    f"within {PROFILE_LOCK_TIMEOUT_SECONDS}s. Automatically falling back to an "
+                    f"isolated ephemeral browser profile."
+                )
+                self._profile_lock = None
+                self._acquired_profile_lock = False
+                self.profile_name = None
+
+        if self.profile_name:
+            self.cleanup_profile_cache_bloat(self.profile_name)
+
+        try:
+            self.page = self._initialize_browser(self.headless)
+        except Exception:
+            self.close()
+            raise
+        return self.page
+
+    @classmethod
+    def clear_cache(cls) -> None:
+        """Membersihkan seluruh cache kalender (in-memory dan disk)."""
+        with cls._CACHE_LOCK:
+            cls._SHARED_CACHE.clear()
+            if cls.CACHE_FILE.exists():
+                try:
+                    cls.CACHE_FILE.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
+    @classmethod
+    def get_cached_events(
+        cls, fast_mode: bool = False, time_filter: Optional[str] = None
+    ) -> Optional[List[CalendarEvent]]:
+        """
+        Mengambil data event kalender dari cache (memory atau disk) tanpa membuka Chromium.
+        Mengembalikan None jika cache belum tersedia, kosong, atau kedaluwarsa (>15 menit).
+        """
+        cache_key = (fast_mode, str(time_filter).lower() if time_filter else "default")
+        now_ts = time.time()
+
+        with cls._CACHE_LOCK:
+            # 1. Periksa in-memory cache
+            if cache_key in cls._SHARED_CACHE:
+                cache_time, cached_events = cls._SHARED_CACHE[cache_key]
+                if now_ts - cache_time < cls.CACHE_TTL_SECONDS and cached_events:
+                    return list(cached_events)
+
+            # 2. Periksa disk cache
+            if cls.CACHE_FILE.exists():
+                try:
+                    mtime = cls.CACHE_FILE.stat().st_mtime
+                    if now_ts - mtime < cls.CACHE_TTL_SECONDS:
+                        with open(cls.CACHE_FILE, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                        key_str = f"{fast_mode}_{str(time_filter).lower() if time_filter else 'default'}"
+                        if key_str in data:
+                            raw_list = data[key_str]
+                            events = [CalendarEvent(**item) for item in raw_list]
+                            if events:
+                                cls._SHARED_CACHE[cache_key] = (mtime, events)
+                                return list(events)
+                except Exception as e:
+                    logger.debug(f"[InvestingCalendarScraper] Disk cache read note: {e}")
+
+        return None
+
+    @classmethod
+    def save_cached_events(cls, fast_mode: bool, time_filter: Optional[str], events: List[CalendarEvent]) -> None:
+        """Menyimpan data event kalender ke cache memori bersama dan file disk secara atomik."""
+        if not events:
+            return
+        cache_key = (fast_mode, str(time_filter).lower() if time_filter else "default")
+        key_str = f"{fast_mode}_{str(time_filter).lower() if time_filter else 'default'}"
+        now_ts = time.time()
+
+        with cls._CACHE_LOCK:
+            cls._SHARED_CACHE[cache_key] = (now_ts, list(events))
+            try:
+                cls.CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+                existing = {}
+                if cls.CACHE_FILE.exists():
+                    try:
+                        with open(cls.CACHE_FILE, "r", encoding="utf-8") as f:
+                            existing = json.load(f)
+                    except Exception:
+                        existing = {}
+                existing[key_str] = [asdict(e) for e in events]
+                tmp_path = cls.CACHE_FILE.with_suffix(".tmp")
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(existing, f)
+                tmp_path.replace(cls.CACHE_FILE)
+            except Exception as e:
+                logger.debug(f"[InvestingCalendarScraper] Disk cache write note: {e}")
 
     def _apply_time_filter_human_like(self, time_filter: str) -> bool:
         if not self.page:
@@ -73,40 +270,52 @@ class InvestingCalendarScraper(BaseScraper):
         }
         for sel in tab_map.get(time_filter.lower(), []):
             try:
-                btn = page_obj.ele(sel, timeout=1)
-                if btn and btn.states.is_displayed:
-                    btn.click(by_js=True)
-                    page_obj.wait(2.0)
+                btn = page_obj.ele(sel, timeout=0.8)
+                if btn:
+                    try:
+                        btn.click(by_js=True)
+                    except Exception:
+                        page_obj.run_js("arguments[0].click()", btn)
+                    page_obj.wait(1.5)
                     return True
             except Exception:
                 pass
 
         try:
-            custom_btn = page_obj.ele("tag:button@@text():Custom dates", timeout=1)
-            if not custom_btn or not custom_btn.states.is_displayed:
-                custom_btn = page_obj.ele("xpath://button[contains(normalize-space(), 'Custom')]", timeout=1)
+            custom_btn = page_obj.ele("tag:button@@text():Custom dates", timeout=0.8)
+            if not custom_btn:
+                custom_btn = page_obj.ele("xpath://button[contains(normalize-space(), 'Custom')]", timeout=0.8)
 
-            if not custom_btn or not custom_btn.states.is_displayed:
+            if not custom_btn:
                 # Jika tombol Custom dates tidak ditemukan, coba ekstrak data yang ada
                 return False
 
-            custom_btn.scroll.to_center()
-            page_obj.wait(0.5)
+            try:
+                custom_btn.scroll.to_center()
+            except Exception:
+                pass
+            page_obj.wait(0.3)
 
             page_obj.listen.start("economic-calendar")
-            custom_btn.click(by_js=True)
-            page_obj.wait(0.5)
+            try:
+                custom_btn.click(by_js=True)
+            except Exception:
+                page_obj.run_js("arguments[0].click()", custom_btn)
+            page_obj.wait(0.4)
 
             picker_container = page_obj.ele(
                 "xpath://div[contains(@class, 'DateRangePicker') or contains(@class, 'date-range-picker') or @data-test='date-range-picker']",
-                timeout=4,
+                timeout=2.0,
             )
             if not picker_container:
-                custom_btn.click(by_js=True)
-                page_obj.wait(1.0)
+                try:
+                    custom_btn.click(by_js=True)
+                except Exception:
+                    page_obj.run_js("arguments[0].click()", custom_btn)
+                page_obj.wait(0.5)
                 picker_container = page_obj.ele(
                     "xpath://div[contains(@class, 'DateRangePicker') or contains(@class, 'date-range-picker') or @data-test='date-range-picker']",
-                    timeout=3,
+                    timeout=1.5,
                 )
 
             if not picker_container:
@@ -124,30 +333,39 @@ class InvestingCalendarScraper(BaseScraper):
                 except Exception:
                     pass
             else:
-                start_cell = page_obj.ele(f'xpath://div[@data-date="{start_str}"]', timeout=3)
+                start_cell = page_obj.ele(f'xpath://div[@data-date="{start_str}"]', timeout=1.5)
                 if start_cell:
-                    start_cell.click(by_js=True)
-                    page_obj.wait(0.3)
+                    try:
+                        start_cell.click(by_js=True)
+                    except Exception:
+                        page_obj.run_js("arguments[0].click()", start_cell)
+                    page_obj.wait(0.2)
 
-                end_cell = page_obj.ele(f'xpath://div[@data-date="{end_str}"]', timeout=3)
+                end_cell = page_obj.ele(f'xpath://div[@data-date="{end_str}"]', timeout=1.5)
                 if end_cell:
-                    end_cell.click(by_js=True)
-                    page_obj.wait(0.3)
+                    try:
+                        end_cell.click(by_js=True)
+                    except Exception:
+                        page_obj.run_js("arguments[0].click()", end_cell)
+                    page_obj.wait(0.2)
 
             apply_btn = page_obj.ele(
-                'xpath://button[contains(normalize-space(), "Apply") or @data-test="date-picker-apply"]', timeout=3
+                'xpath://button[contains(normalize-space(), "Apply") or @data-test="date-picker-apply"]', timeout=1.5
             )
             if apply_btn:
-                apply_btn.click(by_js=True)
+                try:
+                    apply_btn.click(by_js=True)
+                except Exception:
+                    page_obj.run_js("arguments[0].click()", apply_btn)
             else:
                 page_obj.listen.stop()
                 return False
 
-            packet = page_obj.listen.wait(timeout=6.0)
+            packet = page_obj.listen.wait(timeout=3.0)
             if packet:
-                page_obj.wait(1.5)
+                page_obj.wait(1.0)
             else:
-                page_obj.wait(2.5)
+                page_obj.wait(1.5)
 
             page_obj.listen.stop()
             return True
@@ -238,21 +456,22 @@ class InvestingCalendarScraper(BaseScraper):
             except Exception:
                 pass
 
-    CACHE_TTL_SECONDS: float = 900.0  # 15 minutes TTL
-
     def fetch_events(
         self, fast_mode: bool = False, time_filter: Optional[str] = None, force_refresh: bool = False
     ) -> List[CalendarEvent]:
-        # Check in-memory cache first to avoid launching browser unnecessarily
-        cache_key = (fast_mode, str(time_filter).lower() if time_filter else "default")
-        now_ts = time.time()
-        if not force_refresh and cache_key in self._cache:
-            cache_time, cached_events = self._cache[cache_key]
-            if now_ts - cache_time < self.CACHE_TTL_SECONDS:
+        # 1. Periksa in-memory dan disk cache terlebih dahulu untuk menghindari browser launch sia-sia
+        if not force_refresh:
+            cached_events = self.get_cached_events(fast_mode=fast_mode, time_filter=time_filter)
+            if cached_events:
                 logger.info(
-                    f"Returning {len(cached_events)} Investing.com calendar events from in-memory cache (key: {cache_key}, age: {(now_ts - cache_time) / 60:.1f}m)"
+                    f"Returning {len(cached_events)} Investing.com calendar events from cache "
+                    f"(fast_mode={fast_mode}, filter={time_filter or 'default'})"
                 )
                 return cached_events
+
+        # 2. Inisialisasi browser bila belum siap (mode lazy)
+        if getattr(self, "lazy_browser", False):
+            self.ensure_browser()
 
         if not self.page:
             return self._fallback_forexfactory()
@@ -263,17 +482,20 @@ class InvestingCalendarScraper(BaseScraper):
         all_events_dict = {}
 
         logger.info(f"Navigating to {self.target_url}")
-        success = self.navigate_with_fallback(self.target_url, wait_selector, timeout=25)
+        success = self.navigate_with_fallback(self.target_url, wait_selector, timeout=20)
         if not success or getattr(self, "is_closed", False):
             if not success:
                 logger.warning(f"Failed to load {self.target_url}, falling back to ForexFactory backup feed.")
             return self._fallback_forexfactory()
 
         try:
-            pop_up_close = page_obj.ele('css:[data-test="sign-up-dialog-close-button"]', timeout=1.5)
-            if pop_up_close and pop_up_close.states.is_displayed:
-                pop_up_close.click(by_js=True)
-                page_obj.wait(0.5)
+            pop_up_close = page_obj.ele('css:[data-test="sign-up-dialog-close-button"]', timeout=1.0)
+            if pop_up_close:
+                try:
+                    pop_up_close.click(by_js=True)
+                except Exception:
+                    page_obj.run_js("arguments[0].click()", pop_up_close)
+                page_obj.wait(0.3)
         except Exception:
             pass
 
@@ -288,7 +510,7 @@ class InvestingCalendarScraper(BaseScraper):
             soup = BeautifulSoup(table_html, "html.parser")
             events = self._parse_table_html(soup, all_events_dict)
             if events:
-                self._cache[cache_key] = (time.time(), events)
+                self.save_cached_events(fast_mode=fast_mode, time_filter=time_filter, events=events)
                 return events
             return self._fallback_forexfactory()
 
@@ -315,7 +537,7 @@ class InvestingCalendarScraper(BaseScraper):
 
         res = list(all_events_dict.values())
         if res:
-            self._cache[cache_key] = (time.time(), res)
+            self.save_cached_events(fast_mode=fast_mode, time_filter=time_filter, events=res)
         return res
 
     def _fallback_forexfactory(self) -> List[CalendarEvent]:
