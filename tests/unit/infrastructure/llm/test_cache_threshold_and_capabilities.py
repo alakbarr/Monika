@@ -106,3 +106,40 @@ async def test_openai_provider_prompt_cache_key_sub_task() -> None:
     await provider._create_chat_completion(kwargs2)
     assert kwargs2.get("prompt_cache_key") == "monika_stage2_per_asset_secondary:second_opinion"
     assert "sub_task" not in kwargs2  # Sanitized so OpenAI SDK won't reject it
+
+
+@pytest.mark.asyncio
+async def test_openai_and_openrouter_forward_kwargs_and_context_metadata() -> None:
+    """Verify classify_json and generate_content forward context kwargs (symbol, task_role, subsystem) to token usage and detector."""
+    from unittest.mock import patch
+
+    prov = OpenRouterProvider(model="minimax/minimax-m3.1-flash", api_key="sk-or-test")
+
+    mock_resp = MagicMock()
+    mock_choice = MagicMock()
+    mock_choice.message.content = '{"verdict": "CONFIRM"}'
+    mock_choice.finish_reason = "stop"
+    mock_resp.choices = [mock_choice]
+    mock_resp.usage = MagicMock()
+    mock_resp.usage.prompt_tokens = 5888
+    mock_resp.usage.completion_tokens = 50
+    mock_resp.usage.prompt_tokens_details = MagicMock(cached_tokens=5888)
+
+    prov._create_chat_completion = AsyncMock(return_value=mock_resp)
+
+    with patch.object(prov, "_save_token_usage", new_callable=AsyncMock) as mock_save:
+        res = await prov.classify_json(
+            prompt="Test prompt",
+            system_prompt="Test system prompt",
+            schema={"type": "object"},
+            task_role="stage2_adjudicator",
+            subsystem="stage2",
+            symbol="AUDUSD",
+        )
+        assert res == {"verdict": "CONFIRM"}
+        assert mock_save.called
+        call_kwargs = mock_save.call_args[1]
+        assert call_kwargs.get("task_role") == "stage2_adjudicator"
+        assert call_kwargs.get("subsystem") == "stage2"
+        assert call_kwargs.get("symbol") == "AUDUSD"
+        assert call_kwargs.get("prefix_hash") is not None

@@ -105,6 +105,9 @@ Rationale: {rationale[:1500]}"""
             jev_questions=adjudication_jev_q,
             temperature=0.0,
             task_role="stage2_adjudicator",
+            subsystem="stage2",
+            symbol=symbol,
+            task_name=f"verify_adjudication_{symbol}",
         )
         if not result or not isinstance(result, dict):
             return {

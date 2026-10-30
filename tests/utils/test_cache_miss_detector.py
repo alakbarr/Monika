@@ -101,3 +101,84 @@ def test_cache_miss_symbol_isolation_prevents_false_alarm():
     assert rep_gbp1.missed is False
     assert rep_gbp1.reason == "first_call"
     assert detector.get_summary()["total_misses"] == 0
+
+
+def test_cache_miss_provider_cache_drop_with_identical_prefix_hash():
+    """Verify that if prefix_hash matches the previous turn, the drop is classified as PROVIDER_EVICTED_OR_ROUTED."""
+    detector = CacheMissDetector()
+
+    # Turn 1: Cache written
+    rep1 = detector.check(
+        cached_tokens=5888,
+        model="minimax/minimax-m3.1-flash",
+        context_key="stage2:stage2_adjudicator:minimax/minimax-m3.1-flash:AUDUSD",
+        prefix_hash="hash_prefix_stable_123",
+    )
+    assert rep1.missed is False
+    assert rep1.reason == "first_call"
+
+    # Turn 2: Provider drops cache / routes to cold node, but prefix hash is identical
+    rep2 = detector.check(
+        cached_tokens=0,
+        model="minimax/minimax-m3.1-flash",
+        context_key="stage2:stage2_adjudicator:minimax/minimax-m3.1-flash:AUDUSD",
+        prefix_hash="hash_prefix_stable_123",
+    )
+    assert rep2.missed is True
+    assert rep2.reason == "provider_cache_drop"
+    assert rep2.root_cause == "PROVIDER_EVICTED_OR_ROUTED"
+    assert rep2.prev_cached_tokens == 5888
+    assert rep2.curr_cached_tokens == 0
+
+
+def test_cache_miss_genuine_prefix_mutation_detected():
+    """Verify that if prefix_hash actually mutates, the detector correctly flags PREFIX_MUTATED."""
+    detector = CacheMissDetector()
+
+    # Turn 1: Cache written with prompt A
+    rep1 = detector.check(
+        cached_tokens=5888,
+        model="minimax/minimax-m3.1-flash",
+        context_key="test_context",
+        prefix_hash="hash_version_1",
+    )
+    assert rep1.missed is False
+
+    # Turn 2: Prompt was modified (new system prompt), resulting in prefix_hash mutation
+    rep2 = detector.check(
+        cached_tokens=0,
+        model="minimax/minimax-m3.1-flash",
+        context_key="test_context",
+        prefix_hash="hash_version_2",
+    )
+    assert rep2.missed is True
+    assert rep2.reason == "prefix_changed"
+    assert rep2.root_cause == "PREFIX_MUTATED"
+
+
+def test_cache_miss_adjudication_cross_symbol_isolation():
+    """Verify production scenario: AUDUSD followed by XBRUSD are isolated and do not trigger false PREFIX_MUTATED."""
+    detector = CacheMissDetector()
+
+    # Call 1: AUDUSD adjudication with 5888 cached tokens
+    rep_aud = detector.check(
+        cached_tokens=5888,
+        model="minimax/minimax-m3.1-flash",
+        context_key="stage2:stage2_adjudicator:minimax/minimax-m3.1-flash:AUDUSD",
+        prefix_hash="adjudication_padded_hash_v1",
+    )
+    assert rep_aud.missed is False
+    assert rep_aud.reason == "first_call"
+
+    # Call 2: XBRUSD adjudication 26.9s later with 0 cached tokens from provider
+    # Under isolated symbol context keys, this is treated as XBRUSD's FIRST_CALL, not a cache miss
+    rep_xbr = detector.check(
+        cached_tokens=0,
+        model="minimax/minimax-m3.1-flash",
+        context_key="stage2:stage2_adjudicator:minimax/minimax-m3.1-flash:XBRUSD",
+        prefix_hash="adjudication_padded_hash_v1",
+    )
+    assert rep_xbr.missed is False
+    assert rep_xbr.reason == "first_call"
+    assert rep_xbr.root_cause == "FIRST_CALL"
+    assert detector.get_summary()["total_misses"] == 0

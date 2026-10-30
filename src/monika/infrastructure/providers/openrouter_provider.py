@@ -764,7 +764,7 @@ class OpenRouterProvider(OpenAIProvider):
 
             try:
                 return await super().generate_content(
-                    system_prompt, user_message, response_schema, temperature, max_tokens
+                    system_prompt, user_message, response_schema, temperature, max_tokens, **kwargs
                 )
             except Exception as e:
                 err_str = str(e).lower()

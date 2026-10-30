@@ -917,6 +917,13 @@ class OpenAIProvider(BaseLLMClient):
             "reasoning_effort",
             "prompt_cache_key",
         }
+        gen_prefix_hash = hashlib.sha256(str(flat_sys).encode("utf-8")).hexdigest()[:16] if flat_sys else None
+        call_task_role = kwargs.get("task_role")
+        call_subsystem = kwargs.get("subsystem")
+        call_symbol = kwargs.get("symbol")
+        call_task_name = kwargs.get("task_name")
+        call_prefix_hash = kwargs.get("prefix_hash") or gen_prefix_hash
+
         call_kwargs = {k: v for k, v in kwargs.items() if k in openai_valid_params}
         call_kwargs.update({"model": self.model, "messages": messages, "max_tokens": max_tok, "temperature": eff_temp})
         self._apply_reasoning_params(call_kwargs)
@@ -938,7 +945,15 @@ class OpenAIProvider(BaseLLMClient):
                     kw["exact_cost"] = exact_cost
                     kw["cost_source"] = "openrouter_exact"
                     kw["is_paid"] = exact_cost > 0.0
-                await self._save_token_usage(self.model, "generate", inp, outp, **kw)
+                if call_task_role:
+                    kw["task_role"] = call_task_role
+                if call_subsystem:
+                    kw["subsystem"] = call_subsystem
+                if call_symbol:
+                    kw["symbol"] = call_symbol
+                if call_prefix_hash:
+                    kw["prefix_hash"] = call_prefix_hash
+                await self._save_token_usage(self.model, call_task_name or "generate", inp, outp, **kw)
             if not response.choices:
                 return ""
             choice = response.choices[0]
@@ -990,9 +1005,15 @@ class OpenAIProvider(BaseLLMClient):
                                 kw["exact_cost"] = exact_cost
                                 kw["cost_source"] = "openrouter_exact"
                                 kw["is_paid"] = exact_cost > 0.0
-                                kw["cost_source"] = "openrouter_exact"
-                                kw["is_paid"] = exact_cost > 0.0
-                            await self._save_token_usage(self.model, "generate", inp, outp, **kw)
+                            if call_task_role:
+                                kw["task_role"] = call_task_role
+                            if call_subsystem:
+                                kw["subsystem"] = call_subsystem
+                            if call_symbol:
+                                kw["symbol"] = call_symbol
+                            if call_prefix_hash:
+                                kw["prefix_hash"] = call_prefix_hash
+                            await self._save_token_usage(self.model, call_task_name or "generate", inp, outp, **kw)
                         if not response.choices:
                             return ""
                         return _extract_message_text(response.choices[0])
@@ -1079,6 +1100,13 @@ class OpenAIProvider(BaseLLMClient):
             thinking_level=self.thinking_level,
             settings=self.settings,
         )
+
+        gen_prefix_hash = hashlib.sha256(str(eff_sys).encode("utf-8")).hexdigest()[:16] if eff_sys else None
+        call_task_role = kwargs.get("task_role")
+        call_subsystem = kwargs.get("subsystem")
+        call_symbol = kwargs.get("symbol")
+        call_task_name = kwargs.get("task_name")
+        call_prefix_hash = kwargs.get("prefix_hash") or gen_prefix_hash
 
         if response_schema:
             is_array_schema = isinstance(response_schema, dict) and response_schema.get("type") == "array"
@@ -1168,7 +1196,15 @@ class OpenAIProvider(BaseLLMClient):
                         kw["exact_cost"] = exact_cost
                         kw["cost_source"] = "openrouter_exact"
                         kw["is_paid"] = exact_cost > 0.0
-                    await self._save_token_usage(self.model, "generate_content", inp, outp, **kw)
+                    if call_task_role:
+                        kw["task_role"] = call_task_role
+                    if call_subsystem:
+                        kw["subsystem"] = call_subsystem
+                    if call_symbol:
+                        kw["symbol"] = call_symbol
+                    if call_prefix_hash:
+                        kw["prefix_hash"] = call_prefix_hash
+                    await self._save_token_usage(self.model, call_task_name or "generate_content", inp, outp, **kw)
                 if not response.choices:
                     return ""
                 choice = response.choices[0]
@@ -1218,7 +1254,19 @@ class OpenAIProvider(BaseLLMClient):
                                     kw["thinking_tokens"] = thinking_tokens
                                 if exact_cost is not None:
                                     kw["exact_cost"] = exact_cost
-                                await self._save_token_usage(self.model, "generate_content", inp, outp, **kw)
+                                    kw["cost_source"] = "openrouter_exact"
+                                    kw["is_paid"] = exact_cost > 0.0
+                                if call_task_role:
+                                    kw["task_role"] = call_task_role
+                                if call_subsystem:
+                                    kw["subsystem"] = call_subsystem
+                                if call_symbol:
+                                    kw["symbol"] = call_symbol
+                                if call_prefix_hash:
+                                    kw["prefix_hash"] = call_prefix_hash
+                                await self._save_token_usage(
+                                    self.model, call_task_name or "generate_content", inp, outp, **kw
+                                )
                             if not response.choices:
                                 return ""
                             return _extract_message_text(response.choices[0])
@@ -1274,9 +1322,17 @@ class OpenAIProvider(BaseLLMClient):
                                 kw["exact_cost"] = exact_cost
                                 kw["cost_source"] = "openrouter_exact"
                                 kw["is_paid"] = exact_cost > 0.0
-                                kw["cost_source"] = "openrouter_exact"
-                                kw["is_paid"] = exact_cost > 0.0
-                            await self._save_token_usage(self.model, "generate_content", inp, outp, **kw)
+                            if call_task_role:
+                                kw["task_role"] = call_task_role
+                            if call_subsystem:
+                                kw["subsystem"] = call_subsystem
+                            if call_symbol:
+                                kw["symbol"] = call_symbol
+                            if call_prefix_hash:
+                                kw["prefix_hash"] = call_prefix_hash
+                            await self._save_token_usage(
+                                self.model, call_task_name or "generate_content", inp, outp, **kw
+                            )
                         if not response.choices:
                             return ""
                         return _extract_message_text(response.choices[0])
@@ -1294,7 +1350,13 @@ class OpenAIProvider(BaseLLMClient):
                 return ""
 
         else:
-            return await self.generate(user_message, system_prompt, temperature=temperature)
+            return await self.generate(
+                user_message,
+                system_prompt,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                **kwargs,
+            )
 
     async def classify_json(
         self,
@@ -1334,6 +1396,7 @@ class OpenAIProvider(BaseLLMClient):
                     response_schema=effective_schema,
                     temperature=temperature,
                     max_tokens=override_tokens,
+                    **kwargs,
                 )
                 if not result_text:
                     if attempt == 0:

@@ -953,12 +953,17 @@ class BaseLLMClient(LlmPort, ABC):
             from monika.infrastructure.database.db import get_session
             from monika.infrastructure.database.models import TokenUsageLog
 
-            raw_role = task_role or getattr(self, "role", None) or getattr(self, "task_role", None)
+            raw_role = (
+                task_role or getattr(self, "role", None) or getattr(self, "task_role", None) or kwargs.get("task_role")
+            )
             resolved_role = self._infer_task_role(raw_role, task_name, subsystem)
             resolved_subsystem = (
-                subsystem or getattr(self, "subsystem", None) or self._infer_subsystem(resolved_role, task_name)
+                subsystem
+                or getattr(self, "subsystem", None)
+                or kwargs.get("subsystem")
+                or self._infer_subsystem(resolved_role, task_name)
             )
-            resolved_symbol = symbol or getattr(self, "symbol", None)
+            resolved_symbol = symbol or getattr(self, "symbol", None) or kwargs.get("symbol")
             if not resolved_symbol and task_name and task_name.startswith("per_asset_"):
                 resolved_symbol = task_name[len("per_asset_") :]
             resolved_cycle_id = cycle_id or getattr(self, "cycle_id", None)
@@ -996,12 +1001,14 @@ class BaseLLMClient(LlmPort, ABC):
                 from monika.infrastructure.llm.cache_miss_detector import global_cache_miss_detector
 
                 c_key = f"{resolved_subsystem or 'subsystem'}:{resolved_role or task_name or 'role'}:{model_name or 'model'}:{resolved_symbol or 'global'}"
+                eff_prefix_hash = kwargs.get("prefix_hash")
                 global_cache_miss_detector.check(
                     cached_tokens=cached_tokens,
                     cache_creation_tokens=cache_creation_tokens,
                     model=model_name,
                     input_tokens=input_tokens,
                     context_key=c_key,
+                    prefix_hash=eff_prefix_hash,
                 )
             except Exception:
                 pass

@@ -5476,7 +5476,7 @@
 - **Top-Level Functions**:
   - `repair_tool_name(raw_name: str) -> str`: Auto-repair hallucinated, aliased, or namespaced tool names.
   - `repair_tool_arguments(args: Any) -> Dict[str, Any]`: Repair corrupted JSON arguments (trailing commas, python constants, single quotes, XML tags).
-  - `coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]], default_symbol: Optional[str]) -> Dict[str, Any]`: Coerce stringified primitives, arrays, objects, and enums in tool arguments to match expected JSON schema types.
+  - `coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]) -> Dict[str, Any]`: Coerce stringified primitives, arrays, objects, and enums in tool arguments to match expected JSON schema types.
   - `deep_repair_tool_arguments(tool_name: str, args: Dict[str, Any], schema: Dict[str, Any], ...) -> bool`: Attempt intelligent, self-healing repair of tool arguments when jsonschema.validate() fails.
   - `canonicalize_tool_arguments(value: Any) -> Any`: Recursively sorts dictionary keys and formats nested collections so identical
   - `compute_canonical_tool_signature(tool_name: str, tool_args: Any) -> str`: Computes a deterministic MD5 hash signature for a tool name and argument payload.

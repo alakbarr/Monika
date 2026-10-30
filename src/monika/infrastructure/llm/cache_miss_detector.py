@@ -26,6 +26,11 @@ class CacheMissReason(str):
             "TTL_EXPIRED": {"TTL_EXPIRED"},
             "PREFIX_MUTATED": {"PREFIX_MUTATED", "PREFIX_CHANGED"},
             "MODEL_OR_KEY_CHANGED": {"MODEL_OR_KEY_CHANGED", "MODEL_CHANGED"},
+            "PROVIDER_EVICTED_OR_ROUTED": {
+                "PROVIDER_EVICTED_OR_ROUTED",
+                "PROVIDER_CACHE_DROP",
+                "UPSTREAM_EVICTED",
+            },
             "FIRST_CALL": {"FIRST_CALL"},
             "NONE": {"NONE"},
         }
@@ -53,6 +58,8 @@ class CacheMissReport:
                 self.root_cause = "MODEL_OR_KEY_CHANGED"
             elif "TTL" in r_up:
                 self.root_cause = "TTL_EXPIRED"
+            elif "PROVIDER" in r_up or "UPSTREAM" in r_up or "DROP" in r_up:
+                self.root_cause = "PROVIDER_EVICTED_OR_ROUTED"
             elif "PREFIX" in r_up:
                 self.root_cause = "PREFIX_MUTATED"
             elif "FIRST" in r_up:
@@ -66,6 +73,7 @@ class _ContextState:
     last_cached_tokens: int = 0
     last_model: str = ""
     last_call_time: float = 0.0
+    last_prefix_hash: Optional[str] = None
 
 
 class CacheMissDetector:
@@ -102,6 +110,7 @@ class CacheMissDetector:
         model: str = "",
         input_tokens: int = 0,
         context_key: str = "default",
+        prefix_hash: Optional[str] = None,
     ) -> CacheMissReport:
         """Check if current call missed cache vs. previous call within the same context."""
         now = time.monotonic() * 1000.0
@@ -132,6 +141,11 @@ class CacheMissDetector:
             elif time_gap > self.cache_ttl_ms:
                 reason = CacheMissReason("ttl_expired")
                 root_cause = "TTL_EXPIRED"
+            elif (
+                prefix_hash is not None and state.last_prefix_hash is not None and prefix_hash == state.last_prefix_hash
+            ):
+                reason = CacheMissReason("provider_cache_drop")
+                root_cause = "PROVIDER_EVICTED_OR_ROUTED"
             else:
                 reason = CacheMissReason("prefix_changed")
                 root_cause = "PREFIX_MUTATED"
@@ -157,7 +171,13 @@ class CacheMissDetector:
                 time_gap_ms=time_gap,
                 root_cause=root_cause,
             )
-            if missed_cost > 0.001:
+            if root_cause == "PROVIDER_EVICTED_OR_ROUTED":
+                logger.info(
+                    f"[CacheMissDetector] Cache miss ({reason}): prev_cached={state.last_cached_tokens}, "
+                    f"curr_cached={cached_tokens}, estimated_waste=${missed_cost:.4f}, "
+                    f"time_gap={time_gap / 1000.0:.1f}s, model={model}, root_cause={root_cause}"
+                )
+            elif missed_cost > 0.001:
                 logger.warning(
                     f"[CacheMissDetector] Cache miss ({reason}): prev_cached={state.last_cached_tokens}, "
                     f"curr_cached={cached_tokens}, estimated_waste=${missed_cost:.4f}, "
@@ -183,6 +203,8 @@ class CacheMissDetector:
         state.last_cached_tokens = cached_tokens
         state.last_model = model
         state.last_call_time = now
+        if prefix_hash is not None:
+            state.last_prefix_hash = prefix_hash
         return report
 
     def get_summary(self) -> Dict[str, Any]:

@@ -276,6 +276,8 @@ async def test_adjudication_verifier_padded_and_passes_task_role():
     assert mock_client.classify_json.called
     call_kwargs = mock_client.classify_json.call_args[1]
     assert call_kwargs.get("task_role") == "stage2_adjudicator", "task_role was not passed to classify_json"
+    assert call_kwargs.get("symbol") == "EURUSD", "symbol was not passed to classify_json"
+    assert call_kwargs.get("subsystem") == "stage2", "subsystem was not passed to classify_json"
     system_prompt = call_kwargs.get("system_prompt", "")
     assert CacheBreakpointManager.CANONICAL_TIER0_ANCHOR[:80] in system_prompt or len(system_prompt) >= 1000, (
         "system_prompt was not padded with anchor"
