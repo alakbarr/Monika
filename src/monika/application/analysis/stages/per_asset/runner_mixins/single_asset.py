@@ -655,6 +655,7 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
                 system_prompt=system_prompt,
                 dynamic_tools=dynamic_tools,
                 start_time=start_time,
+                prefetch_satisfied_tools=prefetch_satisfied_tools,
             )
             if analysis:
                 analysis_id = analysis.id

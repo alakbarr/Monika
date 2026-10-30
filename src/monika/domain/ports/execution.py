@@ -22,6 +22,10 @@ class BrokerPort(Protocol):
         """Fetch latest tick quote (keys: symbol, bid, ask, last, spread, time)."""
         ...
 
+    async def get_spread(self, symbol: str) -> Dict[str, Any]:
+        """Fetch spread snapshot (keys: symbol, spread_points, spread, bid, ask, spread_cost)."""
+        ...
+
     async def submit_order(self, order: Any, **kwargs: Any) -> Dict[str, Any]:
         """Submit an order for execution."""
         ...

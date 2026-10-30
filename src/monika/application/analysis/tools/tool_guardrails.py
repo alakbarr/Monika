@@ -348,6 +348,7 @@ class ReadBeforeActGuard:
                 or ctx.get("raw_bundle_data")
                 or ctx.get("user_has_prefetched_bundle")
                 or is_fundamental_stage
+                or len(self._read_tools_called) > 0
             )
             if has_prefetched:
                 return GuardrailVerdict(allowed=True, guard_name="ReadBeforeActGuard", reason="OK")

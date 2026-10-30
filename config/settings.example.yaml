@@ -636,6 +636,7 @@ backtest:
       slippage_pips: 10.0
 analysis:
   stage2_max_bundle_chars: 50000
+  stage2_recovery_max_tool_turns: 4
 agent_architecture:
   specialist_decomposition: true
   enable_debate: true
@@ -2107,7 +2108,7 @@ llm:
       thinking: medium
       thinking_budget: 4096
       max_tokens: 8192
-      max_tool_turns: 3
+      max_tool_turns: 5
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
       fallback_2: gemini-3.8-flash
@@ -2138,7 +2139,7 @@ llm:
       thinking: medium
       thinking_budget: 4096
       max_tokens: 8192
-      max_tool_turns: 3
+      max_tool_turns: 5
       temperature: 0.0
       fallback_1: gemini-3.1-flash-lite
       fallback_2: gemini-2.5-flash

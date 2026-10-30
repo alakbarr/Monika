@@ -279,9 +279,11 @@ class ContextBuilderMixin:
             bundle_success = False
 
         tool_order_guidance = (
-            "BASELINE DATA AVAILABLE in [PRE-FETCHED DATA] block. "
-            "Employ hypothetico-deductive reasoning (maximum 2-3 iterative turns) to validate or falsify the proposed setup. "
-            "Evaluate the pre-fetched technical data thoroughly. If the pre-fetched technical structure and price action provide sufficient evidence, you may conclude with submit_asset_analysis. If additional granular verification is needed, invoke targeted tools (get_smc_zones, get_structure_breaks, get_price_history) before submit_asset_analysis."
+            "BASELINE DATA AVAILABLE in [PRE-FETCHED DATA] block above (OHLCV, Indicators, SMC, ATR, ADR, and News). "
+            "Do NOT invoke duplicate read tools for data already provided in the context. "
+            "EXECUTION PIPELINE: "
+            "1. For BUY/SELL: Ensure R:R >= 1.5 and SL >= 1.0x ATR. You may call 'calculate_position_size' or supply entry_price, stop_loss, and take_profit directly in 'submit_asset_analysis' for automatic verified sizing. "
+            "2. For WAIT: Call 'submit_asset_analysis' immediately with decision='wait' and clear rationale."
             if bundle_success
             else "PHASE 0-3: MANDATORY tool execution sequence prior to confluence scoring:\n"
             "0. get_open_positions() + get_risk_state()\n"

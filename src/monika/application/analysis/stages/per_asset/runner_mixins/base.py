@@ -69,6 +69,7 @@ class _RunnerMixinBase:
         system_prompt: Any,
         dynamic_tools: list,
         start_time: datetime,
+        prefetch_satisfied_tools: Optional[set] = None,
     ) -> Optional[Any]: ...
 
     async def _post_process_analysis_verifications(

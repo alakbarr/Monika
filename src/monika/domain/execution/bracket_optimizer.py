@@ -147,6 +147,7 @@ class BracketOptimizer:
             except TypeError, ValueError:
                 adr_sl_ceiling = None
 
+        effective_sl_ceiling = adr_sl_ceiling
         if adr_sl_ceiling is not None and min_sl_dist > 0:
             effective_sl_ceiling = max(adr_sl_ceiling, min_sl_dist * 1.25)
             min_sl_dist = min(min_sl_dist, effective_sl_ceiling * 0.85)
@@ -163,8 +164,8 @@ class BracketOptimizer:
             adjustments.append(
                 f"SL distance expanded from {raw_sl_dist:.{decimals}f} to ATR floor {target_sl_dist:.{decimals}f}"
             )
-        elif adr_sl_ceiling is not None and target_sl_dist > (adr_sl_ceiling * 1.10):
-            target_sl_dist = adr_sl_ceiling
+        elif effective_sl_ceiling is not None and target_sl_dist > (effective_sl_ceiling * 1.10):
+            target_sl_dist = effective_sl_ceiling
             adjustments.append(
                 f"SL distance capped from {raw_sl_dist:.{decimals}f} to ADR ceiling {target_sl_dist:.{decimals}f}"
             )

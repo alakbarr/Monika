@@ -82,6 +82,7 @@ def prune_stage1_tools(
         if name == mandatory_conclusion_tool or name not in satisfied_tools:
             pruned.append(tool)
 
+    pruned.sort(key=lambda t: str(t.get("name") if isinstance(t, dict) else getattr(t, "name", "")))
     return pruned
 
 

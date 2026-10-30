@@ -33,6 +33,7 @@ class RecoveryMixin(_RunnerMixinBase):
         system_prompt: Any,
         dynamic_tools: list,
         start_time: datetime,
+        prefetch_satisfied_tools: Optional[set] = None,
     ) -> Optional[Any]:
         """Multi-tier recovery jika LLM selesai tanpa memanggil submit_asset_analysis."""
         final_text = result.get("final_text", "")
@@ -54,13 +55,15 @@ class RecoveryMixin(_RunnerMixinBase):
                 {"role": "user", "content": recovery_nudge},
             ]
             if hasattr(active_client, "run_agent_from_messages"):
+                rec_turns = int((getattr(self, "settings", {}) or {}).get("stage2_recovery_max_tool_turns", 4))
                 rec_result = await active_client.run_agent_from_messages(
                     session=session,
                     system_prompt=system_prompt,
                     messages=messages,
                     tools=dynamic_tools,
-                    max_tool_turns=3,
+                    max_tool_turns=rec_turns,
                     stage_name=f"per_asset_{symbol}",
+                    prefetch_satisfied_tools=prefetch_satisfied_tools,
                 )
                 if rec_result.get("success"):
                     analysis = (

@@ -1055,6 +1055,7 @@ class AgentHarness:
 
         turns = 0
         ptc_refund_count = 0
+        dedup_refund_count = 0
         tool_calls_made = 0
         final_text = ""
         total_input_tokens = 0
@@ -2411,10 +2412,12 @@ class AgentHarness:
 
                     # 2. Risk Verification Evidence Check for BUY/SELL
                     if decision in ("BUY", "SELL", "LONG", "SHORT"):
-                        if not self.verification_ledger.has_passed_evidence(target_sym):
+                        has_evidence = self.verification_ledger.has_passed_evidence(target_sym)
+                        has_inline_sl = c_input.get("stop_loss") is not None
+                        if not has_evidence and not has_inline_sl:
                             logger.warning(
                                 f"[{stage_name}][AgentHarness] submit_asset_analysis ({decision} {target_sym}) "
-                                f"BLOCKED: No passing verification evidence in ledger."
+                                f"BLOCKED: No passing verification evidence in ledger and no stop_loss provided."
                             )
                             tool_calls_made += 1
                             return {
@@ -2433,56 +2436,57 @@ class AgentHarness:
                                 "is_error": True,
                             }
 
-                        # 2b. Verify parameter integrity (entry/SL/TP/lot must match verified sizing evidence)
-                        prop_sl = None
-                        prop_entry = None
-                        prop_tp = None
-                        prop_lot = None
-                        try:
-                            if "stop_loss" in c_input:
-                                prop_sl = float(c_input["stop_loss"])
-                            if "take_profit" in c_input:
-                                prop_tp = float(c_input["take_profit"])
-                            if "entry" in c_input or "entry_price" in c_input:
-                                prop_entry = float(c_input.get("entry") or c_input.get("entry_price"))
-                            entry_cond = c_input.get("entry_condition")
-                            if (
-                                prop_entry is None
-                                and isinstance(entry_cond, dict)
-                                and entry_cond.get("price") is not None
-                            ):
-                                prop_entry = float(entry_cond["price"])
-                            raw_lot = c_input.get("lot_size") or c_input.get("lots") or c_input.get("volume")
-                            if raw_lot is not None:
-                                prop_lot = float(raw_lot)
-                        except ValueError, TypeError:
-                            pass
+                        if has_evidence:
+                            # 2b. Verify parameter integrity (entry/SL/TP/lot must match verified sizing evidence)
+                            prop_sl = None
+                            prop_entry = None
+                            prop_tp = None
+                            prop_lot = None
+                            try:
+                                if "stop_loss" in c_input:
+                                    prop_sl = float(c_input["stop_loss"])
+                                if "take_profit" in c_input:
+                                    prop_tp = float(c_input["take_profit"])
+                                if "entry" in c_input or "entry_price" in c_input:
+                                    prop_entry = float(c_input.get("entry") or c_input.get("entry_price"))
+                                entry_cond = c_input.get("entry_condition")
+                                if (
+                                    prop_entry is None
+                                    and isinstance(entry_cond, dict)
+                                    and entry_cond.get("price") is not None
+                                ):
+                                    prop_entry = float(entry_cond["price"])
+                                raw_lot = c_input.get("lot_size") or c_input.get("lots") or c_input.get("volume")
+                                if raw_lot is not None:
+                                    prop_lot = float(raw_lot)
+                            except ValueError, TypeError:
+                                pass
 
-                        is_intact, integrity_err = self.verification_ledger.verify_proposal_integrity(
-                            target_sym,
-                            entry_price=prop_entry,
-                            stop_loss=prop_sl,
-                            take_profit=prop_tp,
-                            lot_size=prop_lot,
-                        )
-                        if not is_intact:
-                            logger.warning(
-                                f"[{stage_name}][AgentHarness] submit_asset_analysis ({decision} {target_sym}) "
-                                f"BLOCKED: Parameter integrity check failed: {integrity_err}"
+                            is_intact, integrity_err = self.verification_ledger.verify_proposal_integrity(
+                                target_sym,
+                                entry_price=prop_entry,
+                                stop_loss=prop_sl,
+                                take_profit=prop_tp,
+                                lot_size=prop_lot,
                             )
-                            tool_calls_made += 1
-                            return {
-                                "type": "tool_result",
-                                "tool_use_id": c_id,
-                                "name": c_name,
-                                "content": json.dumps(
-                                    {
-                                        "status": "blocked_by_parameter_integrity",
-                                        "error": f"Trade proposal blocked: {integrity_err}",
-                                    }
-                                ),
-                                "is_error": True,
-                            }
+                            if not is_intact:
+                                logger.warning(
+                                    f"[{stage_name}][AgentHarness] submit_asset_analysis ({decision} {target_sym}) "
+                                    f"BLOCKED: Parameter integrity check failed: {integrity_err}"
+                                )
+                                tool_calls_made += 1
+                                return {
+                                    "type": "tool_result",
+                                    "tool_use_id": c_id,
+                                    "name": c_name,
+                                    "content": json.dumps(
+                                        {
+                                            "status": "blocked_by_parameter_integrity",
+                                            "error": f"Trade proposal blocked: {integrity_err}",
+                                        }
+                                    ),
+                                    "is_error": True,
+                                }
 
                 # c. Dynamic Execution via ToolExecutor with OpenTelemetry Tool Span and Plugin Hooks
                 from monika.application.agent.estop import is_estop_active
@@ -2833,9 +2837,47 @@ class AgentHarness:
                             )
 
             # Append tool observations as next turn user message
+            # Append tool observations as next turn user message
             current_messages.append({"role": "user", "content": tool_results})
 
-            # 7b. Penultimate Turn Forcing Directive: lock read tools and mandate terminal submission
+            # 7b. Budget Refunds (PTC and Dedup)
+            # I7: PTC Iteration Budget Refund
+            if len(prepared_calls) == 1 and prepared_calls[0].get("name") == "execute_analysis_code":
+                if ptc_refund_count < 3:
+                    turns -= 1
+                    ptc_refund_count += 1
+                    logger.debug(
+                        f"[{stage_name}][AgentHarness] PTC budget refund ({ptc_refund_count}/3): turn not counted"
+                    )
+                else:
+                    logger.warning(f"[{stage_name}][AgentHarness] PTC budget refund cap reached ({ptc_refund_count}/3)")
+
+            # Dedup Tool Budget Refund:
+            # If all tool calls were lightweight dedup notices for prefetch-satisfied tools,
+            # refund the turn (up to 2 times) to prevent turn exhaustion while preserving KV-cache prefix invariance.
+            actual_tool_results = [
+                tr for tr in tool_results if isinstance(tr, dict) and tr.get("type") == "tool_result"
+            ]
+            is_all_dedup = False
+            if prepared_calls and actual_tool_results:
+                parsed_res = []
+                for tr in actual_tool_results:
+                    c_text = str(tr.get("content", ""))
+                    if "already satisfied in prefetch bundle" in c_text or "already_executed" in c_text:
+                        parsed_res.append(True)
+                    else:
+                        parsed_res.append(False)
+                if parsed_res and all(parsed_res):
+                    is_all_dedup = True
+
+            if is_all_dedup and dedup_refund_count < 2:
+                turns -= 1
+                dedup_refund_count += 1
+                logger.info(
+                    f"[{stage_name}][AgentHarness] Dedup tool budget refund ({dedup_refund_count}/2): turn not counted"
+                )
+
+            # 7c. Penultimate Turn Forcing Directive: lock read tools and mandate terminal submission
             terminal_sub_tool = (
                 "submit_fundamental_brief"
                 if ("fundamental" in stage_name.lower() or "stage1" in stage_name.lower())
@@ -2851,6 +2893,7 @@ class AgentHarness:
                     f"You are on turn {turns}/{effective_max_turns}. You have gathered more than sufficient market data.\n"
                     f"All additional read tools are now LOCKED.\n"
                     f"On your NEXT step, you MUST invoke '{terminal_sub_tool}' with your complete synthesis.\n"
+                    f"NOTE: If recommending BUY or SELL, supply valid entry_price, stop_loss, and take_profit in '{terminal_sub_tool}' (verified sizing will be auto-calculated) or run 'calculate_position_size'.\n"
                     f"Do NOT call any more get_* or read_* tools."
                 )
                 if isinstance(current_messages[-1].get("content"), list):
@@ -2861,42 +2904,31 @@ class AgentHarness:
                     f"[{stage_name}][AgentHarness] Injected Penultimate Turn Forcing Directive for '{terminal_sub_tool}' on turn {turns}/{effective_max_turns}."
                 )
 
-            # 8. State-Aware Stall Guard Check (H-8)
-            is_stall_warn, is_stall_terminate, stall_msg = self.stall_guard.check_stall()
-            if is_stall_terminate and stall_msg:
-                logger.warning(f"[{stage_name}][AgentHarness] STALL GUARD FORCE TERMINATION: {stall_msg}")
-                if current_messages:
-                    last_content = current_messages[-1].get("content")
-                    if isinstance(last_content, list):
-                        last_content.append({"type": "text", "text": f"\n[STALL GUARD TERMINATION]: {stall_msg}"})
-                    else:
-                        current_messages[-1]["content"] = (
-                            f"{last_content or ''}\n\n[STALL GUARD TERMINATION]: {stall_msg}"
-                        )
-                if effective_max_turns > turns + 1:
-                    effective_max_turns = turns + 1
-            elif is_stall_warn and stall_msg:
-                logger.info(f"[{stage_name}][AgentHarness] STALL GUARD WARNING: {stall_msg}")
-                if current_messages:
-                    last_content = current_messages[-1].get("content")
-                    if isinstance(last_content, list):
-                        last_content.append({"type": "text", "text": f"\n[STALL GUARD WARNING]: {stall_msg}"})
-                    else:
-                        current_messages[-1]["content"] = f"{last_content or ''}\n\n[STALL GUARD WARNING]: {stall_msg}"
-
-            # I7: PTC Iteration Budget Refund
-            # If sole tool call was execute_analysis_code, refund the iteration
-            # because the LLM delegated work to local Python execution
-            # P0-10: Cap PTC refunds at 3 to prevent infinite loops
-            if len(prepared_calls) == 1 and prepared_calls[0].get("name") == "execute_analysis_code":
-                if ptc_refund_count < 3:
-                    turns -= 1
-                    ptc_refund_count += 1
-                    logger.debug(
-                        f"[{stage_name}][AgentHarness] PTC budget refund ({ptc_refund_count}/3): turn not counted"
-                    )
-                else:
-                    logger.warning(f"[{stage_name}][AgentHarness] PTC budget refund cap reached ({ptc_refund_count}/3)")
+            # 8. State-Aware Stall Guard Check (H-8) - exempt pure prefetch dedup turns
+            if not is_all_dedup:
+                is_stall_warn, is_stall_terminate, stall_msg = self.stall_guard.check_stall()
+                if is_stall_terminate and stall_msg:
+                    logger.warning(f"[{stage_name}][AgentHarness] STALL GUARD FORCE TERMINATION: {stall_msg}")
+                    if current_messages:
+                        last_content = current_messages[-1].get("content")
+                        if isinstance(last_content, list):
+                            last_content.append({"type": "text", "text": f"\n[STALL GUARD TERMINATION]: {stall_msg}"})
+                        else:
+                            current_messages[-1]["content"] = (
+                                f"{last_content or ''}\n\n[STALL GUARD TERMINATION]: {stall_msg}"
+                            )
+                    if effective_max_turns > turns + 1:
+                        effective_max_turns = turns + 1
+                elif is_stall_warn and stall_msg:
+                    logger.info(f"[{stage_name}][AgentHarness] STALL GUARD WARNING: {stall_msg}")
+                    if current_messages:
+                        last_content = current_messages[-1].get("content")
+                        if isinstance(last_content, list):
+                            last_content.append({"type": "text", "text": f"\n[STALL GUARD WARNING]: {stall_msg}"})
+                        else:
+                            current_messages[-1]["content"] = (
+                                f"{last_content or ''}\n\n[STALL GUARD WARNING]: {stall_msg}"
+                            )
 
         if (total_input_tokens > 0 or total_output_tokens > 0) and hasattr(self.llm_client, "_save_token_usage"):
             try:

@@ -85,27 +85,22 @@ HISTORICAL MATCH ATTRIBUTES:
         if not top_candidates or not llm_client:
             return []
 
-        tasks = [
-            self._verify_single_match(
-                match=match,
-                timeframe=tf,
-                symbol=symbol,
-                current_context=current_context,
-                session=session,
-                llm_client=llm_client,
-                web_search_enabled=web_search_enabled,
-            )
-            for match, tf in top_candidates
-        ]
-
-        verdicts_raw = await asyncio.gather(*tasks, return_exceptions=True)
         valid_verdicts: List[ContextVerdict] = []
-
-        for v in verdicts_raw:
-            if isinstance(v, ContextVerdict):
-                valid_verdicts.append(v)
-            elif isinstance(v, Exception):
-                logger.debug(f"LLM context verification item failed: {v}")
+        for match, tf in top_candidates:
+            try:
+                v = await self._verify_single_match(
+                    match=match,
+                    timeframe=tf,
+                    symbol=symbol,
+                    current_context=current_context,
+                    session=session,
+                    llm_client=llm_client,
+                    web_search_enabled=web_search_enabled,
+                )
+                if isinstance(v, ContextVerdict):
+                    valid_verdicts.append(v)
+            except Exception as v_err:
+                logger.debug(f"LLM context verification item failed: {v_err}")
 
         return valid_verdicts
 

@@ -4310,6 +4310,7 @@
 - **Classes**:
   - `class BrokerPort(Protocol)`: Standardized pure domain protocol for broker operations.
     - `async get_tick(symbol: str) -> Dict[str, Any]` - *Fetch latest tick quote (keys: symbol, bid, ask, last, spread, time).*
+    - `async get_spread(symbol: str) -> Dict[str, Any]` - *Fetch spread snapshot (keys: symbol, spread_points, spread, bid, ask, spread_cost).*
     - `async submit_order(order: Any) -> Dict[str, Any]` - *Submit an order for execution.*
     - `async cancel_order(client_order_id: str) -> bool` - *Cancel a pending/in-flight order.*
     - `async get_orders(symbol: Optional[str]) -> Sequence[Dict[str, Any]]` - *Return list of active pending orders.*
@@ -11016,6 +11017,7 @@
 - **Classes**:
   - `class BrokerAdapter(BrokerPort, MarketDataPort, ABC)`: Abstract base class defining the standardized broker execution interface.
     - `async get_tick(symbol: str) -> dict` - *Fetch latest tick quote.*
+    - `async get_spread(symbol: str) -> dict` - *Standardized spread snapshot derived from tick quote.*
     - `async get_quote(symbol: str) -> Optional[Dict[str, Any]]` - *Fetch current quote for a symbol (delegates to get_tick).*
     - `async get_bars(symbol: str, timeframe: str, count: int) -> Any` - *Retrieve historical OHLCV price bars.*
     - `async get_order_book(symbol: str) -> Dict[str, Any]` - *Retrieve current order book depth / market liquidity.*
@@ -11038,6 +11040,7 @@
     - `mt5(val: Any)`
     - `async is_connected() -> bool`
     - `async get_tick(symbol: str) -> dict`
+    - `async get_spread(symbol: str) -> dict`
     - `async get_bars(symbol: str, timeframe: str, count: int) -> Any` - *Retrieve historical OHLCV price bars from MT5 client.*
     - `async submit_order(order: Any) -> dict`
     - `async cancel_order(client_order_id: Any) -> bool`

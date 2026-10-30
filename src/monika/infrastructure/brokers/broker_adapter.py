@@ -106,6 +106,36 @@ class BrokerAdapter(BrokerPort, MarketDataPort, ABC):
         """
         pass
 
+    async def get_spread(self, symbol: str) -> dict:
+        """
+        Standardized spread snapshot derived from tick quote.
+        Returns:
+            dict with keys: 'symbol', 'spread_points', 'spread', 'bid', 'ask', 'spread_cost'
+        """
+        tick = await self.get_tick(symbol)
+        if not tick or tick.get("error"):
+            return {
+                "symbol": symbol,
+                "spread_points": 0.0,
+                "spread": 0.0,
+                "bid": 0.0,
+                "ask": 0.0,
+                "spread_cost": 0.0,
+            }
+        bid = float(tick.get("bid", 0.0))
+        ask = float(tick.get("ask", 0.0))
+        pip_size = _get_pip_size(symbol)
+        diff = max(0.0, ask - bid)
+        spread_pts = round(diff / pip_size, 1) if pip_size > 0 else 0.0
+        return {
+            "symbol": symbol,
+            "spread_points": spread_pts,
+            "spread": spread_pts,
+            "bid": bid,
+            "ask": ask,
+            "spread_cost": diff,
+        }
+
     async def get_quote(self, symbol: str) -> Optional[Dict[str, Any]]:
         """Fetch current quote for a symbol (delegates to get_tick)."""
         tick = await self.get_tick(symbol)
@@ -316,6 +346,30 @@ class MT5LiveAdapter(BrokerAdapter):
                 "time": clock.now(),
                 "error": str(e),
             }
+
+    async def get_spread(self, symbol: str) -> dict:
+        try:
+            if hasattr(self.mt5, "get_spread"):
+                sp = await self.mt5.get_spread(symbol)
+                if sp and isinstance(sp, dict) and not sp.get("error"):
+                    bid = float(sp.get("bid", 0.0))
+                    ask = float(sp.get("ask", 0.0))
+                    diff = max(0.0, ask - bid)
+                    pip_size = _get_pip_size(symbol)
+                    spread_pts = float(sp.get("spread_points") or sp.get("spread") or 0.0)
+                    if spread_pts <= 0.0 and pip_size > 0:
+                        spread_pts = round(diff / pip_size, 1)
+                    return {
+                        "symbol": symbol,
+                        "spread_points": spread_pts,
+                        "spread": spread_pts,
+                        "bid": bid,
+                        "ask": ask,
+                        "spread_cost": diff,
+                    }
+        except Exception as e:
+            logger.debug(f"[MT5LiveAdapter] mt5.get_spread failed for {symbol}: {e}")
+        return await super().get_spread(symbol)
 
     async def get_bars(
         self,

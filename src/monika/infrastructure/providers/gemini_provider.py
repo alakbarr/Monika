@@ -621,8 +621,9 @@ class GeminiProvider(BaseLLMClient):
     def _build_stream_config(self) -> StreamConfig:
         provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get("gemini", {})
         stream_cfg = provider_cfg.get("streaming", {})
+        default_idle = 240.0 if getattr(self, "thinking_level", None) not in (None, "none", "off", "") else 120.0
         return StreamConfig(
-            idle_timeout=float(stream_cfg.get("idle_timeout_seconds", 120.0)),
+            idle_timeout=float(stream_cfg.get("idle_timeout_seconds", default_idle)),
             safety_timeout=float(stream_cfg.get("safety_timeout_seconds", 1200.0)),
             first_chunk_timeout=float(stream_cfg.get("first_chunk_timeout_seconds", 300.0)),
         )

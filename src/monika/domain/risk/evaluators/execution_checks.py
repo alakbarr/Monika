@@ -382,7 +382,33 @@ class RiskExecutionChecksMixin(_RiskGateMixinBase):
                 if effective_paper:
                     return True, "client_disconnected_spread_skipped"
                 return False, "client_disconnected_spread_blocked"
-            spread_info = await client.get_spread(symbol)
+            if hasattr(client, "get_spread"):
+                spread_info = await client.get_spread(symbol)
+            elif hasattr(client, "get_tick"):
+                tick = await client.get_tick(symbol)
+                if tick and isinstance(tick, dict):
+                    bid = float(tick.get("bid", 0.0))
+                    ask = float(tick.get("ask", 0.0))
+                    diff = max(0.0, ask - bid)
+                    sym_u = symbol.upper()
+                    pip_size = (
+                        0.01
+                        if any(k in sym_u for k in ("JPY", "XAU", "GOLD", "OIL", "XTI", "XBR"))
+                        else (1.0 if any(k in sym_u for k in ("BTC", "ETH", "US30", "SPX")) else 0.0001)
+                    )
+                    pts = round(diff / pip_size, 1) if pip_size > 0 else 0.0
+                    spread_info = {
+                        "symbol": symbol,
+                        "spread_points": pts,
+                        "spread": pts,
+                        "bid": bid,
+                        "ask": ask,
+                        "spread_cost": diff,
+                    }
+                else:
+                    spread_info = None
+            else:
+                spread_info = None
             if asyncio.iscoroutine(spread_info):
                 spread_info = await spread_info
             if not isinstance(spread_info, dict) or not spread_info:

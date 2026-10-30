@@ -497,6 +497,59 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             # Enforce passing verification evidence from VerificationEvidenceLedger
             ledger = getattr(self, "verification_ledger", None)
             if ledger is not None and not ledger.has_passed_evidence(symbol):
+                raw_entry = inp.get("entry_price") or inp.get("entry")
+                raw_sl = inp.get("stop_loss") or inp.get("sl")
+                raw_tp = inp.get("take_profit") or inp.get("tp")
+                if raw_sl is not None:
+                    try:
+                        # Auto-calculate verified sizing on the fly to eliminate multi-turn round trip
+                        from monika.domain.risk.position_sizing import calculate_lot_size
+
+                        entry_val = float(raw_entry) if raw_entry is not None else None
+                        if entry_val is None:
+                            last_bar = (
+                                await self.session.execute(
+                                    select(PriceOHLCV)
+                                    .where(PriceOHLCV.symbol == symbol)
+                                    .where(PriceOHLCV.timestamp <= clock.now())
+                                    .order_by(PriceOHLCV.timestamp.desc())
+                                    .limit(1)
+                                )
+                            ).scalar_one_or_none()
+                            if last_bar:
+                                entry_val = float(last_bar.close)
+
+                        if entry_val is not None:
+                            sizing_res = await calculate_lot_size(
+                                symbol=symbol,
+                                entry_price=entry_val,
+                                stop_loss=float(raw_sl),
+                                direction=decision,
+                                session=self.session,
+                                settings=self.settings,
+                            )
+                            if sizing_res and sizing_res.get("is_valid", True):
+                                ledger.record_tool_execution(
+                                    "calculate_position_size",
+                                    {
+                                        "symbol": symbol,
+                                        "entry_price": entry_val,
+                                        "stop_loss": float(raw_sl),
+                                        "take_profit": float(raw_tp) if raw_tp is not None else None,
+                                        "lot_size": sizing_res.get("recommended_lots"),
+                                    },
+                                    sizing_res,
+                                )
+                                logger.info(
+                                    f"[{symbol}] submit_asset_analysis auto-calculated verified position size: "
+                                    f"Lots={sizing_res.get('recommended_lots')}, Risk=${sizing_res.get('risk_amount_usd')}"
+                                )
+                    except Exception as auto_sz_err:
+                        logger.warning(
+                            f"[{symbol}] Auto-sizing in submit_asset_analysis non-fatal error: {auto_sz_err}"
+                        )
+
+            if ledger is not None and not ledger.has_passed_evidence(symbol):
                 return {
                     "status": "rejected_verification_required",
                     "errors": [
@@ -872,7 +925,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 # RR minimal 1.0 untuk approval awal
                 if sl_dist > 0 and tp_dist > 0:
                     rr = tp_dist / sl_dist if sl_dist else 0
-                    if rr < min_rr:
+                    if rr < (min_rr - 1e-4):
                         breakeven_wr = 100.0 / (1.0 + min_rr)
                         req_tp_dist = sl_dist * min_rr
                         errors.append(
@@ -990,6 +1043,8 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                                 f"[{symbol}] ATR noise-floor ({raw_min_sl:.5f}) exceeds ADR-based SL "
                                 f"ceiling ({adr_sl_ceiling:.5f}) — harmonizing ceiling to {effective_sl_ceiling:.5f} to accommodate volatility."
                             )
+                            adr_ctx_for_validation = dict(adr_ctx_for_validation)
+                            adr_ctx_for_validation["target_sl_max_distance"] = effective_sl_ceiling
                         min_sl_from_atr = min(raw_min_sl, effective_sl_ceiling * 0.85)
 
                     # Preflight auto-repair via BracketOptimizer: snap brackets into valid ATR / ADR ranges
