@@ -2339,6 +2339,7 @@ Monika/
 │   │   ├── test_stage1_priced_in.py
 │   │   ├── test_stage2_bundle_truncation.py
 │   │   ├── test_stage2_prefetcher.py
+│   │   ├── test_stage2_react_deadlock_prevention.py
 │   │   ├── test_stage2_structural_fixes.py
 │   │   ├── test_stall_guard.py
 │   │   ├── test_streaming.py
@@ -3159,4 +3160,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 272 | **Total Tracked Files**: 2857
+**Total Tracked Directories**: 272 | **Total Tracked Files**: 2858

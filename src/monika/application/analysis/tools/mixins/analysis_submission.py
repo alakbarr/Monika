@@ -1379,11 +1379,16 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             # (15-18 tool turns). Toleransi dipisah jadi soft-warn vs hard-block agar
             # drift wajar tidak memicu rejection palsu, tapi skor yang jelas dikarang
             # tetap diblok.
-            HARD_BLOCK_UPLIFT = 5  # FIX: sebelumnya 7 (hampir separuh skala 14, terlalu longgar)
-            SOFT_WARN_UPLIFT = 3  # FIX: sebelumnya 5
+            HARD_BLOCK_UPLIFT = 6  # Proporsional pada skala 14
+            SOFT_WARN_UPLIFT = 3
             if non_det_uplift > HARD_BLOCK_UPLIFT:
+                max_allowable_score = det_score + SOFT_WARN_UPLIFT
                 errors.append(
-                    f"Non-deterministic score uplift EXTREME: reported={submitted_score}, verified_base={det_score} (recomputed at submission time), uplift={non_det_uplift} > hard-block threshold {HARD_BLOCK_UPLIFT}. This cannot be explained by normal session/indicator drift. Review each non-deterministic factor claim in your rationale."
+                    f"Non-deterministic score uplift EXTREME: reported={submitted_score}, "
+                    f"verified_base={det_score} (recomputed at submission time), uplift={non_det_uplift} > "
+                    f"hard-block threshold {HARD_BLOCK_UPLIFT}. Max allowable reported score is {max_allowable_score}/14. "
+                    f"Review each non-deterministic factor claim, reduce confluence_score to <= {max_allowable_score}, "
+                    f"or submit decision='wait'."
                 )
             elif non_det_uplift > SOFT_WARN_UPLIFT:
                 effective_score = det_score + SOFT_WARN_UPLIFT
@@ -1497,6 +1502,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 error_class == "FATAL"
                 or attempts >= 3
                 or (attempts >= 2 and any("volatility regime gate" in e.lower() for e in errors))
+                or (attempts >= 2 and error_class == "THRESHOLD" and any("uplift extreme" in e.lower() for e in errors))
             ):
                 if error_class == "FATAL":
                     logger.error(f"[{symbol}] submit_asset_analysis failed validation (FATAL: {errors}). Forcing WAIT.")
@@ -1526,14 +1532,20 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     else (
                         "VOLATILITY SQUEEZE: Market orders in squeeze are blocked. Either change entry_condition to type='limit' at an exact structural level with confluence >= 5, or submit decision='wait'."
                         if any("volatility regime gate" in e.lower() for e in errors)
-                        else {
-                            "STRUCTURAL": "Recalculate entry/SL/TP. Try different structural level.",
-                            "GATE_FIXABLE": "Gate condition fixable: adjust entry type/zone (limit order at POC/VAH/VAL) or provide required override justification.",
-                            "THRESHOLD": "Score insufficient. Submit WAIT with specific trigger.",
-                            "GATE_FATAL": "Mechanical gate active. Submit WAIT.",
-                            "GATE": "Mechanical gate active. Submit WAIT.",
-                            "FATAL": "Submit WAIT immediately. Do not retry.",
-                        }.get(error_class, "")
+                        else (
+                            "SCORE UPLIFT EXTREME: Deterministic re-check at submission cannot verify your high score. "
+                            "You MUST call submit_asset_analysis again now with confluence_score <= verified_base + 3, "
+                            "or change decision to 'wait'. Do NOT reply with plain text."
+                            if any("score uplift" in e.lower() for e in errors)
+                            else {
+                                "STRUCTURAL": "Recalculate entry/SL/TP. Try different structural level.",
+                                "GATE_FIXABLE": "Gate condition fixable: adjust entry type/zone (limit order at POC/VAH/VAL) or provide required override justification.",
+                                "THRESHOLD": "Score insufficient. Submit WAIT with specific trigger. Do NOT reply with plain text; invoke submit_asset_analysis now.",
+                                "GATE_FATAL": "Mechanical gate active. Submit WAIT.",
+                                "GATE": "Mechanical gate active. Submit WAIT.",
+                                "FATAL": "Submit WAIT immediately. Do not retry.",
+                            }.get(error_class, "")
+                        )
                     )
                 )
                 return {

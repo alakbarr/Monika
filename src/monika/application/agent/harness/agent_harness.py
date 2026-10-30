@@ -1067,6 +1067,8 @@ class AgentHarness:
         length_truncated = False
 
         called_tools: Set[str] = set()
+        persisted_mandatory_tools: Set[str] = set()
+        unpersisted_validation_failures: Set[str] = set()
         consecutive_tool_sig: Optional[str] = None
         repeated_tool_count: int = 0
         total_sig_counts: Dict[str, int] = {}
@@ -1874,23 +1876,37 @@ class AgentHarness:
                 from monika.application.agent.harness.turn_failure_diagnostics import TurnFailureDiagnosticBuilder
 
                 mandatory_tool = self.get_mandatory_tool_for_stage(stage_name)
-                if mandatory_tool and mandatory_tool not in called_tools and turns < effective_max_turns:
+                is_mandatory_unpersisted = mandatory_tool in unpersisted_validation_failures
+                if (
+                    mandatory_tool
+                    and (mandatory_tool not in called_tools or is_mandatory_unpersisted)
+                    and turns < effective_max_turns
+                ):
                     target_sym = stage_symbol or "this asset"
-                    nudge_text = (
-                        f"CRITICAL MANDATORY INSTRUCTION: You concluded your turn without invoking '{mandatory_tool}'. "
-                        f"You MUST call '{mandatory_tool}' now with your final structured analysis and decision for {target_sym}. "
-                        f"Plain text conclusions without invoking '{mandatory_tool}' cannot be processed."
-                    )
+                    if is_mandatory_unpersisted and mandatory_tool in called_tools:
+                        nudge_text = (
+                            f"CRITICAL MANDATORY INSTRUCTION: Your previous attempt to invoke '{mandatory_tool}' "
+                            f"failed validation and was NOT saved to the database. "
+                            f"You MUST call '{mandatory_tool}' again NOW with corrected parameters or change decision to 'wait' for {target_sym}. "
+                            f"Plain text conclusions cannot be accepted while mandatory submission is unpersisted."
+                        )
+                    else:
+                        nudge_text = (
+                            f"CRITICAL MANDATORY INSTRUCTION: You concluded your turn without invoking '{mandatory_tool}'. "
+                            f"You MUST call '{mandatory_tool}' now with your final structured analysis and decision for {target_sym}. "
+                            f"Plain text conclusions without invoking '{mandatory_tool}' cannot be processed."
+                        )
                     logger.info(
-                        f"[{stage_name}][AgentHarness] Mandatory tool '{mandatory_tool}' missing "
+                        f"[{stage_name}][AgentHarness] Mandatory tool '{mandatory_tool}' "
+                        f"{'unpersisted/validation_failed' if is_mandatory_unpersisted else 'missing'} "
                         f"on turn {turns}/{effective_max_turns}. Nudging agent..."
                     )
                     current_messages.append({"role": "user", "content": nudge_text})
                     continue
-                elif mandatory_tool and mandatory_tool not in called_tools:
+                elif mandatory_tool and (mandatory_tool not in called_tools or is_mandatory_unpersisted):
                     logger.warning(
                         f"[{stage_name}][AgentHarness] Reached max turns ({effective_max_turns}) "
-                        f"without calling mandatory tool '{mandatory_tool}'."
+                        f"without {'persisting' if is_mandatory_unpersisted else 'calling'} mandatory tool '{mandatory_tool}'."
                     )
                 turn_state.current_phase = TurnPhase.FINALIZE
                 turn_state.stop_gate_context.pending_response = final_text
@@ -2663,6 +2679,19 @@ class AgentHarness:
                         turn_state.stop_gate_context.verification_commands_run.append(c_name)
                         turn_state.stop_gate_context.has_unverified_file_edits = False
 
+                if c_name in ("submit_asset_analysis", "submit_fundamental_brief"):
+                    validation_fail_statuses = {
+                        "validation_failed",
+                        "rejected_verification_required",
+                        "rejected_confluence_too_low",
+                    }
+                    st = res_obj.get("status") if isinstance(res_obj, dict) else None
+                    if st in validation_fail_statuses:
+                        unpersisted_validation_failures.add(c_name)
+                    else:
+                        unpersisted_validation_failures.discard(c_name)
+                        persisted_mandatory_tools.add(c_name)
+
                 if c_name in ("propose_action", "propose_trade"):
                     turn_state.stop_gate_context.proposed_actions.append(c_input)
                     turn_state.stop_gate_context.has_unregistered_trade_proposals = False
@@ -2887,7 +2916,11 @@ class AgentHarness:
                     else None
                 )
             )
-            if terminal_sub_tool and terminal_sub_tool not in called_tools and turns == effective_max_turns - 1:
+            if (
+                terminal_sub_tool
+                and (terminal_sub_tool not in called_tools or terminal_sub_tool in unpersisted_validation_failures)
+                and turns == effective_max_turns - 1
+            ):
                 forcing_directive = (
                     f"\n\n[CRITICAL MANDATORY INSTRUCTION — TURN BUDGET LIMIT REACHED]:\n"
                     f"You are on turn {turns}/{effective_max_turns}. You have gathered more than sufficient market data.\n"

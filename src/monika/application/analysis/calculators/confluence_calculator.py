@@ -115,8 +115,8 @@ async def calculate_priced_in_subscores(session: AsyncSession, symbol: str, as_o
                 report_date_tz = report_date_tz.replace(tzinfo=timezone.utc)
             days_old = (now - report_date_tz).days
 
-            if days_old <= 7:  # Hanya COT fresh (max 1 minggu) yang valid
-                cot_weight = 1.0 if days_old <= 3 else 0.5
+            if days_old <= 14:  # COT dirilis mingguan; toleransi hingga 14 hari
+                cot_weight = 1.0 if days_old <= 7 else 0.5
                 total = cot_row.leveraged_long + cot_row.leveraged_short
                 if total > 0:
                     percentile = (cot_row.leveraged_long / total) * 100
@@ -128,7 +128,7 @@ async def calculate_priced_in_subscores(session: AsyncSession, symbol: str, as_o
                         raw_score = 2 if ratio > 0.5 else 1 if ratio > 0.3 else 0
                         scores["cot"] = int(round(raw_score * cot_weight))
             else:
-                scores["cot"] = 0  # COT > 7 hari tidak dihitung
+                scores["cot"] = 0  # COT > 14 hari tidak dihitung
 
     # 3. Price Momentum vs ATR (0-3)
     atr_stmt = (
@@ -303,7 +303,7 @@ async def calculate_confluence(
     h4_sb_stmt = h4_sb_stmt.order_by(StructureBreak.formed_at.desc()).limit(1)
     h4_breaks = (await session.execute(h4_sb_stmt)).scalars().first()
 
-    # FVG (H4)
+    # FVG (H4 with H1/D1 multi-timeframe fallback)
     fvg_stmt = select(FVGZone).where(FVGZone.symbol == symbol, FVGZone.timeframe == "H4")
     if h4_cutoff:
         fvg_stmt = fvg_stmt.where(FVGZone.formed_at <= h4_cutoff).where(
@@ -313,8 +313,17 @@ async def calculate_confluence(
         fvg_stmt = fvg_stmt.where(FVGZone.filled_at.is_(None))
     fvg_stmt = fvg_stmt.order_by(FVGZone.formed_at.desc()).limit(5)
     fvgs = (await session.execute(fvg_stmt)).scalars().all()
+    if not fvgs:
+        fvg_fb_stmt = select(FVGZone).where(FVGZone.symbol == symbol, FVGZone.timeframe.in_(["H1", "D1"]))
+        if h4_cutoff:
+            fvg_fb_stmt = fvg_fb_stmt.where(FVGZone.formed_at <= (d1_cutoff or h4_cutoff)).where(
+                or_(FVGZone.filled_at.is_(None), FVGZone.filled_at > as_of)
+            )
+        else:
+            fvg_fb_stmt = fvg_fb_stmt.where(FVGZone.filled_at.is_(None))
+        fvgs = (await session.execute(fvg_fb_stmt.order_by(FVGZone.formed_at.desc()).limit(5))).scalars().all()
 
-    # OB (H4)
+    # OB (H4 with H1/D1 multi-timeframe fallback)
     ob_stmt = select(OrderBlock).where(OrderBlock.symbol == symbol, OrderBlock.timeframe == "H4")
     if h4_cutoff:
         ob_stmt = ob_stmt.where(OrderBlock.formed_at <= h4_cutoff).where(
@@ -324,6 +333,15 @@ async def calculate_confluence(
         ob_stmt = ob_stmt.where(OrderBlock.mitigated_at.is_(None))
     ob_stmt = ob_stmt.order_by(OrderBlock.formed_at.desc()).limit(5)
     obs = (await session.execute(ob_stmt)).scalars().all()
+    if not obs:
+        ob_fb_stmt = select(OrderBlock).where(OrderBlock.symbol == symbol, OrderBlock.timeframe.in_(["H1", "D1"]))
+        if h4_cutoff:
+            ob_fb_stmt = ob_fb_stmt.where(OrderBlock.formed_at <= (d1_cutoff or h4_cutoff)).where(
+                or_(OrderBlock.mitigated_at.is_(None), OrderBlock.mitigated_at > as_of)
+            )
+        else:
+            ob_fb_stmt = ob_fb_stmt.where(OrderBlock.mitigated_at.is_(None))
+        obs = (await session.execute(ob_fb_stmt.order_by(OrderBlock.formed_at.desc()).limit(5))).scalars().all()
 
     # VIX
     vix_stmt = select(VIXData)
@@ -901,7 +919,7 @@ async def calculate_confluence(
             if concordant_edges >= 1:
                 score += 1
 
-        # 7. User Chart Workspace Indicator Alignment (±2 pts max, clamped to [0, 10])
+        # 7. User Chart Workspace Indicator Alignment (±2 pts max, clamped to [0, 14])
         if ws_eval_result:
             try:
                 overall = ws_eval_result.get("overall", {})
@@ -930,7 +948,7 @@ async def calculate_confluence(
             except Exception as e:
                 logger.debug(f"Workspace alignment evaluation error: {e}")
 
-        score = min(max(score, 0), 10)
+        score = min(max(score, 0), 14)
         return score, issues, factors
 
     if direction:
