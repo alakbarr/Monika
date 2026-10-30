@@ -811,3 +811,58 @@ class TestNewsDigestProcessor:
         assert count == 2
         assert item1.impact == "HIGH"
         assert item2.impact == "LOW"
+
+    def test_sanitize_ungrounded_tokens_prefixed_and_unprefixed(self):
+        from monika.application.analysis.prefetch.news_digest import _sanitize_ungrounded_tokens
+
+        # Case 1: Prefixed token in text matches prefixed ungrounded token
+        t1 = "BTC broke below $80,000 yesterday."
+        assert _sanitize_ungrounded_tokens(t1, ["$80,000"]) == "BTC broke below [UNVERIFIED_NUM] yesterday."
+
+        # Case 2: Prefixed token in text matches un-prefixed ungrounded token (fixes regex lookbehind defect)
+        t2 = "BTC broke below $80,000 yesterday."
+        assert _sanitize_ungrounded_tokens(t2, ["80,000"]) == "BTC broke below [UNVERIFIED_NUM] yesterday."
+
+        # Case 3: Unprefixed token in text matches unprefixed ungrounded token
+        t3 = "Volume reached 80,000 units."
+        assert _sanitize_ungrounded_tokens(t3, ["80,000"]) == "Volume reached [UNVERIFIED_NUM] units."
+
+        # Case 4: Substring protection ($180,000 should not be corrupted by 80,000 or $80,000)
+        t4 = "Target is $180,000 and total 180,000."
+        assert _sanitize_ungrounded_tokens(t4, ["80,000"]) == t4
+        assert _sanitize_ungrounded_tokens(t4, ["$80,000"]) == t4
+
+        # Case 5: Single digit list items are skipped
+        t5 = "1. First point. 2. Second point."
+        assert _sanitize_ungrounded_tokens(t5, ["1", "2"]) == t5
+
+    def test_btc_binance_hack_news_digest_grounding_forensic_reconstruction(self):
+        from monika.application.analysis.prefetch.news_digest import (
+            _flag_ungrounded_numbers,
+            _sanitize_ungrounded_tokens,
+        )
+
+        # Exact forensic reconstruction of the 2026-10-30 event
+        source_news = (
+            "Binance pauses withdrawals after suspected $6.3B hack. "
+            "BNB has bounced off its low and bitcoin is steady near $78,800. "
+            "Over $1.5 billion in leveraged crypto bets were wiped out."
+        )
+        llm_output = (
+            "Current BTC Bias: Bearish.\n"
+            "Risk to Thesis: Sustained price recovery and structural consolidation back above the "
+            "$78,800–$80,000 liquidity pivot."
+        )
+
+        # Step 1: Grounding check
+        ungrounded = _flag_ungrounded_numbers(llm_output, source_news)
+        # $78,800 is grounded in source text, $80,000 was hallucinated by LLM
+        assert any("80,000" in u for u in ungrounded)
+        assert not any("78,800" in u for u in ungrounded)
+
+        # Step 2: Sanitization
+        sanitized = _sanitize_ungrounded_tokens(llm_output, ungrounded)
+        assert "$80,000" not in sanitized
+        assert "80,000" not in sanitized
+        assert "$78,800" in sanitized
+        assert "[UNVERIFIED_NUM]" in sanitized

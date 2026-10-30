@@ -36,6 +36,7 @@ from monika.application.analysis.prefetch.news_digest.helpers import (
     _normalize_contradictions,
     _normalize_num_variants,
     _resolve_item_index,
+    _sanitize_ungrounded_tokens,
 )
 from monika.application.analysis.prefetch.news_digest.summaries import (
     generate_deterministic_currency_summary,
@@ -76,6 +77,7 @@ __all__ = [
     "_normalize_contradictions",
     "_normalize_num_variants",
     "_resolve_item_index",
+    "_sanitize_ungrounded_tokens",
     "generate_deterministic_currency_summary",
     "generate_deterministic_macro_summary",
     "get_classification_health_report",

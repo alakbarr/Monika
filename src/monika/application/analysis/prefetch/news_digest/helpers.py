@@ -266,6 +266,36 @@ def _flag_ungrounded_numbers(section_text: str, source_news_text: str, extra_con
     return ungrounded
 
 
+def _sanitize_ungrounded_tokens(text: str, ungrounded_tokens: Sequence[str]) -> str:
+    """Sanitize ungrounded numeric claims in text by replacing them with [UNVERIFIED_NUM].
+
+    Handles both prefixed ($80,000) and un-prefixed (80,000) tokens safely without
+    lookbehind blocking, and ignores trivial single-digit integers.
+    """
+    if not text or not ungrounded_tokens:
+        return text
+
+    sanitized = text
+    for u_token in ungrounded_tokens:
+        s = str(u_token).strip()
+        if not s:
+            continue
+        # Skip trivial single-digit integers (e.g. list numbering 1, 2)
+        if s.isdigit() and len(s) < 2:
+            continue
+
+        # Extract core token without leading currency/sign
+        core = _re.sub(r"^[+\-±~><$€£¥₣₩₹\s]+", "", s).strip(" \t\n\r:;()[]{}*`\"'")
+        if not core:
+            core = s
+
+        # Match optional currency/sign prefix followed by core token, bounded by word boundary
+        pattern = rf"(?<!\w)(?:[+\-±~><$€£¥₣₩₹]\s*)?{_re.escape(core)}(?![\w%])"
+        sanitized = _re.sub(pattern, "[UNVERIFIED_NUM]", sanitized)
+
+    return sanitized
+
+
 def _deduplicate_items_by_title(items: list, threshold: float = 0.78) -> list:
     unique = []
     for item in items:

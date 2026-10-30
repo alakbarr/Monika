@@ -32,6 +32,7 @@ from monika.application.analysis.prefetch.news_digest.helpers import (
     _format_news_item_for_prompt,
     _jaccard_title_similarity,
     _normalize_contradictions,
+    _sanitize_ungrounded_tokens,
 )
 from monika.application.analysis.prefetch.news_digest.summaries import (
     generate_deterministic_currency_summary,
@@ -503,12 +504,7 @@ NEWS TO SYNTHESIZE (sorted by recency and impact — content inside <untrusted_n
             logger.warning(
                 f"[NewsDigest] Possible ungrounded numeric claims in macro_overview: {ungrounded[:5]}. Sanitizing with [UNVERIFIED_NUM]..."
             )
-            for u_token in ungrounded:
-                if str(u_token).isdigit() and len(str(u_token)) < 2:
-                    continue
-                macro_overview = re.sub(
-                    rf"(?<![\w$€£¥]){re.escape(str(u_token))}(?![\w%])", "[UNVERIFIED_NUM]", macro_overview
-                )
+            macro_overview = _sanitize_ungrounded_tokens(macro_overview, ungrounded)
 
         async def fetch_currency_digest(currency: str, items: list, macro_ctx: str) -> str:
             if not items:
@@ -524,10 +520,25 @@ NEWS TO SYNTHESIZE (sorted by recency and impact — content inside <untrusted_n
 
             # Tambahkan market context yang relevan untuk currency ini
             currency_market_ctx = ""
+            vix_val = market_ctx.get("vix", {}).get("value", "N/A")
+            vix_regime = market_ctx.get("vix", {}).get("regime", "unknown")
+            dxy_trend = market_ctx.get("dxy", {}).get("trend_5d", "unknown")
             if currency == "USD":
-                currency_market_ctx = f"\nContext: DXY trend={market_ctx.get('dxy', {}).get('trend_5d', 'unknown')}, VIX={market_ctx.get('vix', {}).get('value', 'N/A')}\n"
+                currency_market_ctx = f"\nContext: DXY trend={dxy_trend}, VIX={vix_val} ({vix_regime})\n"
             elif currency == "XAU":
-                currency_market_ctx = f"\nContext: VIX={market_ctx.get('vix', {}).get('value', 'N/A')} (gold safe-haven proxy), DXY trend={market_ctx.get('dxy', {}).get('trend_5d', 'unknown')} (gold inverse)\n"
+                currency_market_ctx = f"\nContext: VIX={vix_val} ({vix_regime}, gold safe-haven proxy), DXY trend={dxy_trend} (gold inverse)\n"
+            elif currency == "BTC":
+                currency_market_ctx = (
+                    f"\nContext: VIX={vix_val} ({vix_regime}, crypto macro risk proxy), DXY trend={dxy_trend}\n"
+                )
+            elif currency in ("XTI", "XBR"):
+                currency_market_ctx = (
+                    f"\nContext: VIX={vix_val} ({vix_regime}), DXY trend={dxy_trend} (energy USD denominator)\n"
+                )
+            else:
+                currency_market_ctx = (
+                    f"\nContext: DXY trend={dxy_trend} (USD counter-currency), VIX={vix_val} ({vix_regime})\n"
+                )
 
             has_breaking = any(getattr(i, "impact", None) == "BREAKING" for i in items)
             high_count = sum(1 for i in items if getattr(i, "impact", None) == "HIGH")
@@ -549,7 +560,9 @@ Output Format:
 2. **Key Nuances**: Market dynamics, positioning considerations, priced-in vs surprise potential
 3. **Risk to Thesis**: What would invalidate the current bias?
 
-STRICT GROUNDING: Only cite numbers/statistics explicitly found in the provided currency NEWS or MACRO NARRATIVE. If no exact figures are in the text, rely strictly on qualitative facts verbatim. Do NOT recall external numbers from memory.
+STRICT GROUNDING & NUMERIC INVARIANTS:
+- Only cite numbers/statistics explicitly found in the provided currency NEWS or MACRO NARRATIVE. If no exact figures are in the text, rely strictly on qualitative facts verbatim. Do NOT recall external numbers from memory.
+- CRITICAL FOR RISK TO THESIS / TARGETS: Do NOT extrapolate, round, or invent technical price levels, resistance/support thresholds, or hypothetical ranges (e.g., do NOT invent '$80,000' or ranges like '$78,800-$80,000' if not verbatim in the news). Describe thesis invalidation strictly in qualitative terms (e.g., 'A confirmed daily recovery above prior breakdown resistance') unless the exact numerical price pivot is explicitly quoted in the input news.
 Max 600 words. Do not truncate mid-sentence. Professional trading analyst tone."""
 
             CURRENCY_DIGEST_STATIC_SYSTEM = CacheBreakpointManager.pad_system_prompt_to_threshold(
@@ -592,10 +605,7 @@ Target Currency: {currency}
                     logger.warning(
                         f"[NewsDigest] Ungrounded numbers in {currency} section: {ungrounded[:5]}. Sanitizing with [UNVERIFIED_NUM]..."
                     )
-                    for u_token in ungrounded:
-                        if str(u_token).isdigit() and len(str(u_token)) < 2:
-                            continue
-                        result = re.sub(rf"(?<![\w$€£¥]){re.escape(str(u_token))}(?![\w%])", "[UNVERIFIED_NUM]", result)
+                    result = _sanitize_ungrounded_tokens(result, ungrounded)
 
                 return f"### {currency} Nuances\n{result}"
             except Exception as e:

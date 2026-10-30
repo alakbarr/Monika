@@ -2739,6 +2739,7 @@ Monika/
 │   │   │   └── test_twitter_watch.py
 │   │   ├── __init__.py
 │   │   ├── test_base_scraper.py
+│   │   ├── test_profile_lock_concurrency.py
 │   │   ├── test_scraper_language_isolation.py
 │   │   └── test_scraper_models.py
 │   ├── security/
@@ -3162,4 +3163,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 272 | **Total Tracked Files**: 2860
+**Total Tracked Directories**: 272 | **Total Tracked Files**: 2861
