@@ -284,3 +284,41 @@ def test_deep_repair_tool_arguments_enhanced_recovery():
         assistant_text="Based on current momentum, we recommend waiting on EURUSD until session opens.",
     )
     assert args_sym["symbol"] == "EURUSD"
+
+
+def test_coerce_tool_arguments_default_symbol_injection():
+    """Verify missing required symbol is auto-injected from default_symbol."""
+    schema = {
+        "type": "object",
+        "properties": {
+            "symbol": {"type": "string"},
+            "decision": {"type": "string"},
+        },
+        "required": ["symbol", "decision"],
+    }
+    args = {"decision": "wait"}
+    coerced = coerce_tool_arguments(args, schema, default_symbol="XBRUSD")
+    assert coerced["symbol"] == "XBRUSD"
+
+
+def test_deep_repair_tool_arguments_default_symbol_empty_assistant_text():
+    """Verify deep repair injects default_symbol when assistant_text is empty."""
+    schema = {
+        "type": "object",
+        "properties": {
+            "symbol": {"type": "string"},
+            "decision": {"type": "string"},
+        },
+        "required": ["symbol", "decision"],
+    }
+    args = {"decision": "wait"}
+    healed = deep_repair_tool_arguments(
+        "submit_asset_analysis",
+        args,
+        schema,
+        "'symbol' is a required property",
+        assistant_text="",
+        default_symbol="XBRUSD",
+    )
+    assert healed is True
+    assert args["symbol"] == "XBRUSD"

@@ -2118,7 +2118,11 @@ class AgentHarness:
                         tool_schema = res
                 if tool_schema and isinstance(tool_schema, dict) and tool_schema.get("input_schema"):
                     input_schema = tool_schema["input_schema"]
-                    coerce_tool_arguments(t_input, input_schema)
+                    raw_sym = stage_symbol or getattr(executor, "symbol", None)
+                    target_symbol_ctx = (
+                        raw_sym if isinstance(raw_sym, str) and raw_sym and not raw_sym.startswith("<") else None
+                    )
+                    coerce_tool_arguments(t_input, input_schema, default_symbol=target_symbol_ctx)
                     schema_err = None
 
                     try:
@@ -2140,6 +2144,7 @@ class AgentHarness:
                             input_schema,
                             schema_err,
                             assistant_text=final_text or "",
+                            default_symbol=target_symbol_ctx,
                         )
                         if healed:
                             logger.info(
@@ -2160,6 +2165,9 @@ class AgentHarness:
                                 schema=input_schema,
                             )
                             logger.warning(f"[{stage_name}] Schema validation failed for {t_name}: {schema_err}")
+                            if t_name in ("submit_asset_analysis", "submit_fundamental_brief"):
+                                unpersisted_validation_failures.add(t_name)
+                                persisted_mandatory_tools.discard(t_name)
                             call_item["_schema_error"] = {
                                 "type": "tool_result",
                                 "tool_use_id": t_id,
@@ -2247,6 +2255,9 @@ class AgentHarness:
                     tool_calls_made += 1
                     if c_name not in ("submit_fundamental_brief", "submit_asset_analysis"):
                         self.guardrail_controller.record_denial()
+                    else:
+                        unpersisted_validation_failures.add(c_name)
+                        persisted_mandatory_tools.discard(c_name)
                     return call_item["_schema_error"]
 
                 # Unified Tool Guardrails (Monotonic Risk, Read-Before-Act, Sizing, Turn Cap, Anti-Oscillation)
@@ -2435,6 +2446,8 @@ class AgentHarness:
                                 f"[{stage_name}][AgentHarness] submit_asset_analysis ({decision} {target_sym}) "
                                 f"BLOCKED: No passing verification evidence in ledger and no stop_loss provided."
                             )
+                            unpersisted_validation_failures.add(c_name)
+                            persisted_mandatory_tools.discard(c_name)
                             tool_calls_made += 1
                             return {
                                 "type": "tool_result",
@@ -2485,11 +2498,78 @@ class AgentHarness:
                                 take_profit=prop_tp,
                                 lot_size=prop_lot,
                             )
+                            if not is_intact and prop_sl is not None:
+                                try:
+                                    from monika.domain.risk.position_sizing import calculate_lot_size
+
+                                    recalc_session = session or getattr(executor, "session", None)
+                                    recalc_entry = prop_entry
+                                    if recalc_entry is None and recalc_session is not None:
+                                        from sqlalchemy import select
+                                        from monika.core.primitives.clock import now as get_clock_now
+                                        from monika.infrastructure.database.models import PriceOHLCV
+
+                                        last_bar = (
+                                            await recalc_session.execute(
+                                                select(PriceOHLCV)
+                                                .where(PriceOHLCV.symbol == target_sym)
+                                                .where(PriceOHLCV.timestamp <= get_clock_now())
+                                                .order_by(PriceOHLCV.timestamp.desc())
+                                                .limit(1)
+                                            )
+                                        ).scalar_one_or_none()
+                                        if last_bar:
+                                            recalc_entry = float(last_bar.close)
+
+                                    if target_sym and recalc_entry is not None:
+                                        sizing_res = await calculate_lot_size(
+                                            symbol=target_sym,
+                                            entry_price=recalc_entry,
+                                            stop_loss=float(prop_sl),
+                                            direction=decision,
+                                            session=recalc_session,
+                                            settings=self.settings,
+                                        )
+                                        if sizing_res and sizing_res.get("is_valid", True):
+                                            rec_lots = sizing_res.get("recommended_lots")
+                                            self.verification_ledger.record_tool_execution(
+                                                "calculate_position_size",
+                                                {
+                                                    "symbol": target_sym,
+                                                    "entry_price": recalc_entry,
+                                                    "stop_loss": float(prop_sl),
+                                                    "take_profit": float(prop_tp) if prop_tp is not None else None,
+                                                    "lot_size": rec_lots,
+                                                },
+                                                sizing_res,
+                                            )
+                                            is_intact, integrity_err = (
+                                                self.verification_ledger.verify_proposal_integrity(
+                                                    target_sym,
+                                                    entry_price=recalc_entry,
+                                                    stop_loss=prop_sl,
+                                                    take_profit=prop_tp,
+                                                    lot_size=rec_lots,
+                                                )
+                                            )
+                                            if is_intact:
+                                                c_input["lot_size"] = rec_lots
+                                                logger.info(
+                                                    f"[{stage_name}][AgentHarness] Auto-recalculated verified position sizing on-the-fly for {decision} {target_sym}: "
+                                                    f"SL={prop_sl}, Lots={rec_lots}, Risk=${sizing_res.get('risk_amount_usd')}"
+                                                )
+                                except Exception as recalc_err:
+                                    logger.warning(
+                                        f"[{stage_name}][AgentHarness] Auto-recalculating sizing on parameter deviation failed: {recalc_err}"
+                                    )
+
                             if not is_intact:
                                 logger.warning(
                                     f"[{stage_name}][AgentHarness] submit_asset_analysis ({decision} {target_sym}) "
                                     f"BLOCKED: Parameter integrity check failed: {integrity_err}"
                                 )
+                                unpersisted_validation_failures.add(c_name)
+                                persisted_mandatory_tools.discard(c_name)
                                 tool_calls_made += 1
                                 return {
                                     "type": "tool_result",
@@ -2866,8 +2946,24 @@ class AgentHarness:
                             )
 
             # Append tool observations as next turn user message
-            # Append tool observations as next turn user message
             current_messages.append({"role": "user", "content": tool_results})
+
+            # Emergency turn extension if mandatory submission tool failed on final turn
+            mandatory_tool = self.get_mandatory_tool_for_stage(stage_name)
+            has_failed_mandatory = mandatory_tool in unpersisted_validation_failures or any(
+                isinstance(tr, dict) and tr.get("is_error") and tr.get("name") == mandatory_tool for tr in tool_results
+            )
+            if (
+                has_failed_mandatory
+                and turns >= effective_max_turns
+                and _emergency_recovery_turns_used < _max_emergency_recovery_turns
+            ):
+                effective_max_turns += 1
+                _emergency_recovery_turns_used += 1
+                logger.warning(
+                    f"[{stage_name}][AgentHarness] Mandatory tool '{mandatory_tool}' failed on turn {turns}/{effective_max_turns - 1}. "
+                    f"Granted emergency recovery turn ({_emergency_recovery_turns_used}/{_max_emergency_recovery_turns})."
+                )
 
             # 7b. Budget Refunds (PTC and Dedup)
             # I7: PTC Iteration Budget Refund
@@ -2962,6 +3058,14 @@ class AgentHarness:
                             current_messages[-1]["content"] = (
                                 f"{last_content or ''}\n\n[STALL GUARD WARNING]: {stall_msg}"
                             )
+
+        # Ensure mandatory tool failure is accurately reflected in result success
+        mandatory_tool = self.get_mandatory_tool_for_stage(stage_name)
+        if mandatory_tool and mandatory_tool in unpersisted_validation_failures:
+            if unverified_stop_gate_error is None:
+                unverified_stop_gate_error = (
+                    f"Mandatory submission tool '{mandatory_tool}' failed validation and was not persisted."
+                )
 
         if (total_input_tokens > 0 or total_output_tokens > 0) and hasattr(self.llm_client, "_save_token_usage"):
             try:

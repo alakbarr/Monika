@@ -11,6 +11,7 @@ Verifies:
 """
 
 import asyncio
+import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -449,3 +450,187 @@ async def test_dynamic_tool_stubbing_turn_6():
     # submit_asset_analysis must retain original description
     submit_tool = next(t for t in stubbed if t["name"] == "submit_asset_analysis")
     assert submit_tool["description"] == "Final trading decision submission."
+
+
+@pytest.mark.asyncio
+async def test_agent_harness_auto_recalculates_sizing_on_parameter_deviation():
+    """Verify on-the-fly RiskGate re-calculation when proposal SL deviates from prior sizing check."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+    from monika.infrastructure.providers.base_provider import MockResponse, MockBlock
+
+    mock_client = MagicMock()
+    mock_client.provider = "openai"
+    mock_client.provider_name = "openai"
+    mock_client.model = "gpt-4o"
+    mock_client.thinking_level = None
+    mock_client.max_tokens = 4096
+
+    # Turn 1: model calculates sizing at sl=0.70374
+    resp1 = MockResponse(
+        content=[
+            MockBlock(
+                "tool_use",
+                name="calculate_position_size",
+                input={"symbol": "AUDUSD", "entry": 0.70000, "sl": 0.70374, "tp": 0.69200},
+                id="call_size",
+            )
+        ],
+        stop_reason="tool_use",
+    )
+    # Turn 2: model submits analysis with updated sl=0.70437 (deviates from 0.70374)
+    tool_input = {
+        "symbol": "AUDUSD",
+        "decision": "sell",
+        "confidence": 0.8,
+        "rationale": "Top-down bearish structure verified.",
+        "invalidation": "Daily close above 0.7050",
+        "entry_price": 0.70000,
+        "stop_loss": 0.70437,
+        "take_profit": 0.69200,
+        "lot_size": 0.45,
+    }
+    resp2 = MockResponse(
+        content=[
+            MockBlock(
+                "tool_use",
+                name="submit_asset_analysis",
+                input=tool_input,
+                id="call_submit",
+            )
+        ],
+        stop_reason="tool_use",
+    )
+    # Turn 3: model concludes
+    resp3 = MockResponse(
+        content=[
+            MockBlock(
+                "text",
+                text="Analysis submitted successfully.",
+            )
+        ],
+        stop_reason="end_turn",
+    )
+
+    mock_client.run_tool_agent = AsyncMock(side_effect=[resp1, resp2, resp3])
+
+    harness = AgentHarness(llm_client=mock_client, max_tool_turns=4)
+
+    mock_executor = MagicMock()
+    mock_executor.symbol = "AUDUSD"
+    mock_executor.session = None
+    mock_executor.get_tool_schema.return_value = {
+        "input_schema": {"type": "object", "properties": {"symbol": {"type": "string"}}}
+    }
+
+    async def fake_execute(name, args):
+        if name == "calculate_position_size":
+            return {"status": "passed", "symbol": "AUDUSD", "lot_size": 0.45}
+        elif name == "submit_asset_analysis":
+            return {"status": "recorded", "id": 123}
+        return {"status": "ok"}
+
+    mock_executor.execute = AsyncMock(side_effect=fake_execute)
+
+    mock_sizing = {"is_valid": True, "recommended_lots": 0.43, "risk_amount_usd": 100.0}
+    with patch("monika.domain.risk.position_sizing.calculate_lot_size", new=AsyncMock(return_value=mock_sizing)):
+        result = await harness.run_agent_from_messages(
+            session=None,
+            system_prompt="System",
+            messages=[{"role": "user", "content": "Analyze AUDUSD"}],
+            tools=[
+                {
+                    "name": "calculate_position_size",
+                    "input_schema": {"type": "object", "properties": {"symbol": {"type": "string"}}},
+                },
+                {
+                    "name": "submit_asset_analysis",
+                    "input_schema": {"type": "object", "properties": {"symbol": {"type": "string"}}},
+                },
+            ],
+            stage_name="per_asset_AUDUSD",
+            max_tool_turns=4,
+            tool_executor=mock_executor,
+            prefetch_satisfied_tools={"get_price_history", "get_technical_indicators"},
+        )
+
+    # Verified sizing was updated on-the-fly and proposal was NOT blocked by parameter integrity
+    assert result["success"] is True
+    ok, _ = harness.verification_ledger.verify_proposal_integrity("AUDUSD", 0.70000, 0.70437, 0.69200, 0.43)
+    assert ok is True
+    assert mock_executor.execute.call_count == 2
+    submit_args = mock_executor.execute.call_args_list[1][0][1]
+    assert submit_args["lot_size"] == 0.43
+
+
+@pytest.mark.asyncio
+async def test_agent_harness_unpersisted_mandatory_tool_fails_closed():
+    """Verify that unpersisted mandatory submission failures cause harness to return success=False."""
+    from unittest.mock import AsyncMock, MagicMock
+    from monika.infrastructure.providers.base_provider import MockResponse, MockBlock
+
+    mock_client = MagicMock()
+    mock_client.provider = "openai"
+    mock_client.provider_name = "openai"
+    mock_client.model = "gpt-4o"
+    mock_client.thinking_level = None
+    mock_client.max_tokens = 4096
+
+    # Proposal missing required 'decision' property
+    mock_resp1 = MockResponse(
+        content=[
+            MockBlock(
+                "tool_use",
+                name="submit_asset_analysis",
+                input={"symbol": "EURUSD"},
+                id="call_fail",
+            )
+        ],
+        stop_reason="tool_use",
+    )
+    mock_resp2 = MockResponse(
+        content=[
+            MockBlock(
+                "text",
+                text="Unable to proceed.",
+            )
+        ],
+        stop_reason="end_turn",
+    )
+
+    mock_client.run_tool_agent = AsyncMock(side_effect=[mock_resp1, mock_resp2])
+
+    harness = AgentHarness(llm_client=mock_client, max_tool_turns=1)
+
+    mock_executor = MagicMock()
+    mock_executor.symbol = "EURUSD"
+    mock_executor.get_tool_schema.return_value = {
+        "input_schema": {
+            "type": "object",
+            "required": ["symbol", "decision"],
+            "properties": {"symbol": {"type": "string"}, "decision": {"type": "string"}},
+        }
+    }
+    mock_executor.execute = AsyncMock(return_value={"status": "validation_failed", "error": "validation failed"})
+
+    result = await harness.run_agent_from_messages(
+        session=None,
+        system_prompt="System",
+        messages=[{"role": "user", "content": "Analyze EURUSD"}],
+        tools=[
+            {
+                "name": "submit_asset_analysis",
+                "input_schema": {
+                    "type": "object",
+                    "required": ["symbol", "decision"],
+                    "properties": {"symbol": {"type": "string"}, "decision": {"type": "string"}},
+                },
+            }
+        ],
+        stage_name="per_asset_EURUSD",
+        max_tool_turns=1,
+        tool_executor=mock_executor,
+    )
+
+    # Mandatory submission failed schema validation and was never persisted -> fail-closed
+    assert result["success"] is False
+    assert "Mandatory submission tool 'submit_asset_analysis'" in str(result.get("error"))

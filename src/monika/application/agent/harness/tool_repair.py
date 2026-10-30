@@ -256,7 +256,9 @@ def repair_tool_arguments(args: Any) -> Dict[str, Any]:
         return {}
 
 
-def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def coerce_tool_arguments(
+    args: Dict[str, Any], schema: Optional[Dict[str, Any]], default_symbol: Optional[str] = None
+) -> Dict[str, Any]:
     """Coerce stringified primitives, arrays, objects, and enums in tool arguments to match expected JSON schema types."""
     if not isinstance(args, dict) or not isinstance(schema, dict):
         return args
@@ -270,6 +272,14 @@ def coerce_tool_arguments(args: Dict[str, Any], schema: Optional[Dict[str, Any]]
     for req_key in required_keys:
         if req_key not in args and req_key in props:
             pdef = props[req_key]
+            if (
+                req_key == "symbol"
+                and default_symbol
+                and isinstance(default_symbol, str)
+                and not default_symbol.startswith("<")
+            ):
+                args["symbol"] = str(default_symbol).strip().upper()
+                continue
             if isinstance(pdef, dict) and "default" in pdef:
                 args[req_key] = pdef["default"]
             elif req_key == "confidence":
@@ -662,6 +672,7 @@ def deep_repair_tool_arguments(
     error_msg: str,
     assistant_text: str = "",
     strict_validation: bool = False,
+    default_symbol: Optional[str] = None,
 ) -> bool:
     """
     Attempt intelligent, self-healing repair of tool arguments when jsonschema.validate() fails.
@@ -815,14 +826,19 @@ def deep_repair_tool_arguments(
             if missing_prop not in repaired_fields:
                 repaired_fields.append(missing_prop)
         elif missing_prop == "symbol" and tool_name == "submit_asset_analysis":
-            sym_match = re.search(
-                r"\b(EURUSD|GBPUSD|USDJPY|AUDUSD|XAUUSD|BTCUSD|XTIUSD|XBRUSD|ETHUSD|SOLUSD|NZDUSD|USDCAD|USDCHF)\b",
-                assistant_text or "",
-            )
-            if sym_match:
-                args["symbol"] = sym_match.group(1).upper()
+            if default_symbol and isinstance(default_symbol, str) and not default_symbol.startswith("<"):
+                args["symbol"] = str(default_symbol).strip().upper()
                 if missing_prop not in repaired_fields:
                     repaired_fields.append(missing_prop)
+            else:
+                sym_match = re.search(
+                    r"\b(EURUSD|GBPUSD|USDJPY|AUDUSD|XAUUSD|BTCUSD|XTIUSD|XBRUSD|ETHUSD|SOLUSD|NZDUSD|USDCAD|USDCHF|[A-Z0-9]{3,8}|[A-Z]{3}/[A-Z]{3})\b",
+                    assistant_text or "",
+                )
+                if sym_match:
+                    args["symbol"] = sym_match.group(1).replace("/", "").upper()
+                    if missing_prop not in repaired_fields:
+                        repaired_fields.append(missing_prop)
         elif missing_prop in ("reasoning_summary", "cot_bias") and strict_validation:
             return False
         elif missing_prop in props and "default" in props[missing_prop]:
