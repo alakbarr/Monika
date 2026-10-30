@@ -2789,6 +2789,7 @@ Monika/
 │   │   ├── test_chat_tool_router.py
 │   │   ├── test_chat_tool_router_semantic.py
 │   │   ├── test_chat_tool_router_stress.py
+│   │   ├── test_command_fixes_regression.py
 │   │   ├── test_command_handlers_descriptors.py
 │   │   ├── test_command_router.py
 │   │   ├── test_fase6_outbound_queue_and_sync.py
@@ -3161,4 +3162,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 272 | **Total Tracked Files**: 2859
+**Total Tracked Directories**: 272 | **Total Tracked Files**: 2860

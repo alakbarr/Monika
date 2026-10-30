@@ -11427,6 +11427,11 @@
 #### `base_scraper.py`
 - **Path**: [`src/monika/infrastructure/data_ingestion/scrapers/base_scraper.py`](src/monika/infrastructure/data_ingestion/scrapers/base_scraper.py)
 - **Classes**:
+  - `class ProfileLock`: Thread-safe synchronization primitive for browser user data directories.
+    - `__init__(name: str)`
+    - `is_locked() -> bool`
+    - `acquire(blocking: bool, timeout: float) -> bool`
+    - `release(force: bool) -> None`
   - `class BaseScraper`
     - `__init__(headless, profile_name, load_mode, ...)`
     - `navigate_with_fallback(url: str, wait_selector: Optional[str], disable_fallback: bool, ...) -> bool` - *Mencoba navigasi ke URL. Jika terdeteksi Cloudflare challenge atau pemblokiran,*

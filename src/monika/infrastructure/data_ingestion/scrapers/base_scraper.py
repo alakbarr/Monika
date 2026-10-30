@@ -7,6 +7,7 @@ except ImportError:
 import logging
 import os
 import platform
+import shutil
 import signal
 import subprocess
 import sys
@@ -70,8 +71,89 @@ def _apply_drissionpage_cdp_search_patch() -> None:
 
 _apply_drissionpage_cdp_search_patch()
 
+PROFILE_LOCK_TIMEOUT_SECONDS: float = 10.0
+
+
+class ProfileLock:
+    """
+    Thread-safe synchronization primitive for browser user data directories.
+    Features:
+    - Mutual exclusion across scrapers sharing the same profile directory.
+    - Owner-thread re-entrancy (matching RLock semantics for same-thread operations).
+    - Cross-thread forced release: if a supervisor/watchdog thread calls close()
+      on timeout, the lock is safely reset and released so it never becomes orphaned.
+    - Bounded-time acquisition: acquire(timeout=...) to prevent infinite process hangs.
+    """
+
+    def __init__(self, name: str):
+        self.name = name
+        self._mutex = threading.Lock()
+        self._cond = threading.Condition(self._mutex)
+        self._owner: Optional[int] = None
+        self._count: int = 0
+
+    @property
+    def is_locked(self) -> bool:
+        with self._mutex:
+            return self._owner is not None
+
+    def acquire(self, blocking: bool = True, timeout: float = -1.0) -> bool:
+        current_thread = threading.get_ident()
+        with self._cond:
+            if self._owner == current_thread:
+                self._count += 1
+                return True
+
+            if not blocking:
+                if self._owner is None:
+                    self._owner = current_thread
+                    self._count = 1
+                    return True
+                return False
+
+            if timeout < 0:
+                while self._owner is not None:
+                    self._cond.wait()
+                self._owner = current_thread
+                self._count = 1
+                return True
+            else:
+                end_time = time.monotonic() + timeout
+                while self._owner is not None:
+                    remaining = end_time - time.monotonic()
+                    if remaining <= 0:
+                        return False
+                    self._cond.wait(remaining)
+                self._owner = current_thread
+                self._count = 1
+                return True
+
+    def release(self, force: bool = False) -> None:
+        current_thread = threading.get_ident()
+        with self._cond:
+            if self._owner is None:
+                return
+
+            if self._owner == current_thread and not force:
+                self._count -= 1
+                if self._count <= 0:
+                    self._owner = None
+                    self._count = 0
+                    self._cond.notify_all()
+            else:
+                # Cross-thread or forced release
+                if self._owner != current_thread:
+                    logger.warning(
+                        f"[ProfileLock] Cross-thread lock release for profile '{self.name}' "
+                        f"(owner_tid={self._owner}, caller_tid={current_thread}). Forcibly releasing lock."
+                    )
+                self._owner = None
+                self._count = 0
+                self._cond.notify_all()
+
+
 _PROFILE_LOCKS_GUARD = threading.Lock()
-_PROFILE_LOCKS: dict[str, threading.RLock] = {}
+_PROFILE_LOCKS: dict[str, ProfileLock] = {}
 _ACTIVE_BROWSER_PIDS: set[int] = set()
 
 
@@ -135,16 +217,28 @@ class BaseScraper:
         self.is_closed = False
         self.browser_pid: Optional[int] = None
         self._browser_pid: Optional[int] = None
-        self._profile_lock: Optional[threading.RLock] = None
+        self._close_lock = threading.Lock()
+        self._profile_lock: Optional[ProfileLock] = None
         self._acquired_profile_lock: bool = False
 
         if self.profile_name:
             with _PROFILE_LOCKS_GUARD:
                 if self.profile_name not in _PROFILE_LOCKS:
-                    _PROFILE_LOCKS[self.profile_name] = threading.RLock()
+                    _PROFILE_LOCKS[self.profile_name] = ProfileLock(self.profile_name)
                 self._profile_lock = _PROFILE_LOCKS[self.profile_name]
-            self._profile_lock.acquire()
-            self._acquired_profile_lock = True
+
+            acquired = self._profile_lock.acquire(timeout=PROFILE_LOCK_TIMEOUT_SECONDS)
+            if acquired:
+                self._acquired_profile_lock = True
+            else:
+                logger.warning(
+                    f"[BaseScraper] Profile lock '{self.profile_name}' could not be acquired "
+                    f"within {PROFILE_LOCK_TIMEOUT_SECONDS}s. Automatically falling back to an "
+                    f"isolated ephemeral browser profile to prevent freezing the process."
+                )
+                self._profile_lock = None
+                self._acquired_profile_lock = False
+                self.profile_name = None
 
         try:
             self.page = self._initialize_browser(self.headless)
@@ -582,49 +676,54 @@ class BaseScraper:
             return False
 
     def close(self):
-        self.is_closed = True
-        pid = getattr(self, "browser_pid", None) or getattr(self, "_browser_pid", None)
-        if pid is None and hasattr(self, "page") and self.page:
-            try:
-                pid = getattr(self.page, "process_id", None)
-                if pid is None and hasattr(self.page, "browser"):
-                    pid = getattr(self.page.browser, "process_id", None)
-                if pid is None and hasattr(self.page, "_browser"):
-                    pid = getattr(self.page._browser, "process_id", None)
-            except Exception:
-                pass
+        with getattr(self, "_close_lock", _PROFILE_LOCKS_GUARD):
+            if getattr(self, "is_closed", False):
+                return
+            self.is_closed = True
 
-        if isinstance(pid, int) and not isinstance(pid, bool):
-            with _PROFILE_LOCKS_GUARD:
-                _ACTIVE_BROWSER_PIDS.discard(pid)
-
-        try:
-            if hasattr(self, "page") and self.page:
+            pid = getattr(self, "browser_pid", None) or getattr(self, "_browser_pid", None)
+            if pid is None and hasattr(self, "page") and self.page:
                 try:
-                    self.page.quit(timeout=2, force=True)
-                except TypeError:
-                    self.page.quit()
-        except Exception as e:
-            logger.debug(f"Error during page.quit(): {e}")
-        finally:
-            if isinstance(pid, int) and not isinstance(pid, bool) and pid > 0:
-                kill_process_tree(pid)
-                self.browser_pid = None
-                self._browser_pid = None
-            self._cleanup_temp_dir()
-            profile_lock = getattr(self, "_profile_lock", None)
-            if getattr(self, "_acquired_profile_lock", False) and profile_lock is not None:
-                try:
-                    profile_lock.release()
-                except RuntimeError:
+                    pid = getattr(self.page, "process_id", None)
+                    if pid is None and hasattr(self.page, "browser"):
+                        pid = getattr(self.page.browser, "process_id", None)
+                    if pid is None and hasattr(self.page, "_browser"):
+                        pid = getattr(self.page._browser, "process_id", None)
+                except Exception:
                     pass
-                self._acquired_profile_lock = False
+
+            if isinstance(pid, int) and not isinstance(pid, bool):
+                with _PROFILE_LOCKS_GUARD:
+                    _ACTIVE_BROWSER_PIDS.discard(pid)
+
+            try:
+                if hasattr(self, "page") and self.page:
+                    try:
+                        self.page.quit(timeout=2, force=True)
+                    except TypeError:
+                        self.page.quit()
+            except Exception as e:
+                logger.debug(f"Error during page.quit(): {e}")
+            finally:
+                if isinstance(pid, int) and not isinstance(pid, bool) and pid > 0:
+                    kill_process_tree(pid)
+                    self.browser_pid = None
+                    self._browser_pid = None
+                self._cleanup_temp_dir()
+                profile_lock = getattr(self, "_profile_lock", None)
+                if getattr(self, "_acquired_profile_lock", False) and profile_lock is not None:
+                    try:
+                        profile_lock.release()
+                    except Exception as rel_err:
+                        logger.debug(f"Profile lock release note: {rel_err}")
+                    self._acquired_profile_lock = False
+                    self._profile_lock = None
 
     def _cleanup_temp_dir(self):
-        if hasattr(self, "_temp_profile_dir") and self._temp_profile_dir:
-            import shutil
-
+        temp_dir = getattr(self, "_temp_profile_dir", None)
+        if temp_dir and os.path.exists(temp_dir):
             try:
-                shutil.rmtree(self._temp_profile_dir, ignore_errors=True)
+                shutil.rmtree(temp_dir, ignore_errors=True)
             except Exception:
                 pass
+            self._temp_profile_dir = None

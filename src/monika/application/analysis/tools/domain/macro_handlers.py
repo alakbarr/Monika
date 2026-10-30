@@ -197,12 +197,15 @@ class MacroToolHandlers:
                 InvestingCalendarScraper,
             )
 
-            scraper = InvestingCalendarScraper()
-            loop = asyncio.get_running_loop()
+            def _fetch():
+                with InvestingCalendarScraper(headless=True, profile_name="macro_tool") as scraper:
+                    return scraper.fetch_events()
+
             timeout_s = float(
                 (self.settings.get("data_sources", {}) or {}).get("calendar", {}).get("scraper_timeout_seconds", 45)
             )
-            raw_events = await asyncio.wait_for(loop.run_in_executor(None, scraper.fetch_events), timeout=timeout_s)
+            async with asyncio.timeout(timeout_s):
+                raw_events = await asyncio.to_thread(_fetch)
             events = [e.__dict__ if hasattr(e, "__dict__") else e for e in raw_events]
             return {"events": events, "count": len(events)}
         except Exception as e:

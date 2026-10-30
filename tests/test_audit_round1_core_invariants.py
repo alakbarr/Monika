@@ -158,6 +158,10 @@ async def test_active_calendar_poller_scraper_close():
     with (
         patch("monika.application.scheduler.active_calendar_poller.get_session") as mock_get_sess,
         patch(
+            "monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory.fetch_forexfactory_feed_direct",
+            return_value=None,
+        ),
+        patch(
             "monika.application.scheduler.active_calendar_poller.InvestingCalendarScraper", return_value=mock_investing
         ),
     ):

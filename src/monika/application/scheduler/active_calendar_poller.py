@@ -132,7 +132,7 @@ class ActiveCalendarPoller:
             target_names = [name for _, name in event_targets]
             captured_data = []
 
-            scraper = InvestingCalendarScraper(headless=True)
+            scraper: Optional[Any] = None
             try:
                 from monika.infrastructure.data_ingestion.scrapers.calendar.calendar_forexfactory import (
                     fetch_forexfactory_feed_direct,
@@ -192,6 +192,16 @@ class ActiveCalendarPoller:
                     # 2. Tier 2: Fallback to Chromium Investing scraper only if direct feed didn't resolve targets
                     if target_names and datetime.now(timezone.utc) < end_time and self.running:
                         try:
+                            if scraper is None:
+
+                                def _init_scraper():
+                                    return InvestingCalendarScraper(
+                                        headless=True,
+                                        profile_name="active_calendar_poller",
+                                    )
+
+                                scraper = await asyncio.to_thread(_init_scraper)
+
                             fresh_data = await asyncio.to_thread(scraper.fetch_events, True)
                             if fresh_data:
                                 matched_inv = []
@@ -236,7 +246,7 @@ class ActiveCalendarPoller:
             finally:
                 if scraper:
                     try:
-                        scraper.close()
+                        await asyncio.to_thread(scraper.close)
                     except Exception:
                         pass
 
@@ -265,7 +275,7 @@ class ActiveCalendarPoller:
 
         combined_title = "BREAKING DATA: " + " | ".join(titles)
         tags_set = set([e.get("currency") if isinstance(e, dict) else getattr(e, "currency", None) for e in events])
-        tags_set = {t for t in tags_set if t}
+        tags_set = {str(t) for t in tags_set if t}
         tags = ",".join(tags_set) if tags_set else None
 
         now_dt = clock.now()
