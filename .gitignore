@@ -70,6 +70,9 @@ temp_test_dir/
 **/.curator_ledger.jsonl
 **/.playbook_lifecycle.json
 src/monika/application/skills/crystallized/mt5_slippage_defense/
+concepts_brief.md
+design_draft.md
+*_DRIFT_REPORT.md
 
 # Database files & Backups
 *.sqlite
