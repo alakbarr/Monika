@@ -584,6 +584,8 @@ class ContextBuilderMixin:
                         )
                         context_blocks.append(("STALENESS WARNING", staleness_warning))
 
+            # --- TARGET ASSET MACRO ANCHOR & ZERO-ARITHMETIC SPATIAL COORDINATES ---
+            anchor_lines = [f"── TARGET ASSET MACRO ANCHOR ({symbol}) ──"]
             if brief_check and getattr(brief_check, "structured_json", None):
                 try:
                     import json as _j
@@ -595,19 +597,115 @@ class ContextBuilderMixin:
                     sym_pi = pi_map.get(symbol)
 
                     if sym_ctx:
-                        anchor_lines = [
-                            f"── TARGET ASSET MACRO ANCHOR ({symbol}) ──",
-                            f"Directional Bias: {sym_ctx.get('directional_bias', 'neutral').upper()} (Confidence: {sym_ctx.get('confidence', 'N/A')})",
-                            f"Time Horizon: {sym_ctx.get('time_horizon', 'swing_structural')}",
-                            f"Structural Driver: {sym_ctx.get('structural_driver', 'N/A')}",
-                            f"Tactical Catalyst: {sym_ctx.get('tactical_catalyst', 'N/A')}",
-                            f"Invalidation Level: {sym_ctx.get('invalidation_level', 'N/A')}",
-                        ]
+                        anchor_lines.extend(
+                            [
+                                f"Directional Bias: {sym_ctx.get('directional_bias', 'neutral').upper()} (Confidence: {sym_ctx.get('confidence', 'N/A')})",
+                                f"Time Horizon: {sym_ctx.get('time_horizon', 'swing_structural')}",
+                                f"Structural Driver: {sym_ctx.get('structural_driver', 'N/A')}",
+                                f"Tactical Catalyst: {sym_ctx.get('tactical_catalyst', 'N/A')}",
+                                f"Invalidation Level: {sym_ctx.get('invalidation_level', 'N/A')}",
+                            ]
+                        )
                         if sym_pi is not None:
                             anchor_lines.append(f"Asset Priced-In Score: {sym_pi}/10")
-                        context_blocks.append(("TARGET ASSET MACRO ANCHOR", "\n".join(anchor_lines)))
                 except Exception as _b_err:
                     logger.debug(f"Target asset macro anchor injection failed (non-fatal): {_b_err}")
+
+            # Spatial 3-zone dealing range & SMC structure pre-computation
+            try:
+                from monika.infrastructure.database.models import OrderBlock, PriceOHLCV
+
+                # 1. 20-day dealing range
+                d1_stmt = (
+                    select(PriceOHLCV)
+                    .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe.in_(["D1", "H4"]))
+                    .order_by(PriceOHLCV.timestamp.desc())
+                    .limit(20)
+                )
+                bars = (await session.execute(d1_stmt)).scalars().all()
+                if bars:
+                    high_20 = max(float(b.high) for b in bars if b.high is not None)
+                    low_20 = min(float(b.low) for b in bars if b.low is not None)
+                    curr_close = float(bars[0].close) if bars[0].close is not None else 0.0
+                    range_span = high_20 - low_20
+                    range_pos = (curr_close - low_20) / range_span if range_span > 1e-6 else 0.50
+                    range_zone = (
+                        "DEEP DISCOUNT"
+                        if range_pos <= 0.35
+                        else ("DEEP PREMIUM" if range_pos >= 0.65 else "EQUILIBRIUM CHOP")
+                    )
+
+                    # 2. Nearest unmitigated Order Blocks
+                    ob_stmt = (
+                        select(OrderBlock)
+                        .where(OrderBlock.symbol == symbol, OrderBlock.timeframe.in_(["H4", "H1"]))
+                        .where(OrderBlock.mitigated_at.is_(None))
+                        .order_by(OrderBlock.formed_at.desc())
+                        .limit(10)
+                    )
+                    obs = (await session.execute(ob_stmt)).scalars().all()
+                    demand_obs = [
+                        ob
+                        for ob in obs
+                        if (ob.direction or "").lower() in ("bullish", "demand")
+                        and float(ob.price_low or 0) <= curr_close
+                    ]
+                    supply_obs = [
+                        ob
+                        for ob in obs
+                        if (ob.direction or "").lower() in ("bearish", "supply")
+                        and float(ob.price_high or 0) >= curr_close
+                    ]
+
+                    # 3. Liquidity sweep check
+                    from monika.application.analysis.calculators.liquidity_sweep_detector import detect_liquidity_sweep
+
+                    sweep_info = await detect_liquidity_sweep(session, symbol, self.settings)
+                    sweep_detected = sweep_info.get("sweep_detected", False)
+                    sweep_dir = sweep_info.get("sweep_direction")
+                    sweep_of_low = sweep_detected and sweep_dir == "buy_side"
+                    sweep_of_high = sweep_detected and sweep_dir == "sell_side"
+
+                    status_str = (
+                        "ACCUMULATION ZONE (BUY eligible)"
+                        if range_pos <= 0.35
+                        else (
+                            "DISTRIBUTION ZONE (SELL eligible)"
+                            if range_pos >= 0.65
+                            else "EQUILIBRIUM DEAD ZONE (Market execution prohibited, stance WAIT)"
+                        )
+                    )
+                    demand_str = (
+                        f"{demand_obs[0].price_low:.5f} - {demand_obs[0].price_high:.5f} (OB)"
+                        if demand_obs and demand_obs[0].price_low and demand_obs[0].price_high
+                        else "None detected near price"
+                    )
+                    supply_str = (
+                        f"{supply_obs[0].price_low:.5f} - {supply_obs[0].price_high:.5f} (OB)"
+                        if supply_obs and supply_obs[0].price_low and supply_obs[0].price_high
+                        else "None detected near price"
+                    )
+                    sweep_str = (
+                        "YES (Sweep of Low -> Bullish MSS confirmed)"
+                        if sweep_of_low
+                        else ("YES (Sweep of High -> Bearish MSS confirmed)" if sweep_of_high else "NO")
+                    )
+
+                    anchor_lines.extend(
+                        [
+                            f"Dealing Range (20-day): High={high_20:.5f}, Low={low_20:.5f}, Close={curr_close:.5f}",
+                            f"Range Position Ratio: {range_pos:.2f} ({range_zone})",
+                            f"Spatial Status: {status_str}",
+                            f"Unmitigated Demand POI: {demand_str}",
+                            f"Unmitigated Supply POI: {supply_str}",
+                            f"Liquidity Sweep Detected: {sweep_str}",
+                        ]
+                    )
+            except Exception as _spatial_err:
+                logger.debug(f"Spatial coordinates calculation failed (non-fatal): {_spatial_err}")
+
+            if len(anchor_lines) > 1:
+                context_blocks.append(("TARGET ASSET MACRO ANCHOR", "\n".join(anchor_lines)))
 
             from monika.infrastructure.database.models import VIXData
 
@@ -642,7 +740,8 @@ class ContextBuilderMixin:
             logger.debug(f"VIX context injection failed (non-fatal): {e}")
 
         weekday = _get_clock().now().weekday()
-        if weekday in (5, 6) and symbol in self.always_open_assets:
+        always_open = getattr(self, "always_open_assets", ("BTCUSD", "ETHUSD"))
+        if weekday in (5, 6) and symbol in always_open:
             weekend_override_note = (
                 "[WARNING] WEEKEND TRADING MODE ACTIVE:\n"
                 "- Liquidity is reduced (typically 30-50% of weekday volume)\n"

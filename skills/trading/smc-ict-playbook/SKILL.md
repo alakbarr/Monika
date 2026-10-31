@@ -15,17 +15,29 @@ tags: [smc, ict, order_block, fvg, market_structure, liquidity, stage2, bos, cho
 
 {tool_order_guidance}
 
-## STEP 0: MANDATORY MARKET REGIME CHECK
-Evaluate market regime via D1 and H4 ADX prior to scoring:
+## STEP 0: MANDATORY MARKET REGIME & DEALING RANGE CHECK
+Evaluate market regime via D1 and H4 ADX, and inspect the 20-day dealing range position $pos = (\text{Close} - \text{Low}_{20}) / (\text{High}_{20} - \text{Low}_{20})$:
 
-| Regime (D1 ADX) | Action Directive |
-|:---|:---|
-| **ADX > 40 (Strong Trend)** | Threshold = `{effective_threshold}`. Trend-following ONLY. Counter-trend setups penalized (-3). |
-| **ADX 25–40 (Trend)** | Threshold = `{effective_threshold}`. Prefer primary trend direction (+1 aligned bonus). |
-| **ADX 15–25 (Weak Trend)** | Threshold = `{effective_threshold}`. Mean-reversion valid at major S/R extremes. |
-| **ADX < 15 (Ranging / Chop)** | Threshold = `{effective_threshold} + 1`. Limit orders at confirmed range extremes only. |
+| Regime (D1 ADX) | Action Directive | Dealing Range Requirement |
+|:---|:---|:---|
+| **ADX > 40 (Strong Trend)** | Threshold = `{effective_threshold}`. Trend-following preferred. Counter-trend setups require Engine 2. | $pos \le 0.35$ (BUY) or $pos \ge 0.65$ (SELL) |
+| **ADX 25–40 (Trend)** | Threshold = `{effective_threshold}`. Prefer primary trend direction (+1 aligned bonus). | $pos \le 0.35$ (BUY) or $pos \ge 0.65$ (SELL) |
+| **ADX 15–25 (Weak Trend)** | Threshold = `{effective_threshold}`. Mean-reversion valid at major S/R extremes. | $pos \le 0.35$ (BUY) or $pos \ge 0.65$ (SELL) |
+| **ADX < 15 (Ranging / Chop)** | Threshold = `{effective_threshold} + 1`. Limit orders at confirmed range extremes only. | $0.35 < pos < 0.65 \rightarrow$ **WAIT** (Dead Zone) |
 
-*State explicitly in rationale*: `"D1 ADX={value}, regime={regime_label}, threshold adjusted to {n}/14"`
+*State explicitly in rationale*: `"D1 ADX={value}, regime={regime_label}, range_pos={pos:.2f}, threshold adjusted to {n}/14"`
+
+## STEP 0.2: DUAL-ENGINE INSTITUTIONAL SETUP CLASSIFICATION
+Before scoring, classify the setup into one of two institutional execution engines:
+
+1. **Engine 1 (Trend-Aligned / Neutral POI Retest)**:
+   - *Condition*: Trade direction aligns with or is neutral to Stage 1 macro and D1 structure.
+   - *Requirement*: Price resting inside or retesting an unmitigated H4/H1 Order Block or Fair Value Gap (FVG).
+   - *Criteria*: Reward-to-Risk $R:R \ge 1.75$, $pos \le 0.35$ for BUY or $pos \ge 0.65$ for SELL. Liquidity sweep is an optional bonus (+2), NOT mandatory, because macro trend order flow provides displacement tailwind.
+2. **Engine 2 (Contra-Macro Liquidity Sweep / Turtle Soup)**:
+   - *Condition*: Trade direction opposes strong Stage 1 macro ($conf \ge 0.55$).
+   - *Requirement*: Touching a POI alone is INSUFFICIENT. MANDATORY: Confirmed liquidity sweep of recent key swing high/low (Turtle Soup) followed by displacement back above/below the swept level (MSS).
+   - *Criteria*: Reward-to-Risk $R:R \ge 2.00$, $pos \le 0.35$ for BUY or $pos \ge 0.65$ for SELL. Downscale risk sizing to $0.65\times\text{--}0.75\times$.
 
 ## STEP 0.5: MANDATORY STRUCTURAL TP/SL LOOKUP
 Call `get_optimal_intraday_levels(symbol, direction, entry_price)` before finalizing SL/TP.
@@ -33,16 +45,16 @@ Call `get_optimal_intraday_levels(symbol, direction, entry_price)` before finali
 - If `entry_allowed == False` (daily range exhausted) $\rightarrow$ Submit `WAIT`.
 
 ## MANDATORY CONFLUENCE SCORECARD FORMAT
-Output confluence assessment in EXACT format BEFORE calling `submit_asset_analysis`.
-Choose either **REGIME A (PULLBACK / ZONE RETEST)** or **REGIME B (BREAKOUT / MOMENTUM EXPANSION)** depending on market context:
+Output confluence assessment before calling `submit_asset_analysis`. Choose either **REGIME A (PULLBACK / ZONE RETEST)** or **REGIME B (BREAKOUT / MOMENTUM EXPANSION)**:
 
 ```text
-CONFLUENCE SCORECARD FOR {SYMBOL}:
+CONFLUENCE SCORECARD FOR {symbol}:
 SETUP_TYPE: [PULLBACK_RETEST / BREAKOUT_EXPANSION]
+EXECUTION_ENGINE: [ENGINE_1_POI_RETEST / ENGINE_2_LIQUIDITY_SWEEP]
 
 --- CORE STRUCTURAL & MACRO FACTORS ---
-[ ] F1_FUNDAMENTAL_BIAS: Macro brief supports {BUY/SELL}? YES(+2)/NO(0); Strong Conviction: YES(+3); Contra-Macro Setup (opposes Stage 1 bias when confidence >= 0.55): FORCED_PENALTY(-3) unless price breached Stage 1 invalidation level = __
-[ ] F2_DXY_CONFIRMS: DXY/Contagion confirms direction? YES(+1)/NO(0) = __
+[ ] F1_FUNDAMENTAL_BIAS: Macro brief supports {BUY/SELL}? YES(+2)/NO(0); Strong Conviction: YES(+3); Contra-Macro Setup (opposes Stage 1 bias when confidence >= 0.55): FORCED_PENALTY(-3) unless Engine 2 confirmed sweep exists = __
+[ ] F2_DXY_CONFIRMS: DXY momentum confirms direction? YES(+1)/NO(0) = __
 [ ] F3_D1_TREND: D1 & H4 trend aligns with entry? YES(+2)/NO(0) = __
 [ ] F4_RSI_NEUTRAL_OR_MOMENTUM: RSI confirmed (not overbought/oversold for retest, or strong momentum 45-65 for breakout)? YES(+1)/NO(0) = __
 
@@ -77,7 +89,7 @@ REGIME MODIFIER: ADX < 15 (ranging)? +1 to threshold. ADX > 40? -1 to threshold.
 
 TOTAL CONFLUENCE SCORE: __ (Base Score + Quant Bonuses + Session Modifier)
 EFFECTIVE THRESHOLD: __ / 14 (Standard 7 + Dynamic Adjustments)
-DECISION: __ (BUY/SELL if Total Confluence >= Effective Threshold, WAIT if sub-threshold, AVOID if structural invalidation)
+DECISION: __ (BUY/SELL if Total Confluence >= Effective Threshold and out of Equilibrium Dead Zone; WAIT if sub-threshold or inside chop)
 ```
 
 `confluence_factors` IDs: `"fundamental_bias"`, `"dxy_confirms"`, `"d1_trend"`, `"rsi_neutral"`, `"near_fvg"`, `"near_order_block"`, `"in_ote_zone"`, `"near_sr_zone"`, `"breakout_expansion"`, `"volume_expansion"`, `"trend_continuation"`, `"momentum_expansion"`, `"cot_aligned"`, `"vix_ok"`, `"post_event_entry"`, `"session_prime"`, `"liquidity_sweep_confirmed"`, `"microstructure_ok"`, `"historical_pattern_consensus"`, `"quant_strategy_edge"`, `"rr_ratio_bonus"`, `"adr_target_bonus"`.
@@ -85,17 +97,17 @@ DECISION: __ (BUY/SELL if Total Confluence >= Effective Threshold, WAIT if sub-t
 ## AUTOMATED SERVER-SIDE RISK ENFORCEMENT RULES
 1. **ATR Missing**: BUY/SELL rejected.
 2. **Stale H4 Indicators (> 5h)**: BUY/SELL rejected.
-3. **Reward-to-Risk < 1.30**: Submission rejected.
+3. **Reward-to-Risk < 1.30**: Submission rejected. Minimum R:R for Engine 1 is 1.75; minimum R:R for Engine 2 is 2.00.
 4. **Confluence Score < `{effective_threshold}` for BUY/SELL**: Submission rejected.
-5. **Priced-In Score $\ge 8$**: Mandatory `WAIT`. Hard block in RiskGate.
-6. **Contra-Macro Setup without Adjudication**: When currency confidence $\ge 0.70$, submitting BUY/SELL directly opposing the macro brief without explicit `specialist_adjudication` (with conflict_detected=true, resolution_path in ('override_macro', 'cancel_setup', 'hedged_entry', 'scale_out'), and $\ge 40$ chars justification citing structural level breach) is **HARD REJECTED** by the server.
+5. **Priced-In Score $\ge 8$**: Prohibit trend-following market chase in direction of priced-in narrative. Stance is `WAIT` for pullback or re-evaluation at extreme structural discount/premium.
+6. **Contra-Macro Setup Adjudication**: When trading against Stage 1 macro ($conf \ge 0.55$), verify Engine 2 (Liquidity Sweep confirmed) and document structural invalidation in `specialist_adjudication` or rationale. High-confluence setups will be automatically routed to the Dialectical Debate Council for investment adjudication.
 
 ## Decision Thresholds & Intraday Range Rules
 - **Take Profit Target Band**: 40%–85% of 5-day ADR (via `get_daily_range_context`), placed at a verified structural target.
 - **Stop Loss Sizing & Placement**:
-  - SL MUST be anchored to verified structural invalidation (swing high/low, order block boundary) with a 0.15–0.25x ATR buffer.
-  - SL Floor: $\ge 0.5\times\text{ ATR}(14, \text{H4})$ to ensure the position is not stopped out by spread or micro-noise.
-  - SL Ceiling: Adaptive ceiling $\le \max(0.40\times\text{ADR}, 1.25\times\text{ATR}(14, \text{H4}))$. Never squeeze SL smaller than structural protection.
+  - SL MUST be anchored to verified structural invalidation (swing high/low, order block boundary) with a 0.25–0.40x ATR buffer.
+  - SL Floor: $\ge 1.0\times\text{ ATR}(14, \text{H4})$ to ensure the position is never stopped out by spread or micro-noise.
+  - SL Ceiling: Adaptive ceiling $\le \max(0.40\times\text{ADR}, 1.50\times\text{ATR}(14, \text{H4}))$. Never squeeze SL smaller than structural protection.
 - **Room Remaining**: `room_remaining_pct < 15%` $\rightarrow$ Submit `WAIT` (insufficient range left for the session).
 
 ## CRITICAL: Anti-Over-Conservative Directive
@@ -104,9 +116,9 @@ DECISION: __ (BUY/SELL if Total Confluence >= Effective Threshold, WAIT if sub-t
 
 Before defaulting to WAIT, complete this Active Opportunity Scan:
 1. **D1 Structure**: Is the macro trend clear? (ADX > 20, price aligned with moving averages)
-2. **H4 Zone**: Is price resting inside a valid unmitigated Order Block, FVG, or S/R zone?
+2. **H4 Zone & Dealing Range**: Is price resting inside a valid unmitigated Order Block, FVG, or S/R zone at Deep Discount ($pos \le 0.35$) or Deep Premium ($pos \ge 0.65$)?
 3. **Directional Alignment**: Does D1 trend match the proposed H4 entry direction? (Counter-trend H4 pullbacks into D1 trend support/resistance are prime institutional discount entries, NOT conflicts).
 4. **Safety Filter**: Is VIX $< 30.0$ AND no high-impact economic news within 15 minutes?
 5. **Regime B Momentum Expansion**: If a confirmed Donchian or structural breakout occurs with volume (RVOL $\ge$ 1.2), do NOT reject on lack of older FVG proximity — enter on the expansion impulse with SL behind the breakout base.
 
-**If $\ge 3/5$ criteria are YES $\rightarrow$ An active institutional setup exists. Score and submit BUY/SELL decisively if confluence $\ge$ threshold.**
+**If $\ge 3/5$ criteria are YES and price is at Deep Discount / Premium $\rightarrow$ An active institutional setup exists. Score and submit BUY/SELL decisively if confluence $\ge$ threshold.**

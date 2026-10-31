@@ -8,9 +8,11 @@ import logging
 import sys
 from typing import Any, Optional
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.application.analysis.stages.per_asset.context_builder import _flatten_system_prompt
+from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
 from monika.infrastructure.providers.llm_factory import create_client
 
 logger = logging.getLogger("TradingAgent.PerAssetStage")
@@ -194,3 +196,139 @@ def extract_entry_price_from_analysis(analysis: Optional[Any]) -> Optional[float
             except ValueError, TypeError:
                 pass
     return entry_price_val
+
+
+async def evaluate_debate_candidate_and_levels(
+    analysis: Any,
+    session: Optional[AsyncSession],
+    symbol: str,
+    entry_price_val: Optional[float],
+) -> tuple[bool, Optional[float], Optional[float], Optional[int], Any, Optional[float]]:
+    """Evaluate candidate_for_debate flag and auto-recover structural SL/TP if missing."""
+    decision = getattr(analysis, "decision", "WAIT") if analysis else "WAIT"
+
+    def _safe_float(val: Any) -> Optional[float]:
+        if val is None:
+            return None
+        try:
+            return float(val)
+        except ValueError, TypeError:
+            return None
+
+    def _safe_int(val: Any) -> Optional[int]:
+        if val is None:
+            return None
+        try:
+            return int(val)
+        except ValueError, TypeError:
+            return None
+
+    sl_val = _safe_float(getattr(analysis, "stop_loss", None)) if analysis else None
+    tp_val = _safe_float(getattr(analysis, "take_profit", None)) if analysis else None
+    cs_val = _safe_int(getattr(analysis, "confluence_score", None)) if analysis else None
+
+    # Fetch latest price and ATR as fallback references if needed
+    latest_atr: Optional[float] = None
+    if session and (entry_price_val is None or sl_val is None or tp_val is None):
+        try:
+            if entry_price_val is None:
+                p_row = (
+                    await session.execute(
+                        select(PriceOHLCV.close)
+                        .where(PriceOHLCV.symbol == symbol)
+                        .order_by(PriceOHLCV.timestamp.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
+                if p_row is not None:
+                    entry_price_val = float(p_row)
+
+            ti_row = (
+                await session.execute(
+                    select(TechnicalIndicator)
+                    .where(
+                        TechnicalIndicator.symbol == symbol,
+                        TechnicalIndicator.timeframe.in_(["H4", "H1"]),
+                        TechnicalIndicator.indicator_name == "ATR_14",
+                    )
+                    .order_by(TechnicalIndicator.timestamp.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if ti_row and ti_row.value_json:
+                raw_atr = json.loads(ti_row.value_json)
+                latest_atr = float(raw_atr.get("atr", 0) if isinstance(raw_atr, dict) else raw_atr)
+        except Exception:
+            pass
+
+    is_candidate_for_debate = False
+    if analysis:
+        if str(decision).strip().lower() in ("buy", "sell"):
+            is_candidate_for_debate = True
+        elif str(decision).strip().lower() == "wait" and cs_val is not None and cs_val >= 6:
+            rat = str(getattr(analysis, "rationale", "") or "").lower()
+            conflict_keywords = (
+                "conflict",
+                "diverg",
+                "macro",
+                "opposing",
+                "brief",
+                "ssvp",
+                "headwind",
+                "bias",
+                "discount",
+                "premium",
+                "order block",
+                "fvg",
+                "pullback",
+                "retest",
+            )
+            has_structural_setup = any(kw in rat for kw in conflict_keywords)
+
+            # Auto-recover structural SL/TP if model omitted them on WAIT decision
+            if (sl_val is None or tp_val is None) and has_structural_setup:
+                inval_price = _safe_float(getattr(analysis, "invalidation_price", None))
+                ref_px = entry_price_val
+                ref_atr = latest_atr
+
+                if inval_price is not None and ref_px is not None:
+                    inval_dir = str(getattr(analysis, "invalidation_direction", "") or "").lower()
+                    if "below" in inval_dir or inval_price < ref_px:
+                        if sl_val is None:
+                            sl_val = inval_price
+                        if tp_val is None:
+                            risk_d = abs(ref_px - sl_val)
+                            tp_val = round(ref_px + (1.6 * risk_d), 5)
+                    elif "above" in inval_dir or inval_price > ref_px:
+                        if sl_val is None:
+                            sl_val = inval_price
+                        if tp_val is None:
+                            risk_d = abs(sl_val - ref_px)
+                            tp_val = round(ref_px - (1.6 * risk_d), 5)
+                elif ref_px is not None and ref_atr is not None and ref_atr > 0:
+                    is_bull = any(w in rat for w in ("bull", "long", "discount", "buy"))
+                    is_bear = any(w in rat for w in ("bear", "short", "premium", "sell"))
+                    if is_bull and not is_bear:
+                        if sl_val is None:
+                            sl_val = round(ref_px - (1.2 * ref_atr), 5)
+                        if tp_val is None:
+                            tp_val = round(ref_px + (1.92 * ref_atr), 5)
+                    elif is_bear and not is_bull:
+                        if sl_val is None:
+                            sl_val = round(ref_px + (1.2 * ref_atr), 5)
+                        if tp_val is None:
+                            tp_val = round(ref_px - (1.92 * ref_atr), 5)
+
+            if sl_val is not None and tp_val is not None and has_structural_setup:
+                is_candidate_for_debate = True
+                try:
+                    if analysis.stop_loss is None:
+                        analysis.stop_loss = sl_val
+                    if analysis.take_profit is None:
+                        analysis.take_profit = tp_val
+                    if session:
+                        await session.commit()
+                except Exception as sync_err:
+                    logger.debug(f"[{symbol}] Non-fatal error syncing recovered debate levels: {sync_err}")
+
+    return is_candidate_for_debate, sl_val, tp_val, cs_val, decision, entry_price_val

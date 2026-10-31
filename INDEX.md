@@ -7034,6 +7034,7 @@
   - `async compute_prompt_invariants(settings: dict, symbol: str, raw_bundle_data: Any, ...) -> tuple[Optional[float], Optional[float], Optional[float]]`: Compute zero-arithmetic invariants and format for prompt injection.
   - `async handle_billing_fallback(runner: Any, session: AsyncSession, symbol: str, ...) -> dict`: Handle LLM billing error with fallback model switch if approved.
   - `extract_entry_price_from_analysis(analysis: Optional[Any]) -> Optional[float]`: Extract entry price float safely from entry_zone or fallbacks.
+  - `async evaluate_debate_candidate_and_levels(analysis: Any, session: Optional[AsyncSession], symbol: str, ...) -> tuple[bool, Optional[float], Optional[float], Optional[int], Any, Optional[float]]`: Evaluate candidate_for_debate flag and auto-recover structural SL/TP if missing.
 
 ### Folder: `src/monika/application/analysis/strategies` <a id="folder-srcmonikaapplicationanalysisstrategies"></a>
 

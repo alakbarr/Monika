@@ -126,6 +126,12 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                                 "stage 1",
                                 "idiosyncratic",
                                 "independent justification",
+                                "discount",
+                                "premium",
+                                "technical",
+                                "structure",
+                                "order block",
+                                "fvg",
                             ]
                         )
                         if gap == 2 and has_rationale_justification:

@@ -150,12 +150,18 @@ BRIER SCORE CALIBRATION WEIGHING (Subsystem 4):
 DIRECTIONAL ADJUDICATION RULES:
 If original_context decision is CONFLICT_ADJUDICATION or WAIT or NEUTRAL (Two-Sided Dialectical Debate):
 - Symmetrical Evaluation: Bull Analyst proposes Long setup; Bear Analyst proposes Short/Downside setup.
-- Dealing Range Discipline:
-  * If price is in DISCOUNT (dealing range pos < 0.45) with unmitigated FVG/OB demand, SL >= 1.0x ATR, and R:R >= 1.50: APPROVE BUY with calibrated risk multiplier (0.60 to 0.85), even if macro brief leans neutral or opposing.
-  * If price is in PREMIUM (dealing range pos > 0.55) with unmitigated OB/FVG supply, SL >= 1.0x ATR, and R:R >= 1.50: APPROVE SELL with calibrated risk multiplier (0.60 to 0.85), even if macro brief leans neutral or opposing.
-  * If price is in the middle of consolidation (0.45 <= pos <= 0.55) without confirmed breakout expansion: declare final_decision = 'avoid' with risk_multiplier = 0.0 to prevent churning in range noise.
+- 3-Zone Spatial Dealing Range & Dual-Engine Rules:
+  * DEEP DISCOUNT (dealing range pos <= 0.35): Institutional accumulation territory. APPROVE BUY if either:
+    1) Engine 1 (Macro-Aligned/Neutral): Unmitigated Demand OB/FVG retest with R:R >= 1.75 and SL >= 1.0x ATR. Calibrated risk multiplier 0.75 - 1.0.
+    2) Engine 2 (Contra-Macro): Confirmed Liquidity Sweep of swing low (Turtle Soup) + MSS displacement with R:R >= 2.00. Downscale risk multiplier to 0.65 - 0.75.
+    If contra-macro and NO confirmed sweep (untethered falling knife), declare final_decision = 'avoid' with risk_multiplier = 0.0.
+  * DEEP PREMIUM (dealing range pos >= 0.65): Institutional distribution territory. APPROVE SELL if either:
+    1) Engine 1 (Macro-Aligned/Neutral): Unmitigated Supply OB/FVG retest with R:R >= 1.75 and SL >= 1.0x ATR. Calibrated risk multiplier 0.75 - 1.0.
+    2) Engine 2 (Contra-Macro): Confirmed Liquidity Sweep of swing high + MSS displacement with R:R >= 2.00. Downscale risk multiplier to 0.65 - 0.75.
+    If contra-macro and NO confirmed sweep (untethered parabolic rally), declare final_decision = 'avoid' with risk_multiplier = 0.0.
+  * EQUILIBRIUM DEAD ZONE (0.35 < pos < 0.65): Middle-range chop. Without confirmed Donchian breakout expansion with RVOL >= 1.5, declare final_decision = 'avoid' with risk_multiplier = 0.0 to prevent churning in range noise.
 - Trend Climax & Anti-Exhaustion Guard: If ADX > 50 or price is extended far from H4 EMAs, evaluate as potential climax exhaustion rather than fresh breakout. Require retest of structural POI.
-- Minimum Asymmetry: Approve the side that demonstrates verified structural edge, Stop Loss distance >= 1.0x ATR, and R:R >= 1.50. If both sides lack structural edge, rule 'avoid' with risk_multiplier = 0.0.
+- Minimum Asymmetry: Approve the side that demonstrates verified structural edge, Stop Loss distance >= 1.0x ATR, and R:R >= 1.75. If both sides lack structural edge, rule 'avoid' with risk_multiplier = 0.0.
 If original_context decision is SELL:
 - Pro-Thesis Advocate: Bear Analyst defending the short entry and breakdown catalysts (higher score = stronger short setup).
 - Counter-Thesis Dissenter: Bull Analyst challenging the short setup with upside reversal threats (higher score = dangerous upside threat).
