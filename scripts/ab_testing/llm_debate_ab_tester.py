@@ -137,6 +137,33 @@ def _load_or_create_benchmark_fixtures() -> List[DebateTestCase]:
     ]
 
 
+def _extract_json_dict(resp: Any) -> Dict[str, Any]:
+    """Safely extracts JSON dict from LLM response (supports str, BaseLLMResponse, or dict)."""
+    if isinstance(resp, dict):
+        return resp
+    if hasattr(resp, "text") and isinstance(resp.text, str):
+        text = resp.text
+    elif hasattr(resp, "content") and isinstance(resp.content, str):
+        text = resp.content
+    else:
+        text = str(resp or "").strip()
+    if not text:
+        return {}
+    if "```json" in text:
+        text = text.split("```json", 1)[1].split("```", 1)[0].strip()
+    elif "```" in text:
+        text = text.split("```", 1)[1].split("```", 1)[0].strip()
+    elif "{" in text and "}" in text:
+        start = text.find("{")
+        end = text.rfind("}") + 1
+        text = text[start:end].strip()
+    try:
+        return json.loads(text)
+    except Exception as e:
+        logger.warning(f"Failed to parse JSON from LLM response: {e}. Raw text: {text[:150]}")
+        return {}
+
+
 class EmpiricalDebateEvaluator:
     def __init__(self, model_name: str, settings: dict, dry_run: bool = False):
         self.model_name = model_name
@@ -186,9 +213,10 @@ class EmpiricalDebateEvaluator:
                     "properties": {"final_decision": {"type": "string"}, "reason": {"type": "string"}},
                 },
             )
-            raw = json.loads(resp.text)
+            raw = _extract_json_dict(resp)
             dec = str(raw.get("final_decision", "avoid")).lower()
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Control LLM call error: {e}. Failing closed to avoid.")
             dec = "avoid"
 
         return self._compute_outcome(
@@ -265,7 +293,7 @@ Respond strictly in JSON:
                     "required": ["final_decision", "confidence", "reason"],
                 },
             )
-            raw = json.loads(resp.text)
+            raw = _extract_json_dict(resp)
             dec = str(raw.get("final_decision", "avoid")).lower()
             conf = float(raw.get("confidence", 0.60))
             rm = float(raw.get("risk_multiplier", 0.50)) if dec != "avoid" else 0.0

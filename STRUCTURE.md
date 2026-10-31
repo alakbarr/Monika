@@ -2133,6 +2133,7 @@ Monika/
 │   │   ├── calculators/
 │   │   │   └── test_quant_plateau_optimizer.py
 │   │   ├── debate/
+│   │   │   ├── test_dialectical_debate.py
 │   │   │   └── test_market_aware_judge.py
 │   │   ├── evaluation/
 │   │   │   └── test_decision_quality.py
@@ -2999,6 +3000,8 @@ Monika/
 │   ├── test_universal_macro_and_capability_remediation.py
 │   ├── test_vector_factor_engine.py
 │   └── test_workspace_mcp_integration.py
+│   ├── ab_testing/
+│   │   └── llm_debate_ab_tester.py
 │   ├── check_scrapers/
 │   │   ├── __init__.py
 │   │   ├── check_calendar.py
@@ -3163,4 +3166,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 272 | **Total Tracked Files**: 2861
+**Total Tracked Directories**: 273 | **Total Tracked Files**: 2863
