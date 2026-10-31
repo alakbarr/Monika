@@ -26,12 +26,14 @@ class DummyPerAssetRunner(SingleAssetAnalysisMixin):
         self.settings = {
             "trading": {"cost_mode": "standard"},
             "agent_architecture": {"specialist_decomposition": False},
+            "analysis": {"enable_preflight_gate": False},
         }
         self._last_analysis_time = {}
         self._min_reanalysis_minutes = 0
         self.primary_client = None
         self.secondary_client = None
         self.session_trigger_client = None
+        self._skip_preflight = True
 
     def _build_trimmed_user_message(self, symbol: str) -> str:
         return f"Analyze {symbol} and provide a structured trading decision."
@@ -43,7 +45,7 @@ class DummyPrescreenRunner(PrescreenMixin):
     def __init__(self):
         self.settings = {"trading": {"asset_universe": ["EURUSD"]}}
         self._last_analysis_time = {}
-        self.always_open_assets = set()
+        self.always_open_assets = {"EURUSD"}
         self._haiku_client = MagicMock()
 
 

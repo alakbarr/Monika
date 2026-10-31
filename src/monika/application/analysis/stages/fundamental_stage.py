@@ -87,7 +87,8 @@ Analyze the pre-fetched macro environment, synthesize the cross-market drivers, 
 Invoke the tool 'submit_fundamental_brief' when complete.
 
 CORE CENTRAL BANK & CURRENCY ATTRACTIVENESS DIRECTIVES:
-1. Interest rates and forward trajectory expectations are the single most dominant driver of currency valuation (Capital flows seek highest risk-adjusted real yield).
+1. Interest rates and forward trajectory expectations are the foundational macro baseline of currency valuation (Capital flows seek highest risk-adjusted real yield).
+   - DUAL-HORIZON RECONCILIATION: Differentiate between multi-week STRUCTURAL baseline policy stance and TACTICAL (4h-24h) operational market drivers (short-term liquidity flows, positioning squeezes, session momentum, event repricing). DO NOT let a multi-month rate differential anchor your analysis into an inflexible one-way bias if tactical liquidity and near-term market catalysts indicate counter-trend exhaustion or rebalancing. Ground both structural regime and 24h operational reality.
 2. Raw economic releases (CPI, NFP, GDP, PMI) do NOT drive currencies directly; they transmit indirectly by altering market expectations of central bank policy.
    - MANDATORY REPRICING CORRELATION: Inspect `fedwatch_comparison` or `fedwatch.comparisons` in the [PRE-FETCHED DATA] block. When evaluating USD releases (Core PCE, CPI, NFP, GDP), explain quantitatively how FedWatch probabilities shifted pre- vs post-release (e.g. "Pre-PCE hike odds were 45.0%, shifting post-release to 37.1%"). Record this shift in `macro_narrative`, `priced_in_assessment.fedwatch_shift_summary`, and `key_data_points_used.fedwatch_repricing_delta_pct`.
 3. Evaluate specific central bank reaction functions and mandates:

@@ -690,10 +690,14 @@ def test_phase11_pydantic_hardening_invariants():
     assert coerce_string_list("1. Validated level\n2. Another level") == ["Validated level", "Another level"]
     assert coerce_string_list("- Bullet point") == ["Bullet point"]
 
-    # 3. Confluence score bounds [0, 14]
+    # 3. Confluence score bounds [0, 20] (allows bonus factors up to 20)
+    schema_15 = SubmitAssetAnalysisSchema(
+        symbol="EURUSD", decision="wait", confidence=0.7, rationale="Test", invalidation="Test", confluence_score=15
+    )
+    assert schema_15.confluence_score == 15
     with pytest.raises(ValidationError):
         SubmitAssetAnalysisSchema(
-            symbol="EURUSD", decision="wait", confidence=0.7, rationale="Test", invalidation="Test", confluence_score=15
+            symbol="EURUSD", decision="wait", confidence=0.7, rationale="Test", invalidation="Test", confluence_score=21
         )
     with pytest.raises(ValidationError):
         SubmitAssetAnalysisSchema(

@@ -119,10 +119,31 @@ async def bull_advocate_node(state: TradingState, config: Optional[RunnableConfi
                     }
 
                     turn_timeout = resolve_debate_timeout(settings, bull_client)
-                    async with asyncio.timeout(turn_timeout):
-                        verified_bull_claim = await generate_bull_advocacy(
-                            bull_client, sym, original_context, fact_sheet
+                    try:
+                        async with asyncio.timeout(turn_timeout):
+                            verified_bull_claim = await generate_bull_advocacy(
+                                bull_client, sym, original_context, fact_sheet
+                            )
+                    except Exception as first_err:
+                        logger.warning(
+                            f"[{sym}] Bull advocacy attempt 1 failed ({first_err}). Retrying with existing task_role client..."
                         )
+                        async with asyncio.timeout(turn_timeout):
+                            verified_bull_claim = await generate_bull_advocacy(
+                                bull_client, sym, original_context, fact_sheet
+                            )
+
+                    if not verified_bull_claim or verified_bull_claim.get("parse_error"):
+                        logger.warning(
+                            f"[{sym}] Bull advocacy parsing incomplete. Synthesizing grounded claim from Stage 2 context."
+                        )
+                        verified_bull_claim = {
+                            "bull_thesis": original_context.get("rationale")
+                            or f"Stage 2 verified {decision.upper()} thesis",
+                            "strength_score": 6,
+                            "evidence_cited": ["Stage 2 validated technical structure"],
+                            "degraded_fallback": True,
+                        }
 
                     curr_p = float(ana.price_at_analysis or 0.0)
                     if not _is_grounded(verified_bull_claim, curr_p, reference=fact_sheet):

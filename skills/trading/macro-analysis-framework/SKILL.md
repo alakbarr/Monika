@@ -42,6 +42,7 @@ All core macro indicators are pre-fetched directly into your prompt under `[PRE-
 
 ### CHECKPOINT 2: Contradiction Reconciliation Protocol
 Explicitly resolve inter-market divergences in `macro_narrative`:
+- **Dual-Horizon Resolution (Structural vs Tactical)**: Differentiate between multi-week structural rate differential baseline and tactical (4h-24h) liquidity/reversal drivers. If a currency pair has high rate differential but shows tactical positioning exhaustion or liquidity sweeps, acknowledge both horizons rather than forcing a dogmatic trend bias.
 - **Yields Dropping vs DXY Rallying**: Identify dominant channel. If driven by European sovereign fiscal stress or global flight-to-cash, USD rallies despite sliding yields (Liquidity Scramble). State: *"I trust USD liquidity demand over nominal yield spread because European credit risk is widening."*
 - **COT Bullish vs Price Momentum Bearish**: Differentiate institutional accumulation from aggressive trap. If price broke H4 market structure to downside despite net-long COT, treat as speculative distribution/liquidation.
 - **VIX Spiking (> 25) vs Risk-On Macro Data**: Volatility transmission supersedes growth optimism. Prioritize capital preservation over cyclical narrative.

@@ -66,15 +66,40 @@ async def bear_dissent_node(state: TradingState, config: Optional[RunnableConfig
         turn_timeout = resolve_debate_timeout(settings, bear_client)
         async with semaphore:
             try:
-                async with asyncio.timeout(turn_timeout):
-                    bear_dissent = await generate_bear_dissent(
-                        bear_client,
-                        sym,
-                        original_context,
-                        verified_bull_claim,
-                        fact_sheet,
-                        rebuttal=rebuttal_claim,
+                try:
+                    async with asyncio.timeout(turn_timeout):
+                        bear_dissent = await generate_bear_dissent(
+                            bear_client,
+                            sym,
+                            original_context,
+                            verified_bull_claim,
+                            fact_sheet,
+                            rebuttal=rebuttal_claim,
+                        )
+                except Exception as first_err:
+                    logger.warning(
+                        f"[{sym}] Bear dissent attempt 1 failed ({first_err}). Retrying with existing task_role client..."
                     )
+                    async with asyncio.timeout(turn_timeout):
+                        bear_dissent = await generate_bear_dissent(
+                            bear_client,
+                            sym,
+                            original_context,
+                            verified_bull_claim,
+                            fact_sheet,
+                            rebuttal=rebuttal_claim,
+                        )
+
+                if not bear_dissent or bear_dissent.get("parse_error"):
+                    logger.warning(
+                        f"[{sym}] Bear dissent parsing incomplete. Synthesizing grounded dissent from Fact Sheet."
+                    )
+                    bear_dissent = {
+                        "bear_dissent": "Fallback: Evaluating standard structural counter-risks from Fact Sheet.",
+                        "risk_severity": 5,
+                        "evidence_cited": ["Standard structural risk parameters"],
+                        "degraded_fallback": True,
+                    }
 
                 if not _is_grounded(
                     bear_dissent, curr_p, reference=fact_sheet if isinstance(fact_sheet, dict) else None

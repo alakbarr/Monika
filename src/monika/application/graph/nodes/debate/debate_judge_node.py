@@ -88,16 +88,31 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
         turn_timeout = resolve_debate_timeout(settings, judge_client)
         async with semaphore:
             try:
-                async with asyncio.timeout(turn_timeout):
-                    verdict = await evaluate_debate(
-                        judge_client,
-                        sym,
-                        original_context,
-                        verified_bull_claim,
-                        bear_dissent,
-                        bull_rebuttal=bull_rebuttal,
-                        fact_sheet=fact_sheet,
+                try:
+                    async with asyncio.timeout(turn_timeout):
+                        verdict = await evaluate_debate(
+                            judge_client,
+                            sym,
+                            original_context,
+                            verified_bull_claim,
+                            bear_dissent,
+                            bull_rebuttal=bull_rebuttal,
+                            fact_sheet=fact_sheet,
+                        )
+                except Exception as judge_err:
+                    logger.warning(
+                        f"[{sym}] Judge adjudication attempt 1 failed ({judge_err}). Retrying with existing task_role client..."
                     )
+                    async with asyncio.timeout(turn_timeout):
+                        verdict = await evaluate_debate(
+                            judge_client,
+                            sym,
+                            original_context,
+                            verified_bull_claim,
+                            bear_dissent,
+                            bull_rebuttal=bull_rebuttal,
+                            fact_sheet=fact_sheet,
+                        )
 
                 # Enforce Specialized Swarm Desk Risk Veto if triggered
                 desk_verdict = deb.get("desk_specialist_verdict") or fact_sheet.get("desk_specialist_verdict", {})

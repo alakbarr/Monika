@@ -982,12 +982,12 @@ class SubmitAssetAnalysisSchema(BaseModel):
     confluence_score: Optional[int] = Field(
         None,
         ge=0,
-        le=14,
-        description="REQUIRED for buy/sell decisions: Total confluence score (integer 0-14) based on SMC/ICT framework.",
+        le=20,
+        description="REQUIRED for buy/sell decisions: Total confluence score (integer 0-20) based on SMC/ICT framework (core 14 points + valid bonus factors up to 20).",
     )
     confluence_factors: Optional[List[str]] = Field(
         None,
-        description='REQUIRED for buy/sell: List of confluence factor IDs that are ACTIVE (scoring points) for this setup. Use these exact IDs: "fundamental_bias", "dxy_confirms", "d1_trend", "rsi_neutral", "near_fvg", "near_order_block", "in_ote_zone", "near_sr_zone", "cot_aligned", "vix_ok", "post_event_entry", "session_prime", "liquidity_sweep_confirmed", "microstructure_ok", "historical_pattern_consensus". Example: ["fundamental_bias", "d1_trend", "near_fvg", "near_order_block"]',
+        description='REQUIRED for buy/sell: List of confluence factor IDs that are ACTIVE (scoring points) for this setup. Use these exact IDs: "fundamental_bias", "dxy_confirms", "d1_trend", "rsi_neutral", "near_fvg", "near_order_block", "in_ote_zone", "near_sr_zone", "cot_aligned", "vix_ok", "post_event_entry", "session_prime", "liquidity_sweep_confirmed", "microstructure_ok", "microstructure_confirmed", "historical_pattern_consensus", "pattern_consensus", "quant_strategy_edge", "rr_ratio_bonus", "adr_target_bonus". Example: ["fundamental_bias", "d1_trend", "near_fvg", "near_order_block"]',
     )
 
     key_news_events_considered: Optional[List[str]] = Field(

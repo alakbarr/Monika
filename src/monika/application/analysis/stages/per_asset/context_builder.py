@@ -77,8 +77,10 @@ RULES, OPPORTUNITY & ADR BOUNDS:
 - Intraday Range Strategy: resolve within 1 trading day using ADR bounds.
 - TP MUST fall within 50-80% of 5-day ADR (get_daily_range_context); minimum R:R = see CURRENT ANALYSIS TARGET.
 - TimesFM Statistical Bound: TP MUST NOT exceed Q90 (for BUY) or fall below Q10 (for SELL) when TimesFM block is loaded.
-- SL MUST be: (a) beyond structural swing level, (b) >= 1.0x ATR_14, (c) bounded within 0.35x - 0.45x ADR.
-  If ATR_14 exceeds 0.35x ADR due to elevated volatility, adjust lot size downwards (risk-adjusted sizing) rather than forcing WAIT.
+- SL HIERARCHY & BOUNDS:
+  (a) Structural Invalidation Anchor: Place SL beyond structural swing level or protected order block/FVG boundary.
+  (b) Noise Floor: SL distance SHOULD be >= 1.0x ATR_14 to prevent noise stop-outs.
+  (c) Volatility Sizing Priority: Target SL within 0.35x - 0.50x ADR under normal conditions. CRITICAL: If structural SL >= 1.0x ATR exceeds 0.45x ADR due to elevated volatility, DO NOT force WAIT. Structural integrity and noise protection ALWAYS override ADR guidelines: accept the structural stop and rely on 'calculate_position_size' to dynamically downscale position volume so dollar risk remains strictly within limits.
 - Decision: Score >= Threshold → BUY/SELL; Score < Threshold → WAIT; Invalid → AVOID.
 - Priced-in score >= 8 + event < 12h → WAIT.
 - Mandatory Bull/Bear Stress test: state 1 opposing scenario before finalizing BUY/SELL.

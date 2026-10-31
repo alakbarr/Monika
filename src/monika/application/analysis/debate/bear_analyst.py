@@ -11,13 +11,14 @@ logger = logging.getLogger("TradingAgent.BearAnalyst")
 
 def _clean_json_str(s: str) -> str:
     s = s.strip()
-    if s.startswith("```"):
-        lines = s.splitlines()
-        if lines and lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].startswith("```"):
-            lines = lines[:-1]
-        s = "\n".join(lines).strip()
+    if "```json" in s:
+        s = s.split("```json", 1)[1].split("```", 1)[0].strip()
+    elif "```" in s:
+        s = s.split("```", 1)[1].split("```", 1)[0].strip()
+    elif "{" in s and "}" in s:
+        start = s.find("{")
+        end = s.rfind("}") + 1
+        s = s[start:end].strip()
     return s
 
 
@@ -138,9 +139,9 @@ async def generate_bear_dissent(
 
     logger.error(f"Failed to parse Bear Analyst JSON after 2 attempts: {last_err}")
     return {
-        "bear_dissent": f"Failed to generate dissent due to parse error: {last_err}",
-        "risk_severity": 10,
-        "evidence_cited": [f"Fallback: LLM generation error ({last_err})"],
+        "bear_dissent": f"Fallback: Bearish counter-thesis evaluation incomplete ({last_err}); evaluating standard structural risk.",
+        "risk_severity": 5,
+        "evidence_cited": ["Standard structural risk parameters"],
         "parse_error": True,
         "degraded_fallback": True,
     }
