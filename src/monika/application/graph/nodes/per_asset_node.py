@@ -316,7 +316,8 @@ async def per_asset_analysis_node(state: TradingState, config: Optional[Runnable
     actionable = [
         (sym, r)
         for sym, r in pa_results.items()
-        if str(r.get("decision", "")).strip().lower() in ("buy", "sell") and r.get("analysis_id")
+        if (str(r.get("decision", "")).strip().lower() in ("buy", "sell") or r.get("candidate_for_debate", False))
+        and r.get("analysis_id")
     ]
 
     # Context Version Split Detection (P1-B)

@@ -237,6 +237,36 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                             await session.commit()
                             return sym, None, verdict
 
+                        final_dec = str(verdict.get("final_decision", "")).strip().lower()
+                        if final_dec in ("buy", "sell"):
+                            if str(ana.decision).lower() != final_dec:
+                                ana.decision = final_dec
+                                ana.was_debate_modified = True
+                            if isinstance(r, dict):
+                                r["decision"] = final_dec
+                                if verdict.get("confidence"):
+                                    r["confidence"] = float(verdict["confidence"])
+                                    ana.confidence = float(verdict["confidence"])
+
+                            # Populate missing levels from proposed claims if not already set
+                            if ana.stop_loss is None:
+                                prop_source = verified_bull_claim if final_dec == "buy" else bear_dissent
+                                if prop_source and prop_source.get("proposed_sl"):
+                                    ana.stop_loss = float(prop_source["proposed_sl"])
+                                    if isinstance(r, dict):
+                                        r["stop_loss"] = float(prop_source["proposed_sl"])
+                                if prop_source and prop_source.get("proposed_tp"):
+                                    ana.take_profit = float(prop_source["proposed_tp"])
+                                    if isinstance(r, dict):
+                                        r["take_profit"] = float(prop_source["proposed_tp"])
+                                if prop_source and prop_source.get("proposed_entry"):
+                                    entry_zone_data["price"] = float(prop_source["proposed_entry"])
+                                    ana.entry_zone = json.dumps(entry_zone_data)
+                                    if isinstance(r, dict):
+                                        r["entry_price"] = float(prop_source["proposed_entry"])
+
+                            await session.commit()
+
                     return sym, (sym, r), verdict
             except Exception as e:
                 logger.error(f"[{sym}] Judge adjudication failed (failing closed to avoid risk): {e}", exc_info=True)

@@ -126,6 +126,7 @@ IMPORTANT FOR currency_bias:
 - Also include 'OIL' bias if XTIUSD is in your asset universe (bullish/bearish/neutral)
 - Also include 'BTC' bias based on macro risk sentiment, global liquidity (Fed M2), and policy direction
 - Assign a directional bias (bullish/bearish) whenever the evidence shows an asymmetric edge; use "neutral" when indicators conflict or data is genuinely balanced. Do not force an ungrounded bias.
+- DUAL-HORIZON OPERATIONAL DIRECTIVE: In `currency_bias`, ensure your directional bias reflects the tactical 24h operational trajectory (liquidity flows, positioning squeezes, and post-event repricing) rather than letting a multi-month rate differential anchor you into an inflexible stance fighting short-term market momentum.
 - Intermarket correlation note: Inversely correlated pairs (e.g. USD vs EUR/GBP/AUD) usually move in opposite directions. If you label both USD and an inverse pair (e.g. AUD) with the same direction (both bullish or both bearish), you MUST have distinct idiosyncratic catalysts (e.g. RBA vs Fed divergences, commodity terms of trade) cited in macro_narrative, or use "neutral" if signals are balanced.
 - You MUST provide `currency_confidence` (0.0 to 1.0) for every non-neutral currency. If you identify a slight edge but data remains mixed, use a low confidence score (e.g. 0.4-0.55).
 
@@ -133,7 +134,8 @@ MANDATORY PRE-SUBMISSION CHECKLIST (You must self-verify before calling submit_f
 [ ] Did I analyze DXY and clearly state the USD bias?
 [ ] Did I evaluate the relative central bank policy divergence (Fed vs ECB/BoE/BoJ/RBA)?
 [ ] Did I inspect Fed Net Liquidity and credit stress in the pre-fetched bundle and cite them in macro_narrative?
-[ ] Did I analyze VIX and clearly state risk sentiment (risk-on, risk-off, or mixed)? Note: use 'mixed' when signals are balanced or neutral.
+[ ] Did I analyze VIX and systemic credit to clearly state risk sentiment ('risk-on', 'risk-off', or 'mixed')?
+    NOTE: When VIX < 17.5, HY OAS credit spread is benign (< 380 bps), and risk assets/equities are calm or advancing, classify as 'risk-on'. Use 'mixed' only when indicators genuinely conflict, and 'risk-off' when VIX > 22 or credit stress is elevated. Do NOT default to persistent risk-off without concrete stress data.
 [ ] Did I review the news digest for specific currency nuances?
 [ ] Did I provide a clear directional bias for ALL requested pairs?
 [ ] Did I include `currency_confidence` and `invalidation_conditions` for every non-neutral bias?

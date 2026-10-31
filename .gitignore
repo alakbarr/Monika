@@ -140,6 +140,10 @@ scripts/*
 !scripts/empirical_alpha/**
 scripts/empirical_alpha/**/__pycache__/
 scripts/empirical_alpha/**/*.pyc
+!scripts/ab_testing/
+!scripts/ab_testing/**
+scripts/ab_testing/**/__pycache__/
+scripts/ab_testing/**/*.pyc
 contoh_pertanyaan.md
 prompt_benchmark.md
 

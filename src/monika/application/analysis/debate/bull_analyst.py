@@ -9,8 +9,12 @@ from monika.infrastructure.providers.base_provider import BaseLLMClient
 logger = logging.getLogger("TradingAgent.BullAnalyst")
 
 
-def _clean_json_str(s: str) -> str:
-    s = s.strip()
+def _clean_json_str(s: Any) -> str:
+    if hasattr(s, "text") and isinstance(s.text, str):
+        s = s.text
+    elif hasattr(s, "content") and isinstance(s.content, str):
+        s = s.content
+    s = str(s).strip()
     if "```json" in s:
         s = s.split("```json", 1)[1].split("```", 1)[0].strip()
     elif "```" in s:
@@ -27,22 +31,27 @@ async def generate_bull_advocacy(
 ) -> dict:
     decision = str(original_context.get("decision", "buy")).lower()
     is_long = decision in ("buy", "long")
+    is_conflict = decision in ("conflict_adjudication", "wait", "neutral")
 
-    if is_long:
+    if is_long or is_conflict:
         role_desc = (
-            "You are the Bullish Analyst for the target asset specified in the user message.\n"
-            "Your job is to defend the proposed BUY (Long) entry and take profit levels.\n"
-            "Focus on identifying upside catalysts, strong technical support protecting the SL below, "
-            "and why the upward TP is conservative or achievable.\n"
-            "MANDATORY: Inspect and leverage the 'order_flow' data in the Fact Sheet. Cite CVD divergence "
-            "(e.g. BULLISH accumulation/absorption) and order book imbalance (positive bid dominance) as critical microstructural confirmation."
+            "You are the Senior Institutional Bull Advocate for the target asset specified in the user message.\n"
+            "Your task: Formulate the highest-conviction LONG proposal or defend the Long trade thesis.\n"
+            "SMC & QUANTITATIVE GROUNDING RULES:\n"
+            "1. Dealing Range Location: Long entries are optimal in DISCOUNT (< 0.50 of recent dealing range). "
+            "Examine local swing high/low in the Fact Sheet to verify discount location.\n"
+            "2. Trend Exhaustion & Sweeps: If market has been falling, identify selling climax, absorption, or liquidity sweep before buying.\n"
+            "3. Structural Trade Levels: Identify proposed_entry, proposed_sl (minimum 1.0x ATR distance below entry), "
+            "and proposed_tp (near unmitigated upper liquidity/resistance). Target minimum R:R >= 1.50.\n"
+            "4. Rebuttal of Macro/Sentiment: Address opposing headwinds directly. Explain why macro friction is priced-in or lagging.\n"
+            "5. Microstructure: Cite order flow confluences (CVD bullish divergence, positive delta, or bid absorption) if available."
         )
         score_desc = (
             "STRENGTH SCORE ANCHORS (mandatory reference):\n"
-            "- 9-10: Multiple independent bullish confluences align (structure + macro + positioning), "
-            "SL is well protected by support, no meaningful counter-evidence in the Fact Sheet.\n"
-            "- 6-8: Solid bullish setup with macro support, but contains 1 minor caveat (e.g. approaching minor resistance).\n"
-            "- 3-5: Bullish setup has merit but material counter-evidence exists that the Bear Analyst is likely to exploit.\n"
+            "- 9-10: Multiple independent bullish confluences align (discount location + structure + macro/liquidity), "
+            "SL is well protected by structural support >= 1.0x ATR, no meaningful counter-evidence.\n"
+            "- 6-8: Solid bullish setup with discount/SMC support, but contains 1 minor caveat (e.g. approaching minor resistance).\n"
+            "- 3-5: Bullish setup has merit but price sits in premium or material counter-evidence exists that Bear Analyst can exploit.\n"
             "- 1-2: Bullish thesis is completely broken; all indicators, macro, and structure are strongly bearish."
         )
     else:
@@ -51,8 +60,8 @@ async def generate_bull_advocacy(
             "A SELL (Short) trade has been proposed. Your job is to challenge this short setup from a bullish perspective.\n"
             "Identify why the market could reverse or bounce upward, why support underfoot threatens the short TP, "
             "and what upside catalysts or bullish market structures threaten the short SL above.\n"
-            "MANDATORY: Inspect and leverage the 'order_flow' data in the Fact Sheet. Cite any bullish CVD divergence "
-            "or positive book imbalance (bid stacking/absorption) threatening the short breakdown."
+            "MANDATORY: Inspect dealing range (if price is in deep discount, shorting is prone to exhaustion bounce). "
+            "Cite any bullish CVD divergence or positive book imbalance (bid stacking/absorption) threatening the short breakdown."
         )
         score_desc = (
             "BULLISH COUNTER-THESIS STRENGTH ANCHORS (mandatory reference):\n"
@@ -84,6 +93,20 @@ async def generate_bull_advocacy(
                 "type": "array",
                 "items": {"type": "string"},
                 "description": "Concrete price or macro conditions that would immediately invalidate the bullish argument.",
+            },
+            "proposed_entry": {"type": "number", "description": "Proposed Long entry price."},
+            "proposed_sl": {
+                "type": "number",
+                "description": "Proposed Stop Loss below structural support (>= 1.0x ATR distance).",
+            },
+            "proposed_tp": {"type": "number", "description": "Proposed Take Profit near unmitigated liquidity."},
+            "rr_ratio": {
+                "type": "number",
+                "description": "Risk to reward ratio (|tp - entry| / |entry - sl|). Target >= 1.5.",
+            },
+            "macro_rebuttal": {
+                "type": "string",
+                "description": "Direct refutation of opposing macro/sentiment concerns.",
             },
         },
         "required": ["bull_thesis", "strength_score", "evidence_cited"],

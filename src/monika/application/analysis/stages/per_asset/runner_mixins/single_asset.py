@@ -741,6 +741,26 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
             except ValueError, TypeError:
                 return None
 
+        sl_val = _safe_float(analysis.stop_loss) if analysis else None
+        tp_val = _safe_float(analysis.take_profit) if analysis else None
+        cs_val = _safe_int(analysis.confluence_score) if analysis else None
+
+        is_candidate_for_debate = False
+        if analysis:
+            if str(decision).strip().lower() in ("buy", "sell"):
+                is_candidate_for_debate = True
+            elif (
+                str(decision).strip().lower() == "wait"
+                and cs_val is not None
+                and cs_val >= 6
+                and sl_val is not None
+                and tp_val is not None
+            ):
+                rat = str(getattr(analysis, "rationale", "") or "").lower()
+                conflict_keywords = ("conflict", "diverg", "macro", "opposing", "brief", "ssvp", "headwind", "bias")
+                if any(kw in rat for kw in conflict_keywords):
+                    is_candidate_for_debate = True
+
         result.update(
             {
                 "symbol": symbol,
@@ -748,10 +768,11 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
                 "decision": decision,
                 "confidence": confidence,
                 "entry_price": entry_price_val,
-                "stop_loss": _safe_float(analysis.stop_loss) if analysis else None,
-                "take_profit": _safe_float(analysis.take_profit) if analysis else None,
-                "confluence_score": _safe_int(analysis.confluence_score) if analysis else None,
+                "stop_loss": sl_val,
+                "take_profit": tp_val,
+                "confluence_score": cs_val,
                 "elapsed_seconds": elapsed,
+                "candidate_for_debate": is_candidate_for_debate,
             }
         )
         return result

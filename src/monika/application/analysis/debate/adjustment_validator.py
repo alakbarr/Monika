@@ -55,7 +55,13 @@ async def validate_and_apply_judge_adjustments(
         return False, "Entry, SL, and TP must be strictly positive"
 
     direction = (
-        str(getattr(ana, "decision", None) or getattr(ana, "direction", None) or getattr(ana, "action", None) or "")
+        str(
+            verdict.get("final_decision")
+            or getattr(ana, "decision", None)
+            or getattr(ana, "direction", None)
+            or getattr(ana, "action", None)
+            or ""
+        )
         .strip()
         .upper()
     )

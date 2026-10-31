@@ -9,8 +9,12 @@ from monika.infrastructure.providers.base_provider import BaseLLMClient
 logger = logging.getLogger("TradingAgent.BearAnalyst")
 
 
-def _clean_json_str(s: str) -> str:
-    s = s.strip()
+def _clean_json_str(s: Any) -> str:
+    if hasattr(s, "text") and isinstance(s.text, str):
+        s = s.text
+    elif hasattr(s, "content") and isinstance(s.content, str):
+        s = s.content
+    s = str(s).strip()
     if "```json" in s:
         s = s.split("```json", 1)[1].split("```", 1)[0].strip()
     elif "```" in s:
@@ -32,15 +36,16 @@ async def generate_bear_dissent(
 ) -> dict:
     decision = str(original_context.get("decision", "buy")).lower()
     is_long = decision in ("buy", "long")
+    is_conflict = decision in ("conflict_adjudication", "wait", "neutral")
 
     if is_long:
         role_desc = (
             "You are the Bearish Analyst for the target asset specified in the user message.\n"
-            "A BUY (Long) trade has been proposed. Your job is to aggressively challenge the long thesis and 'original_context'.\n"
+            "A BUY (Long) trade has been proposed. Your job is to rigorously challenge the long thesis and 'original_context'.\n"
             "Scrutinize the entry price, SL, and TP. Identify why the Long SL is vulnerable to downside sweeps, "
             "overhead resistance levels that could block the upward TP, and any ignored bearish catalysts in the Fact Sheet.\n"
-            "MANDATORY: Inspect and leverage the 'order_flow' data in the Fact Sheet. Look for bearish CVD divergence "
-            "(distribution/selling into highs) and negative book imbalance (heavy ask walls) indicating institutional liquidation."
+            "MANDATORY: Inspect dealing range (if price is in premium > 0.50, buying carries poor asymmetry). "
+            "Inspect order flow for bearish CVD divergence (distribution into highs) and negative book imbalance."
         )
         score_desc = (
             "RISK SEVERITY ANCHORS (mandatory reference):\n"
@@ -48,6 +53,27 @@ async def generate_bear_dissent(
             "- 6-8: Significant downside risk. Poor R:R or setup trades against elevated VIX / imminent high-impact news event.\n"
             "- 3-5: Standard risk. Minor resistance levels exist en route to TP, but overall bullish trend structure supports the setup.\n"
             "- 1-2: Negligible downside risk. Bullish thesis is clean with strong multi-timeframe confirmation and no obvious resistance."
+        )
+    elif is_conflict:
+        role_desc = (
+            "You are the Senior Institutional Bear Advocate for the target asset specified in the user message.\n"
+            "Your task: Formulate the highest-conviction SHORT proposal or identify fatal downside risks to the asset.\n"
+            "SMC & QUANTITATIVE GROUNDING RULES:\n"
+            "1. Dealing Range Location: Short entries are optimal in PREMIUM (> 0.50 of recent dealing range). "
+            "Examine local swing high/low in the Fact Sheet to verify premium location.\n"
+            "2. Trend Exhaustion & Chasing Guard: Do NOT short at deep discount lows; wait for pullback to unmitigated supply/resistance.\n"
+            "3. Structural Trade Levels: Identify proposed_entry, proposed_sl (minimum 1.0x ATR distance above entry), "
+            "and proposed_tp (near unmitigated lower liquidity/support). Target minimum R:R >= 1.50.\n"
+            "4. Rebuttal of Bull Claims: Directly refute the Bull thesis. Explain why upside rallies will stall at overhead resistance.\n"
+            "5. Microstructure: Cite order flow confluences (CVD bearish divergence, negative delta, or ask stacking) if available."
+        )
+        score_desc = (
+            "SHORT THESIS STRENGTH ANCHORS (mandatory reference):\n"
+            "- 9-10: Multiple independent bearish confluences align (premium location + overhead resistance + macro headwind), "
+            "SL protected by structural resistance >= 1.0x ATR, no meaningful upside counter-evidence in Fact Sheet.\n"
+            "- 6-8: Solid bearish setup with premium/SMC resistance, but contains 1 minor caveat (e.g. approaching minor support).\n"
+            "- 3-5: Short setup has merit but price sits in discount or material bullish counter-evidence exists.\n"
+            "- 1-2: Bearish thesis is completely broken; all indicators, macro, and structure are strongly bullish."
         )
     else:
         role_desc = (
@@ -89,6 +115,17 @@ async def generate_bear_dissent(
                 "items": {"type": "string"},
                 "description": "Concrete price or macro conditions that would immediately invalidate the bearish argument.",
             },
+            "proposed_entry": {"type": "number", "description": "Proposed Short entry price."},
+            "proposed_sl": {
+                "type": "number",
+                "description": "Proposed Stop Loss above structural resistance (>= 1.0x ATR distance).",
+            },
+            "proposed_tp": {"type": "number", "description": "Proposed Take Profit near unmitigated lower liquidity."},
+            "rr_ratio": {
+                "type": "number",
+                "description": "Risk to reward ratio (|entry - tp| / |sl - entry|). Target >= 1.5.",
+            },
+            "bull_rebuttal": {"type": "string", "description": "Direct refutation of opposing bullish claims."},
         },
         "required": ["bear_dissent", "risk_severity", "evidence_cited"],
     }

@@ -148,6 +148,11 @@ BRIER SCORE CALIBRATION WEIGHING (Subsystem 4):
 - The analyst with lower Brier score has superior empirical calibration; give their arguments proportionally higher weight.
 
 DIRECTIONAL ADJUDICATION RULES:
+If original_context decision is CONFLICT_ADJUDICATION or WAIT or NEUTRAL (Two-Sided Dialectical Debate):
+- Symmetrical Evaluation: Bull Analyst proposes Long setup; Bear Analyst proposes Short/Downside setup.
+- Dealing Range Discipline: Long setups are optimal in DISCOUNT (< 0.50); Short setups are optimal in PREMIUM (> 0.50). Reject proposals that chase extremes without confirmed breakout expansion.
+- Trend Climax & Anti-Exhaustion Guard: If ADX > 50 or price is extended far from H4 EMAs, evaluate as potential climax exhaustion rather than fresh breakout. Require retest of structural POI.
+- Minimum Asymmetry: Approve the side that demonstrates verified structural edge, Stop Loss distance >= 1.0x ATR, and R:R >= 1.50. If both sides are valid but conflicting, or both lack edge, rule 'avoid' with risk_multiplier = 0.0.
 If original_context decision is SELL:
 - Pro-Thesis Advocate: Bear Analyst defending the short entry and breakdown catalysts (higher score = stronger short setup).
 - Counter-Thesis Dissenter: Bull Analyst challenging the short setup with upside reversal threats (higher score = dangerous upside threat).
@@ -359,7 +364,9 @@ Proceed with evaluation based strictly on the data above. Respond in valid JSON 
 
         # Ensure risk multiplier is bounded with Bayesian rebuttal mitigation
         final_dec = str(parsed.get("final_decision", "")).lower()
-        is_sell = decision == "SELL"
+        is_sell = (decision == "SELL") or (
+            decision in ("CONFLICT_ADJUDICATION", "WAIT", "NEUTRAL") and final_dec == "sell"
+        )
         if is_sell:
             # For SELL: Counter-threat is Bull's strength_score, Pro-strength is Bear's score
             counter_threat = int((bull_claim or {}).get("strength_score", 5) or 5)
