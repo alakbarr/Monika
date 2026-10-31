@@ -13,6 +13,8 @@ Standardizes and centralizes:
 8. Audit trail logging to ActivityLog.
 """
 
+from __future__ import annotations
+
 import asyncio
 import hashlib
 import inspect
@@ -62,6 +64,13 @@ from monika.application.agent.turn_preflight_gate import (
 )
 from monika.application.agent.turn_stop_gates import StopGateContext, apply_stop_gates
 from monika.application.agent.turn_tool_round import ToolCallSpec, ToolRoundVerdict, TurnToolRoundCoordinator
+from monika.application.agent.harness.turn_llm_runner import TurnLLMRunner
+from monika.application.agent.harness.turn_response_evaluator import TurnResponseEvaluator
+from monika.application.agent.harness.turn_stop_auditor import TurnStopAuditor
+from monika.application.agent.harness.turn_tool_pipeline import (
+    ToolExecutionTracking,
+    TurnToolPipeline,
+)
 from monika.application.analysis.tools.tool_executor import ToolExecutor
 from monika.core.telemetry.tracing.spans import llm_span
 from monika.infrastructure.llm.context_compaction import ContextCompactionEngine
@@ -509,7 +518,6 @@ class AgentHarness:
         thinking_tok = 0
         self._last_normalized_extra = {}
 
-        # Usage extraction helper
         def _safe_int(val: Any) -> int:
             if isinstance(val, bool):
                 return 0
@@ -549,7 +557,6 @@ class AgentHarness:
         has_choices = hasattr(response, "choices")
         has_content = hasattr(response, "content")
 
-        # Case 1: OpenAI-compatible ChatCompletion (has choices)
         if (not is_anthropic_or_gemini and has_choices) or (not has_content and has_choices):
             if not response.choices:
                 self.empty_response_guard.record_empty_response(
@@ -618,7 +625,6 @@ class AgentHarness:
                     {"type": "tool_use", "id": str(tc_id), "name": str(fn_name), "input": parsed_args}
                 )
 
-        # Case 2: Anthropic Message or MockResponse (has content list)
         elif has_content:
             stop_reason = getattr(response, "stop_reason", "") or "end_turn"
             raw_content = response.content
@@ -687,7 +693,6 @@ class AgentHarness:
         """
         Generate deterministic hash signature for tool name and argument payload.
         Uses recursive canonicalization to ensure identical signatures across varying key orders.
-        Used to detect oscillation loops and redundant tool calls.
         """
         try:
             return compute_canonical_tool_signature(tool_name, tool_input)
@@ -871,13 +876,11 @@ class AgentHarness:
             except Exception as e:
                 logger.debug(f"[{stage_name}][AgentHarness] llm_client._log_tool_call non-fatal: {e}")
         try:
-            from monika.infrastructure.database.db import get_session
             from monika.infrastructure.database.models import ActivityLog
 
             actor_name = getattr(self.llm_client, "role", getattr(self.llm_client, "model", "agent_harness"))
             symbol = tool_input.get("symbol") if isinstance(tool_input, dict) else None
 
-            # Sanitize result payload for storage
             raw_str = json.dumps(result, default=str)
             if len(raw_str) > 4000:
                 raw_str = raw_str[:3980] + "... [truncated]"
@@ -1066,13 +1069,16 @@ class AgentHarness:
         is_paid = False
         length_truncated = False
 
-        called_tools: Set[str] = set()
-        persisted_mandatory_tools: Set[str] = set()
-        unpersisted_validation_failures: Set[str] = set()
-        consecutive_tool_sig: Optional[str] = None
-        repeated_tool_count: int = 0
-        total_sig_counts: Dict[str, int] = {}
-        sliding_window_sigs: deque[str] = deque(maxlen=8)
+        tracking = ToolExecutionTracking(
+            tool_calls_made=0,
+            consecutive_tool_sig=None,
+            repeated_tool_count=0,
+            total_sig_counts={},
+            sliding_window_sigs=deque(maxlen=8),
+            called_tools=set(),
+            persisted_mandatory_tools=set(),
+            unpersisted_validation_failures=set(),
+        )
 
         # Reset all guardrails for fresh stage execution
         self.guardrail_controller.reset_all()
@@ -1182,10 +1188,8 @@ class AgentHarness:
                 logger.warning(f"[{stage_name}][AgentHarness] Preflight context floor warning: {floor_msg}")
 
             # Surface Node 0 Invariant: Preserve messages[0] prefix and historical charts across turns
-            # to maximize provider KV-cache reuse. Compaction/offloading triggers ONLY at high-water mark (>80%).
             current_tokens = self.compactor.calculate_history_tokens(current_messages)
             if current_tokens > int(context_win * 0.80):
-                # Offload heavy multimodal chart data from historical turns (>2 turns old)
                 current_messages = offload_historical_charts(current_messages, retain_recent_turns=2)
 
             enable_prefetch_distillation = bool(
@@ -1202,12 +1206,11 @@ class AgentHarness:
                     logger.debug(f"Prefetch bundle distillation skipped: {dist_err}")
 
             # Dynamic Tool Definition Selection (Turn >= 6)
-            # Default False preserves 100% byte-stable tool schemas across turns to avoid token-0 cache invalidation.
             stub_tools_on_turn_6 = bool(
                 (self.settings or {}).get("harness", {}).get("enable_legacy_turn6_tool_stubbing", False)
             )
             if turns >= 6 and stub_tools_on_turn_6 and not self.settings.get("disable_tool_stubbing", False):
-                effective_tools = self._stub_exploration_tools(active_tools, called_tools)
+                effective_tools = self._stub_exploration_tools(active_tools, tracking.called_tools)
             else:
                 effective_tools = active_tools
 
@@ -1223,11 +1226,8 @@ class AgentHarness:
             else:
                 current_messages = self.compactor.check_and_compact(current_messages, context_window=context_win)
 
-            # High-Water-Mark Gate: only run ContextCompressor.compress and _apply_truncation_guardrail
-            # when token pressure exceeds 80% capacity (or when compactor is disabled).
-            # This preserves historical tool outputs and 100% KV-cache!
+            # High-Water-Mark Gate
             if current_tokens >= int(context_win * 0.80):
-                # 2. Context Compression (HIGH-4)
                 if hasattr(self, "context_compressor") and self.context_compressor:
                     try:
                         current_messages = await self.context_compressor.compress(
@@ -1239,847 +1239,125 @@ class AgentHarness:
                     except Exception as comp_err:
                         logger.debug(f"ContextCompressor skipped or failed: {comp_err}")
 
-                # 3. Layer 3 Truncation Guardrail with Fact Preservation
                 current_messages = self._apply_truncation_guardrail(
                     current_messages, system_prompt=system_prompt, stage_name=stage_name
                 )
 
-            # 3. Provider Call with Transient Retry, Distributed Tracing, and Plugin Hooks
-            from monika.application.plugins.manager.manager import PluginHook, get_plugin_manager
-
-            plugin_mgr = get_plugin_manager()
-            await plugin_mgr.emit(
-                PluginHook.PRE_LLM_CALL,
+            # 2. Invoke LLM via TurnLLMRunner
+            llm_res = await TurnLLMRunner.execute_turn_llm(
+                harness=self,
+                session=session,
+                current_messages=current_messages,
+                effective_tools=effective_tools,
+                system_prompt=system_prompt,
                 stage_name=stage_name,
-                turn=turns,
-                messages=current_messages,
-                tools=effective_tools,
+                turns=turns,
+                effective_max_turns=effective_max_turns,
+                turn_timeout=turn_timeout,
+                turn_state=turn_state,
+                context_win=context_win,
+                tool_calls_made=tool_calls_made,
+                total_input_tokens=total_input_tokens,
+                total_output_tokens=total_output_tokens,
+                total_cached_tokens=total_cached_tokens,
+                total_thinking_tokens=total_thinking_tokens,
+                is_paid=is_paid,
+                length_truncated=length_truncated,
+                emergency_recovery_turns_used=_emergency_recovery_turns_used,
+                overflow_recovery_attempted=_overflow_recovery_attempted,
+            )
+            current_messages = llm_res.current_messages
+            if llm_res.terminated_early:
+                return llm_res.early_return_payload or {"success": False}
+            if llm_res.stop_iteration:
+                turns -= 1
+                break
+            if llm_res.fallback_swapped:
+                if turns >= effective_max_turns:
+                    effective_max_turns += 1
+                continue
+
+            # 3. Evaluate and Normalize Response via TurnResponseEvaluator
+            eval_res = TurnResponseEvaluator.evaluate_response(
+                harness=self,
+                session=session,
+                response=llm_res.response,
+                current_messages=current_messages,
+                stage_name=stage_name,
+                turns=turns,
+                effective_max_turns=effective_max_turns,
+                context_win=context_win,
+                tool_calls_made=tool_calls_made,
+                total_input_tokens=total_input_tokens,
+                total_output_tokens=total_output_tokens,
+                total_cached_tokens=total_cached_tokens,
+                total_thinking_tokens=total_thinking_tokens,
+                total_cost_usd=total_cost_usd,
+                is_paid=is_paid,
+                length_truncated=length_truncated,
+                overflow_recovery_attempted=_overflow_recovery_attempted,
+                calculate_turn_cost_fn=calculate_turn_cost_usd,
+                called_tools=tracking.called_tools,
+                active_llm_span=llm_res.active_llm_span,
             )
 
-            provider_name = getattr(self.llm_client, "provider_name", "unknown")
-            model_name = getattr(self.llm_client, "model", "unknown")
-            task_role = getattr(self.llm_client, "role", stage_name)
+            if eval_res.action == "emergency_compact":
+                _overflow_recovery_attempted = True
+                continue
+            if eval_res.action == "early_return":
+                return eval_res.early_return_payload or {"success": False}
 
-            response = None
-            last_exc = None
-            max_attempts = 3
-            pre_turn_checkpoint = [dict(m) for m in current_messages]
-
-            with llm_span(provider=provider_name, model=model_name, task_role=task_role) as active_llm_span:
-                for attempt in range(max_attempts):
-                    try:
-                        # ── C4: ROLE ALTERNATION ENFORCEMENT & INTEGRITY REPAIR ──
-                        role_safe_messages = self._enforce_role_alternation(current_messages)
-                        try:
-                            from monika.application.agent.harness.message_repair import repair_message_history
-
-                            role_safe_messages = repair_message_history(role_safe_messages)
-                        except Exception as e:
-                            logger.debug(f"Message repair skipped: {e}")
-
-                        # ── C3: COPY-ON-WRITE MESSAGE PROTECTION ──
-                        # Clone messages before sending to prevent provider-specific
-                        # canonicalization from corrupting durable conversation history.
-                        import copy
-
-                        send_messages = []
-                        for msg in role_safe_messages:
-                            cloned = {}
-                            for k, v in msg.items():
-                                if k == "content" and isinstance(v, (list, dict)):
-                                    cloned[k] = copy.deepcopy(v)
-                                else:
-                                    cloned[k] = v
-                            send_messages.append(cloned)
-
-                        # ── Prompt Cache Invariance Hardening (Surface Node 0) ──
-                        from monika.infrastructure.providers.base_provider import _flatten_system_prompt
-
-                        compile_stable_fn = getattr(system_prompt, "compile_stable_system", None)
-                        assemble_fn = getattr(system_prompt, "assemble", None)
-
-                        if callable(assemble_fn):
-                            try:
-                                current_static_sys = assemble_fn(provider=provider_name, quarantine_volatile=True)
-                            except TypeError:
-                                current_static_sys = assemble_fn(provider=provider_name)
-                            dynamic_sys = str(getattr(system_prompt, "tier3_volatile", "") or "").strip()
-                        elif isinstance(system_prompt, tuple) and len(system_prompt) >= 2:
-                            current_static_sys = system_prompt[0]
-                            dynamic_sys = str(system_prompt[1] or "").strip()
-                        else:
-                            current_static_sys = system_prompt
-                            dynamic_sys = ""
-
-                        if isinstance(current_static_sys, list):
-                            flat_static = json.dumps(current_static_sys, sort_keys=True)
-                        else:
-                            flat_static = _flatten_system_prompt(current_static_sys).strip()
-                        static_hash = hashlib.sha256(flat_static.encode("utf-8")).hexdigest()
-
-                        # 1.1: Surface Node 0 is immutable for the lifetime of this harness session
-                        if self._cached_surface_prompt is None:
-                            self._cached_surface_prompt = current_static_sys
-                            self._cached_surface_prompt_hash = static_hash
-                            effective_sys = current_static_sys
-                        else:
-                            effective_sys = self._cached_surface_prompt
-                            # 1.6: In-history system prompt updates (Append, Don't Replace)
-                            if static_hash != self._cached_surface_prompt_hash:
-                                update_notice = f"[SYSTEM INSTRUCTION UPDATE]:\n{flat_static}"
-                                if send_messages and send_messages[-1].get("role") == "user":
-                                    prev_c = send_messages[-1].get("content")
-                                    if isinstance(prev_c, str):
-                                        send_messages[-1]["content"] = f"{prev_c}\n\n{update_notice}"
-                                    elif isinstance(prev_c, list):
-                                        send_messages[-1]["content"].append(
-                                            {"type": "text", "text": f"\n\n{update_notice}"}
-                                        )
-                                else:
-                                    send_messages.append({"role": "user", "content": update_notice})
-                                logger.info(
-                                    f"[{stage_name}][AgentHarness] System prompt update appended in-history (token 0 prefix preserved)."
-                                )
-
-                        # 1.3: Dynamic context isolation: inject into user message tail, never system prompt
-                        volatile_changed = False
-                        if hasattr(self, "runtime_context_projection") and self.runtime_context_projection:
-                            proj = self.runtime_context_projection.project({"volatile": dynamic_sys or ""})
-                            volatile_changed = proj is not None or dynamic_sys != self._last_injected_dynamic_overlay
-                        else:
-                            volatile_changed = dynamic_sys != self._last_injected_dynamic_overlay
-
-                        if dynamic_sys and volatile_changed:
-                            self._last_injected_dynamic_overlay = dynamic_sys
-                            snapshot_text = f"<volatile_overlay>\n{dynamic_sys}\n</volatile_overlay>"
-                            if (
-                                turns == 1
-                                and send_messages
-                                and send_messages[0].get("role") == "user"
-                                and "<volatile_overlay>" not in str(send_messages[0].get("content", ""))
-                            ):
-                                prev_c = send_messages[0].get("content")
-                                send_messages[0] = dict(send_messages[0])
-                                if isinstance(prev_c, str):
-                                    send_messages[0]["content"] = f"{prev_c}\n\n{snapshot_text}"
-                                elif isinstance(prev_c, list):
-                                    send_messages[0]["content"] = list(prev_c) + [
-                                        {"type": "text", "text": f"\n\n{snapshot_text}"}
-                                    ]
-                                # Surface Node 0 invariant: keep current_messages[0] in sync without in-place mutation of caller's dict
-                                if current_messages and current_messages[0].get("role") == "user":
-                                    current_messages[0] = dict(current_messages[0])
-                                    current_messages[0]["content"] = send_messages[0]["content"]
-                            else:
-                                last_user_idx = None
-                                for i in range(len(send_messages) - 1, -1, -1):
-                                    if send_messages[i].get("role") == "user":
-                                        last_user_idx = i
-                                        break
-                                if last_user_idx is not None and (turns == 1 or last_user_idx != 0):
-                                    send_messages[last_user_idx] = dict(send_messages[last_user_idx])
-                                    prev_c = send_messages[last_user_idx].get("content")
-                                    if isinstance(prev_c, str) and "<volatile_overlay>" not in prev_c:
-                                        send_messages[last_user_idx]["content"] = f"{prev_c}\n\n{snapshot_text}"
-                                    elif isinstance(prev_c, list):
-                                        has_snapshot = any(
-                                            "<volatile_overlay>" in str(b.get("text", ""))
-                                            for b in prev_c
-                                            if isinstance(b, dict)
-                                        )
-                                        if not has_snapshot:
-                                            send_messages[last_user_idx]["content"] = list(prev_c) + [
-                                                {"type": "text", "text": f"\n\n{snapshot_text}"}
-                                            ]
-                                else:
-                                    send_messages.append({"role": "user", "content": snapshot_text})
-
-                        # 1.4: Active TODO list scaffold injection into latest user message
-                        if hasattr(self, "todo_state") and self.todo_state and self.todo_state.has_items():
-                            todo_scaffold = self.todo_state.format_scaffold()
-                            if todo_scaffold:
-                                todo_block = f"<active_todos>\n{todo_scaffold}\n</active_todos>"
-                                last_user_idx = None
-                                for i in range(len(send_messages) - 1, -1, -1):
-                                    if send_messages[i].get("role") == "user":
-                                        last_user_idx = i
-                                        break
-                                if last_user_idx is not None:
-                                    send_messages[last_user_idx] = dict(send_messages[last_user_idx])
-                                    prev_c = send_messages[last_user_idx].get("content")
-                                    if isinstance(prev_c, str) and "<active_todos>" not in prev_c:
-                                        send_messages[last_user_idx]["content"] = f"{prev_c}\n\n{todo_block}"
-                                    elif isinstance(prev_c, list):
-                                        if not any(
-                                            "<active_todos>" in str(b.get("text", ""))
-                                            for b in prev_c
-                                            if isinstance(b, dict)
-                                        ):
-                                            send_messages[last_user_idx]["content"] = list(prev_c) + [
-                                                {"type": "text", "text": f"\n\n{todo_block}"}
-                                            ]
-
-                        turn_state.current_phase = TurnPhase.API_CALL
-                        t_api_start = asyncio.get_event_loop().time()
-                        _watchdog_ref: Optional[TurnLivenessWatchdog] = None
-                        try:
-                            async with TurnLivenessWatchdog(
-                                turn_id=f"{stage_name}_{turns}",
-                                timeout_seconds=turn_timeout,
-                                stall_timeout_seconds=min(180.0, max(30.0, turn_timeout * 0.65)),
-                                abort_on_hang=True,
-                            ) as watchdog:
-                                _watchdog_ref = watchdog
-                                api_coro = run_bounded_async(
-                                    self.llm_client.run_tool_agent(send_messages, effective_tools, effective_sys),
-                                    timeout_seconds=turn_timeout,
-                                    timeout_message=f"Turn {turns} LLM call timed out after {turn_timeout:.0f}s",
-                                )
-                                self._active_turn_task = asyncio.create_task(api_coro)
-                                watchdog.set_task_to_cancel(self._active_turn_task)
-                                try:
-                                    response = await self._active_turn_task
-                                finally:
-                                    self._active_turn_task = None
-                                watchdog.record_activity("api_response_received")
-                        except (asyncio.TimeoutError, TimeoutError) as to_err:
-                            raise TimeoutError(f"Turn {turns} LLM call timed out after {turn_timeout:.0f}s") from to_err
-                        except asyncio.CancelledError as cancel_err:
-                            if _watchdog_ref is not None and _watchdog_ref.hang_detected:
-                                raise TimeoutError(
-                                    f"Turn {turns} deadlocked and was aborted by TurnLivenessWatchdog after {turn_timeout:.0f}s"
-                                ) from cancel_err
-                            logger.warning(
-                                f"[{stage_name}][AgentHarness] Active LLM call cancelled on turn {turns} (in-flight steering or abort)."
-                            )
-                            raise
-                        finally:
-                            turn_state.phase_latencies[f"api_call_turn_{turns}"] = (
-                                asyncio.get_event_loop().time() - t_api_start
-                            )
-                        break
-                    except StopIteration as stop_iter_exc:
-                        last_exc = stop_iter_exc
-                        break
-                    except Exception as exc:
-                        if _emergency_recovery_turns_used > 0 and "StopIteration" in str(exc):
-                            last_exc = exc
-                            break
-                        last_exc = exc
-
-                        # ── Structured Error Recovery Pipeline (Phase 3) ──
-                        from monika.application.agent.harness.error_classifier import (
-                            ErrorCategory,
-                            ErrorClassifier,
-                            RecoveryAction,
-                        )
-
-                        classified = ErrorClassifier.classify(exc)
-
-                        await plugin_mgr.emit(
-                            PluginHook.ON_LLM_ERROR,
-                            stage_name=stage_name,
-                            turn=turns,
-                            error=exc,
-                            classified=classified,
-                        )
-
-                        if (
-                            classified.recovery == RecoveryAction.RETRY_WITH_COMPACTION
-                            and not _overflow_recovery_attempted
-                        ):
-                            _overflow_recovery_attempted = True
-                            logger.warning(
-                                f"[{stage_name}][AgentHarness] {classified.message} "
-                                f"Running emergency compaction and retrying turn {turns}..."
-                            )
-                            if current_messages and current_messages[-1].get("role") == "assistant":
-                                current_messages.pop()
-
-                            current_messages = self.compactor.emergency_compact(
-                                current_messages,
-                                context_window=context_win,
-                                target_reduction=0.50,
-                            )
-                            continue
-
-                        if classified.recovery == RecoveryAction.ROTATE_CREDENTIAL:
-                            logger.warning(f"[{stage_name}][AgentHarness] Rate limit encountered: {classified.message}")
-                            if hasattr(self.llm_client, "rotate_key"):
-                                self.llm_client.rotate_key()
-                            elif hasattr(self.llm_client, "_rotate_key"):
-                                self.llm_client._rotate_key()
-                            if attempt < max_attempts - 1:
-                                raw_backoff = (
-                                    min(classified.retry_delay, 5.0)
-                                    if classified.retry_delay > 0
-                                    else (2.0 * (2**attempt))
-                                )
-                                backoff = raw_backoff * (1.0 - random.random() * 0.1)
-                                await asyncio.sleep(backoff)
-                                continue
-
-                        is_timeout_err = isinstance(exc, (TimeoutError, asyncio.TimeoutError))
-                        max_retry_attempts = 2 if is_timeout_err else max_attempts
-                        if (
-                            classified.recovery == RecoveryAction.RETRY_SAME or self._is_transient_error(exc)
-                        ) and attempt < max_retry_attempts - 1:
-                            raw_backoff = classified.retry_delay if classified.retry_delay > 0 else (2.0 * (2**attempt))
-                            backoff = raw_backoff * (1.0 - random.random() * 0.1)
-                            logger.warning(
-                                f"[{stage_name}][AgentHarness] Retryable error on turn {turns} "
-                                f"(attempt {attempt + 1}/{max_retry_attempts}): {exc}. Retrying in {backoff:.2f}s..."
-                            )
-                            await asyncio.sleep(backoff)
-                            continue
-                        else:
-                            break
-
-                await plugin_mgr.emit(
-                    PluginHook.POST_LLM_CALL,
-                    stage_name=stage_name,
-                    turn=turns,
-                    response=response,
-                    error=last_exc if response is None else None,
-                )
-
-                if response is None:
-                    if _emergency_recovery_turns_used > 0 and (
-                        isinstance(last_exc, StopIteration) or "StopIteration" in str(last_exc)
-                    ):
-                        current_messages = pre_turn_checkpoint
-                        turns -= 1
-                        break
-
-                    if self._try_fallback_swap(stage_name, last_exc):
-                        from monika.application.agent.harness.message_repair import transform_messages_for_target_model
-
-                        tgt_prov = self._detect_client_provider()
-                        tgt_model = getattr(self.llm_client, "model", "")
-                        current_messages = transform_messages_for_target_model(
-                            current_messages,
-                            target_provider=tgt_prov,
-                            target_model=tgt_model,
-                        )
-                        if turns >= effective_max_turns:
-                            effective_max_turns += 1
-                        continue
-
-                    is_billing = self._is_billing_error(last_exc)
-                    logger.error(
-                        f"[{stage_name}][AgentHarness] Provider error on turn {turns}: {last_exc} (is_billing={is_billing})"
-                    )
-                    if (total_input_tokens > 0 or total_output_tokens > 0) and hasattr(
-                        self.llm_client, "_save_token_usage"
-                    ):
-                        try:
-                            await self.llm_client._save_token_usage(
-                                model_name=getattr(self.llm_client, "model", "unknown"),
-                                task_name=stage_name,
-                                input_tokens=total_input_tokens,
-                                output_tokens=total_output_tokens,
-                                session=session,
-                                task_role=task_role,
-                                cached_tokens=total_cached_tokens,
-                                thinking_tokens=total_thinking_tokens,
-                                is_direct_free_tier=False if is_paid else None,
-                                from_agent_harness=True,
-                            )
-                        except Exception:
-                            pass
-                    # Prevent negative prompt caching blackhole: rollback message state to pre-turn checkpoint
-                    current_messages = pre_turn_checkpoint
-                    reporting_messages = [dict(m) for m in current_messages]
-                    if reporting_messages and reporting_messages[-1].get("role") == "user":
-                        reporting_messages.append(
-                            {
-                                "role": "assistant",
-                                "content": "[Analysis turn terminated prematurely due to provider error. State preserved.]",
-                            }
-                        )
-                    return {
-                        "success": False,
-                        "error": str(last_exc),
-                        "is_billing_error": is_billing,
-                        "tool_calls_made": tool_calls_made,
-                        "turns": turns,
-                        "input_tokens": total_input_tokens,
-                        "output_tokens": total_output_tokens,
-                        "thinking_tokens": total_thinking_tokens,
-                        "cached_tokens": total_cached_tokens,
-                        "context_messages": reporting_messages,
-                        "is_paid": is_paid,
-                        "length_truncated": length_truncated,
-                    }
-
-                # 4. Normalize Response Across Providers (Anthropic, Gemini, OpenAI, Groq)
-                try:
-                    assistant_content, stop_reason, reasoning_content, in_tok, out_tok, c_tok, th_tok = (
-                        self._normalize_response_content(response)
-                    )
-                    active_llm_span.set_attribute("input_tokens", in_tok)
-                    active_llm_span.set_attribute("output_tokens", out_tok)
-                    active_llm_span.set_attribute("cached_tokens", c_tok)
-                    active_llm_span.set_attribute("thinking_tokens", th_tok)
-
-                    # ── Silent Overflow Detection (Input Token Ingestion Guard) ──
-                    if in_tok > 0 and not _overflow_recovery_attempted:
-                        from monika.infrastructure.llm.model_capabilities import MODEL_CAPABILITIES
-
-                        model_name_check = getattr(self.llm_client, "model", "")
-                        cap = MODEL_CAPABILITIES.get(model_name_check, None)
-                        context_window = (
-                            getattr(cap, "context_window", 0)
-                            if cap
-                            else (cap.get("context_window", 0) if isinstance(cap, dict) else 0)
-                        )
-                        if context_window > 0 and in_tok > context_window:
-                            logger.warning(
-                                f"[{stage_name}][AgentHarness] SILENT OVERFLOW detected: input_tokens={in_tok} > "
-                                f"context_window={context_window}. Triggering compaction."
-                            )
-                            _overflow_recovery_attempted = True
-                            current_messages = self.compactor.emergency_compact(
-                                current_messages,
-                                context_window=context_window,
-                                target_reduction=0.50,
-                            )
-                            continue
-                except Exception as norm_err:
-                    logger.error(
-                        f"[{stage_name}][AgentHarness] Response normalization error on turn {turns}: {norm_err}"
-                    )
-                    if (total_input_tokens > 0 or total_output_tokens > 0) and hasattr(
-                        self.llm_client, "_save_token_usage"
-                    ):
-                        try:
-                            await self.llm_client._save_token_usage(
-                                model_name=getattr(self.llm_client, "model", "unknown"),
-                                task_name=stage_name,
-                                input_tokens=total_input_tokens,
-                                output_tokens=total_output_tokens,
-                                session=session,
-                                task_role=task_role,
-                                cached_tokens=total_cached_tokens,
-                                thinking_tokens=total_thinking_tokens,
-                                is_direct_free_tier=False if is_paid else None,
-                                from_agent_harness=True,
-                            )
-                        except Exception:
-                            pass
-                    return {
-                        "success": False,
-                        "error": str(norm_err),
-                        "is_billing_error": False,
-                        "tool_calls_made": tool_calls_made,
-                        "turns": turns,
-                        "input_tokens": total_input_tokens,
-                        "output_tokens": total_output_tokens,
-                        "thinking_tokens": total_thinking_tokens,
-                        "cached_tokens": total_cached_tokens,
-                        "context_messages": current_messages,
-                        "is_paid": is_paid,
-                        "length_truncated": length_truncated,
-                    }
-
-            if getattr(response, "is_paid", False):
+            total_input_tokens += eval_res.in_tok
+            total_output_tokens += eval_res.out_tok
+            total_cached_tokens += eval_res.c_tok
+            total_thinking_tokens += eval_res.th_tok
+            total_cost_usd += eval_res.turn_cost_usd
+            if eval_res.is_paid:
                 is_paid = True
-
-            total_input_tokens += in_tok
-            total_output_tokens += out_tok
-            total_cached_tokens += c_tok
-            total_thinking_tokens += th_tok
-            model_name_curr = getattr(self.llm_client, "model", "unknown_model")
-            total_cost_usd += calculate_turn_cost_usd(model_name_curr, in_tok, out_tok, c_tok)
-
-            # 5. Build and Record Assistant Message (Preserving Reasoning Content)
-            assistant_msg: dict[str, Any] = {"role": "assistant", "content": assistant_content}
-            if reasoning_content:
-                assistant_msg["reasoning_content"] = reasoning_content
-            # I2: Thinking Signature Persistence
-            if getattr(response, "thinking_signature", None):
-                assistant_msg["thinking_signature"] = getattr(response, "thinking_signature")
-            curr_provider = self._detect_client_provider()
-            assistant_msg["_source_provider"] = str(curr_provider)
-            assistant_msg["_source_model"] = str(model_name_curr)
-
-            if hasattr(self, "_last_normalized_extra") and self._last_normalized_extra:
-                for k, v in self._last_normalized_extra.items():
-                    if k not in assistant_msg:
-                        assistant_msg[k] = v
-            current_messages.append(assistant_msg)
-
-            # Check text blocks
-            for block in assistant_content:
-                b_type = block.get("type") if isinstance(block, dict) else getattr(block, "type", None)
-                if b_type == "text":
-                    b_text = block.get("text") if isinstance(block, dict) else getattr(block, "text", "")
-                    if b_text and not getattr(block, "thinking", False):
-                        final_text = b_text
-
-            # ── Repetition Guard (Degenerate Echo Loop Prevention & History Cleansing) ──
-            if final_text:
-                from monika.application.agent.harness.repetition_guard import detect_text_repetition
-
-                is_degenerate, rep_snippet = detect_text_repetition(final_text)
-                if is_degenerate and turns < effective_max_turns:
-                    logger.warning(
-                        f"[{stage_name}][AgentHarness] Repetition loop detected ({rep_snippet}). "
-                        f"Cleansing history and injecting recovery nudge on turn {turns}/{effective_max_turns}..."
-                    )
-                    # Cleanse infected assistant message in history to avoid KV-cache poisoning
-                    REPETITION_PRUNED_MSG = (
-                        "[Analytical narrative truncated due to degenerate repetition loop. "
-                        "Proceed directly to final structured decision without repeating narrative.]"
-                    )
-                    for block in assistant_msg.get("content", []):
-                        if isinstance(block, dict) and block.get("type") == "text":
-                            block["text"] = REPETITION_PRUNED_MSG
-                        elif hasattr(block, "text"):
-                            setattr(block, "text", REPETITION_PRUNED_MSG)
-
-                    current_messages.append(
-                        {
-                            "role": "user",
-                            "content": (
-                                "[GUARDRAIL ALERT: Degenerate repetition loop detected and pruned. "
-                                "Do NOT repeat previous narrative. Immediately submit your structured analytical verdict using the required tool now.]"
-                            ),
-                        }
-                    )
-                    continue
-
-            # ── C1: TRUNCATED TOOL CALL SAFETY ──
-            # When LLM hits max output tokens, tool call JSON arguments may be
-            # truncated mid-value. Auto-repair JSON can "fix" syntax but produce
-            # WRONG values (e.g., stop_loss: 1.08 → 1.0). Refuse all tool calls.
-            if self._check_truncation(response, stop_reason):
+            if eval_res.length_truncated:
                 length_truncated = True
-                tool_use_blocks_check = [
-                    b
-                    for b in assistant_content
-                    if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None))
-                    in ("tool_use", "tool_call", "function")
-                    or (isinstance(b, dict) and ("function" in b or "tool_call_id" in b))
-                    or hasattr(b, "function")
-                ]
-                if tool_use_blocks_check:
-                    logger.warning(
-                        f"[{stage_name}][AgentHarness] TRUNCATED RESPONSE (stop_reason={stop_reason}). "
-                        f"Refusing {len(tool_use_blocks_check)} tool call(s) — arguments may be malformed."
-                    )
-                    truncation_error_results = self._fail_truncated_tool_calls(tool_use_blocks_check)
-                    current_messages.append({"role": "user", "content": truncation_error_results})
-                    tool_calls_made += len(tool_use_blocks_check)
-                    logger.info(
-                        f"[{stage_name}][AgentHarness] Injected {len(truncation_error_results)} "
-                        f"truncation error(s) as tool results for self-correction."
-                    )
-                    continue  # Next turn — model will re-issue with complete args
-                else:
-                    if turns < effective_max_turns:
-                        logger.warning(
-                            f"[{stage_name}][AgentHarness] Narrative truncated by output token limit on turn {turns}. "
-                            f"Injecting continuation prompt."
-                        )
-                        current_messages.append(
-                            {
-                                "role": "user",
-                                "content": (
-                                    "[SYSTEM NOTICE: Your previous narrative was truncated by max_tokens. "
-                                    "Continue directly from where you stopped without repeating prior content.]"
-                                ),
-                            }
-                        )
-                        continue
+            if eval_res.unverified_stop_gate_error:
+                unverified_stop_gate_error = eval_res.unverified_stop_gate_error
 
-            # ── Structured Response Validation (Phase 3) ──
-            from monika.application.agent.harness.error_classifier import ErrorClassifier, RecoveryAction
+            if eval_res.action == "continue_turn":
+                if eval_res.tool_calls_increment > 0:
+                    tool_calls_made += eval_res.tool_calls_increment
+                    tracking.tool_calls_made = tool_calls_made
+                continue
+            final_text = eval_res.final_text
+            tool_use_blocks = eval_res.tool_use_blocks
 
-            resp_dict = {
-                "stop_reason": stop_reason,
-                "content": final_text,
-                "tool_calls": [
-                    b
-                    for b in assistant_content
-                    if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None)) == "tool_use"
-                ],
-                "reasoning": reasoning_content or "",
-            }
-            resp_issue = ErrorClassifier.classify_response(resp_dict)
-            if resp_issue and not self._check_truncation(response, stop_reason) and turns < effective_max_turns:
-                if resp_issue.recovery in (RecoveryAction.INJECT_NUDGE, RecoveryAction.INJECT_CONTINUATION):
-                    logger.warning(
-                        f"[{stage_name}][AgentHarness] Response issue detected ({resp_issue.category.value}): injecting recovery nudge."
-                    )
-                    current_messages.append(
-                        {"role": "user", "content": resp_issue.nudge_text or "[System: Please proceed.]"}
-                    )
-                    continue
-                elif resp_issue.recovery == RecoveryAction.RETRY_WITH_REDUCED_EFFORT:
-                    logger.warning(
-                        f"[{stage_name}][AgentHarness] Thinking budget exhausted without content: nudging direct conclusion."
-                    )
-                    current_messages.append(
-                        {
-                            "role": "user",
-                            "content": "[System: Thinking budget exhausted without answer. Conclude directly.]",
-                        }
-                    )
-                    continue
-
-            # 6. Check Completion & Mandatory Tool Enforcement
-            tool_use_blocks = [
-                b
-                for b in assistant_content
-                if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None)) == "tool_use"
-            ]
-            if tool_use_blocks and hasattr(self, "tool_call_recovery") and self.tool_call_recovery:
-                self.tool_call_recovery.register_assistant_tool_calls(tool_use_blocks)
-
-            if not (final_text or "").strip() and not tool_use_blocks:
-                prov_name = str(getattr(self.llm_client, "provider", "unknown"))
-                mdl_name = str(getattr(self.llm_client, "model", "unknown"))
-                emp_count = self.empty_response_guard.record_empty_response(
-                    prov_name, mdl_name, str(stop_reason or "stop")
-                )
-                ladder_act = self.empty_response_guard.get_recovery_ladder_action(
-                    prov_name,
-                    mdl_name,
-                    attempt=emp_count,
-                    raw_response=reasoning_content or "",
-                    task_role=stage_name,
-                )
-                if turns < effective_max_turns:
-                    if ladder_act.action_type == "failover":
-                        self._try_fallback_swap(stage_name, RuntimeError(ladder_act.instruction))
-                    logger.warning(
-                        f"[{stage_name}][AgentHarness] Empty response recovery ladder step {ladder_act.step} "
-                        f"({ladder_act.action_type}): {ladder_act.instruction}"
-                    )
-                    current_messages.append(
-                        {"role": "user", "content": f"[SYSTEM RECOVERY DIRECTIVE]: {ladder_act.instruction}"}
-                    )
-                    continue
-                elif not called_tools:
-                    unverified_stop_gate_error = (
-                        f"Empty response after {emp_count} attempt(s) with zero tool calls ({ladder_act.instruction})"
-                    )
-            else:
-                self.empty_response_guard.record_successful_response(
-                    str(getattr(self.llm_client, "provider", "unknown")),
-                    str(getattr(self.llm_client, "model", "unknown")),
-                )
-
+            # 4. Check Completion & Mandatory Tool Enforcement / Stop Gates
             if not tool_use_blocks:
-                from monika.application.agent.harness.anti_slop_gate import AntiSlopQualityGate
-                from monika.application.agent.harness.turn_failure_diagnostics import TurnFailureDiagnosticBuilder
-
-                mandatory_tool = self.get_mandatory_tool_for_stage(stage_name)
-                is_mandatory_unpersisted = mandatory_tool in unpersisted_validation_failures
-                if (
-                    mandatory_tool
-                    and (mandatory_tool not in called_tools or is_mandatory_unpersisted)
-                    and turns < effective_max_turns
-                ):
-                    target_sym = stage_symbol or "this asset"
-                    if is_mandatory_unpersisted and mandatory_tool in called_tools:
-                        nudge_text = (
-                            f"CRITICAL MANDATORY INSTRUCTION: Your previous attempt to invoke '{mandatory_tool}' "
-                            f"failed validation and was NOT saved to the database. "
-                            f"You MUST call '{mandatory_tool}' again NOW with corrected parameters or change decision to 'wait' for {target_sym}. "
-                            f"Plain text conclusions cannot be accepted while mandatory submission is unpersisted."
-                        )
-                    else:
-                        nudge_text = (
-                            f"CRITICAL MANDATORY INSTRUCTION: You concluded your turn without invoking '{mandatory_tool}'. "
-                            f"You MUST call '{mandatory_tool}' now with your final structured analysis and decision for {target_sym}. "
-                            f"Plain text conclusions without invoking '{mandatory_tool}' cannot be processed."
-                        )
-                    logger.info(
-                        f"[{stage_name}][AgentHarness] Mandatory tool '{mandatory_tool}' "
-                        f"{'unpersisted/validation_failed' if is_mandatory_unpersisted else 'missing'} "
-                        f"on turn {turns}/{effective_max_turns}. Nudging agent..."
-                    )
-                    current_messages.append({"role": "user", "content": nudge_text})
-                    continue
-                elif mandatory_tool and (mandatory_tool not in called_tools or is_mandatory_unpersisted):
-                    logger.warning(
-                        f"[{stage_name}][AgentHarness] Reached max turns ({effective_max_turns}) "
-                        f"without {'persisting' if is_mandatory_unpersisted else 'calling'} mandatory tool '{mandatory_tool}'."
-                    )
-                turn_state.current_phase = TurnPhase.FINALIZE
-                turn_state.stop_gate_context.pending_response = final_text
-
-                # ── Trade Proposal Verification Stop Gate ──
-                from monika.application.agent.harness.trade_stop_gates import TradeStopGate
-
-                trade_verdict = TradeStopGate.evaluate(
-                    final_text,
-                    self.verification_ledger,
+                stop_verdict = TurnStopAuditor.audit_completion(
+                    harness=self,
+                    current_messages=current_messages,
+                    final_text=final_text,
                     stage_name=stage_name,
                     stage_symbol=stage_symbol,
+                    turns=turns,
+                    effective_max_turns=effective_max_turns,
+                    called_tools=tracking.called_tools,
+                    unpersisted_validation_failures=tracking.unpersisted_validation_failures,
+                    turn_state=turn_state,
+                    tool_calls_made=tool_calls_made,
+                    emergency_recovery_turns_used=_emergency_recovery_turns_used,
+                    max_emergency_recovery_turns=_max_emergency_recovery_turns,
+                    current_unverified_error=unverified_stop_gate_error,
                 )
-                if not trade_verdict.should_stop:
-                    if turns < effective_max_turns:
-                        logger.info(
-                            f"[{stage_name}][AgentHarness] Trade Stop Gate triggered for {trade_verdict.detected_symbol}. "
-                            f"Nudging agent for risk/sizing verification..."
-                        )
-                        current_messages.append({"role": "user", "content": trade_verdict.nudge_text})
-                        continue
-                    else:
-                        logger.warning(
-                            f"[{stage_name}][AgentHarness] Reached max turns ({effective_max_turns}) without "
-                            f"verified risk sizing. Candidate Preservation: safely downgrading decision to WAIT."
-                        )
-                        final_text = json.dumps(
-                            {
-                                "decision": "WAIT",
-                                "confidence": 0.0,
-                                "rationale": f"Downgraded to defensive WAIT: {trade_verdict.rejection_reason or 'Risk/sizing unverified before turn limit'}",
-                                "downgraded_by_stop_gate": True,
-                            }
-                        )
+                final_text = stop_verdict.final_text
+                if stop_verdict.unverified_stop_gate_error is not None:
+                    unverified_stop_gate_error = stop_verdict.unverified_stop_gate_error
+                if stop_verdict.emergency_recovery_turns_added > 0:
+                    effective_max_turns += stop_verdict.emergency_recovery_turns_added
+                    _emergency_recovery_turns_used += stop_verdict.emergency_recovery_turns_added
 
-                # ── Modular Financial & Verification Stop Gates (TradingRiskStopGate + CodeVerifyStopGate) ──
-                can_stop_modular, modular_nudge = apply_stop_gates(final_text, turn_state.stop_gate_context)
-                if not can_stop_modular and modular_nudge:
-                    unverified_stop_gate_error = modular_nudge
-                    if turns >= effective_max_turns and _emergency_recovery_turns_used < _max_emergency_recovery_turns:
-                        effective_max_turns += 1
-                        _emergency_recovery_turns_used += 1
-                    if turns < effective_max_turns:
-                        diag = TurnFailureDiagnosticBuilder.from_stop_gate_rejection(
-                            turn_number=turns,
-                            gate_name="ModularStopGate",
-                            reason=modular_nudge,
-                            remaining_turns=max(1, effective_max_turns - turns),
-                        )
-                        logger.info(f"[{stage_name}][AgentHarness] Modular Stop Gate intercepted: {modular_nudge}")
-                        current_messages.append(
-                            {"role": "user", "content": f"{modular_nudge}\n\n{diag.format_directive()}"}
-                        )
-                        continue
-
-                # ── Physical Deliverable Gate (Anti-Hallucination & File Integrity Audit) ──
-                deliverable_verdict = self.physical_deliverable_gate.audit_claimed_completion(
-                    final_text,
-                    touched_files=turn_state.stop_gate_context.mutated_files,
-                    ledger=self.verification_ledger,
-                )
-                if not deliverable_verdict.is_valid and deliverable_verdict.message:
-                    unverified_stop_gate_error = deliverable_verdict.message
-                    if turns >= effective_max_turns and _emergency_recovery_turns_used < _max_emergency_recovery_turns:
-                        effective_max_turns += 1
-                        _emergency_recovery_turns_used += 1
-                    if turns < effective_max_turns:
-                        diag = TurnFailureDiagnosticBuilder.from_stop_gate_rejection(
-                            turn_number=turns,
-                            gate_name="PhysicalDeliverableGate",
-                            reason=deliverable_verdict.message,
-                            remaining_turns=max(1, effective_max_turns - turns),
-                        )
-                        logger.info(
-                            f"[{stage_name}][AgentHarness] Physical deliverable stop gate intercepted: "
-                            f"{deliverable_verdict.message}"
-                        )
-                        current_messages.append(
-                            {"role": "user", "content": f"{deliverable_verdict.message}\n\n{diag.format_directive()}"}
-                        )
-                        continue
-
-                # ── Interactive TODO List Audit (Ensure no unfinished tasks before exit) ──
-                if hasattr(self, "todo_state") and self.todo_state and self.todo_state.has_items():
-                    all_done, todo_audit_msg = self.todo_state.audit_completion()
-                    if not all_done:
-                        unverified_stop_gate_error = f"Unfinished TODO items: {todo_audit_msg}"
-                        if (
-                            turns >= effective_max_turns
-                            and _emergency_recovery_turns_used < _max_emergency_recovery_turns
-                        ):
-                            effective_max_turns += 1
-                            _emergency_recovery_turns_used += 1
-                        if turns < effective_max_turns:
-                            diag = TurnFailureDiagnosticBuilder.from_stop_gate_rejection(
-                                turn_number=turns,
-                                gate_name="InteractiveTodoAudit",
-                                reason=todo_audit_msg,
-                                remaining_turns=max(1, effective_max_turns - turns),
-                            )
-                            logger.info(
-                                f"[{stage_name}][AgentHarness] Active TODOs incomplete: {todo_audit_msg}. "
-                                f"Nudging agent on turn {turns}/{effective_max_turns}..."
-                            )
-                            current_messages.append(
-                                {
-                                    "role": "user",
-                                    "content": (
-                                        f"[CRITICAL TODO AUDIT]: You have unfinished items in your TODO list:\n"
-                                        f"{todo_audit_msg}\n"
-                                        f"Please finish the in-progress tasks or mark them completed/cancelled using 'todo_write'.\n\n"
-                                        f"{diag.format_directive()}"
-                                    ),
-                                }
-                            )
-                            continue
-
-                # ── Anti-Slop Quality Gate (Enforce Professional Zero-Slop Output) ──
-                if final_text and len(final_text.strip()) >= 80:
-                    slop_verdict = AntiSlopQualityGate.evaluate(
-                        final_text,
-                        stage_name=stage_name,
-                        require_quantitative_grounding=False,
-                    )
-                    if not slop_verdict.passed:
-                        if turns < effective_max_turns:
-                            diag = TurnFailureDiagnosticBuilder.from_slop_rejection(
-                                turn_number=turns,
-                                violations=slop_verdict.violations,
-                                stage_name=stage_name,
-                            )
-                            logger.info(
-                                f"[{stage_name}][AgentHarness] AntiSlopQualityGate intercepted final response on turn {turns}: "
-                                f"{slop_verdict.violations}"
-                            )
-                            current_messages.append({"role": "user", "content": diag.format_directive()})
-                            continue
-                        else:
-                            final_text = AntiSlopQualityGate.sanitize_surface_slop(final_text)
-
-                if (
-                    can_stop_modular
-                    and deliverable_verdict.is_valid
-                    and (
-                        not hasattr(self, "todo_state")
-                        or not self.todo_state
-                        or not self.todo_state.has_items()
-                        or self.todo_state.audit_completion()[0]
-                    )
-                    and ((final_text or "").strip() or called_tools)
-                ):
-                    unverified_stop_gate_error = None
-
-                logger.info(
-                    f"[{stage_name}][AgentHarness] Agent completed in {turns} turns with "
-                    f"{tool_calls_made} tool executions."
-                )
-
-                # ── Dual-Queue Follow-Up Processing ──
-                if self._follow_up_queue:
-                    if turns >= effective_max_turns:
-                        effective_max_turns += 1
-                    f_msg = self._follow_up_queue.popleft()
-                    logger.info(f"[{stage_name}][AgentHarness] Draining follow-up directive from '{f_msg.sender}'.")
-                    current_messages.append(
-                        {"role": "user", "content": f"[{f_msg.sender.upper()} FOLLOW-UP TASK]: {f_msg.content}"}
-                    )
+                if stop_verdict.can_break:
+                    break
+                else:
                     continue
 
-                break
-
-            # ── C1: PERSIST-BEFORE-EXECUTE INVARIANT ──
-            # Persist assistant turn and its tool calls to durable event store BEFORE executing tools
+            # 5. Persist Assistant Turn BEFORE Executing Tools
             cycle_id = kwargs.get("cycle_id", "")
             await self._persist_assistant_turn(
                 session=session,
@@ -2089,868 +1367,31 @@ class AgentHarness:
                 cycle_id=cycle_id,
             )
 
-            # 7. Segmented Tool Execution with Auto-Repair, Progressive Anti-Oscillation, and Mixed Batch Fault Tolerance
-            planner = ToolBatchPlanner(registry=getattr(executor, "registry", None))
-
-            prepared_calls = []
-            for block in tool_use_blocks:
-                raw_name = (
-                    str(block.get("name") or "") if isinstance(block, dict) else str(getattr(block, "name", "") or "")
-                )
-                raw_input = block.get("input") if isinstance(block, dict) else getattr(block, "input", {})
-                t_id = block.get("id") if isinstance(block, dict) else getattr(block, "id", "")
-
-                t_name = repair_tool_name(raw_name)
-                t_input = repair_tool_arguments(raw_input)
-                call_item = {
-                    "id": t_id,
-                    "name": t_name,
-                    "raw_name": raw_name,
-                    "input": t_input,
-                }
-
-                # ── M5: Tool Schema Validation ──
-                tool_schema_fn = getattr(executor, "get_tool_schema", None)
-                tool_schema = None
-                if callable(tool_schema_fn) and not inspect.iscoroutinefunction(tool_schema_fn):
-                    res = tool_schema_fn(t_name)
-                    if isinstance(res, dict):
-                        tool_schema = res
-                if tool_schema and isinstance(tool_schema, dict) and tool_schema.get("input_schema"):
-                    input_schema = tool_schema["input_schema"]
-                    raw_sym = stage_symbol or getattr(executor, "symbol", None)
-                    target_symbol_ctx = (
-                        raw_sym if isinstance(raw_sym, str) and raw_sym and not raw_sym.startswith("<") else None
-                    )
-                    coerce_tool_arguments(t_input, input_schema, default_symbol=target_symbol_ctx)
-                    schema_err = None
-
-                    try:
-                        import jsonschema
-
-                        jsonschema.validate(instance=t_input, schema=input_schema)
-                    except ImportError:
-                        req = input_schema.get("required", [])
-                        missing = [r for r in req if r not in t_input]
-                        if missing:
-                            schema_err = f"missing required fields {missing}"
-                    except Exception as ve:
-                        schema_err = getattr(ve, "message", str(ve))
-
-                    if schema_err:
-                        healed = deep_repair_tool_arguments(
-                            t_name,
-                            t_input,
-                            input_schema,
-                            schema_err,
-                            assistant_text=final_text or "",
-                            default_symbol=target_symbol_ctx,
-                        )
-                        if healed:
-                            logger.info(
-                                f"[{stage_name}][AgentHarness] Auto-healed schema validation error for {t_name} "
-                                f"(previously: {schema_err})"
-                            )
-                            schema_err = None
-                        else:
-                            from monika.application.agent.harness.turn_failure_diagnostics import (
-                                TurnFailureDiagnosticBuilder,
-                            )
-
-                            diag = TurnFailureDiagnosticBuilder.from_schema_validation_error(
-                                turn_number=turns,
-                                tool_name=t_name,
-                                tool_input=t_input if isinstance(t_input, dict) else {},
-                                error_msg=str(schema_err),
-                                schema=input_schema,
-                            )
-                            logger.warning(f"[{stage_name}] Schema validation failed for {t_name}: {schema_err}")
-                            if t_name in ("submit_asset_analysis", "submit_fundamental_brief"):
-                                unpersisted_validation_failures.add(t_name)
-                                persisted_mandatory_tools.discard(t_name)
-                            call_item["_schema_error"] = {
-                                "type": "tool_result",
-                                "tool_use_id": t_id,
-                                "name": t_name,
-                                "content": json.dumps(
-                                    {
-                                        "status": "schema_validation_error",
-                                        "error": f"Invalid arguments for {t_name}: {schema_err}. Fix and re-call.",
-                                        "expected_schema": diag.expected_schema_summary,
-                                        "diagnostic_directive": diag.format_directive(),
-                                        "_turn_failure_diagnostic": diag.to_dict(),
-                                    }
-                                ),
-                                "is_error": True,
-                            }
-                prepared_calls.append(call_item)
-
-            # Prune empty duplicate submission calls if a substantive submission call exists in the same batch
-            submission_tools = {"submit_fundamental_brief", "submit_asset_analysis"}
-            for sub_tool in submission_tools:
-                sub_calls = [c for c in prepared_calls if c["name"] == sub_tool]
-                if len(sub_calls) > 1:
-                    has_substantive = any(len(c.get("input", {})) > 1 for c in sub_calls)
-                    if has_substantive:
-                        for c in sub_calls:
-                            if len(c.get("input", {})) <= 1:
-                                c["_superseded"] = True
-
-            async def _execute_single_prepared_tool(call_item: dict) -> dict:
-                nonlocal tool_calls_made, consecutive_tool_sig, repeated_tool_count
-                c_name = call_item["name"]
-                c_input = call_item["input"]
-                c_id = call_item["id"]
-                needs_repeat_advisory = False
-
-                if hasattr(self, "repeat_tool_guard") and self.repeat_tool_guard:
-                    self.repeat_tool_guard.observe(c_name, c_input)
-
-                # Check if call was superseded by another parallel call
-                if call_item.get("_superseded"):
-                    return {
-                        "type": "tool_result",
-                        "tool_use_id": c_id,
-                        "name": c_name,
-                        "content": json.dumps(
-                            {
-                                "status": "superseded",
-                                "notice": "Duplicate/empty submission call superseded by substantive parallel submission in the same turn.",
-                            }
-                        ),
-                        "is_error": False,
-                    }
-
-                # Final Turn Read Tools Lockdown: force agent to submit on final turn
-                terminal_tool = (
-                    "submit_fundamental_brief"
-                    if ("fundamental" in stage_name.lower() or "stage1" in stage_name.lower())
-                    else (
-                        "submit_asset_analysis"
-                        if ("asset" in stage_name.lower() or "stage2" in stage_name.lower())
-                        else None
-                    )
-                )
-                if turns >= effective_max_turns and terminal_tool and c_name != terminal_tool:
-                    if c_name.startswith(("get_", "read_", "search_", "inspect_", "diff_")):
-                        tool_calls_made += 1
-                        logger.warning(
-                            f"[{stage_name}][AgentHarness] Final turn read tool lockdown: blocked '{c_name}'. Forcing '{terminal_tool}'."
-                        )
-                        return {
-                            "type": "tool_result",
-                            "tool_use_id": c_id,
-                            "name": c_name,
-                            "content": json.dumps(
-                                {
-                                    "status": "read_tools_disabled",
-                                    "error": f"Read tools are strictly disabled on final turn {turns}/{effective_max_turns}. You MUST call '{terminal_tool}' immediately with your synthesized analysis.",
-                                }
-                            ),
-                            "is_error": True,
-                        }
-
-                # Check if schema validation preflight failed
-                if call_item.get("_schema_error"):
-                    tool_calls_made += 1
-                    if c_name not in ("submit_fundamental_brief", "submit_asset_analysis"):
-                        self.guardrail_controller.record_denial()
-                    else:
-                        unpersisted_validation_failures.add(c_name)
-                        persisted_mandatory_tools.discard(c_name)
-                    return call_item["_schema_error"]
-
-                # Unified Tool Guardrails (Monotonic Risk, Read-Before-Act, Sizing, Turn Cap, Anti-Oscillation)
-                guard_ctx = dict(kwargs)
-                if prefetch_satisfied_tools:
-                    guard_ctx["prefetch_satisfied_tools"] = prefetch_satisfied_tools
-                guard_verdict = self.guardrail_controller.validate_tool_call(c_name, c_input, context=guard_ctx)
-                if not guard_verdict.allowed:
-                    logger.warning(
-                        f"[{stage_name}][AgentHarness] Guardrail blocked '{c_name}' ({guard_verdict.guard_name}): {guard_verdict.reason}"
-                    )
-                    tool_calls_made += 1
-                    called_tools.add(c_name)
-                    if guard_verdict.action in ("reject", "nudge"):
-                        if c_name not in ("submit_fundamental_brief", "submit_asset_analysis"):
-                            self.guardrail_controller.record_denial()
-                    status_val = (
-                        "already_executed"
-                        if guard_verdict.guard_name == "AntiOscillationGuard"
-                        else f"guardrail_{guard_verdict.action}"
-                    )
-                    guard_payload: Dict[str, Any] = {
-                        "status": status_val,
-                        "guard": guard_verdict.guard_name,
-                        "notice" if guard_verdict.action == "suppress" else "error": guard_verdict.reason,
-                        "suggested_fix": guard_verdict.suggested_fix,
-                    }
-                    if guard_verdict.action in ("reject", "nudge"):
-                        from monika.application.agent.harness.turn_failure_diagnostics import (
-                            TurnFailureDiagnosticBuilder,
-                        )
-
-                        guard_diag = TurnFailureDiagnosticBuilder.from_guardrail_verdict(
-                            turn_number=turns,
-                            tool_name=c_name,
-                            guard_name=guard_verdict.guard_name,
-                            reason=guard_verdict.reason,
-                            suggested_fix=guard_verdict.suggested_fix,
-                        )
-                        guard_payload["diagnostic_directive"] = guard_diag.format_directive()
-                        guard_payload["_turn_failure_diagnostic"] = guard_diag.to_dict()
-                    return {
-                        "type": "tool_result",
-                        "tool_use_id": c_id,
-                        "name": c_name,
-                        "content": json.dumps(guard_payload),
-                        "is_error": guard_verdict.action in ("reject", "nudge"),
-                    }
-
-                # a. Progressive Anti-Oscillation Loop Guard (Hash-based + Sliding Window)
-                suppress_threshold = int(self.settings.get("repeat_tool_suppress_threshold", 2))
-                if c_name in ("calculate_position_size", "calculate_size", "get_optimal_intraday_levels"):
-                    suppress_threshold = max(suppress_threshold, 4)
-                call_sig = self.compute_tool_signature(c_name, c_input)
-                total_sig_counts[call_sig] = total_sig_counts.get(call_sig, 0) + 1
-
-                if call_sig == consecutive_tool_sig:
-                    repeated_tool_count += 1
-                else:
-                    consecutive_tool_sig = call_sig
-                    repeated_tool_count = 1
-
-                recent_repeats = sliding_window_sigs.count(call_sig)
-
-                # Format canonical JSON-sorted arguments for deterministic tracking & reminders
-                try:
-                    canonical_args = json.dumps(c_input, sort_keys=True)
-                except Exception:
-                    canonical_args = str(c_input)
-
-                is_hard_suppressed = (
-                    repeated_tool_count >= suppress_threshold
-                    or recent_repeats >= suppress_threshold
-                    or total_sig_counts[call_sig] >= (suppress_threshold + 1)
-                )
-
-                if is_hard_suppressed:
-                    logger.warning(
-                        f"[{stage_name}][AgentHarness] Anti-Oscillation: Suppressing repeated call for '{c_name}' "
-                        f"(consecutive={repeated_tool_count}, recent={recent_repeats}, total={total_sig_counts[call_sig]})"
-                    )
-                    suppressed_result = {
-                        "status": "already_executed",
-                        "notice": (
-                            f"Tool '{c_name}' with identical parameters was already executed {repeated_tool_count} time(s). "
-                            f"Arguments: {canonical_args}. "
-                            f"Do not repeat identical calls. Synthesize data already collected and conclude analysis."
-                        ),
-                    }
-                    tool_calls_made += 1
-                    called_tools.add(c_name)
-                    return {
-                        "type": "tool_result",
-                        "tool_use_id": c_id,
-                        "name": c_name,
-                        "content": json.dumps(suppressed_result),
-                    }
-
-                needs_repeat_advisory = (
-                    repeated_tool_count >= 2 or recent_repeats >= 1 or total_sig_counts[call_sig] >= 2
-                )
-
-                sliding_window_sigs.append(call_sig)
-
-                # b. Tool Family Quota Enforcement
-                allowed, quota_warn = self.compactor.check_tool_family_quota(c_name, list(called_tools))
-                if not allowed:
-                    logger.warning(
-                        f"[{stage_name}][AgentHarness] Tool Family Quota Exceeded for '{c_name}': {quota_warn}"
-                    )
-                    suppressed_result = {"status": "quota_exceeded", "notice": quota_warn}
-                    tool_calls_made += 1
-                    called_tools.add(c_name)
-                    return {
-                        "type": "tool_result",
-                        "tool_use_id": c_id,
-                        "name": c_name,
-                        "content": json.dumps(suppressed_result),
-                    }
-
-                # ── Trade Proposal Verification Stop Gate & Anti-Laziness Interception ──
-                if c_name == "submit_asset_analysis":
-                    target_sym = c_input.get("symbol") or stage_symbol
-                    decision = str(c_input.get("decision") or "").upper()
-
-                    # 1. Anti-laziness on Turn 1: WAIT cannot be submitted without inspecting technical structure or price action
-                    if turns == 1 and decision in ("WAIT", "HOLD", "NEUTRAL", "PASS", "NO_TRADE"):
-                        inspection_tools = {
-                            "get_smc_zones",
-                            "get_structure_breaks",
-                            "get_price_history",
-                            "get_indicator_snapshot",
-                            "get_mt5_bars",
-                            "get_atr",
-                            "get_swing_points",
-                        }
-
-                        def _normalize_inspection_name(t_name: str) -> str:
-                            name = re.sub(r"_(?:M15|M30|H1|H4|D1|W1|MN|recent)$", "", str(t_name))
-                            if name.startswith("price_history"):
-                                return "get_price_history"
-                            if name.startswith("smc_zones"):
-                                return "get_smc_zones"
-                            if name.startswith("structure_breaks"):
-                                return "get_structure_breaks"
-                            if name.startswith("indicator_snapshot") or name.startswith("technical_indicators"):
-                                return "get_indicator_snapshot"
-                            if name.startswith("swing_points"):
-                                return "get_swing_points"
-                            if name.startswith("atr"):
-                                return "get_atr"
-                            if name.startswith("mt5_bars") or name.startswith("multi_timeframe_candles"):
-                                return "get_mt5_bars"
-                            if not name.startswith("get_") and f"get_{name}" in inspection_tools:
-                                return f"get_{name}"
-                            return name
-
-                        raw_inspected = set(called_tools) | set(prefetch_satisfied_tools or [])
-                        all_inspected_tools = {_normalize_inspection_name(t) for t in raw_inspected} | raw_inspected
-                        if not any(t in all_inspected_tools for t in inspection_tools):
-                            logger.warning(
-                                f"[{stage_name}][AgentHarness] Anti-laziness: blocked premature WAIT on turn 1 without technical inspection."
-                            )
-                            tool_calls_made += 1
-                            return {
-                                "type": "tool_result",
-                                "tool_use_id": c_id,
-                                "content": json.dumps(
-                                    {
-                                        "status": "anti_laziness_nudge",
-                                        "error": (
-                                            "Cannot conclude WAIT on turn 1 without inspecting technical structure or price action. "
-                                            "You must call get_smc_zones, get_structure_breaks, or get_price_history first."
-                                        ),
-                                    }
-                                ),
-                                "is_error": True,
-                            }
-
-                    # 2. Risk Verification Evidence Check for BUY/SELL
-                    if decision in ("BUY", "SELL", "LONG", "SHORT"):
-                        has_evidence = self.verification_ledger.has_passed_evidence(target_sym)
-                        has_inline_sl = c_input.get("stop_loss") is not None
-                        if not has_evidence and not has_inline_sl:
-                            logger.warning(
-                                f"[{stage_name}][AgentHarness] submit_asset_analysis ({decision} {target_sym}) "
-                                f"BLOCKED: No passing verification evidence in ledger and no stop_loss provided."
-                            )
-                            unpersisted_validation_failures.add(c_name)
-                            persisted_mandatory_tools.discard(c_name)
-                            tool_calls_made += 1
-                            return {
-                                "type": "tool_result",
-                                "tool_use_id": c_id,
-                                "content": json.dumps(
-                                    {
-                                        "status": "blocked_by_stop_gate",
-                                        "error": (
-                                            f"Trade proposal ({decision} {target_sym}) blocked by TradeStopGate: "
-                                            f"No passing calculate_position_size or validate_risk_limits evidence recorded in ledger. "
-                                            f"You MUST call calculate_position_size with exact stop_loss and take_profit parameters first."
-                                        ),
-                                    }
-                                ),
-                                "is_error": True,
-                            }
-
-                        if has_evidence:
-                            # 2b. Verify parameter integrity (entry/SL/TP/lot must match verified sizing evidence)
-                            prop_sl = None
-                            prop_entry = None
-                            prop_tp = None
-                            prop_lot = None
-                            try:
-                                if "stop_loss" in c_input:
-                                    prop_sl = float(c_input["stop_loss"])
-                                if "take_profit" in c_input:
-                                    prop_tp = float(c_input["take_profit"])
-                                if "entry" in c_input or "entry_price" in c_input:
-                                    prop_entry = float(c_input.get("entry") or c_input.get("entry_price"))
-                                entry_cond = c_input.get("entry_condition")
-                                if (
-                                    prop_entry is None
-                                    and isinstance(entry_cond, dict)
-                                    and entry_cond.get("price") is not None
-                                ):
-                                    prop_entry = float(entry_cond["price"])
-                                raw_lot = c_input.get("lot_size") or c_input.get("lots") or c_input.get("volume")
-                                if raw_lot is not None:
-                                    prop_lot = float(raw_lot)
-                            except ValueError, TypeError:
-                                pass
-
-                            is_intact, integrity_err = self.verification_ledger.verify_proposal_integrity(
-                                target_sym,
-                                entry_price=prop_entry,
-                                stop_loss=prop_sl,
-                                take_profit=prop_tp,
-                                lot_size=prop_lot,
-                            )
-                            if not is_intact and prop_sl is not None:
-                                try:
-                                    from monika.domain.risk.position_sizing import calculate_lot_size
-
-                                    recalc_session = session or getattr(executor, "session", None)
-                                    recalc_entry = prop_entry
-                                    if recalc_entry is None and recalc_session is not None:
-                                        from sqlalchemy import select
-                                        from monika.core.primitives.clock import now as get_clock_now
-                                        from monika.infrastructure.database.models import PriceOHLCV
-
-                                        last_bar = (
-                                            await recalc_session.execute(
-                                                select(PriceOHLCV)
-                                                .where(PriceOHLCV.symbol == target_sym)
-                                                .where(PriceOHLCV.timestamp <= get_clock_now())
-                                                .order_by(PriceOHLCV.timestamp.desc())
-                                                .limit(1)
-                                            )
-                                        ).scalar_one_or_none()
-                                        if last_bar:
-                                            recalc_entry = float(last_bar.close)
-
-                                    if target_sym and recalc_entry is not None:
-                                        sizing_res = await calculate_lot_size(
-                                            symbol=target_sym,
-                                            entry_price=recalc_entry,
-                                            stop_loss=float(prop_sl),
-                                            direction=decision,
-                                            session=recalc_session,
-                                            settings=self.settings,
-                                        )
-                                        if sizing_res and sizing_res.get("is_valid", True):
-                                            rec_lots = sizing_res.get("recommended_lots")
-                                            self.verification_ledger.record_tool_execution(
-                                                "calculate_position_size",
-                                                {
-                                                    "symbol": target_sym,
-                                                    "entry_price": recalc_entry,
-                                                    "stop_loss": float(prop_sl),
-                                                    "take_profit": float(prop_tp) if prop_tp is not None else None,
-                                                    "lot_size": rec_lots,
-                                                },
-                                                sizing_res,
-                                            )
-                                            is_intact, integrity_err = (
-                                                self.verification_ledger.verify_proposal_integrity(
-                                                    target_sym,
-                                                    entry_price=recalc_entry,
-                                                    stop_loss=prop_sl,
-                                                    take_profit=prop_tp,
-                                                    lot_size=rec_lots,
-                                                )
-                                            )
-                                            if is_intact:
-                                                c_input["lot_size"] = rec_lots
-                                                logger.info(
-                                                    f"[{stage_name}][AgentHarness] Auto-recalculated verified position sizing on-the-fly for {decision} {target_sym}: "
-                                                    f"SL={prop_sl}, Lots={rec_lots}, Risk=${sizing_res.get('risk_amount_usd')}"
-                                                )
-                                except Exception as recalc_err:
-                                    logger.warning(
-                                        f"[{stage_name}][AgentHarness] Auto-recalculating sizing on parameter deviation failed: {recalc_err}"
-                                    )
-
-                            if not is_intact:
-                                logger.warning(
-                                    f"[{stage_name}][AgentHarness] submit_asset_analysis ({decision} {target_sym}) "
-                                    f"BLOCKED: Parameter integrity check failed: {integrity_err}"
-                                )
-                                unpersisted_validation_failures.add(c_name)
-                                persisted_mandatory_tools.discard(c_name)
-                                tool_calls_made += 1
-                                return {
-                                    "type": "tool_result",
-                                    "tool_use_id": c_id,
-                                    "name": c_name,
-                                    "content": json.dumps(
-                                        {
-                                            "status": "blocked_by_parameter_integrity",
-                                            "error": f"Trade proposal blocked: {integrity_err}",
-                                        }
-                                    ),
-                                    "is_error": True,
-                                }
-
-                # c. Dynamic Execution via ToolExecutor with OpenTelemetry Tool Span and Plugin Hooks
-                from monika.application.agent.estop import is_estop_active
-
-                if is_estop_active():
-                    logger.critical(
-                        f"[{stage_name}][AgentHarness] ESTOP detected before executing tool '{c_name}'. Aborting tool execution."
-                    )
-                    return {
-                        "type": "tool_result",
-                        "tool_use_id": c_id,
-                        "name": c_name,
-                        "content": json.dumps({"error": "ESTOP is active. All tool executions are halted."}),
-                        "is_error": True,
-                    }
-
-                # Persist-before-execute: record tool intent before touching broker/external state
-                await self._log_tool_call(session, stage_name, c_name, c_input, {"status": "PENDING_EXECUTION"})
-
-                tool_calls_made += 1
-                called_tools.add(c_name)
-
-                # Read-only tool check via ReadOnlyReplayCache
-                # Financial Invariant: Real-time price quotes, order books, and account positions MUST NOT be cached.
-                REALTIME_FINANCIAL_TOOLS = {
-                    "get_market_quote",
-                    "get_open_positions",
-                    "get_account_info",
-                    "get_ticks",
-                    "get_rate",
-                    "get_tick",
-                }
-                is_read_tool = (
-                    c_name.startswith(("get_", "fetch_", "calc_", "calculate_"))
-                    and c_name not in REALTIME_FINANCIAL_TOOLS
-                )
-                res_obj = None
-                if is_read_tool:
-                    cached_val = self.replay_cache.get(c_name, c_input)
-                    if cached_val is not None:
-                        logger.info(f"[{stage_name}][AgentHarness] ReadOnlyReplayCache HIT for '{c_name}'")
-                        res_obj = cached_val
-
-                if res_obj is None:
-                    try:
-                        from monika.application.plugins.manager.manager import PluginHook, get_plugin_manager
-
-                        plugin_mgr = get_plugin_manager()
-                        await plugin_mgr.emit(
-                            PluginHook.PRE_TOOL_CALL, tool_name=c_name, args=c_input, stage_name=stage_name
-                        )
-
-                        from monika.core.telemetry.tracing.spans import tool_span
-
-                        with tool_span(c_name, symbol=stage_symbol):
-                            res_obj = await executor.execute(c_name, c_input)
-
-                        await plugin_mgr.emit(
-                            PluginHook.POST_TOOL_CALL,
-                            tool_name=c_name,
-                            args=c_input,
-                            result=res_obj,
-                            stage_name=stage_name,
-                        )
-                        if is_read_tool and isinstance(res_obj, dict) and "error" not in res_obj:
-                            self.replay_cache.put(c_name, c_input, res_obj)
-                    except Exception as ex:
-                        logger.error(f"[{stage_name}][AgentHarness] Tool execution exception in '{c_name}': {ex}")
-                        res_obj = {"error": f"Tool execution failed: {str(ex)}", "tool": c_name}
-
-                await self._log_tool_call(session, stage_name, c_name, c_input, res_obj)
-                self.guardrail_controller.record_tool_call(c_name, c_input, res_obj)
-                is_tool_err = bool(
-                    isinstance(res_obj, dict)
-                    and (
-                        bool(res_obj.get("error"))
-                        or res_obj.get("status") in ("error", "failed", "rejected", "blocked", "validation_error")
-                        or res_obj.get("valid") is False
-                    )
-                )
-                if not is_tool_err:
-                    self.guardrail_controller.record_success()
-                self.stall_guard.record_call(c_name, res_obj, turn_idx=turns)
-                self.verification_ledger.record_tool_execution(c_name, c_input, res_obj)
-
-                if is_tool_err and isinstance(res_obj, dict) and "_turn_failure_diagnostic" not in res_obj:
-                    from monika.application.agent.harness.turn_failure_diagnostics import (
-                        TurnFailureDiagnosticBuilder,
-                    )
-
-                    err_msg_val = str(
-                        res_obj.get("error")
-                        or res_obj.get("errors")
-                        or res_obj.get("message")
-                        or res_obj.get("reason")
-                        or res_obj.get("status")
-                        or "Tool execution failed"
-                    )
-                    err_diag = TurnFailureDiagnosticBuilder.from_tool_execution_error(
-                        turn_number=turns,
-                        tool_name=c_name,
-                        tool_input=c_input if isinstance(c_input, dict) else {},
-                        error_msg=err_msg_val,
-                    )
-                    res_obj = dict(res_obj)
-                    res_obj["_turn_failure_diagnostic"] = err_diag.to_dict()
-                    res_obj.setdefault("diagnostic_directive", err_diag.format_directive())
-
-                if c_name == "load_tool_category" and isinstance(res_obj, dict):
-                    new_schemas = res_obj.get("schemas", [])
-                    if isinstance(new_schemas, list):
-                        existing_names = {str(t.get("name", "")) for t in active_tools}
-                        preserve_prefix = bool(
-                            (self.settings or {}).get("harness", {}).get("preserve_tool_prefix", False)
-                            or (self.settings or {}).get("harness", {}).get("preserve_tool_prefix_order", False)
-                        )
-                        if preserve_prefix:
-                            newly_added = []
-                            for sch in new_schemas:
-                                if isinstance(sch, dict) and str(sch.get("name", "")) not in existing_names:
-                                    sch_copy = dict(sch)
-                                    sch_copy.setdefault("defer_loading", True)
-                                    newly_added.append(sch_copy)
-                                    existing_names.add(str(sch_copy.get("name", "")))
-                            newly_added.sort(key=lambda t: str(t.get("name", "")))
-                            active_tools.extend(newly_added)
-                        else:
-                            for sch in new_schemas:
-                                if isinstance(sch, dict) and str(sch.get("name", "")) not in existing_names:
-                                    active_tools.append(dict(sch))
-                                    existing_names.add(str(sch.get("name", "")))
-                            active_tools.sort(key=lambda t: str(t.get("name", "")))
-
-                if c_name in (
-                    "patch_source_file",
-                    "write_source_file",
-                    "edit_file",
-                    "apply_file_patch",
-                    "create_file",
-                ):
-                    target_file = (
-                        c_input.get("filepath") or c_input.get("path") or c_input.get("filename") or c_input.get("file")
-                    )
-                    if target_file:
-                        turn_state.stop_gate_context.mutated_files.append(str(target_file))
-                        if not is_tool_err and hasattr(self, "fs_observation_gate") and self.fs_observation_gate:
-                            self.fs_observation_gate.record_write(str(target_file))
-                    turn_state.stop_gate_context.has_unverified_file_edits = True
-
-                if any(k in c_name.lower() for k in ("read", "view", "inspect_file")):
-                    target_file = (
-                        c_input.get("filepath") or c_input.get("path") or c_input.get("filename") or c_input.get("file")
-                    )
-                    if target_file and not is_tool_err:
-                        if hasattr(self, "fs_observation_gate") and self.fs_observation_gate:
-                            self.fs_observation_gate.record_read(str(target_file))
-
-                if c_name in (
-                    "run_verification_gate",
-                    "verify_syntax",
-                    "run_terminal_command",
-                    "execute_code",
-                    "run_command",
-                ):
-                    cmd_str = str(c_input.get("command") or c_input.get("cmd") or "").strip().lower()
-                    is_trivial_echo = c_name in ("run_terminal_command", "run_command") and (
-                        cmd_str in ("true", "echo", "echo ok", "rem") or cmd_str.startswith("echo ")
-                    )
-                    rc_ok = not is_tool_err and (
-                        not isinstance(res_obj, dict)
-                        or (res_obj.get("returncode", 0) == 0 and res_obj.get("exit_code", 0) == 0)
-                    )
-                    if rc_ok and not is_trivial_echo:
-                        turn_state.stop_gate_context.verification_commands_run.append(c_name)
-                        turn_state.stop_gate_context.has_unverified_file_edits = False
-
-                if c_name in ("submit_asset_analysis", "submit_fundamental_brief"):
-                    validation_fail_statuses = {
-                        "validation_failed",
-                        "rejected_verification_required",
-                        "rejected_confluence_too_low",
-                    }
-                    st = res_obj.get("status") if isinstance(res_obj, dict) else None
-                    if st in validation_fail_statuses:
-                        unpersisted_validation_failures.add(c_name)
-                    else:
-                        unpersisted_validation_failures.discard(c_name)
-                        persisted_mandatory_tools.add(c_name)
-
-                if c_name in ("propose_action", "propose_trade"):
-                    turn_state.stop_gate_context.proposed_actions.append(c_input)
-                    turn_state.stop_gate_context.has_unregistered_trade_proposals = False
-
-                # Disk spillover check for payload > 16KB to prevent context window bloat and JSON truncation
-                try:
-                    from monika.application.analysis.tools.tool_result_storage import get_tool_result_storage
-
-                    res_obj, was_spilled = get_tool_result_storage().maybe_persist(c_name, c_input, res_obj)
-                except Exception as e:
-                    logger.debug(f"[AgentHarness] Tool result spillover check error: {e}")
-
-                # Format tool result block with validation and micro-pruning
-                try:
-                    from monika.core.validation.tool_response_validator import ToolResponseValidator
-
-                    sanitized_result, is_valid, warning = ToolResponseValidator.validate_and_sanitize(c_name, res_obj)
-                    if not is_valid:
-                        error_context = ToolResponseValidator.build_error_context(c_name, warning)
-                        tool_res_content = (
-                            json.dumps(sanitized_result, default=str)
-                            if not isinstance(sanitized_result, str)
-                            else sanitized_result
-                        ) + error_context
-                    else:
-                        tool_res_content = (
-                            json.dumps(sanitized_result, ensure_ascii=False, default=str)
-                            if not isinstance(sanitized_result, str)
-                            else sanitized_result
-                        )
-                except Exception:
-                    tool_res_content = json.dumps(res_obj, default=str) if not isinstance(res_obj, str) else res_obj
-
-                tool_res_content = self.compactor.micro_prune(tool_res_content, tool_name=c_name)
-
-                # ── Zero-Cost Lossless Structural Tool Output Pruning ──
-                general_prune_tools = frozenset(
-                    {
-                        "run_command",
-                        "run_terminal_command",
-                        "execute_code",
-                        "bash",
-                        "terminal",
-                        "read_file",
-                        "search_files",
-                        "grep",
-                        "git_status",
-                        "git_diff",
-                        "git_log",
-                        "web_search",
-                        "scrape_url",
-                        "read_url",
-                    }
-                )
-                general_max_chars = int(self.settings.get("general_tool_max_chars", 2500))
-                if c_name in general_prune_tools and len(tool_res_content) > general_max_chars:
-                    if isinstance(res_obj, (dict, list)):
-                        tool_res_content = self.general_tool_pruner.prune_json(
-                            res_obj, max_chars=general_max_chars, tool_name=c_name
-                        )
-                    else:
-                        tool_res_content = self.general_tool_pruner.prune_text(
-                            tool_res_content, max_chars=general_max_chars, tool_name=c_name
-                        )
-                elif len(tool_res_content) > 16000:
-                    if isinstance(res_obj, (dict, list)):
-                        tool_res_content = self.general_tool_pruner.prune_json(
-                            res_obj, max_chars=16000, tool_name=c_name
-                        )
-                    else:
-                        tool_res_content = self.general_tool_pruner.prune_text(
-                            tool_res_content, max_chars=16000, tool_name=c_name
-                        )
-
-                # ── Generation-Tracked Data Fetch Deduplication ──
-                dedup_notice = self.data_dedup.check_and_record(c_name, c_input, tool_res_content)
-                if dedup_notice:
-                    tool_res_content = dedup_notice
-
-                # ── Untrusted Content Isolation & Threat Scanning ──
-                untrusted_tools = frozenset(
-                    {
-                        "get_news_items",
-                        "get_news_digest",
-                        "get_retail_sentiment",
-                        "get_social_sentiment",
-                        "web_search",
-                        "get_cot_report",
-                        "scrape_url",
-                        "get_forex_sentiment",
-                        "get_fxssi_sentiment",
-                        "get_structured_sentiment",
-                    }
-                )
-                if c_name in untrusted_tools:
-                    try:
-                        from monika.core.security.prompt_injection_scanner import PromptInjectionScanner
-
-                        tool_res_content = PromptInjectionScanner.sanitize_or_block(tool_res_content, source=c_name)
-                    except Exception as ex:
-                        logger.warning(f"Prompt injection scanner failed for '{c_name}': {ex}. Quarantining content.")
-                        tool_res_content = f"[SECURITY WARNING: External content from '{c_name}' quarantined due to safety scanner exception]"
-                    tool_res_content = (
-                        f'<untrusted_external_content source="{c_name}">\n'
-                        f"{tool_res_content}\n"
-                        f"</untrusted_external_content>"
-                    )
-
-                if needs_repeat_advisory:
-                    if repeated_tool_count >= 5 or total_sig_counts.get(call_sig, 0) >= 5:
-                        advisory_note = (
-                            f"\n\n[STRONG WARNING: Tool '{c_name}' has been executed {repeated_tool_count} times "
-                            f"with identical arguments: {canonical_args}. This indicates an unproductive loop. "
-                            f"You MUST shift strategies or synthesize your findings now.]"
-                        )
-                    elif repeated_tool_count >= 3 or total_sig_counts.get(call_sig, 0) >= 3:
-                        advisory_note = (
-                            f"\n\n[REFLECTION ADVISORY: Tool '{c_name}' has been invoked {repeated_tool_count} times "
-                            f"with these exact arguments. Reflect on whether new information is being gained.]"
-                        )
-                    else:
-                        advisory_note = (
-                            f"\n\n[ADVISORY REMINDER: Tool '{c_name}' with identical parameters was already called previously. "
-                            f"Avoid redundant calls. Synthesize collected data and conclude.]"
-                        )
-                    tool_res_content = f"{tool_res_content}{advisory_note}"
-
-                return {
-                    "type": "tool_result",
-                    "tool_use_id": c_id,
-                    "name": c_name,
-                    "content": tool_res_content,
-                    "is_error": is_tool_err,
-                }
-
-            # Plan segments into [Parallel Safe] -> [Barrier] -> [Parallel Safe]
-            tool_results = []
-            segments = planner.plan_segments(prepared_calls)
-            for seg_type, batch in segments:
-                if seg_type == "parallel" and len(batch) > 1:
-                    raw_results = await asyncio.gather(
-                        *[_execute_single_prepared_tool(tc) for tc in batch], return_exceptions=True
-                    )
-                    for idx, res in enumerate(raw_results):
-                        if isinstance(res, Exception):
-                            tc = batch[idx]
-                            logger.error(f"[{stage_name}][AgentHarness] Parallel tool {tc.get('name')} failed: {res}")
-                            tool_results.append(
-                                {
-                                    "type": "tool_result",
-                                    "tool_use_id": tc.get("id", ""),
-                                    "content": json.dumps({"status": "execution_error", "error": str(res)}),
-                                    "is_error": True,
-                                }
-                            )
-                        else:
-                            tool_results.append(res)
-                else:
-                    for tc in batch:
-                        try:
-                            res = await _execute_single_prepared_tool(tc)
-                            tool_results.append(res)
-                        except Exception as ex:
-                            logger.error(f"[{stage_name}][AgentHarness] Sequential tool {tc.get('name')} failed: {ex}")
-                            tool_results.append(
-                                {
-                                    "type": "tool_result",
-                                    "tool_use_id": tc.get("id", ""),
-                                    "content": json.dumps({"status": "execution_error", "error": str(ex)}),
-                                    "is_error": True,
-                                }
-                            )
-
-            # Append tool observations as next turn user message
+            # 6. Execute Segmented Tool Pipeline
+            tracking.tool_calls_made = tool_calls_made
+            pipe_res = await TurnToolPipeline.execute_tools(
+                harness=self,
+                session=session,
+                executor=executor,
+                tool_use_blocks=tool_use_blocks,
+                final_text=final_text,
+                stage_name=stage_name,
+                stage_symbol=stage_symbol,
+                turns=turns,
+                effective_max_turns=effective_max_turns,
+                tracking=tracking,
+                turn_state=turn_state,
+                active_tools=active_tools,
+                prefetch_satisfied_tools=prefetch_satisfied_tools,
+                kwargs=kwargs,
+            )
+            tool_calls_made = pipe_res.tool_calls_made
+            tool_results = pipe_res.tool_results
             current_messages.append({"role": "user", "content": tool_results})
 
             # Emergency turn extension if mandatory submission tool failed on final turn
             mandatory_tool = self.get_mandatory_tool_for_stage(stage_name)
-            has_failed_mandatory = mandatory_tool in unpersisted_validation_failures or any(
+            has_failed_mandatory = mandatory_tool in tracking.unpersisted_validation_failures or any(
                 isinstance(tr, dict) and tr.get("is_error") and tr.get("name") == mandatory_tool for tr in tool_results
             )
             if (
@@ -2965,9 +1406,13 @@ class AgentHarness:
                     f"Granted emergency recovery turn ({_emergency_recovery_turns_used}/{_max_emergency_recovery_turns})."
                 )
 
-            # 7b. Budget Refunds (PTC and Dedup)
-            # I7: PTC Iteration Budget Refund
-            if len(prepared_calls) == 1 and prepared_calls[0].get("name") == "execute_analysis_code":
+            # 7. Budget Refunds (PTC and Dedup)
+            prepared_submission = any(
+                b.get("name") == "execute_analysis_code"
+                for b in tool_use_blocks
+                if isinstance(b, dict) or hasattr(b, "name")
+            )
+            if len(tool_use_blocks) == 1 and prepared_submission:
                 if ptc_refund_count < 3:
                     turns -= 1
                     ptc_refund_count += 1
@@ -2977,14 +1422,11 @@ class AgentHarness:
                 else:
                     logger.warning(f"[{stage_name}][AgentHarness] PTC budget refund cap reached ({ptc_refund_count}/3)")
 
-            # Dedup Tool Budget Refund:
-            # If all tool calls were lightweight dedup notices for prefetch-satisfied tools,
-            # refund the turn (up to 2 times) to prevent turn exhaustion while preserving KV-cache prefix invariance.
             actual_tool_results = [
                 tr for tr in tool_results if isinstance(tr, dict) and tr.get("type") == "tool_result"
             ]
             is_all_dedup = False
-            if prepared_calls and actual_tool_results:
+            if tool_use_blocks and actual_tool_results:
                 parsed_res = []
                 for tr in actual_tool_results:
                     c_text = str(tr.get("content", ""))
@@ -3002,7 +1444,7 @@ class AgentHarness:
                     f"[{stage_name}][AgentHarness] Dedup tool budget refund ({dedup_refund_count}/2): turn not counted"
                 )
 
-            # 7c. Penultimate Turn Forcing Directive: lock read tools and mandate terminal submission
+            # 8. Penultimate Turn Forcing Directive: lock read tools and mandate terminal submission
             terminal_sub_tool = (
                 "submit_fundamental_brief"
                 if ("fundamental" in stage_name.lower() or "stage1" in stage_name.lower())
@@ -3014,7 +1456,10 @@ class AgentHarness:
             )
             if (
                 terminal_sub_tool
-                and (terminal_sub_tool not in called_tools or terminal_sub_tool in unpersisted_validation_failures)
+                and (
+                    terminal_sub_tool not in tracking.called_tools
+                    or terminal_sub_tool in tracking.unpersisted_validation_failures
+                )
                 and turns == effective_max_turns - 1
             ):
                 forcing_directive = (
@@ -3033,7 +1478,7 @@ class AgentHarness:
                     f"[{stage_name}][AgentHarness] Injected Penultimate Turn Forcing Directive for '{terminal_sub_tool}' on turn {turns}/{effective_max_turns}."
                 )
 
-            # 8. State-Aware Stall Guard Check (H-8) - exempt pure prefetch dedup turns
+            # 9. State-Aware Stall Guard Check (H-8)
             if not is_all_dedup:
                 is_stall_warn, is_stall_terminate, stall_msg = self.stall_guard.check_stall()
                 if is_stall_terminate and stall_msg:
@@ -3061,7 +1506,7 @@ class AgentHarness:
 
         # Ensure mandatory tool failure is accurately reflected in result success
         mandatory_tool = self.get_mandatory_tool_for_stage(stage_name)
-        if mandatory_tool and mandatory_tool in unpersisted_validation_failures:
+        if mandatory_tool and mandatory_tool in tracking.unpersisted_validation_failures:
             if unverified_stop_gate_error is None:
                 unverified_stop_gate_error = (
                     f"Mandatory submission tool '{mandatory_tool}' failed validation and was not persisted."

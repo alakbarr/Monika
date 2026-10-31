@@ -2264,6 +2264,7 @@ Monika/
 │   │   ├── test_denial_breaker_guard.py
 │   │   ├── test_digest_slice_generator.py
 │   │   ├── test_domain_handlers.py
+│   │   ├── test_dual_engine_smc_and_dealing_range.py
 │   │   ├── test_economic_surprise.py
 │   │   ├── test_error_classifier.py
 │   │   ├── test_event_broadcaster.py
@@ -3167,4 +3168,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 273 | **Total Tracked Files**: 2864
+**Total Tracked Directories**: 273 | **Total Tracked Files**: 2865
