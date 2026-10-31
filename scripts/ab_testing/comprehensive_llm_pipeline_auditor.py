@@ -61,6 +61,7 @@ class MarketAuditScenario:
     recent_candles: List[Dict[str, float]] = field(default_factory=list)
     smc_zones: Dict[str, Any] = field(default_factory=dict)
     indicators: Dict[str, Any] = field(default_factory=dict)
+    forward_bars: List[Dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -89,6 +90,73 @@ class AuditDecisionOutcome:
     is_correct_4h: Optional[bool] = None
     is_correct_24h: Optional[bool] = None
     is_correct_48h: Optional[bool] = None
+    bracket_outcome: Optional[str] = None  # TP_HIT, SL_HIT, TIME_EXIT
+    bracket_pnl: float = 0.0
+    bracket_win: Optional[bool] = None
+    bracket_bars: int = 0
+
+
+def evaluate_bracket_lifecycle(
+    entry: float,
+    sl: float,
+    tp: float,
+    is_buy: bool,
+    forward_bars: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Candle-by-Candle Path-Dependent Bracket Engine:
+
+    Evaluates intra-candle High/Low across chronological forward bars to determine
+    whether TP or SL is struck first, avoiding point-to-point displacement bias.
+    """
+    for idx, bar in enumerate(forward_bars):
+        high = float(bar["h"])
+        low = float(bar["l"])
+
+        if is_buy:
+            # Check if Stop Loss was hit first on intra-bar drawdown
+            if low <= sl:
+                return {
+                    "outcome": "SL_HIT",
+                    "pnl": (sl - entry) / entry,
+                    "bars_elapsed": idx + 1,
+                    "is_win": False,
+                }
+            # Check if Take Profit was reached
+            if high >= tp:
+                return {
+                    "outcome": "TP_HIT",
+                    "pnl": (tp - entry) / entry,
+                    "bars_elapsed": idx + 1,
+                    "is_win": True,
+                }
+        else:  # sell
+            if high >= sl:
+                return {
+                    "outcome": "SL_HIT",
+                    "pnl": (entry - sl) / entry,
+                    "bars_elapsed": idx + 1,
+                    "is_win": False,
+                }
+            if low <= tp:
+                return {
+                    "outcome": "TP_HIT",
+                    "pnl": (entry - tp) / entry,
+                    "bars_elapsed": idx + 1,
+                    "is_win": True,
+                }
+
+    # If neither SL nor TP hit within forward window, evaluate at final bar close
+    if forward_bars:
+        last_c = float(forward_bars[-1]["c"])
+        ret = (last_c - entry) / entry if is_buy else (entry - last_c) / entry
+        return {
+            "outcome": "TIME_EXIT",
+            "pnl": ret,
+            "bars_elapsed": len(forward_bars),
+            "is_win": ret > 0.0003,
+        }
+
+    return {"outcome": "NO_DATA", "pnl": 0.0, "bars_elapsed": 0, "is_win": None}
 
 
 def _clean_json_str(raw: Any) -> Dict[str, Any]:
@@ -173,6 +241,17 @@ async def extract_real_market_scenarios(limit: int = 15) -> List[MarketAuditScen
             ret_24h = (p_24h - p0) / p0
             ret_48h = (p_48h - p0) / p0
 
+            forward_bars = [
+                {
+                    "o": float(c.open),
+                    "h": float(c.high),
+                    "l": float(c.low),
+                    "c": float(c.close),
+                    "t": c.timestamp,
+                }
+                for c in forward_candles
+            ]
+
             # Query recent H4 candles for structure
             past_stmt = (
                 select(PriceOHLCV)
@@ -241,6 +320,7 @@ async def extract_real_market_scenarios(limit: int = 15) -> List[MarketAuditScen
                 macro_narrative_snippet=narrative,
                 specialist_biases=spec_biases,
                 recent_candles=recent_c,
+                forward_bars=forward_bars,
             )
             scenarios.append(scenario)
             seen_symbols[sym] = seen_symbols.get(sym, 0) + 1
@@ -552,6 +632,16 @@ Evaluate actionable trade proposal:
             c24 = None
             c48 = None
 
+        b_res: Dict[str, Any] = {"outcome": None, "pnl": 0.0, "is_win": None, "bars_elapsed": 0}
+        if decision in ("buy", "sell") and entry and sl and tp and scenario.forward_bars:
+            b_res = evaluate_bracket_lifecycle(
+                entry=entry,
+                sl=sl,
+                tp=tp,
+                is_buy=(decision == "buy"),
+                forward_bars=scenario.forward_bars,
+            )
+
         return AuditDecisionOutcome(
             variant_name=variant_name,
             scenario_id=scenario.scenario_id,
@@ -577,6 +667,10 @@ Evaluate actionable trade proposal:
             is_correct_4h=c4,
             is_correct_24h=c24,
             is_correct_48h=c48,
+            bracket_outcome=b_res["outcome"],
+            bracket_pnl=b_res["pnl"],
+            bracket_win=b_res["is_win"],
+            bracket_bars=b_res["bars_elapsed"],
         )
 
     def _fallback_outcome(self, variant: str, scenario: MarketAuditScenario, err_msg: str) -> AuditDecisionOutcome:
@@ -634,6 +728,15 @@ def print_comparative_audit_report(
         avg_tokens = np.mean([r.input_tokens for r in res_list]) if res_list else 0.0
         avg_lat = np.mean([r.latency_ms for r in res_list]) if res_list else 0.0
 
+        b_trades = [r for r in trades if r.bracket_win is not None]
+        n_b = len(b_trades)
+        b_wins = sum(1 for r in b_trades if r.bracket_win is True)
+        bracket_win_rate = (b_wins / n_b * 100) if n_b > 0 else 0.0
+        tp_hits = sum(1 for r in b_trades if r.bracket_outcome == "TP_HIT")
+        sl_hits = sum(1 for r in b_trades if r.bracket_outcome == "SL_HIT")
+        time_exits = sum(1 for r in b_trades if r.bracket_outcome == "TIME_EXIT")
+        avg_bracket_pnl = (np.mean([r.bracket_pnl for r in b_trades]) * 100) if b_trades else 0.0
+
         return {
             "total": total,
             "trades": n_trades,
@@ -647,6 +750,11 @@ def print_comparative_audit_report(
             "avg_pnl_48h": avg_pnl_48h,
             "avg_tokens": avg_tokens,
             "avg_lat": avg_lat,
+            "bracket_win_rate": bracket_win_rate,
+            "tp_hits": tp_hits,
+            "sl_hits": sl_hits,
+            "time_exits": time_exits,
+            "avg_bracket_pnl": avg_bracket_pnl,
         }
 
     s_a = compute_summary(outcomes_a)
@@ -686,6 +794,15 @@ def print_comparative_audit_report(
         f"{'Avg Realized 48h PnL':<40} | {s_a['avg_pnl_48h']:+5.2f}%              | {s_b['avg_pnl_48h']:+5.2f}%              | {s_b['avg_pnl_48h'] - s_a['avg_pnl_48h']:+5.2f}%"
     )
     print(
+        f"{'Path-Dependent Win Rate (TP before SL)':<40} | {s_a['bracket_win_rate']:5.1f}%              | {s_b['bracket_win_rate']:5.1f}%              | {s_b['bracket_win_rate'] - s_a['bracket_win_rate']:+5.1f}%"
+    )
+    b_out_a = f"{s_a['tp_hits']}/{s_a['sl_hits']}/{s_a['time_exits']}"
+    b_out_b = f"{s_b['tp_hits']}/{s_b['sl_hits']}/{s_b['time_exits']}"
+    print(f"{'Bracket Outcomes (TP / SL / Time)':<40} | {b_out_a:<20} | {b_out_b:<20} | -")
+    print(
+        f"{'Avg Realized Bracket PnL':<40} | {s_a['avg_bracket_pnl']:+5.2f}%              | {s_b['avg_bracket_pnl']:+5.2f}%              | {s_b['avg_bracket_pnl'] - s_a['avg_bracket_pnl']:+5.2f}%"
+    )
+    print(
         f"{'Avg Input Tokens per Invoc':<40} | {s_a['avg_tokens']:6.0f}               | {s_b['avg_tokens']:6.0f}               | {s_b['avg_tokens'] - s_a['avg_tokens']:+6.0f} ({((s_b['avg_tokens'] - s_a['avg_tokens']) / max(1, s_a['avg_tokens']) * 100):.1f}%)"
     )
     print(
@@ -708,6 +825,9 @@ def print_comparative_audit_report(
             )
             print(
                 f"  Market Outcome -> Ret4h: {ob.realized_ret_4h * 100:+.2f}%, Ret24h: {ob.realized_ret_24h * 100:+.2f}%"
+            )
+            print(
+                f"  Path-Dependent Bracket -> {ob.bracket_outcome} | Realized PnL: {ob.bracket_pnl * 100:+.2f}% ({ob.bracket_bars} bars)"
             )
     print("-" * 92 + "\n")
 

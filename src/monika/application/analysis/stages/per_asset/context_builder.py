@@ -62,11 +62,11 @@ OPTIONAL TOOLS (call only if deeper context required):
 - SUBMIT_ASSET_ANALYSIS: finalize decision
 
 CONFLUENCE SCORING & DETERMINISTIC GROUNDING:
-+ Fundamental bias aligns: +2 | Contra-Macro Adjustment: -2 for direct market chase; 0 for high-confluence structural limit orders at unmitigated OB/FVG with MSS confirmation.
++ Fundamental bias aligns: +2 | Contra-Macro Adjustment: -2 for direct market chase in consolidation; 0 for high-confluence structural limit orders at unmitigated OB/FVG or extreme Discount (<0.35) / Premium (>0.65) dealing range with MSS confirmation.
 + DXY confirms: +1 | D1 aligns H4 entry: +2 | Quant Alpha Strategy confirms: +2
 + RSI not overbought/oversold: +1 | Entry near FVG/liquidity: +2 | Entry at unmitigated OB: +2
 + Entry in OTE (0.618-0.786): +1 | Entry at S/R zone: +1 | COT aligned: +1 | VIX < 20: +1
-Total score is on a 0-14 scale. Only claim factors with verified presence in the preloaded context or tool outputs.
+Total score is on a 0-20 scale (core 14 points + valid bonus factors up to 20). Only claim factors with verified presence in the preloaded context or tool outputs.
 Scores submitted in 'submit_asset_analysis' are deterministically re-checked at submission time. Non-deterministic score uplift > 6 points above verified base is hard-blocked.
 If 'submit_asset_analysis' returns validation_failed, you MUST immediately call 'submit_asset_analysis' again with adjusted parameters or decision='wait'. Never conclude with plain text after a failed submission.
 Minimum Confluence Score for entry: see CURRENT ANALYSIS TARGET threshold.
@@ -82,7 +82,7 @@ RULES, OPPORTUNITY & ADR BOUNDS:
   (b) Noise Floor: SL distance SHOULD be >= 1.0x ATR_14 to prevent noise stop-outs.
   (c) Volatility Sizing Priority: Target SL within 0.35x - 0.50x ADR under normal conditions. CRITICAL: If structural SL >= 1.0x ATR exceeds 0.45x ADR due to elevated volatility, DO NOT force WAIT. Structural integrity and noise protection ALWAYS override ADR guidelines: accept the structural stop and rely on 'calculate_position_size' to dynamically downscale position volume so dollar risk remains strictly within limits.
 - Decision: Score >= Threshold → BUY/SELL; Score < Threshold → WAIT; Invalid → AVOID.
-- Priced-in score >= 8 + event < 12h → WAIT.
+- Priced-in score >= 8 + event < 12h: do NOT chase market orders; formulate pending limit orders at outer range extremes (unmitigated OB/FVG) with proposed SL/TP or submit WAIT with structural levels if range is undefined.
 - Mandatory Bull/Bear Stress test: state 1 opposing scenario before finalizing BUY/SELL.
 
 TELEGRAPHIC THINKING & RESPONSE MANDATE:
@@ -1178,7 +1178,7 @@ Read STEP 0 in your SMC/ICT playbook. You MUST adjust your confluence threshold 
             f"  5. `invalidation_direction` ('above' or 'below')\n"
             f"  6. `entry_condition` (dict e.g. {{'type': 'market', 'detail': '...'}})\n"
             f"  7. `reevaluation_trigger` (dict e.g. {{'type': 'price_level', 'symbol': '{symbol}', 'price': ..., 'detail': '...'}})\n"
-            f"  8. `confluence_score` (integer 0-14)\n"
+            f"  8. `confluence_score` (integer 0-20)\n"
             f"  9. `priced_in_score` (integer 1-10)\n"
             f"- If concluding WAIT on Turn 1: you MUST call at least one inspection tool (`get_smc_zones`, `get_structure_breaks`, etc.) first. Direct Turn-1 WAIT without inspection is blocked by Anti-Laziness gate.\n"
             f"- You MUST conclude your analysis by invoking the `submit_asset_analysis` tool with your decision (buy/sell/wait/avoid) "
@@ -1209,7 +1209,7 @@ HYPOTHESIS-DRIVEN REASONING DIRECTIVE (Max 2-3 Iterative Turns):
 6. For BUY or SELL decisions, you MUST supply ALL 9 execution fields in `submit_asset_analysis`:
    stop_loss (float), take_profit (float), invalidation (detailed string), invalidation_price (float),
    invalidation_direction ('above'/'below'), entry_condition (dict), reevaluation_trigger (dict),
-   confluence_score (integer 0-14), and priced_in_score (integer 1-10).
+   confluence_score (integer 0-20), and priced_in_score (integer 1-10).
 7. Once verified, invoke `submit_asset_analysis` with your decision (buy/sell/wait/avoid) and full structured parameters for {symbol} (ensure argument "symbol": "{symbol}" is included).
 
 CRITICAL MANDATORY REQUIREMENT:

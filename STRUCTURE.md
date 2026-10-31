@@ -3001,6 +3001,7 @@ Monika/
 │   ├── test_vector_factor_engine.py
 │   └── test_workspace_mcp_integration.py
 │   ├── ab_testing/
+│   │   ├── comprehensive_llm_pipeline_auditor.py
 │   │   └── llm_debate_ab_tester.py
 │   ├── check_scrapers/
 │   │   ├── __init__.py
@@ -3166,4 +3167,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 273 | **Total Tracked Files**: 2863
+**Total Tracked Directories**: 273 | **Total Tracked Files**: 2864

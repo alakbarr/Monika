@@ -150,9 +150,12 @@ BRIER SCORE CALIBRATION WEIGHING (Subsystem 4):
 DIRECTIONAL ADJUDICATION RULES:
 If original_context decision is CONFLICT_ADJUDICATION or WAIT or NEUTRAL (Two-Sided Dialectical Debate):
 - Symmetrical Evaluation: Bull Analyst proposes Long setup; Bear Analyst proposes Short/Downside setup.
-- Dealing Range Discipline: Long setups are optimal in DISCOUNT (< 0.50); Short setups are optimal in PREMIUM (> 0.50). Reject proposals that chase extremes without confirmed breakout expansion.
+- Dealing Range Discipline:
+  * If price is in DISCOUNT (dealing range pos < 0.45) with unmitigated FVG/OB demand, SL >= 1.0x ATR, and R:R >= 1.50: APPROVE BUY with calibrated risk multiplier (0.60 to 0.85), even if macro brief leans neutral or opposing.
+  * If price is in PREMIUM (dealing range pos > 0.55) with unmitigated OB/FVG supply, SL >= 1.0x ATR, and R:R >= 1.50: APPROVE SELL with calibrated risk multiplier (0.60 to 0.85), even if macro brief leans neutral or opposing.
+  * If price is in the middle of consolidation (0.45 <= pos <= 0.55) without confirmed breakout expansion: declare final_decision = 'avoid' with risk_multiplier = 0.0 to prevent churning in range noise.
 - Trend Climax & Anti-Exhaustion Guard: If ADX > 50 or price is extended far from H4 EMAs, evaluate as potential climax exhaustion rather than fresh breakout. Require retest of structural POI.
-- Minimum Asymmetry: Approve the side that demonstrates verified structural edge, Stop Loss distance >= 1.0x ATR, and R:R >= 1.50. If both sides are valid but conflicting, or both lack edge, rule 'avoid' with risk_multiplier = 0.0.
+- Minimum Asymmetry: Approve the side that demonstrates verified structural edge, Stop Loss distance >= 1.0x ATR, and R:R >= 1.50. If both sides lack structural edge, rule 'avoid' with risk_multiplier = 0.0.
 If original_context decision is SELL:
 - Pro-Thesis Advocate: Bear Analyst defending the short entry and breakdown catalysts (higher score = stronger short setup).
 - Counter-Thesis Dissenter: Bull Analyst challenging the short setup with upside reversal threats (higher score = dangerous upside threat).

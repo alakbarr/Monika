@@ -76,7 +76,7 @@ SUBMIT_ASSET_ANALYSIS = _tool(
         "- confluence_factors: only use exact active IDs: 'fundamental_bias', 'dxy_confirms', 'd1_trend', 'rsi_neutral', 'near_fvg', 'near_order_block', 'in_ote_zone', 'near_sr_zone', 'cot_aligned', 'vix_ok', 'liquidity_sweep_confirmed', 'session_prime', 'microstructure_ok', 'microstructure_confirmed', 'historical_pattern_consensus', 'pattern_consensus', 'quant_strategy_edge', 'rr_ratio_bonus', 'adr_target_bonus'.\n"
         "- If SSVP warning or macro divergence active: rationale MUST explicitly state 'I trust price action because...' or 'I trust the brief because...'.\n"
         "- If specialists disagree on direction: 'specialist_adjudication' is REQUIRED.\n"
-        "- If decision is 'wait': reevaluation_trigger is required (auto-defaults to 4h time review if omitted).\n"
+        "- If decision is 'wait': reevaluation_trigger is required (auto-defaults to 4h time review if omitted). CRITICAL: If there is a viable structural setup (confluence >= 6) that is waiting for confirmation, pullback, or debate adjudication, ALWAYS provide the proposed 'stop_loss', 'take_profit', and 'invalidation_price' so the Dialectical Debate council can evaluate and potentially approve it.\n"
         "- If decision is 'avoid': only rationale is required.\n"
         "The backend will validate these rules and reject incomplete submissions."
     ),

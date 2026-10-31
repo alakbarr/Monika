@@ -749,17 +749,72 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         if analysis:
             if str(decision).strip().lower() in ("buy", "sell"):
                 is_candidate_for_debate = True
-            elif (
-                str(decision).strip().lower() == "wait"
-                and cs_val is not None
-                and cs_val >= 6
-                and sl_val is not None
-                and tp_val is not None
-            ):
+            elif str(decision).strip().lower() == "wait" and cs_val is not None and cs_val >= 6:
                 rat = str(getattr(analysis, "rationale", "") or "").lower()
-                conflict_keywords = ("conflict", "diverg", "macro", "opposing", "brief", "ssvp", "headwind", "bias")
-                if any(kw in rat for kw in conflict_keywords):
+                conflict_keywords = (
+                    "conflict",
+                    "diverg",
+                    "macro",
+                    "opposing",
+                    "brief",
+                    "ssvp",
+                    "headwind",
+                    "bias",
+                    "discount",
+                    "premium",
+                    "order block",
+                    "fvg",
+                    "pullback",
+                    "retest",
+                )
+                has_structural_setup = any(kw in rat for kw in conflict_keywords)
+
+                # Auto-recover structural SL/TP if model omitted them on WAIT decision
+                if (sl_val is None or tp_val is None) and has_structural_setup:
+                    inval_price = _safe_float(getattr(analysis, "invalidation_price", None))
+                    ref_px = entry_price_val or (_safe_float(curr_px) if "curr_px" in locals() else None)
+                    ref_atr = _safe_float(atr_f) if "atr_f" in locals() else None
+
+                    if inval_price is not None and ref_px is not None:
+                        inval_dir = str(getattr(analysis, "invalidation_direction", "") or "").lower()
+                        if "below" in inval_dir or inval_price < ref_px:
+                            # Bullish structural candidate
+                            if sl_val is None:
+                                sl_val = inval_price
+                            if tp_val is None:
+                                risk_d = abs(ref_px - sl_val)
+                                tp_val = round(ref_px + (1.6 * risk_d), 5)
+                        elif "above" in inval_dir or inval_price > ref_px:
+                            # Bearish structural candidate
+                            if sl_val is None:
+                                sl_val = inval_price
+                            if tp_val is None:
+                                risk_d = abs(sl_val - ref_px)
+                                tp_val = round(ref_px - (1.6 * risk_d), 5)
+                    elif ref_px is not None and ref_atr is not None and ref_atr > 0:
+                        is_bull = any(w in rat for w in ("bull", "long", "discount", "buy"))
+                        is_bear = any(w in rat for w in ("bear", "short", "premium", "sell"))
+                        if is_bull and not is_bear:
+                            if sl_val is None:
+                                sl_val = round(ref_px - (1.2 * ref_atr), 5)
+                            if tp_val is None:
+                                tp_val = round(ref_px + (1.92 * ref_atr), 5)
+                        elif is_bear and not is_bull:
+                            if sl_val is None:
+                                sl_val = round(ref_px + (1.2 * ref_atr), 5)
+                            if tp_val is None:
+                                tp_val = round(ref_px - (1.92 * ref_atr), 5)
+
+                if sl_val is not None and tp_val is not None and has_structural_setup:
                     is_candidate_for_debate = True
+                    try:
+                        if analysis.stop_loss is None:
+                            analysis.stop_loss = sl_val
+                        if analysis.take_profit is None:
+                            analysis.take_profit = tp_val
+                        await session.commit()
+                    except Exception as sync_err:
+                        logger.debug(f"[{symbol}] Non-fatal error syncing recovered debate levels: {sync_err}")
 
         result.update(
             {
