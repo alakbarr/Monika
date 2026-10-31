@@ -306,18 +306,38 @@ async def evaluate_debate_candidate_and_levels(
                             risk_d = abs(sl_val - ref_px)
                             tp_val = round(ref_px - (1.6 * risk_d), 5)
                 elif ref_px is not None and ref_atr is not None and ref_atr > 0:
+                    from monika.application.analysis.calculators.invariant_calculator import (
+                        generate_concrete_bracket_options,
+                    )
+
+                    concrete_brackets = generate_concrete_bracket_options(
+                        symbol=symbol,
+                        current_price=ref_px,
+                        atr=ref_atr,
+                        adr_5d=ref_atr * 2.5,
+                        target_rr=1.80,
+                    )
                     is_bull = any(w in rat for w in ("bull", "long", "discount", "buy"))
                     is_bear = any(w in rat for w in ("bear", "short", "premium", "sell"))
                     if is_bull and not is_bear:
+                        opt_a = concrete_brackets["long_option_a"]
                         if sl_val is None:
-                            sl_val = round(ref_px - (1.2 * ref_atr), 5)
+                            sl_val = float(opt_a["stop_loss"])
                         if tp_val is None:
-                            tp_val = round(ref_px + (1.92 * ref_atr), 5)
+                            tp_val = float(opt_a["take_profit"])
                     elif is_bear and not is_bull:
+                        opt_b = concrete_brackets["short_option_b"]
                         if sl_val is None:
-                            sl_val = round(ref_px + (1.2 * ref_atr), 5)
+                            sl_val = float(opt_b["stop_loss"])
                         if tp_val is None:
-                            tp_val = round(ref_px - (1.92 * ref_atr), 5)
+                            tp_val = float(opt_b["take_profit"])
+                    else:
+                        # Balanced two-sided debate candidate
+                        opt_a = concrete_brackets["long_option_a"]
+                        if sl_val is None:
+                            sl_val = float(opt_a["stop_loss"])
+                        if tp_val is None:
+                            tp_val = float(opt_a["take_profit"])
 
             if sl_val is not None and tp_val is not None and has_structural_setup:
                 is_candidate_for_debate = True

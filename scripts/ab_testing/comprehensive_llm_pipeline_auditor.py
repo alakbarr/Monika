@@ -193,13 +193,14 @@ async def extract_real_market_scenarios(limit: int = 15) -> List[MarketAuditScen
     async with get_session() as s:
         from sqlalchemy import desc, select
 
-        # Select diverse historical analyses with prices
+        # Select diverse historical analyses with prices and sufficient forward candles
         stmt = (
             select(AssetAnalysis)
             .where(AssetAnalysis.price_at_analysis.isnot(None))
             .where(AssetAnalysis.generated_at >= datetime(2026, 10, 10, tzinfo=timezone.utc))
+            .where(AssetAnalysis.generated_at <= datetime(2026, 10, 29, 12, tzinfo=timezone.utc))
             .order_by(desc(AssetAnalysis.generated_at))
-            .limit(limit * 3)
+            .limit(limit * 8)
         )
         analyses = (await s.execute(stmt)).scalars().all()
 
@@ -583,6 +584,123 @@ Evaluate actionable trade proposal:
         except Exception as e:
             logger.warning(f"Variant B execution failed: {e}")
             return self._fallback_outcome("Variant B (Distilled Signal)", scenario, f"Error: {e}")
+
+    async def audit_stage2_variant_c_precomputed_brackets(self, scenario: MarketAuditScenario) -> AuditDecisionOutcome:
+        """
+        Variant C: Zero-Arithmetic Pre-Computed Brackets + 3-Zone Spatial Logic.
+        Guarantees exact R:R (1.80) and eliminates floating point mental arithmetic errors.
+        """
+        t0 = time.perf_counter()
+        from monika.application.analysis.calculators.invariant_calculator import generate_concrete_bracket_options
+
+        hi = max(c["h"] for c in scenario.recent_candles)
+        lo = min(c["l"] for c in scenario.recent_candles)
+        pos = (scenario.p0 - lo) / max(1e-5, (hi - lo))
+        range_regime = "DEEP_DISCOUNT" if pos <= 0.35 else ("DEEP_PREMIUM" if pos >= 0.65 else "EQUILIBRIUM")
+
+        concrete_brackets = generate_concrete_bracket_options(
+            symbol=scenario.symbol,
+            current_price=scenario.p0,
+            atr=scenario.atr_h4,
+            adr_5d=scenario.atr_h4 * 2.5,
+            target_rr=1.80,
+        )
+        long_b = concrete_brackets["long_option_a"]
+        short_b = concrete_brackets["short_option_b"]
+
+        sys_prompt = """You are a senior quantitative SMC/ICT trading strategist.
+PRIMARY OBJECTIVE: Capitalize on high-expectancy asymmetric institutional setups.
+CRITICAL RULES:
+1. ZERO MENTAL ARITHMETIC: Do not calculate SL/TP distances or R:R in mental prose.
+   You MUST select and adopt the pre-computed verified brackets provided in the payload:
+   - For LONG: Adopt Candidate Bracket [LONG_OPTION_A]
+   - For SHORT: Adopt Candidate Bracket [SHORT_OPTION_B]
+2. 3-ZONE SPATIAL LOGIC:
+   - DEEP_DISCOUNT (pos <= 0.35): Institutional accumulation territory. Favor BUY unless macro is catastrophic.
+   - DEEP_PREMIUM (pos >= 0.65): Institutional distribution territory. Favor SELL unless macro is catastrophic.
+   - EQUILIBRIUM (0.35 < pos < 0.65): Choppy dead-zone. Select WAIT unless momentum breakout is verified.
+3. POSITIVE AFFORDANCE: Look for reasons to engage when price is at unmitigated structural boundaries.
+Respond strictly in JSON."""
+
+        user_payload = f"""
+=== VERIFIED ASSET DOSSIER: {scenario.symbol} ===
+Current Spot Price: {scenario.p0:.5f} | H4 ATR: {scenario.atr_h4:.5f}
+Dealing Range Location: {range_regime} (pos={pos:.2f} relative to 4H High {hi:.5f} / Low {lo:.5f})
+Stage 1 Macro Bias: {scenario.macro_brief_bias.upper()}
+
+=== PRE-COMPUTED VERIFIED BRACKET OPTIONS (R:R = 1.80, SL >= 1.10x ATR) ===
+[LONG_OPTION_A]:
+  Entry: {long_b["entry"]} | SL: {long_b["stop_loss"]} | TP: {long_b["take_profit"]} | Verified R:R: 1.80
+
+[SHORT_OPTION_B]:
+  Entry: {short_b["entry"]} | SL: {short_b["stop_loss"]} | TP: {short_b["take_profit"]} | Verified R:R: 1.80
+
+Submit trading decision:
+{{
+  "decision": "buy" | "sell" | "wait",
+  "adopted_bracket": "LONG_OPTION_A" | "SHORT_OPTION_B" | "NONE",
+  "entry": float,
+  "stop_loss": float,
+  "take_profit": float,
+  "confidence": float,
+  "confluence_score": int,
+  "rationale": "..."
+}}
+"""
+        schema = {
+            "type": "object",
+            "properties": {
+                "decision": {"type": "string"},
+                "adopted_bracket": {"type": "string"},
+                "entry": {"type": ["number", "null"]},
+                "stop_loss": {"type": ["number", "null"]},
+                "take_profit": {"type": ["number", "null"]},
+                "confidence": {"type": "number"},
+                "confluence_score": {"type": "integer"},
+                "rationale": {"type": "string"},
+            },
+            "required": ["decision", "rationale"],
+        }
+
+        try:
+            resp = await self.client.generate_content(
+                system_prompt=sys_prompt,
+                user_message=user_payload,
+                response_schema=schema,
+                temperature=0.0,
+            )
+            lat = (time.perf_counter() - t0) * 1000.0
+            data = _clean_json_str(resp)
+            dec = str(data.get("decision", "wait")).lower()
+            conf = float(data.get("confidence", 0.70))
+            conf_score = int(data.get("confluence_score", 9))
+            entry = data.get("entry")
+            sl = data.get("stop_loss")
+            tp = data.get("take_profit")
+            reason = str(data.get("rationale", ""))[:150]
+
+            in_tok = len(sys_prompt + user_payload) // 4
+            out_tok = len(str(resp or "")) // 4
+
+            outcome = self._evaluate_market_accuracy(
+                variant_name="Variant C (Zero-Arithmetic)",
+                scenario=scenario,
+                decision=dec,
+                conf=conf,
+                rm=conf if dec != "wait" else 0.0,
+                confluence=conf_score,
+                entry=entry,
+                sl=sl,
+                tp=tp,
+                reason=reason,
+                in_tok=in_tok,
+                out_tok=out_tok,
+                lat=lat,
+            )
+            return outcome
+        except Exception as e:
+            logger.warning(f"Variant C execution failed: {e}")
+            return self._fallback_outcome("Variant C (Zero-Arithmetic)", scenario, f"Error: {e}")
 
     def _evaluate_market_accuracy(
         self,

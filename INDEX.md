@@ -5517,6 +5517,35 @@
     - `from_stop_gate_rejection(turn_number: int, gate_name: str, reason: str, ...) -> TurnFailureDiagnostic` - *Create a diagnostic when a turn attempts to finish but is blocked by a stop gate.*
     - `from_slop_rejection(turn_number: int, violations: List[str], stage_name: str) -> TurnFailureDiagnostic` - *Create a diagnostic when final text or submission violates the Anti-Slop Quality Gate.*
 
+#### `turn_llm_runner.py` - *File: src/monika/application/agent/harness/turn_llm_runner.py*
+- **Path**: [`src/monika/application/agent/harness/turn_llm_runner.py`](src/monika/application/agent/harness/turn_llm_runner.py)
+- **Classes**:
+  - `class LLMTurnExecutionResult`: Outcome of one turn LLM invocation.
+  - `class TurnLLMRunner`: Encapsulates LLM invocation, retry ladders, prompt assembly, and fallback swapping.
+    - `async execute_turn_llm(harness: Any, session: Any, current_messages: List[dict], ...) -> LLMTurnExecutionResult`
+
+#### `turn_response_evaluator.py` - *File: src/monika/application/agent/harness/turn_response_evaluator.py*
+- **Path**: [`src/monika/application/agent/harness/turn_response_evaluator.py`](src/monika/application/agent/harness/turn_response_evaluator.py)
+- **Classes**:
+  - `class ResponseEvaluationResult`: Outcome of evaluating a raw provider response.
+  - `class TurnResponseEvaluator`: Validates raw LLM responses and produces safe, normalized turn artifacts.
+    - `evaluate_response(harness: Any, session: Any, response: Any, ...) -> ResponseEvaluationResult`
+
+#### `turn_stop_auditor.py` - *File: src/monika/application/agent/harness/turn_stop_auditor.py*
+- **Path**: [`src/monika/application/agent/harness/turn_stop_auditor.py`](src/monika/application/agent/harness/turn_stop_auditor.py)
+- **Classes**:
+  - `class StopAuditVerdict`: Verdict on whether agent is allowed to finalize and exit or must be nudged.
+  - `class TurnStopAuditor`: Audits completion claims when LLM provides text without tool calls.
+    - `audit_completion(harness: Any, current_messages: List[dict], final_text: str, ...) -> StopAuditVerdict`
+
+#### `turn_tool_pipeline.py` - *File: src/monika/application/agent/harness/turn_tool_pipeline.py*
+- **Path**: [`src/monika/application/agent/harness/turn_tool_pipeline.py`](src/monika/application/agent/harness/turn_tool_pipeline.py)
+- **Classes**:
+  - `class ToolExecutionTracking`: Mutable tracking state for tool executions across turn iterations.
+  - `class ToolPipelineResult`: Outcome of executing a batch of tool use blocks.
+  - `class TurnToolPipeline`: Executes tool calls while strictly adhering to safety invariants and guardrails.
+    - `async execute_tools(harness: Any, session: Any, executor: Any, ...) -> ToolPipelineResult`
+
 #### `verification_evidence_ledger.py` - *Verification Evidence Ledger for Trading Agent Harness.*
 - **Path**: [`src/monika/application/agent/harness/verification_evidence_ledger.py`](src/monika/application/agent/harness/verification_evidence_ledger.py)
 - **Classes**:
@@ -5798,6 +5827,7 @@
 - **Top-Level Functions**:
   - `extract_price_precision(symbol: str) -> int`: Returns price decimal precision based on asset class.
   - `compute_trade_invariants(symbol: str, current_price: float, atr: float, ...) -> Dict[str, Any]`: Computes strict deterministic invariants for BUY and SELL scenarios.
+  - `generate_concrete_bracket_options(symbol: str, current_price: float, atr: float, ...) -> Dict[str, Any]`: Generates concrete, mathematically verified SL/TP bracket options.
   - `format_invariants_for_prompt(invariants: Dict[str, Any]) -> str`: Renders pre-computed invariants into a dense telegraphic prompt block.
 
 #### `leading_indicator_mapper.py` - *Macro Leading Indicator Mapper & Nowcasting Engine.*

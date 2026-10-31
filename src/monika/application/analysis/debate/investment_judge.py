@@ -203,7 +203,7 @@ Before adjusting any risk multiplier or proposing level adjustments, verify:
 TIE & LOW CONVICTION RULE:
 If Bull thesis and Bear dissent are evenly matched without a clear structural edge, or if empirical data is conflicting/inconclusive, you MUST declare final_decision = 'avoid' with risk_multiplier = 0.0 to preserve trading capital above all.
 
-MANDATORY ADJUSTMENT CONSTRAINT: If proposing adjusted_entry, adjusted_sl, or adjusted_tp, the resulting Risk-to-Reward ratio MUST remain >= 1.3 (i.e. |adjusted_tp - entry| >= 1.3 * |entry - adjusted_sl|). Any proposed adjustment with R:R < 1.5 will be automatically rejected by backend risk validators.
+MANDATORY ADJUSTMENT CONSTRAINT: If proposing adjusted_entry, adjusted_sl, or adjusted_tp, the resulting Risk-to-Reward ratio MUST remain >= 1.50 (i.e. |adjusted_tp - entry| >= 1.50 * |entry - adjusted_sl|). Any proposed adjustment with R:R < 1.50 will be automatically rejected by backend risk validators. If adjusting SL wider to clear structural noise, you MUST proportionally adjust TP outward to preserve R:R >= 1.50.
 
 Proceed with evaluation based strictly on the data above. Respond in valid JSON format conforming to the schema."""
 

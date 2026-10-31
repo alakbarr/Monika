@@ -134,21 +134,39 @@ class SpecialistCouncil:
             )
         retail_sentiment = bundle_data.get("retail_sentiment", {})
         long_pct = retail_sentiment.get("long_percentage", 50.0) if isinstance(retail_sentiment, dict) else 50.0
-        # Contrarian retail sentiment logic
-        if long_pct > 70.0:
-            bias = "BEARISH"  # Extreme retail long -> contrarian short
+
+        # Trend momentum check: during explosive impulse (ADX > 32), retail crowding can represent trend continuation
+        adx_val = 0.0
+        tech_ind = bundle_data.get("get_technical_indicators_H4") or bundle_data.get("get_technical_indicators") or {}
+        if isinstance(tech_ind, dict):
+            try:
+                adx_val = float(tech_ind.get("adx_14", 0.0) or tech_ind.get("adx", 0.0) or 0.0)
+            except ValueError, TypeError:
+                adx_val = 0.0
+
+        # Contrarian retail sentiment logic with trend exhaustion guard
+        if adx_val > 32.0:
+            bias = "NEUTRAL"
+            conf = 0.55
+            rationale_str = f"Retail long: {long_pct:.1f}%, but ADX={adx_val:.1f} indicates strong trend impulse (contrarian penalty suspended)."
+        elif long_pct > 70.0:
+            bias = "BEARISH"  # Extreme retail long in non-trending -> contrarian short
             conf = 0.65
+            rationale_str = f"Retail long: {long_pct:.1f}% (Contrarian bias: BEARISH)."
         elif long_pct < 30.0:
-            bias = "BULLISH"  # Extreme retail short -> contrarian long
+            bias = "BULLISH"  # Extreme retail short in non-trending -> contrarian long
             conf = 0.65
+            rationale_str = f"Retail long: {long_pct:.1f}% (Contrarian bias: BULLISH)."
         else:
             bias = "NEUTRAL"
             conf = 0.5
+            rationale_str = f"Retail long: {long_pct:.1f}% (Balanced sentiment)."
+
         return SpecialistVote(
             role=SpecialistRole.NEWS_SENTIMENT,
             bias=bias,
             confidence=conf,
-            rationale=f"Retail long: {long_pct:.1f}% (Contrarian bias: {bias}).",
+            rationale=rationale_str,
         )
 
     def _evaluate_risk_arbitrator(

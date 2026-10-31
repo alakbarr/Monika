@@ -71,3 +71,37 @@ def test_format_invariants_for_prompt():
     assert "BUY INVARIANTS" in formatted
     assert "SELL INVARIANTS" in formatted
     assert "ORDER_BLOCK" in formatted
+    assert "LONG_OPTION_A" in formatted
+    assert "SHORT_OPTION_B" in formatted
+
+
+def test_generate_concrete_bracket_options_math_precision():
+    from monika.application.analysis.calculators.invariant_calculator import generate_concrete_bracket_options
+
+    brackets = generate_concrete_bracket_options(
+        symbol="EURUSD",
+        current_price=1.10000,
+        atr=0.00200,
+        adr_5d=0.00800,
+        smc_zones=[
+            {"price": 1.09700, "type": "FVG_BULL"},
+            {"price": 1.10400, "type": "OB_BEAR"},
+        ],
+        target_rr=1.80,
+    )
+    long_b = brackets["long_option_a"]
+    short_b = brackets["short_option_b"]
+
+    assert long_b["direction"] == "buy"
+    assert short_b["direction"] == "sell"
+    assert long_b["rr_ratio"] == 1.80
+    assert short_b["rr_ratio"] == 1.80
+
+    # Test exact mathematical R:R
+    long_risk = abs(long_b["entry"] - long_b["stop_loss"])
+    long_reward = abs(long_b["take_profit"] - long_b["entry"])
+    assert round(long_reward / long_risk, 2) == 1.80
+
+    short_risk = abs(short_b["stop_loss"] - short_b["entry"])
+    short_reward = abs(short_b["entry"] - short_b["take_profit"])
+    assert round(short_reward / short_risk, 2) == 1.80

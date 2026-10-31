@@ -46,6 +46,10 @@ Monika/
 │       │   │   │   ├── tool_scheduler.py
 │       │   │   │   ├── trade_stop_gates.py
 │       │   │   │   ├── turn_failure_diagnostics.py
+│       │   │   │   ├── turn_llm_runner.py
+│       │   │   │   ├── turn_response_evaluator.py
+│       │   │   │   ├── turn_stop_auditor.py
+│       │   │   │   ├── turn_tool_pipeline.py
 │       │   │   │   └── verification_evidence_ledger.py
 │       │   │   ├── monitors/
 │       │   │   │   ├── __init__.py
@@ -3078,6 +3082,9 @@ Monika/
 │   │   └── ADR-005-unified-api-v1-and-openapi-contract-sync.md
 │   ├── architecture/
 │   │   └── OVERVIEW.md
+│   ├── designs/
+│   │   ├── README.md
+│   │   └── SITEMAP.md
 │   ├── images/
 │   │   ├── dashboard/
 │   │   │   ├── 01_tui_overview_dark.svg
@@ -3168,4 +3175,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 273 | **Total Tracked Files**: 2865
+**Total Tracked Directories**: 274 | **Total Tracked Files**: 2871

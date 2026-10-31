@@ -73,16 +73,17 @@ Minimum Confluence Score for entry: see CURRENT ANALYSIS TARGET threshold.
 
 RULES, OPPORTUNITY & ADR BOUNDS:
 - OPPORTUNITY MANDATE: Do not default to passive 'WAIT' when valid structural POIs (unfilled FVG, unmitigated Order Block, OTE Fibonacci 0.618-0.786, or verified S/R boundaries) exist on the chart. Passive idle waiting wastes market opportunities.
-- SQUEEZE & COMPRESSION DISCIPLINE: If Bollinger Band Width is in the lower 25th percentile (BB Squeeze) OR Volume Profile shows thin liquidity/squeeze without confirmed breakout expansion: DO NOT submit an aggressive market order. Instead, specify a high-conviction pending LIMIT order at the outer range boundary (OTE / unmitigated FVG / Order Block zone) with exact R:R >= 1.5. Only submit WAIT if the chart is purely erratic with NO identifiable structural POI.
+- ZERO MENTAL ARITHMETIC & BRACKET ADOPTION: Do not calculate SL, TP, or R:R in mental prose. You MUST choose and adopt one of the pre-computed verified bracket options (`[LONG_OPTION_A]` or `[SHORT_OPTION_B]`) provided in the PRE-COMPUTED TRADE INVARIANTS block to guarantee exact mathematical R:R (>= 1.80) and noise floor protection. If price is stuck in the Equilibrium dead-zone (0.35 < pos < 0.65) with no structural edge, submit 'wait'.
+- SQUEEZE & COMPRESSION DISCIPLINE: If Bollinger Band Width is in the lower 25th percentile (BB Squeeze) OR Volume Profile shows thin liquidity/squeeze without confirmed breakout expansion: DO NOT submit an aggressive market order. Instead, adopt the pre-computed pending LIMIT order bracket option at the outer range boundary (OTE / unmitigated FVG / Order Block zone) with exact R:R >= 1.80. Only submit WAIT if the chart is purely erratic with NO identifiable structural POI.
 - Intraday Range Strategy: resolve within 1 trading day using ADR bounds.
-- TP MUST fall within 50-80% of 5-day ADR (get_daily_range_context); minimum R:R = see CURRENT ANALYSIS TARGET.
+- TP MUST fall within 50-80% of 5-day ADR (get_daily_range_context); minimum R:R = see CURRENT ANALYSIS TARGET (target >= 1.80).
 - TimesFM Statistical Bound: TP MUST NOT exceed Q90 (for BUY) or fall below Q10 (for SELL) when TimesFM block is loaded.
 - SL HIERARCHY & BOUNDS:
   (a) Structural Invalidation Anchor: Place SL beyond structural swing level or protected order block/FVG boundary.
   (b) Noise Floor: SL distance SHOULD be >= 1.0x ATR_14 to prevent noise stop-outs.
   (c) Volatility Sizing Priority: Target SL within 0.35x - 0.50x ADR under normal conditions. CRITICAL: If structural SL >= 1.0x ATR exceeds 0.45x ADR due to elevated volatility, DO NOT force WAIT. Structural integrity and noise protection ALWAYS override ADR guidelines: accept the structural stop and rely on 'calculate_position_size' to dynamically downscale position volume so dollar risk remains strictly within limits.
 - Decision: Score >= Threshold → BUY/SELL; Score < Threshold → WAIT; Invalid → AVOID.
-- Priced-in score >= 8 + event < 12h: do NOT chase market orders; formulate pending limit orders at outer range extremes (unmitigated OB/FVG) with proposed SL/TP or submit WAIT with structural levels if range is undefined.
+- Priced-in score >= 8 + event < 12h: do NOT chase market orders; formulate pending limit orders at outer range extremes (unmitigated OB/FVG) adopting the pre-computed bracket options, or submit WAIT with structural levels if range is undefined.
 - Mandatory Bull/Bear Stress test: state 1 opposing scenario before finalizing BUY/SELL.
 
 TELEGRAPHIC THINKING & RESPONSE MANDATE:

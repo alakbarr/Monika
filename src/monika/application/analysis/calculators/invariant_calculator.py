@@ -170,6 +170,17 @@ def compute_trade_invariants(
             unique_anchors.append(a)
             seen_px.add(a["price"])
 
+    # Compute concrete zero-arithmetic bracket candidates (Long Option A vs Short Option B)
+    bracket_options = generate_concrete_bracket_options(
+        symbol=symbol,
+        current_price=curr_px,
+        atr=atr_val,
+        adr_5d=adr_val,
+        smc_zones=smc_zones,
+        sr_zones=sr_zones,
+        target_rr=max(1.80, min_rr),
+    )
+
     return {
         "symbol": symbol,
         "current_price": curr_px,
@@ -187,7 +198,107 @@ def compute_trade_invariants(
             "guidance": f"SL: [{sell_sl_min}..{sell_sl_max}], TP: [{sell_tp_min}..{sell_tp_max}] (>= {min_rr} R:R)",
         },
         "structural_anchors": unique_anchors[:8],
+        "bracket_options": bracket_options,
         "precision": prec,
+    }
+
+
+def generate_concrete_bracket_options(
+    symbol: str,
+    current_price: float,
+    atr: float,
+    adr_5d: float,
+    smc_zones: Optional[List[Dict[str, Any]]] = None,
+    sr_zones: Optional[List[Any]] = None,
+    target_rr: float = 1.80,
+    noise_buffer_atr: float = 1.10,
+) -> Dict[str, Any]:
+    """Generates concrete, mathematically verified SL/TP bracket options.
+
+    Eliminates mental arithmetic by pre-computing exact levels with guaranteed
+    R:R and noise floor protection.
+    """
+    prec = extract_price_precision(symbol)
+    curr_px = float(current_price) if current_price else 0.0
+    atr_val = float(atr) if atr and atr > 0 else (curr_px * 0.005 if curr_px > 0 else 1.0)
+
+    # 1. Long Option A (Demand POI)
+    demand_poi = None
+    if smc_zones and isinstance(smc_zones, list):
+        demand_candidates = [
+            z
+            for z in smc_zones
+            if isinstance(z, dict)
+            and any(
+                k in str(z.get("type", "")).lower() for k in ("demand", "fvg_bull", "ob_bull", "discount", "sweep_low")
+            )
+        ]
+        if demand_candidates:
+            demand_poi = min(
+                demand_candidates,
+                key=lambda z: abs(float(z.get("price") or z.get("level") or z.get("low") or curr_px) - curr_px),
+            )
+
+    if demand_poi:
+        raw_long_entry = float(demand_poi.get("price") or demand_poi.get("level") or (curr_px - 0.2 * atr_val))
+    else:
+        raw_long_entry = curr_px - (0.2 * atr_val)
+
+    long_entry = round(raw_long_entry, prec)
+    long_sl_dist = max(noise_buffer_atr * atr_val, 0.35 * adr_5d if adr_5d > 0 else 1.2 * atr_val)
+    long_sl = round(long_entry - long_sl_dist, prec)
+    long_risk = abs(long_entry - long_sl)
+    long_tp = round(long_entry + (target_rr * long_risk), prec)
+
+    # 2. Short Option B (Supply POI)
+    supply_poi = None
+    if smc_zones and isinstance(smc_zones, list):
+        supply_candidates = [
+            z
+            for z in smc_zones
+            if isinstance(z, dict)
+            and any(
+                k in str(z.get("type", "")).lower() for k in ("supply", "fvg_bear", "ob_bear", "premium", "sweep_high")
+            )
+        ]
+        if supply_candidates:
+            supply_poi = min(
+                supply_candidates,
+                key=lambda z: abs(float(z.get("price") or z.get("level") or z.get("high") or curr_px) - curr_px),
+            )
+
+    if supply_poi:
+        raw_short_entry = float(supply_poi.get("price") or supply_poi.get("level") or (curr_px + 0.2 * atr_val))
+    else:
+        raw_short_entry = curr_px + (0.2 * atr_val)
+
+    short_entry = round(raw_short_entry, prec)
+    short_sl_dist = max(noise_buffer_atr * atr_val, 0.35 * adr_5d if adr_5d > 0 else 1.2 * atr_val)
+    short_sl = round(short_entry + short_sl_dist, prec)
+    short_risk = abs(short_sl - short_entry)
+    short_tp = round(short_entry - (target_rr * short_risk), prec)
+
+    return {
+        "long_option_a": {
+            "name": "LONG_OPTION_A",
+            "direction": "buy",
+            "entry": long_entry,
+            "stop_loss": long_sl,
+            "take_profit": long_tp,
+            "rr_ratio": target_rr,
+            "sl_distance_atr": round(long_risk / max(1e-7, atr_val), 2),
+            "description": f"Demand POI limit entry with {target_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer",
+        },
+        "short_option_b": {
+            "name": "SHORT_OPTION_B",
+            "direction": "sell",
+            "entry": short_entry,
+            "stop_loss": short_sl,
+            "take_profit": short_tp,
+            "rr_ratio": target_rr,
+            "sl_distance_atr": round(short_risk / max(1e-7, atr_val), 2),
+            "description": f"Supply POI limit entry with {target_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer",
+        },
     }
 
 
@@ -205,6 +316,7 @@ def format_invariants_for_prompt(invariants: Dict[str, Any]) -> str:
     s_sl = invariants.get("sell_bounds", {}).get("sl_range", [0, 0])
     s_tp = invariants.get("sell_bounds", {}).get("tp_range", [0, 0])
     anchors = invariants.get("structural_anchors", [])
+    bracket_options = invariants.get("bracket_options", {})
 
     lines = [
         f"=== PRE-COMPUTED TRADE INVARIANTS ({sym} @ {px}) ===",
@@ -212,6 +324,20 @@ def format_invariants_for_prompt(invariants: Dict[str, Any]) -> str:
         f"BUY INVARIANTS : SL MUST be in [{b_sl[0]} - {b_sl[1]}], TP MUST be in [{b_tp[0]} - {b_tp[1]}]",
         f"SELL INVARIANTS: SL MUST be in [{s_sl[0]} - {s_sl[1]}], TP MUST be in [{s_tp[0]} - {s_tp[1]}]",
     ]
+
+    if bracket_options:
+        long_b = bracket_options.get("long_option_a", {})
+        short_b = bracket_options.get("short_option_b", {})
+        lines.append("=== PRE-COMPUTED VERIFIED BRACKET OPTIONS (Exact R:R >= 1.80, Zero Arithmetic Required) ===")
+        lines.append(
+            f"  [LONG_OPTION_A] : Entry={long_b.get('entry')} | SL={long_b.get('stop_loss')} | TP={long_b.get('take_profit')} (Exact R:R={long_b.get('rr_ratio', 1.8):.2f})"
+        )
+        lines.append(
+            f"  [SHORT_OPTION_B]: Entry={short_b.get('entry')} | SL={short_b.get('stop_loss')} | TP={short_b.get('take_profit')} (Exact R:R={short_b.get('rr_ratio', 1.8):.2f})"
+        )
+        lines.append(
+            "  * INSTRUCTION: Adopt one of the verified options above to eliminate mental math errors, or select WAIT if in Equilibrium dead-zone."
+        )
 
     if anchors:
         lines.append("VALID STRUCTURAL ANCHORS (select from these verified levels):")
