@@ -786,6 +786,14 @@ class SubmitAssetAnalysisSchema(BaseModel):
             "If specified, order invariants and performance attribution are linked directly to this empirical playbook."
         ),
     )
+    adopted_bracket: Optional[str] = Field(
+        None,
+        description=(
+            "OPTIONAL / RECOMMENDED: Verified bracket option adopted from pre-computed invariants, "
+            "e.g. 'LONG_OPTION_A' or 'SHORT_OPTION_B'. Eliminates manual mental arithmetic errors "
+            "and automatically populates entry, stop_loss, and take_profit."
+        ),
+    )
 
     invalidation: str = Field(
         ...,
@@ -1016,6 +1024,27 @@ class SubmitAssetAnalysisSchema(BaseModel):
         if data.get("symbol") and isinstance(data["symbol"], str):
             data["symbol"] = data["symbol"].strip().upper().replace("/", "")
 
+        # 2b. Alias resolution for trade levels
+        if data.get("sl") is not None and data.get("stop_loss") is None:
+            data["stop_loss"] = data["sl"]
+        if data.get("tp") is not None and data.get("take_profit") is None:
+            data["take_profit"] = data["tp"]
+        if data.get("entry") is not None and not data.get("entry_condition"):
+            data["entry_condition"] = {
+                "type": "limit",
+                "price": data["entry"],
+                "detail": f"Entry level at {data['entry']}",
+            }
+        elif (
+            (data.get("stop_loss") is not None or data.get("adopted_bracket") is not None)
+            and not data.get("entry_condition")
+            and str(data.get("decision") or "").lower() in ("buy", "sell")
+        ):
+            data["entry_condition"] = {
+                "type": "market",
+                "detail": "Market order execution",
+            }
+
         # 3. Auto-populate fallback reevaluation_trigger if missing
         decision = str(data.get("decision") or "").lower()
         if data.get("decision"):
@@ -1054,7 +1083,7 @@ class SubmitAssetAnalysisSchema(BaseModel):
             elif raw_dir in ("down", "below", "short", "bear", "bearish", "lower", "bottom"):
                 data["invalidation_direction"] = "below"
 
-        # 5. Auto-populate fallback invalidation if missing for avoid/wait
+        # 5. Auto-populate fallback invalidation if missing
         if not data.get("invalidation"):
             if decision == "avoid":
                 data["invalidation"] = "Not applicable: asset avoided this cycle."
@@ -1062,6 +1091,15 @@ class SubmitAssetAnalysisSchema(BaseModel):
                 data["invalidation"] = (
                     f"Wait thesis invalid if {data.get('symbol', 'asset')} structure breaks or upon 4h cycle timeout."
                 )
+            elif decision in ("buy", "sell"):
+                inv_p = data.get("invalidation_price") or data.get("stop_loss")
+                data["invalidation"] = f"Thesis invalid if price breaches invalidation/SL level {inv_p}"
+
+        if decision in ("buy", "sell"):
+            if data.get("invalidation_price") is None and data.get("stop_loss") is not None:
+                data["invalidation_price"] = data["stop_loss"]
+            if not data.get("invalidation_direction"):
+                data["invalidation_direction"] = "below" if decision == "buy" else "above"
 
         # 6. Clean priced_in_override_justification for non-directional decisions if non-substantive
         if decision in ("wait", "avoid"):
@@ -1108,6 +1146,9 @@ class SubmitAssetAnalysisSchema(BaseModel):
                 missing.append("invalidation_direction")
             if not self.invalidation or not str(self.invalidation).strip():
                 missing.append("invalidation")
+            if self.priced_in_score is not None and self.priced_in_score >= 8:
+                if self.priced_in_override_justification is None:
+                    missing.append("priced_in_override_justification (required when priced_in_score >= 8)")
             if missing:
                 raise ValueError(
                     f"decision='{self.decision}' requires parameters: {', '.join(missing)}. "

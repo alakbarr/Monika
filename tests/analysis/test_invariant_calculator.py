@@ -3,6 +3,7 @@ from monika.application.analysis.calculators.invariant_calculator import (
     compute_trade_invariants,
     format_invariants_for_prompt,
     extract_price_precision,
+    resolve_bracket_choice,
 )
 
 
@@ -105,3 +106,35 @@ def test_generate_concrete_bracket_options_math_precision():
     short_risk = abs(short_b["stop_loss"] - short_b["entry"])
     short_reward = abs(short_b["entry"] - short_b["take_profit"])
     assert round(short_reward / short_risk, 2) == 1.80
+
+
+def test_resolve_bracket_choice():
+    bracket_options = {
+        "long_option_a": {
+            "name": "LONG_OPTION_A",
+            "direction": "buy",
+            "entry": 1.09800,
+            "stop_loss": 1.09500,
+            "take_profit": 1.10340,
+            "rr_ratio": 1.80,
+            "sl_distance_atr": 1.5,
+        },
+        "short_option_b": {
+            "name": "SHORT_OPTION_B",
+            "direction": "sell",
+            "entry": 1.10200,
+            "stop_loss": 1.10500,
+            "take_profit": 1.09660,
+            "rr_ratio": 1.80,
+            "sl_distance_atr": 1.5,
+        },
+    }
+
+    assert resolve_bracket_choice("LONG_OPTION_A", bracket_options)["direction"] == "buy"
+    assert resolve_bracket_choice("option_a", bracket_options)["direction"] == "buy"
+    assert resolve_bracket_choice("A", bracket_options)["direction"] == "buy"
+    assert resolve_bracket_choice("SHORT_OPTION_B", bracket_options)["direction"] == "sell"
+    assert resolve_bracket_choice("option_b", bracket_options)["direction"] == "sell"
+    assert resolve_bracket_choice("B", bracket_options)["direction"] == "sell"
+    assert resolve_bracket_choice("INVALID", bracket_options) is None
+    assert resolve_bracket_choice(None, bracket_options) is None

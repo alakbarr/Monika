@@ -62,7 +62,7 @@ OPTIONAL TOOLS (call only if deeper context required):
 - SUBMIT_ASSET_ANALYSIS: finalize decision
 
 CONFLUENCE SCORING & DETERMINISTIC GROUNDING:
-+ Fundamental bias aligns: +2 | Contra-Macro Adjustment: -2 for direct market chase in consolidation; 0 for high-confluence structural limit orders at unmitigated OB/FVG or extreme Discount (<0.35) / Premium (>0.65) dealing range with MSS confirmation.
++ Fundamental bias aligns: +2 | Contra-Macro Adjustment: -1 for direct market chase in consolidation; 0 for high-confluence structural limit orders at unmitigated OB/FVG or extreme Discount (<0.35) / Premium (>0.65) dealing range with MSS confirmation.
 + DXY confirms: +1 | D1 aligns H4 entry: +2 | Quant Alpha Strategy confirms: +2
 + RSI not overbought/oversold: +1 | Entry near FVG/liquidity: +2 | Entry at unmitigated OB: +2
 + Entry in OTE (0.618-0.786): +1 | Entry at S/R zone: +1 | COT aligned: +1 | VIX < 20: +1
@@ -73,7 +73,7 @@ Minimum Confluence Score for entry: see CURRENT ANALYSIS TARGET threshold.
 
 RULES, OPPORTUNITY & ADR BOUNDS:
 - OPPORTUNITY MANDATE: Do not default to passive 'WAIT' when valid structural POIs (unfilled FVG, unmitigated Order Block, OTE Fibonacci 0.618-0.786, or verified S/R boundaries) exist on the chart. Passive idle waiting wastes market opportunities.
-- ZERO MENTAL ARITHMETIC & BRACKET ADOPTION: Do not calculate SL, TP, or R:R in mental prose. You MUST choose and adopt one of the pre-computed verified bracket options (`[LONG_OPTION_A]` or `[SHORT_OPTION_B]`) provided in the PRE-COMPUTED TRADE INVARIANTS block to guarantee exact mathematical R:R (>= 1.80) and noise floor protection. If price is stuck in the Equilibrium dead-zone (0.35 < pos < 0.65) with no structural edge, submit 'wait'.
+- ZERO MENTAL ARITHMETIC & BRACKET ADOPTION: Do not calculate SL, TP, or R:R in mental prose. You MUST choose and adopt one of the pre-computed verified bracket options (set adopted_bracket='LONG_OPTION_A' or 'SHORT_OPTION_B') provided in the PRE-COMPUTED TRADE INVARIANTS block to guarantee exact mathematical R:R (>= 1.80) and noise floor protection. In Equilibrium regimes (0.35 < pos < 0.65), formulate breakout expansion beyond local swing high/low or limit pullbacks into unmitigated POI/FVG.
 - SQUEEZE & COMPRESSION DISCIPLINE: If Bollinger Band Width is in the lower 25th percentile (BB Squeeze) OR Volume Profile shows thin liquidity/squeeze without confirmed breakout expansion: DO NOT submit an aggressive market order. Instead, adopt the pre-computed pending LIMIT order bracket option at the outer range boundary (OTE / unmitigated FVG / Order Block zone) with exact R:R >= 1.80. Only submit WAIT if the chart is purely erratic with NO identifiable structural POI.
 - Intraday Range Strategy: resolve within 1 trading day using ADR bounds.
 - TP MUST fall within 50-80% of 5-day ADR (get_daily_range_context); minimum R:R = see CURRENT ANALYSIS TARGET (target >= 1.80).
@@ -100,7 +100,7 @@ OPERATIONAL EXECUTION & TOOL CALLING MANDATE:
 4. MANDATORY RISK & SIZING VERIFICATION: If proposing a directional trade (BUY/SELL), you MUST call 'calculate_position_size' with exact entry, stop_loss, and take_profit BEFORE submitting 'submit_asset_analysis'. Directional conclusions without verified sizing will be blocked by TradeStopGate.
 5. MINIMUM R:R & STRUCTURAL TARGETS: For BUY/SELL, R:R ratio must be >= 1.5. take_profit MUST be near a known structural level (SR, FVG, OB, liquidity) within the ADR target band. Call 'get_optimal_intraday_levels' to obtain validated structural levels.
 6. CONFLICT ADJUDICATION & DEBATE BRIDGE: If Stage 1 brief diverges from technicals or SSVP warning (CDS >= 0.35) is active: DO NOT default to passive 'wait' when a high-conviction structural setup (unmitigated Order Block, FVG, or Discount/Premium dealing range with verified R:R >= 1.5) exists on the chart. Instead:
-   - Formulate the structural setup with explicit 'specialist_adjudication' (set conflict_detected=true, resolution_path='override_macro' or 'hedged_entry', and >= 40 chars justification explaining why price structure invalidates the macro thesis).
+   - Formulate the structural setup with explicit 'specialist_adjudication' (set conflict_detected=true, resolution_path='override_macro' or 'hedged_entry', and >= 15 chars justification explaining why price structure invalidates the macro thesis).
    - High-confluence setups opposing macro will be arbitrated by the Chief Investment Judge in the multi-agent debate rather than discarded.
    - Only submit 'wait' if the technical chart is purely erratic with no identifiable structural edge. Never submit 'wait' on Turn 1 without technical inspection.
 7. MANDATORY RE-SUBMISSION ON VALIDATION FAILURE: If 'submit_asset_analysis' returns status='validation_failed', your analysis has NOT been saved to the database. You MUST immediately invoke 'submit_asset_analysis' again in your next action with corrected fields (adjusting price levels, lowering confluence_score to match verified base, or submitting decision='wait'). Plain text replies after validation failure are strictly prohibited.
@@ -631,9 +631,7 @@ class ContextBuilderMixin:
                     range_span = high_20 - low_20
                     range_pos = (curr_close - low_20) / range_span if range_span > 1e-6 else 0.50
                     range_zone = (
-                        "DEEP DISCOUNT"
-                        if range_pos <= 0.35
-                        else ("DEEP PREMIUM" if range_pos >= 0.65 else "EQUILIBRIUM CHOP")
+                        "DISCOUNT" if range_pos <= 0.35 else ("PREMIUM" if range_pos >= 0.65 else "EQUILIBRIUM")
                     )
 
                     # 2. Nearest unmitigated Order Blocks
@@ -668,12 +666,12 @@ class ContextBuilderMixin:
                     sweep_of_high = sweep_detected and sweep_dir == "sell_side"
 
                     status_str = (
-                        "ACCUMULATION ZONE (BUY eligible)"
+                        "DISCOUNT / ACCUMULATION ZONE (High Long Asymmetry)"
                         if range_pos <= 0.35
                         else (
-                            "DISTRIBUTION ZONE (SELL eligible)"
+                            "PREMIUM / DISTRIBUTION ZONE (High Short Asymmetry)"
                             if range_pos >= 0.65
-                            else "EQUILIBRIUM DEAD ZONE (Market execution prohibited, stance WAIT)"
+                            else "EQUILIBRIUM REGIME (Mid-range: Trade expansion breakouts beyond local swing high/low or pullbacks into unmitigated POI/FVG; adopt verified bracket option)"
                         )
                     )
                     demand_str = (

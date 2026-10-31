@@ -247,7 +247,12 @@ def generate_concrete_bracket_options(
     long_entry = round(raw_long_entry, prec)
     long_sl_dist = max(noise_buffer_atr * atr_val, 0.35 * adr_5d if adr_5d > 0 else 1.2 * atr_val)
     long_sl = round(long_entry - long_sl_dist, prec)
+    if long_sl <= 0.0:
+        long_sl = round(long_entry * 0.95, prec)
     long_risk = abs(long_entry - long_sl)
+    if long_risk <= 0.0:
+        long_risk = round(atr_val, prec)
+        long_sl = round(long_entry - long_risk, prec)
     long_tp = round(long_entry + (target_rr * long_risk), prec)
 
     # 2. Short Option B (Supply POI)
@@ -276,7 +281,12 @@ def generate_concrete_bracket_options(
     short_sl_dist = max(noise_buffer_atr * atr_val, 0.35 * adr_5d if adr_5d > 0 else 1.2 * atr_val)
     short_sl = round(short_entry + short_sl_dist, prec)
     short_risk = abs(short_sl - short_entry)
+    if short_risk <= 0.0:
+        short_risk = round(atr_val, prec)
+        short_sl = round(short_entry + short_risk, prec)
     short_tp = round(short_entry - (target_rr * short_risk), prec)
+    if short_tp <= 0.0:
+        short_tp = round(short_entry * 0.5, prec)
 
     return {
         "long_option_a": {
@@ -300,6 +310,37 @@ def generate_concrete_bracket_options(
             "description": f"Supply POI limit entry with {target_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer",
         },
     }
+
+
+def resolve_bracket_choice(
+    choice: Optional[str],
+    bracket_options: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    """Normalizes a bracket choice identifier and extracts the matching pre-computed bracket.
+
+    Accepts:
+      - 'LONG_OPTION_A', 'OPTION_A', 'OPTION A', 'A', 'LONG', 'BUY'
+      - 'SHORT_OPTION_B', 'OPTION_B', 'OPTION B', 'B', 'SHORT', 'SELL'
+    Returns:
+      A dictionary with keys {'name', 'direction', 'entry', 'stop_loss', 'take_profit', 'rr_ratio', 'sl_distance_atr'}
+      or None if unresolvable.
+    """
+    if not choice or not bracket_options or not isinstance(bracket_options, dict):
+        return None
+
+    raw = str(choice).strip().upper()
+    if any(k in raw for k in ("LONG_OPTION_A", "OPTION_A", "OPTION A")) or raw in ("A", "LONG", "BUY"):
+        return bracket_options.get("long_option_a")
+    if any(k in raw for k in ("SHORT_OPTION_B", "OPTION_B", "OPTION B")) or raw in ("B", "SHORT", "SELL"):
+        return bracket_options.get("short_option_b")
+
+    for key, val in bracket_options.items():
+        if key.upper() == raw or key.replace("_", "").upper() == raw.replace("_", ""):
+            return val
+        if isinstance(val, dict) and str(val.get("name", "")).upper() == raw:
+            return val
+
+    return None
 
 
 def format_invariants_for_prompt(invariants: Dict[str, Any]) -> str:
@@ -336,7 +377,7 @@ def format_invariants_for_prompt(invariants: Dict[str, Any]) -> str:
             f"  [SHORT_OPTION_B]: Entry={short_b.get('entry')} | SL={short_b.get('stop_loss')} | TP={short_b.get('take_profit')} (Exact R:R={short_b.get('rr_ratio', 1.8):.2f})"
         )
         lines.append(
-            "  * INSTRUCTION: Adopt one of the verified options above to eliminate mental math errors, or select WAIT if in Equilibrium dead-zone."
+            "  * INSTRUCTION: Adopt one of the verified options above (set adopted_bracket='LONG_OPTION_A' or 'SHORT_OPTION_B') to eliminate mental math errors, or specify explicit entry/stop_loss/take_profit conforming to bounds. Select WAIT only if market regime has no clear directional edge or invalidates both options."
         )
 
     if anchors:

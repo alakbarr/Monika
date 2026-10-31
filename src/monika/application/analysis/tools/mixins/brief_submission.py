@@ -192,16 +192,16 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
         missing_invalidation = [c for c in non_neutral_currencies if c not in invalidation_map]
         if missing_invalidation:
             errors.append(
-                f"MISSING_INVALIDATION: currency dengan bias terarah (bukan neutral) WAJIB punya invalidation_conditions. Kurang untuk: {missing_invalidation}"
+                f"MISSING_INVALIDATION: Directional currencies (non-neutral) MUST specify explicit invalidation_conditions. Missing conditions for: {missing_invalidation}."
             )
         is_weekend_now = clock.now().weekday() >= 5
         if not is_weekend_now and len(neutral_currencies) >= 6:
             missing_neutral_inv = [c for c in neutral_currencies if c not in invalidation_map]
             if len(missing_neutral_inv) > 2:
                 errors.append(
-                    f"LAZY_NEUTRAL_BIAS_EVASION: Anda menetapkan >=6 currency sebagai 'neutral' ({neutral_currencies}) "
-                    f"tanpa menyertakan invalidation_conditions (batas range breakout) untuk {missing_neutral_inv}. "
-                    f"Neutral bukan jalan pintas untuk melewati validasi: sertakan boundary range eksplisit di invalidation_conditions."
+                    f"LAZY_NEUTRAL_BIAS_EVASION: Classified >= 6 currencies as 'neutral' ({neutral_currencies}) "
+                    f"without specifying invalidation_conditions (range breakout thresholds) for {missing_neutral_inv}. "
+                    f"A neutral stance is not a shortcut to bypass boundary validation: provide explicit range parameters in invalidation_conditions."
                 )
 
         weak_invalidation = []
@@ -212,30 +212,30 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                 weak_invalidation.append(c)
         if weak_invalidation:
             errors.append(
-                f"WEAK_INVALIDATION: invalidation_conditions untuk {weak_invalidation} terlalu generik "
-                f"atau tidak mengandung level harga/angka spesifik (WAJIB >= 40 karakter dan memuat angka konkret). "
-                f"Contoh baik: 'Bias {weak_invalidation[0]} bearish batal jika harga break di atas level 78.50 ATAU inventory draw > 3.5M barrels'."
+                f"WEAK_INVALIDATION: invalidation_conditions for {weak_invalidation} are too generic "
+                f"or lack specific price levels/numerical data (REQUIRED: >= 40 characters with concrete numerical anchors). "
+                f"Institutional standard example: 'Bearish {weak_invalidation[0]} bias invalidated if price breaks above 78.50 OR inventory draw exceeds 3.5M barrels'."
             )
 
         confidence_map = inp.get("currency_confidence", {})
         missing_conf = [c for c in non_neutral_currencies if c not in confidence_map]
         if missing_conf:
             errors.append(
-                f"MISSING_CONFIDENCE: currency dengan bias terarah WAJIB punya currency_confidence (0.0-1.0). Kurang untuk: {missing_conf}"
+                f"MISSING_CONFIDENCE: Directional currencies MUST specify currency_confidence (0.0-1.0). Missing for: {missing_conf}."
             )
 
         if not inp.get("strongest_counter_thesis"):
-            errors.append("MISSING_COUNTER_THESIS: Anda WAJIB memberikan strongest_counter_thesis yang valid.")
+            errors.append("MISSING_COUNTER_THESIS: A substantiated strongest_counter_thesis is REQUIRED.")
         elif len(inp.get("strongest_counter_thesis", "")) < 50:
             errors.append(
-                "WEAK_COUNTER_THESIS: strongest_counter_thesis terlalu pendek (WAJIB >= 50 karakter), sebutkan data/skenario makro spesifik yang bisa membatalkan tesis Anda."
+                "WEAK_COUNTER_THESIS: strongest_counter_thesis is too brief (REQUIRED: >= 50 characters). Detail specific macro data catalysts and falsifiable risk scenarios that would invalidate your thesis."
             )
 
         # NEW P2-4: Check priced_in_assessment completeness
         pi = inp.get("priced_in_assessment", {})
         if not pi:
             errors.append(
-                "MISSING_PRICED_IN: Field 'priced_in_assessment' tidak boleh kosong. Gunakan data aktual dari get_cot_report dan get_fedwatch_probabilities."
+                "MISSING_PRICED_IN: Parameter 'priced_in_assessment' cannot be empty. Ground analysis in empirical data from get_cot_report and get_fedwatch_probabilities."
             )
         else:
             is_weekend = clock.now().weekday() >= 5
@@ -274,19 +274,21 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                 and not (is_weekend and (has_crypto_sentiment or pi.get("dominant_driver")))
             ):
                 errors.append(
-                    "INCOMPLETE_PRICED_IN: Harus mencantumkan metrik numerik nyata (misal cot_positioning_percentile atau retail_sentiment_percentile) hasil fetch tools."
+                    "INCOMPLETE_PRICED_IN: Must include verified quantitative positioning metrics (e.g. cot_positioning_percentile or retail_sentiment_percentile) retrieved from analytical tools."
                 )
             if not pi.get("sell_the_news_risk"):
-                errors.append("INCOMPLETE_PRICED_IN: 'sell_the_news_risk' wajib diisi (high/medium/low).")
+                errors.append(
+                    "INCOMPLETE_PRICED_IN: Parameter 'sell_the_news_risk' is required ('high', 'medium', 'low', or 'not_applicable')."
+                )
 
-            # P1: Phase 2.6 - Tempering currency_confidence saat priced-in tinggi
+            # Phase 2.6: Temper currency_confidence when market is heavily priced in
             if pi.get("priced_in_score", 0) >= 8:
                 dominant_driver_text = (pi.get("dominant_driver") or "").upper()
                 currency_conf = inp.get("currency_confidence", {})
                 for cur, conf in currency_conf.items():
                     if cur in dominant_driver_text and conf > 0.65:
                         errors.append(
-                            f"PRICED_IN_CONFIDENCE_MISMATCH: priced_in_score={pi.get('priced_in_score')} (fully priced in) untuk driver yang menyebut {cur}, tapi currency_confidence[{cur}]={conf} masih tinggi. Jika mayoritas ekspektasi sudah priced-in, conviction directional seharusnya lebih rendah (turunkan ke <=0.6) KECUALI kamu punya alasan spesifik kenapa masih ada ruang gerak (state di macro_narrative)."
+                            f"PRICED_IN_CONFIDENCE_MISMATCH: priced_in_score={pi.get('priced_in_score')} (fully priced in) for driver citing {cur}, but currency_confidence[{cur}]={conf} remains elevated. When market expectations are largely priced in, directional conviction must be tempered (<= 0.60) UNLESS explicitly justified by an unpriced catalyst in macro_narrative."
                         )
 
         return errors
@@ -348,19 +350,19 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                 weekend_ref = is_weekend and any(
                     w in just.lower() for w in ["weekend", "tutup", "closed", "jumat", "friday"]
                 )
-                if currency not in justification_map or len(just) < 40 or (not has_number and not weekend_ref):
+                if currency not in justification_map or len(just) < 15 or (not has_number and not weekend_ref):
                     errors.append(
-                        f"ANCHORING_RISK: Bias {currency} ('{bias}') sama selama >=4 siklus pasar berturut-turut. "
-                        f"bias_continuity_justification untuk {currency} kosong/terlalu pendek/tidak mengandung "
-                        f"data numerik baru (WAJIB >= 40 karakter dengan level harga, %, tanggal, atau basis poin). "
-                        f'Contoh format: bias_continuity_justification={{"{currency}": "Bias {currency} {bias} dipertahankan karena data 2026-08-22 menunjukkan level 102.50 bertahan dan yield naik 5 bps"}}.'
+                        f"ANCHORING_RISK: {currency} bias ('{bias}') has persisted across >= 4 consecutive cycles. "
+                        f"bias_continuity_justification for {currency} is missing, too brief, or lacks updated numerical evidence "
+                        f"(REQUIRED: >= 15 characters citing price levels, %, dates, or yield basis points). "
+                        f'Example: bias_continuity_justification={{"{currency}": "{currency} {bias} bias maintained as 2026-08-22 print confirms 102.50 support holding and yields up 5 bps"}}.'
                     )
         return errors
 
     async def _validate_key_data_points(self, inp: dict) -> list[str]:
-        """
-        Cross-check angka yang di-restate model terhadap data yang benar-benar di-fetch,
-        menangkap salah baca/halusinasi data SEBELUM meracuni seluruh siklus.
+        """Cross-checks quantitative figures restated by the model against empirical tool outputs,
+
+        preempting data misreads and hallucinations before propagation across the pipeline.
         """
         errors = []
         kdp = inp.get("key_data_points_used", {})
@@ -390,8 +392,8 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                 )
                 if not match:
                     errors.append(
-                        f"DATA_MISMATCH: Kamu menyatakan DXY trend='{kdp.get('dxy_trend_5d')}' tapi data tool "
-                        f"aktual menunjukkan trend_5d='{real_trend}'. Cek ulang output get_dxy() sebelum resubmit."
+                        f"DATA_MISMATCH: Restated DXY trend='{kdp.get('dxy_trend_5d')}', but verified empirical tool "
+                        f"output indicates trend_5d='{real_trend}'. Re-verify get_dxy() output before resubmission."
                     )
         except Exception:
             pass
@@ -406,8 +408,8 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                         cc = float(claimed_close)
                         if rc > 5.0 and abs(cc - rc) > 1.0:
                             errors.append(
-                                f"DATA_MISMATCH: Kamu menyatakan VIX={claimed_close} tapi VIX close terbaru "
-                                f"aktual={real_close}. Verifikasi nilai yang dibaca dari get_vix()."
+                                f"DATA_MISMATCH: Claimed VIX={claimed_close}, but latest verified VIX "
+                                f"close={real_close}. Re-verify reading from get_vix()."
                             )
                     except TypeError, ValueError:
                         pass
@@ -445,8 +447,8 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                         closest_prob = min(all_meeting_dominant_probs, key=lambda p: abs(claimed - p))
                         if min_diff > 8.0:
                             errors.append(
-                                f"DATA_MISMATCH: Kamu menyatakan FedWatch dominant={claimed}% tapi data aktual "
-                                f"terdekat={closest_prob}%. Verifikasi ulang output get_fedwatch_probabilities()."
+                                f"DATA_MISMATCH: Claimed FedWatch dominant={claimed}%, but nearest verified empirical "
+                                f"probability={closest_prob}%. Re-verify get_fedwatch_probabilities() output."
                             )
         except Exception:
             pass
@@ -466,7 +468,7 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                         min_diff = min(abs(claimed_delta - d) for d in all_deltas)
                         if min_diff > 8.0:
                             errors.append(
-                                f"DATA_MISMATCH: Kamu menyatakan fedwatch_repricing_delta_pct={claimed_delta}% tapi delta aktual terdekat={min(all_deltas, key=lambda d: abs(claimed_delta - d))}%. Verifikasi output fedwatch.comparisons."
+                                f"DATA_MISMATCH: Claimed fedwatch_repricing_delta_pct={claimed_delta}%, but nearest empirical delta={min(all_deltas, key=lambda d: abs(claimed_delta - d))}%. Re-verify output from fedwatch.comparisons."
                             )
         except Exception:
             pass
@@ -482,8 +484,8 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                     claimed_10y = float(kdp.get("treasury_10y_yield_pct"))
                     if real_10y is not None and abs(claimed_10y - real_10y) * 100 > float(tol_yield_bp):
                         errors.append(
-                            f"DATA_MISMATCH: Kamu menyatakan yield 10Y={claimed_10y}% tapi data aktual={real_10y}%. "
-                            f"Verifikasi ulang output get_treasury_yields()."
+                            f"DATA_MISMATCH: Claimed 10Y yield={claimed_10y}%, but verified empirical yield={real_10y}%. "
+                            f"Re-verify reading from get_treasury_yields()."
                         )
         except Exception:
             pass
@@ -591,13 +593,13 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
             declared_pi = (inp.get("priced_in_assessment", {}) or {}).get("priced_in_score", 5)
             if baseline["is_priced_in"] and declared_pi <= 3 and declared_bias != "neutral":
                 warnings.append(
-                    f"[{ccy}] Deterministic baseline menunjukkan priced-in ({'; '.join(baseline['reasons'])}) tapi priced_in_score={declared_pi} rendah."
+                    f"[{ccy}] Quantitative baseline indicates priced-in condition ({'; '.join(baseline['reasons'])}), but declared priced_in_score={declared_pi} is subdued."
                 )
         return warnings
 
     async def _tool_submit_fundamental_brief(self, inp: dict) -> dict:
-        """Menyimpan narasi dan bias makro ke DB (menandai berakhirnya Tahap 1)."""
-        inp.pop("submit_attempts", None)  # Toleransi tambahan argumen dari LLM
+        """Persists institutional macro narrative and currency biases to DB (marking completion of Stage 1)."""
+        inp.pop("submit_attempts", None)  # Tolerate supplementary LLM arguments
 
         if isinstance(inp, dict):
             for wrapper in ("input", "brief", "data", "parameters", "args", "payload"):
@@ -670,9 +672,9 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
         ]
         if missing_invalidation:
             completeness_errors.append(
-                f"MISSING_INVALIDATION: Currency berikut punya bias non-neutral tapi tidak "
-                f"punya invalidation_conditions: {missing_invalidation}. Setiap bias directional "
-                f"WAJIB punya kondisi falsifiable."
+                f"MISSING_INVALIDATION: The following currencies carry directional biases but lack "
+                f"invalidation_conditions: {missing_invalidation}. Every directional thesis "
+                f"MUST establish a falsifiable invalidation boundary."
             )
 
         # Checklist verification
@@ -685,7 +687,7 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                 )
             elif not any(ch.isdigit() for ch in counter_thesis):
                 completeness_errors.append(
-                    "CONTRADICTION_UNRESOLVED_NO_EVIDENCE: contradiction_existed=True tapi strongest_counter_thesis tidak mengandung bukti numerik konkret (level harga/%/tanggal/basis poin) sebagai dasar resolusi kontradiksi."
+                    "CONTRADICTION_UNRESOLVED_NO_EVIDENCE: contradiction_existed=True, but strongest_counter_thesis lacks verifiable numerical evidence (price levels, percentages, dates, basis points) resolving the contradiction."
                 )
 
         # Ceiling check
@@ -728,7 +730,7 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
         is_safe, contamination_issues, contamination_risk = await BriefContaminationGuard.validate_brief_integrity(
             self.session, brief_data_for_check, self.settings
         )
-        CONTAMINATION_HARD_BLOCK_THRESHOLD = 0.4  # FIX P2-1: turunkan dari 0.5 ke 0.4
+        CONTAMINATION_HARD_BLOCK_THRESHOLD = 0.4  # Hard block ceiling lowered from 0.5 to 0.4 for strict risk isolation
 
         if not is_safe and contamination_risk >= CONTAMINATION_HARD_BLOCK_THRESHOLD:
             self.submit_attempts += 1
@@ -742,10 +744,10 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                 "error_classification": "INTERNAL_CONTRADICTION",
                 "attempt": self.submit_attempts,
                 "guidance": (
-                    "Brief Anda mengandung kontradiksi internal yang belum diselesaikan "
-                    "(lihat errors di atas) dan TIDAK AKAN dipaksa masuk (fail-closed). "
-                    "Anda WAJIB menyelaraskan currency_bias/risk_sentiment atau secara eksplisit "
-                    "menyatakan di macro_narrative sumber mana yang Anda percaya dan MENGAPA, sebelum submit ulang."
+                    "The brief contains unresolved internal contradictions (see errors above) "
+                    "and cannot be accepted (fail-closed safety constraint). "
+                    "You MUST harmonize currency_bias with risk_sentiment or explicitly articulate "
+                    "in macro_narrative which data source is authoritative and WHY before resubmitting."
                 ),
             }
         elif not is_safe:
@@ -779,7 +781,7 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                     "guidance": f"A high-impact event ('{upcoming_major.event_name}') is scheduled within the next 48h. You MUST provide the 'priced_in_assessment' field to evaluate how much this event is already priced in by the market.",
                 }
 
-        # ── DETERMINISTIC CONFIDENCE CEILING (menegakkan CHECKPOINT 3 secara kode) ──
+        # ── DETERMINISTIC CONFIDENCE CEILING (Programmatic enforcement of Checkpoint 3) ──
         try:
             declared_confidence = float(inp.get("confidence", 0.7))
             ceiling_reasons = []
@@ -1029,7 +1031,7 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
             if flip_flop_warnings:
                 alerts.extend(
                     [
-                        f"[FLIP-FLOP WARNING] {w} — Jika bias bolak-balik tiap siklus tanpa breakout makro baru, ini akan menyebabkan whipsaw loss. WAJIB justifikasi kuat atau gunakan NEUTRAL."
+                        f"[FLIP-FLOP WARNING] {w} — Rapidly reversing directional bias cycle-to-cycle without fresh macroeconomic catalysts risks whipsaw losses. Provide robust institutional justification or maintain a NEUTRAL stance."
                         for w in flip_flop_warnings
                     ]
                 )

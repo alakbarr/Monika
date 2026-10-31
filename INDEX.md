@@ -5828,6 +5828,7 @@
   - `extract_price_precision(symbol: str) -> int`: Returns price decimal precision based on asset class.
   - `compute_trade_invariants(symbol: str, current_price: float, atr: float, ...) -> Dict[str, Any]`: Computes strict deterministic invariants for BUY and SELL scenarios.
   - `generate_concrete_bracket_options(symbol: str, current_price: float, atr: float, ...) -> Dict[str, Any]`: Generates concrete, mathematically verified SL/TP bracket options.
+  - `resolve_bracket_choice(choice: Optional[str], bracket_options: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]`: Normalizes a bracket choice identifier and extracts the matching pre-computed bracket.
   - `format_invariants_for_prompt(invariants: Dict[str, Any]) -> str`: Renders pre-computed invariants into a dense telegraphic prompt block.
 
 #### `leading_indicator_mapper.py` - *Macro Leading Indicator Mapper & Nowcasting Engine.*

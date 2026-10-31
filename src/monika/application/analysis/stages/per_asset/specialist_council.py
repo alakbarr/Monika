@@ -145,7 +145,7 @@ class SpecialistCouncil:
                 adx_val = 0.0
 
         # Contrarian retail sentiment logic with trend exhaustion guard
-        if adx_val > 32.0:
+        if adx_val > 25.0:
             bias = "NEUTRAL"
             conf = 0.55
             rationale_str = f"Retail long: {long_pct:.1f}%, but ADX={adx_val:.1f} indicates strong trend impulse (contrarian penalty suspended)."

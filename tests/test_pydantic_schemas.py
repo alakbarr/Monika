@@ -82,6 +82,33 @@ def test_submit_asset_analysis_trade_validation():
     assert avoid_schema.stop_loss is None
 
 
+def test_submit_asset_analysis_bracket_and_trade_aliases():
+    from monika.application.analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema
+
+    # Test top-level entry, sl, tp, adopted_bracket aliases
+    payload = {
+        "symbol": "EURUSD",
+        "decision": "buy",
+        "confidence": 0.85,
+        "rationale": "Adopted verified long bracket from invariants",
+        "adopted_bracket": "LONG_OPTION_A",
+        "entry": 1.0980,
+        "sl": 1.0950,
+        "tp": 1.1034,
+        "confluence_score": 9,
+        "priced_in_score": 3,
+    }
+    obj = SubmitAssetAnalysisSchema.model_validate(payload)
+    assert obj.adopted_bracket == "LONG_OPTION_A"
+    assert obj.stop_loss == 1.0950
+    assert obj.take_profit == 1.1034
+    assert obj.entry_condition is not None
+    assert obj.entry_condition.price == 1.0980
+    assert obj.invalidation_price == 1.0950
+    assert obj.invalidation_direction == "below"
+    assert "1.095" in obj.invalidation
+
+
 def test_submit_asset_analysis_symbol_aliases_and_normalization():
     from monika.application.analysis.schemas.pydantic_schemas import SubmitAssetAnalysisSchema
 

@@ -159,7 +159,7 @@ If original_context decision is CONFLICT_ADJUDICATION or WAIT or NEUTRAL (Two-Si
     1) Engine 1 (Macro-Aligned/Neutral): Unmitigated Supply OB/FVG retest with R:R >= 1.75 and SL >= 1.0x ATR. Calibrated risk multiplier 0.75 - 1.0.
     2) Engine 2 (Contra-Macro): Confirmed Liquidity Sweep of swing high + MSS displacement with R:R >= 2.00. Downscale risk multiplier to 0.65 - 0.75.
     If contra-macro and NO confirmed sweep (untethered parabolic rally), declare final_decision = 'avoid' with risk_multiplier = 0.0.
-  * EQUILIBRIUM DEAD ZONE (0.35 < pos < 0.65): Middle-range chop. Without confirmed Donchian breakout expansion with RVOL >= 1.5, declare final_decision = 'avoid' with risk_multiplier = 0.0 to prevent churning in range noise.
+  * EQUILIBRIUM REGIME (0.35 < pos < 0.65): Mid-range environment. APPROVE either Long (Option A) or Short (Option B) if backed by verified structural POI (unmitigated FVG, Order Block, or clean breakout beyond local swing high/low) with exact R:R >= 1.75 and SL >= 1.0x ATR. Calibrate risk multiplier to 0.70 - 0.85. Only declare 'avoid' if price action is completely directionless with no identifiable structural anchor.
 - Trend Climax & Anti-Exhaustion Guard: If ADX > 50 or price is extended far from H4 EMAs, evaluate as potential climax exhaustion rather than fresh breakout. Require retest of structural POI.
 - Minimum Asymmetry: Approve the side that demonstrates verified structural edge, Stop Loss distance >= 1.0x ATR, and R:R >= 1.75. If both sides lack structural edge, rule 'avoid' with risk_multiplier = 0.0.
 If original_context decision is SELL:
