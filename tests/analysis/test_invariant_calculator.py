@@ -257,3 +257,54 @@ def test_differentiated_asset_impulse_thresholds():
     )
     assert crypto_strong["long_option_a"]["entry_type"] == "market"
     assert "impulse breakout market entry" in crypto_strong["long_option_a"]["description"].lower()
+
+
+def test_dynamic_calibrated_noise_buffer_by_asset_class():
+    """Verify that noise buffer defaults dynamically to 1.25x for FX and 1.35x for Crypto/Commodities."""
+    # 1. FX Major defaults to 1.25x ATR
+    fx_b = generate_concrete_bracket_options(
+        symbol="EURUSD",
+        current_price=1.10000,
+        atr=0.00200,
+        adr_5d=0.00800,
+        target_rr=1.60,
+    )
+    long_fx = fx_b["long_option_a"]
+    assert long_fx["sl_distance_atr"] == pytest.approx(1.25, abs=0.02)
+    assert ">= 1.25x atr" in long_fx["description"].lower()
+
+    # 2. Crypto defaults to 1.35x ATR
+    btc_b = generate_concrete_bracket_options(
+        symbol="BTCUSD",
+        current_price=90000.0,
+        atr=1000.0,
+        adr_5d=3500.0,
+        target_rr=1.60,
+    )
+    long_btc = btc_b["long_option_a"]
+    assert long_btc["sl_distance_atr"] == pytest.approx(1.35, abs=0.02)
+    assert ">= 1.35x atr" in long_btc["description"].lower()
+
+    # 3. Commodity (XAUUSD) defaults to 1.35x ATR
+    xau_b = generate_concrete_bracket_options(
+        symbol="XAUUSD",
+        current_price=2750.00,
+        atr=25.00,
+        adr_5d=90.00,
+        target_rr=1.60,
+    )
+    long_xau = xau_b["long_option_a"]
+    assert long_xau["sl_distance_atr"] == pytest.approx(1.35, abs=0.02)
+    assert ">= 1.35x atr" in long_xau["description"].lower()
+
+    # 4. Explicit override is respected
+    override_b = generate_concrete_bracket_options(
+        symbol="EURUSD",
+        current_price=1.10000,
+        atr=0.00200,
+        adr_5d=0.00800,
+        noise_buffer_atr=1.50,
+        target_rr=1.60,
+    )
+    assert override_b["long_option_a"]["sl_distance_atr"] == pytest.approx(1.50, abs=0.02)
+    assert ">= 1.50x atr" in override_b["long_option_a"]["description"].lower()

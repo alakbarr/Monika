@@ -428,9 +428,9 @@ class OutputVerifier:
                             effective_atr = sl_dist
                         if effective_atr and effective_atr > 0:
                             sl_min = min(sl_min, 0.95 * effective_atr)
-                            sl_max = max(sl_max, 1.35 * effective_atr)
+                            sl_max = max(sl_max, 1.45 * effective_atr)
                             tp_min = min(tp_min, 1.40 * effective_atr)
-                            tp_max = max(tp_max, 2.25 * effective_atr, 1.85 * sl_dist, 1.65 * sl_max)
+                            tp_max = max(tp_max, 2.50 * effective_atr, 1.85 * sl_dist, 1.65 * sl_max)
                         if not (tp_min <= tp_dist <= tp_max):
                             failures.append(f"TP dist {tp_dist:.5f} outside ADR band [{tp_min:.5f}, {tp_max:.5f}]")
                         if sl_min > 0 and sl_dist < sl_min:

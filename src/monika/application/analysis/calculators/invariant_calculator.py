@@ -154,8 +154,11 @@ def compute_trade_invariants(
 
     # --- BUY BOUNDS ---
     # SL must be at least 1.0x ATR below entry, max 35% of ADR or 2.5x ATR
-    # SOTA: Floor max_sl_dist at 1.2x ATR to prevent inverted SL intervals when ADR is tight
-    max_sl_dist = max(1.2 * atr_val, max_adr_sl_pct * adr_val if adr_val > 0 else 2.5 * atr_val)
+    # SOTA: Floor max_sl_dist at 1.35x ATR on volatile/commodity/crypto and 1.25x ATR on FX to prevent inverted intervals
+    sym_calc = str(symbol or "").upper()
+    is_calc_high_vol = any(k in sym_calc for k in ("BTC", "ETH", "SOL", "XAU", "XAG", "XTI", "XBR", "BRENT", "WTI"))
+    min_noise_floor = 1.35 * atr_val if is_calc_high_vol else 1.25 * atr_val
+    max_sl_dist = max(min_noise_floor, max_adr_sl_pct * adr_val if adr_val > 0 else 2.5 * atr_val)
     max_sl_dist = min(2.5 * atr_val, max_sl_dist)
     buy_sl_max = round(curr_px - (1.0 * atr_val), prec)
     buy_sl_min = round(curr_px - max_sl_dist, prec)
@@ -281,7 +284,6 @@ def compute_trade_invariants(
     if (
         not timesfm_envelope
         and isinstance(long_opt, dict)
-        and long_opt.get("entry_type") == "market"
         and long_opt.get("stop_loss")
         and long_opt.get("take_profit")
     ):
@@ -293,7 +295,6 @@ def compute_trade_invariants(
     if (
         not timesfm_envelope
         and isinstance(short_opt, dict)
-        and short_opt.get("entry_type") == "market"
         and short_opt.get("stop_loss")
         and short_opt.get("take_profit")
     ):
@@ -331,7 +332,7 @@ def generate_concrete_bracket_options(
     smc_zones: Optional[Any] = None,
     sr_zones: Optional[Any] = None,
     target_rr: float = 1.80,
-    noise_buffer_atr: float = 1.0,
+    noise_buffer_atr: Optional[float] = None,
     regime_classification: Optional[str] = None,
     h4_impulse_atr: Optional[float] = None,
 ) -> Dict[str, Any]:
@@ -350,6 +351,12 @@ def generate_concrete_bracket_options(
     is_fx_major = any(sym_clean.startswith(fx) for fx in ("EUR", "GBP", "AUD", "NZD", "USD")) and not any(
         k in sym_clean for k in ("BTC", "ETH", "SOL", "XAU", "XAG", "XTI", "XBR")
     )
+    is_high_vol = any(k in sym_clean for k in ("BTC", "ETH", "SOL", "XAU", "XAG", "XTI", "XBR", "BRENT", "WTI"))
+    if noise_buffer_atr is None or float(noise_buffer_atr) <= 0.0:
+        eff_noise_buffer = 1.35 if is_high_vol else 1.25
+    else:
+        eff_noise_buffer = float(noise_buffer_atr)
+
     impulse_thresh = 0.85 if is_fx_major else 1.25
 
     reg_str = str(regime_classification or "").upper()
@@ -383,12 +390,13 @@ def generate_concrete_bracket_options(
         raw_long_entry = curr_px
 
     long_entry = round(raw_long_entry, prec)
-    harmonized_sl_max = max(0.35 * adr_val, 1.20 * atr_val)
+    target_noise_dist = eff_noise_buffer * atr_val
+    harmonized_sl_max = max(0.35 * adr_val, target_noise_dist, 1.20 * atr_val)
     harmonized_tp_max = max(0.80 * adr_val, harmonized_sl_max * max(eff_min_rr, 1.65))
-    base_sl_cap = min(0.35 * adr_val, 1.20 * atr_val)
+    base_sl_cap = min(0.35 * adr_val, target_noise_dist)
     base_sl_cap = min(base_sl_cap, harmonized_tp_max / eff_min_rr)
 
-    long_sl_dist = min(harmonized_sl_max, max(noise_buffer_atr * atr_val, base_sl_cap))
+    long_sl_dist = min(harmonized_sl_max, max(target_noise_dist, base_sl_cap))
     long_sl = round(long_entry - long_sl_dist, prec)
     if long_sl <= 0.0:
         long_sl = round(long_entry * 0.95, prec)
@@ -416,7 +424,7 @@ def generate_concrete_bracket_options(
         raw_short_entry = curr_px
 
     short_entry = round(raw_short_entry, prec)
-    short_sl_dist = min(harmonized_sl_max, max(noise_buffer_atr * atr_val, base_sl_cap))
+    short_sl_dist = min(harmonized_sl_max, max(target_noise_dist, base_sl_cap))
     short_sl = round(short_entry + short_sl_dist, prec)
     short_risk = abs(short_sl - short_entry)
     if short_risk <= 0.0:
@@ -436,14 +444,14 @@ def generate_concrete_bracket_options(
     short_entry_type = "market" if (is_bearish_impulse or abs(short_entry - curr_px) <= 0.05 * atr_val) else "limit"
 
     long_desc = (
-        f"Bullish impulse breakout market entry ({float(h4_impulse_atr or 0.0):+.2f}x ATR impulse) with {eff_long_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer"
+        f"Bullish impulse breakout market entry ({float(h4_impulse_atr or 0.0):+.2f}x ATR impulse) with {eff_long_rr:.2f} R:R and >= {eff_noise_buffer:.2f}x ATR noise buffer"
         if is_bullish_impulse
-        else f"Demand POI {long_entry_type} entry with {eff_long_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer"
+        else f"Demand POI {long_entry_type} entry with {eff_long_rr:.2f} R:R and >= {eff_noise_buffer:.2f}x ATR noise buffer"
     )
     short_desc = (
-        f"Bearish impulse breakout market entry ({float(h4_impulse_atr or 0.0):+.2f}x ATR impulse) with {eff_short_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer"
+        f"Bearish impulse breakout market entry ({float(h4_impulse_atr or 0.0):+.2f}x ATR impulse) with {eff_short_rr:.2f} R:R and >= {eff_noise_buffer:.2f}x ATR noise buffer"
         if is_bearish_impulse
-        else f"Supply POI {short_entry_type} entry with {eff_short_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer"
+        else f"Supply POI {short_entry_type} entry with {eff_short_rr:.2f} R:R and >= {eff_noise_buffer:.2f}x ATR noise buffer"
     )
 
     return {
