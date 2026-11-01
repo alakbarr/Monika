@@ -362,9 +362,11 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                                     if tp_dist < sl_dist * 1.5:
                                         tp_dist = sl_dist * 1.55
                                 else:
-                                    atr_est = _num(fact_sheet.get("atr") if isinstance(fact_sheet, dict) else None) or (
-                                        entry_px * 0.005
-                                    )
+                                    atr_est = _num(
+                                        (fact_sheet.get("atr") or fact_sheet.get("atr_14_h4"))
+                                        if isinstance(fact_sheet, dict)
+                                        else None
+                                    ) or (entry_px * 0.005)
                                     sl_dist = atr_est * 1.05
                                     tp_dist = sl_dist * 1.55
                                 if final_dec == "buy":

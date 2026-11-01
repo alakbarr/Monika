@@ -972,23 +972,10 @@ async def calculate_confluence(
                     factors.append(
                         "Specialist Council: Uncrowded Institutional Synergy (Tech == Macro != Sentiment, +2)"
                     )
-                elif consensus_mode == "unanimous_agreement" or synergy_state == "crowded_unanimous_exhaustion":
-                    dr_pos = raw_spec.get(
-                        "dealing_range_pos", settings.get("dealing_range_pos") if isinstance(settings, dict) else None
-                    )
-                    is_late_exhaustion = (
-                        isinstance(dr_pos, (int, float))
-                        and not isinstance(dr_pos, bool)
-                        and (
-                            (test_direction == "buy" and float(dr_pos) > 0.65)
-                            or (test_direction == "sell" and float(dr_pos) < 0.35)
-                        )
-                    )
-                    if is_late_exhaustion:
-                        factors.append("Specialist Council: Crowded 3/3 Late-Stage Caution (+0)")
-                    else:
-                        score += 2
-                        factors.append("Specialist Council: Unanimous Agreement (+2)")
+                elif synergy_state == "crowded_unanimous_exhaustion" or consensus_mode == "unanimous_agreement":
+                    factors.append("Specialist Council: crowded_unanimous_exhaustion (0 pts)")
+                elif synergy_state == "crowded_tech_sent_trap_vs_macro":
+                    factors.append("Specialist Council: crowded_tech_sent_trap_vs_macro (0 pts)")
                 elif consensus_mode == "majority_agreement":
                     score += 1
                     factors.append("Specialist Council: Majority Agreement (+1)")

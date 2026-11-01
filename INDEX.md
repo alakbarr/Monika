@@ -8804,7 +8804,7 @@
 - **Classes**:
   - `class FundamentalBriefMixin(_ToolExecutorMixinBase)`: Mixin providing fundamental brief validation and submission logic.
 - **Top-Level Functions**:
-  - `sanitize_macro_regime(raw_regime: Any) -> str`: Coerce empty, punctuation (e.g. ','), or unrecognized macro_regime values to 'transition'.
+  - `sanitize_macro_regime(raw_regime: Any, macro_narrative: Optional[str]) -> str`: Strip punctuation (',.;:-_ /|[]{}"'()') from macro_regime; infer from narrative or default to 'transition' if invalid.
   - `reconcile_fx_pair_macro_matrix(currency_bias: Any, per_asset_macro_matrix: Any) -> Dict[str, Any]`: Ensure FX pair directional_bias in per_asset_macro_matrix matches currency_bias[BASE] - currency_bias[QUOTE].
   - `cap_empirical_priced_in_scores(asset_priced_in_scores: Any, automated_priced_in: Any, has_imminent_high_impact: bool) -> Dict[str, int]`: Cap asset_priced_in_scores[sym] to min(submitted_score, baseline + 2) when baseline <= 4 and no imminent event.
   - `format_macro_intelligence_dossier(inp: dict, now: datetime, valid_until: Optional[datetime]) -> str`: Synthesizes a complete, institutional Macro Intelligence Dossier for storage in

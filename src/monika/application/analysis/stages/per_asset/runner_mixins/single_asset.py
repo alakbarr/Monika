@@ -144,13 +144,17 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
             from monika.application.analysis.tools.executor import ToolExecutor as _BaseToolExecutor
             from monika.application.analysis.tools.tool_executor import ToolExecutor
 
-            executor = getattr(self, "tool_executor", None)
+            executor = getattr(self, "tool_executor", None) or getattr(self, "executor", None)
             if executor is None:
                 executor = ToolExecutor(session=session, settings=self.settings, symbol=symbol)
                 setattr(self, "tool_executor", executor)
             setattr(executor, "bracket_options", precomputed_bracket_options)
-            setattr(_BaseToolExecutor, "bracket_options", precomputed_bracket_options)
-            setattr(ToolExecutor, "bracket_options", precomputed_bracket_options)
+            for cls_ref in (_BaseToolExecutor, ToolExecutor):
+                sym_map = getattr(cls_ref, "_symbol_bracket_options", None)
+                if not isinstance(sym_map, dict):
+                    sym_map = {}
+                    setattr(cls_ref, "_symbol_bracket_options", sym_map)
+                sym_map[symbol] = precomputed_bracket_options
         except Exception as te_err:
             logger.debug(f"[{symbol}] ToolExecutor bracket_options attachment non-fatal: {te_err}")
 
@@ -506,6 +510,22 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
                 specialist_trust,
             ) = await self._execute_specialist_debate_pipeline(session, symbol, raw_bundle_data)
             extra_context_str += spec_extra_ctx
+            try:
+                from monika.application.analysis.tools.executor import ToolExecutor as _BaseToolExecutor
+                from monika.application.analysis.tools.tool_executor import ToolExecutor
+
+                executor_inst = getattr(self, "tool_executor", None) or getattr(self, "executor", None)
+                if executor_inst is not None:
+                    setattr(executor_inst, "specialist_biases", specialist_biases)
+                for cls_ref in (_BaseToolExecutor, ToolExecutor):
+                    sb_map = getattr(cls_ref, "_symbol_specialist_biases", None)
+                    if not isinstance(sb_map, dict):
+                        sb_map = {}
+                        setattr(cls_ref, "_symbol_specialist_biases", sb_map)
+                    if specialist_biases:
+                        sb_map[symbol] = specialist_biases
+            except Exception as sb_err:
+                logger.debug(f"[{symbol}] ToolExecutor specialist_biases attachment non-fatal: {sb_err}")
 
         # Compute prefetch_satisfied_tools from raw_bundle_data
         prefetch_satisfied_tools = set()

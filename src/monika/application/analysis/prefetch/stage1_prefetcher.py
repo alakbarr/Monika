@@ -87,10 +87,44 @@ def prune_stage1_tools(
 
 
 class Stage1DataBundler:
+    CROSS_ASSET_MOMENTUM_SYMBOLS: tuple[str, ...] = (
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY",
+        "AUDUSD",
+        "XAUUSD",
+        "BTCUSD",
+        "XTIUSD",
+    )
+
     def __init__(self, session: AsyncSession, settings: dict):
         self.session = session
         self.settings = settings
         self.executor = ToolExecutor(session, settings)
+
+    async def _fetch_cross_asset_momentum_matrix(
+        self, existing_eurusd: Dict[str, Any] | None = None
+    ) -> dict[str, dict[str, Any]]:
+        """Fetch 24h/5d price momentum across all 7 core Stage 1 assets with safe fallback."""
+        matrix: dict[str, dict[str, Any]] = {}
+        for sym in self.CROSS_ASSET_MOMENTUM_SYMBOLS:
+            if (
+                sym == "EURUSD"
+                and isinstance(existing_eurusd, dict)
+                and existing_eurusd
+                and "error" not in existing_eurusd
+            ):
+                matrix[sym] = existing_eurusd
+                continue
+            try:
+                res = await self.executor.execute(
+                    "get_price_momentum", {"symbol": sym, "timeframe": "H4", "period": 20}
+                )
+                if isinstance(res, dict) and "error" not in res:
+                    matrix[sym] = res
+            except Exception as exc:
+                logger.debug(f"Cross-asset momentum prefetch skipped for {sym}: {exc}")
+        return matrix
 
     async def prefetch_all_data(self) -> tuple[str, set[str], Dict[str, Any]]:
         """
@@ -185,6 +219,16 @@ class Stage1DataBundler:
             except Exception as e:
                 logger.error(f"Prefetch error for {key}: {e}")
                 bundled_data[key] = {"error": str(e)}
+
+        try:
+            bundled_data["cross_asset_momentum"] = await self._fetch_cross_asset_momentum_matrix(
+                existing_eurusd=bundled_data.get("eurusd_momentum")
+                if isinstance(bundled_data.get("eurusd_momentum"), dict)
+                else None
+            )
+        except Exception as cam_err:
+            logger.debug(f"Cross-asset momentum matrix prefetch non-fatal error: {cam_err}")
+            bundled_data["cross_asset_momentum"] = {}
 
         # CME FedWatch Repricing Correlation (Multi-Event Pre vs Post USD Economic Releases or 24h Shift)
         try:
@@ -593,6 +637,25 @@ class Stage1DataBundler:
             fr_val = f_rate.get("funding_rate") or f_rate.get("average_funding_rate")
             if fr_val is not None:
                 terminal["crypto_perp_funding_rate"] = f"{fr_val}%"
+
+        # 6. Cross-Asset 24h/5d Price Momentum & Reconciliation Matrix
+        cross_mom = data.get("cross_asset_momentum")
+        if isinstance(cross_mom, dict) and cross_mom:
+            mom_entries = []
+            for sym, m_data in cross_mom.items():
+                if not isinstance(m_data, dict) or "error" in m_data:
+                    continue
+                c_1d = m_data.get("change_1d_pct", m_data.get("change_24h_pct", m_data.get("change_pct", "N/A")))
+                c_5d = m_data.get("change_5d_pct", m_data.get("roc_pct", "N/A"))
+                trend_str = m_data.get("trend", m_data.get("direction", m_data.get("momentum_bias", "N/A")))
+                mom_entries.append(f"{sym}: change_1d_pct={c_1d}% | change_5d_pct={c_5d}% | trend={trend_str}")
+            if mom_entries:
+                terminal["cross_asset_momentum_matrix"] = (
+                    "[CROSS-ASSET 24H/5D PRICE MOMENTUM & RECONCILIATION MATRIX] "
+                    + " ; ".join(mom_entries)
+                    + " | ANTI-STICKY RECONCILIATION: Reconcile static yield levels against active 24h/5d cross-asset price momentum. "
+                    "Do NOT output a sticky one-way counter-trend bias if 24h & 5d momentum are moving in the opposite direction without a fresh <12h catalyst."
+                )
 
         return terminal
 

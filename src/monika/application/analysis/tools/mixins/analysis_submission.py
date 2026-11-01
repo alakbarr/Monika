@@ -417,7 +417,15 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
 
         from monika.application.analysis.calculators.invariant_calculator import resolve_bracket_choice
 
-        bracket_opts = getattr(self, "bracket_options", None)
+        sym_lookup = str(inp.get("symbol") or getattr(self, "symbol", "") or "")
+        inst_dict = getattr(self, "__dict__", {})
+        bracket_opts = inst_dict.get("bracket_options")
+        if not bracket_opts and sym_lookup:
+            sym_map = getattr(self, "_symbol_bracket_options", None)
+            if isinstance(sym_map, dict):
+                bracket_opts = sym_map.get(sym_lookup)
+        if not bracket_opts:
+            bracket_opts = getattr(self, "bracket_options", None)
         resolved = resolve_bracket_choice(adopted, bracket_opts)
         if not resolved and inp.get("symbol"):
             try:
@@ -1031,45 +1039,11 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 if sl_dist == 0:
                     errors.append("stop_loss distance cannot be 0")
 
-                # RR minimal 1.0 untuk approval awal
-                if sl_dist > 0 and tp_dist > 0:
-                    rr = tp_dist / sl_dist if sl_dist else 0
-                    if rr < (min_rr - 1e-4):
-                        breakeven_wr = 100.0 / (1.0 + min_rr)
-                        req_tp_dist = sl_dist * min_rr
-                        errors.append(
-                            f"R:R ratio {rr:.2f} is below minimum {min_rr:.1f} required for positive expected value. "
-                            f"For your SL distance of {sl_dist:.5f}, minimum required TP distance is {req_tp_dist:.5f}. "
-                            f"Adjust TP further (within ADR band) or tighten SL to satisfy R:R >= {min_rr:.1f} "
-                            f"(requires ~{breakeven_wr:.0f}% win rate for breakeven), or submit WAIT."
-                        )
-
-                # The static MIN_SL_DISTANCE check was removed. Dynamic ATR check is performed below.
-
                 # === SANITY CHECK: TP not unrealistically far ===
                 if entry_price > 0 and tp_dist / entry_price > 0.20:
                     errors.append(
                         f"TP ({tp_price}) is more than 20% from entry ({entry_price}). "
                         f"This appears to be an error. Review TP level."
-                    )
-
-            adr_ctx_for_validation = None
-            if self.settings.get("trading", {}).get("risk", {}).get(
-                "intraday_range_strategy_enabled", True
-            ) and decision in ("buy", "sell"):
-                try:
-                    from monika.application.analysis.calculators.daily_range_calculator import (
-                        compute_daily_range_context,
-                    )
-
-                    _adr_probe = await compute_daily_range_context(self.session, symbol, self.settings)
-                    if "error" in _adr_probe:
-                        logger.debug(f"[{symbol}] ADR context unavailable: {_adr_probe['error']}")
-                    else:
-                        adr_ctx_for_validation = _adr_probe
-                except Exception as adr_probe_err:
-                    logger.warning(
-                        f"[{symbol}] ADR context fetch failed (non-fatal, ADR gating skipped this cycle): {adr_probe_err}"
                     )
 
             atr_value_for_validation = None
@@ -1095,8 +1069,9 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                         atr_value_for_validation = float(raw_atr or 0)
             except Exception as atr_err:
                 logger.warning(f"ATR fetch failed for {symbol}: {atr_err}")
+
+            _using_atr_fallback = False
             if decision in ("buy", "sell"):
-                _using_atr_fallback = False
                 if atr_value_for_validation is None or atr_value_for_validation <= 0:
                     dynamic_fallback = await self._get_dynamic_atr_fallback(symbol)
                     if dynamic_fallback:
@@ -1113,8 +1088,32 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                         errors.append(
                             f"ATR_14 data unavailable for {symbol}/H4 and 30-day average fallback also failed. Cannot validate stop-loss distance safely. Submit WAIT instead."
                         )
-                else:
-                    _using_atr_fallback = False
+
+            adr_ctx_for_validation = None
+            if self.settings.get("trading", {}).get("risk", {}).get(
+                "intraday_range_strategy_enabled", True
+            ) and decision in ("buy", "sell"):
+                try:
+                    from monika.application.analysis.calculators.daily_range_calculator import (
+                        compute_daily_range_context,
+                    )
+
+                    try:
+                        _adr_probe = await compute_daily_range_context(
+                            self.session, symbol, self.settings, atr_h4=atr_value_for_validation
+                        )
+                    except TypeError:
+                        _adr_probe = await compute_daily_range_context(self.session, symbol, self.settings)
+                    if "error" in _adr_probe:
+                        logger.debug(f"[{symbol}] ADR context unavailable: {_adr_probe['error']}")
+                    else:
+                        adr_ctx_for_validation = _adr_probe
+                except Exception as adr_probe_err:
+                    logger.warning(
+                        f"[{symbol}] ADR context fetch failed (non-fatal, ADR gating skipped this cycle): {adr_probe_err}"
+                    )
+
+            if decision in ("buy", "sell"):
                 if atr_value_for_validation and atr_value_for_validation > 0 and entry_price and sl_price:
                     try:
                         cfg = (
@@ -1147,13 +1146,17 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     if adr_ctx_for_validation is not None and "target_sl_max_distance" in adr_ctx_for_validation:
                         adr_sl_ceiling = float(adr_ctx_for_validation["target_sl_max_distance"])
                         effective_sl_ceiling = max(adr_sl_ceiling, raw_min_sl * 1.25)
+                        adr_ctx_for_validation = dict(adr_ctx_for_validation)
                         if raw_min_sl > adr_sl_ceiling:
                             logger.info(
                                 f"[{symbol}] ATR noise-floor ({raw_min_sl:.5f}) exceeds ADR-based SL "
                                 f"ceiling ({adr_sl_ceiling:.5f}) — harmonizing ceiling to {effective_sl_ceiling:.5f} to accommodate volatility."
                             )
-                            adr_ctx_for_validation = dict(adr_ctx_for_validation)
                             adr_ctx_for_validation["target_sl_max_distance"] = effective_sl_ceiling
+                        adr_ctx_for_validation["target_tp_max_distance"] = max(
+                            float(adr_ctx_for_validation.get("target_tp_max_distance") or 0.0),
+                            effective_sl_ceiling * 1.85,
+                        )
                         min_sl_from_atr = min(raw_min_sl, effective_sl_ceiling * 0.85)
 
                     # Preflight auto-repair via BracketOptimizer: snap brackets into valid ATR / ADR ranges
@@ -1195,6 +1198,21 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                         errors.append(
                             f"SL distance ({sl_dist:.5f}) is less than required minimum ({min_sl_multiplier}x ATR_14 or ADR-adjusted floor). {('[FALLBACK ATR USED]' if _using_atr_fallback else '')} Minimum required SL distance: {min_sl_from_atr:.5f}."
                         )
+
+                if entry_price and sl_price and tp_price:
+                    sl_dist = abs(entry_price - sl_price)
+                    tp_dist = abs(entry_price - tp_price)
+                    if sl_dist > 0 and tp_dist > 0:
+                        rr = tp_dist / sl_dist
+                        if rr < (min_rr - 1e-4):
+                            breakeven_wr = 100.0 / (1.0 + min_rr)
+                            req_tp_dist = sl_dist * min_rr
+                            errors.append(
+                                f"R:R ratio {rr:.2f} is below minimum {min_rr:.1f} required for positive expected value. "
+                                f"For your SL distance of {sl_dist:.5f}, minimum required TP distance is {req_tp_dist:.5f}. "
+                                f"Adjust TP further (within ADR band) or tighten SL to satisfy R:R >= {min_rr:.1f} "
+                                f"(requires ~{breakeven_wr:.0f}% win rate for breakeven), or submit WAIT."
+                            )
 
             # === INTRADAY RANGE (ADR) TP/SL BAND VALIDATION — HARD GATE ===
             if adr_ctx_for_validation is not None and entry_price and sl_price and tp_price:
@@ -1481,16 +1499,53 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             submitted_score = inp["confluence_score"]
             from monika.application.analysis.calculators.confluence_calculator import calculate_confluence
 
-            det_calc = await calculate_confluence(
-                self.session,
-                symbol,
-                decision,
-                entry_price,
-                sl_price,
-                tp_price,
-                settings=self.settings,
-                confluence_factors=inp.get("confluence_factors", []),
-            )
+            specialist_biases_for_calc = getattr(self, "specialist_biases", None)
+            if not isinstance(specialist_biases_for_calc, dict) or not specialist_biases_for_calc:
+                sym_bias_map = getattr(self, "_symbol_specialist_biases", None)
+                if isinstance(sym_bias_map, dict):
+                    specialist_biases_for_calc = sym_bias_map.get(symbol)
+            if not isinstance(specialist_biases_for_calc, dict) or not specialist_biases_for_calc:
+                try:
+                    import json as _json_sb
+
+                    for _b_key in (f"pending_specialist_biases_{symbol}", f"specialist_disagreement_{symbol}"):
+                        _b_cfg = (
+                            await self.session.execute(select(SystemConfig).where(SystemConfig.key == _b_key))
+                        ).scalar_one_or_none()
+                        if _b_cfg and _b_cfg.value:
+                            _b_parsed = _json_sb.loads(_b_cfg.value)
+                            if isinstance(_b_parsed, dict):
+                                specialist_biases_for_calc = (
+                                    _b_parsed.get("biases") if "biases" in _b_parsed else _b_parsed
+                                )
+                                if isinstance(specialist_biases_for_calc, dict) and specialist_biases_for_calc:
+                                    break
+                except Exception:
+                    specialist_biases_for_calc = None
+
+            try:
+                det_calc = await calculate_confluence(
+                    self.session,
+                    symbol,
+                    decision,
+                    entry_price,
+                    sl_price,
+                    tp_price,
+                    settings=self.settings,
+                    confluence_factors=inp.get("confluence_factors", []),
+                    specialist_biases=specialist_biases_for_calc,
+                )
+            except TypeError:
+                det_calc = await calculate_confluence(
+                    self.session,
+                    symbol,
+                    decision,
+                    entry_price,
+                    sl_price,
+                    tp_price,
+                    settings=self.settings,
+                    confluence_factors=inp.get("confluence_factors", []),
+                )
             det_score = det_calc.get("computed_score", 0)
             non_det_uplift = submitted_score - det_score
             # Skor deterministik dihitung ULANG di waktu submission dengan state pasar

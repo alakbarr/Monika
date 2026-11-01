@@ -1,14 +1,17 @@
-import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from monika.application.analysis.debate.investment_judge import (
+    REGIME_WEIGHT_MATRIX,
     evaluate_debate,
     resolve_regime_weights,
-    REGIME_WEIGHT_MATRIX,
 )
 
 
 def test_resolve_regime_weights_trending():
+    assert "trending" in REGIME_WEIGHT_MATRIX
     weights = resolve_regime_weights({"market_regime": "trending_bull", "vix": 16.5})
     assert weights["detected_regime"] == "trending"
     assert weights["trend_thesis_weight"] == 0.65
@@ -192,3 +195,76 @@ async def test_evaluate_debate_client_without_methods_fallback():
     assert verdict["final_decision"] == "avoid"
     assert verdict["fail_closed_triggered"] is True
     assert "Empty or invalid response" in verdict["reason"]
+
+
+@pytest.mark.asyncio
+async def test_build_fact_sheet_populates_synergy_regime_and_bracket_options():
+    from monika.application.analysis.debate.fact_sheet import build_fact_sheet
+    from monika.infrastructure.database.models import AssetAnalysis
+
+    ana = AssetAnalysis(
+        id=999,
+        symbol="EURUSD",
+        decision="buy",
+        price_at_analysis=1.1020,
+        entry_zone=json.dumps({"price": 1.1020}),
+        stop_loss=1.0940,
+        take_profit=1.1140,
+        confluence_score=10,
+        confluence_factors_json=json.dumps(["H4_OB", "DISCOUNT"]),
+        rationale="Discount accumulation with uncrowded institutional synergy",
+        specialist_biases_json=json.dumps(
+            {"biases": {"technical": "bullish", "sentiment": "bearish", "macro": "bullish"}}
+        ),
+    )
+
+    atr_row = MagicMock()
+    atr_row.value_json = json.dumps({"atr": 0.0080})
+
+    class DummyCandle:
+        def __init__(self, h, l, c):
+            self.high = h
+            self.low = l
+            self.close = c
+
+    # Newest-first (descending timestamp) H4 candles
+    h4_candles_desc = [
+        DummyCandle(1.1050, 1.1000, 1.1020),
+        DummyCandle(1.1080, 1.1010, 1.1040),
+        DummyCandle(1.1150, 1.1040, 1.1060),
+        DummyCandle(1.1200, 1.1000, 1.1100),
+    ]
+
+    call_idx = {"n": 0}
+
+    async def fake_execute(stmt):
+        call_idx["n"] += 1
+        res = MagicMock()
+        if call_idx["n"] == 1:
+            res.scalar_one_or_none = lambda: atr_row
+            res.scalars = lambda: MagicMock(all=lambda: [])
+        elif "price_ohlcv" in str(stmt).lower():
+            res.scalars = lambda: MagicMock(all=lambda: list(h4_candles_desc))
+            res.scalar_one_or_none = lambda: None
+        else:
+            res.scalar_one_or_none = lambda: None
+            res.scalars = lambda: MagicMock(all=lambda: [])
+        return res
+
+    session = MagicMock()
+    session.execute = AsyncMock(side_effect=fake_execute)
+
+    fs = await build_fact_sheet(session, ana)
+
+    assert fs["atr"] == pytest.approx(0.0080)
+    assert fs["atr_14_h4"] == pytest.approx(0.0080)
+    assert "dealing_range_pos" in fs
+    assert fs["dealing_range_pos"] == pytest.approx(0.10, abs=1e-3)
+    assert "h4_impulse_atr" in fs
+    assert fs["specialist_consensus"]["synergy_state"] == "uncrowded_institutional_synergy"
+    assert fs["specialist_consensus"]["biases"]["technical"] == "bullish"
+    assert fs["regime_classification"] == "DISCOUNT_ACCUMULATION_ZONE"
+    assert "daily_range_context" in fs
+    assert "bracket_options" in fs
+    assert "long_option_a" in fs["bracket_options"]
+    assert "short_option_b" in fs["bracket_options"]

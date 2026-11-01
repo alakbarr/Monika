@@ -36,6 +36,7 @@ VALID_MACRO_REGIMES: Set[str] = {
     "disinflation",
     "goldilocks",
     "transition",
+    "transitional",
     "mixed",
     "risk-on",
     "risk-off",
@@ -45,6 +46,18 @@ VALID_MACRO_REGIMES: Set[str] = {
     "ranging",
 }
 
+_REGIME_PUNCT_STRIP: str = " \t\n\r,.;:-_ /|[]{}\"'()"
+_NARRATIVE_REGIME_KEYWORDS: tuple[tuple[str, str], ...] = (
+    ("stagflation", "stagflation"),
+    ("goldilocks", "goldilocks"),
+    ("reflation", "reflation"),
+    ("disinflation", "disinflation"),
+    ("risk-off", "risk-off"),
+    ("risk_off", "risk-off"),
+    ("risk-on", "risk-on"),
+    ("risk_on", "risk-on"),
+)
+
 STANDARD_FX_PAIRS_BASE_QUOTE: Dict[str, tuple[str, str]] = {
     "USDJPY": ("USD", "JPY"),
     "EURUSD": ("EUR", "USD"),
@@ -53,19 +66,29 @@ STANDARD_FX_PAIRS_BASE_QUOTE: Dict[str, tuple[str, str]] = {
 }
 
 
-def sanitize_macro_regime(raw_regime: Any) -> str:
-    """Coerce empty, punctuation (e.g. ','), or unrecognized macro_regime values to 'transition'."""
-    if not isinstance(raw_regime, str):
-        return "transition"
-    cleaned = raw_regime.strip().lower()
-    if not cleaned:
-        return "transition"
-    if (
-        cleaned in VALID_MACRO_REGIMES
-        or cleaned.replace("_", "-") in VALID_MACRO_REGIMES
-        or cleaned.replace("-", "_") in VALID_MACRO_REGIMES
-    ):
-        return cleaned
+def sanitize_macro_regime(raw_regime: Any, macro_narrative: Optional[str] = None) -> str:
+    """Strip punctuation (',.;:-_ /|[]{}\"\'()') from macro_regime; infer from narrative or default to 'transition' if invalid."""
+    if isinstance(raw_regime, str):
+        cleaned = raw_regime.strip(_REGIME_PUNCT_STRIP).lower()
+        alpha_count = sum(1 for ch in cleaned if ch.isalpha())
+        if len(cleaned) >= 3 and alpha_count >= 3:
+            if (
+                cleaned in VALID_MACRO_REGIMES
+                or cleaned.replace("_", "-") in VALID_MACRO_REGIMES
+                or cleaned.replace("-", "_") in VALID_MACRO_REGIMES
+            ):
+                return cleaned
+            for kw, canonical in _NARRATIVE_REGIME_KEYWORDS:
+                if kw in cleaned:
+                    return canonical
+
+    if isinstance(macro_narrative, str) and macro_narrative.strip():
+        narr_lower = macro_narrative.lower()
+        for kw, canonical in _NARRATIVE_REGIME_KEYWORDS:
+            if kw in narr_lower:
+                return canonical
+        return "transitional"
+
     return "transition"
 
 
@@ -160,7 +183,9 @@ def format_macro_intelligence_dossier(inp: dict, now: datetime, valid_until: Opt
     """
     ts_str = now.strftime("%Y-%m-%d %H:%M UTC")
     valid_str = valid_until.strftime("%Y-%m-%d %H:%M UTC") if valid_until else "12 hours"
-    regime = sanitize_macro_regime(inp.get("macro_regime", "mixed")).upper().replace("-", "_")
+    regime = (
+        sanitize_macro_regime(inp.get("macro_regime", "mixed"), inp.get("macro_narrative")).upper().replace("-", "_")
+    )
     sentiment = str(inp.get("risk_sentiment", "mixed")).upper()
     conf = float(inp.get("confidence", 0.5) or 0.5)
     conf_str = f"{conf:.0%}"
@@ -760,7 +785,12 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
 
         raw_auto_pi = inp.get("automated_priced_in") if isinstance(inp, dict) else None
         has_raw_regime = isinstance(inp, dict) and "macro_regime" in inp
-        sanitized_regime = sanitize_macro_regime(inp.get("macro_regime")) if has_raw_regime else "mixed"
+        raw_narr = inp.get("macro_narrative") if isinstance(inp, dict) else None
+        sanitized_regime = (
+            sanitize_macro_regime(inp.get("macro_regime"), raw_narr)
+            if has_raw_regime
+            else sanitize_macro_regime("mixed", raw_narr)
+        )
         if isinstance(inp, dict) and has_raw_regime:
             inp["macro_regime"] = sanitized_regime
 
@@ -777,7 +807,11 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                 "guidance": "Please fix the schema formatting errors above and call the tool again.",
             }
 
-        inp["macro_regime"] = sanitized_regime if has_raw_regime else sanitize_macro_regime(inp.get("macro_regime"))
+        inp["macro_regime"] = (
+            sanitized_regime
+            if has_raw_regime
+            else sanitize_macro_regime(inp.get("macro_regime"), inp.get("macro_narrative"))
+        )
         inp["per_asset_macro_matrix"] = reconcile_fx_pair_macro_matrix(
             inp.get("currency_bias", {}),
             inp.get("per_asset_macro_matrix", {}),

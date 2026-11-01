@@ -396,7 +396,10 @@ class OutputVerifier:
             # Check 4: ADR band compliance
             if session:
                 try:
-                    adr = await compute_daily_range_context(session, symbol, settings)
+                    try:
+                        adr = await compute_daily_range_context(session, symbol, settings, atr_h4=atr_val)
+                    except TypeError:
+                        adr = await compute_daily_range_context(session, symbol, settings)
                     if "error" not in adr:
                         tp_min = adr.get("target_tp_min_distance", 0) * 0.85
                         tp_max = adr.get("target_tp_max_distance", float("inf")) * 1.15
@@ -563,7 +566,19 @@ class OutputVerifier:
         """Extract ATR from context data if available."""
         if not isinstance(context_data, dict):
             return None
-        for atr_key in ("get_atr", "get_atr_H4", "get_atr_H1", "atr", "ATR_14"):
+        direct_h4_atr = (
+            (context_data.get("get_atr_H4") or {}).get("atr")
+            if isinstance(context_data.get("get_atr_H4"), dict)
+            else None
+        )
+        if direct_h4_atr is not None:
+            try:
+                f_h4 = float(direct_h4_atr)
+                if f_h4 > 0:
+                    return f_h4
+            except ValueError, TypeError:
+                pass
+        for atr_key in ("get_atr_H4", "get_atr", "get_atr_H1", "atr", "atr_14", "ATR_14"):
             atr_data = context_data.get(atr_key)
             if isinstance(atr_data, (int, float)) and not isinstance(atr_data, bool):
                 f_val = float(atr_data)
@@ -580,6 +595,12 @@ class OutputVerifier:
                             return f_val
                     except ValueError, TypeError:
                         pass
+        for nested_k in ("bundle_data", "raw_bundle_data"):
+            nested_d = context_data.get(nested_k)
+            if isinstance(nested_d, dict) and nested_d is not context_data:
+                nested_atr = self._extract_atr(nested_d)
+                if nested_atr and nested_atr > 0:
+                    return nested_atr
         for inv_key, sub_key in (("precomputed_invariants", "atr_14"), ("daily_range_context", "atr_h4")):
             sub_ctx = context_data.get(inv_key)
             if isinstance(sub_ctx, dict):

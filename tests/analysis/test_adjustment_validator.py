@@ -90,3 +90,41 @@ async def test_entry_deviation_limit():
     )
     assert ok is False
     assert "deviasi" in reason
+
+
+@pytest.mark.asyncio
+async def test_adjustment_validator_passes_atr_h4_and_harmonizes_high_atr_vs_adr(monkeypatch):
+    import json
+    import monika.application.analysis.calculators.daily_range_calculator as drc
+
+    session = create_mock_async_session()
+    atr_row_mock = MagicMock()
+    atr_row_mock.value_json = json.dumps({"atr": 0.0080})
+    session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: atr_row_mock))
+
+    captured_kwargs = {}
+
+    async def fake_compute_daily_range_context(sess, symbol, settings, atr_h4=None):
+        captured_kwargs["atr_h4"] = atr_h4
+        # Simulate unharmonized raw ADR=0.0150 where 0.35*ADR=0.00525 < H4 ATR (0.0080)
+        return {
+            "adr": 0.0150,
+            "target_sl_max_distance": 0.00525,
+            "target_tp_min_distance": 0.00750,
+            "target_tp_max_distance": 0.01200,
+            "band_tolerance_pct": 0.10,
+        }
+
+    monkeypatch.setattr(drc, "compute_daily_range_context", fake_compute_daily_range_context)
+
+    # Entry=1.1000, SL=1.0916 (SL dist = 0.0084 = 1.05x ATR), TP=1.1126 (TP dist = 0.0126, R:R = 1.50)
+    ana = DummyAnalysis(symbol="EURUSD", direction="BUY", price=1.1000, sl=1.0916, tp=1.1126)
+    verdict = {"adjusted_entry": 1.1000, "adjusted_sl": 1.0916, "adjusted_tp": 1.1126}
+    settings = {"trading": {"risk": {"min_rr_ratio": 1.5}}}
+
+    ok, reason = await validate_and_apply_judge_adjustments(
+        session=session, ana=ana, verdict=verdict, settings=settings, entry_zone_data={"price": 1.1000}
+    )
+    assert ok is True, f"Expected valid adjustment, got error: {reason}"
+    assert reason == ""
+    assert captured_kwargs.get("atr_h4") == pytest.approx(0.0080)

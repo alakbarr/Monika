@@ -243,3 +243,12 @@ async def test_technical_indicator_series_depth_contract(mock_async_session):
         rsi = snap["RSI_14"]
         assert len(rsi["series"]) == 5
         assert rsi["direction"] == "rising"
+
+
+def test_output_verifier_extracts_get_atr_h4():
+    from monika.application.analysis.validators.output_verifier import OutputVerifier
+
+    verifier = OutputVerifier({})
+    bundle_data = {"get_atr_H4": {"atr": 28.75, "symbol": "XAUUSD", "period": 14}}
+    assert verifier._extract_atr(bundle_data) == 28.75
+    assert verifier._extract_atr({"raw_bundle_data": bundle_data}) == 28.75

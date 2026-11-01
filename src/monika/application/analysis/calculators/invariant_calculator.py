@@ -160,9 +160,15 @@ def compute_trade_invariants(
     if buy_sl_min > buy_sl_max:
         buy_sl_min = round(buy_sl_max - (0.2 * atr_val), prec)
 
-    # TP must be within 50-80% of ADR
-    buy_tp_min = round(curr_px + (tp_adr_min_pct * adr_val if adr_val > 0 else 1.5 * atr_val), prec)
-    buy_tp_max = round(curr_px + (tp_adr_max_pct * adr_val if adr_val > 0 else 3.0 * atr_val), prec)
+    # TP must be within 50-80% of ADR, expanded when ATR noise floor requires wider targets
+    tp_min_dist = max(tp_adr_min_pct * adr_val if adr_val > 0 else 1.5 * atr_val, 1.0 * atr_val * min_rr)
+    tp_max_dist = max(
+        tp_adr_max_pct * adr_val if adr_val > 0 else 3.0 * atr_val,
+        max_sl_dist * max(min_rr, 1.65),
+        tp_min_dist,
+    )
+    buy_tp_min = round(curr_px + tp_min_dist, prec)
+    buy_tp_max = round(curr_px + tp_max_dist, prec)
 
     # TimesFM statistical cap for BUY (do not target above Q90)
     if timesfm_envelope and isinstance(timesfm_envelope, dict):
@@ -182,9 +188,9 @@ def compute_trade_invariants(
     if sell_sl_max < sell_sl_min:
         sell_sl_max = round(sell_sl_min + (0.2 * atr_val), prec)
 
-    # TP must be within 50-80% of ADR below entry
-    sell_tp_max = round(curr_px - (tp_adr_min_pct * adr_val if adr_val > 0 else 1.5 * atr_val), prec)
-    sell_tp_min = round(curr_px - (tp_adr_max_pct * adr_val if adr_val > 0 else 3.0 * atr_val), prec)
+    # TP must be within 50-80% of ADR below entry, expanded when ATR noise floor requires wider targets
+    sell_tp_max = round(curr_px - tp_min_dist, prec)
+    sell_tp_min = round(curr_px - tp_max_dist, prec)
 
     # TimesFM statistical cap for SELL (do not target below Q10)
     if timesfm_envelope and isinstance(timesfm_envelope, dict):
@@ -264,8 +270,32 @@ def compute_trade_invariants(
         adr_5d=adr_val,
         smc_zones=smc_zones,
         sr_zones=sr_zones,
-        target_rr=max(1.80, min_rr),
+        target_rr=max(1.55, min_rr),
     )
+
+    long_opt = bracket_options.get("long_option_a", {})
+    if (
+        not timesfm_envelope
+        and isinstance(long_opt, dict)
+        and long_opt.get("entry_type") == "market"
+        and long_opt.get("stop_loss")
+        and long_opt.get("take_profit")
+    ):
+        buy_sl_min = min(buy_sl_min, float(long_opt["stop_loss"]))
+        buy_sl_max = max(buy_sl_max, float(long_opt["stop_loss"]))
+        buy_tp_max = max(buy_tp_max, float(long_opt["take_profit"]))
+
+    short_opt = bracket_options.get("short_option_b", {})
+    if (
+        not timesfm_envelope
+        and isinstance(short_opt, dict)
+        and short_opt.get("entry_type") == "market"
+        and short_opt.get("stop_loss")
+        and short_opt.get("take_profit")
+    ):
+        sell_sl_min = min(sell_sl_min, float(short_opt["stop_loss"]))
+        sell_sl_max = max(sell_sl_max, float(short_opt["stop_loss"]))
+        sell_tp_min = min(sell_tp_min, float(short_opt["take_profit"]))
 
     return {
         "symbol": symbol,
@@ -293,11 +323,11 @@ def generate_concrete_bracket_options(
     symbol: str,
     current_price: float,
     atr: float,
-    adr_5d: float,
+    adr_5d: Optional[float] = None,
     smc_zones: Optional[Any] = None,
     sr_zones: Optional[Any] = None,
     target_rr: float = 1.80,
-    noise_buffer_atr: float = 1.10,
+    noise_buffer_atr: float = 1.0,
 ) -> Dict[str, Any]:
     """Generates concrete, mathematically verified SL/TP bracket options.
 
@@ -307,6 +337,8 @@ def generate_concrete_bracket_options(
     prec = extract_price_precision(symbol)
     curr_px = float(current_price) if current_price else 0.0
     atr_val = float(atr) if atr and atr > 0 else (curr_px * 0.005 if curr_px > 0 else 1.0)
+    adr_val = float(adr_5d) if adr_5d is not None and float(adr_5d) > 0 else (2.0 * atr_val)
+    eff_min_rr = max(1.50, float(target_rr or 1.50))
 
     # 1. Long Option A (Demand POI)
     zone_dicts = _iter_smc_zone_dicts(smc_zones)
@@ -320,21 +352,21 @@ def generate_concrete_bracket_options(
             elif polarity == "bear":
                 supply_prices.append(px_val)
 
+    demand_prices = [p for p in demand_prices if (curr_px - 0.75 * atr_val) <= p <= curr_px]
+    supply_prices = [p for p in supply_prices if curr_px <= p <= (curr_px + 0.75 * atr_val)]
+
     if demand_prices:
         raw_long_entry = min(demand_prices, key=lambda px: abs(px - curr_px))
     else:
-        raw_long_entry = curr_px - (0.2 * atr_val)
+        raw_long_entry = curr_px
 
     long_entry = round(raw_long_entry, prec)
-    base_sl_cap = min(0.35 * adr_5d, 1.35 * atr_val) if adr_5d > 0 else 1.2 * atr_val
-    if adr_5d > 0:
-        harmonized_sl_max = max(0.35 * adr_5d, 1.25 * atr_val)
-        harmonized_tp_max = max(0.80 * adr_5d, 1.65 * harmonized_sl_max)
-        base_sl_cap = min(base_sl_cap, harmonized_tp_max / max(target_rr, 1.50))
-    else:
-        harmonized_tp_max = 0.0
+    harmonized_sl_max = max(0.35 * adr_val, 1.20 * atr_val)
+    harmonized_tp_max = max(0.80 * adr_val, harmonized_sl_max * max(eff_min_rr, 1.65))
+    base_sl_cap = min(0.35 * adr_val, 1.20 * atr_val)
+    base_sl_cap = min(base_sl_cap, harmonized_tp_max / eff_min_rr)
 
-    long_sl_dist = max(noise_buffer_atr * atr_val, base_sl_cap)
+    long_sl_dist = min(harmonized_sl_max, max(noise_buffer_atr * atr_val, base_sl_cap))
     long_sl = round(long_entry - long_sl_dist, prec)
     if long_sl <= 0.0:
         long_sl = round(long_entry * 0.95, prec)
@@ -343,9 +375,13 @@ def generate_concrete_bracket_options(
         long_risk = round(atr_val, prec)
         long_sl = round(long_entry - long_risk, prec)
 
-    eff_long_rr = target_rr
-    if harmonized_tp_max > 0 and (eff_long_rr * long_risk) > harmonized_tp_max * 1.02:
-        eff_long_rr = max(1.50, round(harmonized_tp_max / long_risk, 2))
+    if 0.72 * adr_val >= long_risk * eff_min_rr:
+        target_long_tp_dist = max(long_risk * eff_min_rr, min(1.55 * atr_val, 0.72 * adr_val))
+        eff_long_rr = round(target_long_tp_dist / long_risk, 2)
+    else:
+        eff_long_rr = eff_min_rr
+        if harmonized_tp_max > 0 and (eff_long_rr * long_risk) > harmonized_tp_max * 1.02:
+            eff_long_rr = max(1.50, round(harmonized_tp_max / long_risk, 2))
     long_tp = round(long_entry + (eff_long_rr * long_risk), prec)
     long_entry_type = "market" if abs(long_entry - curr_px) <= 0.05 * atr_val else "limit"
 
@@ -353,19 +389,23 @@ def generate_concrete_bracket_options(
     if supply_prices:
         raw_short_entry = min(supply_prices, key=lambda px: abs(px - curr_px))
     else:
-        raw_short_entry = curr_px + (0.2 * atr_val)
+        raw_short_entry = curr_px
 
     short_entry = round(raw_short_entry, prec)
-    short_sl_dist = max(noise_buffer_atr * atr_val, base_sl_cap)
+    short_sl_dist = min(harmonized_sl_max, max(noise_buffer_atr * atr_val, base_sl_cap))
     short_sl = round(short_entry + short_sl_dist, prec)
     short_risk = abs(short_sl - short_entry)
     if short_risk <= 0.0:
         short_risk = round(atr_val, prec)
         short_sl = round(short_entry + short_risk, prec)
 
-    eff_short_rr = target_rr
-    if harmonized_tp_max > 0 and (eff_short_rr * short_risk) > harmonized_tp_max * 1.02:
-        eff_short_rr = max(1.50, round(harmonized_tp_max / short_risk, 2))
+    if 0.72 * adr_val >= short_risk * eff_min_rr:
+        target_short_tp_dist = max(short_risk * eff_min_rr, min(1.55 * atr_val, 0.72 * adr_val))
+        eff_short_rr = round(target_short_tp_dist / short_risk, 2)
+    else:
+        eff_short_rr = eff_min_rr
+        if harmonized_tp_max > 0 and (eff_short_rr * short_risk) > harmonized_tp_max * 1.02:
+            eff_short_rr = max(1.50, round(harmonized_tp_max / short_risk, 2))
     short_tp = round(short_entry - (eff_short_rr * short_risk), prec)
     if short_tp <= 0.0:
         short_tp = round(short_entry * 0.5, prec)
@@ -454,7 +494,9 @@ def format_invariants_for_prompt(invariants: Dict[str, Any]) -> str:
     if bracket_options:
         long_b = bracket_options.get("long_option_a", {})
         short_b = bracket_options.get("short_option_b", {})
-        lines.append("=== PRE-COMPUTED VERIFIED BRACKET OPTIONS (Exact R:R >= 1.80, Zero Arithmetic Required) ===")
+        lines.append(
+            "=== PRE-COMPUTED VERIFIED BRACKET OPTIONS (Pre-Verified R:R >= 1.50, Zero Arithmetic Required) ==="
+        )
         lines.append(
             f"  [LONG_OPTION_A] : Entry={long_b.get('entry')} | SL={long_b.get('stop_loss')} | TP={long_b.get('take_profit')} (Exact R:R={long_b.get('rr_ratio', 1.8):.2f})"
         )

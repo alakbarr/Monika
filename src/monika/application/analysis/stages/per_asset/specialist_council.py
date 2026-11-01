@@ -90,6 +90,12 @@ def format_specialist_consensus_summary(summary: Dict[str, Any]) -> str:
             f"Crowded 3-of-3 Caution ({dom}): Technical, Macro, and Sentiment are unanimously {t_b}. "
             f"Guard against late-stage trend exhaustion."
         )
+    elif synergy == "crowded_tech_sent_trap_vs_macro":
+        badge = "CROWDED_TECH_SENT_TRAP_VS_MACRO"
+        guidance = (
+            f"Crowded Tech/Sentiment Trap vs Macro ({dom}): Technical & Sentiment align ({t_b}) "
+            f"against opposing Macro ({m_b}). High false-breakout / retail trap risk."
+        )
     elif synergy == "technical_macro_conflict":
         badge = "TECHNICAL_MACRO_CONFLICT"
         guidance = f"Direct Institutional Conflict: Technical ({t_b}) opposes Macro ({m_b})."
@@ -142,16 +148,21 @@ def compute_specialist_consensus_summary(
             synergy_state = "crowded_unanimous_exhaustion"
             consensus_label = "unanimous_agreement"
     elif tech_b in ("bullish", "bearish") and macro_b in ("bullish", "bearish") and tech_b != macro_b:
-        synergy_state = "technical_macro_conflict"
-        if bull_count >= 2:
-            dominant_bias = "bullish"
-            consensus_label = "majority_agreement"
-        elif bear_count >= 2:
-            dominant_bias = "bearish"
+        if tech_b == sent_b:
+            synergy_state = "crowded_tech_sent_trap_vs_macro"
+            dominant_bias = tech_b
             consensus_label = "majority_agreement"
         else:
-            dominant_bias = "neutral"
-            consensus_label = "split_conflict"
+            synergy_state = "technical_macro_conflict"
+            if bull_count >= 2:
+                dominant_bias = "bullish"
+                consensus_label = "majority_agreement"
+            elif bear_count >= 2:
+                dominant_bias = "bearish"
+                consensus_label = "majority_agreement"
+            else:
+                dominant_bias = "neutral"
+                consensus_label = "split_conflict"
     else:
         synergy_state = "neutral_or_mixed"
         if bull_count >= 2:

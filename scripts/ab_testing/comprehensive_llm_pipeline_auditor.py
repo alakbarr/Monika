@@ -510,40 +510,127 @@ Submit decision matching schema: {{"decision": "buy"|"sell"|"wait", "confluence_
     async def audit_stage2_variant_b_distilled_grounded(self, scenario: MarketAuditScenario) -> AuditDecisionOutcome:
         """
         Variant B (Distilled High-Signal Payload): Concise, pre-computed SymbolFactBundle,
-        SMC Dealing Range Anchors (Discount <0.50, Premium >0.50), eliminating duplicate warnings.
+        wired to real production invariant calculators (`compute_trade_invariants` and
+        `format_invariants_for_prompt`), deterministic `h4_impulse_atr`, `dealing_range_pos`,
+        `regime_classification`, and calibrated intraday bracket geometry
+        (`TP = min(1.50 * atr, 0.68 * adr)`, `SL = TP / 1.50`).
         """
         t0 = time.perf_counter()
+        from monika.application.analysis.calculators.invariant_calculator import (
+            compute_trade_invariants,
+            format_invariants_for_prompt,
+            generate_concrete_bracket_options,
+        )
 
         hi = max(c["h"] for c in scenario.recent_candles)
         lo = min(c["l"] for c in scenario.recent_candles)
-        pos = (scenario.p0 - lo) / max(1e-5, (hi - lo))
-        range_regime = "DISCOUNT" if pos < 0.50 else "PREMIUM"
+        dealing_range_pos = round((scenario.p0 - lo) / max(1e-5, (hi - lo)), 4)
+        closes = [float(c["c"]) for c in scenario.recent_candles if "c" in c]
+        if len(closes) >= 3 and scenario.atr_h4 > 0:
+            h4_impulse_atr = round((scenario.p0 - closes[-3]) / scenario.atr_h4, 4)
+        elif closes and scenario.atr_h4 > 0:
+            h4_impulse_atr = round((scenario.p0 - closes[0]) / scenario.atr_h4, 4)
+        else:
+            h4_impulse_atr = 0.0
+
+        t_b = str(scenario.specialist_biases.get("technical", "")).lower()
+        s_b = str(scenario.specialist_biases.get("sentiment", "")).lower()
+        m_b = str(scenario.specialist_biases.get("macro", "")).lower()
+        if (t_b == "bullish" and s_b == "bullish" and m_b == "bearish") or (
+            t_b == "bearish" and s_b == "bearish" and m_b == "bullish"
+        ):
+            synergy_state = "crowded_tech_sent_trap_vs_macro"
+        elif t_b in ("bullish", "bearish") and t_b == m_b and s_b != t_b:
+            synergy_state = "uncrowded_institutional_synergy"
+        elif t_b in ("bullish", "bearish") and t_b == m_b == s_b:
+            synergy_state = "crowded_unanimous_exhaustion"
+        else:
+            synergy_state = "mixed_council"
+
+        if 0.40 <= dealing_range_pos <= 0.60 and abs(h4_impulse_atr) < 0.25:
+            regime_classification = "EQUILIBRIUM_DEAD_ZONE_CHOP"
+        elif synergy_state == "crowded_tech_sent_trap_vs_macro":
+            regime_classification = "CROWDED_TECH_SENT_TRAP_VS_MACRO"
+        elif h4_impulse_atr >= 1.25:
+            regime_classification = "BULLISH_IMPULSE_BREAKOUT"
+        elif h4_impulse_atr <= -1.25:
+            regime_classification = "BEARISH_IMPULSE_BREAKOUT"
+        elif dealing_range_pos >= 0.80 and h4_impulse_atr < 1.25:
+            regime_classification = "OVEREXTENDED_RANGE_CEILING_PULLBACK_RISK"
+        elif dealing_range_pos <= 0.38:
+            regime_classification = "DISCOUNT_ACCUMULATION_ZONE"
+        elif dealing_range_pos >= 0.60:
+            regime_classification = "UPPER_RANGE_TREND_CONTINUATION"
+        else:
+            regime_classification = "MID_RANGE_DIRECTIONAL_FLOW"
+
+        adr_val = scenario.atr_h4 * 2.2
+        tp_dist = min(1.50 * scenario.atr_h4, 0.68 * adr_val)
+        sl_dist = tp_dist / 1.50
+
+        try:
+            invariants = compute_trade_invariants(
+                symbol=scenario.symbol,
+                current_price=scenario.p0,
+                atr=scenario.atr_h4,
+                settings=self.settings,
+                adr_5d=adr_val,
+            )
+        except TypeError:
+            invariants = compute_trade_invariants(
+                symbol=scenario.symbol,
+                current_price=scenario.p0,
+                atr=scenario.atr_h4,
+            )
+
+        try:
+            invariants_block = format_invariants_for_prompt(
+                invariants,
+                current_price=scenario.p0,
+                atr=scenario.atr_h4,
+                symbol=scenario.symbol,
+                adr_5d=adr_val,
+            )
+        except TypeError:
+            invariants_block = format_invariants_for_prompt(invariants)
+
+        concrete_brackets = generate_concrete_bracket_options(
+            symbol=scenario.symbol,
+            current_price=scenario.p0,
+            atr=scenario.atr_h4,
+            adr_5d=adr_val,
+            target_rr=1.50,
+        )
 
         sys_prompt = """You are a senior quantitative SMC/ICT trading strategist.
 PRIMARY OBJECTIVE: Identify asymmetric, high-probability trade setups with positive expected value.
 GROUNDING & DEALING RANGE PROTOCOL:
-1. LONG setups require DISCOUNT dealing range (< 0.50) OR confirmed liquidity sweep of local lows.
-2. SHORT setups require PREMIUM dealing range (> 0.50) OR confirmed liquidity sweep of local highs.
-3. NOISE FLOOR: Stop Loss distance MUST be >= 1.0x ATR to prevent random noise stop-outs.
-4. ASYMMETRY: Minimum R:R ratio must be >= 1.50 (|TP - Entry| >= 1.5 * |Entry - SL|).
-5. MACRO HARMONIZATION: If technical structure is in clear Discount/Premium with unmitigated POI, prioritize verified chart structure over lagging macro narrative.
-6. Only submit WAIT if price is stuck in middle consolidation with no identifiable structural edge.
+1. Inspect regime_classification, dealing_range_pos, h4_impulse_atr, and synergy_state:
+   - EQUILIBRIUM_DEAD_ZONE_CHOP (0.40 <= pos <= 0.60 and |h4_impulse_atr| < 0.25) -> WAIT.
+   - OVEREXTENDED_RANGE_CEILING_PULLBACK_RISK (pos >= 0.80 without impulse breakout) -> Do not market-chase BUY.
+   - BULLISH_IMPULSE_BREAKOUT / BEARISH_IMPULSE_BREAKOUT -> Follow active H4 displacement; never fade.
+   - CROWDED_TECH_SENT_TRAP_VS_MACRO -> Prioritize Macro Specialist direction against retail crowd trap.
+   - DISCOUNT_ACCUMULATION_ZONE (pos <= 0.38) -> Favor BUY when structural demand holds even if lagging macro is bearish.
+2. ZERO-ARITHMETIC BRACKET ADOPTION: Adopt pre-computed LONG_OPTION_A (for BUY) or SHORT_OPTION_B (for SELL) calibrated to TP = min(1.50 * atr, 0.68 * adr), SL = TP / 1.50 (exact R:R = 1.50).
 Respond strictly in JSON."""
 
         distilled_payload = f"""
 === DISTILLED SYMBOL FACT BUNDLE ({scenario.symbol}) ===
 - Current Price: {scenario.p0:.5f}
-- Estimated H4 ATR: {scenario.atr_h4:.5f}
-- Dealing Range Location: {range_regime} (pos={pos:.2f} relative to 4H High {hi:.5f} / Low {lo:.5f})
+- Estimated H4 ATR: {scenario.atr_h4:.5f} | Estimated 5D ADR: {adr_val:.5f}
+- Dealing Range Position (dealing_range_pos): {dealing_range_pos:.2f} (4H High {hi:.5f} / Low {lo:.5f})
+- 3-Bar H4 Displacement (h4_impulse_atr): {h4_impulse_atr:+.2f}x ATR
+- Specialist Synergy State: {synergy_state} ({json.dumps(scenario.specialist_biases)})
+- Deterministic Regime Classification: {regime_classification}
 - Stage 1 Macro Bias: {scenario.macro_brief_bias.upper()}
-- Nearest Structural POI:
-  * Key Demand Zone: {lo + scenario.atr_h4 * 0.3:.5f} (Unmitigated H4 FVG / Discount)
-  * Key Supply Zone: {hi - scenario.atr_h4 * 0.3:.5f} (Unmitigated H4 Order Block / Premium)
-- Macro Divergence Status: Stage 1 is {scenario.macro_brief_bias.upper()}, but price sits in {range_regime}.
+- Calibrated Intraday Geometry: TP_dist={tp_dist:.5f}, SL_dist={sl_dist:.5f} (R:R=1.50)
+
+{invariants_block}
 
 Evaluate actionable trade proposal:
 {{
   "decision": "buy" | "sell" | "wait",
+  "adopted_bracket": "LONG_OPTION_A" | "SHORT_OPTION_B" | "NONE",
   "confidence": float (0.0 to 1.0),
   "confluence_score": int (1 to 14),
   "entry": float,
@@ -556,6 +643,7 @@ Evaluate actionable trade proposal:
             "type": "object",
             "properties": {
                 "decision": {"type": "string"},
+                "adopted_bracket": {"type": "string"},
                 "confidence": {"type": "number"},
                 "confluence_score": {"type": "integer"},
                 "entry": {"type": ["number", "null"]},
@@ -581,6 +669,16 @@ Evaluate actionable trade proposal:
             entry = data.get("entry")
             sl = data.get("stop_loss")
             tp = data.get("take_profit")
+            if dec == "buy":
+                opt_a = concrete_brackets.get("long_option_a", {})
+                entry = float(opt_a.get("entry") or scenario.p0)
+                sl = float(opt_a.get("stop_loss") or (entry - sl_dist))
+                tp = float(opt_a.get("take_profit") or (entry + tp_dist))
+            elif dec == "sell":
+                opt_b = concrete_brackets.get("short_option_b", {})
+                entry = float(opt_b.get("entry") or scenario.p0)
+                sl = float(opt_b.get("stop_loss") or (entry + sl_dist))
+                tp = float(opt_b.get("take_profit") or (entry - tp_dist))
             reason = str(data.get("rationale", ""))[:150]
 
             in_tok = len(sys_prompt + distilled_payload) // 4
@@ -609,7 +707,7 @@ Evaluate actionable trade proposal:
     async def audit_stage2_variant_c_precomputed_brackets(self, scenario: MarketAuditScenario) -> AuditDecisionOutcome:
         """
         Variant C: Zero-Arithmetic Pre-Computed Brackets + 3-Zone Spatial Logic.
-        Guarantees exact R:R (1.80) and eliminates floating point mental arithmetic errors.
+        Guarantees exact R:R (1.50) and eliminates floating point mental arithmetic errors.
         """
         t0 = time.perf_counter()
         from monika.application.analysis.calculators.invariant_calculator import generate_concrete_bracket_options
@@ -617,14 +715,14 @@ Evaluate actionable trade proposal:
         hi = max(c["h"] for c in scenario.recent_candles)
         lo = min(c["l"] for c in scenario.recent_candles)
         pos = (scenario.p0 - lo) / max(1e-5, (hi - lo))
-        range_regime = "DEEP_DISCOUNT" if pos <= 0.35 else ("DEEP_PREMIUM" if pos >= 0.65 else "EQUILIBRIUM")
+        range_regime = "DEEP_DISCOUNT" if pos <= 0.38 else ("DEEP_PREMIUM" if pos >= 0.65 else "EQUILIBRIUM")
 
         concrete_brackets = generate_concrete_bracket_options(
             symbol=scenario.symbol,
             current_price=scenario.p0,
             atr=scenario.atr_h4,
-            adr_5d=scenario.atr_h4 * 2.5,
-            target_rr=1.80,
+            adr_5d=scenario.atr_h4 * 2.2,
+            target_rr=1.50,
         )
         long_b = concrete_brackets["long_option_a"]
         short_b = concrete_brackets["short_option_b"]
@@ -637,9 +735,9 @@ CRITICAL RULES:
    - For LONG: Adopt Candidate Bracket [LONG_OPTION_A]
    - For SHORT: Adopt Candidate Bracket [SHORT_OPTION_B]
 2. 3-ZONE SPATIAL LOGIC:
-   - DEEP_DISCOUNT (pos <= 0.35): Institutional accumulation territory. Favor BUY unless macro is catastrophic.
+   - DEEP_DISCOUNT (pos <= 0.38): Institutional accumulation territory. Favor BUY unless macro is catastrophic.
    - DEEP_PREMIUM (pos >= 0.65): Institutional distribution territory. Favor SELL unless macro is catastrophic.
-   - EQUILIBRIUM (0.35 < pos < 0.65): Choppy dead-zone. Select WAIT unless momentum breakout is verified.
+   - EQUILIBRIUM (0.38 < pos < 0.65): Choppy dead-zone. Select WAIT unless momentum breakout is verified.
 3. POSITIVE AFFORDANCE: Look for reasons to engage when price is at unmitigated structural boundaries.
 Respond strictly in JSON."""
 
@@ -649,12 +747,12 @@ Current Spot Price: {scenario.p0:.5f} | H4 ATR: {scenario.atr_h4:.5f}
 Dealing Range Location: {range_regime} (pos={pos:.2f} relative to 4H High {hi:.5f} / Low {lo:.5f})
 Stage 1 Macro Bias: {scenario.macro_brief_bias.upper()}
 
-=== PRE-COMPUTED VERIFIED BRACKET OPTIONS (R:R = 1.80, SL >= 1.10x ATR) ===
+=== PRE-COMPUTED VERIFIED BRACKET OPTIONS (R:R = 1.50, SL >= 1.00x ATR) ===
 [LONG_OPTION_A]:
-  Entry: {long_b["entry"]} | SL: {long_b["stop_loss"]} | TP: {long_b["take_profit"]} | Verified R:R: 1.80
+  Entry: {long_b["entry"]} | SL: {long_b["stop_loss"]} | TP: {long_b["take_profit"]} | Verified R:R: 1.50
 
 [SHORT_OPTION_B]:
-  Entry: {short_b["entry"]} | SL: {short_b["stop_loss"]} | TP: {short_b["take_profit"]} | Verified R:R: 1.80
+  Entry: {short_b["entry"]} | SL: {short_b["stop_loss"]} | TP: {short_b["take_profit"]} | Verified R:R: 1.50
 
 Submit trading decision:
 {{

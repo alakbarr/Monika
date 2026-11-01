@@ -100,6 +100,7 @@ async def validate_and_apply_judge_adjustments(
         )
     ).scalar_one_or_none()
 
+    atr_val = 0.0
     if atr_row:
         raw_atr = json.loads(atr_row.value_json)
         atr_val = (
@@ -117,12 +118,19 @@ async def validate_and_apply_judge_adjustments(
     try:
         from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
-        adr_ctx = await compute_daily_range_context(session, ana.symbol, settings)
+        adr_ctx = await compute_daily_range_context(session, ana.symbol, settings, atr_h4=atr_val)
         if "error" not in adr_ctx:
             tol = adr_ctx.get("band_tolerance_pct", 0.10)
-            tp_min = adr_ctx["target_tp_min_distance"] * (1 - tol)
-            tp_max = adr_ctx["target_tp_max_distance"] * (1 + tol)
-            sl_max = adr_ctx["target_sl_max_distance"] * (1 + tol)
+            adr_val = float(adr_ctx.get("adr", 0.0) or 0.0)
+            sl_max_dist = float(adr_ctx["target_sl_max_distance"])
+            tp_min_dist = float(adr_ctx["target_tp_min_distance"])
+            tp_max_dist = float(adr_ctx["target_tp_max_distance"])
+            if atr_val > 0 and adr_val > 0 and atr_val > 0.35 * adr_val:
+                sl_max_dist = max(sl_max_dist, atr_val * 1.15)
+                tp_max_dist = max(tp_max_dist, sl_max_dist * 1.85)
+            tp_min = tp_min_dist * (1 - tol)
+            tp_max = tp_max_dist * (1 + tol)
+            sl_max = sl_max_dist * (1 + tol)
             if tp_dist < tp_min or tp_dist > tp_max:
                 return (
                     False,

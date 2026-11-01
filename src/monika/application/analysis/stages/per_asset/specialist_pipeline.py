@@ -35,12 +35,40 @@ from monika.infrastructure.providers.llm_factory import get_client_for_task
 logger = logging.getLogger("TradingAgent.PerAsset.SpecialistPipeline")
 
 SENTIMENT_CONTRARIAN_DISCIPLINE = (
-    "\n\nMANDATORY CONTRARIAN & RETAIL SENTIMENT CALIBRATION:\n"
+    "\n\nMANDATORY CONTRARIAN POSITIONING & CROWD EXHAUSTION SPECIALIST CALIBRATION:\n"
+    "- You are a Contrarian Positioning & Crowd Exhaustion Specialist. Retail sentiment and news headlines chase "
+    "recent price action and peak at exact Dealing Range extremes (pos > 0.65 Premium or pos < 0.35 Discount).\n"
+    "- When headlines/retail are euphoric (bullish) after a rally into Premium (pos > 0.65) or priced_in_score >= 7, "
+    "treat this as crowded long exhaustion (bearish or neutral), NOT trend-following bullish confirmation.\n"
+    "- When headlines/retail are fearful/panicked (bearish) after a sell-off into Discount (pos < 0.35) or "
+    "priced_in_score >= 7, treat this as crowded short exhaustion (bullish or neutral), NOT trend-following bearish confirmation.\n"
     "- Do NOT take contrarian stances against strong H4/D1 trends unless retail positioning is genuinely extreme "
-    "(>= 72% one-sided long or short) or COT net positioning percentile is extreme (>= 85th or <= 15th).\n"
-    "- When retail positioning is moderate (35%–68% long/short) and COT is not at an extreme percentile, "
+    "(>= 72% one-sided long or short), Dealing Range position is at an extreme (pos > 0.65 or pos < 0.35), "
+    "priced_in_score >= 7, or COT net positioning percentile is extreme (>= 85th or <= 15th).\n"
+    "- When retail positioning is moderate (35%–68% long/short) in mid-range and COT is not at an extreme percentile, "
     'report directional_bias as "neutral" rather than fabricating a contrarian fade.'
 )
+
+if isinstance(SPECIALIST_PROMPTS, dict):
+    if "technical" in SPECIALIST_PROMPTS:
+        _tech_prompt_raw = str(SPECIALIST_PROMPTS["technical"])
+        if "Ensure minimum 2:1 Reward-to-Risk" in _tech_prompt_raw:
+            _tech_prompt_raw = _tech_prompt_raw.replace(
+                "Ensure minimum 2:1 Reward-to-Risk",
+                "Ensure minimum 1.50:1 Reward-to-Risk (matching intraday ADR bracket geometry)",
+            )
+        elif "1.50:1 Reward-to-Risk" not in _tech_prompt_raw:
+            _tech_prompt_raw = (
+                _tech_prompt_raw.rstrip()
+                + "\n- Ensure minimum 1.50:1 Reward-to-Risk (matching intraday ADR bracket geometry)."
+            )
+        SPECIALIST_PROMPTS["technical"] = _tech_prompt_raw
+    if "sentiment" in SPECIALIST_PROMPTS and "Contrarian Positioning & Crowd Exhaustion Specialist" not in str(
+        SPECIALIST_PROMPTS["sentiment"]
+    ):
+        SPECIALIST_PROMPTS["sentiment"] = (
+            str(SPECIALIST_PROMPTS["sentiment"]).rstrip() + SENTIMENT_CONTRARIAN_DISCIPLINE
+        )
 
 
 class SpecialistPipelineMixin:
@@ -91,6 +119,10 @@ class SpecialistPipelineMixin:
             "eia_oil_inventory",
             "oil_inventory",
             "recent_news",
+            "priced_in_subscores",
+            "get_fundamental_brief",
+            "get_fibonacci_levels_H4",
+            "dealing_range_pos",
             "market_chronicle",
             "recent_lessons",
             "market_regime",
@@ -385,10 +417,15 @@ class SpecialistPipelineMixin:
             tech_prompt = _render_specialist_prompt(
                 SPECIALIST_PROMPTS["technical"], symbol, base_currency, quote_currency
             )
+            if "Ensure minimum 2:1 Reward-to-Risk" in tech_prompt:
+                tech_prompt = tech_prompt.replace(
+                    "Ensure minimum 2:1 Reward-to-Risk",
+                    "Ensure minimum 1.50:1 Reward-to-Risk (matching intraday ADR bracket geometry)",
+                )
             sent_prompt = _render_specialist_prompt(
                 SPECIALIST_PROMPTS["sentiment"], symbol, base_currency, quote_currency
             )
-            if "72%" not in sent_prompt:
+            if "Contrarian Positioning & Crowd Exhaustion Specialist" not in sent_prompt:
                 sent_prompt = sent_prompt + SENTIMENT_CONTRARIAN_DISCIPLINE
             macro_prompt = _render_specialist_prompt(SPECIALIST_PROMPTS["macro"], symbol, base_currency, quote_currency)
 

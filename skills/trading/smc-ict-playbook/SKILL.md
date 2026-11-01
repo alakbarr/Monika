@@ -32,7 +32,14 @@ Evaluate market regime via D1 and H4 ADX, and inspect the 20-day D1 dealing rang
 *State explicitly in rationale*: `"D1 ADX={value}, regime={regime_label}, range_pos={pos:.2f}, threshold adjusted to {n}/14"`
 
 ## STEP 0.2: DUAL-ENGINE INSTITUTIONAL SETUP & SPECIALIST ANTI-CROWDING PROTOCOL
-Before scoring, classify the setup and specialist synergy:
+Before scoring, classify the setup, deterministic regime telemetry, and specialist synergy:
+
+- **Deterministic Regime & Synergy Execution Rules**:
+  - `EQUILIBRIUM_DEAD_ZONE_CHOP` ($0.40 \le pos \le 0.60$ with 3-bar H4 displacement $< 0.25\times\text{ATR}$) $\rightarrow$ `WAIT`.
+  - `OVEREXTENDED_RANGE_CEILING_PULLBACK_RISK` ($pos \ge 0.80$ without $\ge 1.50\times\text{ATR}$ runaway impulse) $\rightarrow$ avoid market-chasing the top (`WAIT` or limit pullback).
+  - `BULLISH_IMPULSE_BREAKOUT` / `BEARISH_IMPULSE_BREAKOUT` ($|\text{3-bar H4 impulse}| \ge 1.50\times\text{ATR}$ at range extreme) $\rightarrow$ Engine 1 Trend Continuation (never fade an active $\ge 1.50\times\text{ATR}$ H4 breakout).
+  - `CROWDED_TECH_SENT_TRAP_VS_MACRO` (`technical == sentiment != macro`) $\rightarrow$ 71.4% empirical reversal trap; favor the `macro` specialist direction.
+  - `DISCOUNT_ACCUMULATION_ZONE` ($pos \le 0.38$) $\rightarrow$ institutional Discount value zone favoring `BUY` (`[LONG_OPTION_A]`).
 
 1. **Engine 1 (Institutional Synergy / Trend-Aligned / Neutral POI Retest)**:
    - *Condition*: `Technical == Macro` (`Uncrowded Institutional Synergy` when `Sentiment != Tech` is the highest-expectancy setup at `81.8%` 12h accuracy) or trade direction aligns with/is neutral to Stage 1 macro and D1/H4 structure.

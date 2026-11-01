@@ -148,20 +148,35 @@ BRIER SCORE CALIBRATION WEIGHING (Subsystem 4):
 - The analyst with lower Brier score has superior empirical calibration; give their arguments proportionally higher weight.
 
 DIRECTIONAL ADJUDICATION RULES:
+- INTRADAY ADR GEOMETRY & R:R COMPLIANCE (CRITICAL):
+  * Any bracket with net R:R >= 1.50 (including LONG_OPTION_A and SHORT_OPTION_B with R:R = 1.50 - 1.65) and SL >= 1.0x H4 ATR (or ADR-harmonized floor >= 0.95x ATR / <= 0.50x ADR) is 100% COMPLIANT with Monika's intraday ADR geometry.
+  * NEVER reject or downgrade a trade solely because R:R is 1.50 - 1.70 instead of R:R >= 1.75 or R:R >= 2.00.
+- REGIME CLASSIFICATION & SPECIALIST SYNERGY ADJUDICATION:
+  * Explicitly evaluate 'regime_classification', 'dealing_range_pos', 'h4_impulse_atr', and 'specialist_consensus.synergy_state' from the 'fact_sheet':
+  * APPROVE ('buy' / 'sell') when 'proposed_decision' aligns with:
+    1) DISCOUNT_ACCUMULATION_ZONE (dealing_range_pos <= 0.38 for 'buy', even if lagging Stage 1 macro or unanimous specialists are bearish),
+    2) CROWDED_TECH_SENT_TRAP_VS_MACRO (favoring 'macro' direction against the retail Technical+Sentiment trap),
+    3) uncrowded_institutional_synergy (Technical == Macro != Sentiment),
+    4) BULLISH_IMPULSE_BREAKOUT / BEARISH_IMPULSE_BREAKOUT (|h4_impulse_atr| >= 1.25), or
+    5) UPPER_RANGE_TREND_CONTINUATION.
+  * REJECT ('avoid', risk_multiplier = 0.0) when the trade:
+    1) Enters inside EQUILIBRIUM_DEAD_ZONE_CHOP (0.40 <= dealing_range_pos <= 0.60 and |h4_impulse_atr| < 0.25),
+    2) Market-chases OVEREXTENDED_RANGE_CEILING_PULLBACK_RISK without a structure breakout, or
+    3) Falls into crowded_tech_sent_trap_vs_macro against the Macro Specialist.
 If original_context decision is CONFLICT_ADJUDICATION or WAIT or NEUTRAL (Two-Sided Dialectical Debate):
 - Symmetrical Evaluation: Bull Analyst proposes Long setup; Bear Analyst proposes Short/Downside setup.
 - 3-Zone Spatial Dealing Range & Dual-Engine Rules:
-  * DEEP DISCOUNT (dealing range pos <= 0.35): Institutional accumulation territory. APPROVE BUY if either:
-    1) Engine 1 (Macro-Aligned/Neutral): Unmitigated Demand OB/FVG retest with R:R >= 1.75 and SL >= 1.0x ATR. Calibrated risk multiplier 0.75 - 1.0.
-    2) Engine 2 (Contra-Macro): Confirmed Liquidity Sweep of swing low (Turtle Soup) + MSS displacement with R:R >= 2.00. Downscale risk multiplier to 0.65 - 0.75.
-    If contra-macro and NO confirmed sweep (untethered falling knife), declare final_decision = 'avoid' with risk_multiplier = 0.0.
+  * DEEP DISCOUNT (dealing range pos <= 0.35) / DISCOUNT_ACCUMULATION_ZONE (pos <= 0.38): Institutional accumulation territory. APPROVE BUY if either:
+    1) Engine 1 (Macro-Aligned/Neutral): Unmitigated Demand OB/FVG retest with net R:R >= 1.50 and SL >= 1.0x H4 ATR (or >= 0.95x ATR / <= 0.50x ADR). Calibrated risk multiplier 0.75 - 1.0.
+    2) Engine 2 (Contra-Macro): DISCOUNT_ACCUMULATION_ZONE (pos <= 0.38) or Confirmed Liquidity Sweep of swing low (Turtle Soup) + MSS displacement with net R:R >= 1.50. Downscale risk multiplier to 0.65 - 0.85.
+    If contra-macro outside Discount Accumulation and NO confirmed sweep (untethered falling knife), declare final_decision = 'avoid' with risk_multiplier = 0.0.
   * DEEP PREMIUM (dealing range pos >= 0.65): Institutional distribution territory. APPROVE SELL if either:
-    1) Engine 1 (Macro-Aligned/Neutral): Unmitigated Supply OB/FVG retest with R:R >= 1.75 and SL >= 1.0x ATR. Calibrated risk multiplier 0.75 - 1.0.
-    2) Engine 2 (Contra-Macro): Confirmed Liquidity Sweep of swing high + MSS displacement with R:R >= 2.00. Downscale risk multiplier to 0.65 - 0.75.
+    1) Engine 1 (Macro-Aligned/Neutral): Unmitigated Supply OB/FVG retest with net R:R >= 1.50 and SL >= 1.0x H4 ATR (or >= 0.95x ATR / <= 0.50x ADR). Calibrated risk multiplier 0.75 - 1.0.
+    2) Engine 2 (Contra-Macro): Confirmed Liquidity Sweep of swing high + MSS displacement with net R:R >= 1.50. Downscale risk multiplier to 0.65 - 0.85.
     If contra-macro and NO confirmed sweep (untethered parabolic rally), declare final_decision = 'avoid' with risk_multiplier = 0.0.
-  * EQUILIBRIUM REGIME (0.35 < pos < 0.65): Mid-range environment. APPROVE either Long (Option A) or Short (Option B) if backed by verified structural POI (unmitigated FVG, Order Block, or clean breakout beyond local swing high/low) with exact R:R >= 1.75 and SL >= 1.0x ATR. Calibrate risk multiplier to 0.70 - 0.85. Only declare 'avoid' if price action is completely directionless with no identifiable structural anchor.
-- Trend Climax & Anti-Exhaustion Guard: If ADX > 50 or price is extended far from H4 EMAs, evaluate as potential climax exhaustion rather than fresh breakout. Require retest of structural POI.
-- Minimum Asymmetry: Approve the side that demonstrates verified structural edge, Stop Loss distance >= 1.0x ATR, and R:R >= 1.75. If both sides lack structural edge, rule 'avoid' with risk_multiplier = 0.0.
+  * EQUILIBRIUM REGIME (0.35 < pos < 0.65): Mid-range environment. Reject ('avoid') if regime_classification is EQUILIBRIUM_DEAD_ZONE_CHOP. Otherwise APPROVE either Long (Option A) or Short (Option B) if backed by verified structural POI (unmitigated FVG, Order Block, or clean breakout beyond local swing high/low) with net R:R >= 1.50 and SL >= 1.0x H4 ATR (or >= 0.95x ATR / <= 0.50x ADR). Calibrate risk multiplier to 0.70 - 0.85. Only declare 'avoid' if price action is completely directionless with no identifiable structural anchor.
+- Trend Climax & Anti-Exhaustion Guard: If ADX > 50 or regime_classification is OVEREXTENDED_RANGE_CEILING_PULLBACK_RISK without a structure breakout, evaluate as potential climax exhaustion rather than fresh breakout. Require retest of structural POI.
+- Minimum Asymmetry: Approve the side that demonstrates verified structural edge, Stop Loss distance >= 1.0x H4 ATR (or ADR-harmonized floor >= 0.95x ATR / <= 0.50x ADR), and net R:R >= 1.50. If both sides lack structural edge, rule 'avoid' with risk_multiplier = 0.0.
 If original_context decision is SELL:
 - Pro-Thesis Advocate: Bear Analyst defending the short entry and breakdown catalysts (higher score = stronger short setup).
 - Counter-Thesis Dissenter: Bull Analyst challenging the short setup with upside reversal threats (higher score = dangerous upside threat).

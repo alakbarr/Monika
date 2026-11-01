@@ -98,11 +98,16 @@ def test_specialist_council_identifies_uncrowded_institutional_synergy():
     assert crowded["unanimous_agreement"] is True
     assert "CROWDED_3_OF_3_CAUTION" in crowded["formatted_summary"]
 
+    trap = SpecialistCouncil.summarize_consensus({"technical": "bullish", "macro": "bearish", "sentiment": "bullish"})
+    assert trap["synergy_state"] == "crowded_tech_sent_trap_vs_macro"
+    assert trap["consensus"] == "majority_agreement"
+    assert "CROWDED_TECH_SENT_TRAP_VS_MACRO" in trap["formatted_summary"]
+
     conflict = SpecialistCouncil.summarize_consensus(
-        {"technical": "bullish", "macro": "bearish", "sentiment": "bullish"}
+        {"technical": "bullish", "macro": "bearish", "sentiment": "neutral"}
     )
     assert conflict["synergy_state"] == "technical_macro_conflict"
-    assert conflict["consensus"] == "majority_agreement"
+    assert conflict["consensus"] == "split_conflict"
 
 
 @pytest.mark.asyncio
@@ -138,7 +143,17 @@ async def test_confluence_calculator_awards_full_points_for_uncrowded_institutio
             entry_price=150.0,
             specialist_biases={"technical": "bullish", "macro": "bullish", "sentiment": "bullish"},
         )
+        trap_res = await calculate_confluence(
+            mock_session,
+            symbol="USDJPY",
+            direction="buy",
+            entry_price=150.0,
+            specialist_biases={"technical": "bullish", "macro": "bearish", "sentiment": "bullish"},
+        )
 
     assert synergy_res["computed_score"] == base_res["computed_score"] + 2
-    assert synergy_res["computed_score"] == unanimous_res["computed_score"]
+    assert unanimous_res["computed_score"] == base_res["computed_score"]
+    assert trap_res["computed_score"] == base_res["computed_score"]
     assert any("Uncrowded Institutional Synergy" in f for f in synergy_res["factors"])
+    assert any("crowded_unanimous_exhaustion (0 pts)" in f for f in unanimous_res["factors"])
+    assert any("crowded_tech_sent_trap_vs_macro (0 pts)" in f for f in trap_res["factors"])

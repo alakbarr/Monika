@@ -707,10 +707,59 @@ class ContextBuilderMixin:
                         else ("YES (Sweep of High -> Bearish MSS confirmed)" if sweep_of_high else "NO")
                     )
 
+                    # 4. 3-bar H4 displacement impulse & deterministic Regime Telemetry
+                    h4_disp_stmt = (
+                        select(PriceOHLCV)
+                        .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == "H4")
+                        .order_by(PriceOHLCV.timestamp.desc())
+                        .limit(5)
+                    )
+                    h4_disp_bars = (await session.execute(h4_disp_stmt)).scalars().all()
+                    h4_atr_est = (
+                        sum(
+                            float(b.high) - float(b.low)
+                            for b in h4_disp_bars
+                            if b.high is not None and b.low is not None
+                        )
+                        / max(1, len(h4_disp_bars))
+                        if h4_disp_bars
+                        else (range_span * 0.15 if range_span > 0 else 1.0)
+                    )
+                    h4_3bar_disp = 0.0
+                    if (
+                        len(h4_disp_bars) >= 4
+                        and h4_disp_bars[0].close is not None
+                        and h4_disp_bars[3].close is not None
+                    ):
+                        h4_3bar_disp = float(h4_disp_bars[0].close) - float(h4_disp_bars[3].close)
+                    elif (
+                        len(h4_disp_bars) >= 2
+                        and h4_disp_bars[0].close is not None
+                        and h4_disp_bars[-1].close is not None
+                    ):
+                        h4_3bar_disp = float(h4_disp_bars[0].close) - float(h4_disp_bars[-1].close)
+                    h4_impulse_atr = h4_3bar_disp / max(1e-7, h4_atr_est)
+
+                    regime_telemetry_tag = "STANDARD_INTRADAY_STRUCTURE"
+                    if abs(h4_impulse_atr) >= 1.50 and (range_pos >= 0.65 or range_pos <= 0.35):
+                        regime_telemetry_tag = (
+                            "BULLISH_IMPULSE_BREAKOUT -> Engine 1 Trend Continuation (never fade an active >= 1.50x ATR H4 breakout)"
+                            if h4_impulse_atr > 0
+                            else "BEARISH_IMPULSE_BREAKOUT -> Engine 1 Trend Continuation (never fade an active >= 1.50x ATR H4 breakout)"
+                        )
+                    elif 0.40 <= range_pos <= 0.60 and abs(h4_impulse_atr) < 0.25:
+                        regime_telemetry_tag = "EQUILIBRIUM_DEAD_ZONE_CHOP (0.40 <= pos <= 0.60 with 3-bar H4 displacement < 0.25x ATR) -> WAIT"
+                    elif range_pos >= 0.80 and h4_impulse_atr < 1.50:
+                        regime_telemetry_tag = "OVEREXTENDED_RANGE_CEILING_PULLBACK_RISK (pos >= 0.80 without >= 1.50x ATR runaway impulse) -> avoid market-chasing the top (WAIT or limit pullback)"
+                    elif range_pos <= 0.38:
+                        regime_telemetry_tag = "DISCOUNT_ACCUMULATION_ZONE (pos <= 0.38) -> institutional Discount value zone favoring BUY ([LONG_OPTION_A])"
+
                     anchor_lines.extend(
                         [
                             f"Dealing Range (20-day): High={high_20:.5f}, Low={low_20:.5f}, Close={curr_close:.5f}",
                             f"Range Position Ratio: {range_pos:.2f} ({range_zone})",
+                            f"3-Bar H4 Displacement Impulse: {h4_impulse_atr:+.2f}x ATR",
+                            f"Deterministic Regime Telemetry: {regime_telemetry_tag}",
                             f"Spatial Status: {status_str}",
                             f"Unmitigated Demand POI: {demand_str}",
                             f"Unmitigated Supply POI: {supply_str}",
@@ -1279,12 +1328,18 @@ class ContextBuilderMixin:
         msg = f"""Analyze {symbol} and provide a trading decision for the current cycle.{special_notes}
 
 MANDATORY FIRST STEP:
-Call get_market_regime(symbols=["{symbol}"], timeframe="D1").
+Inspect the pre-loaded market regime, Dealing Range position, SMC zones, and H4 displacement impulse in the context (or call get_market_regime(symbols=["{symbol}"], timeframe="D1") if not pre-loaded).
 Read STEP 0 in your SMC/ICT playbook. You MUST adjust your confluence threshold based on the ADX value returned.
 """
         msg += (
             f"\nINSTITUTIONAL SYNERGY, SPATIAL BOUNDS & ZERO-ARITHMETIC BRACKET PROTOCOL:\n"
             f'- ZERO-ARITHMETIC BRACKET ADOPTION (`adopted_bracket`): When proposing `BUY` or `SELL`, pass `adopted_bracket="LONG_OPTION_A"` (for `BUY`) or `adopted_bracket="SHORT_OPTION_B"` (for `SELL`) from the pre-computed `DETERMINISTIC INVARIANT ENGINE` block so verified `entry_condition`, `stop_loss`, and `take_profit` are populated automatically without mental floating-point arithmetic errors.\n'
+            f"- DETERMINISTIC REGIME & SYNERGY EXECUTION RULES:\n"
+            f"  * `EQUILIBRIUM_DEAD_ZONE_CHOP` (`0.40 <= pos <= 0.60` with 3-bar H4 displacement `< 0.25x ATR`) -> `WAIT`.\n"
+            f"  * `OVEREXTENDED_RANGE_CEILING_PULLBACK_RISK` (`pos >= 0.80` without `>= 1.50x ATR` runaway impulse) -> avoid market-chasing the top (`WAIT` or limit pullback).\n"
+            f"  * `BULLISH_IMPULSE_BREAKOUT` / `BEARISH_IMPULSE_BREAKOUT` (`|3-bar H4 impulse| >= 1.50x ATR` at range extreme) -> Engine 1 Trend Continuation (never fade an active `>= 1.50x ATR` H4 breakout).\n"
+            f"  * `CROWDED_TECH_SENT_TRAP_VS_MACRO` (`technical == sentiment != macro`) -> 71.4% empirical reversal trap; favor the `macro` specialist direction.\n"
+            f"  * `DISCOUNT_ACCUMULATION_ZONE` (`pos <= 0.38`) -> institutional Discount value zone favoring `BUY` (`[LONG_OPTION_A]`).\n"
             f"- SPECIALIST SYNERGY & CROWDING STATE:\n"
             f"  1. Uncrowded Institutional Synergy (`Tech == Macro` and `Sentiment != Tech`): Prioritize execution when `Technical` and `Macro` specialists agree while `Sentiment` is uncrowded (neutral or contrarian) within valid spatial bounds (`pos <= 0.85` for `BUY`, `pos >= 0.15` for `SELL`).\n"
             f"  2. Equilibrium Continuation (`0.35 < pos < 0.65`): Allow `BUY` or `SELL` when `Technical == Macro` (or strong structural confluence `>= 10`) and H4/H1 momentum aligns; output `WAIT` if `Technical != Macro` or if structure is directionless chop (`ADX < 20`).\n"
@@ -1301,7 +1356,7 @@ Read STEP 0 in your SMC/ICT playbook. You MUST adjust your confluence threshold 
             f"  7. `reevaluation_trigger` (dict e.g. {{'type': 'price_level', 'symbol': '{symbol}', 'price': ..., 'detail': '...'}})\n"
             f"  8. `confluence_score` (integer 0-20)\n"
             f"  9. `priced_in_score` (integer 1-10)\n"
-            f"- If concluding WAIT on Turn 1: you MUST call at least one inspection tool (`get_smc_zones`, `get_structure_breaks`, etc.) first. Direct Turn-1 WAIT without inspection is blocked by Anti-Laziness gate.\n"
+            f"- If concluding WAIT on Turn 1: cite the pre-loaded SMC zones, Dealing Range position, and H4 displacement impulse directly from the bundle (only call `get_smc_zones` or `get_structure_breaks` if the pre-fetched bundle is absent).\n"
             f"- You MUST conclude your analysis by invoking the `submit_asset_analysis` tool with your decision (buy/sell/wait/avoid) "
             f'and full structured parameters for {symbol} (ensure argument "symbol": "{symbol}" is included).\n'
             f"DO NOT just write a markdown text answer. The system rejects text-only conclusions without a tool call."
@@ -1314,21 +1369,25 @@ Read STEP 0 in your SMC/ICT playbook. You MUST adjust your confluence threshold 
         msg = f"""Analyze {symbol} and provide a structured trading decision.
 
 HYPOTHESIS-DRIVEN REASONING DIRECTIVE (Max 2-3 Iterative Turns):
-1. Review the baseline H4 trend, ATR, and macro context above.
-2. Apply the INSTITUTIONAL SYNERGY & ANTI-CROWDING PROTOCOL (`SPECIALIST SYNERGY & CROWDING STATE`):
+1. Review the baseline H4 trend, ATR, Dealing Range position, H4 displacement impulse, and macro context in the pre-loaded bundle above.
+2. Apply the DETERMINISTIC REGIME & SYNERGY EXECUTION RULES:
+   - `EQUILIBRIUM_DEAD_ZONE_CHOP` (`0.40 <= pos <= 0.60` with 3-bar H4 displacement `< 0.25x ATR`) -> `WAIT`.
+   - `OVEREXTENDED_RANGE_CEILING_PULLBACK_RISK` (`pos >= 0.80` without `>= 1.50x ATR` runaway impulse) -> avoid market-chasing the top (`WAIT` or limit pullback).
+   - `BULLISH_IMPULSE_BREAKOUT` / `BEARISH_IMPULSE_BREAKOUT` (`|3-bar H4 impulse| >= 1.50x ATR` at range extreme) -> Engine 1 Trend Continuation (never fade an active `>= 1.50x ATR` H4 breakout).
+   - `CROWDED_TECH_SENT_TRAP_VS_MACRO` (`technical == sentiment != macro`) -> 71.4% empirical reversal trap; favor the `macro` specialist direction.
+   - `DISCOUNT_ACCUMULATION_ZONE` (`pos <= 0.38`) -> institutional Discount value zone favoring `BUY` (`[LONG_OPTION_A]`).
    - Prioritize execution when `Technical` and `Macro` specialists agree (`Tech == Macro`) while `Sentiment` is uncrowded (`Sentiment != Tech`) within valid spatial bounds (`pos <= 0.85` for BUY, `pos >= 0.15` for SELL).
-   - In Equilibrium (`0.35 < pos < 0.65`), allow `BUY` or `SELL` when `Technical == Macro` (or strong structural confluence `>= 10`) and H4/H1 momentum aligns; output `WAIT` if `Technical != Macro` or if structure is directionless chop (`ADX < 20`).
    - Beware **Crowded 3-of-3 Exhaustion** (`Tech == Macro == Sentiment` when `pos > 0.55` for BUY or `pos < 0.45` for SELL) and forbid **Spatial Chasing** (`BUY` at `pos > 0.85` or `SELL` at `pos < 0.15` unless price broke out of the 20-day range).
-3. If additional precision is required to validate or FALSIFY this setup, invoke targeted tools:
-   - `get_smc_zones(symbol="{symbol}", timeframe="M15")` to verify unmitigated order blocks.
-   - `get_structure_breaks(symbol="{symbol}", timeframe="M15")` to confirm CHoCH/BOS.
-   - `get_price_history(symbol="{symbol}", timeframe="M15", limit=20)` to inspect price action.
+3. Do NOT re-call `get_smc_zones` or `get_structure_breaks` for H4/H1/D1 data already pre-loaded in `[PRE-FETCHED SYMBOL DATA]`. Only invoke M15 tools if granular sub-bar precision is needed:
+   - `get_smc_zones(symbol="{symbol}", timeframe="M15")` to verify M15 order blocks.
+   - `get_structure_breaks(symbol="{symbol}", timeframe="M15")` to confirm M15 CHoCH/BOS.
+   - `get_price_history(symbol="{symbol}", timeframe="M15", limit=20)` to inspect M15 price action.
    - `get_news_items(currency_filter="...")` — if news context needed.
 """
         if symbol == "XTIUSD":
             msg += "   - `get_eia_oil_inventory()` — CRITICAL for oil analysis.\n"
 
-        msg += f"""4. If the setup lacks confluence or structure is violated, you may conclude 'wait' or 'avoid'. NOTE: To conclude 'wait' on Turn 1, you MUST first inspect technical structure (e.g. call `get_smc_zones` or `get_structure_breaks`) — direct Turn-1 'wait' without technical verification is blocked by Anti-Laziness gate.
+        msg += f"""4. If the setup lacks confluence or structure is violated, conclude 'wait' or 'avoid' directly by citing the pre-loaded SMC zones, Dealing Range position, and H4 displacement impulse from the bundle (no redundant tool calls required).
 5. ZERO-ARITHMETIC BRACKET ADOPTION & SIZING: If proposing a directional trade (BUY/SELL), pass `adopted_bracket="LONG_OPTION_A"` (for BUY) or `adopted_bracket="SHORT_OPTION_B"` (for SELL) from the pre-computed `DETERMINISTIC INVARIANT ENGINE` block so verified `entry_condition`, `stop_loss`, and `take_profit` are populated without mental floating-point arithmetic (or call `calculate_position_size` with exact entry, stop_loss, and take_profit FIRST).
 6. For BUY or SELL decisions, you MUST supply ALL 9 execution fields in `submit_asset_analysis` (or let `adopted_bracket` populate the price levels):
    stop_loss (float), take_profit (float), invalidation (detailed string), invalidation_price (float),
