@@ -244,10 +244,34 @@ class PostProcessVerificationMixin(_RunnerMixinBase):
                         CrossTimeframeConfirmationGate,
                     )
 
+                    bundle_dict: dict[str, Any] = raw_bundle_data if isinstance(raw_bundle_data, dict) else {}
+                    raw_inv = bundle_dict.get("precomputed_invariants")
+                    inv_dict: dict[str, Any] = raw_inv if isinstance(raw_inv, dict) else {}
+                    dr_pos: Optional[float] = None
+                    if "dealing_range_pos" in inv_dict:
+                        try:
+                            dr_pos = float(inv_dict["dealing_range_pos"])
+                        except TypeError, ValueError:
+                            pass
+                    elif "dealing_range_pos" in bundle_dict:
+                        try:
+                            dr_pos = float(bundle_dict["dealing_range_pos"])
+                        except TypeError, ValueError:
+                            pass
+                    reg_name = bundle_dict.get("regime_classification") or inv_dict.get("regime_classification")
+                    has_sweep = bool(
+                        inv_dict.get("liquidity_sweep_detected")
+                        or inv_dict.get("liquidity_sweep_bias")
+                        or bundle_dict.get("liquidity_sweep_detected")
+                    )
+
                     is_aligned, htf_reason, htf_meta = CrossTimeframeConfirmationGate.verify_htf_alignment(
                         decision=analysis.decision,
-                        data_bundle=raw_bundle_data if isinstance(raw_bundle_data, dict) else {},
+                        data_bundle=bundle_dict,
                         symbol=symbol,
+                        dealing_range_pos=dr_pos,
+                        regime_classification=str(reg_name) if reg_name else None,
+                        has_liquidity_sweep=has_sweep,
                     )
                     if not is_aligned:
                         logger.warning(f"[{symbol}] CrossTimeframeGate REJECT: {htf_reason}")

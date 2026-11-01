@@ -303,6 +303,12 @@ async def evaluate_debate_candidate_and_levels(
         and "short_option_b" in precomputed_brackets
         else None
     )
+    res_d = result_dict if isinstance(result_dict, dict) else {}
+    fallback_impulse = res_d.get("h4_impulse_atr")
+    fallback_regime = res_d.get("regime_classification") or res_d.get("market_regime")
+    if isinstance(fallback_regime, dict):
+        fallback_regime = fallback_regime.get(symbol) or fallback_regime.get("regime")
+
     if b_opts is None and entry_price_val is not None and latest_atr is not None and latest_atr > 0:
         try:
             from monika.application.analysis.calculators.invariant_calculator import (
@@ -315,6 +321,8 @@ async def evaluate_debate_candidate_and_levels(
                 atr=latest_atr,
                 adr_5d=latest_atr * 2.2,
                 target_rr=1.60,
+                regime_classification=str(fallback_regime) if fallback_regime else None,
+                h4_impulse_atr=float(fallback_impulse) if fallback_impulse is not None else None,
             )
         except Exception:
             b_opts = None
@@ -384,6 +392,8 @@ async def evaluate_debate_candidate_and_levels(
                             atr=ref_atr,
                             adr_5d=ref_atr * 2.2,
                             target_rr=1.60,
+                            regime_classification=str(fallback_regime) if fallback_regime else None,
+                            h4_impulse_atr=float(fallback_impulse) if fallback_impulse is not None else None,
                         )
                         if isinstance(result_dict, dict):
                             result_dict["bracket_options"] = b_opts

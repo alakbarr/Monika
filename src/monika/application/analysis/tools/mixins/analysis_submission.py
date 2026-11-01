@@ -488,11 +488,19 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     else (last_px_val * 0.005 if last_px_val else 1.0)
                 )
                 if last_px_val and sym_c:
+                    reg_c = (
+                        inst_dict.get("regime_classification")
+                        or getattr(self, "regime_classification", None)
+                        or getattr(self, "market_regime", None)
+                    )
+                    imp_c = inst_dict.get("h4_impulse_atr") or getattr(self, "h4_impulse_atr", None)
                     bracket_opts = generate_concrete_bracket_options(
                         symbol=sym_c,
                         current_price=last_px_val,
                         atr=atr_v,
                         adr_5d=atr_v * 2.5,
+                        regime_classification=str(reg_c) if reg_c else None,
+                        h4_impulse_atr=float(imp_c) if imp_c is not None else None,
                     )
                     self.bracket_options = bracket_opts
                     resolved = resolve_bracket_choice(adopted_norm, bracket_opts)

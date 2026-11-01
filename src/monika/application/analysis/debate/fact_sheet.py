@@ -358,11 +358,17 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
         from monika.application.analysis.calculators.invariant_calculator import generate_concrete_bracket_options
 
         eff_atr = atr_val if atr_val > 0 else (curr_px * 0.005 if curr_px > 0 else 0.0)
+        eff_adr = float(daily_range_context.get("adr_5d") or 0.0) if daily_range_context else 0.0
+        if eff_adr <= 0.0:
+            eff_adr = 2.2 * eff_atr
         if curr_px > 0 and eff_atr > 0:
             bracket_options = generate_concrete_bracket_options(
                 symbol=analysis.symbol,
                 current_price=curr_px,
                 atr=eff_atr,
+                adr_5d=eff_adr,
+                regime_classification=regime_classification,
+                h4_impulse_atr=h4_impulse_atr,
             )
     except Exception as bo_err:
         logger.debug(f"FactSheet bracket_options note: {bo_err}")

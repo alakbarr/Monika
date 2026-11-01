@@ -24,9 +24,13 @@ class CrossTimeframeConfirmationGate:
         data_bundle: Dict[str, Any],
         symbol: str = "",
         allow_single_tf_pullback: bool = True,
+        dealing_range_pos: Optional[float] = None,
+        regime_classification: Optional[str] = None,
+        has_liquidity_sweep: bool = False,
     ) -> Tuple[bool, str, Dict[str, Any]]:
         """
         Verify if decision ('buy' or 'sell') aligns with H4 and H1 structures.
+        Supports Institutional Discount Accumulation (pos <= 0.38) and Premium Distribution (pos >= 0.65) protocols.
         Returns:
             (is_aligned: bool, reason: str, metadata: dict)
         """
@@ -34,27 +38,99 @@ class CrossTimeframeConfirmationGate:
         if dec not in ("buy", "sell"):
             return True, "Non-directional decision (wait/skip)", {}
 
+        # Resolve spatial & regime context from parameters or data_bundle
+        if dealing_range_pos is None and isinstance(data_bundle, dict):
+            inv = data_bundle.get("precomputed_invariants")
+            if isinstance(inv, dict) and "dealing_range_pos" in inv:
+                try:
+                    dealing_range_pos = float(inv["dealing_range_pos"])
+                except TypeError, ValueError:
+                    pass
+            if dealing_range_pos is None and "dealing_range_pos" in data_bundle:
+                try:
+                    dealing_range_pos = float(data_bundle["dealing_range_pos"])
+                except TypeError, ValueError:
+                    pass
+
+        if regime_classification is None and isinstance(data_bundle, dict):
+            inv = data_bundle.get("precomputed_invariants")
+            if isinstance(inv, dict) and inv.get("regime_classification"):
+                regime_classification = str(inv["regime_classification"])
+            if regime_classification is None and data_bundle.get("regime_classification"):
+                regime_classification = str(data_bundle["regime_classification"])
+            if regime_classification is None and data_bundle.get("market_regime"):
+                mr = data_bundle["market_regime"]
+                if isinstance(mr, dict):
+                    regime_classification = str(mr.get(symbol) or mr.get("regime"))
+                else:
+                    regime_classification = str(mr)
+
+        if not has_liquidity_sweep and isinstance(data_bundle, dict):
+            inv = data_bundle.get("precomputed_invariants")
+            if isinstance(inv, dict):
+                has_liquidity_sweep = bool(inv.get("liquidity_sweep_detected") or inv.get("liquidity_sweep_bias"))
+            if not has_liquidity_sweep:
+                has_liquidity_sweep = bool(data_bundle.get("liquidity_sweep_detected"))
+
         h4_bias = cls._extract_timeframe_bias(data_bundle, tf="H4")
         h1_bias = cls._extract_timeframe_bias(data_bundle, tf="H1")
+        reg_upper = str(regime_classification or "").upper()
 
         meta = {
             "h4_bias": h4_bias,
             "h1_bias": h1_bias,
             "decision": dec,
+            "dealing_range_pos": dealing_range_pos,
+            "regime_classification": regime_classification,
+            "has_liquidity_sweep": has_liquidity_sweep,
         }
 
         # Case 1: Dual Higher Timeframe Conflict
-        # If BUY, but BOTH H4 and H1 are bearish -> Severe counter-trend entry
+        # If BUY, but BOTH H4 and H1 are bearish:
+        # Permitted if in institutional discount accumulation zone (pos <= 0.38) or confirmed liquidity sweep
         if dec == "buy":
             if h4_bias == "bearish" and h1_bias == "bearish":
-                reason = "Dual HTF conflict: M15 BUY rejected because both H4 and H1 are strongly bearish"
+                is_discount_acc = (dealing_range_pos is not None and dealing_range_pos <= 0.38) or (
+                    "DISCOUNT_ACCUMULATION" in reg_upper
+                )
+                if is_discount_acc or has_liquidity_sweep:
+                    pos_str = f"pos={dealing_range_pos:.2f}" if dealing_range_pos is not None else "regime"
+                    logger.info(
+                        f"[{symbol}] CrossTimeframeGate: Permitted BUY under Discount Accumulation protocol "
+                        f"({pos_str}, sweep={has_liquidity_sweep})"
+                    )
+                    return (
+                        True,
+                        f"HTF confirmation passed under Institutional Discount Accumulation protocol ({pos_str})",
+                        meta,
+                    )
+                reason = (
+                    "Dual HTF conflict: M15 BUY rejected because both H4 and H1 are strongly bearish outside discount"
+                )
                 logger.warning(f"[{symbol}] CrossTimeframeGate REJECT: {reason}")
                 return False, reason, meta
 
-        # If SELL, but BOTH H4 and H1 are bullish -> Severe counter-trend entry
+        # If SELL, but BOTH H4 and H1 are bullish:
+        # Permitted if in institutional premium distribution zone (pos >= 0.65) or confirmed liquidity sweep
         elif dec == "sell":
             if h4_bias == "bullish" and h1_bias == "bullish":
-                reason = "Dual HTF conflict: M15 SELL rejected because both H4 and H1 are strongly bullish"
+                is_premium_dist = (dealing_range_pos is not None and dealing_range_pos >= 0.65) or (
+                    "PREMIUM_DISTRIBUTION" in reg_upper
+                )
+                if is_premium_dist or has_liquidity_sweep:
+                    pos_str = f"pos={dealing_range_pos:.2f}" if dealing_range_pos is not None else "regime"
+                    logger.info(
+                        f"[{symbol}] CrossTimeframeGate: Permitted SELL under Premium Distribution protocol "
+                        f"({pos_str}, sweep={has_liquidity_sweep})"
+                    )
+                    return (
+                        True,
+                        f"HTF confirmation passed under Institutional Premium Distribution protocol ({pos_str})",
+                        meta,
+                    )
+                reason = (
+                    "Dual HTF conflict: M15 SELL rejected because both H4 and H1 are strongly bullish outside premium"
+                )
                 logger.warning(f"[{symbol}] CrossTimeframeGate REJECT: {reason}")
                 return False, reason, meta
 
@@ -62,8 +138,16 @@ class CrossTimeframeConfirmationGate:
         if not allow_single_tf_pullback:
             opp_bias = "bearish" if dec == "buy" else "bullish"
             if h4_bias == opp_bias:
-                reason = f"HTF conflict: M15 {dec.upper()} conflicts with H4 {h4_bias}"
-                return False, reason, meta
+                is_spatial_reversal = (
+                    dec == "buy"
+                    and ((dealing_range_pos is not None and dealing_range_pos <= 0.38) or has_liquidity_sweep)
+                ) or (
+                    dec == "sell"
+                    and ((dealing_range_pos is not None and dealing_range_pos >= 0.65) or has_liquidity_sweep)
+                )
+                if not is_spatial_reversal:
+                    reason = f"HTF conflict: M15 {dec.upper()} conflicts with H4 {h4_bias}"
+                    return False, reason, meta
 
         return True, "HTF confirmation passed", meta
 

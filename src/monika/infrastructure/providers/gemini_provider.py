@@ -702,7 +702,7 @@ class GeminiProvider(BaseLLMClient):
         eff_max_tokens = resolve_effective_max_tokens(
             model_name=self.model,
             provider_name="gemini",
-            requested_max_tokens=max_tokens,
+            requested_max_tokens=max_tokens if max_tokens is not None else getattr(self, "max_tokens", None),
             thinking_budget=getattr(self, "thinking_budget", None),
             thinking_level=self.thinking_level,
             settings=getattr(self, "settings", None),
