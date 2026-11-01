@@ -93,6 +93,17 @@ async def compute_prompt_invariants(
                 sr_f.extend(smc_raw["sr_zones"])
 
             if curr_px and atr_f:
+                h4_impulse = raw_bundle_data.get("h4_impulse_atr")
+                if h4_impulse is None and hist and isinstance(hist, dict) and hist.get("bars"):
+                    bars = hist["bars"]
+                    closes = [float(b.get("close", 0)) for b in bars if isinstance(b, dict) and "close" in b]
+                    if len(closes) >= 3 and atr_f and float(atr_f) > 0:
+                        h4_impulse = round((float(curr_px) - closes[-3]) / float(atr_f), 4)
+
+                reg_class = raw_bundle_data.get("regime_classification") or raw_bundle_data.get("market_regime")
+                if isinstance(reg_class, dict):
+                    reg_class = reg_class.get(symbol) or reg_class.get("regime")
+
                 invariants_dict = compute_trade_invariants(
                     symbol=symbol,
                     current_price=float(curr_px),
@@ -101,6 +112,8 @@ async def compute_prompt_invariants(
                     smc_zones=smc_f,
                     sr_zones=sr_f,
                     min_rr=float(settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5)),
+                    regime_classification=str(reg_class) if reg_class else None,
+                    h4_impulse_atr=float(h4_impulse) if h4_impulse is not None else None,
                 )
                 raw_bundle_data["precomputed_invariants"] = invariants_dict
                 raw_bundle_data["bracket_options"] = invariants_dict.get("bracket_options")

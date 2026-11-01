@@ -568,31 +568,13 @@ Submit decision matching schema: {{"decision": "buy"|"sell"|"wait", "confluence_
         tp_dist = min(1.50 * scenario.atr_h4, 0.68 * adr_val)
         sl_dist = tp_dist / 1.50
 
-        try:
-            invariants = compute_trade_invariants(
-                symbol=scenario.symbol,
-                current_price=scenario.p0,
-                atr=scenario.atr_h4,
-                settings=self.settings,
-                adr_5d=adr_val,
-            )
-        except TypeError:
-            invariants = compute_trade_invariants(
-                symbol=scenario.symbol,
-                current_price=scenario.p0,
-                atr=scenario.atr_h4,
-            )
-
-        try:
-            invariants_block = format_invariants_for_prompt(
-                invariants,
-                current_price=scenario.p0,
-                atr=scenario.atr_h4,
-                symbol=scenario.symbol,
-                adr_5d=adr_val,
-            )
-        except TypeError:
-            invariants_block = format_invariants_for_prompt(invariants)
+        invariants = compute_trade_invariants(
+            symbol=scenario.symbol,
+            current_price=scenario.p0,
+            atr=scenario.atr_h4,
+            adr_5d=adr_val,
+        )
+        invariants_block = format_invariants_for_prompt(invariants)
 
         concrete_brackets = generate_concrete_bracket_options(
             symbol=scenario.symbol,

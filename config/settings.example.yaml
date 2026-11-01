@@ -348,7 +348,7 @@ paper_trading:
   initial_balance: 10000.0
   tp_detection_method: close_price
   realistic_sl_tp_conflict: sl_wins
-  max_paper_trade_holding_hours: 48
+  max_paper_trade_holding_hours: 24
   spread_realistic_multiplier: 2.0
   spread_multipliers:
     XAUUSD: 3.0

@@ -103,7 +103,7 @@ def get_paper_trading_config(settings: dict[str, Any] | None) -> dict[str, Any]:
         "suspension_hours": 12,
         "tp_detection_method": "close_price",
         "realistic_sl_tp_conflict": "sl_wins",
-        "max_paper_trade_holding_hours": 48.0,
+        "max_paper_trade_holding_hours": 24.0,
         "spread_realistic_multiplier": 2.0,
     }
     if not isinstance(settings, dict):

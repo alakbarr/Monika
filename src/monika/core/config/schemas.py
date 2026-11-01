@@ -62,7 +62,7 @@ class PaperTradingConfig(SubscriptableConfig):
     suspension_hours: int | None = Field(default=12, ge=1, le=168)
     tp_detection_method: str | None = Field(default="close_price")
     realistic_sl_tp_conflict: str | None = Field(default="sl_wins")
-    max_paper_trade_holding_hours: float | None = Field(default=48.0, ge=1.0)
+    max_paper_trade_holding_hours: float | None = Field(default=24.0, ge=1.0)
     spread_realistic_multiplier: float | None = Field(default=2.0, ge=0.0)
     spread_multipliers: dict[str, float] | None = None
 

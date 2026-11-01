@@ -563,7 +563,7 @@ class PaperTracker:
             )
 
             now = clock.now()
-            MAX_TRADE_AGE_HOURS = float(self.settings.get("paper_trading", {}).get("max_paper_trade_holding_hours", 48))
+            MAX_TRADE_AGE_HOURS = float(self.settings.get("paper_trading", {}).get("max_paper_trade_holding_hours", 24))
 
             for trade in open_trades:
                 result = None

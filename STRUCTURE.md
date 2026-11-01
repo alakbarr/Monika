@@ -2244,6 +2244,7 @@ Monika/
 │   │   ├── test_arbitrator_borderline_guard.py
 │   │   ├── test_audit_sota_enhancements.py
 │   │   ├── test_bracket_adoption_submission.py
+│   │   ├── test_calculators_and_stage2_bundler_fixes.py
 │   │   ├── test_candidate_lessons_shadow_validation.py
 │   │   ├── test_cb_differ_wiring.py
 │   │   ├── test_central_bank_rates.py
@@ -2344,11 +2345,13 @@ Monika/
 │   │   ├── test_skill_crystallizer_curation.py
 │   │   ├── test_skill_evolution.py
 │   │   ├── test_sota_harness_integration.py
+│   │   ├── test_stage1_and_debate_pipeline_fixes.py
 │   │   ├── test_stage1_priced_in.py
 │   │   ├── test_stage2_bundle_truncation.py
 │   │   ├── test_stage2_prefetcher.py
 │   │   ├── test_stage2_react_deadlock_prevention.py
 │   │   ├── test_stage2_structural_fixes.py
+│   │   ├── test_stage2_submission_and_verifiers_fixes.py
 │   │   ├── test_stall_guard.py
 │   │   ├── test_streaming.py
 │   │   ├── test_structured_output_degradation.py
@@ -3176,4 +3179,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 274 | **Total Tracked Files**: 2872
+**Total Tracked Directories**: 274 | **Total Tracked Files**: 2875

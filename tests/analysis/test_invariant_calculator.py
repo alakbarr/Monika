@@ -178,3 +178,42 @@ def test_real_smc_order_blocks_and_fvg_extraction():
     assert short_b["entry_type"] == "limit"
     assert long_b["rr_ratio"] >= 1.50
     assert short_b["rr_ratio"] >= 1.50
+
+
+def test_impulse_breakout_market_entry():
+    """Verify that impulse breakout regimes trigger market entries instead of unfilled limit orders."""
+    from monika.application.analysis.calculators.invariant_calculator import generate_concrete_bracket_options
+
+    # 1. Bullish impulse
+    bull_brackets = generate_concrete_bracket_options(
+        symbol="EURUSD",
+        current_price=1.10000,
+        atr=0.00200,
+        adr_5d=0.00800,
+        regime_classification="BULLISH_IMPULSE_BREAKOUT",
+        h4_impulse_atr=1.45,
+    )
+    long_b = bull_brackets["long_option_a"]
+    assert long_b["entry"] == 1.10000
+    assert long_b["entry_type"] == "market"
+    assert "impulse breakout market entry" in long_b["description"].lower()
+    assert long_b["rr_ratio"] >= 1.50
+    assert long_b["stop_loss"] < 1.10000
+    assert long_b["take_profit"] > 1.10000
+
+    # 2. Bearish impulse
+    bear_brackets = generate_concrete_bracket_options(
+        symbol="EURUSD",
+        current_price=1.10000,
+        atr=0.00200,
+        adr_5d=0.00800,
+        regime_classification="BEARISH_IMPULSE_BREAKOUT",
+        h4_impulse_atr=-1.60,
+    )
+    short_b = bear_brackets["short_option_b"]
+    assert short_b["entry"] == 1.10000
+    assert short_b["entry_type"] == "market"
+    assert "impulse breakout market entry" in short_b["description"].lower()
+    assert short_b["rr_ratio"] >= 1.50
+    assert short_b["stop_loss"] > 1.10000
+    assert short_b["take_profit"] < 1.10000

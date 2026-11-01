@@ -125,6 +125,8 @@ def compute_trade_invariants(
     max_adr_sl_pct: float = 0.35,
     tp_adr_min_pct: float = 0.50,
     tp_adr_max_pct: float = 0.80,
+    regime_classification: Optional[str] = None,
+    h4_impulse_atr: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Computes strict deterministic invariants for BUY and SELL scenarios.
@@ -271,6 +273,8 @@ def compute_trade_invariants(
         smc_zones=smc_zones,
         sr_zones=sr_zones,
         target_rr=max(1.55, min_rr),
+        regime_classification=regime_classification,
+        h4_impulse_atr=h4_impulse_atr,
     )
 
     long_opt = bracket_options.get("long_option_a", {})
@@ -328,11 +332,13 @@ def generate_concrete_bracket_options(
     sr_zones: Optional[Any] = None,
     target_rr: float = 1.80,
     noise_buffer_atr: float = 1.0,
+    regime_classification: Optional[str] = None,
+    h4_impulse_atr: Optional[float] = None,
 ) -> Dict[str, Any]:
     """Generates concrete, mathematically verified SL/TP bracket options.
 
     Eliminates mental arithmetic by pre-computing exact levels with guaranteed
-    R:R and noise floor protection.
+    R:R and noise floor protection. Supports market breakout execution on active impulse.
     """
     prec = extract_price_precision(symbol)
     curr_px = float(current_price) if current_price else 0.0
@@ -340,7 +346,15 @@ def generate_concrete_bracket_options(
     adr_val = float(adr_5d) if adr_5d is not None and float(adr_5d) > 0 else (2.0 * atr_val)
     eff_min_rr = max(1.50, float(target_rr or 1.50))
 
-    # 1. Long Option A (Demand POI)
+    reg_str = str(regime_classification or "").upper()
+    is_bullish_impulse = ("BULLISH_IMPULSE" in reg_str) or (
+        h4_impulse_atr is not None and float(h4_impulse_atr) >= 1.25
+    )
+    is_bearish_impulse = ("BEARISH_IMPULSE" in reg_str) or (
+        h4_impulse_atr is not None and float(h4_impulse_atr) <= -1.25
+    )
+
+    # 1. Long Option A (Demand POI or Breakout Entry)
     zone_dicts = _iter_smc_zone_dicts(smc_zones)
     demand_prices: List[float] = []
     supply_prices: List[float] = []
@@ -355,7 +369,9 @@ def generate_concrete_bracket_options(
     demand_prices = [p for p in demand_prices if (curr_px - 0.75 * atr_val) <= p <= curr_px]
     supply_prices = [p for p in supply_prices if curr_px <= p <= (curr_px + 0.75 * atr_val)]
 
-    if demand_prices:
+    if is_bullish_impulse:
+        raw_long_entry = curr_px
+    elif demand_prices:
         raw_long_entry = min(demand_prices, key=lambda px: abs(px - curr_px))
     else:
         raw_long_entry = curr_px
@@ -383,10 +399,12 @@ def generate_concrete_bracket_options(
         if harmonized_tp_max > 0 and (eff_long_rr * long_risk) > harmonized_tp_max * 1.02:
             eff_long_rr = max(1.50, round(harmonized_tp_max / long_risk, 2))
     long_tp = round(long_entry + (eff_long_rr * long_risk), prec)
-    long_entry_type = "market" if abs(long_entry - curr_px) <= 0.05 * atr_val else "limit"
+    long_entry_type = "market" if (is_bullish_impulse or abs(long_entry - curr_px) <= 0.05 * atr_val) else "limit"
 
-    # 2. Short Option B (Supply POI)
-    if supply_prices:
+    # 2. Short Option B (Supply POI or Breakout Entry)
+    if is_bearish_impulse:
+        raw_short_entry = curr_px
+    elif supply_prices:
         raw_short_entry = min(supply_prices, key=lambda px: abs(px - curr_px))
     else:
         raw_short_entry = curr_px
@@ -409,7 +427,18 @@ def generate_concrete_bracket_options(
     short_tp = round(short_entry - (eff_short_rr * short_risk), prec)
     if short_tp <= 0.0:
         short_tp = round(short_entry * 0.5, prec)
-    short_entry_type = "market" if abs(short_entry - curr_px) <= 0.05 * atr_val else "limit"
+    short_entry_type = "market" if (is_bearish_impulse or abs(short_entry - curr_px) <= 0.05 * atr_val) else "limit"
+
+    long_desc = (
+        f"Bullish impulse breakout market entry ({float(h4_impulse_atr or 0.0):+.2f}x ATR impulse) with {eff_long_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer"
+        if is_bullish_impulse
+        else f"Demand POI {long_entry_type} entry with {eff_long_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer"
+    )
+    short_desc = (
+        f"Bearish impulse breakout market entry ({float(h4_impulse_atr or 0.0):+.2f}x ATR impulse) with {eff_short_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer"
+        if is_bearish_impulse
+        else f"Supply POI {short_entry_type} entry with {eff_short_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer"
+    )
 
     return {
         "long_option_a": {
@@ -421,7 +450,7 @@ def generate_concrete_bracket_options(
             "take_profit": long_tp,
             "rr_ratio": eff_long_rr,
             "sl_distance_atr": round(long_risk / max(1e-7, atr_val), 2),
-            "description": f"Demand POI {long_entry_type} entry with {eff_long_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer",
+            "description": long_desc,
         },
         "short_option_b": {
             "name": "SHORT_OPTION_B",
@@ -432,7 +461,7 @@ def generate_concrete_bracket_options(
             "take_profit": short_tp,
             "rr_ratio": eff_short_rr,
             "sl_distance_atr": round(short_risk / max(1e-7, atr_val), 2),
-            "description": f"Supply POI {short_entry_type} entry with {eff_short_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer",
+            "description": short_desc,
         },
     }
 
