@@ -54,7 +54,7 @@ async def test_investment_judge_contains_dual_engine_and_3zone_rules():
     prompt_sent = mock_client.generate_content.call_args.kwargs.get("user_message", "")
     assert "DEEP DISCOUNT (dealing range pos <= 0.35)" in prompt_sent
     assert "DEEP PREMIUM (dealing range pos >= 0.65)" in prompt_sent
-    assert "EQUILIBRIUM DEAD ZONE (0.35 < pos < 0.65)" in prompt_sent
+    assert "EQUILIBRIUM REGIME (0.35 < pos < 0.65)" in prompt_sent
     assert "Engine 1 (Macro-Aligned/Neutral)" in prompt_sent
     assert "Engine 2 (Contra-Macro)" in prompt_sent
     assert "R:R >= 1.75" in prompt_sent
@@ -218,8 +218,8 @@ async def test_context_builder_spatial_anchor_equilibrium_dead_zone():
 
     anchor_block = next((b[1] for b in blocks if b[0] == "TARGET ASSET MACRO ANCHOR"), None)
     assert anchor_block is not None
-    assert "Range Position Ratio: 0.50 (EQUILIBRIUM CHOP)" in anchor_block
-    assert "Spatial Status: EQUILIBRIUM DEAD ZONE (Market execution prohibited, stance WAIT)" in anchor_block
+    assert "Range Position Ratio: 0.50 (EQUILIBRIUM REGIME)" in anchor_block
+    assert "Spatial Status: EQUILIBRIUM REGIME" in anchor_block
 
 
 @pytest.mark.asyncio

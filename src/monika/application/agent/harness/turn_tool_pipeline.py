@@ -473,7 +473,7 @@ class TurnToolPipeline:
                 # Risk Verification Evidence Check for BUY/SELL
                 if decision in ("BUY", "SELL", "LONG", "SHORT"):
                     has_evidence = harness.verification_ledger.has_passed_evidence(target_sym)
-                    has_inline_sl = c_input.get("stop_loss") is not None
+                    has_inline_sl = c_input.get("stop_loss") is not None or bool(c_input.get("adopted_bracket"))
                     if not has_evidence and not has_inline_sl:
                         logger.warning(
                             f"[{stage_name}][AgentHarness] submit_asset_analysis ({decision} {target_sym}) "
@@ -779,8 +779,45 @@ class TurnToolPipeline:
                 else:
                     tracking.unpersisted_validation_failures.discard(c_name)
                     tracking.persisted_mandatory_tools.add(c_name)
+                    if c_name == "submit_asset_analysis" and not is_tool_err:
+                        sub_dec = str(
+                            (res_obj.get("decision") if isinstance(res_obj, dict) else None)
+                            or c_input.get("decision")
+                            or ""
+                        ).lower()
+                        sub_sym = str(
+                            (res_obj.get("symbol") if isinstance(res_obj, dict) else None)
+                            or c_input.get("symbol")
+                            or stage_symbol
+                            or ""
+                        )
+                        if sub_dec in ("buy", "sell", "long", "short") and sub_sym:
+                            v_ledger = getattr(harness, "verification_ledger", None)
+                            if v_ledger is not None and not v_ledger.has_passed_evidence(sub_sym):
+                                v_ledger.record_tool_execution(
+                                    "calculate_position_size",
+                                    {
+                                        "symbol": sub_sym,
+                                        "entry_price": c_input.get("entry_price")
+                                        or (
+                                            c_input.get("entry_condition", {}).get("price")
+                                            if isinstance(c_input.get("entry_condition"), dict)
+                                            else None
+                                        ),
+                                        "stop_loss": c_input.get("stop_loss"),
+                                        "take_profit": c_input.get("take_profit"),
+                                        "lot_size": c_input.get("lot_size") or 0.01,
+                                    },
+                                    {"is_valid": True, "recommended_lots": c_input.get("lot_size") or 0.01},
+                                )
 
-            if c_name in ("propose_action", "propose_trade"):
+            if c_name in ("propose_action", "propose_trade") or (
+                c_name == "submit_asset_analysis"
+                and (
+                    str(c_input.get("decision") or "").lower() in ("buy", "sell", "long", "short")
+                    or (isinstance(res_obj, dict) and str(res_obj.get("decision") or "").lower() in ("buy", "sell"))
+                )
+            ):
                 turn_state.stop_gate_context.proposed_actions.append(c_input)
                 turn_state.stop_gate_context.has_unregistered_trade_proposals = False
 

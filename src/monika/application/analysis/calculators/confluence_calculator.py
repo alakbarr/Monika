@@ -186,6 +186,7 @@ async def calculate_confluence(
     settings: Optional[dict] = None,
     as_of: Optional[datetime] = None,
     confluence_factors: Optional[list[str]] = None,
+    specialist_biases: Optional[dict] = None,
 ) -> dict:
     """
     Menghitung confluence score secara deterministik.
@@ -919,7 +920,7 @@ async def calculate_confluence(
             if concordant_edges >= 1:
                 score += 1
 
-        # 7. User Chart Workspace Indicator Alignment (±2 pts max, clamped to [0, 14])
+        # 7. User Chart Workspace Indicator Alignment (±2 pts max)
         if ws_eval_result:
             try:
                 overall = ws_eval_result.get("overall", {})
@@ -948,7 +949,56 @@ async def calculate_confluence(
             except Exception as e:
                 logger.debug(f"Workspace alignment evaluation error: {e}")
 
-        score = min(max(score, 0), 14)
+        # 8. Specialist Council Synergy & Alignment (+2 pts for uncrowded_institutional_synergy / unanimous)
+        raw_spec = specialist_biases or (settings.get("specialist_biases") if isinstance(settings, dict) else None)
+        if isinstance(raw_spec, dict) and raw_spec:
+            from monika.application.analysis.stages.per_asset.specialist_council import (
+                compute_specialist_consensus_summary,
+            )
+
+            if any(k in raw_spec for k in ("technical", "macro", "sentiment", "biases")):
+                spec_summary = compute_specialist_consensus_summary(raw_spec)
+            else:
+                spec_summary = raw_spec
+
+            synergy_state = str(spec_summary.get("synergy_state", "")).strip()
+            consensus_mode = str(spec_summary.get("consensus", "")).strip()
+            dom_bias = str(spec_summary.get("dominant_bias", "")).strip().lower()
+            expected_spec_bias = "bullish" if test_direction == "buy" else "bearish"
+
+            if dom_bias in ("", expected_spec_bias):
+                if synergy_state == "uncrowded_institutional_synergy":
+                    score += 2
+                    factors.append(
+                        "Specialist Council: Uncrowded Institutional Synergy (Tech == Macro != Sentiment, +2)"
+                    )
+                elif consensus_mode == "unanimous_agreement" or synergy_state == "crowded_unanimous_exhaustion":
+                    dr_pos = raw_spec.get(
+                        "dealing_range_pos", settings.get("dealing_range_pos") if isinstance(settings, dict) else None
+                    )
+                    is_late_exhaustion = (
+                        isinstance(dr_pos, (int, float))
+                        and not isinstance(dr_pos, bool)
+                        and (
+                            (test_direction == "buy" and float(dr_pos) > 0.65)
+                            or (test_direction == "sell" and float(dr_pos) < 0.35)
+                        )
+                    )
+                    if is_late_exhaustion:
+                        factors.append("Specialist Council: Crowded 3/3 Late-Stage Caution (+0)")
+                    else:
+                        score += 2
+                        factors.append("Specialist Council: Unanimous Agreement (+2)")
+                elif consensus_mode == "majority_agreement":
+                    score += 1
+                    factors.append("Specialist Council: Majority Agreement (+1)")
+        elif confluence_factors and "uncrowded_institutional_synergy" in [
+            str(f).strip().lower() for f in confluence_factors
+        ]:
+            score += 2
+            factors.append("Specialist Council: Uncrowded Institutional Synergy (Tech == Macro != Sentiment, +2)")
+
+        score = min(max(score, 0), 20)
         return score, issues, factors
 
     if direction:
@@ -1000,6 +1050,7 @@ class ConfluenceCalculator:
         tp: Optional[float] = None,
         as_of: Optional[datetime] = None,
         confluence_factors: Optional[list[str]] = None,
+        specialist_biases: Optional[dict] = None,
     ) -> dict:
         return await calculate_confluence(
             session=self.session,
@@ -1011,4 +1062,5 @@ class ConfluenceCalculator:
             settings=self.settings,
             as_of=as_of,
             confluence_factors=confluence_factors,
+            specialist_biases=specialist_biases,
         )

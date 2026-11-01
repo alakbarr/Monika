@@ -27,13 +27,99 @@ def extract_price_precision(symbol: str) -> int:
     return 5
 
 
+def _iter_smc_zone_dicts(smc_zones: Any) -> List[Dict[str, Any]]:
+    """Normalizes SMC zones input (list of dicts or dict with order_blocks/fair_value_gaps) into active zone dicts."""
+    raw_list: List[Any] = []
+    if isinstance(smc_zones, list):
+        raw_list = smc_zones
+    elif isinstance(smc_zones, dict):
+        for key in ("zones", "order_blocks", "fair_value_gaps", "fvg_zones"):
+            val = smc_zones.get(key)
+            if isinstance(val, list):
+                raw_list.extend(val)
+
+    active: List[Dict[str, Any]] = []
+    for item in raw_list:
+        if not isinstance(item, dict):
+            continue
+        if item.get("mitigated") is True or item.get("filled") is True:
+            continue
+        active.append(item)
+    return active
+
+
+def _extract_zone_direction_and_price(z: Dict[str, Any]) -> tuple[str, Optional[float], str]:
+    """Extracts ('bull'|'bear'|'neutral', anchor_price, zone_label) from an SMC zone dict."""
+    dir_str = str(z.get("direction", "") or "").lower()
+    type_str = str(z.get("type", "") or z.get("zone_type", "") or "").lower()
+
+    is_bull = ("bull" in dir_str) or any(
+        k in type_str for k in ("demand", "fvg_bull", "ob_bull", "discount", "sweep_low", "bull")
+    )
+    is_bear = ("bear" in dir_str) or any(
+        k in type_str for k in ("supply", "fvg_bear", "ob_bear", "premium", "sweep_high", "bear")
+    )
+
+    if is_bull:
+        raw_px = (
+            z.get("price")
+            or z.get("level")
+            or z.get("gap_high")
+            or z.get("price_high")
+            or z.get("low")
+            or z.get("gap_low")
+            or z.get("price_low")
+        )
+    elif is_bear:
+        raw_px = (
+            z.get("price")
+            or z.get("level")
+            or z.get("gap_low")
+            or z.get("price_low")
+            or z.get("high")
+            or z.get("gap_high")
+            or z.get("price_high")
+        )
+    else:
+        raw_px = (
+            z.get("price")
+            or z.get("level")
+            or z.get("gap_high")
+            or z.get("price_high")
+            or z.get("low")
+            or z.get("high")
+            or z.get("gap_low")
+            or z.get("price_low")
+        )
+
+    px_val: Optional[float] = None
+    if raw_px is not None:
+        try:
+            px_val = float(raw_px)
+        except ValueError, TypeError:
+            px_val = None
+
+    explicit_type = z.get("type")
+    if explicit_type and str(explicit_type).strip().lower() not in ("bullish", "bearish"):
+        z_label = str(explicit_type)
+    elif "gap_low" in z or "gap_high" in z:
+        z_label = "FVG_BULL" if is_bull else ("FVG_BEAR" if is_bear else "FVG")
+    elif "price_low" in z or "price_high" in z:
+        z_label = "OB_BULL" if is_bull else ("OB_BEAR" if is_bear else "ORDER_BLOCK")
+    else:
+        z_label = str(explicit_type or "SMC_ZONE")
+
+    polarity = "bull" if is_bull else ("bear" if is_bear else "neutral")
+    return polarity, px_val, z_label
+
+
 def compute_trade_invariants(
     symbol: str,
     current_price: float,
     atr: float,
     adr_5d: float,
-    smc_zones: Optional[List[Dict[str, Any]]] = None,
-    sr_zones: Optional[List[Any]] = None,
+    smc_zones: Optional[Any] = None,
+    sr_zones: Optional[Any] = None,
     timesfm_envelope: Optional[Dict[str, Any]] = None,
     min_rr: float = 1.5,
     max_adr_sl_pct: float = 0.35,
@@ -116,50 +202,50 @@ def compute_trade_invariants(
     max_search_dist = 2.0 * atr_val
 
     # Parse SMC zones
-    if smc_zones and isinstance(smc_zones, list):
-        for z in smc_zones:
-            if not isinstance(z, dict):
-                continue
-            z_px = z.get("price") or z.get("level") or z.get("low") or z.get("high")
-            if z_px is not None:
-                try:
-                    px_f = float(z_px)
-                    dist = abs(px_f - curr_px)
-                    if dist <= max_search_dist:
-                        anchors.append(
-                            {
-                                "type": z.get("type", "SMC_ZONE"),
-                                "price": round(px_f, prec),
-                                "distance_atr": round(dist / atr_val, 2),
-                                "basis": f"SMC {z.get('type', 'Zone')} @ {px_f:.{prec}f}",
-                            }
-                        )
-                except ValueError, TypeError:
-                    continue
+    for z in _iter_smc_zone_dicts(smc_zones):
+        _, px_f, z_label = _extract_zone_direction_and_price(z)
+        if px_f is not None:
+            dist = abs(px_f - curr_px)
+            if dist <= max_search_dist:
+                anchors.append(
+                    {
+                        "type": z_label,
+                        "price": round(px_f, prec),
+                        "distance_atr": round(dist / atr_val, 2),
+                        "basis": f"SMC {z_label} @ {px_f:.{prec}f}",
+                    }
+                )
 
     # Parse S/R zones
-    if sr_zones and isinstance(sr_zones, list):
-        for r in sr_zones:
-            px_f = None
-            if isinstance(r, dict):
-                px_f = r.get("price") or r.get("level")
-            elif isinstance(r, (int, float)):
-                px_f = float(r)
-            if px_f is not None:
-                try:
-                    px_f = float(px_f)
-                    dist = abs(px_f - curr_px)
-                    if dist <= max_search_dist:
-                        anchors.append(
-                            {
-                                "type": "SR_LEVEL",
-                                "price": round(px_f, prec),
-                                "distance_atr": round(dist / atr_val, 2),
-                                "basis": f"S/R Level @ {px_f:.{prec}f}",
-                            }
-                        )
-                except ValueError, TypeError:
-                    continue
+    sr_list: List[Any] = []
+    if isinstance(sr_zones, list):
+        sr_list = sr_zones
+    elif isinstance(sr_zones, dict):
+        for k in ("sr_zones", "levels", "zones"):
+            if isinstance(sr_zones.get(k), list):
+                sr_list.extend(sr_zones[k])
+
+    for r in sr_list:
+        px_f = None
+        if isinstance(r, dict):
+            px_f = r.get("price") or r.get("level") or r.get("price_low") or r.get("price_high")
+        elif isinstance(r, (int, float)):
+            px_f = float(r)
+        if px_f is not None:
+            try:
+                px_f = float(px_f)
+                dist = abs(px_f - curr_px)
+                if dist <= max_search_dist:
+                    anchors.append(
+                        {
+                            "type": "SR_LEVEL",
+                            "price": round(px_f, prec),
+                            "distance_atr": round(dist / atr_val, 2),
+                            "basis": f"S/R Level @ {px_f:.{prec}f}",
+                        }
+                    )
+            except ValueError, TypeError:
+                continue
 
     # Sort anchors by distance to current price
     anchors.sort(key=lambda a: a["distance_atr"])
@@ -208,8 +294,8 @@ def generate_concrete_bracket_options(
     current_price: float,
     atr: float,
     adr_5d: float,
-    smc_zones: Optional[List[Dict[str, Any]]] = None,
-    sr_zones: Optional[List[Any]] = None,
+    smc_zones: Optional[Any] = None,
+    sr_zones: Optional[Any] = None,
     target_rr: float = 1.80,
     noise_buffer_atr: float = 1.10,
 ) -> Dict[str, Any]:
@@ -223,29 +309,32 @@ def generate_concrete_bracket_options(
     atr_val = float(atr) if atr and atr > 0 else (curr_px * 0.005 if curr_px > 0 else 1.0)
 
     # 1. Long Option A (Demand POI)
-    demand_poi = None
-    if smc_zones and isinstance(smc_zones, list):
-        demand_candidates = [
-            z
-            for z in smc_zones
-            if isinstance(z, dict)
-            and any(
-                k in str(z.get("type", "")).lower() for k in ("demand", "fvg_bull", "ob_bull", "discount", "sweep_low")
-            )
-        ]
-        if demand_candidates:
-            demand_poi = min(
-                demand_candidates,
-                key=lambda z: abs(float(z.get("price") or z.get("level") or z.get("low") or curr_px) - curr_px),
-            )
+    zone_dicts = _iter_smc_zone_dicts(smc_zones)
+    demand_prices: List[float] = []
+    supply_prices: List[float] = []
+    for z in zone_dicts:
+        polarity, px_val, _ = _extract_zone_direction_and_price(z)
+        if px_val is not None and px_val > 0:
+            if polarity == "bull":
+                demand_prices.append(px_val)
+            elif polarity == "bear":
+                supply_prices.append(px_val)
 
-    if demand_poi:
-        raw_long_entry = float(demand_poi.get("price") or demand_poi.get("level") or (curr_px - 0.2 * atr_val))
+    if demand_prices:
+        raw_long_entry = min(demand_prices, key=lambda px: abs(px - curr_px))
     else:
         raw_long_entry = curr_px - (0.2 * atr_val)
 
     long_entry = round(raw_long_entry, prec)
-    long_sl_dist = max(noise_buffer_atr * atr_val, 0.35 * adr_5d if adr_5d > 0 else 1.2 * atr_val)
+    base_sl_cap = min(0.35 * adr_5d, 1.35 * atr_val) if adr_5d > 0 else 1.2 * atr_val
+    if adr_5d > 0:
+        harmonized_sl_max = max(0.35 * adr_5d, 1.25 * atr_val)
+        harmonized_tp_max = max(0.80 * adr_5d, 1.65 * harmonized_sl_max)
+        base_sl_cap = min(base_sl_cap, harmonized_tp_max / max(target_rr, 1.50))
+    else:
+        harmonized_tp_max = 0.0
+
+    long_sl_dist = max(noise_buffer_atr * atr_val, base_sl_cap)
     long_sl = round(long_entry - long_sl_dist, prec)
     if long_sl <= 0.0:
         long_sl = round(long_entry * 0.95, prec)
@@ -253,61 +342,57 @@ def generate_concrete_bracket_options(
     if long_risk <= 0.0:
         long_risk = round(atr_val, prec)
         long_sl = round(long_entry - long_risk, prec)
-    long_tp = round(long_entry + (target_rr * long_risk), prec)
+
+    eff_long_rr = target_rr
+    if harmonized_tp_max > 0 and (eff_long_rr * long_risk) > harmonized_tp_max * 1.02:
+        eff_long_rr = max(1.50, round(harmonized_tp_max / long_risk, 2))
+    long_tp = round(long_entry + (eff_long_rr * long_risk), prec)
+    long_entry_type = "market" if abs(long_entry - curr_px) <= 0.05 * atr_val else "limit"
 
     # 2. Short Option B (Supply POI)
-    supply_poi = None
-    if smc_zones and isinstance(smc_zones, list):
-        supply_candidates = [
-            z
-            for z in smc_zones
-            if isinstance(z, dict)
-            and any(
-                k in str(z.get("type", "")).lower() for k in ("supply", "fvg_bear", "ob_bear", "premium", "sweep_high")
-            )
-        ]
-        if supply_candidates:
-            supply_poi = min(
-                supply_candidates,
-                key=lambda z: abs(float(z.get("price") or z.get("level") or z.get("high") or curr_px) - curr_px),
-            )
-
-    if supply_poi:
-        raw_short_entry = float(supply_poi.get("price") or supply_poi.get("level") or (curr_px + 0.2 * atr_val))
+    if supply_prices:
+        raw_short_entry = min(supply_prices, key=lambda px: abs(px - curr_px))
     else:
         raw_short_entry = curr_px + (0.2 * atr_val)
 
     short_entry = round(raw_short_entry, prec)
-    short_sl_dist = max(noise_buffer_atr * atr_val, 0.35 * adr_5d if adr_5d > 0 else 1.2 * atr_val)
+    short_sl_dist = max(noise_buffer_atr * atr_val, base_sl_cap)
     short_sl = round(short_entry + short_sl_dist, prec)
     short_risk = abs(short_sl - short_entry)
     if short_risk <= 0.0:
         short_risk = round(atr_val, prec)
         short_sl = round(short_entry + short_risk, prec)
-    short_tp = round(short_entry - (target_rr * short_risk), prec)
+
+    eff_short_rr = target_rr
+    if harmonized_tp_max > 0 and (eff_short_rr * short_risk) > harmonized_tp_max * 1.02:
+        eff_short_rr = max(1.50, round(harmonized_tp_max / short_risk, 2))
+    short_tp = round(short_entry - (eff_short_rr * short_risk), prec)
     if short_tp <= 0.0:
         short_tp = round(short_entry * 0.5, prec)
+    short_entry_type = "market" if abs(short_entry - curr_px) <= 0.05 * atr_val else "limit"
 
     return {
         "long_option_a": {
             "name": "LONG_OPTION_A",
             "direction": "buy",
             "entry": long_entry,
+            "entry_type": long_entry_type,
             "stop_loss": long_sl,
             "take_profit": long_tp,
-            "rr_ratio": target_rr,
+            "rr_ratio": eff_long_rr,
             "sl_distance_atr": round(long_risk / max(1e-7, atr_val), 2),
-            "description": f"Demand POI limit entry with {target_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer",
+            "description": f"Demand POI {long_entry_type} entry with {eff_long_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer",
         },
         "short_option_b": {
             "name": "SHORT_OPTION_B",
             "direction": "sell",
             "entry": short_entry,
+            "entry_type": short_entry_type,
             "stop_loss": short_sl,
             "take_profit": short_tp,
-            "rr_ratio": target_rr,
+            "rr_ratio": eff_short_rr,
             "sl_distance_atr": round(short_risk / max(1e-7, atr_val), 2),
-            "description": f"Supply POI limit entry with {target_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer",
+            "description": f"Supply POI {short_entry_type} entry with {eff_short_rr:.2f} R:R and >= {noise_buffer_atr:.1f}x ATR noise buffer",
         },
     }
 

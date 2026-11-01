@@ -2,7 +2,10 @@ from tests.conftest import create_mock_async_session
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone
-from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
+from monika.application.analysis.calculators.daily_range_calculator import (
+    compute_daily_range_context,
+    get_optimal_intraday_levels,
+)
 
 
 class DummyRow:
@@ -248,3 +251,24 @@ async def test_compute_daily_range_context_error_and_room_branches():
         assert res_avoid["volatility_regime"] == "contracting"
         assert res_avoid["session_recommendation"] == "avoid_new_entry_low_room"
         assert res_avoid["entry_allowed"] is False
+
+
+@pytest.mark.asyncio
+async def test_get_optimal_intraday_levels_atr_h4_zero_deadlock():
+    now = datetime(2026, 10, 7, 14, 0, tzinfo=timezone.utc)
+    today_str = now.isoformat()
+    # Small ADR (0.0040) so 0.35 * ADR = 0.0014, while atr_h4 = 0.0020 (1.25 * atr_h4 = 0.0025)
+    rows = [
+        DummyRow(today_str, 1.1000, 1.1010, 1.1000, 1.1005),
+        DummyRow("2026-10-06T00:00:00", 1.1000, 1.1040, 1.1000, 1.1020),
+        DummyRow("2026-10-05T00:00:00", 1.1000, 1.1040, 1.1000, 1.1020),
+        DummyRow("2026-10-04T00:00:00", 1.1000, 1.1040, 1.1000, 1.1020),
+    ]
+    mock_session = create_mock_async_session()
+    mock_res = MagicMock()
+    mock_res.scalars().all.return_value = rows
+    mock_session.execute.return_value = mock_res
+
+    res = await get_optimal_intraday_levels(mock_session, "EURUSD", {}, as_of=now, atr_h4=0.0020)
+    assert res["target_sl_max_distance"] >= round(1.25 * 0.0020, 6)
+    assert res["target_tp_max_distance"] >= round(1.65 * res["target_sl_max_distance"], 6)

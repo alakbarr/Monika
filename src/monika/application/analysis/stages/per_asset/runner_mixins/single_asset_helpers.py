@@ -62,29 +62,48 @@ async def compute_prompt_invariants(
                 raw_bundle_data.get("get_atr_H4") or raw_bundle_data.get("get_atr_D1") or raw_bundle_data.get("get_atr")
             )
             atr_f = atr_raw.get("atr") if isinstance(atr_raw, dict) else atr_raw
-            adr_raw = raw_bundle_data.get("get_daily_range_context")
-            adr_f = adr_raw.get("adr_5d") if isinstance(adr_raw, dict) else None
-            smc_raw = raw_bundle_data.get("get_smc_zones_H4") or raw_bundle_data.get("get_smc_zones")
-            smc_f = (
-                smc_raw if isinstance(smc_raw, list) else (smc_raw.get("zones") if isinstance(smc_raw, dict) else [])
+            adr_raw = raw_bundle_data.get("daily_range_context") or raw_bundle_data.get("get_daily_range_context")
+            adr_f = (
+                (adr_raw.get("adr_5d") or adr_raw.get("adr") or adr_raw.get("effective_range"))
+                if isinstance(adr_raw, dict)
+                else None
             )
+            smc_raw = raw_bundle_data.get("get_smc_zones_H4") or raw_bundle_data.get("get_smc_zones")
+            if isinstance(smc_raw, list):
+                smc_f = smc_raw
+            elif isinstance(smc_raw, dict):
+                smc_f = (
+                    list(smc_raw.get("zones") or [])
+                    + list(smc_raw.get("order_blocks") or [])
+                    + list(smc_raw.get("fair_value_gaps") or smc_raw.get("fvg_zones") or [])
+                )
+            else:
+                smc_f = []
             sr_raw = (
                 raw_bundle_data.get("get_fibonacci_levels_H4")
                 or raw_bundle_data.get("get_fibonacci_levels")
                 or raw_bundle_data.get("get_optimal_intraday_levels")
             )
-            sr_f = sr_raw if isinstance(sr_raw, list) else []
+            sr_f = (
+                list(sr_raw)
+                if isinstance(sr_raw, list)
+                else (list(sr_raw.get("levels") or sr_raw.get("sr_zones") or []) if isinstance(sr_raw, dict) else [])
+            )
+            if isinstance(smc_raw, dict) and isinstance(smc_raw.get("sr_zones"), list):
+                sr_f.extend(smc_raw["sr_zones"])
 
             if curr_px and atr_f:
                 invariants_dict = compute_trade_invariants(
                     symbol=symbol,
                     current_price=float(curr_px),
                     atr=float(atr_f),
-                    adr_5d=float(adr_f) if adr_f else float(atr_f) * 2.5,
+                    adr_5d=float(adr_f) if adr_f else float(atr_f) * 2.2,
                     smc_zones=smc_f,
                     sr_zones=sr_f,
                     min_rr=float(settings.get("trading", {}).get("risk", {}).get("min_rr_ratio", 1.5)),
                 )
+                raw_bundle_data["precomputed_invariants"] = invariants_dict
+                raw_bundle_data["bracket_options"] = invariants_dict.get("bracket_options")
 
                 if session:
                     try:
@@ -203,6 +222,9 @@ async def evaluate_debate_candidate_and_levels(
     session: Optional[AsyncSession],
     symbol: str,
     entry_price_val: Optional[float],
+    specialist_biases: Optional[dict[str, str]] = None,
+    precomputed_brackets: Optional[dict[str, Any]] = None,
+    result_dict: Optional[dict[str, Any]] = None,
 ) -> tuple[bool, Optional[float], Optional[float], Optional[int], Any, Optional[float]]:
     """Evaluate candidate_for_debate flag and auto-recover structural SL/TP if missing."""
     decision = getattr(analysis, "decision", "WAIT") if analysis else "WAIT"
@@ -229,7 +251,7 @@ async def evaluate_debate_candidate_and_levels(
 
     # Fetch latest price and ATR as fallback references if needed
     latest_atr: Optional[float] = None
-    if session and (entry_price_val is None or sl_val is None or tp_val is None):
+    if session and (entry_price_val is None or sl_val is None or tp_val is None or not precomputed_brackets):
         try:
             if entry_price_val is None:
                 p_row = (
@@ -260,6 +282,38 @@ async def evaluate_debate_candidate_and_levels(
                 latest_atr = float(raw_atr.get("atr", 0) if isinstance(raw_atr, dict) else raw_atr)
         except Exception:
             pass
+
+    b_opts: Optional[dict[str, Any]] = (
+        dict(precomputed_brackets)
+        if isinstance(precomputed_brackets, dict)
+        and "long_option_a" in precomputed_brackets
+        and "short_option_b" in precomputed_brackets
+        else None
+    )
+    if b_opts is None and entry_price_val is not None and latest_atr is not None and latest_atr > 0:
+        try:
+            from monika.application.analysis.calculators.invariant_calculator import (
+                generate_concrete_bracket_options,
+            )
+
+            b_opts = generate_concrete_bracket_options(
+                symbol=symbol,
+                current_price=entry_price_val,
+                atr=latest_atr,
+                adr_5d=latest_atr * 2.2,
+                target_rr=1.60,
+            )
+        except Exception:
+            b_opts = None
+
+    if b_opts is not None:
+        if isinstance(result_dict, dict):
+            result_dict["bracket_options"] = b_opts
+        if analysis is not None:
+            try:
+                setattr(analysis, "bracket_options", b_opts)
+            except Exception:
+                pass
 
     is_candidate_for_debate = False
     if analysis:
@@ -305,39 +359,52 @@ async def evaluate_debate_candidate_and_levels(
                         if tp_val is None:
                             risk_d = abs(sl_val - ref_px)
                             tp_val = round(ref_px - (1.6 * risk_d), 5)
-                elif ref_px is not None and ref_atr is not None and ref_atr > 0:
-                    from monika.application.analysis.calculators.invariant_calculator import (
-                        generate_concrete_bracket_options,
-                    )
+                elif b_opts is not None or (ref_px is not None and ref_atr is not None and ref_atr > 0):
+                    if b_opts is None and ref_px is not None and ref_atr is not None:
+                        from monika.application.analysis.calculators.invariant_calculator import (
+                            generate_concrete_bracket_options,
+                        )
 
-                    concrete_brackets = generate_concrete_bracket_options(
-                        symbol=symbol,
-                        current_price=ref_px,
-                        atr=ref_atr,
-                        adr_5d=ref_atr * 2.5,
-                        target_rr=1.80,
-                    )
-                    is_bull = any(w in rat for w in ("bull", "long", "discount", "buy"))
-                    is_bear = any(w in rat for w in ("bear", "short", "premium", "sell"))
-                    if is_bull and not is_bear:
-                        opt_a = concrete_brackets["long_option_a"]
+                        b_opts = generate_concrete_bracket_options(
+                            symbol=symbol,
+                            current_price=ref_px,
+                            atr=ref_atr,
+                            adr_5d=ref_atr * 2.2,
+                            target_rr=1.60,
+                        )
+                        if isinstance(result_dict, dict):
+                            result_dict["bracket_options"] = b_opts
+
+                    if b_opts is not None:
+                        is_bull = any(w in rat for w in ("bull", "long", "discount", "buy"))
+                        is_bear = any(w in rat for w in ("bear", "short", "premium", "sell"))
+
+                        spec_bull = 0
+                        spec_bear = 0
+                        if isinstance(specialist_biases, dict):
+                            for role_k, bias_v in specialist_biases.items():
+                                b_str = str(bias_v or "").lower()
+                                weight = 2 if role_k in ("technical", "macro") else 1
+                                if "bull" in b_str or "buy" in b_str:
+                                    spec_bull += weight
+                                elif "bear" in b_str or "sell" in b_str:
+                                    spec_bear += weight
+
+                        inval_dir = str(getattr(analysis, "invalidation_direction", "") or "").lower()
+                        bull_kw_count = sum(rat.count(w) for w in ("bullish", "long", "discount", "buy"))
+                        bear_kw_count = sum(rat.count(w) for w in ("bearish", "short", "premium", "sell"))
+
+                        prefer_bear = (
+                            (is_bear and not is_bull)
+                            or (spec_bear > spec_bull)
+                            or (spec_bear == spec_bull and "above" in inval_dir)
+                            or (spec_bear == spec_bull and "below" not in inval_dir and bear_kw_count > bull_kw_count)
+                        )
+                        chosen_opt = b_opts["short_option_b"] if prefer_bear else b_opts["long_option_a"]
                         if sl_val is None:
-                            sl_val = float(opt_a["stop_loss"])
+                            sl_val = float(chosen_opt["stop_loss"])
                         if tp_val is None:
-                            tp_val = float(opt_a["take_profit"])
-                    elif is_bear and not is_bull:
-                        opt_b = concrete_brackets["short_option_b"]
-                        if sl_val is None:
-                            sl_val = float(opt_b["stop_loss"])
-                        if tp_val is None:
-                            tp_val = float(opt_b["take_profit"])
-                    else:
-                        # Balanced two-sided debate candidate
-                        opt_a = concrete_brackets["long_option_a"]
-                        if sl_val is None:
-                            sl_val = float(opt_a["stop_loss"])
-                        if tp_val is None:
-                            tp_val = float(opt_a["take_profit"])
+                            tp_val = float(chosen_opt["take_profit"])
 
             if sl_val is not None and tp_val is not None and has_structural_setup:
                 is_candidate_for_debate = True

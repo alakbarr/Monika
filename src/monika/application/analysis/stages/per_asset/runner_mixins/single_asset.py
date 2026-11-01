@@ -134,6 +134,25 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         curr_px, atr_f, adr_f = await compute_prompt_invariants(
             self.settings, symbol, raw_bundle_data, initial_context_blocks, session=session
         )
+        precomputed_invariants = (
+            raw_bundle_data.get("precomputed_invariants", {}) if isinstance(raw_bundle_data, dict) else {}
+        )
+        precomputed_bracket_options = (
+            precomputed_invariants.get("bracket_options") if isinstance(precomputed_invariants, dict) else None
+        )
+        try:
+            from monika.application.analysis.tools.executor import ToolExecutor as _BaseToolExecutor
+            from monika.application.analysis.tools.tool_executor import ToolExecutor
+
+            executor = getattr(self, "tool_executor", None)
+            if executor is None:
+                executor = ToolExecutor(session=session, settings=self.settings, symbol=symbol)
+                setattr(self, "tool_executor", executor)
+            setattr(executor, "bracket_options", precomputed_bracket_options)
+            setattr(_BaseToolExecutor, "bracket_options", precomputed_bracket_options)
+            setattr(ToolExecutor, "bracket_options", precomputed_bracket_options)
+        except Exception as te_err:
+            logger.debug(f"[{symbol}] ToolExecutor bracket_options attachment non-fatal: {te_err}")
 
         # TimesFM 3.0 Quantile Skewness Alpha Injection
         try:
@@ -735,7 +754,12 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
             session=session,
             symbol=symbol,
             entry_price_val=entry_price_val,
+            specialist_biases=specialist_biases,
+            precomputed_brackets=precomputed_bracket_options,
+            result_dict=result,
         )
+        if precomputed_bracket_options and "bracket_options" not in result:
+            result["bracket_options"] = precomputed_bracket_options
 
         result.update(
             {

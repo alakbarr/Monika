@@ -844,6 +844,23 @@ class Stage2DataBundler:
             )
             lines.append("")
 
+        raw_atr_h4 = data.get("get_atr_H4") or data.get("get_atr")
+        atr_h4_val: Optional[float] = None
+        if isinstance(raw_atr_h4, dict):
+            cand_atr = raw_atr_h4.get("atr") or raw_atr_h4.get("value")
+            if isinstance(cand_atr, (int, float)) and float(cand_atr) > 0:
+                atr_h4_val = float(cand_atr)
+        elif isinstance(raw_atr_h4, (int, float)) and float(raw_atr_h4) > 0:
+            atr_h4_val = float(raw_atr_h4)
+
+        raw_drc = data.get("get_daily_range_context")
+        if isinstance(raw_drc, dict) and "error" not in raw_drc and atr_h4_val and atr_h4_val > 0:
+            prec = self.get_symbol_precision(symbol)
+            eff_sl_max = max(float(raw_drc.get("target_sl_max_distance", 0.0)), round(1.25 * atr_h4_val, prec))
+            eff_tp_max = max(float(raw_drc.get("target_tp_max_distance", 0.0)), round(1.65 * eff_sl_max, prec))
+            raw_drc["target_sl_max_distance"] = round(eff_sl_max, 6)
+            raw_drc["target_tp_max_distance"] = round(eff_tp_max, 6)
+
         for key, value in data.items():
             if key in ("timesfm_forecast", "user_chart_workspace", "user_chart_vision_image"):
                 continue  # Formatted cleanly in dedicated blocks or multimodal image pipeline
@@ -941,8 +958,25 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
             try:
                 from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
-                adr_ctx = await compute_daily_range_context(self.executor.session, symbol, self.executor.settings)
+                try:
+                    adr_ctx = await compute_daily_range_context(
+                        self.executor.session, symbol, self.executor.settings, atr_h4=atr_h4_val
+                    )
+                except TypeError:
+                    adr_ctx = await compute_daily_range_context(self.executor.session, symbol, self.executor.settings)
                 if "error" not in adr_ctx:
+                    if atr_h4_val and atr_h4_val > 0:
+                        prec = self.get_symbol_precision(symbol)
+                        eff_sl_max = max(
+                            float(adr_ctx.get("target_sl_max_distance", 0.0)),
+                            round(1.25 * atr_h4_val, prec),
+                        )
+                        eff_tp_max = max(
+                            float(adr_ctx.get("target_tp_max_distance", 0.0)),
+                            round(1.65 * eff_sl_max, prec),
+                        )
+                        adr_ctx["target_sl_max_distance"] = round(eff_sl_max, 6)
+                        adr_ctx["target_tp_max_distance"] = round(eff_tp_max, 6)
                     lines.append("── DAILY RANGE CONTEXT (ADR) — MANDATORY INTRADAY TP/SL TARGET BAND ──")
                     lines.append(f"{adr_ctx['lookback_days']}-day ADR: {adr_ctx['adr']:.5f}")
                     lines.append(

@@ -27,9 +27,20 @@ from monika.application.analysis.stages.per_asset.context_builder import (
     SYMBOL_TO_COT,
     _render_specialist_prompt,
 )
+from monika.application.analysis.stages.per_asset.specialist_council import (
+    compute_specialist_consensus_summary,
+)
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
 logger = logging.getLogger("TradingAgent.PerAsset.SpecialistPipeline")
+
+SENTIMENT_CONTRARIAN_DISCIPLINE = (
+    "\n\nMANDATORY CONTRARIAN & RETAIL SENTIMENT CALIBRATION:\n"
+    "- Do NOT take contrarian stances against strong H4/D1 trends unless retail positioning is genuinely extreme "
+    "(>= 72% one-sided long or short) or COT net positioning percentile is extreme (>= 85th or <= 15th).\n"
+    "- When retail positioning is moderate (35%–68% long/short) and COT is not at an extreme percentile, "
+    'report directional_bias as "neutral" rather than fabricating a contrarian fade.'
+)
 
 
 class SpecialistPipelineMixin:
@@ -377,6 +388,8 @@ class SpecialistPipelineMixin:
             sent_prompt = _render_specialist_prompt(
                 SPECIALIST_PROMPTS["sentiment"], symbol, base_currency, quote_currency
             )
+            if "72%" not in sent_prompt:
+                sent_prompt = sent_prompt + SENTIMENT_CONTRARIAN_DISCIPLINE
             macro_prompt = _render_specialist_prompt(SPECIALIST_PROMPTS["macro"], symbol, base_currency, quote_currency)
 
             tech_res, sent_res, macro_res = await asyncio.gather(
@@ -461,6 +474,7 @@ class SpecialistPipelineMixin:
                 except Exception as e:
                     logger.debug(f"Failed to persist specialist disagreement flag: {e}")
 
+            consensus_summary = compute_specialist_consensus_summary(specialist_biases)
             try:
                 from sqlalchemy import select as _sel_biases
 
@@ -470,6 +484,10 @@ class SpecialistPipelineMixin:
                     {
                         "biases": specialist_biases,
                         "confidence": specialist_confidence,
+                        "synergy_state": consensus_summary["synergy_state"],
+                        "consensus": consensus_summary["consensus"],
+                        "unanimous_agreement": consensus_summary["unanimous_agreement"],
+                        "majority_agreement": consensus_summary["majority_agreement"],
                         "trust_weights_used": {k: round(specialist_trust.get(k, 1.0), 3) for k in specialist_biases},
                         "computed_at": _get_clock().now().isoformat(),
                     }
@@ -509,6 +527,7 @@ class SpecialistPipelineMixin:
             extra_context_str += f"[Technical Analyst — Bias: {specialist_biases.get('technical', 'unknown').upper()}]:\n{_distill_specialist_report(tech_res)}\n\n"
             extra_context_str += f"[Sentiment Analyst — Bias: {specialist_biases.get('sentiment', 'unknown').upper()}]:\n{_distill_specialist_report(sent_res)}\n\n"
             extra_context_str += f"[Macro Analyst — Bias: {specialist_biases.get('macro', 'unknown').upper()}]:\n{_distill_specialist_report(macro_res)}\n\n"
+            extra_context_str += f"{consensus_summary['formatted_summary']}\n"
 
             t_weight = specialist_trust.get("technical", 1.0)
             m_weight = specialist_trust.get("macro", 1.0)

@@ -156,3 +156,78 @@ async def test_output_verifier_snapping_precision_and_direction_invariant():
     # Invariant: entry > stop_loss and take_profit > entry
     assert snapped["entry_condition"]["price"] > snapped["stop_loss"]
     assert snapped["take_profit"] > snapped["entry_condition"]["price"]
+
+
+def test_output_verifier_extract_atr_variants():
+    verifier = OutputVerifier()
+    assert verifier._extract_atr({"get_atr_H4": {"atr": 0.0025}}) == pytest.approx(0.0025)
+    assert verifier._extract_atr({"get_atr_H1": 0.0018}) == pytest.approx(0.0018)
+    assert verifier._extract_atr({"ATR_14": {"value": 0.0025}}) == pytest.approx(0.0025)
+    assert verifier._extract_atr(
+        {"get_technical_indicators_H4": {"indicators": {"ATR_14": {"value": 0.0025}}}}
+    ) == pytest.approx(0.0025)
+    assert verifier._extract_atr({"precomputed_invariants": {"atr_14": 0.0031}}) == pytest.approx(0.0031)
+
+
+@pytest.mark.asyncio
+async def test_output_verifier_market_entry_price_at_analysis_fallback():
+    verifier = OutputVerifier()
+    payload = {
+        "decision": "buy",
+        "entry_condition": {"type": "market", "price": None},
+        "price_at_analysis": 1.1000,
+        "stop_loss": 1.0950,
+        "take_profit": 1.1080,
+        "confluence_score": 9,
+        "priced_in_score": 3,
+    }
+    failures = await verifier._run_all_checks(
+        session=None,
+        settings={"trading": {"risk": {"min_rr_ratio": 1.5}}},
+        symbol="EURUSD",
+        output=payload,
+        context_data={"get_smc_zones_H4": {"fair_value_gaps": [{"gap_low": 1.0995, "gap_high": 1.1005}]}},
+    )
+    assert failures == []
+
+
+@pytest.mark.asyncio
+async def test_output_verifier_adr_allows_1_05x_atr_stop(monkeypatch):
+    verifier = OutputVerifier()
+
+    # Suppose ATR = 0.0020 (20 pips), so 1.05x ATR = 0.0021 (21 pips), TP = 1.55x SL = 0.003255.
+    # Suppose raw 35% ADR target_sl_max_distance is tight (0.0015 < 1.0x ATR).
+    async def mock_adr_ctx(session, symbol, settings):
+        return {
+            "adr": 0.0043,
+            "target_sl_min_distance": 0.0008,
+            "target_sl_max_distance": 0.0015,
+            "target_tp_min_distance": 0.0022,
+            "target_tp_max_distance": 0.0034,
+        }
+
+    monkeypatch.setattr(
+        "monika.application.analysis.validators.output_verifier.compute_daily_range_context",
+        mock_adr_ctx,
+    )
+
+    payload = {
+        "decision": "buy",
+        "entry_condition": {"type": "market", "price": None},
+        "price_at_analysis": 1.25000,
+        "stop_loss": 1.24790,  # 0.00210 = 1.05x ATR
+        "take_profit": 1.25326,  # 0.00326 = 1.55x SL
+        "confluence_score": 10,
+        "priced_in_score": 3,
+    }
+    failures = await verifier._run_all_checks(
+        session=MagicMock(),
+        settings={"trading": {"risk": {"min_rr_ratio": 1.5}}},
+        symbol="GBPUSD",
+        output=payload,
+        context_data={
+            "get_atr_H4": {"atr": 0.0020},
+            "get_support_resistance": {"sr_zones": [{"price_low": 1.2498, "price_high": 1.2502}]},
+        },
+    )
+    assert failures == []

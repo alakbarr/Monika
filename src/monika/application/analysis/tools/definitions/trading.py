@@ -20,6 +20,47 @@ _fundamental_brief_schema = get_tool_schema(SubmitFundamentalBriefSchema)
 
 _asset_analysis_schema = get_tool_schema(SubmitAssetAnalysisSchema)
 
+for _prop_key, _prop_desc in (
+    (
+        "adopted_bracket",
+        (
+            "RECOMMENDED ZERO-ARITHMETIC BRACKET ADOPTION: Pass 'LONG_OPTION_A' (for BUY) or 'SHORT_OPTION_B' (for SELL) "
+            "from the pre-computed DETERMINISTIC INVARIANT ENGINE block to automatically populate verified "
+            "entry_condition, stop_loss, take_profit, and invalidation_price with guaranteed R:R >= 1.50 and harmonized ADR/ATR compliance."
+        ),
+    ),
+    (
+        "entry_condition",
+        (
+            "Entry condition ({'type': 'market'|'limit'|'trigger', 'price': float|null, 'detail': str}). "
+            "Required if decision is 'buy' or 'sell' (auto-populated when adopted_bracket='LONG_OPTION_A' or 'SHORT_OPTION_B' is provided)."
+        ),
+    ),
+    (
+        "stop_loss",
+        (
+            "Stop loss price level. Required if decision is 'buy' or 'sell' (auto-populated when adopted_bracket='LONG_OPTION_A' or 'SHORT_OPTION_B' is set). "
+            "Must satisfy the H4 ATR noise floor (>= 1.0x H4 ATR for FX, >= 1.2x for XAU/BTC/XTI) and harmonized ceiling <= max(ADR cap, 1.35x H4 ATR)."
+        ),
+    ),
+    (
+        "take_profit",
+        (
+            "Take profit price level. Required if decision is 'buy' or 'sell' (auto-populated when adopted_bracket='LONG_OPTION_A' or 'SHORT_OPTION_B' is set). "
+            "Must achieve R:R >= 1.50 (harmonized intraday target ~1.55x SL within 50%-80% ADR band or <= 1.65x effective SL max)."
+        ),
+    ),
+    (
+        "confluence_score",
+        (
+            "REQUIRED for buy/sell decisions: Total confluence score on the 20-point rubric (integer 0-20: "
+            "core 14 structural/macro points + up to 6 bonus/synergy points, including +2 for Uncrowded Institutional Synergy where Technical == Macro != Sentiment)."
+        ),
+    ),
+):
+    if _prop_key in _asset_analysis_schema.get("properties", {}):
+        _asset_analysis_schema["properties"][_prop_key]["description"] = _prop_desc
+
 
 SUBMIT_FUNDAMENTAL_BRIEF = _tool(
     name="submit_fundamental_brief",
@@ -71,12 +112,13 @@ SUBMIT_ASSET_ANALYSIS = _tool(
         "Submit your completed per-asset analysis decision. "
         "Call this ONCE per asset after you have reviewed all relevant data. "
         "IMPORTANT RULES:\n"
-        "- If decision is 'buy' or 'sell': calculate_position_size MUST be called first to register verified sizing evidence in the ledger. entry_condition, stop_loss, take_profit, confluence_score, priced_in_score, invalidation_price, AND invalidation_direction ('above' or 'below', never 'up' or 'down') are REQUIRED. R:R must be >= 1.5.\n"
+        "- ZERO-ARITHMETIC BRACKET ADOPTION (RECOMMENDED): When decision is 'buy' or 'sell', pass adopted_bracket='LONG_OPTION_A' (for BUY) or adopted_bracket='SHORT_OPTION_B' (for SELL) from the pre-computed DETERMINISTIC INVARIANT ENGINE block to automatically populate verified entry_condition, stop_loss, and take_profit without mental floating-point arithmetic errors.\n"
+        "- If decision is 'buy' or 'sell': adopt adopted_bracket ('LONG_OPTION_A' / 'SHORT_OPTION_B') or call calculate_position_size first to register verified sizing evidence in the ledger. entry_condition, stop_loss, take_profit, confluence_score (0-20 rubric: 14 core + up to 6 bonus/synergy points), priced_in_score (1-10), invalidation_price, AND invalidation_direction ('above' or 'below', never 'up' or 'down') are REQUIRED. Harmonized intraday bounds: SL >= 1.0x H4 ATR (1.2x for XAU/BTC/XTI) up to max(ADR cap, 1.35x H4 ATR), R:R >= 1.50 (target ~1.55x SL).\n"
         "- rationale MUST be structured top-down: (1) Macro & Sentiment alignment with Stage 1 brief, (2) Technical & SMC trigger levels (exact price levels, ATR multiples, R:R), (3) Historical pattern similarity, playbook validation, and confluence edge.\n"
         "- confluence_factors: only use exact active IDs: 'fundamental_bias', 'dxy_confirms', 'd1_trend', 'rsi_neutral', 'near_fvg', 'near_order_block', 'in_ote_zone', 'near_sr_zone', 'cot_aligned', 'vix_ok', 'liquidity_sweep_confirmed', 'session_prime', 'microstructure_ok', 'microstructure_confirmed', 'historical_pattern_consensus', 'pattern_consensus', 'quant_strategy_edge', 'rr_ratio_bonus', 'adr_target_bonus'.\n"
         "- If SSVP warning or macro divergence active: rationale MUST explicitly state 'I trust price action because...' or 'I trust the brief because...'.\n"
         "- If specialists disagree on direction: 'specialist_adjudication' is REQUIRED.\n"
-        "- If decision is 'wait': reevaluation_trigger is required (auto-defaults to 4h time review if omitted). CRITICAL: If there is a viable structural setup (confluence >= 6) that is waiting for confirmation, pullback, or debate adjudication, ALWAYS provide the proposed 'stop_loss', 'take_profit', and 'invalidation_price' so the Dialectical Debate council can evaluate and potentially approve it.\n"
+        "- If decision is 'wait': reevaluation_trigger is required (auto-defaults to 4h time review if omitted). CRITICAL: If there is a viable structural setup (confluence >= 6) that is waiting for confirmation, pullback, or debate adjudication, ALWAYS provide the proposed 'stop_loss', 'take_profit', and 'invalidation_price' (or adopted_bracket) so the Dialectical Debate council can evaluate and potentially approve it.\n"
         "- If decision is 'avoid': only rationale is required.\n"
         "The backend will validate these rules and reject incomplete submissions."
     ),

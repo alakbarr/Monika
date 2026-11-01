@@ -50,6 +50,140 @@ class CouncilVerdict:
     specialist_votes: Dict[str, SpecialistVote] = field(default_factory=dict)
     negative_constraints_applied: List[str] = field(default_factory=list)
     execution_parameters: Dict[str, Any] = field(default_factory=dict)
+    synergy_state: str = "neutral_or_mixed"
+    consensus_summary: Dict[str, Any] = field(default_factory=dict)
+
+
+def _normalize_specialist_bias(raw_bias: Any) -> str:
+    """Normalize a specialist vote or string bias into 'bullish', 'bearish', or 'neutral'."""
+    if isinstance(raw_bias, SpecialistVote):
+        raw_str = str(raw_bias.bias or "").lower().strip()
+    elif isinstance(raw_bias, dict):
+        raw_str = str(raw_bias.get("directional_bias") or raw_bias.get("bias") or "").lower().strip()
+    else:
+        raw_str = str(raw_bias or "").lower().strip()
+    if raw_str in ("bullish", "strong_bullish", "buy", "long"):
+        return "bullish"
+    if raw_str in ("bearish", "strong_bearish", "sell", "short"):
+        return "bearish"
+    return "neutral"
+
+
+def format_specialist_consensus_summary(summary: Dict[str, Any]) -> str:
+    """Format human-readable specialist consensus summary highlighting synergy vs crowding."""
+    biases = summary.get("biases", {})
+    t_b = str(biases.get("technical", "neutral")).upper()
+    m_b = str(biases.get("macro", "neutral")).upper()
+    s_b = str(biases.get("sentiment", "neutral")).upper()
+    synergy = str(summary.get("synergy_state", "neutral_or_mixed"))
+    dom = str(summary.get("dominant_bias", "neutral")).upper()
+
+    if synergy == "uncrowded_institutional_synergy":
+        badge = "UNCROWDED_INSTITUTIONAL_SYNERGY"
+        guidance = (
+            f"High-Conviction Institutional Synergy ({dom}): Technical & Macro align ({t_b}) "
+            f"while Sentiment remains uncrowded ({s_b})."
+        )
+    elif synergy == "crowded_unanimous_exhaustion":
+        badge = "CROWDED_3_OF_3_CAUTION"
+        guidance = (
+            f"Crowded 3-of-3 Caution ({dom}): Technical, Macro, and Sentiment are unanimously {t_b}. "
+            f"Guard against late-stage trend exhaustion."
+        )
+    elif synergy == "technical_macro_conflict":
+        badge = "TECHNICAL_MACRO_CONFLICT"
+        guidance = f"Direct Institutional Conflict: Technical ({t_b}) opposes Macro ({m_b})."
+    else:
+        badge = "NEUTRAL_OR_MIXED_CONSENSUS"
+        guidance = f"Mixed/Neutral Specialist Posture: Technical={t_b}, Macro={m_b}, Sentiment={s_b}."
+
+    return (
+        f"[SPECIALIST SYNERGY STATE: {badge} | consensus={summary.get('consensus')} | "
+        f"synergy_state={synergy}] {guidance}"
+    )
+
+
+def compute_specialist_consensus_summary(
+    biases: Dict[str, Any],
+    dealing_range_pos: Optional[float] = None,
+) -> Dict[str, Any]:
+    """
+    Compute specialist consensus and institutional synergy classification.
+
+     Classifications for `synergy_state`:
+      - 'uncrowded_institutional_synergy': technical and macro agree ('bullish' or 'bearish')
+        AND sentiment is NOT in that same direction ('neutral' or opposite).
+      - 'crowded_unanimous_exhaustion': all 3 (technical, macro, sentiment) are identical ('bullish' or 'bearish').
+      - 'technical_macro_conflict': technical and macro are both non-neutral and opposite.
+      - 'neutral_or_mixed': any other combination.
+    """
+    src = biases.get("biases") if isinstance(biases, dict) and isinstance(biases.get("biases"), dict) else biases
+    if not isinstance(src, dict):
+        src = {}
+
+    tech_b = _normalize_specialist_bias(src.get("technical"))
+    macro_b = _normalize_specialist_bias(src.get("macro"))
+    sent_raw = src.get("sentiment") if "sentiment" in src else src.get("news_sentiment")
+    sent_b = _normalize_specialist_bias(sent_raw)
+
+    triple = (tech_b, macro_b, sent_b)
+    bull_count = sum(1 for b in triple if b == "bullish")
+    bear_count = sum(1 for b in triple if b == "bearish")
+
+    unanimous = tech_b in ("bullish", "bearish") and tech_b == macro_b == sent_b
+    majority = bull_count >= 2 or bear_count >= 2
+
+    if tech_b in ("bullish", "bearish") and tech_b == macro_b:
+        dominant_bias = tech_b
+        if sent_b != tech_b:
+            synergy_state = "uncrowded_institutional_synergy"
+            consensus_label = "majority_agreement"
+        else:
+            synergy_state = "crowded_unanimous_exhaustion"
+            consensus_label = "unanimous_agreement"
+    elif tech_b in ("bullish", "bearish") and macro_b in ("bullish", "bearish") and tech_b != macro_b:
+        synergy_state = "technical_macro_conflict"
+        if bull_count >= 2:
+            dominant_bias = "bullish"
+            consensus_label = "majority_agreement"
+        elif bear_count >= 2:
+            dominant_bias = "bearish"
+            consensus_label = "majority_agreement"
+        else:
+            dominant_bias = "neutral"
+            consensus_label = "split_conflict"
+    else:
+        synergy_state = "neutral_or_mixed"
+        if bull_count >= 2:
+            dominant_bias = "bullish"
+            consensus_label = "majority_agreement"
+        elif bear_count >= 2:
+            dominant_bias = "bearish"
+            consensus_label = "majority_agreement"
+        else:
+            dominant_bias = (
+                tech_b
+                if tech_b in ("bullish", "bearish")
+                else (macro_b if macro_b in ("bullish", "bearish") else "neutral")
+            )
+            consensus_label = "no_consensus"
+
+    summary: Dict[str, Any] = {
+        "consensus": consensus_label,
+        "unanimous_agreement": unanimous,
+        "majority_agreement": majority,
+        "synergy_state": synergy_state,
+        "dominant_bias": dominant_bias,
+        "dominant_direction": dominant_bias,
+        "biases": {
+            "technical": tech_b,
+            "macro": macro_b,
+            "sentiment": sent_b,
+        },
+        "dealing_range_pos": dealing_range_pos,
+    }
+    summary["formatted_summary"] = format_specialist_consensus_summary(summary)
+    return summary
 
 
 class SpecialistCouncil:
@@ -145,15 +279,15 @@ class SpecialistCouncil:
                 adx_val = 0.0
 
         # Contrarian retail sentiment logic with trend exhaustion guard
-        if adx_val > 25.0:
+        if adx_val > 25.0 and 28.0 < long_pct < 72.0:
             bias = "NEUTRAL"
             conf = 0.55
             rationale_str = f"Retail long: {long_pct:.1f}%, but ADX={adx_val:.1f} indicates strong trend impulse (contrarian penalty suspended)."
-        elif long_pct > 70.0:
+        elif long_pct >= 72.0:
             bias = "BEARISH"  # Extreme retail long in non-trending -> contrarian short
             conf = 0.65
             rationale_str = f"Retail long: {long_pct:.1f}% (Contrarian bias: BEARISH)."
-        elif long_pct < 30.0:
+        elif long_pct <= 28.0:
             bias = "BULLISH"  # Extreme retail short in non-trending -> contrarian long
             conf = 0.65
             rationale_str = f"Retail long: {long_pct:.1f}% (Contrarian bias: BULLISH)."
@@ -325,6 +459,19 @@ class SpecialistCouncil:
             SpecialistRole.EXECUTION_STRATEGIST.value: exec_vote,
         }
 
+        consensus_summary = compute_specialist_consensus_summary(
+            {
+                "technical": tech_vote.bias,
+                "macro": macro_vote.bias,
+                "sentiment": news_vote.bias,
+            },
+            dealing_range_pos=bundle_data.get("dealing_range_pos") if isinstance(bundle_data, dict) else None,
+        )
+        synergy_state = str(consensus_summary.get("synergy_state", "neutral_or_mixed"))
+        exec_params_out = dict(exec_vote.metadata)
+        exec_params_out["synergy_state"] = synergy_state
+        exec_params_out["consensus"] = consensus_summary.get("consensus")
+
         # Check for Vetoes
         if risk_vote.veto:
             logger.info(f"[SpecialistCouncil] Risk Arbitrator VETO for {symbol}: {risk_vote.veto_reason}")
@@ -333,10 +480,12 @@ class SpecialistCouncil:
                 action=TradeAction.HOLD,
                 consensus_score=0.0,
                 is_approved=False,
-                rationale=f"VETO by Risk Arbitrator: {risk_vote.veto_reason}",
+                rationale=f"VETO by Risk Arbitrator: {risk_vote.veto_reason} | {consensus_summary['formatted_summary']}",
                 specialist_votes=votes,
                 negative_constraints_applied=negative_constraints,
-                execution_parameters=exec_vote.metadata,
+                execution_parameters=exec_params_out,
+                synergy_state=synergy_state,
+                consensus_summary=consensus_summary,
             )
 
         # Calculate final consensus score
@@ -364,7 +513,8 @@ class SpecialistCouncil:
         rationale = (
             f"Council deliberation reached {final_action.value} with consensus score {total_consensus:.2f}. "
             f"Aligned weight: {aligned_weight:.2f}. "
-            f"Risk Arbitrator: Approved with {len(negative_constraints)} negative constraints."
+            f"Risk Arbitrator: Approved with {len(negative_constraints)} negative constraints. "
+            f"{consensus_summary['formatted_summary']}"
         )
 
         return CouncilVerdict(
@@ -375,5 +525,15 @@ class SpecialistCouncil:
             rationale=rationale,
             specialist_votes=votes,
             negative_constraints_applied=negative_constraints,
-            execution_parameters=exec_vote.metadata,
+            execution_parameters=exec_params_out,
+            synergy_state=synergy_state,
+            consensus_summary=consensus_summary,
         )
+
+    @staticmethod
+    def summarize_consensus(
+        biases: Dict[str, Any],
+        dealing_range_pos: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """Expose consensus summary dictionary with synergy_state and formatted_summary."""
+        return compute_specialist_consensus_summary(biases=biases, dealing_range_pos=dealing_range_pos)

@@ -89,6 +89,7 @@ async def compute_daily_range_context(
     settings: Optional[dict] = None,
     as_of: Optional[datetime] = None,
     lookback_days: Optional[int] = None,
+    atr_h4: Optional[float] = None,
 ) -> dict:
     settings = settings or {}
     risk_cfg = settings.get("trading", {}).get("risk", {})
@@ -206,6 +207,15 @@ async def compute_daily_range_context(
     target_sl_min = effective_range * sl_min_pct
     target_sl_max = effective_range * sl_max_pct
 
+    if atr_h4 is not None:
+        try:
+            atr_h4_f = float(atr_h4)
+            if atr_h4_f > 0:
+                target_sl_max = max(target_sl_max, 1.25 * atr_h4_f)
+                target_tp_max = max(target_tp_max, 1.65 * target_sl_max)
+        except ValueError, TypeError:
+            pass
+
     if room_remaining_pct < 0.15:
         session_recommendation, entry_allowed = "avoid_new_entry_low_room", False
     elif room_remaining_pct < 0.30:
@@ -217,6 +227,7 @@ async def compute_daily_range_context(
         "symbol": symbol,
         "lookback_days": lookback_days,
         "adr": round(adr, 6),
+        "adr_5d": round(adr, 6),
         "adr_raw_avg": round(adr_raw_avg, 6),
         "outlier_trimmed": len(ranges_raw) >= 5,
         "volatility_regime": vol_regime,
@@ -242,3 +253,6 @@ async def compute_daily_range_context(
         "effective_range": round(effective_range, 6),
         "computed_at": now.isoformat(),
     }
+
+
+get_optimal_intraday_levels = compute_daily_range_context

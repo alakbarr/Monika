@@ -584,3 +584,118 @@ class TestPerAssetStage:
         _, kwargs = mock_run_agent.call_args
         user_message = kwargs["user_message"]
         assert "[VOLATILITY REGIME GATE — ACTIVE (deterministic)]" not in user_message
+
+    def test_stage2_prompts_and_tool_schema_harmonized_bracket_and_equilibrium(self):
+        from monika.application.analysis.tools.definitions.trading import SUBMIT_ASSET_ANALYSIS
+
+        stage = PerAssetStage(get_test_settings())
+        prompt_tuple, abort_res = stage._compose_stage2_system_prompt(
+            symbol="EURUSD",
+            cot_code="099741",
+            effective_threshold=7,
+            tool_order_guidance="Use pre-fetched context.",
+        )
+        assert abort_res is None
+        combined_sys_prompt = "\n".join(prompt_tuple) if isinstance(prompt_tuple, tuple) else str(prompt_tuple)
+        assert "adopted_bracket" in combined_sys_prompt
+        assert "LONG_OPTION_A" in combined_sys_prompt
+        assert "SHORT_OPTION_B" in combined_sys_prompt
+        assert "Market order execution is STRICTLY PROHIBITED" not in combined_sys_prompt
+
+        user_msg = stage._build_user_message("EURUSD")
+        assert "adopted_bracket" in user_msg
+        assert "LONG_OPTION_A" in user_msg
+        assert "SHORT_OPTION_B" in user_msg
+        assert "Market order execution is STRICTLY PROHIBITED" not in user_msg
+
+        trimmed_msg = stage._build_trimmed_user_message("EURUSD")
+        assert "adopted_bracket" in trimmed_msg
+        assert "LONG_OPTION_A" in trimmed_msg
+        assert "SHORT_OPTION_B" in trimmed_msg
+
+        tool_desc = SUBMIT_ASSET_ANALYSIS["description"]
+        assert "adopted_bracket" in tool_desc
+        assert "LONG_OPTION_A" in tool_desc
+        assert "SHORT_OPTION_B" in tool_desc
+        props = SUBMIT_ASSET_ANALYSIS["input_schema"]["properties"]
+        assert "LONG_OPTION_A" in props["adopted_bracket"]["description"]
+        assert "20-point rubric" in props["confluence_score"]["description"]
+
+    @pytest.mark.asyncio
+    async def test_dealing_range_d1_primary_with_h4_fallback(self):
+        from monika.infrastructure.database.models import PriceOHLCV
+
+        stage = PerAssetStage(get_test_settings())
+        mock_session = create_mock_async_session()
+        base_ts = datetime(2026, 10, 30, tzinfo=timezone.utc)
+
+        # Seed only 2 D1 bars (< 5) and 10 H4 bars to trigger the H4 fallback
+        d1_bars = [
+            PriceOHLCV(
+                symbol="EURUSD",
+                timeframe="D1",
+                timestamp=base_ts,
+                open=1.0800,
+                high=1.0900,
+                low=1.0700,
+                close=1.0850,
+                volume=100.0,
+            )
+            for _ in range(2)
+        ]
+        h4_bars = [
+            PriceOHLCV(
+                symbol="EURUSD",
+                timeframe="H4",
+                timestamp=base_ts,
+                open=1.0800,
+                high=1.1000 if idx == 0 else 1.0900,
+                low=1.0600 if idx == 1 else 1.0750,
+                close=1.0800,
+                volume=100.0,
+            )
+            for idx in range(10)
+        ]
+
+        row_mock = MagicMock()
+        row_mock.total_trades = 0
+        row_mock.winning_trades = 0
+        ohlcv_call_count = 0
+
+        def execute_side_effect(*args, **kwargs):
+            nonlocal ohlcv_call_count
+            query = str(args[0]).lower()
+            res = MagicMock()
+            res.first.return_value = row_mock
+            if "price_ohlcv" in query:
+                ohlcv_call_count += 1
+                if ohlcv_call_count == 1:
+                    res.scalars.return_value.all.return_value = d1_bars
+                elif ohlcv_call_count == 2:
+                    res.scalars.return_value.all.return_value = h4_bars
+                else:
+                    res.scalars.return_value.all.return_value = []
+            else:
+                res.scalar_one_or_none.return_value = None
+                res.scalars.return_value.all.return_value = []
+            return res
+
+        mock_session.execute = AsyncMock(side_effect=execute_side_effect)
+        with patch(
+            "monika.application.analysis.calculators.liquidity_sweep_detector.detect_liquidity_sweep",
+            new=AsyncMock(return_value={"sweep_detected": False}),
+        ):
+            blocks = await stage._build_stage2_context_blocks(
+                session=mock_session,
+                symbol="EURUSD",
+                brief_check=None,
+                start_time=base_ts,
+                extra_context=None,
+                stage1_confidence=0.70,
+                coherence_injection="",
+            )
+
+        anchor_block = next((b[1] for b in blocks if b[0] == "TARGET ASSET MACRO ANCHOR"), None)
+        assert anchor_block is not None
+        assert "High=1.10000, Low=1.06000, Close=1.08000" in anchor_block
+        assert "Range Position Ratio: 0.50 (EQUILIBRIUM REGIME)" in anchor_block

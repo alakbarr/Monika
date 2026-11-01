@@ -221,8 +221,9 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
 
                         await session.commit()
 
-                        if verdict.get("final_decision") == "avoid":
-                            logger.warning(f"Investment Judge Rejected {sym}: {verdict.get('reason')}")
+                        final_dec = str(verdict.get("final_decision", "")).strip().lower()
+                        if final_dec in ("avoid", "wait"):
+                            logger.warning(f"Investment Judge Rejected {sym} ({final_dec}): {verdict.get('reason')}")
                             await DecisionLogger.log_paper_whatif(
                                 session=session,
                                 analysis_id=int(analysis_id or ana.id),
@@ -234,10 +235,11 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                                 reason=f"Debate Judge Rejected: {verdict.get('reason')}",
                             )
                             ana.decision = "wait"
+                            if isinstance(r, dict):
+                                r["decision"] = "wait"
                             await session.commit()
                             return sym, None, verdict
 
-                        final_dec = str(verdict.get("final_decision", "")).strip().lower()
                         if final_dec in ("buy", "sell"):
                             if str(ana.decision).lower() != final_dec:
                                 ana.decision = final_dec
@@ -248,22 +250,144 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                                     r["confidence"] = float(verdict["confidence"])
                                     ana.confidence = float(verdict["confidence"])
 
-                            # Populate missing levels from proposed claims if not already set
-                            if ana.stop_loss is None:
+                            def _num(v: Any) -> Optional[float]:
+                                if isinstance(v, (int, float)) and not isinstance(v, bool):
+                                    return float(v)
+                                if isinstance(v, str):
+                                    try:
+                                        return float(v)
+                                    except ValueError, TypeError:
+                                        return None
+                                return None
+
+                            entry_px = (
+                                _num(entry_zone_data.get("price") if isinstance(entry_zone_data, dict) else None)
+                                or _num(getattr(ana, "price_at_analysis", None))
+                                or _num(r.get("price_at_analysis") if isinstance(r, dict) else None)
+                                or _num(r.get("entry_price") if isinstance(r, dict) else None)
+                                or _num(
+                                    original_context.get("price_at_analysis")
+                                    if isinstance(original_context, dict)
+                                    else None
+                                )
+                                or _num(
+                                    original_context.get("entry_price") if isinstance(original_context, dict) else None
+                                )
+                                or _num(deb.get("curr_p"))
+                            )
+                            curr_sl = _num(getattr(ana, "stop_loss", None))
+                            curr_tp = _num(getattr(ana, "take_profit", None))
+
+                            def _is_dir_valid(
+                                sl_v: Optional[float], tp_v: Optional[float], ep_v: Optional[float]
+                            ) -> bool:
+                                if sl_v is None or tp_v is None:
+                                    return False
+                                if ep_v is not None:
+                                    return (sl_v < ep_v < tp_v) if final_dec == "buy" else (tp_v < ep_v < sl_v)
+                                return (sl_v < tp_v) if final_dec == "buy" else (tp_v < sl_v)
+
+                            has_valid_geom = _is_dir_valid(curr_sl, curr_tp, entry_px)
+
+                            if not has_valid_geom:
                                 prop_source = verified_bull_claim if final_dec == "buy" else bear_dissent
-                                if prop_source and prop_source.get("proposed_sl"):
-                                    ana.stop_loss = float(prop_source["proposed_sl"])
-                                    if isinstance(r, dict):
-                                        r["stop_loss"] = float(prop_source["proposed_sl"])
-                                if prop_source and prop_source.get("proposed_tp"):
-                                    ana.take_profit = float(prop_source["proposed_tp"])
-                                    if isinstance(r, dict):
-                                        r["take_profit"] = float(prop_source["proposed_tp"])
-                                if prop_source and prop_source.get("proposed_entry"):
-                                    entry_zone_data["price"] = float(prop_source["proposed_entry"])
-                                    ana.entry_zone = json.dumps(entry_zone_data)
-                                    if isinstance(r, dict):
-                                        r["entry_price"] = float(prop_source["proposed_entry"])
+                                if isinstance(prop_source, dict):
+                                    p_ent = _num(prop_source.get("proposed_entry"))
+                                    p_sl = _num(prop_source.get("proposed_sl"))
+                                    p_tp = _num(prop_source.get("proposed_tp"))
+                                    cand_ep = p_ent if p_ent is not None else entry_px
+                                    if _is_dir_valid(p_sl, p_tp, cand_ep):
+                                        curr_sl = p_sl
+                                        curr_tp = p_tp
+                                        if p_ent is not None:
+                                            entry_px = p_ent
+                                            entry_zone_data["price"] = p_ent
+                                            ana.entry_zone = json.dumps(entry_zone_data)
+                                            if isinstance(r, dict):
+                                                r["entry_price"] = p_ent
+                                        has_valid_geom = True
+                                    elif curr_sl is None and p_sl is not None:
+                                        curr_sl = p_sl
+                                    elif curr_tp is None and p_tp is not None:
+                                        curr_tp = p_tp
+
+                            if not has_valid_geom:
+                                bracket_opts = (
+                                    (r.get("bracket_options") if isinstance(r, dict) else None)
+                                    or (
+                                        original_context.get("bracket_options")
+                                        if isinstance(original_context, dict)
+                                        else None
+                                    )
+                                    or (fact_sheet.get("bracket_options") if isinstance(fact_sheet, dict) else None)
+                                )
+                                target_keys = (
+                                    ("long_option_a", "LONG_OPTION_A")
+                                    if final_dec == "buy"
+                                    else ("short_option_b", "SHORT_OPTION_B")
+                                )
+                                chosen_b = None
+                                if isinstance(bracket_opts, dict):
+                                    for tk in target_keys:
+                                        if isinstance(bracket_opts.get(tk), dict):
+                                            chosen_b = bracket_opts[tk]
+                                            break
+                                if chosen_b is None and isinstance(r, dict):
+                                    for tk in target_keys:
+                                        if isinstance(r.get(tk), dict):
+                                            chosen_b = r[tk]
+                                            break
+                                if isinstance(chosen_b, dict):
+                                    b_ent = _num(chosen_b.get("entry"))
+                                    b_sl = _num(chosen_b.get("stop_loss"))
+                                    b_tp = _num(chosen_b.get("take_profit"))
+                                    cand_ep = b_ent if b_ent is not None else entry_px
+                                    if _is_dir_valid(b_sl, b_tp, cand_ep):
+                                        curr_sl = b_sl
+                                        curr_tp = b_tp
+                                        if b_ent is not None:
+                                            entry_px = b_ent
+                                            entry_zone_data["price"] = b_ent
+                                            ana.entry_zone = json.dumps(entry_zone_data)
+                                            if isinstance(r, dict):
+                                                r["entry_price"] = b_ent
+                                        has_valid_geom = True
+
+                            if not has_valid_geom and entry_px is not None:
+                                if curr_sl is not None and curr_tp is not None:
+                                    d1 = abs(entry_px - curr_sl)
+                                    d2 = abs(curr_tp - entry_px)
+                                    sl_dist = min(d1, d2) if (d1 > 0 and d2 > 0) else max(d1, d2, entry_px * 0.005)
+                                    tp_dist = max(d1, d2) if (d1 > 0 and d2 > 0) else sl_dist * 1.55
+                                    if tp_dist < sl_dist * 1.5:
+                                        tp_dist = sl_dist * 1.55
+                                else:
+                                    atr_est = _num(fact_sheet.get("atr") if isinstance(fact_sheet, dict) else None) or (
+                                        entry_px * 0.005
+                                    )
+                                    sl_dist = atr_est * 1.05
+                                    tp_dist = sl_dist * 1.55
+                                if final_dec == "buy":
+                                    curr_sl = round(entry_px - sl_dist, 5)
+                                    curr_tp = round(entry_px + tp_dist, 5)
+                                else:
+                                    curr_sl = round(entry_px + sl_dist, 5)
+                                    curr_tp = round(entry_px - tp_dist, 5)
+                                has_valid_geom = True
+
+                            if curr_sl is not None:
+                                ana.stop_loss = float(curr_sl)
+                                if isinstance(r, dict):
+                                    r["stop_loss"] = float(curr_sl)
+                            if curr_tp is not None:
+                                ana.take_profit = float(curr_tp)
+                                if isinstance(r, dict):
+                                    r["take_profit"] = float(curr_tp)
+                            if entry_px is not None and not entry_zone_data.get("price"):
+                                entry_zone_data["price"] = float(entry_px)
+                                ana.entry_zone = json.dumps(entry_zone_data)
+                                if isinstance(r, dict) and not r.get("entry_price"):
+                                    r["entry_price"] = float(entry_px)
 
                             await session.commit()
 

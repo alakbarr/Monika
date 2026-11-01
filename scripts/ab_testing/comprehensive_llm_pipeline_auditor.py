@@ -55,6 +55,7 @@ class MarketAuditScenario:
     historical_decision: str = "wait"
     historical_confluence: int = 7
     historical_confidence: float = 0.5
+    priced_in_score: int = 3
     macro_brief_bias: str = "neutral"
     macro_narrative_snippet: str = ""
     specialist_biases: Dict[str, str] = field(default_factory=dict)
@@ -105,12 +106,29 @@ def evaluate_bracket_lifecycle(
 ) -> Dict[str, Any]:
     """Candle-by-Candle Path-Dependent Bracket Engine:
 
-    Evaluates intra-candle High/Low across chronological forward bars to determine
-    whether TP or SL is struck first, avoiding point-to-point displacement bias.
+    Checks whether a limit entry actually fills (low <= entry <= high) before
+    evaluating subsequent bars for intra-candle High/Low TP or SL hits.
     """
+    if not forward_bars:
+        return {"outcome": "NO_DATA", "pnl": 0.0, "bars_elapsed": 0, "is_win": None}
+
+    filled = False
+    fill_idx = 0
+    first_open = float(forward_bars[0].get("o", entry))
+    if abs(entry - first_open) / max(1e-7, abs(first_open)) <= 0.0005:
+        filled = True
+        fill_idx = 0
+
     for idx, bar in enumerate(forward_bars):
         high = float(bar["h"])
         low = float(bar["l"])
+
+        if not filled:
+            if low <= entry <= high:
+                filled = True
+                fill_idx = idx
+            else:
+                continue
 
         if is_buy:
             # Check if Stop Loss was hit first on intra-bar drawdown
@@ -118,7 +136,7 @@ def evaluate_bracket_lifecycle(
                 return {
                     "outcome": "SL_HIT",
                     "pnl": (sl - entry) / entry,
-                    "bars_elapsed": idx + 1,
+                    "bars_elapsed": idx - fill_idx + 1,
                     "is_win": False,
                 }
             # Check if Take Profit was reached
@@ -126,7 +144,7 @@ def evaluate_bracket_lifecycle(
                 return {
                     "outcome": "TP_HIT",
                     "pnl": (tp - entry) / entry,
-                    "bars_elapsed": idx + 1,
+                    "bars_elapsed": idx - fill_idx + 1,
                     "is_win": True,
                 }
         else:  # sell
@@ -134,29 +152,29 @@ def evaluate_bracket_lifecycle(
                 return {
                     "outcome": "SL_HIT",
                     "pnl": (entry - sl) / entry,
-                    "bars_elapsed": idx + 1,
+                    "bars_elapsed": idx - fill_idx + 1,
                     "is_win": False,
                 }
             if low <= tp:
                 return {
                     "outcome": "TP_HIT",
                     "pnl": (entry - tp) / entry,
-                    "bars_elapsed": idx + 1,
+                    "bars_elapsed": idx - fill_idx + 1,
                     "is_win": True,
                 }
 
-    # If neither SL nor TP hit within forward window, evaluate at final bar close
-    if forward_bars:
-        last_c = float(forward_bars[-1]["c"])
-        ret = (last_c - entry) / entry if is_buy else (entry - last_c) / entry
-        return {
-            "outcome": "TIME_EXIT",
-            "pnl": ret,
-            "bars_elapsed": len(forward_bars),
-            "is_win": ret > 0.0003,
-        }
+    if not filled:
+        return {"outcome": "UNFILLED", "pnl": 0.0, "bars_elapsed": len(forward_bars), "is_win": None}
 
-    return {"outcome": "NO_DATA", "pnl": 0.0, "bars_elapsed": 0, "is_win": None}
+    # If neither SL nor TP hit within forward window, evaluate at final bar close
+    last_c = float(forward_bars[-1]["c"])
+    ret = (last_c - entry) / entry if is_buy else (entry - last_c) / entry
+    return {
+        "outcome": "TIME_EXIT",
+        "pnl": ret,
+        "bars_elapsed": len(forward_bars) - fill_idx,
+        "is_win": ret > 0.0003,
+    }
 
 
 def _clean_json_str(raw: Any) -> Dict[str, Any]:
@@ -317,6 +335,7 @@ async def extract_real_market_scenarios(limit: int = 15) -> List[MarketAuditScen
                 historical_decision=str(a.decision).lower(),
                 historical_confluence=a.confluence_score or 7,
                 historical_confidence=a.confidence or 0.5,
+                priced_in_score=a.priced_in_score or 3,
                 macro_brief_bias=brief_bias,
                 macro_narrative_snippet=narrative,
                 specialist_biases=spec_biases,
@@ -419,19 +438,21 @@ RULES, OPPORTUNITY & ADR BOUNDS:
 - Decision: Score >= Threshold (8/14) -> BUY/SELL; Score < Threshold -> WAIT.
 Respond strictly in JSON."""
 
-        # Massive raw context payload simulation
+        # Real scenario context payload (without hardcoded fake blocking text)
         hi = max(c["h"] for c in scenario.recent_candles)
         lo = min(c["l"] for c in scenario.recent_candles)
+        vix_val = scenario.indicators.get("vix", 17.5)
+        squeeze_state = scenario.indicators.get("bb_squeeze", "Normal")
         raw_payload = f"""
 === RAW CONTEXT BUNDLE ({scenario.symbol}) ===
-Spot: {scenario.p0:.5f} | ATR_14(H4): {scenario.atr_h4:.5f} | ADR_5D: {scenario.atr_h4 * 2.2:.5f}
-VIX: 26.4 (High Volatility Environment - increase threshold by +2)
-Stage 1 Macro Brief: {scenario.macro_brief_bias.upper()} (US yield divergence, restrictive real rates)
-Priced-in Score: 8/10 (Event in 6 hours: High risk of sell-the-news)
-Bollinger Band Squeeze: Active (lower 18th percentile compression)
+Spot: {scenario.p0:.5f} | ATR_14(H4): {scenario.atr_h4:.5f} | ADR_5D: {scenario.atr_h4 * 2.5:.5f}
+4H Range: High={hi:.5f}, Low={lo:.5f}
+VIX: {vix_val}
+Stage 1 Macro Brief: {scenario.macro_brief_bias.upper()} ({scenario.macro_narrative_snippet or "Macro baseline"})
+Priced-in Score: {scenario.priced_in_score}/10
+Specialist Biases: {json.dumps(scenario.specialist_biases)}
+Volatility Regime / Squeeze: {squeeze_state}
 Recent H4 Candles: {json.dumps(scenario.recent_candles)}
-Recent Lessons: [L-401: Avoid chasing breakouts into major daily liquidity pools]
-Playbook: PB_SMC_EXTENDED_FVG_OB
 Submit decision matching schema: {{"decision": "buy"|"sell"|"wait", "confluence_score": int, "entry": float, "stop_loss": float, "take_profit": float, "rationale": str}}
 """
         schema = {

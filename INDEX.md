@@ -7009,6 +7009,10 @@
   - `class SpecialistCouncil`: Coordinates deliberation among 5 domain specialists.
     - `__init__(settings: Optional[Dict[str, Any]])`
     - `evaluate(symbol: str, regime: str, bundle_data: Dict[str, Any], ...) -> CouncilVerdict` - *Conduct full council deliberation across all 5 specialist domains.*
+    - `summarize_consensus(biases: Dict[str, Any], dealing_range_pos: Optional[float]) -> Dict[str, Any]` - *Expose consensus summary dictionary with synergy_state and formatted_summary.*
+- **Top-Level Functions**:
+  - `format_specialist_consensus_summary(summary: Dict[str, Any]) -> str`: Format human-readable specialist consensus summary highlighting synergy vs crowding.
+  - `compute_specialist_consensus_summary(biases: Dict[str, Any], dealing_range_pos: Optional[float]) -> Dict[str, Any]`: Compute specialist consensus and institutional synergy classification.
 
 #### `specialist_pipeline.py`
 - **Path**: [`src/monika/application/analysis/stages/per_asset/specialist_pipeline.py`](src/monika/application/analysis/stages/per_asset/specialist_pipeline.py)
@@ -8800,6 +8804,9 @@
 - **Classes**:
   - `class FundamentalBriefMixin(_ToolExecutorMixinBase)`: Mixin providing fundamental brief validation and submission logic.
 - **Top-Level Functions**:
+  - `sanitize_macro_regime(raw_regime: Any) -> str`: Coerce empty, punctuation (e.g. ','), or unrecognized macro_regime values to 'transition'.
+  - `reconcile_fx_pair_macro_matrix(currency_bias: Any, per_asset_macro_matrix: Any) -> Dict[str, Any]`: Ensure FX pair directional_bias in per_asset_macro_matrix matches currency_bias[BASE] - currency_bias[QUOTE].
+  - `cap_empirical_priced_in_scores(asset_priced_in_scores: Any, automated_priced_in: Any, has_imminent_high_impact: bool) -> Dict[str, int]`: Cap asset_priced_in_scores[sym] to min(submitted_score, baseline + 2) when baseline <= 4 and no imminent event.
   - `format_macro_intelligence_dossier(inp: dict, now: datetime, valid_until: Optional[datetime]) -> str`: Synthesizes a complete, institutional Macro Intelligence Dossier for storage in
 
 #### `system_tools.py` - *System, History, and Specialist Delegation Tools Mixin for ToolExecutor.*

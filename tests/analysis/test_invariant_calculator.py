@@ -138,3 +138,43 @@ def test_resolve_bracket_choice():
     assert resolve_bracket_choice("B", bracket_options)["direction"] == "sell"
     assert resolve_bracket_choice("INVALID", bracket_options) is None
     assert resolve_bracket_choice(None, bracket_options) is None
+
+
+def test_real_smc_order_blocks_and_fvg_extraction():
+    smc_payload = {
+        "order_blocks": [
+            {"direction": "bullish", "price_low": 1.09650, "price_high": 1.09850, "mitigated": False},
+            {"direction": "bearish", "price_low": 1.10180, "price_high": 1.10380, "mitigated": False},
+        ],
+        "fair_value_gaps": [
+            {"direction": "bullish", "gap_low": 1.09700, "gap_high": 1.09900, "filled": False},
+            {"direction": "bearish", "gap_low": 1.10120, "gap_high": 1.10250, "filled": False},
+        ],
+    }
+    sr_zones = [
+        {"price_low": 1.09500, "price_high": 1.09600},
+        {"price_low": 1.10400, "price_high": 1.10500},
+    ]
+
+    inv = compute_trade_invariants(
+        symbol="EURUSD",
+        current_price=1.10000,
+        atr=0.00200,
+        adr_5d=0.00600,
+        smc_zones=smc_payload,
+        sr_zones=sr_zones,
+    )
+    anchor_prices = [a["price"] for a in inv["structural_anchors"]]
+    assert 1.09900 in anchor_prices and 1.09850 in anchor_prices
+    assert 1.10120 in anchor_prices and 1.10180 in anchor_prices
+
+    long_b = inv["bracket_options"]["long_option_a"]
+    short_b = inv["bracket_options"]["short_option_b"]
+    # Closest bullish anchor below 1.10000 is FVG gap_high 1.09900
+    assert long_b["entry"] == 1.09900
+    assert long_b["entry_type"] == "limit"
+    # Closest bearish anchor above 1.10000 is FVG gap_low 1.10120
+    assert short_b["entry"] == 1.10120
+    assert short_b["entry_type"] == "limit"
+    assert long_b["rr_ratio"] >= 1.50
+    assert short_b["rr_ratio"] >= 1.50

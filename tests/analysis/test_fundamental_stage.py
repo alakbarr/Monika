@@ -765,3 +765,92 @@ class TestFundamentalStage:
 
         assert patched == existing_brief
         assert patched.confidence == 0.70
+
+    @pytest.mark.asyncio
+    async def test_brief_submission_sanitizes_macro_regime_and_reconciles_fx_pairs(self):
+        """Verify brief_submission sanitizes macro_regime=',' to 'transition', reconciles USDJPY, and caps priced-in."""
+        from monika.application.analysis.tools.mixins.brief_submission import (
+            FundamentalBriefMixin,
+            cap_empirical_priced_in_scores,
+            reconcile_fx_pair_macro_matrix,
+            sanitize_macro_regime,
+        )
+
+        assert sanitize_macro_regime(",") == "transition"
+        assert sanitize_macro_regime("") == "transition"
+        assert sanitize_macro_regime("stagflation") == "stagflation"
+
+        reconciled = reconcile_fx_pair_macro_matrix(
+            {"USD": "bullish", "JPY": "bearish", "EUR": "bearish"},
+            {
+                "USDJPY": {"directional_bias": "bearish", "confidence": "high"},
+                "EURUSD": {"directional_bias": "bullish", "confidence": "medium"},
+            },
+        )
+        assert reconciled["USDJPY"]["directional_bias"] == "bullish"
+        assert reconciled["EURUSD"]["directional_bias"] == "bearish"
+
+        capped = cap_empirical_priced_in_scores(
+            {"USDJPY": 7, "EURUSD": 6},
+            {"USDJPY": {"total_score": 2}, "EURUSD": {"total_score": 3}},
+            has_imminent_high_impact=False,
+        )
+        assert capped["USDJPY"] == 4
+        assert capped["EURUSD"] == 5
+
+        class _DummyExecutor(FundamentalBriefMixin):
+            def __init__(self, session):
+                self.session = session
+                self.settings = {}
+                self.called_tools = set()
+                self.effective_called_tools = set()
+                self.submit_attempts = 0
+                self.automated_priced_in = {"USDJPY": {"total_score": 2}}
+                self.has_imminent_high_impact_event = False
+                self._validate_fundamental_brief_completeness = AsyncMock(return_value=[])
+                self._validate_key_data_points = AsyncMock(return_value=[])
+                self._check_anchoring_and_require_justification = AsyncMock(return_value=[])
+                self._cross_check_all_currencies_priced_in = AsyncMock(return_value=[])
+
+        mock_session = self._create_mock_session()
+        added_objs = []
+        mock_session.add = MagicMock(side_effect=lambda obj: added_objs.append(obj))
+        executor = _DummyExecutor(mock_session)
+
+        payload = {
+            "macro_regime": ",",
+            "risk_sentiment": "mixed",
+            "dxy_trend": "bullish",
+            "yield_curve_signal": "bear_steepening",
+            "vix_level": 18.5,
+            "vix_regime": "moderate",
+            "commodity_outlook": {"gold": "neutral", "oil": "neutral"},
+            "currency_bias": {"USD": "bullish", "JPY": "bearish"},
+            "invalidation_conditions": {
+                "USD": "DXY breaks below 102.50 support on H4 close",
+                "JPY": "US 10Y-JP 10Y spread compresses below 250 bps",
+            },
+            "per_asset_macro_matrix": {
+                "USDJPY": {
+                    "directional_bias": "bearish",
+                    "confidence": "high",
+                    "primary_driver": "US-JP rate differential",
+                }
+            },
+            "asset_priced_in_scores": {"USDJPY": 7},
+            "confidence": 0.75,
+        }
+
+        with patch(
+            "monika.application.protocol.brief_contamination_guard.BriefContaminationGuard.validate_brief_integrity",
+            AsyncMock(return_value=(True, [], 0.0)),
+        ):
+            result_dict = await executor._tool_submit_fundamental_brief(payload)
+        assert result_dict["status"] == "saved"
+        assert len(added_objs) == 1
+        saved_brief = added_objs[0]
+        assert saved_brief.macro_regime == "transition"
+        structured = json.loads(saved_brief.structured_json)
+        assert structured["macro_regime"] == "transition"
+        assert structured["per_asset_macro_matrix"]["USDJPY"]["directional_bias"] == "bullish"
+        assert structured["asset_priced_in_scores"]["USDJPY"] == 4

@@ -30,6 +30,127 @@ from monika.infrastructure.database.models import (
     VIXData,
 )
 
+VALID_MACRO_REGIMES: Set[str] = {
+    "reflation",
+    "stagflation",
+    "disinflation",
+    "goldilocks",
+    "transition",
+    "mixed",
+    "risk-on",
+    "risk-off",
+    "risk_on",
+    "risk_off",
+    "neutral",
+    "ranging",
+}
+
+STANDARD_FX_PAIRS_BASE_QUOTE: Dict[str, tuple[str, str]] = {
+    "USDJPY": ("USD", "JPY"),
+    "EURUSD": ("EUR", "USD"),
+    "GBPUSD": ("GBP", "USD"),
+    "AUDUSD": ("AUD", "USD"),
+}
+
+
+def sanitize_macro_regime(raw_regime: Any) -> str:
+    """Coerce empty, punctuation (e.g. ','), or unrecognized macro_regime values to 'transition'."""
+    if not isinstance(raw_regime, str):
+        return "transition"
+    cleaned = raw_regime.strip().lower()
+    if not cleaned:
+        return "transition"
+    if (
+        cleaned in VALID_MACRO_REGIMES
+        or cleaned.replace("_", "-") in VALID_MACRO_REGIMES
+        or cleaned.replace("-", "_") in VALID_MACRO_REGIMES
+    ):
+        return cleaned
+    return "transition"
+
+
+def reconcile_fx_pair_macro_matrix(currency_bias: Any, per_asset_macro_matrix: Any) -> Dict[str, Any]:
+    """Ensure FX pair directional_bias in per_asset_macro_matrix matches currency_bias[BASE] - currency_bias[QUOTE]."""
+    matrix: Dict[str, Any] = dict(per_asset_macro_matrix) if isinstance(per_asset_macro_matrix, dict) else {}
+    if not isinstance(currency_bias, dict):
+        return matrix
+
+    for pair, (base_ccy, quote_ccy) in STANDARD_FX_PAIRS_BASE_QUOTE.items():
+        base_str = str(currency_bias.get(base_ccy, "")).lower().strip()
+        quote_str = str(currency_bias.get(quote_ccy, "")).lower().strip()
+        base_is_bull = "bull" in base_str
+        base_is_bear = "bear" in base_str
+        quote_is_bull = "bull" in quote_str
+        quote_is_bear = "bear" in quote_str
+
+        expected_direction: Optional[str] = None
+        if base_is_bull and quote_is_bear:
+            expected_direction = "bullish"
+        elif base_is_bear and quote_is_bull:
+            expected_direction = "bearish"
+
+        if expected_direction is not None and pair in matrix and isinstance(matrix[pair], dict):
+            current_dir = str(matrix[pair].get("directional_bias", "")).lower().strip()
+            if expected_direction[:4] not in current_dir:
+                logger.info(
+                    f"[AlgebraicFXReconciliation] Reconciled {pair} directional_bias "
+                    f"from '{current_dir}' to '{expected_direction}' ({base_ccy}={base_str}, {quote_ccy}={quote_str})."
+                )
+                matrix[pair]["directional_bias"] = expected_direction
+    return matrix
+
+
+def _extract_priced_in_baseline_score(automated_priced_in: Any, sym: Optional[str] = None) -> Optional[int]:
+    """Extract numeric baseline score from automated_priced_in structure."""
+    if isinstance(automated_priced_in, bool) or automated_priced_in is None:
+        return None
+    if isinstance(automated_priced_in, (int, float)):
+        return int(automated_priced_in)
+    if isinstance(automated_priced_in, dict):
+        if sym and sym in automated_priced_in:
+            sym_entry = automated_priced_in[sym]
+            if isinstance(sym_entry, (int, float)) and not isinstance(sym_entry, bool):
+                return int(sym_entry)
+            if isinstance(sym_entry, dict):
+                for key in ("total_score", "total_auto", "score", "baseline"):
+                    val = sym_entry.get(key)
+                    if isinstance(val, (int, float)) and not isinstance(val, bool):
+                        return int(val)
+        for key in ("total_score", "total_auto", "score", "baseline"):
+            val = automated_priced_in.get(key)
+            if isinstance(val, (int, float)) and not isinstance(val, bool):
+                return int(val)
+    return None
+
+
+def cap_empirical_priced_in_scores(
+    asset_priced_in_scores: Any,
+    automated_priced_in: Any,
+    has_imminent_high_impact: bool = False,
+) -> Dict[str, int]:
+    """Cap asset_priced_in_scores[sym] to min(submitted_score, baseline + 2) when baseline <= 4 and no imminent event."""
+    scores: Dict[str, int] = dict(asset_priced_in_scores) if isinstance(asset_priced_in_scores, dict) else {}
+    if not scores or has_imminent_high_impact:
+        return scores
+    if not isinstance(automated_priced_in, (dict, int, float)) or isinstance(automated_priced_in, bool):
+        return scores
+
+    for sym, submitted_val in list(scores.items()):
+        baseline_val = _extract_priced_in_baseline_score(automated_priced_in, sym=sym)
+        if baseline_val is not None and baseline_val <= 4:
+            try:
+                sub_int = int(submitted_val)
+                capped = min(sub_int, int(baseline_val) + 2)
+                if capped != sub_int:
+                    logger.info(
+                        f"[EmpiricalPricedInCap] Capped {sym} priced_in_score from {sub_int} to {capped} "
+                        f"(automated baseline={baseline_val})."
+                    )
+                scores[sym] = capped
+            except ValueError, TypeError:
+                pass
+    return scores
+
 
 def format_macro_intelligence_dossier(inp: dict, now: datetime, valid_until: Optional[datetime] = None) -> str:
     """
@@ -39,7 +160,7 @@ def format_macro_intelligence_dossier(inp: dict, now: datetime, valid_until: Opt
     """
     ts_str = now.strftime("%Y-%m-%d %H:%M UTC")
     valid_str = valid_until.strftime("%Y-%m-%d %H:%M UTC") if valid_until else "12 hours"
-    regime = str(inp.get("macro_regime", "mixed")).upper().replace("-", "_")
+    regime = sanitize_macro_regime(inp.get("macro_regime", "mixed")).upper().replace("-", "_")
     sentiment = str(inp.get("risk_sentiment", "mixed")).upper()
     conf = float(inp.get("confidence", 0.5) or 0.5)
     conf_str = f"{conf:.0%}"
@@ -447,8 +568,8 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                         closest_prob = min(all_meeting_dominant_probs, key=lambda p: abs(claimed - p))
                         if min_diff > 8.0:
                             errors.append(
-                                f"DATA_MISMATCH: Claimed FedWatch dominant={claimed}%, but nearest verified empirical "
-                                f"probability={closest_prob}%. Re-verify get_fedwatch_probabilities() output."
+                                f"DATA_MISMATCH: Kamu menyatakan FedWatch dominant={claimed}% (Claimed FedWatch dominant={claimed}%), "
+                                f"but nearest verified empirical probability terdekat={closest_prob}%. Re-verify get_fedwatch_probabilities() output."
                             )
         except Exception:
             pass
@@ -637,6 +758,12 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
         except Exception as e:
             logger.error(f"Deterministic priced-in check failed: {e}")
 
+        raw_auto_pi = inp.get("automated_priced_in") if isinstance(inp, dict) else None
+        has_raw_regime = isinstance(inp, dict) and "macro_regime" in inp
+        sanitized_regime = sanitize_macro_regime(inp.get("macro_regime")) if has_raw_regime else "mixed"
+        if isinstance(inp, dict) and has_raw_regime:
+            inp["macro_regime"] = sanitized_regime
+
         try:
             validated_data = SubmitFundamentalBriefSchema.model_validate(inp)
             inp = validated_data.model_dump(mode="json")
@@ -649,6 +776,12 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                 "error_classification": "SCHEMA_ERROR",
                 "guidance": "Please fix the schema formatting errors above and call the tool again.",
             }
+
+        inp["macro_regime"] = sanitized_regime if has_raw_regime else sanitize_macro_regime(inp.get("macro_regime"))
+        inp["per_asset_macro_matrix"] = reconcile_fx_pair_macro_matrix(
+            inp.get("currency_bias", {}),
+            inp.get("per_asset_macro_matrix", {}),
+        )
 
         # Validate Completeness
         completeness_errors = await self._validate_fundamental_brief_completeness(inp)
@@ -835,6 +968,26 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
         except Exception as e:
             logger.debug(f"Deterministic confidence ceiling check failed (non-fatal): {e}")
         # ── END CONFIDENCE CEILING ──
+
+        # Empirical Priced-In Cap when automated_priced_in baseline is available and <= 4 without imminent event
+        auto_pi_source = raw_auto_pi
+        if auto_pi_source is None:
+            cand_self = getattr(self, "automated_priced_in", None)
+            if isinstance(cand_self, (dict, int, float)) and not isinstance(cand_self, bool):
+                auto_pi_source = cand_self
+        if auto_pi_source is None:
+            ctx_d = getattr(self, "context_data", None)
+            if isinstance(ctx_d, dict):
+                cand_ctx = ctx_d.get("automated_priced_in")
+                if isinstance(cand_ctx, (dict, int, float)) and not isinstance(cand_ctx, bool):
+                    auto_pi_source = cand_ctx
+        if auto_pi_source is not None:
+            has_imminent_2h = bool(inp.get("_upcoming_event_currencies"))
+            inp["asset_priced_in_scores"] = cap_empirical_priced_in_scores(
+                inp.get("asset_priced_in_scores", {}),
+                auto_pi_source,
+                has_imminent_high_impact=has_imminent_2h,
+            )
 
         import json as _json
 

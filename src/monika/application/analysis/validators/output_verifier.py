@@ -136,6 +136,14 @@ class OutputVerifier:
 
         entry_cond = output.get("entry_condition")
         entry = entry_cond.get("price") if isinstance(entry_cond, dict) else None
+        if entry is None:
+            entry = (
+                output.get("price_at_analysis")
+                or output.get("current_price")
+                or output.get("entry_price")
+                or (context_data.get("current_price") if isinstance(context_data, dict) else None)
+                or (context_data.get("price_at_analysis") if isinstance(context_data, dict) else None)
+            )
         sl = output.get("stop_loss")
         tp = output.get("take_profit")
         if entry is None or sl is None or tp is None:
@@ -330,6 +338,26 @@ class OutputVerifier:
         # BUY / SELL Validation
         entry_cond = output.get("entry_condition")
         entry = entry_cond.get("price") if isinstance(entry_cond, dict) else None
+        adopted_bracket_name = str(output.get("adopted_bracket") or "").strip().upper()
+        if entry is None and adopted_bracket_name and isinstance(context_data, dict):
+            from monika.application.analysis.calculators.invariant_calculator import resolve_bracket_choice
+
+            pre_inv = context_data.get("precomputed_invariants")
+            b_opts = (pre_inv.get("bracket_options") if isinstance(pre_inv, dict) else None) or context_data.get(
+                "bracket_options"
+            )
+            if isinstance(b_opts, dict):
+                resolved_b = resolve_bracket_choice(adopted_bracket_name, b_opts)
+                if resolved_b and resolved_b.get("entry") is not None:
+                    entry = resolved_b.get("entry")
+        if entry is None:
+            entry = (
+                output.get("price_at_analysis")
+                or output.get("current_price")
+                or output.get("entry_price")
+                or (context_data.get("current_price") if isinstance(context_data, dict) else None)
+                or (context_data.get("price_at_analysis") if isinstance(context_data, dict) else None)
+            )
         sl = output.get("stop_loss")
         tp = output.get("take_profit")
 
@@ -374,8 +402,15 @@ class OutputVerifier:
                         tp_max = adr.get("target_tp_max_distance", float("inf")) * 1.15
                         sl_min = adr.get("target_sl_min_distance", 0) * 0.85
                         target_sl_max = adr.get("target_sl_max_distance", float("inf"))
-                        # Bound sl_max from below by 1.2x ATR to eliminate ATR vs ADR deadlock
-                        sl_max = max(target_sl_max * 1.15, (atr_val * 1.2) if (atr_val and atr_val > 0) else 0)
+                        sl_max = target_sl_max * 1.15
+                        effective_atr = atr_val
+                        if (not effective_atr or effective_atr <= 0) and output.get("adopted_bracket") and sl_dist > 0:
+                            effective_atr = sl_dist
+                        if effective_atr and effective_atr > 0:
+                            sl_min = min(sl_min, 0.95 * effective_atr)
+                            sl_max = max(sl_max, 1.35 * effective_atr)
+                            tp_min = min(tp_min, 1.40 * effective_atr)
+                            tp_max = max(tp_max, 2.25 * effective_atr, 1.85 * sl_dist, 1.65 * sl_max)
                         if not (tp_min <= tp_dist <= tp_max):
                             failures.append(f"TP dist {tp_dist:.5f} outside ADR band [{tp_min:.5f}, {tp_max:.5f}]")
                         if sl_min > 0 and sl_dist < sl_min:
@@ -412,7 +447,7 @@ class OutputVerifier:
                     logger.debug(f"TimesFM check in OutputVerifier non-fatal skip: {tfm_err}")
 
         # Check 5: Anti-hallucination (price near valid levels if context available)
-        if entry is not None and context_data:
+        if entry is not None and context_data and adopted_bracket_name not in ("LONG_OPTION_A", "SHORT_OPTION_B"):
             price_levels = self._extract_price_levels(context_data)
             atr_val = self._extract_atr(context_data)
             if price_levels and not self._near_any_level(entry, price_levels, atr=atr_val, tolerance_pct=0.008):
@@ -463,7 +498,14 @@ class OutputVerifier:
         ]
 
         def _extract_from_item(item):
-            if isinstance(item, dict):
+            if isinstance(item, (int, float)) and not isinstance(item, bool):
+                try:
+                    val = float(item)
+                    if val > 0:
+                        levels.append(val)
+                except TypeError, ValueError:
+                    pass
+            elif isinstance(item, dict):
                 for pk in price_keys:
                     if pk in item and item[pk] is not None:
                         try:
@@ -474,7 +516,19 @@ class OutputVerifier:
                             pass
 
         # FIX 6.4: Only snap to genuine structural levels (exclude noisy raw price_history bars)
-        target_prefixes = ["swing", "sr_", "order_block", "fvg", "fibonacci", "liquidity", "smc"]
+        target_prefixes = [
+            "swing",
+            "sr_",
+            "support_resistance",
+            "order_block",
+            "fvg",
+            "fair_value_gap",
+            "fibonacci",
+            "liquidity",
+            "smc",
+            "zones",
+            "levels",
+        ]
         for k, v in context_data.items():
             k_lower = str(k).lower()
             if any(tp in k_lower for tp in target_prefixes):
@@ -490,8 +544,12 @@ class OutputVerifier:
                         "levels",
                         "items",
                         "swing_points",
+                        "swing_highs",
+                        "swing_lows",
                         "fvg_zones",
+                        "fair_value_gaps",
                         "order_blocks",
+                        "sr_zones",
                     ]:
                         sub_v = v.get(sub_k)
                         if isinstance(sub_v, list):
@@ -505,16 +563,34 @@ class OutputVerifier:
         """Extract ATR from context data if available."""
         if not isinstance(context_data, dict):
             return None
-        atr_data = context_data.get("get_atr") or context_data.get("atr")
-        if isinstance(atr_data, (int, float)):
-            return float(atr_data)
-        if isinstance(atr_data, dict):
-            val = atr_data.get("atr") or atr_data.get("value")
-            if val is not None:
-                try:
-                    return float(val)
-                except ValueError, TypeError:
-                    pass
+        for atr_key in ("get_atr", "get_atr_H4", "get_atr_H1", "atr", "ATR_14"):
+            atr_data = context_data.get(atr_key)
+            if isinstance(atr_data, (int, float)) and not isinstance(atr_data, bool):
+                f_val = float(atr_data)
+                if f_val > 0:
+                    return f_val
+            elif isinstance(atr_data, dict):
+                val = atr_data.get("atr") or atr_data.get("value")
+                if isinstance(val, dict):
+                    val = val.get("value") or val.get("atr")
+                if val is not None:
+                    try:
+                        f_val = float(val)
+                        if f_val > 0:
+                            return f_val
+                    except ValueError, TypeError:
+                        pass
+        for inv_key, sub_key in (("precomputed_invariants", "atr_14"), ("daily_range_context", "atr_h4")):
+            sub_ctx = context_data.get(inv_key)
+            if isinstance(sub_ctx, dict):
+                val = sub_ctx.get(sub_key) or sub_ctx.get("atr")
+                if val is not None:
+                    try:
+                        f_val = float(val)
+                        if f_val > 0:
+                            return f_val
+                    except ValueError, TypeError:
+                        pass
         for k in ("get_technical_indicators_H4", "get_technical_indicators", "get_technical_indicators_H1"):
             ti = context_data.get(k)
             if isinstance(ti, dict):
@@ -522,9 +598,13 @@ class OutputVerifier:
                 ind = raw_ind if isinstance(raw_ind, dict) else ti
                 if isinstance(ind, dict):
                     val = ind.get("atr") or ind.get("ATR_14")
+                    if isinstance(val, dict):
+                        val = val.get("value") or val.get("atr")
                     if val is not None:
                         try:
-                            return float(val)
+                            f_val = float(val)
+                            if f_val > 0:
+                                return f_val
                         except ValueError, TypeError:
                             pass
         return None

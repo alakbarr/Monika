@@ -73,15 +73,20 @@ Minimum Confluence Score for entry: see CURRENT ANALYSIS TARGET threshold.
 
 RULES, OPPORTUNITY & ADR BOUNDS:
 - OPPORTUNITY MANDATE: Do not default to passive 'WAIT' when valid structural POIs (unfilled FVG, unmitigated Order Block, OTE Fibonacci 0.618-0.786, or verified S/R boundaries) exist on the chart. Passive idle waiting wastes market opportunities.
-- ZERO MENTAL ARITHMETIC & BRACKET ADOPTION: Do not calculate SL, TP, or R:R in mental prose. You MUST choose and adopt one of the pre-computed verified bracket options (set adopted_bracket='LONG_OPTION_A' or 'SHORT_OPTION_B') provided in the PRE-COMPUTED TRADE INVARIANTS block to guarantee exact mathematical R:R (>= 1.80) and noise floor protection. In Equilibrium regimes (0.35 < pos < 0.65), formulate breakout expansion beyond local swing high/low or limit pullbacks into unmitigated POI/FVG.
-- SQUEEZE & COMPRESSION DISCIPLINE: If Bollinger Band Width is in the lower 25th percentile (BB Squeeze) OR Volume Profile shows thin liquidity/squeeze without confirmed breakout expansion: DO NOT submit an aggressive market order. Instead, adopt the pre-computed pending LIMIT order bracket option at the outer range boundary (OTE / unmitigated FVG / Order Block zone) with exact R:R >= 1.80. Only submit WAIT if the chart is purely erratic with NO identifiable structural POI.
+- ZERO MENTAL ARITHMETIC & BRACKET ADOPTION: Do not calculate SL, TP, or R:R in mental prose. When submitting BUY or SELL, you MUST pass `adopted_bracket="LONG_OPTION_A"` (for BUY) or `adopted_bracket="SHORT_OPTION_B"` (for SELL) from the pre-computed `DETERMINISTIC INVARIANT ENGINE` block so verified `entry_condition`, `stop_loss`, and `take_profit` are populated without mental floating-point arithmetic errors (guaranteeing R:R >= 1.50 and H4 ATR noise floor compliance).
+- INSTITUTIONAL SYNERGY & ANTI-CROWDING PROTOCOL:
+  (a) Uncrowded Institutional Synergy (`Tech == Macro` and `Sentiment != Tech`): Prioritize execution when `Technical` and `Macro` specialists agree (`Tech == Macro`) while `Sentiment` is uncrowded (`Sentiment != Tech`, i.e., neutral or contrarian) within valid spatial bounds (`pos <= 0.85` for BUY, `pos >= 0.15` for SELL). This is the highest-expectancy setup (`81.8%` 12h accuracy).
+  (b) Equilibrium Execution (`0.35 < pos < 0.65`): Allow `BUY` or `SELL` (market or limit) when `Technical == Macro` (or strong structural confluence `>= 10`) and H4/H1 momentum aligns; output `WAIT` in Equilibrium if `Technical != Macro` or if structure is directionless chop (`ADX < 20`).
+  (c) Crowded 3-of-3 Exhaustion Warning: Guard against `Tech == Macro == Sentiment` unanimous agreement when price is already extended past Equilibrium (`pos > 0.55` for BUY or `pos < 0.45` for SELL); prefer `WAIT` or outer pullback limit orders to avoid late-stage exhaustion reversals.
+  (d) Spatial Anti-Chasing Bounds (`[0.15 .. 0.85]`): Forbid chasing `BUY` at `pos > 0.85` or `SELL` at `pos < 0.15` unless price has decisively broken out of the 20-day dealing range.
+- SQUEEZE & COMPRESSION DISCIPLINE: If Bollinger Band Width is in the lower 25th percentile (BB Squeeze) OR Volume Profile shows thin liquidity/squeeze without confirmed breakout expansion: DO NOT submit an aggressive market order. Instead, adopt the pre-computed pending LIMIT order bracket option at the outer range boundary (OTE / unmitigated FVG / Order Block zone). Only submit WAIT if the chart is purely erratic with NO identifiable structural POI.
 - Intraday Range Strategy: resolve within 1 trading day using ADR bounds.
-- TP MUST fall within 50-80% of 5-day ADR (get_daily_range_context); minimum R:R = see CURRENT ANALYSIS TARGET (target >= 1.80).
+- TP MUST fall within 50-80% of 5-day ADR (get_daily_range_context) or <= 1.65x effective SL max; minimum R:R = see CURRENT ANALYSIS TARGET (minimum >= 1.50, intraday target ~1.55x SL).
 - TimesFM Statistical Bound: TP MUST NOT exceed Q90 (for BUY) or fall below Q10 (for SELL) when TimesFM block is loaded.
 - SL HIERARCHY & BOUNDS:
   (a) Structural Invalidation Anchor: Place SL beyond structural swing level or protected order block/FVG boundary.
-  (b) Noise Floor: SL distance SHOULD be >= 1.0x ATR_14 to prevent noise stop-outs.
-  (c) Volatility Sizing Priority: Target SL within 0.35x - 0.50x ADR under normal conditions. CRITICAL: If structural SL >= 1.0x ATR exceeds 0.45x ADR due to elevated volatility, DO NOT force WAIT. Structural integrity and noise protection ALWAYS override ADR guidelines: accept the structural stop and rely on 'calculate_position_size' to dynamically downscale position volume so dollar risk remains strictly within limits.
+  (b) Noise Floor: SL distance SHOULD be >= 1.0x ATR_14 (>= 1.2x for XAU/BTC/XTI) to prevent noise stop-outs.
+  (c) Volatility Sizing Priority: Target SL within 0.35x - 0.50x ADR (effective ceiling max(ADR cap, 1.35x H4 ATR)). CRITICAL: If structural SL >= 1.0x ATR exceeds raw ADR guidelines due to elevated volatility, DO NOT force WAIT. Structural integrity and noise protection ALWAYS override ADR guidelines: accept the structural stop and rely on `adopted_bracket` or `calculate_position_size` to dynamically downscale position volume so dollar risk remains strictly within limits.
 - Decision: Score >= Threshold → BUY/SELL; Score < Threshold → WAIT; Invalid → AVOID.
 - Priced-in score >= 8 + event < 12h: do NOT chase market orders; formulate pending limit orders at outer range extremes (unmitigated OB/FVG) adopting the pre-computed bracket options, or submit WAIT with structural levels if range is undefined.
 - Mandatory Bull/Bear Stress test: state 1 opposing scenario before finalizing BUY/SELL.
@@ -616,14 +621,24 @@ class ContextBuilderMixin:
             try:
                 from monika.infrastructure.database.models import OrderBlock, PriceOHLCV
 
-                # 1. 20-day dealing range
+                # 1. 20-day dealing range (query D1 first; fallback to H4 if fewer than 5 D1 bars exist)
                 d1_stmt = (
                     select(PriceOHLCV)
-                    .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe.in_(["D1", "H4"]))
+                    .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == "D1")
                     .order_by(PriceOHLCV.timestamp.desc())
                     .limit(20)
                 )
                 bars = (await session.execute(d1_stmt)).scalars().all()
+                if len(bars) < 5:
+                    h4_stmt = (
+                        select(PriceOHLCV)
+                        .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == "H4")
+                        .order_by(PriceOHLCV.timestamp.desc())
+                        .limit(20)
+                    )
+                    h4_bars = (await session.execute(h4_stmt)).scalars().all()
+                    if h4_bars:
+                        bars = h4_bars
                 if bars:
                     high_20 = max(float(b.high) for b in bars if b.high is not None)
                     low_20 = min(float(b.low) for b in bars if b.low is not None)
@@ -631,7 +646,9 @@ class ContextBuilderMixin:
                     range_span = high_20 - low_20
                     range_pos = (curr_close - low_20) / range_span if range_span > 1e-6 else 0.50
                     range_zone = (
-                        "DISCOUNT" if range_pos <= 0.35 else ("PREMIUM" if range_pos >= 0.65 else "EQUILIBRIUM")
+                        "DEEP DISCOUNT"
+                        if range_pos <= 0.35
+                        else ("DEEP PREMIUM" if range_pos >= 0.65 else "EQUILIBRIUM REGIME")
                     )
 
                     # 2. Nearest unmitigated Order Blocks
@@ -666,12 +683,12 @@ class ContextBuilderMixin:
                     sweep_of_high = sweep_detected and sweep_dir == "sell_side"
 
                     status_str = (
-                        "DISCOUNT / ACCUMULATION ZONE (High Long Asymmetry)"
+                        "ACCUMULATION ZONE (BUY eligible) — High Long Asymmetry"
                         if range_pos <= 0.35
                         else (
-                            "PREMIUM / DISTRIBUTION ZONE (High Short Asymmetry)"
+                            "DISTRIBUTION ZONE (SELL eligible) — High Short Asymmetry"
                             if range_pos >= 0.65
-                            else "EQUILIBRIUM REGIME (Mid-range: Trade expansion breakouts beyond local swing high/low or pullbacks into unmitigated POI/FVG; adopt verified bracket option)"
+                            else "EQUILIBRIUM REGIME (Mid-range: Trade expansion breakouts or pullbacks when Uncrowded Tech==Macro Synergy aligns; adopt verified bracket option)"
                         )
                     )
                     demand_str = (
@@ -1266,9 +1283,15 @@ Call get_market_regime(symbols=["{symbol}"], timeframe="D1").
 Read STEP 0 in your SMC/ICT playbook. You MUST adjust your confluence threshold based on the ADX value returned.
 """
         msg += (
+            f"\nINSTITUTIONAL SYNERGY, SPATIAL BOUNDS & ZERO-ARITHMETIC BRACKET PROTOCOL:\n"
+            f'- ZERO-ARITHMETIC BRACKET ADOPTION (`adopted_bracket`): When proposing `BUY` or `SELL`, pass `adopted_bracket="LONG_OPTION_A"` (for `BUY`) or `adopted_bracket="SHORT_OPTION_B"` (for `SELL`) from the pre-computed `DETERMINISTIC INVARIANT ENGINE` block so verified `entry_condition`, `stop_loss`, and `take_profit` are populated automatically without mental floating-point arithmetic errors.\n'
+            f"- SPECIALIST SYNERGY & CROWDING STATE:\n"
+            f"  1. Uncrowded Institutional Synergy (`Tech == Macro` and `Sentiment != Tech`): Prioritize execution when `Technical` and `Macro` specialists agree while `Sentiment` is uncrowded (neutral or contrarian) within valid spatial bounds (`pos <= 0.85` for `BUY`, `pos >= 0.15` for `SELL`).\n"
+            f"  2. Equilibrium Continuation (`0.35 < pos < 0.65`): Allow `BUY` or `SELL` when `Technical == Macro` (or strong structural confluence `>= 10`) and H4/H1 momentum aligns; output `WAIT` if `Technical != Macro` or if structure is directionless chop (`ADX < 20`).\n"
+            f"  3. Crowded 3-of-3 Exhaustion & Spatial Anti-Chasing: Guard against `Tech == Macro == Sentiment` exhaustion when price is extended past Equilibrium (`pos > 0.55` for `BUY` or `pos < 0.45` for `SELL`), and NEVER chase `BUY` at `pos > 0.85` or `SELL` at `pos < 0.15` unless price broke out of the 20-day range.\n"
             f"\nCRITICAL MANDATORY REQUIREMENT:\n"
-            f"- If proposing BUY or SELL: you MUST call `calculate_position_size` FIRST before submitting. Direct unverified BUY/SELL is blocked by TradeStopGate.\n"
-            f"- For BUY or SELL decisions, you MUST supply ALL 9 execution fields in `submit_asset_analysis`:\n"
+            f'- If proposing BUY or SELL: adopt `adopted_bracket="LONG_OPTION_A"` or `"SHORT_OPTION_B"` (or call `calculate_position_size` FIRST before submitting). Direct unverified BUY/SELL is blocked by TradeStopGate.\n'
+            f"- For BUY or SELL decisions, you MUST supply ALL 9 execution fields in `submit_asset_analysis` (or let `adopted_bracket` populate the price levels):\n"
             f"  1. `stop_loss` (float)\n"
             f"  2. `take_profit` (float)\n"
             f"  3. `invalidation` (detailed string >= 40 chars with specific price level)\n"
@@ -1292,7 +1315,10 @@ Read STEP 0 in your SMC/ICT playbook. You MUST adjust your confluence threshold 
 
 HYPOTHESIS-DRIVEN REASONING DIRECTIVE (Max 2-3 Iterative Turns):
 1. Review the baseline H4 trend, ATR, and macro context above.
-2. Formulate an initial trading hypothesis (e.g., Bullish liquidity sweep targeting H1 FVG).
+2. Apply the INSTITUTIONAL SYNERGY & ANTI-CROWDING PROTOCOL (`SPECIALIST SYNERGY & CROWDING STATE`):
+   - Prioritize execution when `Technical` and `Macro` specialists agree (`Tech == Macro`) while `Sentiment` is uncrowded (`Sentiment != Tech`) within valid spatial bounds (`pos <= 0.85` for BUY, `pos >= 0.15` for SELL).
+   - In Equilibrium (`0.35 < pos < 0.65`), allow `BUY` or `SELL` when `Technical == Macro` (or strong structural confluence `>= 10`) and H4/H1 momentum aligns; output `WAIT` if `Technical != Macro` or if structure is directionless chop (`ADX < 20`).
+   - Beware **Crowded 3-of-3 Exhaustion** (`Tech == Macro == Sentiment` when `pos > 0.55` for BUY or `pos < 0.45` for SELL) and forbid **Spatial Chasing** (`BUY` at `pos > 0.85` or `SELL` at `pos < 0.15` unless price broke out of the 20-day range).
 3. If additional precision is required to validate or FALSIFY this setup, invoke targeted tools:
    - `get_smc_zones(symbol="{symbol}", timeframe="M15")` to verify unmitigated order blocks.
    - `get_structure_breaks(symbol="{symbol}", timeframe="M15")` to confirm CHoCH/BOS.
@@ -1303,8 +1329,8 @@ HYPOTHESIS-DRIVEN REASONING DIRECTIVE (Max 2-3 Iterative Turns):
             msg += "   - `get_eia_oil_inventory()` — CRITICAL for oil analysis.\n"
 
         msg += f"""4. If the setup lacks confluence or structure is violated, you may conclude 'wait' or 'avoid'. NOTE: To conclude 'wait' on Turn 1, you MUST first inspect technical structure (e.g. call `get_smc_zones` or `get_structure_breaks`) — direct Turn-1 'wait' without technical verification is blocked by Anti-Laziness gate.
-5. MANDATORY SIZING BEFORE SUBMISSION: If proposing a directional trade (BUY/SELL), you MUST call `calculate_position_size` with exact entry, stop_loss, and take_profit FIRST. Never call `submit_asset_analysis` with BUY/SELL before `calculate_position_size` passes.
-6. For BUY or SELL decisions, you MUST supply ALL 9 execution fields in `submit_asset_analysis`:
+5. ZERO-ARITHMETIC BRACKET ADOPTION & SIZING: If proposing a directional trade (BUY/SELL), pass `adopted_bracket="LONG_OPTION_A"` (for BUY) or `adopted_bracket="SHORT_OPTION_B"` (for SELL) from the pre-computed `DETERMINISTIC INVARIANT ENGINE` block so verified `entry_condition`, `stop_loss`, and `take_profit` are populated without mental floating-point arithmetic (or call `calculate_position_size` with exact entry, stop_loss, and take_profit FIRST).
+6. For BUY or SELL decisions, you MUST supply ALL 9 execution fields in `submit_asset_analysis` (or let `adopted_bracket` populate the price levels):
    stop_loss (float), take_profit (float), invalidation (detailed string), invalidation_price (float),
    invalidation_direction ('above'/'below'), entry_condition (dict), reevaluation_trigger (dict),
    confluence_score (integer 0-20), and priced_in_score (integer 1-10).

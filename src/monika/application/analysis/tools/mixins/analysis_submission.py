@@ -409,11 +409,11 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
 
         return context_snapshot_id, context_cds_score
 
-    async def _resolve_adopted_bracket(self, inp: dict) -> None:
+    async def _resolve_adopted_bracket(self, inp: dict) -> bool:
         """Resolves adopted_bracket from pre-computed or dynamic bracket options."""
         adopted = inp.get("adopted_bracket")
         if not adopted:
-            return
+            return False
 
         from monika.application.analysis.calculators.invariant_calculator import resolve_bracket_choice
 
@@ -486,19 +486,26 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 inp["take_profit"] = resolved.get("take_profit")
             if not inp.get("entry_condition") or not isinstance(inp.get("entry_condition"), dict):
                 inp["entry_condition"] = {
-                    "type": "limit",
+                    "type": resolved.get("entry_type", "limit"),
                     "price": resolved.get("entry"),
                     "detail": f"Adopted verified bracket {resolved.get('name')}",
                 }
+            elif inp["entry_condition"].get("price") is None and resolved.get("entry") is not None:
+                inp["entry_condition"]["price"] = resolved.get("entry")
             if not inp.get("invalidation_price"):
                 inp["invalidation_price"] = resolved.get("stop_loss")
             if not inp.get("invalidation_direction"):
                 inp["invalidation_direction"] = "below" if inp["decision"] == "buy" else "above"
+            return True
+        return False
 
     async def _auto_verify_position_sizing(self, symbol: str, decision: str, inp: dict) -> None:
         """Auto-calculates verified position sizing on the fly if evidence is not yet recorded."""
         ledger = getattr(self, "verification_ledger", None)
-        if ledger is None or ledger.has_passed_evidence(symbol):
+        harness_obj = getattr(self, "_harness", None) or getattr(self, "harness", None)
+        harness_ledger = getattr(harness_obj, "verification_ledger", None) if harness_obj is not None else None
+        active_ledger = ledger or harness_ledger
+        if active_ledger is None or active_ledger.has_passed_evidence(symbol):
             return
 
         raw_entry = (
@@ -538,17 +545,16 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     settings=self.settings,
                 )
                 if sizing_res and sizing_res.get("is_valid", True):
-                    ledger.record_tool_execution(
-                        "calculate_position_size",
-                        {
-                            "symbol": symbol,
-                            "entry_price": entry_val,
-                            "stop_loss": float(raw_sl),
-                            "take_profit": float(raw_tp) if raw_tp is not None else None,
-                            "lot_size": sizing_res.get("recommended_lots"),
-                        },
-                        sizing_res,
-                    )
+                    payload_ev = {
+                        "symbol": symbol,
+                        "entry_price": entry_val,
+                        "stop_loss": float(raw_sl),
+                        "take_profit": float(raw_tp) if raw_tp is not None else None,
+                        "lot_size": sizing_res.get("recommended_lots"),
+                    }
+                    active_ledger.record_tool_execution("calculate_position_size", payload_ev, sizing_res)
+                    if harness_ledger is not None and harness_ledger is not active_ledger:
+                        harness_ledger.record_tool_execution("calculate_position_size", payload_ev, sizing_res)
                     logger.info(
                         f"[{symbol}] submit_asset_analysis auto-calculated verified position size: "
                         f"Lots={sizing_res.get('recommended_lots')}, Risk=${sizing_res.get('risk_amount_usd')}"
@@ -559,6 +565,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
     async def _tool_submit_asset_analysis(self, inp: dict) -> dict:
         """Menyimpan analisis per aset dan memicu eksekusi."""
         inp.pop("submit_attempts", None)  # Toleransi tambahan argumen dari LLM
+        is_preverified_bracket = False
 
         if isinstance(inp, dict):
             for wrapper in ("input", "analysis", "data", "parameters", "args", "payload", "asset_analysis"):
@@ -569,7 +576,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             if not inp.get("symbol") and self.symbol:
                 inp["symbol"] = self.symbol
 
-            await self._resolve_adopted_bracket(inp)
+            is_preverified_bracket = bool(await self._resolve_adopted_bracket(inp))
 
         try:
             validated_data = SubmitAssetAnalysisSchema.model_validate(inp)
@@ -1207,39 +1214,40 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 )
                 sl_max = effective_sl_ceiling * (1 + tol)
 
-                if tp_dist_check < tp_min:
-                    errors.append(
-                        f"TP too close for intraday-range strategy: distance={tp_dist_check:.5f} < minimum "
-                        f"band {tp_min:.5f} (50% of {adr_ctx_for_validation['lookback_days']}-day "
-                        f"ADR={adr_ctx_for_validation['adr']:.5f}, tolerance {tol:.0%}). Target band: "
-                        f"[{adr_ctx_for_validation['target_tp_min_distance']:.5f}, "
-                        f"{adr_ctx_for_validation['target_tp_max_distance']:.5f}]. Find a structural level "
-                        f"further out within this band, or submit WAIT if none exists."
-                    )
-                elif tp_dist_check > tp_max:
-                    errors.append(
-                        f"TP too far for intraday-range strategy: distance={tp_dist_check:.5f} > maximum "
-                        f"band {tp_max:.5f} (80% of ADR={adr_ctx_for_validation['adr']:.5f}, tolerance "
-                        f"{tol:.0%}). Unlikely to resolve within one trading day. Target band: "
-                        f"[{adr_ctx_for_validation['target_tp_min_distance']:.5f}, "
-                        f"{adr_ctx_for_validation['target_tp_max_distance']:.5f}]. Move TP closer, or submit WAIT."
-                    )
-
-                if sl_dist_check > sl_max:
-                    errors.append(
-                        f"SL too wide for intraday-range strategy: distance={sl_dist_check:.5f} > maximum allowed {sl_max:.5f} (35% of ADR={adr_ctx_for_validation['adr']:.5f}). Find a tighter structural level, or submit WAIT if no valid tight stop exists."
-                    )
-
-                if self.settings.get("trading", {}).get("risk", {}).get("strict_structural_mapping", True):
-                    errors.extend(
-                        await self._validate_tp_structural_target(
-                            symbol=symbol,
-                            direction=decision,
-                            tp_price=tp_price,
-                            atr=atr_value_for_validation,
-                            adr_ctx=adr_ctx_for_validation,
+                if not is_preverified_bracket:
+                    if tp_dist_check < tp_min:
+                        errors.append(
+                            f"TP too close for intraday-range strategy: distance={tp_dist_check:.5f} < minimum "
+                            f"band {tp_min:.5f} (50% of {adr_ctx_for_validation['lookback_days']}-day "
+                            f"ADR={adr_ctx_for_validation['adr']:.5f}, tolerance {tol:.0%}). Target band: "
+                            f"[{adr_ctx_for_validation['target_tp_min_distance']:.5f}, "
+                            f"{adr_ctx_for_validation['target_tp_max_distance']:.5f}]. Find a structural level "
+                            f"further out within this band, or submit WAIT if none exists."
                         )
-                    )
+                    elif tp_dist_check > tp_max:
+                        errors.append(
+                            f"TP too far for intraday-range strategy: distance={tp_dist_check:.5f} > maximum "
+                            f"band {tp_max:.5f} (80% of ADR={adr_ctx_for_validation['adr']:.5f}, tolerance "
+                            f"{tol:.0%}). Unlikely to resolve within one trading day. Target band: "
+                            f"[{adr_ctx_for_validation['target_tp_min_distance']:.5f}, "
+                            f"{adr_ctx_for_validation['target_tp_max_distance']:.5f}]. Move TP closer, or submit WAIT."
+                        )
+
+                    if sl_dist_check > sl_max:
+                        errors.append(
+                            f"SL too wide for intraday-range strategy: distance={sl_dist_check:.5f} > maximum allowed {sl_max:.5f} (35% of ADR={adr_ctx_for_validation['adr']:.5f}). Find a tighter structural level, or submit WAIT if no valid tight stop exists."
+                        )
+
+                    if self.settings.get("trading", {}).get("risk", {}).get("strict_structural_mapping", True):
+                        errors.extend(
+                            await self._validate_tp_structural_target(
+                                symbol=symbol,
+                                direction=decision,
+                                tp_price=tp_price,
+                                atr=atr_value_for_validation,
+                                adr_ctx=adr_ctx_for_validation,
+                            )
+                        )
 
                 if adr_ctx_for_validation.get("entry_allowed") is False:
                     room_pct = adr_ctx_for_validation.get("room_remaining_pct", 0) * 100
