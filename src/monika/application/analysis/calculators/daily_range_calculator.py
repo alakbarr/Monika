@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -5,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import monika.core.primitives.clock as clock
-from monika.infrastructure.database.models import PriceOHLCV
+from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
 
 logger = logging.getLogger("TradingAgent.DailyRangeCalculator")
 
@@ -207,14 +208,31 @@ async def compute_daily_range_context(
     target_sl_min = effective_range * sl_min_pct
     target_sl_max = effective_range * sl_max_pct
 
+    resolved_atr_h4: Optional[float] = None
     if atr_h4 is not None:
         try:
-            atr_h4_f = float(atr_h4)
-            if atr_h4_f > 0:
-                target_sl_max = max(target_sl_max, 1.25 * atr_h4_f)
-                target_tp_max = max(target_tp_max, 1.65 * target_sl_max)
+            cand_atr = float(atr_h4)
+            if cand_atr > 0:
+                resolved_atr_h4 = cand_atr
         except ValueError, TypeError:
-            pass
+            resolved_atr_h4 = None
+
+    if resolved_atr_h4 is None:
+        resolved_atr_h4 = await _auto_fetch_h4_atr(session, symbol, effective_as_of, rows)
+
+    atr_harmonized = False
+    precision = 6
+    if resolved_atr_h4 is not None and resolved_atr_h4 > 0:
+        min_sl_ceiling = round(1.25 * resolved_atr_h4, precision)
+        if round(target_sl_max, precision) < min_sl_ceiling:
+            target_sl_max = min_sl_ceiling
+            atr_harmonized = True
+        if atr_harmonized:
+            target_tp_min = max(target_tp_min, round(1.50 * resolved_atr_h4, precision))
+        min_tp_ceiling = round(1.65 * target_sl_max, precision)
+        if round(target_tp_max, precision) < min_tp_ceiling:
+            target_tp_max = min_tp_ceiling
+            atr_harmonized = True
 
     if room_remaining_pct < 0.15:
         session_recommendation, entry_allowed = "avoid_new_entry_low_room", False
@@ -223,7 +241,7 @@ async def compute_daily_range_context(
     else:
         session_recommendation, entry_allowed = "full_target", True
 
-    return {
+    res_dict = {
         "symbol": symbol,
         "lookback_days": lookback_days,
         "adr": round(adr, 6),
@@ -245,6 +263,7 @@ async def compute_daily_range_context(
         "target_tp_max_distance": round(target_tp_max, 6),
         "target_sl_min_distance": round(target_sl_min, 6),
         "target_sl_max_distance": round(target_sl_max, 6),
+        "atr_harmonized": atr_harmonized,
         "band_tolerance_pct": tolerance,
         "session_recommendation": session_recommendation,
         "entry_allowed": entry_allowed,
@@ -253,6 +272,107 @@ async def compute_daily_range_context(
         "effective_range": round(effective_range, 6),
         "computed_at": now.isoformat(),
     }
+    if resolved_atr_h4 is not None and resolved_atr_h4 > 0:
+        res_dict["atr_h4"] = round(resolved_atr_h4, precision)
+    return res_dict
+
+
+def _extract_indicator_atr(row: object) -> Optional[float]:
+    if row is None:
+        return None
+    raw_json = getattr(row, "value_json", None)
+    parsed: object = None
+    if isinstance(raw_json, str):
+        try:
+            parsed = json.loads(raw_json)
+        except Exception:
+            parsed = None
+    elif isinstance(raw_json, (dict, int, float)) and not isinstance(raw_json, bool):
+        parsed = raw_json
+
+    if isinstance(parsed, dict):
+        cand = parsed.get("atr", parsed.get("value"))
+        if isinstance(cand, (int, float)) and not isinstance(cand, bool) and float(cand) > 0:
+            return float(cand)
+    elif isinstance(parsed, (int, float)) and not isinstance(parsed, bool) and float(parsed) > 0:
+        return float(parsed)
+
+    raw_val = getattr(row, "value", None)
+    if isinstance(raw_val, (int, float)) and not isinstance(raw_val, bool) and float(raw_val) > 0:
+        return float(raw_val)
+    return None
+
+
+async def _auto_fetch_h4_atr(
+    session: AsyncSession,
+    symbol: str,
+    effective_as_of: Optional[datetime],
+    d1_rows: list,
+) -> Optional[float]:
+    try:
+        ind_stmt = (
+            select(TechnicalIndicator)
+            .where(TechnicalIndicator.symbol == symbol)
+            .where(TechnicalIndicator.timeframe == "H4")
+            .where(TechnicalIndicator.indicator_name.in_(["ATR_14", "ATR"]))
+        )
+        if effective_as_of is not None:
+            ind_stmt = ind_stmt.where(TechnicalIndicator.timestamp <= effective_as_of)
+        ind_stmt = ind_stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1)
+        ind_res = await session.execute(ind_stmt)
+        if ind_res is not None:
+            ind_row = ind_res.scalar_one_or_none()
+            val = _extract_indicator_atr(ind_row)
+            if val is not None and val > 0:
+                return val
+            ind_list = ind_res.scalars().all()
+            if isinstance(ind_list, (list, tuple)) and ind_list:
+                val = _extract_indicator_atr(ind_list[0])
+                if val is not None and val > 0:
+                    return val
+    except Exception:
+        pass
+
+    try:
+        h4_stmt = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol).where(PriceOHLCV.timeframe == "H4")
+        if effective_as_of is not None:
+            h4_stmt = h4_stmt.where(PriceOHLCV.timestamp <= effective_as_of)
+        h4_stmt = h4_stmt.order_by(PriceOHLCV.timestamp.desc()).limit(15)
+        h4_res = await session.execute(h4_stmt)
+        h4_scalars = h4_res.scalars().all() if h4_res is not None else []
+        if isinstance(h4_scalars, (list, tuple)):
+            h4_bars = [
+                b
+                for b in h4_scalars
+                if (
+                    getattr(b, "timeframe", None) == "H4"
+                    or (getattr(b, "timeframe", None) is None and b not in d1_rows)
+                )
+                and isinstance(getattr(b, "high", None), (int, float))
+                and isinstance(getattr(b, "low", None), (int, float))
+                and float(b.high) > float(b.low)
+            ]
+            if len(h4_bars) >= 2:
+                chrono = list(reversed(h4_bars))
+                trs: list[float] = []
+                for idx in range(1, len(chrono)):
+                    cur = chrono[idx]
+                    prev = chrono[idx - 1]
+                    h_val = float(cur.high)
+                    l_val = float(cur.low)
+                    prev_c = getattr(prev, "close", None)
+                    if isinstance(prev_c, (int, float)):
+                        pc = float(prev_c)
+                        tr = max(h_val - l_val, abs(h_val - pc), abs(l_val - pc))
+                    else:
+                        tr = h_val - l_val
+                    if tr > 0:
+                        trs.append(tr)
+                if trs:
+                    return sum(trs) / len(trs)
+    except Exception:
+        pass
+    return None
 
 
 get_optimal_intraday_levels = compute_daily_range_context

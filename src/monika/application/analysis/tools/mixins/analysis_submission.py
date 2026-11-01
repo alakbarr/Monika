@@ -412,8 +412,13 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
     async def _resolve_adopted_bracket(self, inp: dict) -> bool:
         """Resolves adopted_bracket from pre-computed or dynamic bracket options."""
         adopted = inp.get("adopted_bracket")
+        if not adopted and isinstance(inp.get("entry_condition"), dict):
+            adopted = inp["entry_condition"].get("adopted_bracket")
         if not adopted:
             return False
+
+        adopted_norm = str(adopted).strip().upper()
+        inp["adopted_bracket"] = adopted_norm
 
         from monika.application.analysis.calculators.invariant_calculator import resolve_bracket_choice
 
@@ -426,7 +431,15 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 bracket_opts = sym_map.get(sym_lookup)
         if not bracket_opts:
             bracket_opts = getattr(self, "bracket_options", None)
-        resolved = resolve_bracket_choice(adopted, bracket_opts)
+        if not bracket_opts:
+            sess_state = getattr(self, "_session_state", None)
+            if isinstance(sess_state, dict):
+                bracket_opts = sess_state.get("bracket_options") or sess_state.get("brackets")
+        resolved = resolve_bracket_choice(adopted_norm, bracket_opts)
+        if not resolved and isinstance(bracket_opts, dict):
+            cand = bracket_opts.get(adopted_norm) or bracket_opts.get(adopted_norm.lower())
+            if isinstance(cand, dict):
+                resolved = cand
         if not resolved and inp.get("symbol"):
             try:
                 from monika.application.analysis.calculators.invariant_calculator import (
@@ -482,30 +495,54 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                         adr_5d=atr_v * 2.5,
                     )
                     self.bracket_options = bracket_opts
-                    resolved = resolve_bracket_choice(adopted, bracket_opts)
+                    resolved = resolve_bracket_choice(adopted_norm, bracket_opts)
             except Exception as _b_err:
                 logger.debug(f"Dynamic bracket resolution notice: {_b_err}")
 
         if resolved:
-            inp["decision"] = resolved.get("direction", inp.get("decision", "buy"))
-            if inp.get("stop_loss") is None:
-                inp["stop_loss"] = resolved.get("stop_loss")
-            if inp.get("take_profit") is None:
-                inp["take_profit"] = resolved.get("take_profit")
+            b_name = str(resolved.get("name") or adopted_norm).strip().upper()
+            b_entry = resolved.get("entry")
+            b_sl = resolved.get("stop_loss") if resolved.get("stop_loss") is not None else resolved.get("sl")
+            b_tp = resolved.get("take_profit") if resolved.get("take_profit") is not None else resolved.get("tp")
+            inp["decision"] = resolved.get(
+                "direction",
+                inp.get("decision", "buy" if "LONG" in b_name else "sell"),
+            )
+            if b_sl is not None:
+                inp["stop_loss"] = b_sl
+            if b_tp is not None:
+                inp["take_profit"] = b_tp
             if not inp.get("entry_condition") or not isinstance(inp.get("entry_condition"), dict):
                 inp["entry_condition"] = {
-                    "type": resolved.get("entry_type", "limit"),
-                    "price": resolved.get("entry"),
-                    "detail": f"Adopted verified bracket {resolved.get('name')}",
+                    "type": resolved.get("entry_type", "market"),
+                    "price": b_entry,
+                    "detail": f"Adopted verified bracket {b_name}",
+                    "adopted_bracket": b_name,
                 }
-            elif inp["entry_condition"].get("price") is None and resolved.get("entry") is not None:
-                inp["entry_condition"]["price"] = resolved.get("entry")
-            if not inp.get("invalidation_price"):
-                inp["invalidation_price"] = resolved.get("stop_loss")
+            else:
+                if b_entry is not None:
+                    inp["entry_condition"]["price"] = b_entry
+                if not inp["entry_condition"].get("type"):
+                    inp["entry_condition"]["type"] = resolved.get("entry_type", "market")
+                if not inp["entry_condition"].get("detail"):
+                    inp["entry_condition"]["detail"] = f"Adopted verified bracket {b_name}"
+                inp["entry_condition"]["adopted_bracket"] = b_name
+            if not inp.get("invalidation_price") and b_sl is not None:
+                inp["invalidation_price"] = b_sl
             if not inp.get("invalidation_direction"):
                 inp["invalidation_direction"] = "below" if inp["decision"] == "buy" else "above"
             return True
-        return False
+
+        if isinstance(inp.get("entry_condition"), dict):
+            inp["entry_condition"]["adopted_bracket"] = adopted_norm
+        elif inp.get("entry_condition") is None and adopted_norm in ("LONG_OPTION_A", "SHORT_OPTION_B"):
+            inp["entry_condition"] = {
+                "type": "market",
+                "price": inp.get("entry_price"),
+                "detail": f"Adopted verified bracket {adopted_norm}",
+                "adopted_bracket": adopted_norm,
+            }
+        return adopted_norm in ("LONG_OPTION_A", "SHORT_OPTION_B")
 
     async def _auto_verify_position_sizing(self, symbol: str, decision: str, inp: dict) -> None:
         """Auto-calculates verified position sizing on the fly if evidence is not yet recorded."""
@@ -570,6 +607,100 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
         except Exception as auto_sz_err:
             logger.warning(f"[{symbol}] Auto-sizing in submit_asset_analysis non-fatal error: {auto_sz_err}")
 
+    async def _enforce_specialist_and_threshold_checks(
+        self, symbol: str, decision: str, rationale: str, inp: dict, errors: list[str]
+    ) -> None:
+        if decision in ("buy", "sell"):
+            if not inp.get("confluence_score"):
+                errors.append("Ditolak: Confluence score kosong. Wajib diisi untuk trade buy/sell.")
+            try:
+                import json as _j2
+
+                disagreement_key = f"specialist_disagreement_{symbol}"
+                disagreement_cfg = (
+                    await self.session.execute(select(SystemConfig).where(SystemConfig.key == disagreement_key))
+                ).scalar_one_or_none()
+                should_auto_adjudicate = False
+                auto_reason_tag = "institutional structural verification"
+                if disagreement_cfg and disagreement_cfg.value:
+                    dd = _j2.loads(disagreement_cfg.value)
+                    flagged_at = datetime.fromisoformat(dd["flagged_at"])
+                    if flagged_at.tzinfo is None:
+                        flagged_at = flagged_at.replace(tzinfo=timezone.utc)
+                    if (clock.now() - flagged_at).total_seconds() < 900:
+                        should_auto_adjudicate = True
+                        auto_reason_tag = f"specialist split ({dd.get('biases')})"
+
+                adopted_val = (
+                    str(inp.get("adopted_bracket") or (inp.get("entry_condition") or {}).get("adopted_bracket") or "")
+                    .strip()
+                    .upper()
+                )
+                rat_zone_text = (str(rationale or "") + " " + str(inp.get("dealing_range_zone") or "")).lower()
+                factors_list = inp.get("confluence_factors") or []
+                if adopted_val in ("LONG_OPTION_A", "SHORT_OPTION_B"):
+                    should_auto_adjudicate = True
+                    auto_reason_tag = f"adopted pre-verified bracket {adopted_val}"
+                elif (
+                    "uncrowded_institutional_synergy" in factors_list
+                    or "uncrowded_institutional_synergy" in rat_zone_text
+                ):
+                    should_auto_adjudicate = True
+                    auto_reason_tag = "Uncrowded Institutional Synergy (Tech == Macro)"
+                elif (
+                    decision == "buy"
+                    and ("discount_accumulation_zone" in rat_zone_text or "accumulation zone" in rat_zone_text)
+                ) or (
+                    decision == "sell"
+                    and ("premium_distribution_zone" in rat_zone_text or "distribution zone" in rat_zone_text)
+                ):
+                    should_auto_adjudicate = True
+                    auto_reason_tag = "H4 Dealing Range extreme value zone"
+
+                if should_auto_adjudicate:
+                    adjudication = inp.get("specialist_adjudication")
+                    if (
+                        not adjudication
+                        or not isinstance(adjudication, dict)
+                        or not adjudication.get("conflict_detected")
+                    ):
+                        inp["specialist_adjudication"] = {
+                            "conflict_detected": True,
+                            "resolution_path": "override_macro" if decision in ("buy", "sell") else "cancel_setup",
+                            "resolution_justification": f"Auto-adjudicated {decision.upper()} to proceed to Dialectical Debate based on {auto_reason_tag}.",
+                        }
+                        logger.info(
+                            f"[{symbol}] Auto-populated specialist_adjudication to preserve trade thesis ({auto_reason_tag})."
+                        )
+                    elif not adjudication.get("resolution_path") or not adjudication.get("resolution_justification"):
+                        adjudication["resolution_path"] = adjudication.get("resolution_path") or "override_macro"
+                        adjudication["resolution_justification"] = (
+                            adjudication.get("resolution_justification")
+                            or f"Adjudicated {decision.upper()} setup through {auto_reason_tag}."
+                        )
+                        inp["specialist_adjudication"] = adjudication
+            except Exception as e:
+                logger.debug(f"Specialist disagreement check failed (non-fatal): {e}")
+
+        try:
+            from monika.application.analysis.calculators.unified_threshold_calculator import (
+                compute_unified_confluence_threshold,
+            )
+
+            final_threshold, threshold_reason = await compute_unified_confluence_threshold(
+                self.session, symbol, self.settings
+            )
+
+            conf_score_val = inp.get("confluence_score")
+            if conf_score_val is not None:
+                if conf_score_val < final_threshold and decision in ["buy", "sell"]:
+                    errors.append(
+                        f"Confluence score ({conf_score_val}) is below the mandatory unified threshold ({final_threshold}) for {symbol}. "
+                        f"You MUST change decision to 'wait'. Reason: {threshold_reason}"
+                    )
+        except Exception as e:
+            logger.debug(f"Unified threshold enforcement failed: {e}")
+
     async def _tool_submit_asset_analysis(self, inp: dict) -> dict:
         """Menyimpan analisis per aset dan memicu eksekusi."""
         inp.pop("submit_attempts", None)  # Toleransi tambahan argumen dari LLM
@@ -589,6 +720,8 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
         try:
             validated_data = SubmitAssetAnalysisSchema.model_validate(inp)
             inp = validated_data.model_dump(mode="json")  # Overwrite inp with clean coerced data
+            if inp.get("adopted_bracket") and isinstance(inp.get("entry_condition"), dict):
+                inp["entry_condition"]["adopted_bracket"] = str(inp["adopted_bracket"]).strip().upper()
         except ValidationError as e:
             self.submit_attempts += 1
             error_msgs = [f"Field '{'.'.join(str(x) for x in err['loc'])}': {err['msg']}" for err in e.errors()]
@@ -721,6 +854,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 "quant_strategy_edge",
                 "rr_ratio_bonus",
                 "adr_target_bonus",
+                "uncrowded_institutional_synergy",
             }
             invalid_factors = [f for f in factors if f not in valid_factors]
             if invalid_factors:
@@ -745,6 +879,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     "quant_strategy_edge": 1,
                     "rr_ratio_bonus": 1,
                     "adr_target_bonus": 1,
+                    "uncrowded_institutional_synergy": 2,
                 }
                 effective_tolerance += sum(v for f, v in BONUS_FACTORS_BEYOND_CORE_14.items() if f in declared_factors)
                 if gap > effective_tolerance:
@@ -1404,70 +1539,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     f"Untuk trigger non-time, WAJIB sertakan field 'price' numerik atau 'detail' konkret (>=15 karakter dengan level harga/event terukur)."
                 )
 
-        if decision in ("buy", "sell"):
-            if not inp.get("confluence_score"):
-                errors.append("Ditolak: Confluence score kosong. Wajib diisi untuk trade buy/sell.")
-
-        # SPECIALIST DISAGREEMENT CHECK
-        if decision in ("buy", "sell"):
-            try:
-                import json as _j2
-
-                disagreement_key = f"specialist_disagreement_{symbol}"
-                disagreement_cfg = (
-                    await self.session.execute(select(SystemConfig).where(SystemConfig.key == disagreement_key))
-                ).scalar_one_or_none()
-                if disagreement_cfg and disagreement_cfg.value:
-                    dd = _j2.loads(disagreement_cfg.value)
-                    flagged_at = datetime.fromisoformat(dd["flagged_at"])
-                    if flagged_at.tzinfo is None:
-                        flagged_at = flagged_at.replace(tzinfo=timezone.utc)
-                    if (clock.now() - flagged_at).total_seconds() < 900:
-                        adjudication = inp.get("specialist_adjudication")
-                        if (
-                            not adjudication
-                            or not isinstance(adjudication, dict)
-                            or not adjudication.get("conflict_detected")
-                        ):
-                            inp["specialist_adjudication"] = {
-                                "conflict_detected": True,
-                                "resolution_path": "override_macro" if decision in ("buy", "sell") else "cancel_setup",
-                                "resolution_justification": f"Auto-adjudicated {decision.upper()} to proceed to Dialectical Debate despite specialist split ({dd.get('biases')}).",
-                            }
-                            logger.info(
-                                f"[{symbol}] Auto-populated specialist_adjudication to preserve trade thesis for debate."
-                            )
-                        elif not adjudication.get("resolution_path") or not adjudication.get(
-                            "resolution_justification"
-                        ):
-                            adjudication["resolution_path"] = adjudication.get("resolution_path") or "override_macro"
-                            adjudication["resolution_justification"] = (
-                                adjudication.get("resolution_justification")
-                                or f"Adjudicated {decision.upper()} setup through structural verification."
-                            )
-                            inp["specialist_adjudication"] = adjudication
-            except Exception as e:
-                logger.debug(f"Specialist disagreement check failed (non-fatal): {e}")
-
-        # UNIFIED THRESHOLD ENFORCEMENT
-        try:
-            from monika.application.analysis.calculators.unified_threshold_calculator import (
-                compute_unified_confluence_threshold,
-            )
-
-            final_threshold, threshold_reason = await compute_unified_confluence_threshold(
-                self.session, symbol, self.settings
-            )
-
-            conf_score_val = inp.get("confluence_score")
-            if conf_score_val is not None:
-                if conf_score_val < final_threshold and decision in ["buy", "sell"]:
-                    errors.append(
-                        f"Confluence score ({conf_score_val}) is below the mandatory unified threshold ({final_threshold}) for {symbol}. "
-                        f"You MUST change decision to 'wait'. Reason: {threshold_reason}"
-                    )
-        except Exception as e:
-            logger.debug(f"Unified threshold enforcement failed: {e}")
+        await self._enforce_specialist_and_threshold_checks(symbol, decision, rationale, inp, errors)
 
         # --- Cross-validate priced-in score, directional coherence, and SSVP with Stage 1 brief ---
         brief_row = None
@@ -1740,6 +1812,8 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
         ).scalar_one_or_none()
 
         entry_cond = inp.get("entry_condition")
+        if inp.get("adopted_bracket") and isinstance(entry_cond, dict) and not entry_cond.get("adopted_bracket"):
+            entry_cond["adopted_bracket"] = str(inp["adopted_bracket"]).strip().upper()
         reeval_trigger = reeval_trigger or inp.get("reevaluation_trigger")
         if reeval_trigger and not reeval_trigger.get("symbol"):
             reeval_trigger["symbol"] = symbol

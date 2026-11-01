@@ -45,8 +45,7 @@ async def _rate_score(session: AsyncSession, currency: str, as_of: Optional[date
         return 0.0
     stmt = select(InterestRate).where(InterestRate.bank == bank)
     if as_of:
-        ref_date = as_of.date() if isinstance(as_of, datetime) else as_of
-        stmt = stmt.where(InterestRate.effective_date <= ref_date)
+        stmt = stmt.where(InterestRate.effective_date <= as_of)
     row = (await session.execute(stmt.order_by(InterestRate.effective_date.desc()).limit(1))).scalar_one_or_none()
     if not row:
         return 0.0
@@ -74,8 +73,7 @@ async def compute_currency_macro_score(
 
     vix_stmt = select(VIXData)
     if as_of:
-        ref_date = as_of.date() if isinstance(as_of, datetime) else as_of
-        vix_stmt = vix_stmt.where(VIXData.date <= ref_date)
+        vix_stmt = vix_stmt.where(VIXData.date <= as_of)
     vix = (await session.execute(vix_stmt.order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
     risk = 0.0
     if vix:
@@ -86,29 +84,62 @@ async def compute_currency_macro_score(
         elif vix.close < 18:
             risk = -risk_dir * min(1.0, (18 - vix.close) / 10)  # Inverse for risk-on
 
-    # Bobot diferensial: Suku bunga & ekspektasi kebijakan moneter adalah driver dominan
+    # Bobot diferensial: Suku bunga kebijakan seragam (0.45) + carry absolut (0.20)
+    neutral_r = _NEUTRAL_RATE_ESTIMATES.get(currency, 2.50)
+    implied_rate = (neutral_r + (r * 3.0)) if r != 0.0 else 0.0
+    carry_term = (max(-1.0, min(1.0, (implied_rate - 2.0) / 3.0)) * 0.20) if r != 0.0 else 0.0
+
     if currency == "USD":
-        score = round(0.35 * y + 0.35 * r + 0.15 * dxy + 0.15 * risk, 3)
+        score = round(0.45 * r + carry_term + 0.20 * y + 0.10 * dxy + 0.05 * risk, 3)
     elif currency == "AUD":
         # AUD sangat dipengaruhi oleh risk appetite global dan siklus komoditas (terms of trade)
-        score = round(0.50 * r - 0.20 * dxy + 0.30 * risk, 3)
+        score = round(0.45 * r + carry_term - 0.15 * dxy + 0.20 * risk, 3)
     elif currency == "JPY":
         # JPY sangat sensitif terhadap carry trade funding & unwinding saat risk-off
-        score = round(0.55 * r - 0.25 * dxy + 0.20 * risk, 3)
+        score = round(0.45 * r + carry_term - 0.15 * dxy + 0.15 * risk, 3)
     elif currency == "GBP":
         # GBP dipengaruhi oleh suku bunga BoE dan kerentanan fiskal/twin deficit saat risk-off
-        score = round(0.55 * r - 0.25 * dxy + 0.20 * risk, 3)
+        score = round(0.45 * r + carry_term - 0.15 * dxy + 0.15 * risk, 3)
     else:
-        score = round(0.60 * r - 0.25 * dxy + 0.15 * risk, 3)
+        score = round(0.45 * r + carry_term - 0.15 * dxy + 0.15 * risk, 3)
 
     return {
         "currency": currency,
         "score": score,
         "yield_component": y,
         "rate_component": r,
+        "carry_component": round(carry_term, 4),
         "dxy_component": dxy,
         "risk_component": risk,
     }
+
+
+async def _eval_regime_direction(
+    session: AsyncSession,
+    symbol: str,
+    dir_str: str,
+    dxy_val: float,
+    yield_val: Optional[float],
+    as_of: Optional[datetime] = None,
+) -> tuple[bool, list[str]]:
+    import inspect
+
+    from monika.domain.macro.regime_classifier import RegimeClassifier
+
+    if hasattr(RegimeClassifier, "check_trade_alignment"):
+        fn = getattr(RegimeClassifier, "check_trade_alignment")
+        res = fn(session, symbol, dir_str, as_of=as_of)
+        if inspect.isawaitable(res):
+            res = await res
+        if isinstance(res, dict):
+            return bool(res.get("allowed", True)), list(res.get("reasons", []))
+    allowed, reason = RegimeClassifier.is_trade_allowed(
+        symbol=symbol,
+        direction=dir_str,
+        dxy=dxy_val,
+        us10y_yield=yield_val,
+    )
+    return allowed, [f"RegimeClassifier: {reason}"]
 
 
 async def evaluate_macro_alignment(
@@ -135,12 +166,11 @@ async def evaluate_macro_alignment(
     is_crypto = any(k in sym_upper for k in ("BTC", "ETH", "SOL"))
 
     if is_commodity or is_crypto:
-        from monika.domain.macro.regime_classifier import RegimeClassifier
         from monika.infrastructure.database.models import DXYData
 
         dxy_stmt = select(DXYData)
         if as_of is not None:
-            dxy_stmt = dxy_stmt.where(DXYData.date <= as_of.date())
+            dxy_stmt = dxy_stmt.where(DXYData.date <= as_of)
         dxy_stmt = dxy_stmt.order_by(DXYData.date.desc()).limit(1)
         dxy_row = (await session.execute(dxy_stmt)).scalar_one_or_none()
         dxy_val = float(dxy_row.close) if (dxy_row and dxy_row.close is not None) else 100.0
@@ -149,28 +179,50 @@ async def evaluate_macro_alignment(
         for tenor in ("10Y_REAL", "10Y"):
             yield_stmt = select(TreasuryYield).where(TreasuryYield.tenor == tenor)
             if as_of is not None:
-                yield_stmt = yield_stmt.where(TreasuryYield.date <= as_of.date())
+                yield_stmt = yield_stmt.where(TreasuryYield.date <= as_of)
             yield_stmt = yield_stmt.order_by(TreasuryYield.date.desc()).limit(1)
             yield_row = (await session.execute(yield_stmt)).scalar_one_or_none()
             if yield_row and yield_row.yield_percent is not None:
                 yield_val = float(yield_row.yield_percent)
                 break
 
-        allowed, reason = RegimeClassifier.is_trade_allowed(
-            symbol=symbol,
-            direction=direction or "buy",
-            dxy=dxy_val,
-            us10y_yield=yield_val,
-        )
-
-        if not allowed:
-            result.update(aligned=False, strong_conflict=True, pair_macro_score=-1.0, implied_direction="sell")
-            result["reasons"].append(f"RegimeClassifier: {reason}")
-            return result
-        elif symbol != "XAUUSD":
-            result.update(aligned=True, strong_conflict=False, pair_macro_score=0.5, implied_direction=direction)
-            result["reasons"].append(f"RegimeClassifier: {reason}")
-            return result
+        if direction is None:
+            buy_allowed, buy_reasons = await _eval_regime_direction(
+                session, symbol, "buy", dxy_val, yield_val, as_of=as_of
+            )
+            sell_allowed, sell_reasons = await _eval_regime_direction(
+                session, symbol, "sell", dxy_val, yield_val, as_of=as_of
+            )
+            if buy_allowed and not sell_allowed:
+                result.update(aligned=True, strong_conflict=False, pair_macro_score=0.5, implied_direction="buy")
+                result["reasons"].extend(buy_reasons)
+                return result
+            elif sell_allowed and not buy_allowed:
+                result.update(aligned=True, strong_conflict=False, pair_macro_score=-0.5, implied_direction="sell")
+                result["reasons"].extend(sell_reasons)
+                return result
+            elif symbol != "XAUUSD":
+                result.update(aligned=True, strong_conflict=False, pair_macro_score=0.0, implied_direction="neutral")
+                result["reasons"].extend(buy_reasons)
+                return result
+        else:
+            dir_norm = str(direction).strip().lower()
+            allowed, dir_reasons = await _eval_regime_direction(
+                session, symbol, dir_norm, dxy_val, yield_val, as_of=as_of
+            )
+            if not allowed:
+                score = -1.0 if dir_norm == "buy" else 1.0
+                implied_dir = "sell" if dir_norm == "buy" else "buy"
+                result.update(
+                    aligned=False, strong_conflict=True, pair_macro_score=score, implied_direction=implied_dir
+                )
+                result["reasons"].extend(dir_reasons)
+                return result
+            elif symbol != "XAUUSD":
+                score = 0.5 if dir_norm == "buy" else -0.5
+                result.update(aligned=True, strong_conflict=False, pair_macro_score=score, implied_direction=dir_norm)
+                result["reasons"].extend(dir_reasons)
+                return result
 
     if symbol == "XAUUSD":
         usd = await compute_currency_macro_score(session, "USD", settings, as_of=as_of)

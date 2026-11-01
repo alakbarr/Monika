@@ -63,6 +63,14 @@ STANDARD_FX_PAIRS_BASE_QUOTE: Dict[str, tuple[str, str]] = {
     "EURUSD": ("EUR", "USD"),
     "GBPUSD": ("GBP", "USD"),
     "AUDUSD": ("AUD", "USD"),
+    "XAUUSD": ("XAU", "USD"),
+}
+_FX_BASE_QUOTE = STANDARD_FX_PAIRS_BASE_QUOTE
+_BIAS_TO_SIGN: Dict[str, int] = {
+    "bullish": 1,
+    "bearish": -1,
+    "neutral": 0,
+    "mixed": 0,
 }
 
 
@@ -92,34 +100,72 @@ def sanitize_macro_regime(raw_regime: Any, macro_narrative: Optional[str] = None
     return "transition"
 
 
+def _resolve_bias_sign(bias_str: str) -> Optional[int]:
+    if bias_str in _BIAS_TO_SIGN:
+        return _BIAS_TO_SIGN[bias_str]
+    if "bull" in bias_str:
+        return 1
+    if "bear" in bias_str:
+        return -1
+    if "neut" in bias_str or "mix" in bias_str or "flat" in bias_str:
+        return 0
+    return None
+
+
 def reconcile_fx_pair_macro_matrix(currency_bias: Any, per_asset_macro_matrix: Any) -> Dict[str, Any]:
     """Ensure FX pair directional_bias in per_asset_macro_matrix matches currency_bias[BASE] - currency_bias[QUOTE]."""
     matrix: Dict[str, Any] = dict(per_asset_macro_matrix) if isinstance(per_asset_macro_matrix, dict) else {}
     if not isinstance(currency_bias, dict):
         return matrix
 
-    for pair, (base_ccy, quote_ccy) in STANDARD_FX_PAIRS_BASE_QUOTE.items():
-        base_str = str(currency_bias.get(base_ccy, "")).lower().strip()
-        quote_str = str(currency_bias.get(quote_ccy, "")).lower().strip()
-        base_is_bull = "bull" in base_str
-        base_is_bear = "bear" in base_str
-        quote_is_bull = "bull" in quote_str
-        quote_is_bear = "bear" in quote_str
+    norm_cb: Dict[str, str] = {
+        str(k).upper().strip(): str(v).lower().strip() for k, v in currency_bias.items() if k is not None
+    }
 
+    for pair, (base_ccy, quote_ccy) in STANDARD_FX_PAIRS_BASE_QUOTE.items():
+        if pair not in matrix or not isinstance(matrix[pair], dict):
+            continue
+        if pair == "XAUUSD":
+            if base_ccy not in norm_cb or quote_ccy not in norm_cb:
+                continue
+        elif base_ccy not in norm_cb and quote_ccy not in norm_cb:
+            continue
+
+        base_str = norm_cb.get(base_ccy, "neutral")
+        quote_str = norm_cb.get(quote_ccy, "neutral")
+        b_sign = _resolve_bias_sign(base_str)
+        q_sign = _resolve_bias_sign(quote_str)
+        if b_sign is None or q_sign is None:
+            continue
+
+        diff = b_sign - q_sign
         expected_direction: Optional[str] = None
-        if base_is_bull and quote_is_bear:
+        if diff > 0:
             expected_direction = "bullish"
-        elif base_is_bear and quote_is_bull:
+        elif diff < 0:
             expected_direction = "bearish"
 
-        if expected_direction is not None and pair in matrix and isinstance(matrix[pair], dict):
-            current_dir = str(matrix[pair].get("directional_bias", "")).lower().strip()
+        if expected_direction is not None:
+            orig_dir_raw = str(matrix[pair].get("directional_bias", "")).strip()
+            current_dir = orig_dir_raw.lower()
             if expected_direction[:4] not in current_dir:
                 logger.info(
                     f"[AlgebraicFXReconciliation] Reconciled {pair} directional_bias "
                     f"from '{current_dir}' to '{expected_direction}' ({base_ccy}={base_str}, {quote_ccy}={quote_str})."
                 )
-                matrix[pair]["directional_bias"] = expected_direction
+                matrix[pair]["directional_bias"] = (
+                    expected_direction.upper() if (orig_dir_raw and orig_dir_raw.isupper()) else expected_direction
+                )
+                reconcile_note = f"[AUTO-RECONCILED: {base_ccy}={base_str} vs {quote_ccy}={quote_str} -> {pair}={expected_direction}]"
+                existing_kd = matrix[pair].get("key_driver")
+                if isinstance(existing_kd, str) and existing_kd.strip():
+                    if "[AUTO-RECONCILED:" not in existing_kd:
+                        matrix[pair]["key_driver"] = f"{existing_kd.strip()} {reconcile_note}"
+                else:
+                    matrix[pair]["key_driver"] = reconcile_note
+                existing_sd = matrix[pair].get("structural_driver")
+                if isinstance(existing_sd, str) and existing_sd.strip() and "[AUTO-RECONCILED:" not in existing_sd:
+                    matrix[pair]["structural_driver"] = f"{existing_sd.strip()} {reconcile_note}"
     return matrix
 
 
@@ -1115,7 +1161,7 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                     "strongest_counter_thesis": inp.get("strongest_counter_thesis", ""),
                     "key_upcoming_risks": inp.get("key_upcoming_risks", []),
                     "risk_sentiment": inp.get("risk_sentiment", "mixed"),
-                    "macro_regime": inp.get("macro_regime", "mixed"),
+                    "macro_regime": sanitize_macro_regime(inp.get("macro_regime", "mixed"), inp.get("macro_narrative")),
                     "confidence": inp.get("confidence", 0.5),
                     "priced_in_assessment": inp.get("priced_in_assessment", None),
                     "key_data_points_used": inp.get("key_data_points_used", {}),

@@ -172,11 +172,20 @@ class OutputVerifier:
         snaps = []
 
         # Anchor Snapping Pass (SOTA Grounding): Snap entry to nearest verified structural level if within 0.25x ATR or 0.3%
+        adopted_bracket_name = (
+            str(
+                output.get("adopted_bracket")
+                or (entry_cond.get("adopted_bracket") if isinstance(entry_cond, dict) else "")
+                or ""
+            )
+            .strip()
+            .upper()
+        )
         atr_val = None
         if context_data and isinstance(context_data, dict):
             price_levels = self._extract_price_levels(context_data)
             atr_val = self._extract_atr(context_data)
-            if price_levels:
+            if price_levels and adopted_bracket_name not in ("LONG_OPTION_A", "SHORT_OPTION_B"):
                 entry_val = float(entry)
                 nearest_anchor = min(price_levels, key=lambda l: abs(entry_val - l))
                 anchor_dist = abs(entry - nearest_anchor)
@@ -338,7 +347,15 @@ class OutputVerifier:
         # BUY / SELL Validation
         entry_cond = output.get("entry_condition")
         entry = entry_cond.get("price") if isinstance(entry_cond, dict) else None
-        adopted_bracket_name = str(output.get("adopted_bracket") or "").strip().upper()
+        adopted_bracket_name = (
+            str(
+                output.get("adopted_bracket")
+                or (entry_cond.get("adopted_bracket") if isinstance(entry_cond, dict) else "")
+                or ""
+            )
+            .strip()
+            .upper()
+        )
         if entry is None and adopted_bracket_name and isinstance(context_data, dict):
             from monika.application.analysis.calculators.invariant_calculator import resolve_bracket_choice
 
@@ -407,7 +424,7 @@ class OutputVerifier:
                         target_sl_max = adr.get("target_sl_max_distance", float("inf"))
                         sl_max = target_sl_max * 1.15
                         effective_atr = atr_val
-                        if (not effective_atr or effective_atr <= 0) and output.get("adopted_bracket") and sl_dist > 0:
+                        if (not effective_atr or effective_atr <= 0) and adopted_bracket_name and sl_dist > 0:
                             effective_atr = sl_dist
                         if effective_atr and effective_atr > 0:
                             sl_min = min(sl_min, 0.95 * effective_atr)

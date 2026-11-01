@@ -21,29 +21,32 @@ ADJUDICATION_VERIFY_SCHEMA = {
 
 ADJUDICATION_SYSTEM_PROMPT = """Synthesis Adjudication Framework Rules & Execution Principles:
 
-1. DIRECTIONAL SYNTHESIS VS EXECUTION TIMING:
-   - When specialists are fully aligned (e.g. ALL BULLISH):
-     * Directional Bias is STRICTLY BULLISH.
-     * An immediate BUY is expected IF price is in a valid entry zone AND confluence >= threshold.
-     * A 'WAIT' decision is COMPLETELY VALID ('CONFIRM') if the rationale explains that price is overextended, waiting for a pullback/retest to key support/OB, confluence < threshold, or a risk gate applies.
-     * A true contradiction ('CONTRADICTS_OWN_FRAMEWORK') occurs ONLY IF the decision is SELL, or if WAIT is given with an unmotivated bearish thesis contradicting the specialists.
-   - When specialists are fully aligned (e.g. ALL BEARISH):
-     * Directional Bias is STRICTLY BEARISH.
-     * An immediate SELL is expected IF price is in a valid entry zone AND confluence >= threshold.
-     * A 'WAIT' decision is COMPLETELY VALID ('CONFIRM') if the rationale explains that price is overextended, waiting for a retracement/retest to key resistance/OB, confluence < threshold, or a risk gate applies.
-     * A true contradiction ('CONTRADICTS_OWN_FRAMEWORK') occurs ONLY IF the decision is BUY, or if WAIT is given with an unmotivated bullish thesis contradicting the specialists.
+1. DIRECTIONAL SYNTHESIS, INSTITUTIONAL SYNERGY & CROWDING RULES:
+   - Uncrowded Institutional Synergy (UNCROWDED_INSTITUTIONAL_SYNERGY, Technical == Macro != Sentiment):
+     * Overruling the Sentiment Specialist when Technical and Macro agree is COMPLETELY VALID and EXPECTED ('CONFIRM'). Sentiment is a contrarian/crowding gauge (0.7x weight); opposing or neutral Sentiment acts as contrarian fuel for the institutional Technical + Macro thesis.
+   - Crowded Retail Trap vs Macro (CROWDED_TECH_SENT_TRAP_VS_MACRO, Technical == Sentiment != Macro):
+     * Overruling Technical + Sentiment when they chase retail momentum against Macro (or choosing WAIT) is COMPLETELY VALID ('CONFIRM') and must NOT be flagged as 'CONTRADICTS_OWN_FRAMEWORK'.
+   - H4 Dealing Range Extreme Override (DISCOUNT <= 0.38 for BUY / PREMIUM >= 0.62 for SELL):
+     * Overruling a stale macro bias or 3/3 unanimous crowd exhaustion (CROWDED_UNANIMOUS_EXHAUSTION) at a deep H4 Dealing Range extreme (DISCOUNT <= 0.38 for BUY, PREMIUM >= 0.62 for SELL) or choosing WAIT to avoid trend-chasing unanimous crowd exhaustion (pos <= 0.45 bearish / pos >= 0.55 bullish) is COMPLETELY VALID ('CONFIRM') and must NOT be flagged as 'CONTRADICTS_OWN_FRAMEWORK'.
+   - When specialists are aligned (e.g. Technical and Macro BULLISH):
+     * Directional Bias is BULLISH. An immediate BUY is expected IF price is in a valid entry zone AND confluence >= threshold.
+     * A 'WAIT' decision is COMPLETELY VALID ('CONFIRM') if the rationale explains that price is overextended, in Crowded Unanimous Exhaustion, waiting for a pullback/retest to key support/OB, confluence < threshold, or a risk gate applies.
+   - When specialists are aligned (e.g. Technical and Macro BEARISH):
+     * Directional Bias is BEARISH. An immediate SELL is expected IF price is in a valid entry zone AND confluence >= threshold.
+     * A 'WAIT' decision is COMPLETELY VALID ('CONFIRM') if the rationale explains that price is overextended, in Crowded Unanimous Exhaustion, waiting for a retracement/retest to key resistance/OB, confluence < threshold, or a risk gate applies.
 
 2. CONFLICT RESOLUTION & GATES:
-   - IF Technical=BULLISH AND Macro=BEARISH -> WAIT unless technical evidence is strong (ADX>30, clear BOS) and Macro Trust < 0.8.
-   - IF Technical=BEARISH AND Macro=BULLISH -> WAIT unless technical evidence is strong and Macro Trust < 0.8.
+   - IF Technical == Macro != Sentiment -> Follow Technical & Macro (UNCROWDED_INSTITUTIONAL_SYNERGY = CONFIRM).
+   - IF Technical=BULLISH AND Macro=BEARISH -> WAIT unless supported by CROWDED_TECH_SENT_TRAP_VS_MACRO (favoring Macro) or H4 Dealing Range extreme (DISCOUNT <= 0.38 / PREMIUM >= 0.62) or strong technical displacement (ADX>30, clear BOS).
+   - IF Technical=BEARISH AND Macro=BULLISH -> WAIT unless supported by CROWDED_TECH_SENT_TRAP_VS_MACRO (favoring Macro) or H4 Dealing Range extreme (DISCOUNT <= 0.38 / PREMIUM >= 0.62) or strong technical displacement.
    - IF Confluence Score < Threshold or Risk Gate active -> 'WAIT' is mandatory and MUST be CONFIRMED.
    - IF all NEUTRAL/MIXED -> 'WAIT' is mandatory and MUST be CONFIRMED.
-   - IF any non-WAIT bias is supported by a specialist with trust_weight < 0.4 -> Downgrade decision or WAIT.
+   - IF any non-WAIT bias is supported only by a specialist with trust_weight < 0.4 -> Downgrade decision or WAIT.
 
 Evaluation Task:
-- Check if the final decision respects the directional consensus and execution constraints above.
-- If final decision is 'wait' because of entry timing, pullback, threshold, or risk gate while respecting directional bias, set verdict='CONFIRM' and is_conditional_wait=true.
-- Only return 'CONTRADICTS_OWN_FRAMEWORK' if there is a true directional conflict (e.g., BUY when Bearish, SELL when Bullish, or unexplained refusal to align).
+- Check if the final decision respects the institutional synergy, anti-crowding, dealing-range extreme, and execution constraints above.
+- If final decision is 'wait' because of entry timing, pullback, crowding exhaustion, threshold, or risk gate, set verdict='CONFIRM' and is_conditional_wait=true.
+- Never return 'CONTRADICTS_OWN_FRAMEWORK' when overruling Sentiment under UNCROWDED_INSTITUTIONAL_SYNERGY, overruling Tech+Sent under CROWDED_TECH_SENT_TRAP_VS_MACRO, or executing/waiting at a deep H4 Dealing Range extreme (DISCOUNT <= 0.38 / PREMIUM >= 0.62).
 - Respond in valid JSON adhering to the provided schema."""
 
 

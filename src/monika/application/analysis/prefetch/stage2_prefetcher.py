@@ -38,6 +38,9 @@ STANDARD_FETCH_TASKS = [
     ("get_open_positions", {}),
     ("get_risk_state", {}),
     ("get_economic_calendar", {"impact_filter": "high_and_medium", "hours_ahead": 48, "hours_behind": 12}),
+    ("get_interest_rates", {}),
+    ("get_fedwatch_probabilities", {}),
+    ("get_bond_yield_spreads", {}),
 ]
 
 SYMBOL_FETCH_TASKS = [
@@ -480,6 +483,16 @@ class Stage2DataBundler:
                 except Exception as e:
                     fetch_errors.append(self._format_fetch_error(tool_name, e))
 
+        if "get_interest_rates" in data:
+            data["interest_rates"] = data["get_interest_rates"]
+            self._shared_global_cache["interest_rates"] = data["get_interest_rates"]
+        if "get_fedwatch_probabilities" in data:
+            data["fedwatch_probabilities"] = data["get_fedwatch_probabilities"]
+            self._shared_global_cache["fedwatch_probabilities"] = data["get_fedwatch_probabilities"]
+        if "get_bond_yield_spreads" in data:
+            data["bond_yield_spreads"] = data["get_bond_yield_spreads"]
+            self._shared_global_cache["bond_yield_spreads"] = data["get_bond_yield_spreads"]
+
         for tool_name, extra_inp in SYMBOL_FETCH_TASKS:
             inp = {"symbol": symbol, **extra_inp}
             tf = extra_inp.get("timeframe")
@@ -491,6 +504,46 @@ class Stage2DataBundler:
                         data[task_key] = result
             except Exception as e:
                 fetch_errors.append(self._format_fetch_error(task_key, e))
+
+        # Compute H4 Dealing Range position for Sentiment Specialist & ContextBuilder
+        try:
+            h4_hist = data.get("get_price_history_H4", {})
+            raw_h4_bars: list = []
+            if isinstance(h4_hist, list):
+                raw_h4_bars = h4_hist
+            elif isinstance(h4_hist, dict):
+                cand_bars = h4_hist.get("bars") or h4_hist.get("candles") or h4_hist.get("data")
+                if isinstance(cand_bars, list):
+                    raw_h4_bars = cand_bars
+            valid_h4_bars = [
+                b
+                for b in raw_h4_bars
+                if isinstance(b, dict)
+                and b.get("high") is not None
+                and b.get("low") is not None
+                and b.get("close") is not None
+            ]
+            if valid_h4_bars:
+                bars_window = valid_h4_bars[-50:]
+                dr_high = max(float(b["high"]) for b in bars_window)
+                dr_low = min(float(b["low"]) for b in bars_window)
+                curr_close = float(bars_window[-1]["close"])
+                if dr_high > dr_low:
+                    pos = round((curr_close - dr_low) / (dr_high - dr_low), 4)
+                    zone = (
+                        "DISCOUNT_ACCUMULATION_ZONE"
+                        if pos <= 0.38
+                        else ("PREMIUM_DISTRIBUTION_ZONE" if pos >= 0.62 else "EQUILIBRIUM_ZONE")
+                    )
+                    data["dealing_range_pos"] = {
+                        "position": pos,
+                        "zone": zone,
+                        "range_high": dr_high,
+                        "range_low": dr_low,
+                        "current_price": curr_close,
+                    }
+        except Exception as e:
+            logger.debug(f"[{symbol}] Failed to compute dealing_range_pos: {e}")
 
         # D1 price history untuk seluruh aset (pola mingguan dan struktur makro)
         try:
@@ -856,7 +909,14 @@ class Stage2DataBundler:
         raw_drc = data.get("get_daily_range_context")
         if isinstance(raw_drc, dict) and "error" not in raw_drc and atr_h4_val and atr_h4_val > 0:
             prec = self.get_symbol_precision(symbol)
-            eff_sl_max = max(float(raw_drc.get("target_sl_max_distance", 0.0)), round(1.25 * atr_h4_val, prec))
+            orig_sl_max = float(raw_drc.get("target_sl_max_distance", 0.0))
+            eff_sl_max = max(orig_sl_max, round(1.25 * atr_h4_val, prec))
+            if eff_sl_max > orig_sl_max:
+                raw_drc["atr_harmonized"] = True
+                raw_drc["target_tp_min_distance"] = round(
+                    max(float(raw_drc.get("target_tp_min_distance", 0.0)), round(1.50 * atr_h4_val, prec)),
+                    6,
+                )
             eff_tp_max = max(float(raw_drc.get("target_tp_max_distance", 0.0)), round(1.65 * eff_sl_max, prec))
             raw_drc["target_sl_max_distance"] = round(eff_sl_max, 6)
             raw_drc["target_tp_max_distance"] = round(eff_tp_max, 6)
@@ -967,16 +1027,29 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
                 if "error" not in adr_ctx:
                     if atr_h4_val and atr_h4_val > 0:
                         prec = self.get_symbol_precision(symbol)
+                        orig_sl_max = float(adr_ctx.get("target_sl_max_distance", 0.0))
                         eff_sl_max = max(
-                            float(adr_ctx.get("target_sl_max_distance", 0.0)),
+                            orig_sl_max,
                             round(1.25 * atr_h4_val, prec),
                         )
+                        if eff_sl_max > orig_sl_max:
+                            adr_ctx["atr_harmonized"] = True
+                            adr_ctx["target_tp_min_distance"] = round(
+                                max(
+                                    float(adr_ctx.get("target_tp_min_distance", 0.0)),
+                                    round(1.50 * atr_h4_val, prec),
+                                ),
+                                6,
+                            )
                         eff_tp_max = max(
                             float(adr_ctx.get("target_tp_max_distance", 0.0)),
                             round(1.65 * eff_sl_max, prec),
                         )
                         adr_ctx["target_sl_max_distance"] = round(eff_sl_max, 6)
                         adr_ctx["target_tp_max_distance"] = round(eff_tp_max, 6)
+                    is_harmonized = bool(adr_ctx.get("atr_harmonized"))
+                    tp_band_label = "(Harmonized w/ H4 ATR floor)" if is_harmonized else "(50%-80% of ADR)"
+                    sl_max_label = "(Harmonized w/ H4 ATR floor)" if is_harmonized else "(35% of ADR)"
                     lines.append("── DAILY RANGE CONTEXT (ADR) — MANDATORY INTRADAY TP/SL TARGET BAND ──")
                     lines.append(f"{adr_ctx['lookback_days']}-day ADR: {adr_ctx['adr']:.5f}")
                     lines.append(
@@ -986,9 +1059,9 @@ Calling blocked tools wastes tokens on duplicate data and reduces analysis time 
                         f"Room remaining today: {adr_ctx['room_remaining_pct']:.0%} ({adr_ctx['session_recommendation']})"
                     )
                     lines.append(
-                        f"MANDATORY TP distance band: {adr_ctx['target_tp_min_distance']:.5f} to {adr_ctx['target_tp_max_distance']:.5f} (50%-80% of ADR)"
+                        f"MANDATORY TP distance band: {adr_ctx['target_tp_min_distance']:.5f} to {adr_ctx['target_tp_max_distance']:.5f} {tp_band_label}"
                     )
-                    lines.append(f"MANDATORY SL max distance: {adr_ctx['target_sl_max_distance']:.5f} (35% of ADR)")
+                    lines.append(f"MANDATORY SL max distance: {adr_ctx['target_sl_max_distance']:.5f} {sl_max_label}")
                     lines.append(
                         "Your submit_asset_analysis call will be REJECTED if TP falls outside this band or SL exceeds the max."
                     )

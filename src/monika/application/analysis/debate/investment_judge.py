@@ -248,8 +248,16 @@ Proceed with evaluation based strictly on the data above. Respond in valid JSON 
         "bear_dissent": compress_debate_trajectory(bear_dissent, max_text_len=800),
     }
     if bull_rebuttal:
-        rebuttal_key = "bear_rebuttal" if decision == "SELL" else "bull_rebuttal"
-        debate_payload[rebuttal_key] = compress_debate_trajectory(bull_rebuttal, max_text_len=800)
+        if isinstance(bull_rebuttal, dict) and "bull_rebuttal" in bull_rebuttal and "bear_rebuttal" in bull_rebuttal:
+            debate_payload["bull_rebuttal"] = compress_debate_trajectory(
+                bull_rebuttal["bull_rebuttal"], max_text_len=800
+            )
+            debate_payload["bear_rebuttal"] = compress_debate_trajectory(
+                bull_rebuttal["bear_rebuttal"], max_text_len=800
+            )
+        else:
+            rebuttal_key = "bear_rebuttal" if decision == "SELL" else "bull_rebuttal"
+            debate_payload[rebuttal_key] = compress_debate_trajectory(bull_rebuttal, max_text_len=800)
 
     # S²-MAD Sparse Debate: Inject structured blackboard state for dense, low-token evaluation
     try:
@@ -388,23 +396,27 @@ Proceed with evaluation based strictly on the data above. Respond in valid JSON 
 
         # Ensure risk multiplier is bounded with Bayesian rebuttal mitigation
         final_dec = str(parsed.get("final_decision", "")).lower()
-        is_sell = (decision == "SELL") or (
-            decision in ("CONFLICT_ADJUDICATION", "WAIT", "NEUTRAL") and final_dec == "sell"
-        )
+        is_conflict_mode = decision in ("CONFLICT_ADJUDICATION", "WAIT", "NEUTRAL")
+        is_sell = (decision == "SELL") or (is_conflict_mode and final_dec == "sell")
         if is_sell:
             # For SELL: Counter-threat is Bull's strength_score, Pro-strength is Bear's score
             counter_threat = int((bull_claim or {}).get("strength_score", 5) or 5)
-            pro_strength = int((bear_dissent or {}).get("risk_severity", 5) or 5)
+            pro_strength = int(
+                (bear_dissent or {}).get("risk_severity") or (bear_dissent or {}).get("strength_score") or 5
+            )
         else:
             # For BUY: Counter-threat is Bear's risk_severity, Pro-strength is Bull's score
-            counter_threat = int((bear_dissent or {}).get("risk_severity", 5) or 5)
+            counter_threat = int(
+                (bear_dissent or {}).get("risk_severity") or (bear_dissent or {}).get("strength_score") or 5
+            )
             pro_strength = int((bull_claim or {}).get("strength_score", 5) or 5)
 
         bull_reb_str = int((bull_rebuttal or {}).get("rebuttal_strength", 0) or 0) if bull_rebuttal else 0
+        proposer_rebuttal_score = max(bull_reb_str, pro_strength) if is_conflict_mode else bull_reb_str
 
         # Effective counter threat is downgraded if strong factual defense was presented
         effective_counter_threat = counter_threat
-        if bull_rebuttal and bull_reb_str >= 7:
+        if (bull_rebuttal and bull_reb_str >= 7) or (is_conflict_mode and proposer_rebuttal_score >= 7):
             effective_counter_threat = max(1, counter_threat - 3)
 
         raw_multiplier = float(parsed.get("risk_multiplier", 1.0) or 1.0)
@@ -433,10 +445,11 @@ Proceed with evaluation based strictly on the data above. Respond in valid JSON 
             else:
                 raw_multiplier = max(0.20, raw_multiplier - regime_weights["volatility_penalty"])
 
-        if final_dec == "avoid" or effective_counter_threat >= 9:
+        fatal_flaw_override = (decision in ("BUY", "SELL")) and (effective_counter_threat >= 9)
+        if final_dec == "avoid" or fatal_flaw_override:
             parsed["final_decision"] = "avoid"
             parsed["risk_multiplier"] = 0.0
-            if effective_counter_threat >= 9 and final_dec != "avoid":
+            if fatal_flaw_override and final_dec != "avoid":
                 parsed["rationale"] = (
                     f"[FATAL FLAW OVERRIDE] Critical counter-threat established ({effective_counter_threat}/10). "
                     f"Decision overridden to avoid. {parsed.get('rationale', '')}"

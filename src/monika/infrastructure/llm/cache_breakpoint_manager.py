@@ -38,7 +38,7 @@ class CacheBreakpointManager:
    - Hard Risk Boundaries: Maximum risk per trade is strictly capped at 1.0% of account equity. Maximum daily portfolio loss is capped at 3.0%. Maximum cumulative weekly drawdown threshold is capped at 6.0%. If any risk boundary is breached, system-wide circuit breakers mandate immediate cessation of new entries.
    - Deterministic Lot Sizing: Position sizing must always be calculated via deterministic mathematical formulas factoring exact Stop Loss pip/point distance, account balance, tick value, and asset-specific contract size. Mental arithmetic or subjective lot estimation is strictly prohibited.
    - Mandatory Asymmetric Reward-to-Risk (R:R >= 1.5): Every directional order proposal must provide a projected Take Profit to Stop Loss ratio of at least 1.5:1 (|TP - Entry| >= 1.5 * |Entry - SL|). Trades failing the minimum 1.5 R:R ratio are automatically invalid and rejected by execution gates.
-   - Average Daily Range (ADR) Bound: Take Profit targets for intraday and swing horizons must reside within 40% to 90% of the 5-day ADR to ensure mathematical achievability within standard session expansion.
+   - Average Daily Range (ADR) Bound: Take Profit targets for intraday and swing horizons must reside within 40-90% of 5-day ADR, or harmonized to 1.25x-2.0x H4 ATR when ADR is compressed, to ensure mathematical achievability within standard session expansion.
 
 3. SMART MONEY CONCEPTS (SMC) & INSTITUTIONAL ORDERFLOW FRAMEWORK:
    - Market Structure Continuity (BOS): A Break of Structure (BOS) confirms the continuation of the dominant higher-timeframe trend. A valid BOS requires a full candle body close beyond the prior swing high (bullish) or swing low (bearish). Wick-only penetrations are classified as potential liquidity sweeps, not structural breaks.
@@ -72,7 +72,7 @@ class CacheBreakpointManager:
      1. [Empirical Fact Extraction]: State current price, H4 ATR 14, D1 trend direction, DXY trend, and VIX reading.
      2. [Structure & Confluence Scoring]: Evaluate BOS/ChoCH, unmitigated OB proximity, FVG alignment, and calculate composite confluence score.
      3. [Falsification & Invalidation Level]: Determine the precise, non-negotiable price level that invalidates the trade thesis with at least 1.0x ATR buffer from entry.
-     4. [Reward-to-Risk & ADR Verification]: Verify |TP - Entry| >= 1.5 * |Entry - SL| and confirm TP is within 40-90% ADR.
+     4. [Reward-to-Risk & ADR Verification]: Verify |TP - Entry| >= 1.5 * |Entry - SL| and confirm TP is within 40-90% of 5-day ADR, or harmonized to 1.25x-2.0x H4 ATR when ADR is compressed.
      5. [Execution / Wait Decision]: Emit strictly formatted, compliant JSON output or declare WAIT.
 
 8. PERSISTENT MACRO REALITY CONTINUITY & CONTEXTUAL MEMORY:
@@ -101,7 +101,7 @@ class CacheBreakpointManager:
 12. STATISTICAL ANCHORING, BEHAVIORAL BIAS & STREAK CORRECTION:
    - Anchoring Streak Neutralization: When evaluating consecutive analysis cycles, agents must actively guard against copy-pasting obsolete biases. If fundamental conditions or market structures have shifted, bias must be updated immediately without loss-aversion hesitation.
    - Confirmation Bias Stress Testing: When a bullish or bearish setup appears compelling, agents must explicitly identify and document the single most lethal counter-thesis threat (e.g. impending high-impact economic release, unmitigated opposing higher-timeframe order block, or extreme retail crowding).
-   - Drawdown Defense Protocol: Following two consecutive realized losses on a specific asset, the system enforces a mandatory cooldown period. The next setup on that asset requires unanimous specialist consensus (Technical, Sentiment, and Macro all aligned) and a minimum confluence score of 9.0/14.0.
+   - Drawdown Defense Protocol: Following two consecutive realized losses on a specific asset, the system enforces a mandatory cooldown period. The next setup on that asset requires Institutional Synergy (Technical and Macro aligned; opposing/extreme Sentiment acts as contrarian fuel, while 3/3 unanimous consensus at dealing range extremes requires caution against crowd exhaustion) and a minimum confluence score of 9.0/14.0.
 
 13. SPECIALIST DECOMPOSITION & MULTI-AGENT CONSENSUS ADJUDICATION:
    - Triangulation Architecture: Per-asset decision-making relies on three independent specialist evaluations prior to execution synthesis: Technical Specialist (price action, structure, liquidity), Sentiment Specialist (COT, retail positioning, funding rates), and Macro Specialist (yield differentials, central bank policy, economic calendar).

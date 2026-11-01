@@ -81,6 +81,7 @@ FACTOR_POINT_MAP = {
     "quant_strategy_edge": 1,
     "rr_ratio_bonus": 1,
     "adr_target_bonus": 1,
+    "uncrowded_institutional_synergy": 2,  # +2 pts (Technical and Macro specialists aligned while Sentiment specialist is neutral/opposing)
 }
 FACTOR_CONSISTENCY_TOLERANCE = 1
 FACTORS_WITH_VARIABLE_WEIGHT = {"cot_aligned"}

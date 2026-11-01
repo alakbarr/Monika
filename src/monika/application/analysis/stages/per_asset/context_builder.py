@@ -77,7 +77,7 @@ RULES, OPPORTUNITY & ADR BOUNDS:
 - INSTITUTIONAL SYNERGY & ANTI-CROWDING PROTOCOL:
   (a) Uncrowded Institutional Synergy (`Tech == Macro` and `Sentiment != Tech`): Prioritize execution when `Technical` and `Macro` specialists agree (`Tech == Macro`) while `Sentiment` is uncrowded (`Sentiment != Tech`, i.e., neutral or contrarian) within valid spatial bounds (`pos <= 0.85` for BUY, `pos >= 0.15` for SELL). This is the highest-expectancy setup (`81.8%` 12h accuracy).
   (b) Equilibrium Execution (`0.35 < pos < 0.65`): Allow `BUY` or `SELL` (market or limit) when `Technical == Macro` (or strong structural confluence `>= 10`) and H4/H1 momentum aligns; output `WAIT` in Equilibrium if `Technical != Macro` or if structure is directionless chop (`ADX < 20`).
-  (c) Crowded 3-of-3 Exhaustion Warning: Guard against `Tech == Macro == Sentiment` unanimous agreement when price is already extended past Equilibrium (`pos > 0.55` for BUY or `pos < 0.45` for SELL); prefer `WAIT` or outer pullback limit orders to avoid late-stage exhaustion reversals.
+  (c) Crowded 3-of-3 Exhaustion Warning (`CROWDED_UNANIMOUS_EXHAUSTION`): Empirical production data proves 3/3 unanimous bearish (`all 3 == bearish`) at `pos <= 0.45` reverses upward `72.7%` of the time, and 3/3 unanimous bullish (`all 3 == bullish`) at `pos >= 0.55` reverses downward `80.0%` of the time. When `CROWDED_UNANIMOUS_EXHAUSTION` is active (`all 3 == bearish` with `pos <= 0.45`, or `all 3 == bullish` with `pos >= 0.55`), PROHIBIT trend-chasing market entries in the unanimous direction (output `WAIT` in mid-range `0.30 < pos < 0.70`, or contrarian accumulation/distribution fade ONLY at deep extremes `pos <= 0.30` for `BUY` / `pos >= 0.70` for `SELL` with structure/sweep confirmation).
   (d) Spatial Anti-Chasing Bounds (`[0.15 .. 0.85]`): Forbid chasing `BUY` at `pos > 0.85` or `SELL` at `pos < 0.15` unless price has decisively broken out of the 20-day dealing range.
 - SQUEEZE & COMPRESSION DISCIPLINE: If Bollinger Band Width is in the lower 25th percentile (BB Squeeze) OR Volume Profile shows thin liquidity/squeeze without confirmed breakout expansion: DO NOT submit an aggressive market order. Instead, adopt the pre-computed pending LIMIT order bracket option at the outer range boundary (OTE / unmitigated FVG / Order Block zone). Only submit WAIT if the chart is purely erratic with NO identifiable structural POI.
 - Intraday Range Strategy: resolve within 1 trading day using ADR bounds.
@@ -754,6 +754,12 @@ class ContextBuilderMixin:
                     elif range_pos <= 0.38:
                         regime_telemetry_tag = "DISCOUNT_ACCUMULATION_ZONE (pos <= 0.38) -> institutional Discount value zone favoring BUY ([LONG_OPTION_A])"
 
+                    crowding_guard_line = (
+                        "Crowded Unanimous Guard (CROWDED_UNANIMOUS_EXHAUSTION): "
+                        "If all 3 specialists == bearish at pos <= 0.45 (72.7% upward reversal rate) or all 3 == bullish at pos >= 0.55 (80.0% downward reversal rate), "
+                        "PROHIBIT trend-chasing market entries in the unanimous direction (output WAIT in mid-range 0.30 < pos < 0.70, or contrarian fade ONLY at deep extremes pos <= 0.30 for BUY / pos >= 0.70 for SELL)."
+                    )
+
                     anchor_lines.extend(
                         [
                             f"Dealing Range (20-day): High={high_20:.5f}, Low={low_20:.5f}, Close={curr_close:.5f}",
@@ -761,6 +767,7 @@ class ContextBuilderMixin:
                             f"3-Bar H4 Displacement Impulse: {h4_impulse_atr:+.2f}x ATR",
                             f"Deterministic Regime Telemetry: {regime_telemetry_tag}",
                             f"Spatial Status: {status_str}",
+                            f"Crowding & Exhaustion Telemetry: {crowding_guard_line}",
                             f"Unmitigated Demand POI: {demand_str}",
                             f"Unmitigated Supply POI: {supply_str}",
                             f"Liquidity Sweep Detected: {sweep_str}",
@@ -1343,7 +1350,7 @@ Read STEP 0 in your SMC/ICT playbook. You MUST adjust your confluence threshold 
             f"- SPECIALIST SYNERGY & CROWDING STATE:\n"
             f"  1. Uncrowded Institutional Synergy (`Tech == Macro` and `Sentiment != Tech`): Prioritize execution when `Technical` and `Macro` specialists agree while `Sentiment` is uncrowded (neutral or contrarian) within valid spatial bounds (`pos <= 0.85` for `BUY`, `pos >= 0.15` for `SELL`).\n"
             f"  2. Equilibrium Continuation (`0.35 < pos < 0.65`): Allow `BUY` or `SELL` when `Technical == Macro` (or strong structural confluence `>= 10`) and H4/H1 momentum aligns; output `WAIT` if `Technical != Macro` or if structure is directionless chop (`ADX < 20`).\n"
-            f"  3. Crowded 3-of-3 Exhaustion & Spatial Anti-Chasing: Guard against `Tech == Macro == Sentiment` exhaustion when price is extended past Equilibrium (`pos > 0.55` for `BUY` or `pos < 0.45` for `SELL`), and NEVER chase `BUY` at `pos > 0.85` or `SELL` at `pos < 0.15` unless price broke out of the 20-day range.\n"
+            f"  3. Crowded 3-of-3 Exhaustion (`CROWDED_UNANIMOUS_EXHAUSTION`) & Spatial Anti-Chasing: Empirical data proves 3/3 unanimous bearish (`all 3 == bearish`) at `pos <= 0.45` reverses upward `72.7%` of the time, and 3/3 unanimous bullish (`all 3 == bullish`) at `pos >= 0.55` reverses downward `80.0%` of the time. When `CROWDED_UNANIMOUS_EXHAUSTION` is active (`pos <= 0.45` for unanimous bearish or `pos >= 0.55` for unanimous bullish), PROHIBIT trend-chasing market entries in the unanimous direction (output `WAIT` in mid-range `0.30 < pos < 0.70`, or contrarian fade ONLY at deep extremes `pos <= 0.30` for `BUY` / `pos >= 0.70` for `SELL`). NEVER chase `BUY` at `pos > 0.85` or `SELL` at `pos < 0.15` unless price broke out of the 20-day range.\n"
             f"\nCRITICAL MANDATORY REQUIREMENT:\n"
             f'- If proposing BUY or SELL: adopt `adopted_bracket="LONG_OPTION_A"` or `"SHORT_OPTION_B"` (or call `calculate_position_size` FIRST before submitting). Direct unverified BUY/SELL is blocked by TradeStopGate.\n'
             f"- For BUY or SELL decisions, you MUST supply ALL 9 execution fields in `submit_asset_analysis` (or let `adopted_bracket` populate the price levels):\n"
@@ -1377,7 +1384,7 @@ HYPOTHESIS-DRIVEN REASONING DIRECTIVE (Max 2-3 Iterative Turns):
    - `CROWDED_TECH_SENT_TRAP_VS_MACRO` (`technical == sentiment != macro`) -> 71.4% empirical reversal trap; favor the `macro` specialist direction.
    - `DISCOUNT_ACCUMULATION_ZONE` (`pos <= 0.38`) -> institutional Discount value zone favoring `BUY` (`[LONG_OPTION_A]`).
    - Prioritize execution when `Technical` and `Macro` specialists agree (`Tech == Macro`) while `Sentiment` is uncrowded (`Sentiment != Tech`) within valid spatial bounds (`pos <= 0.85` for BUY, `pos >= 0.15` for SELL).
-   - Beware **Crowded 3-of-3 Exhaustion** (`Tech == Macro == Sentiment` when `pos > 0.55` for BUY or `pos < 0.45` for SELL) and forbid **Spatial Chasing** (`BUY` at `pos > 0.85` or `SELL` at `pos < 0.15` unless price broke out of the 20-day range).
+   - Beware **Crowded 3-of-3 Exhaustion (`CROWDED_UNANIMOUS_EXHAUSTION`)**: Empirical production data proves 3/3 unanimous bearish (`all 3 == bearish`) at `pos <= 0.45` reverses upward `72.7%` of the time, and 3/3 unanimous bullish (`all 3 == bullish`) at `pos >= 0.55` reverses downward `80.0%` of the time; PROHIBIT trend-chasing market entries in the unanimous direction (output `WAIT` in mid-range `0.30 < pos < 0.70`, or contrarian fade ONLY at deep extremes `pos <= 0.30` for `BUY` / `pos >= 0.70` for `SELL`), and forbid **Spatial Chasing** (`BUY` at `pos > 0.85` or `SELL` at `pos < 0.15` unless price broke out of the 20-day range).
 3. Do NOT re-call `get_smc_zones` or `get_structure_breaks` for H4/H1/D1 data already pre-loaded in `[PRE-FETCHED SYMBOL DATA]`. Only invoke M15 tools if granular sub-bar precision is needed:
    - `get_smc_zones(symbol="{symbol}", timeframe="M15")` to verify M15 order blocks.
    - `get_structure_breaks(symbol="{symbol}", timeframe="M15")` to confirm M15 CHoCH/BOS.

@@ -141,15 +141,19 @@ async def compute_optimal_levels(
     existing_sl: Optional[float] = None,
     existing_tp: Optional[float] = None,
     trade_style: str = "intraday",
+    min_rr: float = 1.8,
 ) -> dict:
     direction = str(direction or "").strip().lower()
-    adr_ctx = await compute_daily_range_context(session, symbol, settings)
-    if "error" in adr_ctx:
-        return {"error": adr_ctx["error"]}
-
     atr = await _get_atr(session, symbol)
     if not atr or atr <= 0:
         atr = 0.005 * entry_price
+    try:
+        adr_ctx = await compute_daily_range_context(session, symbol, settings, atr_h4=atr)
+    except TypeError:
+        adr_ctx = await compute_daily_range_context(session, symbol, settings)
+    if "error" in adr_ctx:
+        return {"error": adr_ctx["error"]}
+    adr_ctx = dict(adr_ctx)
     zones = await _collect_zones(session, symbol)
     try:
         from monika.application.analysis.calculators.liquidity_sweep_detector import detect_liquidity_sweep
@@ -168,8 +172,8 @@ async def compute_optimal_levels(
             )
     except Exception:
         pass
-    risk_cfg = (settings or {}).get("trading", {}).get("risk", {})
-    min_rr = float(risk_cfg.get("min_rr_ratio", 1.8))
+    risk_cfg = (settings or {}).get("trading", {}).get("risk") or (settings or {}).get("risk") or {}
+    min_rr = float(risk_cfg.get("min_rr_ratio", min_rr))
     mult_map = risk_cfg.get("min_sl_atr_multiplier_by_symbol", {})
     min_sl_mult = float(mult_map.get(symbol, mult_map.get("default", 1.0)))
     sl_buffer_mult = float(risk_cfg.get("sl_zone_buffer_atr", 0.15))
@@ -184,13 +188,16 @@ async def compute_optimal_levels(
     # (e.g. pre-event range squeeze or volatility expansion), dynamically harmonize the ceiling
     # so floor and ceiling never form an empty set.
     raw_min_sl = atr * min_sl_mult
-    if raw_min_sl > sl_max:
-        effective_sl_ceiling = max(sl_max, raw_min_sl * 1.25)
+    if sl_max < raw_min_sl * 1.15:
+        effective_sl_ceiling = max(sl_max, raw_min_sl * 1.35)
         logger.info(
             f"[{symbol}] Harmonizing SL ceiling from {sl_max:.5f} to {effective_sl_ceiling:.5f} "
             f"to accommodate ATR noise floor ({raw_min_sl:.5f})"
         )
         sl_max = effective_sl_ceiling
+    tp_max = max(tp_max, sl_max * max(min_rr, 1.65))
+    adr_ctx["target_sl_max_distance"] = max(float(adr_ctx.get("target_sl_max_distance", 0) or 0), sl_max)
+    adr_ctx["target_tp_max_distance"] = max(float(adr_ctx.get("target_tp_max_distance", 0) or 0), tp_max)
 
     tp_mid, tp_width = (tp_min + tp_max) / 2.0, max(tp_max - tp_min, 1e-9)
 

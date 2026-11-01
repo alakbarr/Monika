@@ -136,7 +136,9 @@ async def handle_get_daily_range_context(args: dict, **ctx) -> dict:
     try:
         from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
-        return await compute_daily_range_context(session, symbol, settings, lookback_days=lookback_val)
+        return await compute_daily_range_context(
+            session, symbol, settings, as_of=clock.now(), lookback_days=lookback_val
+        )
     except Exception as e:
         logger.debug(f"[{symbol}] Daily range context fallback: {e}")
         return {"symbol": symbol, "status": "available", "adr_context": {}}

@@ -406,35 +406,35 @@ def build_adjudication_questions() -> dict[str, Union[Choice, Noul, Score]]:
     """
     return {
         "adjudication_rule_correctly_applied": Noul(
-            instructions="Check if the final decision respects the directional consensus and execution constraints of the Adjudication Framework.",
+            instructions="Check if the final decision respects the institutional synergy (UNCROWDED_INSTITUTIONAL_SYNERGY where Technical==Macro overrules contrarian Sentiment with 0.7x weight), anti-crowding (CROWDED_TECH_SENT_TRAP_VS_MACRO and CROWDED_UNANIMOUS_EXHAUSTION), H4 Dealing Range extremes (DISCOUNT <= 0.38 / PREMIUM >= 0.62), and execution constraints of the Adjudication Framework.",
             criteria={
-                "true": "Decision properly follows the framework rules (aligned specialists respected, conditional wait for pullbacks/confluence valid)",
-                "false": "Decision violates framework (e.g. BUY when bearish consensus, or unexplained refusal to align)",
+                "true": "Decision properly follows framework rules (Uncrowded Institutional Synergy Technical==Macro over Sentiment valid, Crowded Tech+Sent trap vs Macro override valid, H4 Dealing Range extreme DISCOUNT <= 0.38 / PREMIUM >= 0.62 override valid, conditional wait for pullbacks/crowding/confluence valid)",
+                "false": "Decision violates framework without valid synergy, dealing range extreme, or timing justification",
             },
         ),
         "expected_outcome_per_rules": Choice(
-            instructions="Based strictly on the specialist biases and confluence, what is the expected outcome per rules?",
+            instructions="Based on the institutional synergy rules, dealing range position, and confluence, what is the expected outcome per rules?",
             criteria={
-                "buy": "Specialists aligned bullish and confluence threshold met",
-                "sell": "Specialists aligned bearish and confluence threshold met",
-                "wait": "Specialists mixed/neutral, confluence below threshold, or waiting for pullback/retest",
+                "buy": "Technical+Macro bullish synergy (or Discount <= 0.38 accumulation override) and confluence threshold met",
+                "sell": "Technical+Macro bearish synergy (or Premium >= 0.62 distribution override) and confluence threshold met",
+                "wait": "Specialists mixed/neutral, Crowded Unanimous Exhaustion, confluence below threshold, or waiting for pullback/retest",
                 "avoid": "Conflicting high-conviction signals or extreme risk gate active",
                 "ambiguous": "Unclear or insufficient data",
             },
         ),
         "is_conditional_wait": Noul(
-            instructions="Is the final decision 'wait' specifically because price is overextended, waiting for pullback/retest, or waiting for confluence threshold?",
+            instructions="Is the final decision 'wait' specifically because price is overextended, in Crowded Unanimous Exhaustion, waiting for pullback/retest, or waiting for confluence threshold?",
             criteria={
-                "true": "Decision is WAIT due to entry timing, pullback, or confluence threshold while respecting directional bias",
+                "true": "Decision is WAIT due to entry timing, pullback, crowd exhaustion, or confluence threshold",
                 "false": "Decision is not wait, or wait is unconditional / unrelated to timing",
             },
         ),
         "verdict": Choice(
-            instructions="What is the overall adjudication verdict?",
+            instructions="What is the overall adjudication verdict? Note: Overruling Sentiment when Technical==Macro (UNCROWDED_INSTITUTIONAL_SYNERGY), overruling Tech+Sent against Macro (CROWDED_TECH_SENT_TRAP_VS_MACRO), or overruling stale macro at a deep H4 Dealing Range extreme (DISCOUNT <= 0.38 / PREMIUM >= 0.62) is VALID and must be CONFIRM, never CONTRADICTS_OWN_FRAMEWORK.",
             criteria={
-                "CONFIRM": "Decision is consistent with rules or is a valid conditional wait",
+                "CONFIRM": "Decision is consistent with rules, Uncrowded Institutional Synergy, Dealing Range extreme override, or valid conditional wait",
                 "FLAG_FOR_REVIEW": "Minor discrepancy or borderline rationale",
-                "CONTRADICTS_OWN_FRAMEWORK": "Direct contradiction of specialist consensus without valid execution timing justification",
+                "CONTRADICTS_OWN_FRAMEWORK": "Direct unexplained contradiction of Technical+Macro synergy and spatial bounds without valid execution timing justification",
             },
         ),
         "mismatch_category": Choice(

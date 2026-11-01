@@ -59,6 +59,7 @@ class PostProcessVerificationMixin(_RunnerMixinBase):
                         entry_payload["price"] = float(analysis.entry_price)
                     except TypeError, ValueError:
                         pass
+                adopted_bracket = entry_payload.get("adopted_bracket") if isinstance(entry_payload, dict) else None
                 raw_payload = {
                     "decision": analysis.decision,
                     "entry_condition": entry_payload,
@@ -71,6 +72,8 @@ class PostProcessVerificationMixin(_RunnerMixinBase):
                     else (analysis.reevaluation_trigger if isinstance(analysis.reevaluation_trigger, dict) else {}),
                     "rationale": analysis.rationale,
                 }
+                if adopted_bracket:
+                    raw_payload["adopted_bracket"] = adopted_bracket
                 verified, corrections = await verifier.verify_and_correct(
                     session=session,
                     settings=self.settings,

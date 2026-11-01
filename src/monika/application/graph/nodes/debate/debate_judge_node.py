@@ -194,6 +194,59 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                         except Exception:
                             pass
 
+                        final_dec = str(verdict.get("final_decision", "")).strip().lower()
+                        curr_conf_score = getattr(ana, "confluence_score", None)
+                        if final_dec in ("buy", "sell") and (
+                            not isinstance(curr_conf_score, (int, float)) or curr_conf_score < 5
+                        ):
+                            precomp_sources = [
+                                state.get("precomputed_confluence"),
+                                deb.get("precomputed_confluence"),
+                                r.get("precomputed_confluence") if isinstance(r, dict) else None,
+                                original_context.get("precomputed_confluence")
+                                if isinstance(original_context, dict)
+                                else None,
+                                fact_sheet.get("precomputed_confluence") if isinstance(fact_sheet, dict) else None,
+                            ]
+                            hydrated_conf: Optional[int] = None
+                            score_keys = (
+                                ("buy_score", "long_score", "score", "total_score", "confluence_score")
+                                if final_dec == "buy"
+                                else ("sell_score", "short_score", "score", "total_score", "confluence_score")
+                            )
+                            for src in precomp_sources:
+                                if not isinstance(src, dict):
+                                    continue
+                                target_dict = src.get(sym) if isinstance(src.get(sym), dict) else src
+                                if not isinstance(target_dict, dict):
+                                    continue
+                                for sk in score_keys:
+                                    val = target_dict.get(sk)
+                                    if isinstance(val, (int, float)) and not isinstance(val, bool) and val >= 5:
+                                        hydrated_conf = int(val)
+                                        break
+                                if hydrated_conf is not None:
+                                    break
+                            if hydrated_conf is None or hydrated_conf < 5:
+                                bull_s = int(
+                                    state.get("bull_strength")
+                                    or deb.get("bull_strength")
+                                    or (verified_bull_claim or {}).get("strength_score")
+                                    or 0
+                                )
+                                bear_s = int(
+                                    state.get("bear_strength")
+                                    or deb.get("bear_strength")
+                                    or (bear_dissent or {}).get("risk_severity")
+                                    or (bear_dissent or {}).get("strength_score")
+                                    or 0
+                                )
+                                hydrated_conf = max(bull_s, bear_s, 6)
+                            ana.confluence_score = hydrated_conf
+                            if isinstance(r, dict):
+                                r["confluence_score"] = hydrated_conf
+                            verdict["confluence_score"] = hydrated_conf
+
                         try:
                             from monika.infrastructure.database.models import DebateTranscript
 
@@ -220,8 +273,6 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                             logger.debug(f"[{sym}] Non-fatal error persisting DebateTranscript: {dt_err}")
 
                         await session.commit()
-
-                        final_dec = str(verdict.get("final_decision", "")).strip().lower()
                         if final_dec in ("avoid", "wait"):
                             logger.warning(f"Investment Judge Rejected {sym} ({final_dec}): {verdict.get('reason')}")
                             await DecisionLogger.log_paper_whatif(

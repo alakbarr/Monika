@@ -113,13 +113,61 @@ class Stage1DataBundler:
                 and isinstance(existing_eurusd, dict)
                 and existing_eurusd
                 and "error" not in existing_eurusd
+                and "pct_change" not in existing_eurusd
+                and "change_1d_pct" not in existing_eurusd
+                and "change_5d_pct" not in existing_eurusd
             ):
                 matrix[sym] = existing_eurusd
                 continue
             try:
                 res = await self.executor.execute(
-                    "get_price_momentum", {"symbol": sym, "timeframe": "H4", "period": 20}
+                    "get_price_momentum", {"symbol": sym, "timeframe": "H4", "lookback_bars": 6}
                 )
+                res_1d = res
+                has_mom_keys = isinstance(res_1d, dict) and (
+                    "pct_change" in res_1d
+                    or "change_1d_pct" in res_1d
+                    or "change_5d_pct" in res_1d
+                    or "error" in res_1d
+                )
+                res_5d = (
+                    await self.executor.execute(
+                        "get_price_momentum", {"symbol": sym, "timeframe": "H4", "lookback_bars": 30}
+                    )
+                    if has_mom_keys
+                    else res_1d
+                )
+                if not isinstance(res_5d, dict) or "error" in res_5d:
+                    if (
+                        sym == "EURUSD"
+                        and isinstance(existing_eurusd, dict)
+                        and existing_eurusd
+                        and "error" not in existing_eurusd
+                    ):
+                        res_5d = existing_eurusd
+                    elif isinstance(res_1d, dict) and "error" not in res_1d:
+                        res_5d = res_1d
+                    else:
+                        res_5d = await self.executor.execute(
+                            "get_price_momentum", {"symbol": sym, "timeframe": "H4", "lookback_bars": 20}
+                        )
+                if isinstance(res_5d, dict) and "error" not in res_5d:
+                    entry: dict[str, Any] = dict(res_5d)
+                    valid_1d = isinstance(res_1d, dict) and "error" not in res_1d
+                    if has_mom_keys or "pct_change" in entry:
+                        entry["change_1d_pct"] = (
+                            res_1d.get("pct_change", res_1d.get("change_1d_pct", entry.get("pct_change", "N/A")))
+                            if valid_1d
+                            else entry.get("pct_change", entry.get("change_1d_pct", "N/A"))
+                        )
+                        entry["change_5d_pct"] = entry.get(
+                            "pct_change", entry.get("change_5d_pct", entry["change_1d_pct"])
+                        )
+                        entry["trend"] = entry.get("direction", entry.get("trend", "neutral"))
+                        entry["direction"] = entry.get("direction", "neutral")
+                    res = entry
+                else:
+                    res = res_5d if isinstance(res_5d, dict) else {"error": "Invalid momentum response"}
                 if isinstance(res, dict) and "error" not in res:
                     matrix[sym] = res
             except Exception as exc:
@@ -645,8 +693,11 @@ class Stage1DataBundler:
             for sym, m_data in cross_mom.items():
                 if not isinstance(m_data, dict) or "error" in m_data:
                     continue
-                c_1d = m_data.get("change_1d_pct", m_data.get("change_24h_pct", m_data.get("change_pct", "N/A")))
-                c_5d = m_data.get("change_5d_pct", m_data.get("roc_pct", "N/A"))
+                c_1d = m_data.get(
+                    "change_1d_pct",
+                    m_data.get("change_24h_pct", m_data.get("change_pct", m_data.get("pct_change", "N/A"))),
+                )
+                c_5d = m_data.get("change_5d_pct", m_data.get("roc_pct", m_data.get("pct_change", "N/A")))
                 trend_str = m_data.get("trend", m_data.get("direction", m_data.get("momentum_bias", "N/A")))
                 mom_entries.append(f"{sym}: change_1d_pct={c_1d}% | change_5d_pct={c_5d}% | trend={trend_str}")
             if mom_entries:
