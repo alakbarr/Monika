@@ -1603,8 +1603,8 @@ def resolve_effective_context_window(
     if proxy_limit is not None and proxy_limit > 0:
         return int(proxy_limit)
 
-    clean_model = (model_name or "").strip().lower()
-    clean_prov = (provider_name or "").strip().lower()
+    clean_model = str(model_name).strip().lower() if isinstance(model_name, str) else ""
+    clean_prov = str(provider_name).strip().lower() if isinstance(provider_name, str) else ""
 
     # Tier 2: Settings override
     if isinstance(settings, dict):
@@ -1741,8 +1741,8 @@ def resolve_effective_max_tokens(
     5. Respect caller requested_max_tokens when larger, clamped to hard ceiling.
     6. Safe lower bound default.
     """
-    clean_model = (model_name or "").strip().lower()
-    clean_prov = (provider_name or "").strip().lower()
+    clean_model = str(model_name).strip().lower() if isinstance(model_name, str) else ""
+    clean_prov = str(provider_name).strip().lower() if isinstance(provider_name, str) else ""
 
     # Tier 1: Settings override
     if isinstance(settings, dict):

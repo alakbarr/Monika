@@ -346,12 +346,18 @@ def generate_concrete_bracket_options(
     adr_val = float(adr_5d) if adr_5d is not None and float(adr_5d) > 0 else (2.0 * atr_val)
     eff_min_rr = max(1.50, float(target_rr or 1.50))
 
+    sym_clean = str(symbol or "").upper()
+    is_fx_major = any(sym_clean.startswith(fx) for fx in ("EUR", "GBP", "AUD", "NZD", "USD")) and not any(
+        k in sym_clean for k in ("BTC", "ETH", "SOL", "XAU", "XAG", "XTI", "XBR")
+    )
+    impulse_thresh = 0.85 if is_fx_major else 1.25
+
     reg_str = str(regime_classification or "").upper()
     is_bullish_impulse = ("BULLISH_IMPULSE" in reg_str) or (
-        h4_impulse_atr is not None and float(h4_impulse_atr) >= 1.25
+        h4_impulse_atr is not None and float(h4_impulse_atr) >= impulse_thresh
     )
     is_bearish_impulse = ("BEARISH_IMPULSE" in reg_str) or (
-        h4_impulse_atr is not None and float(h4_impulse_atr) <= -1.25
+        h4_impulse_atr is not None and float(h4_impulse_atr) <= -impulse_thresh
     )
 
     # 1. Long Option A (Demand POI or Breakout Entry)

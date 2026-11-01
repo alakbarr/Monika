@@ -4,6 +4,7 @@ from monika.application.analysis.calculators.invariant_calculator import (
     format_invariants_for_prompt,
     extract_price_precision,
     resolve_bracket_choice,
+    generate_concrete_bracket_options,
 )
 
 
@@ -217,3 +218,42 @@ def test_impulse_breakout_market_entry():
     assert short_b["rr_ratio"] >= 1.50
     assert short_b["stop_loss"] > 1.10000
     assert short_b["take_profit"] < 1.10000
+
+
+def test_differentiated_asset_impulse_thresholds():
+    """Verify FX Majors trigger breakout at 0.85x ATR, whereas Crypto/Commodities require 1.25x ATR."""
+    # FX Major at 0.90x ATR -> Should be market breakout entry (threshold is 0.85x ATR)
+    fx_brackets = generate_concrete_bracket_options(
+        symbol="EURUSD",
+        current_price=1.11000,
+        atr=0.00200,
+        adr_5d=0.00800,
+        smc_zones=[{"price": 1.10700, "type": "demand"}],
+        h4_impulse_atr=0.90,
+    )
+    assert fx_brackets["long_option_a"]["entry_type"] == "market"
+    assert "impulse breakout market entry" in fx_brackets["long_option_a"]["description"].lower()
+
+    # Crypto at 0.90x ATR -> Should NOT trigger breakout (threshold is 1.25x ATR, so stays limit order)
+    crypto_moderate = generate_concrete_bracket_options(
+        symbol="BTCUSD",
+        current_price=80000.0,
+        atr=800.0,
+        adr_5d=2500.0,
+        smc_zones=[{"price": 79600.0, "type": "demand"}],
+        h4_impulse_atr=0.90,
+    )
+    assert crypto_moderate["long_option_a"]["entry_type"] == "limit"
+    assert "demand poi limit entry" in crypto_moderate["long_option_a"]["description"].lower()
+
+    # Crypto at 1.30x ATR -> Should trigger breakout market entry (1.30 >= 1.25)
+    crypto_strong = generate_concrete_bracket_options(
+        symbol="BTCUSD",
+        current_price=80000.0,
+        atr=800.0,
+        adr_5d=2500.0,
+        smc_zones=[{"price": 79600.0, "type": "demand"}],
+        h4_impulse_atr=1.30,
+    )
+    assert crypto_strong["long_option_a"]["entry_type"] == "market"
+    assert "impulse breakout market entry" in crypto_strong["long_option_a"]["description"].lower()

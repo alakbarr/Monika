@@ -697,34 +697,17 @@ class GeminiProvider(BaseLLMClient):
         flat_sys = _flatten_system_prompt(static_sys)
         actual_prompt = f"{prompt}\n\n{dynamic_sys}" if dynamic_sys else prompt
         contents = [{"role": "user", "parts": [{"text": actual_prompt}]}]
-        is_thinking_none = str(self.thinking_level or "none").lower() in ("none", "off")
-        if max_tokens is not None:
-            # Caller requested a specific output budget.
-            # If thinking is active, add headroom so thinking does not eat into candidate output quota.
-            if not is_thinking_none:
-                tb = getattr(self, "thinking_budget", None)
-                if getattr(self, "resolved_thinking_level", "") in ("HIGH", "XHIGH", "MAX"):
-                    actual_budget = max(tb if tb is not None else 0, 8192)
-                elif getattr(self, "resolved_thinking_level", "") == "MEDIUM":
-                    actual_budget = max(tb if tb is not None else 0, 4096)
-                else:
-                    actual_budget = max(tb if tb is not None else 0, 2048)
-                eff_max_tokens = max(max_tokens + actual_budget, max_tokens)
-            else:
-                eff_max_tokens = max_tokens
-        else:
-            # Fall back to provider default max_tokens (typically 36000 or 65536)
-            eff_max_tokens = self.max_tokens or 36000
-            if not is_thinking_none:
-                tb = getattr(self, "thinking_budget", None)
-                if getattr(self, "resolved_thinking_level", "") in ("HIGH", "XHIGH", "MAX"):
-                    actual_budget = max(tb if tb is not None else 0, 8192)
-                elif getattr(self, "resolved_thinking_level", "") == "MEDIUM":
-                    actual_budget = max(tb if tb is not None else 0, 4096)
-                else:
-                    actual_budget = max(tb if tb is not None else 0, 2048)
-                eff_max_tokens = max(eff_max_tokens, actual_budget + 8192, 16384)
+        from monika.infrastructure.providers.capabilities import resolve_effective_max_tokens
 
+        eff_max_tokens = resolve_effective_max_tokens(
+            model_name=self.model,
+            provider_name="gemini",
+            requested_max_tokens=max_tokens,
+            thinking_budget=getattr(self, "thinking_budget", None),
+            thinking_level=self.thinking_level,
+            settings=getattr(self, "settings", None),
+            min_answer_headroom=2048 if response_schema else 4096,
+        )
         eff_max_tokens = min(eff_max_tokens, 65536)
         eff_temp = temperature if temperature is not None else self.default_temperature
         payload = {

@@ -215,8 +215,12 @@ Before adjusting any risk multiplier or proposing level adjustments, verify:
 2. Does the proposed Stop Loss violate the 1.0x ATR minimum distance from entry?
 3. If the counter-argument is purely rhetorical without factual data basis, do NOT penalize the trade — maintain risk_multiplier = 1.0.
 
-TIE & LOW CONVICTION RULE:
-If Bull thesis and Bear dissent are evenly matched without a clear structural edge, or if empirical data is conflicting/inconclusive, you MUST declare final_decision = 'avoid' with risk_multiplier = 0.0 to preserve trading capital above all.
+ASYMMETRIC EDGE & RISK-SCALING PROTOCOL (DO NOT DEFAULT TO AVOID):
+Financial markets inherently carry risk and dissenting arguments can always be made. If the trade proposal satisfies canonical structural criteria (R:R >= 1.50, structural SL outside 1.0x ATR noise floor, clear dealing range discount/premium alignment):
+- DO NOT DEFAULT TO AVOID simply because Bull and Bear are evenly matched or macro uncertainty exists.
+- If the thesis has a positive structural edge but carries macroeconomic or timing uncertainty, you MUST APPROVE the trade with scaled-down risk (risk_multiplier between 0.50 and 0.75).
+- You are ONLY permitted to declare final_decision = 'avoid' (risk_multiplier = 0.0) if the dissenter proves a catastrophic factual failure: e.g. key market structure level already broken, major high-impact CPI/NFP event in < 1 hour, or extreme orderbook illiquidity.
+- Preserving profitable expectancy: Capturing high-probability R:R >= 1.50 setups with controlled position sizing is superior to paralyzing the system into 100% avoid.
 
 MANDATORY ADJUSTMENT CONSTRAINT: If proposing adjusted_entry, adjusted_sl, or adjusted_tp, the resulting Risk-to-Reward ratio MUST remain >= 1.50 (i.e. |adjusted_tp - entry| >= 1.50 * |entry - adjusted_sl|). Any proposed adjustment with R:R < 1.50 will be automatically rejected by backend risk validators. If adjusting SL wider to clear structural noise, you MUST proportionally adjust TP outward to preserve R:R >= 1.50.
 
@@ -237,6 +241,7 @@ Proceed with evaluation based strictly on the data above. Respond in valid JSON 
             "final_decision": {"type": "string", "enum": ["buy", "sell", "avoid"]},
         },
         "required": ["reason", "risk_multiplier", "final_decision"],
+        "additionalProperties": False,
     }
 
     debate_payload = {
@@ -304,11 +309,34 @@ Proceed with evaluation based strictly on the data above. Respond in valid JSON 
 
     try:
         parsed: Optional[Dict[str, Any]] = None
-        raw_max_tokens = getattr(client, "max_tokens", None)
-        if isinstance(raw_max_tokens, (int, float)):
-            judge_max_tokens = max(int(raw_max_tokens), 16384)
-        else:
-            judge_max_tokens = 16384
+        from monika.infrastructure.providers.capabilities import resolve_effective_max_tokens
+
+        raw_model = getattr(client, "model", None)
+        clean_model = str(raw_model) if isinstance(raw_model, str) else None
+
+        raw_prov = getattr(client, "provider_name", None)
+        clean_prov = str(raw_prov) if isinstance(raw_prov, str) else None
+
+        raw_budget = getattr(client, "thinking_budget", None)
+        clean_budget = (
+            int(raw_budget) if isinstance(raw_budget, (int, float)) and not isinstance(raw_budget, bool) else None
+        )
+
+        raw_th_level = getattr(client, "thinking_level", None)
+        clean_th_level = str(raw_th_level) if isinstance(raw_th_level, str) else None
+
+        raw_settings = getattr(client, "settings", None)
+        clean_settings = raw_settings if isinstance(raw_settings, dict) else None
+
+        judge_max_tokens = resolve_effective_max_tokens(
+            model_name=clean_model,
+            provider_name=clean_prov,
+            requested_max_tokens=None,
+            thinking_budget=clean_budget,
+            thinking_level=clean_th_level,
+            settings=clean_settings,
+            min_answer_headroom=1536,
+        )
 
         # Resilience: 2 attempts with exponential backoff on transient upstream socket/rate errors
         for attempt in range(2):
