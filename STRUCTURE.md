@@ -2782,6 +2782,7 @@ Monika/
 │   │   ├── test_gap_fade.py
 │   │   ├── test_liquidity_sweep_edge.py
 │   │   ├── test_pretrade_gate.py
+│   │   ├── test_six_pillars_verification.py
 │   │   ├── test_strategy_edge_tracker.py
 │   │   └── test_tsm_momentum.py
 │   ├── support/
@@ -3182,4 +3183,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 274 | **Total Tracked Files**: 2878
+**Total Tracked Directories**: 274 | **Total Tracked Files**: 2879

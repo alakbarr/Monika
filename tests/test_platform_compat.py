@@ -17,14 +17,14 @@ from monika.infrastructure.brokers.broker_adapter import MT5RemoteGatewayAdapter
 
 
 def test_platform_detection_and_event_loop_factory():
-    """Verify event loop factory returns SelectorEventLoop on Windows."""
+    """Verify event loop factory returns ProactorEventLoop on Windows (IOCP)."""
     factory_dict = configure_event_loop()
     if sys.platform == "win32":
         assert IS_WINDOWS is True
         assert "loop_factory" in factory_dict
         import asyncio
 
-        assert factory_dict["loop_factory"] == asyncio.SelectorEventLoop
+        assert factory_dict["loop_factory"] == asyncio.ProactorEventLoop
     else:
         assert IS_WINDOWS is False
 

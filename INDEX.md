@@ -227,7 +227,7 @@
 - **Top-Level Functions**:
   - `configure_event_loop() -> Dict[str, Any]`: Configure and return keyword arguments for optimal event loop factory based on OS.
   - `get_loop_factory() -> Dict[str, Any]`: Return loop_factory keyword arguments for asyncio.run() or asyncio.Runner.
-  - `run_async(coroutine: Any) -> Any`: Execute coroutine using asyncio.run() with SelectorEventLoop on Windows.
+  - `run_async(coroutine: Any) -> Any`: Execute coroutine using asyncio.run() with optimal event loop on Windows and POSIX.
   - `normalize_path(path_input: Union[str, Path]) -> Path`: Normalize cross-platform file paths, resolving symlinks and unifying directory separators.
   - `async safe_subprocess_run(cmd: List[str], cwd: Optional[Union[str, Path]], env: Optional[Dict[str, str]], ...) -> Tuple[int, str, str]`: Run subprocess safely across platforms without triggering NotImplementedError.
   - `get_platform_info() -> Dict[str, Any]`: Return normalized host platform and shell environment details for LLM prompting and tools.

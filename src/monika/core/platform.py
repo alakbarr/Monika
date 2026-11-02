@@ -29,22 +29,23 @@ def configure_event_loop() -> Dict[str, Any]:
     """
     Configure and return keyword arguments for optimal event loop factory based on OS.
 
-    - Python < 3.12: Configures event loop policy on Windows and returns empty dict.
+    - Python < 3.12: Configures default event loop policy on Windows and returns empty dict.
     - Python >= 3.12:
-      - Windows: Uses SelectorEventLoop for compatibility with psycopg / psycopg3.
+      - Windows: Uses ProactorEventLoop (Windows native IOCP) to prevent Winsock select()
+        buffer exhaustion (WSAENOBUFS 10055) and handle high-concurrency socket pooling.
       - Linux / Darwin: Uses uvloop if installed for high-performance epoll event processing,
         or defaults to standard asyncio loop.
     """
     if sys.version_info < (3, 12):
         if IS_WINDOWS:
             try:
-                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+                asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
             except Exception:
                 pass
         return {}
 
     if IS_WINDOWS:
-        return {"loop_factory": asyncio.SelectorEventLoop}
+        return {"loop_factory": asyncio.ProactorEventLoop}
     else:
         try:
             import uvloop
@@ -61,7 +62,7 @@ def get_loop_factory() -> Dict[str, Any]:
 
 def run_async(coroutine: Any, **kwargs: Any) -> Any:
     """
-    Execute coroutine using asyncio.run() with SelectorEventLoop on Windows.
+    Execute coroutine using asyncio.run() with optimal event loop on Windows and POSIX.
     """
     factory_kwargs = get_loop_factory()
     merged_kwargs = {**factory_kwargs, **kwargs}
@@ -69,7 +70,7 @@ def run_async(coroutine: Any, **kwargs: Any) -> Any:
         merged_kwargs.pop("loop_factory", None)
         if IS_WINDOWS:
             try:
-                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+                asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
             except Exception:
                 pass
     return asyncio.run(coroutine, **merged_kwargs)

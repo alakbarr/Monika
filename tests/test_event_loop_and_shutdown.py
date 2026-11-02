@@ -5,15 +5,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 
 def test_event_loop_is_selector_on_windows():
-    """Verify that on Windows configure_event_loop provides SelectorEventLoop (required by psycopg)."""
+    """Verify that on Windows configure_event_loop provides ProactorEventLoop (prevents Winsock buffer exhaustion)."""
     from monika.core.platform import configure_event_loop, IS_WINDOWS
 
     if IS_WINDOWS:
         factory_dict = configure_event_loop()
-        assert factory_dict.get("loop_factory") == asyncio.SelectorEventLoop
+        assert factory_dict.get("loop_factory") == asyncio.ProactorEventLoop
         loop = factory_dict["loop_factory"]()
         try:
-            assert isinstance(loop, asyncio.SelectorEventLoop) or "Selector" in type(loop).__name__
+            assert isinstance(loop, asyncio.ProactorEventLoop) or "Proactor" in type(loop).__name__
         finally:
             loop.close()
 

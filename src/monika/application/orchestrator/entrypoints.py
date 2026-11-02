@@ -23,6 +23,7 @@ from monika.application.agent.task_registry import (
 from monika.application.orchestrator.agent import TradingAgent
 from monika.application.orchestrator.lifecycle import BANNER
 from monika.core.config.settings import load_all_config
+from monika.core.platform import configure_event_loop
 from monika.infrastructure.database.db import close_db, init_db
 
 logger = logging.getLogger("TradingAgent.Main")
@@ -151,14 +152,9 @@ async def _amain() -> None:
 def main() -> None:
     """Synchronous entry point."""
     try:
-        # Python 3.14+: gunakan loop_factory (policy system deprecated).
-        # Psycopg (LangGraph checkpointer) butuh SelectorEventLoop di Windows
-        # karena ProactorEventLoop tidak support add_reader()/add_writer().
-        # asyncpg (SQLAlchemy) tetap kompatibel dengan SelectorEventLoop.
-        if sys.platform == "win32":
-            asyncio.run(_amain(), loop_factory=asyncio.SelectorEventLoop)
-        else:
-            asyncio.run(_amain())
+        # Optimal cross-platform loop factory (ProactorEventLoop/IOCP on Windows, uvloop/epoll on Linux)
+        factory_kwargs = configure_event_loop()
+        asyncio.run(_amain(), **factory_kwargs)
         emerg_code = get_emergency_exit_code() or _EMERGENCY_EXIT_CODE
         release_single_instance_lock()
         if emerg_code is not None and emerg_code != 0:

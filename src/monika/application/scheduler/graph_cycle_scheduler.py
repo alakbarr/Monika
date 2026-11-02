@@ -41,7 +41,16 @@ class GraphCycleScheduler(CycleScheduler):
         )
         self.execution_service = execution_service
         db_url = os.getenv("DATABASE_URL", "").replace("+asyncpg", "")
-        self.graph = build_trading_graph(db_url=db_url)
+        if sys.platform == "win32":
+            from monika.core.paths import get_data_dir
+            from monika.infrastructure.graph.checkpointers.sqlite_checkpointer import SqliteCheckpointSaver
+
+            sqlite_cp_path = str(get_data_dir() / "checkpoints.sqlite")
+            sqlite_cp = SqliteCheckpointSaver(db_path=sqlite_cp_path)
+            self.graph = build_trading_graph(db_url=db_url, checkpointer=sqlite_cp)
+            self._checkpointer_ready = True
+        else:
+            self.graph = build_trading_graph(db_url=db_url)
         # IMP-8: Protect against concurrent graph state mutations
         self._cycle_lock = asyncio.Lock()
         self._checkpointer_ready = False

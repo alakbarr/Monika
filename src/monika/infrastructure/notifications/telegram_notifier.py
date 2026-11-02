@@ -18,7 +18,7 @@ import os
 import re
 from collections import deque
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Optional
 
 from telegram import Bot
 from telegram.error import TelegramError
@@ -37,11 +37,19 @@ class AgentNotifier(NotifierPort):
 
     _outbox: ClassVar[deque] = deque(maxlen=50)
     _loaded_from_disk: ClassVar[bool] = False
+    _shared_bot: ClassVar[Optional[Bot]] = None
+    _shared_token: ClassVar[Optional[str]] = None
 
     def __init__(self):
         self.token = os.getenv("TELEGRAM_BOT_TOKEN") or None
         self.admin_id = os.getenv("TELEGRAM_ADMIN_CHAT_ID") or None
-        self.bot = Bot(token=self.token) if self.token else None
+        if self.token:
+            if AgentNotifier._shared_bot is None or AgentNotifier._shared_token != self.token:
+                AgentNotifier._shared_bot = Bot(token=self.token)
+                AgentNotifier._shared_token = self.token
+            self.bot = AgentNotifier._shared_bot
+        else:
+            self.bot = None
         self._ensure_loaded()
 
     @classmethod
