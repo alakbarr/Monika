@@ -112,12 +112,18 @@ def test_login_antigravity_callback_success():
 
 
 def test_logout_provider_antigravity():
-    with patch("monika.interfaces.cli.commands.auth_ctrl.delete_oauth_tokens") as mock_delete:
+    with (
+        patch("monika.interfaces.cli.commands.auth_ctrl.get_oauth_accounts", return_value=[]),
+        patch("monika.interfaces.cli.commands.auth_ctrl.delete_oauth_tokens") as mock_delete,
+    ):
         code = logout_provider("antigravity")
         assert code == 0
         mock_delete.assert_called_once_with("antigravity")
 
-    with patch("monika.interfaces.cli.commands.auth_ctrl.delete_oauth_tokens") as mock_delete:
+    with (
+        patch("monika.interfaces.cli.commands.auth_ctrl.get_oauth_accounts", return_value=[]),
+        patch("monika.interfaces.cli.commands.auth_ctrl.delete_oauth_tokens") as mock_delete,
+    ):
         code = logout_provider("gemini")
         assert code == 0
         mock_delete.assert_called_once_with("antigravity")
