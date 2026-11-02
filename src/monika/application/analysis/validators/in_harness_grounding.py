@@ -325,8 +325,21 @@ class InHarnessGroundingValidator:
 
                 sp = WorkingScratchpad.read_scratchpad(symbol)
                 if sp and sp.get("bias") and sp.get("bias") != "NEUTRAL":
-                    sp_bias = sp.get("bias")
-                    if decision in ("BUY", "SELL") and decision != sp_bias:
+                    sp_bias = str(sp.get("bias", "")).upper()
+                    bias_map = {
+                        "BUY": "BULLISH",
+                        "BULL": "BULLISH",
+                        "BULLISH": "BULLISH",
+                        "SELL": "BEARISH",
+                        "BEAR": "BEARISH",
+                        "BEARISH": "BEARISH",
+                        "WAIT": "NEUTRAL",
+                        "HOLD": "NEUTRAL",
+                        "NEUTRAL": "NEUTRAL",
+                    }
+                    norm_decision = bias_map.get(decision, decision)
+                    norm_sp_bias = bias_map.get(sp_bias, sp_bias)
+                    if decision in ("BUY", "SELL") and norm_decision != norm_sp_bias:
                         errors.append(
                             f"Decision bias '{decision}' directly contradicts working scratchpad bias '{sp_bias}' recorded during analysis."
                         )

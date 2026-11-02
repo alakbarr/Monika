@@ -339,19 +339,21 @@ class PaperTradeRepositoryPort(Protocol):
 class MarketDataRepositoryPort(Protocol):
     """Pure domain protocol for historical price bars and macroeconomic rates."""
 
-    async def get_recent_bars(self, symbol: str, timeframe: str = "H1", limit: int = 100) -> Sequence[Any]:
+    async def get_recent_bars(
+        self, symbol: str, timeframe: str = "H1", limit: int = 100, as_of: Optional[datetime] = None
+    ) -> Sequence[Any]:
         """Fetch historical OHLCV price bars."""
         ...
 
-    async def get_latest_vix(self) -> Optional[float]:
+    async def get_latest_vix(self, as_of: Optional[datetime] = None) -> Optional[float]:
         """Fetch latest available VIX index level."""
         ...
 
-    async def get_latest_dxy(self) -> Optional[float]:
+    async def get_latest_dxy(self, as_of: Optional[datetime] = None) -> Optional[float]:
         """Fetch latest available DXY index close."""
         ...
 
-    async def get_latest_yield(self, tenor: str = "10Y") -> Optional[float]:
+    async def get_latest_yield(self, tenor: str = "10Y", as_of: Optional[datetime] = None) -> Optional[float]:
         """Fetch latest treasury yield percent."""
         ...
 

@@ -303,7 +303,10 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
     elif t_b and m_b and t_b != "neutral" and t_b == m_b and s_b != t_b:
         synergy_state = "uncrowded_institutional_synergy"
     elif t_b and m_b and s_b and t_b != "neutral" and t_b == m_b == s_b:
-        synergy_state = "crowded_unanimous_exhaustion"
+        if (t_b == "bearish" and dealing_range_pos >= 0.60) or (t_b == "bullish" and dealing_range_pos <= 0.40):
+            synergy_state = "institutional_contrarian_synergy"
+        else:
+            synergy_state = "crowded_unanimous_exhaustion"
     else:
         synergy_state = "mixed_council"
 
@@ -332,12 +335,10 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
         regime_classification = "BULLISH_IMPULSE_BREAKOUT"
     elif h4_impulse_atr <= -1.25:
         regime_classification = "BEARISH_IMPULSE_BREAKOUT"
-    elif dealing_range_pos >= 0.80 and h4_impulse_atr < 1.25:
-        regime_classification = "OVEREXTENDED_RANGE_CEILING_PULLBACK_RISK"
+    elif dealing_range_pos >= 0.62 and h4_impulse_atr < 1.25:
+        regime_classification = "PREMIUM_DISTRIBUTION_ZONE"
     elif dealing_range_pos <= 0.38:
         regime_classification = "DISCOUNT_ACCUMULATION_ZONE"
-    elif dealing_range_pos >= 0.60:
-        regime_classification = "UPPER_RANGE_TREND_CONTINUATION"
     else:
         regime_classification = "MID_RANGE_DIRECTIONAL_FLOW"
 
@@ -418,9 +419,11 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
     # Inject empirical OHLCV market grounding table to strictly anchor debate agents
     try:
         from monika.application.analysis.grounding.market_grounding import MarketGroundingEngine
+        from monika.core.primitives import clock
 
+        as_of_fact = getattr(analysis, "generated_at", None) or clock.get_simulated_now() or clock.now()
         fact_sheet["empirical_market_grounding"] = await MarketGroundingEngine.build_grounding_table(
-            symbol=analysis.symbol, session=session, days_back=30
+            symbol=analysis.symbol, session=session, days_back=30, as_of=as_of_fact
         )
     except Exception as g_err:
         logger.debug(f"FactSheet grounding injection note: {g_err}")

@@ -75,16 +75,23 @@ class DecisionLogger:
             analysis = await session.get(AssetAnalysis, analysis_id)
             entry_price = analysis.price_at_analysis if analysis else None
 
+            reason_str = str(reason or "")
+            safe_whatif_reason = reason_str[:50]
+            full_notes = rationale or ""
+            if len(reason_str) > 50:
+                full_notes = (full_notes + f"\n[Full What-If Reason: {reason_str}]").strip()
+
             new_log = DecisionReflection(
                 analysis_id=analysis_id,
                 symbol=symbol,
                 decision=decision,
                 confidence=confidence,
                 confluence_score=confluence_score,
-                rationale_summary=rationale,
+                rationale_summary=full_notes,
                 is_paper_whatif=True,
-                whatif_reason=reason,
+                whatif_reason=safe_whatif_reason,
                 whatif_entry_price=entry_price,
+                reflection_text=reason_str if len(reason_str) > 50 else None,
                 status="pending_whatif",
                 context_snapshot_id=context_snapshot_id,
                 context_cds_score=ssvp_cds_score,

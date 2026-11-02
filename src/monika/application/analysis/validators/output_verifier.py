@@ -185,7 +185,13 @@ class OutputVerifier:
         if context_data and isinstance(context_data, dict):
             price_levels = self._extract_price_levels(context_data)
             atr_val = self._extract_atr(context_data)
-            if price_levels and adopted_bracket_name not in ("LONG_OPTION_A", "SHORT_OPTION_B"):
+            has_bracket = adopted_bracket_name in (
+                "LONG_OPTION_A",
+                "SHORT_OPTION_B",
+                "OPTION_A",
+                "OPTION_B",
+            ) or bool(output.get("bracket_adopted"))
+            if price_levels and not has_bracket:
                 entry_val = float(entry)
                 nearest_anchor = min(price_levels, key=lambda l: abs(entry_val - l))
                 anchor_dist = abs(entry - nearest_anchor)
@@ -197,6 +203,7 @@ class OutputVerifier:
                         old_entry = entry
                         entry = cand_entry
                         sl_dist = abs(entry - sl)
+                        output["entry_price"] = entry
                         if isinstance(output.get("entry_condition"), dict):
                             output["entry_condition"]["price"] = entry
                         snaps.append(f"Deterministic snap: anchored Entry from {old_entry} to structural level {entry}")

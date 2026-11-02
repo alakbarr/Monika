@@ -4399,10 +4399,10 @@
     - `async create_record(symbol: str, direction: str, entry_price: float, ...) -> Any` - *Create and persist a new simulated paper trade record.*
     - `async close_record(record_id: int, exit_price: float, pnl_pct: float, ...) -> Optional[Any]` - *Close an existing paper trade record.*
   - `class MarketDataRepositoryPort(Protocol)`: Pure domain protocol for historical price bars and macroeconomic rates.
-    - `async get_recent_bars(symbol: str, timeframe: str, limit: int) -> Sequence[Any]` - *Fetch historical OHLCV price bars.*
-    - `async get_latest_vix() -> Optional[float]` - *Fetch latest available VIX index level.*
-    - `async get_latest_dxy() -> Optional[float]` - *Fetch latest available DXY index close.*
-    - `async get_latest_yield(tenor: str) -> Optional[float]` - *Fetch latest treasury yield percent.*
+    - `async get_recent_bars(symbol: str, timeframe: str, limit: int, ...) -> Sequence[Any]` - *Fetch historical OHLCV price bars.*
+    - `async get_latest_vix(as_of: Optional[datetime]) -> Optional[float]` - *Fetch latest available VIX index level.*
+    - `async get_latest_dxy(as_of: Optional[datetime]) -> Optional[float]` - *Fetch latest available DXY index close.*
+    - `async get_latest_yield(tenor: str, as_of: Optional[datetime]) -> Optional[float]` - *Fetch latest treasury yield percent.*
   - `class UserPreferenceRepositoryPort(Protocol)`: Pure domain protocol for user preferences and chart workspace persistence.
     - `async get_preference(category: str, key: str, user_id: str) -> Optional[dict[str, Any]]` - *Fetch a specific preference by category and key.*
     - `async set_preference(category: str, key: str, value: dict[str, Any], ...) -> dict[str, Any]` - *Save or update a preference for a category and key.*
@@ -12342,10 +12342,10 @@
 - **Classes**:
   - `class SqlAlchemyMarketDataRepository(MarketDataRepositoryPort)`: Encapsulates all database operations for market indicators and price bars.
     - `__init__(session: AsyncSession) -> None`
-    - `async get_recent_bars(symbol: str, timeframe: str, limit: int) -> Sequence[PriceOHLCV]` - *Fetch historical OHLCV price bars ordered by timestamp ascending.*
-    - `async get_latest_vix() -> Optional[float]` - *Fetch latest available VIX index level.*
-    - `async get_latest_dxy() -> Optional[float]` - *Fetch latest available DXY index close.*
-    - `async get_latest_yield(tenor: str) -> Optional[float]` - *Fetch latest treasury yield percent for specified tenor.*
+    - `async get_recent_bars(symbol: str, timeframe: str, limit: int, ...) -> Sequence[PriceOHLCV]` - *Fetch historical OHLCV price bars ordered by timestamp ascending.*
+    - `async get_latest_vix(as_of: Optional[datetime]) -> Optional[float]` - *Fetch latest available VIX index level.*
+    - `async get_latest_dxy(as_of: Optional[datetime]) -> Optional[float]` - *Fetch latest available DXY index close.*
+    - `async get_latest_yield(tenor: str, as_of: Optional[datetime]) -> Optional[float]` - *Fetch latest treasury yield percent for specified tenor.*
 
 #### `paper_trade_repository.py` - *Concrete SQLAlchemy implementation of PaperTradeRepositoryPort.*
 - **Path**: [`src/monika/infrastructure/database/repositories/paper_trade_repository.py`](src/monika/infrastructure/database/repositories/paper_trade_repository.py)

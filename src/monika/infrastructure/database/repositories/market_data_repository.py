@@ -9,6 +9,7 @@ Provides encapsulated persistence for OHLCV bars, macroeconomic rates, and marke
 
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 from typing import Optional, Sequence
 
@@ -32,11 +33,24 @@ class SqlAlchemyMarketDataRepository(MarketDataRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_recent_bars(self, symbol: str, timeframe: str = "H1", limit: int = 100) -> Sequence[PriceOHLCV]:
+    async def get_recent_bars(
+        self,
+        symbol: str,
+        timeframe: str = "H1",
+        limit: int = 100,
+        as_of: Optional[datetime] = None,
+    ) -> Sequence[PriceOHLCV]:
         """Fetch historical OHLCV price bars ordered by timestamp ascending."""
+        from monika.core.primitives import clock
+
+        cutoff = as_of or clock.get_simulated_now() or clock.now()
         stmt = (
             select(PriceOHLCV)
-            .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == timeframe)
+            .where(
+                PriceOHLCV.symbol == symbol,
+                PriceOHLCV.timeframe == timeframe,
+                PriceOHLCV.timestamp <= cutoff,
+            )
             .order_by(desc(PriceOHLCV.timestamp))
             .limit(limit)
         )
@@ -45,25 +59,34 @@ class SqlAlchemyMarketDataRepository(MarketDataRepositoryPort):
         bars.reverse()
         return bars
 
-    async def get_latest_vix(self) -> Optional[float]:
+    async def get_latest_vix(self, as_of: Optional[datetime] = None) -> Optional[float]:
         """Fetch latest available VIX index level."""
-        stmt = select(VIXData.close).order_by(desc(VIXData.date)).limit(1)
+        from monika.core.primitives import clock
+
+        cutoff = as_of or clock.get_simulated_now() or clock.now()
+        stmt = select(VIXData.close).where(VIXData.date <= cutoff).order_by(desc(VIXData.date)).limit(1)
         res = await self.session.execute(stmt)
         val = res.scalar_one_or_none()
         return float(val) if val is not None else None
 
-    async def get_latest_dxy(self) -> Optional[float]:
+    async def get_latest_dxy(self, as_of: Optional[datetime] = None) -> Optional[float]:
         """Fetch latest available DXY index close."""
-        stmt = select(DXYData.close).order_by(desc(DXYData.date)).limit(1)
+        from monika.core.primitives import clock
+
+        cutoff = as_of or clock.get_simulated_now() or clock.now()
+        stmt = select(DXYData.close).where(DXYData.date <= cutoff).order_by(desc(DXYData.date)).limit(1)
         res = await self.session.execute(stmt)
         val = res.scalar_one_or_none()
         return float(val) if val is not None else None
 
-    async def get_latest_yield(self, tenor: str = "10Y") -> Optional[float]:
+    async def get_latest_yield(self, tenor: str = "10Y", as_of: Optional[datetime] = None) -> Optional[float]:
         """Fetch latest treasury yield percent for specified tenor."""
+        from monika.core.primitives import clock
+
+        cutoff = as_of or clock.get_simulated_now() or clock.now()
         stmt = (
             select(TreasuryYield.yield_percent)
-            .where(TreasuryYield.tenor == tenor)
+            .where(TreasuryYield.tenor == tenor, TreasuryYield.date <= cutoff)
             .order_by(desc(TreasuryYield.date))
             .limit(1)
         )

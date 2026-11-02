@@ -749,10 +749,10 @@ class ContextBuilderMixin:
                         )
                     elif 0.40 <= range_pos <= 0.60 and abs(h4_impulse_atr) < 0.25:
                         regime_telemetry_tag = "EQUILIBRIUM_DEAD_ZONE_CHOP (0.40 <= pos <= 0.60 with 3-bar H4 displacement < 0.25x ATR) -> WAIT"
-                    elif range_pos >= 0.80 and h4_impulse_atr < 1.50:
-                        regime_telemetry_tag = "OVEREXTENDED_RANGE_CEILING_PULLBACK_RISK (pos >= 0.80 without >= 1.50x ATR runaway impulse) -> avoid market-chasing the top (WAIT or limit pullback)"
+                    elif range_pos >= 0.62 and h4_impulse_atr < 1.50:
+                        regime_telemetry_tag = "PREMIUM_DISTRIBUTION_ZONE (pos >= 0.62) -> institutional Premium value zone favoring SELL ([SHORT_OPTION_B]); DO NOT market-chase BUY at the range ceiling"
                     elif range_pos <= 0.38:
-                        regime_telemetry_tag = "DISCOUNT_ACCUMULATION_ZONE (pos <= 0.38) -> institutional Discount value zone favoring BUY ([LONG_OPTION_A])"
+                        regime_telemetry_tag = "DISCOUNT_ACCUMULATION_ZONE (pos <= 0.38) -> institutional Discount value zone favoring BUY ([LONG_OPTION_A]); DO NOT market-chase SELL at the range floor"
 
                     crowding_guard_line = (
                         "Crowded Unanimous Guard (CROWDED_UNANIMOUS_EXHAUSTION): "
@@ -1343,7 +1343,7 @@ Read STEP 0 in your SMC/ICT playbook. You MUST adjust your confluence threshold 
             f'- ZERO-ARITHMETIC BRACKET ADOPTION (`adopted_bracket`): When proposing `BUY` or `SELL`, pass `adopted_bracket="LONG_OPTION_A"` (for `BUY`) or `adopted_bracket="SHORT_OPTION_B"` (for `SELL`) from the pre-computed `DETERMINISTIC INVARIANT ENGINE` block so verified `entry_condition`, `stop_loss`, and `take_profit` are populated automatically without mental floating-point arithmetic errors.\n'
             f"- DETERMINISTIC REGIME & SYNERGY EXECUTION RULES:\n"
             f"  * `EQUILIBRIUM_DEAD_ZONE_CHOP` (`0.40 <= pos <= 0.60` with 3-bar H4 displacement `< 0.25x ATR`) -> `WAIT`.\n"
-            f"  * `OVEREXTENDED_RANGE_CEILING_PULLBACK_RISK` (`pos >= 0.80` without `>= 1.50x ATR` runaway impulse) -> avoid market-chasing the top (`WAIT` or limit pullback).\n"
+            f"  * `PREMIUM_DISTRIBUTION_ZONE` (`pos >= 0.62` without `>= 1.50x ATR` runaway impulse) -> institutional Premium value zone favoring `SELL` (`[SHORT_OPTION_B]`); DO NOT market-chase BUY at the range ceiling.\n"
             f"  * `BULLISH_IMPULSE_BREAKOUT` / `BEARISH_IMPULSE_BREAKOUT` (`|3-bar H4 impulse| >= 1.50x ATR` at range extreme) -> Engine 1 Trend Continuation (never fade an active `>= 1.50x ATR` H4 breakout).\n"
             f"  * `CROWDED_TECH_SENT_TRAP_VS_MACRO` (`technical == sentiment != macro`) -> 71.4% empirical reversal trap; favor the `macro` specialist direction.\n"
             f"  * `DISCOUNT_ACCUMULATION_ZONE` (`pos <= 0.38`) -> institutional Discount value zone favoring `BUY` (`[LONG_OPTION_A]`).\n"
@@ -1379,7 +1379,7 @@ HYPOTHESIS-DRIVEN REASONING DIRECTIVE (Max 2-3 Iterative Turns):
 1. Review the baseline H4 trend, ATR, Dealing Range position, H4 displacement impulse, and macro context in the pre-loaded bundle above.
 2. Apply the DETERMINISTIC REGIME & SYNERGY EXECUTION RULES:
    - `EQUILIBRIUM_DEAD_ZONE_CHOP` (`0.40 <= pos <= 0.60` with 3-bar H4 displacement `< 0.25x ATR`) -> `WAIT`.
-   - `OVEREXTENDED_RANGE_CEILING_PULLBACK_RISK` (`pos >= 0.80` without `>= 1.50x ATR` runaway impulse) -> avoid market-chasing the top (`WAIT` or limit pullback).
+   - `PREMIUM_DISTRIBUTION_ZONE` (`pos >= 0.62` without `>= 1.50x ATR` runaway impulse) -> institutional Premium value zone favoring `SELL` (`[SHORT_OPTION_B]`); DO NOT market-chase BUY at the range ceiling.
    - `BULLISH_IMPULSE_BREAKOUT` / `BEARISH_IMPULSE_BREAKOUT` (`|3-bar H4 impulse| >= 1.50x ATR` at range extreme) -> Engine 1 Trend Continuation (never fade an active `>= 1.50x ATR` H4 breakout).
    - `CROWDED_TECH_SENT_TRAP_VS_MACRO` (`technical == sentiment != macro`) -> 71.4% empirical reversal trap; favor the `macro` specialist direction.
    - `DISCOUNT_ACCUMULATION_ZONE` (`pos <= 0.38`) -> institutional Discount value zone favoring `BUY` (`[LONG_OPTION_A]`).

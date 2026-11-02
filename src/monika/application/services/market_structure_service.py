@@ -281,10 +281,13 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
         if not self.session:
             return None
 
+        from monika.core.primitives import clock
+
         result = await self.session.execute(
             select(PriceOHLCV)
             .where(PriceOHLCV.symbol == symbol)
             .where(PriceOHLCV.timeframe == timeframe)
+            .where(PriceOHLCV.timestamp <= clock.now())
             .order_by(PriceOHLCV.timestamp.desc())
             .limit(500)
         )

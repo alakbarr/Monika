@@ -120,10 +120,18 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                     veto_reasons = "; ".join(
                         desk_verdict.get("veto_reasons") or ["Specialized desk risk veto enforced"]
                     )
-                    logger.warning(f"[{sym}] Enforcing Swarm Desk Risk Veto: {veto_reasons}")
+                    logger.warning(f"[{sym}] Enforcing Swarm Desk Risk Veto (Majority/Hard Risk): {veto_reasons}")
                     verdict["final_decision"] = "avoid"
                     verdict["recommended_multiplier"] = 0.0
                     verdict["reason"] = (verdict.get("reason") or "") + f" [DESK VETO: {veto_reasons}]"
+                elif desk_verdict.get("caution_flag"):
+                    caution_reasons = "; ".join(desk_verdict.get("veto_reasons") or ["Minority desk dissent recorded"])
+                    logger.info(f"[{sym}] Swarm Desk Minority Caution Flag: {caution_reasons}")
+                    curr_mult = float(verdict.get("recommended_multiplier", 1.0) or 1.0)
+                    verdict["recommended_multiplier"] = min(curr_mult, 0.50)
+                    verdict["reason"] = (
+                        verdict.get("reason") or ""
+                    ) + f" [DESK CAUTION (Risk halved): {caution_reasons}]"
 
                 async with get_session() as session:
                     ana = await session.get(AssetAnalysis, analysis_id)
@@ -275,6 +283,11 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                         await session.commit()
                         if final_dec in ("avoid", "wait"):
                             logger.warning(f"Investment Judge Rejected {sym} ({final_dec}): {verdict.get('reason')}")
+                            judge_reason_full = str(verdict.get("reason", ""))
+                            combined_rationale = (
+                                (original_context.get("rationale") or "")
+                                + f"\n[Debate Judge Verdict: {judge_reason_full}]"
+                            ).strip()
                             await DecisionLogger.log_paper_whatif(
                                 session=session,
                                 analysis_id=int(analysis_id or ana.id),
@@ -282,8 +295,8 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                                 decision=original_context.get("decision", "wait"),
                                 confidence=ana.confidence or 0.0,
                                 confluence_score=ana.confluence_score,
-                                rationale=original_context.get("rationale", ""),
-                                reason=f"Debate Judge Rejected: {verdict.get('reason')}",
+                                rationale=combined_rationale,
+                                reason=f"DEBATE_{final_dec.upper()}"[:50],
                             )
                             ana.decision = "wait"
                             if isinstance(r, dict):

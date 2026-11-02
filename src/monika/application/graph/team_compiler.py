@@ -239,8 +239,8 @@ class TeamCompiler:
         bull_count = 0
         bear_count = 0
         convictions: List[float] = []
-        veto_flag = False
         veto_reasons: List[str] = []
+        hard_risk_violation = False
 
         for r_res, r_def in zip(results, cfg.roles):
             if isinstance(r_res, dict):
@@ -253,13 +253,16 @@ class TeamCompiler:
                 conv = float(r_res.get("conviction", 0.5) or 0.5)
                 convictions.append(conv)
                 if r_res.get("risk_veto"):
-                    veto_flag = True
-                    vr = r_res.get("veto_reason") or f"Veto enforced by {r_def.name}"
+                    vr = str(r_res.get("veto_reason") or f"Veto enforced by {r_def.name}")
                     veto_reasons.append(vr)
+                    if any(kw in vr.lower() for kw in ("r:r", "stale", "geometry", "atr floor", "invalid")):
+                        hard_risk_violation = True
             else:
                 logger.error(f"[TeamCompiler] Role {r_def.name} exception: {r_res}")
 
         avg_conviction = sum(convictions) / max(len(convictions), 1) if convictions else 0.5
+        veto_flag = len(veto_reasons) >= 2 or hard_risk_violation
+        caution_flag = len(veto_reasons) == 1 and not hard_risk_violation
 
         return {
             "desk_id": desk_id,
@@ -270,6 +273,7 @@ class TeamCompiler:
             "bear_count": bear_count,
             "avg_conviction": round(avg_conviction, 3),
             "risk_veto": veto_flag,
+            "caution_flag": caution_flag,
             "veto_reasons": veto_reasons,
         }
 

@@ -155,13 +155,13 @@ DIRECTIONAL ADJUDICATION RULES:
   * Explicitly evaluate 'regime_classification', 'dealing_range_pos', 'h4_impulse_atr', and 'specialist_consensus.synergy_state' from the 'fact_sheet':
   * APPROVE ('buy' / 'sell') when 'proposed_decision' aligns with:
     1) DISCOUNT_ACCUMULATION_ZONE (dealing_range_pos <= 0.38 for 'buy', even if lagging Stage 1 macro or unanimous specialists are bearish),
-    2) CROWDED_TECH_SENT_TRAP_VS_MACRO (favoring 'macro' direction against the retail Technical+Sentiment trap),
-    3) uncrowded_institutional_synergy (Technical == Macro != Sentiment),
-    4) BULLISH_IMPULSE_BREAKOUT / BEARISH_IMPULSE_BREAKOUT (|h4_impulse_atr| >= 1.25), or
-    5) UPPER_RANGE_TREND_CONTINUATION.
+    2) PREMIUM_DISTRIBUTION_ZONE (dealing_range_pos >= 0.62 for 'sell', even if lagging Stage 1 macro or unanimous specialists are bullish),
+    3) institutional_contrarian_synergy or uncrowded_institutional_synergy,
+    4) CROWDED_TECH_SENT_TRAP_VS_MACRO (favoring 'macro' direction against the retail Technical+Sentiment trap),
+    5) BULLISH_IMPULSE_BREAKOUT / BEARISH_IMPULSE_BREAKOUT (|h4_impulse_atr| >= 1.25).
   * REJECT ('avoid', risk_multiplier = 0.0) when the trade:
     1) Enters inside EQUILIBRIUM_DEAD_ZONE_CHOP (0.40 <= dealing_range_pos <= 0.60 and |h4_impulse_atr| < 0.25),
-    2) Market-chases OVEREXTENDED_RANGE_CEILING_PULLBACK_RISK without a structure breakout, or
+    2) Market-chases at range extremes without a structure breakout (e.g. buying at pos >= 0.80 or selling at pos <= 0.20), or
     3) Falls into crowded_tech_sent_trap_vs_macro against the Macro Specialist.
 If original_context decision is CONFLICT_ADJUDICATION or WAIT or NEUTRAL (Two-Sided Dialectical Debate):
 - Symmetrical Evaluation: Bull Analyst proposes Long setup; Bear Analyst proposes Short/Downside setup.

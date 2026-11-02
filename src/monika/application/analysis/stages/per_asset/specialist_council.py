@@ -84,6 +84,12 @@ def format_specialist_consensus_summary(summary: Dict[str, Any]) -> str:
             f"High-Conviction Institutional Synergy ({dom}): Technical & Macro align ({t_b}) "
             f"while Sentiment remains uncrowded ({s_b})."
         )
+    elif synergy == "institutional_contrarian_synergy":
+        badge = "INSTITUTIONAL_CONTRARIAN_SYNERGY"
+        guidance = (
+            f"Prime Institutional Value Synergy ({dom}): Technical, Macro, and Contrarian Sentiment "
+            f"align with Dealing Range reversal value ({t_b}). Fading crowd sentiment at structural extreme."
+        )
     elif synergy == "crowded_unanimous_exhaustion":
         badge = "CROWDED_3_OF_3_CAUTION"
         guidance = (
@@ -145,8 +151,19 @@ def compute_specialist_consensus_summary(
             synergy_state = "uncrowded_institutional_synergy"
             consensus_label = "majority_agreement"
         else:
-            synergy_state = "crowded_unanimous_exhaustion"
-            consensus_label = "unanimous_agreement"
+            is_contrarian_value = False
+            if dealing_range_pos is not None:
+                if dominant_bias == "bearish" and dealing_range_pos >= 0.60:
+                    is_contrarian_value = True
+                elif dominant_bias == "bullish" and dealing_range_pos <= 0.40:
+                    is_contrarian_value = True
+
+            if is_contrarian_value:
+                synergy_state = "institutional_contrarian_synergy"
+                consensus_label = "unanimous_institutional_reversal"
+            else:
+                synergy_state = "crowded_unanimous_exhaustion"
+                consensus_label = "unanimous_agreement"
     elif tech_b in ("bullish", "bearish") and macro_b in ("bullish", "bearish") and tech_b != macro_b:
         if tech_b == sent_b:
             synergy_state = "crowded_tech_sent_trap_vs_macro"

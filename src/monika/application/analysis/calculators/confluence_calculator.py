@@ -196,7 +196,7 @@ async def calculate_confluence(
     from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
     settings = settings or {}
-    as_of = as_of or clock.get_simulated_now()
+    as_of = as_of or clock.get_simulated_now() or clock.now()
     risk_cfg = settings.get("trading", {}).get("risk", {})
     min_rr_ratio = float(risk_cfg.get("min_rr_ratio", 1.5))
     intraday_min_sl_atr_mult = float(risk_cfg.get("intraday_min_sl_atr_multiplier", 1.0))
@@ -957,7 +957,12 @@ async def calculate_confluence(
             )
 
             if any(k in raw_spec for k in ("technical", "macro", "sentiment", "biases")):
-                spec_summary = compute_specialist_consensus_summary(raw_spec)
+                spec_dr_pos = (
+                    adr_ctx.get("dealing_range_pos") or adr_ctx.get("dealing_range_position")
+                    if isinstance(adr_ctx, dict)
+                    else None
+                )
+                spec_summary = compute_specialist_consensus_summary(raw_spec, dealing_range_pos=spec_dr_pos)
             else:
                 spec_summary = raw_spec
 
@@ -972,18 +977,27 @@ async def calculate_confluence(
                     factors.append(
                         "Specialist Council: Uncrowded Institutional Synergy (Tech == Macro != Sentiment, +2)"
                     )
-                elif synergy_state == "crowded_unanimous_exhaustion" or consensus_mode == "unanimous_agreement":
+                elif synergy_state == "institutional_contrarian_synergy":
+                    score += 2
+                    factors.append("Specialist Council: Institutional Contrarian Synergy (Range Extreme Reversal, +2)")
+                elif synergy_state == "crowded_unanimous_exhaustion" or (
+                    consensus_mode == "unanimous_agreement" and synergy_state != "institutional_contrarian_synergy"
+                ):
                     factors.append("Specialist Council: crowded_unanimous_exhaustion (0 pts)")
                 elif synergy_state == "crowded_tech_sent_trap_vs_macro":
                     factors.append("Specialist Council: crowded_tech_sent_trap_vs_macro (0 pts)")
-                elif consensus_mode == "majority_agreement":
+                elif consensus_mode in ("majority_agreement", "unanimous_institutional_reversal"):
                     score += 1
                     factors.append("Specialist Council: Majority Agreement (+1)")
-        elif confluence_factors and "uncrowded_institutional_synergy" in [
-            str(f).strip().lower() for f in confluence_factors
-        ]:
+        elif confluence_factors and any(
+            f in [str(x).strip().lower() for x in confluence_factors]
+            for f in ("uncrowded_institutional_synergy", "institutional_contrarian_synergy")
+        ):
             score += 2
-            factors.append("Specialist Council: Uncrowded Institutional Synergy (Tech == Macro != Sentiment, +2)")
+            if any("contrarian" in str(x).lower() for x in confluence_factors):
+                factors.append("Specialist Council: Institutional Contrarian Synergy (Range Extreme Reversal, +2)")
+            else:
+                factors.append("Specialist Council: Uncrowded Institutional Synergy (Tech == Macro != Sentiment, +2)")
 
         score = min(max(score, 0), 20)
         return score, issues, factors

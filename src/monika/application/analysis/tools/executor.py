@@ -613,11 +613,32 @@ class ToolExecutor(
             # Mandatory tool use: No mental math for position sizing
             decision = str(tool_input.get("decision", "")).lower() if isinstance(tool_input, dict) else ""
             if decision in ("buy", "sell"):
-                if "calculate_position_size" not in self.effective_called_tools:
+                has_adopted_bracket = False
+                has_sl = False
+                if isinstance(tool_input, dict):
+                    bracket_val = str(
+                        tool_input.get("adopted_bracket")
+                        or tool_input.get("bracket_adopted")
+                        or (
+                            tool_input.get("entry_condition", {}).get("adopted_bracket")
+                            if isinstance(tool_input.get("entry_condition"), dict)
+                            else ""
+                        )
+                        or ""
+                    ).upper()
+                    has_adopted_bracket = bracket_val in ("LONG_OPTION_A", "SHORT_OPTION_B", "OPTION_A", "OPTION_B")
+                    has_sl = tool_input.get("stop_loss") is not None or tool_input.get("sl") is not None
+
+                if (
+                    "calculate_position_size" not in self.effective_called_tools
+                    and not has_adopted_bracket
+                    and not has_sl
+                ):
                     return {
                         "error": (
                             "MANDATORY TOOL ENFORCEMENT (<mandatory_tool_use>): Mental calculation of lot size/risk is strictly forbidden. "
-                            "You must call 'calculate_position_size' to compute verified lot sizing and risk metrics before submitting buy/sell analysis."
+                            "You must call 'calculate_position_size' to compute verified lot sizing and risk metrics before submitting buy/sell analysis, "
+                            "or adopt a pre-verified bracket via adopted_bracket='LONG_OPTION_A' / 'SHORT_OPTION_B'."
                         ),
                         "status": "blocked",
                         "error_type": "MandatoryToolViolation",

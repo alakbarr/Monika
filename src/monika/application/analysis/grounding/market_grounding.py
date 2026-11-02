@@ -60,12 +60,17 @@ class MarketGroundingEngine:
             except Exception as e:
                 logger.debug(f"[MarketGroundingEngine] Could not initialize SqlAlchemyMarketDataRepository: {e}")
 
+        from monika.core.primitives import clock
+
+        effective_as_of = as_of or clock.get_simulated_now() or clock.now()
         rows: Sequence[Any] = []
         if repo is not None and hasattr(repo, "get_recent_bars"):
             try:
-                bars = await repo.get_recent_bars(norm_sym, timeframe="D1", limit=days_back)
+                bars = await repo.get_recent_bars(norm_sym, timeframe="D1", limit=days_back, as_of=effective_as_of)
                 if not bars:
-                    bars = await repo.get_recent_bars(norm_sym, timeframe="H4", limit=min(days_back * 6, 120))
+                    bars = await repo.get_recent_bars(
+                        norm_sym, timeframe="H4", limit=min(days_back * 6, 120), as_of=effective_as_of
+                    )
                 rows = bars or []
             except Exception as e:
                 logger.warning(f"[MarketGroundingEngine] Failed fetching bars from repository for {norm_sym}: {e}")

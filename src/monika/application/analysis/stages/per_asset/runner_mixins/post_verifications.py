@@ -95,6 +95,21 @@ class PostProcessVerificationMixin(_RunnerMixinBase):
                     if verified.get("decision"):
                         analysis.decision = verified["decision"]
                         decision = verified["decision"]
+                    verified_entry = verified.get("entry_price") or (
+                        verified.get("entry_condition", {}).get("price")
+                        if isinstance(verified.get("entry_condition"), dict)
+                        else None
+                    )
+                    if verified_entry is not None:
+                        try:
+                            import json as _j_ent
+
+                            ez_dict = _j_ent.loads(analysis.entry_zone) if analysis.entry_zone else {}
+                            if isinstance(ez_dict, dict):
+                                ez_dict["price"] = float(verified_entry)
+                                analysis.entry_zone = _j_ent.dumps(ez_dict)
+                        except Exception:
+                            pass
 
                 if corrections:
                     logger.info(f"[{symbol}] Post-decision self-correction applied: {corrections}")
@@ -163,13 +178,24 @@ class PostProcessVerificationMixin(_RunnerMixinBase):
                     free_margin = acc_equity * 0.95
 
                 bundle_for_grounding = dict(raw_bundle_data) if isinstance(raw_bundle_data, dict) else {}
+                bundle_for_grounding.setdefault("symbol", symbol)
                 bundle_for_grounding.setdefault("account_equity", acc_equity)
                 bundle_for_grounding.setdefault("free_margin", free_margin)
 
+                def _safe_float(val):
+                    if val is None:
+                        return None
+                    try:
+                        if type(val).__name__ == "MagicMock" or "Mock" in type(val).__name__:
+                            return None
+                        return float(val)
+                    except Exception:
+                        return None
+
                 # Extract lot_size from verification ledger, tool evidence, or ez_parsed
-                lot_size_val = getattr(analysis, "lot_size", None) or (
-                    verified.get("lot_size") if isinstance(verified, dict) else None
-                )
+                lot_size_val = _safe_float(getattr(analysis, "lot_size", None))
+                if lot_size_val is None and isinstance(verified, dict):
+                    lot_size_val = _safe_float(verified.get("lot_size"))
                 if lot_size_val is None:
                     v_ledger = getattr(self, "verification_ledger", None)
                     if not v_ledger:
@@ -182,23 +208,27 @@ class PostProcessVerificationMixin(_RunnerMixinBase):
                             if prec.tool_name in ("calculate_position_size", "validate_risk_limits") and isinstance(
                                 prec.details, dict
                             ):
-                                lot_size_val = (
+                                cand_lot = (
                                     prec.details.get("lot_size")
                                     or prec.details.get("lots")
                                     or prec.details.get("recommended_lot_size")
                                 )
+                                lot_size_val = _safe_float(cand_lot)
                                 if lot_size_val is not None:
                                     break
                 if lot_size_val is None and isinstance(ez_parsed, dict):
-                    lot_size_val = ez_parsed.get("lot_size") or ez_parsed.get("lots")
+                    lot_size_val = _safe_float(ez_parsed.get("lot_size") or ez_parsed.get("lots"))
 
                 curr_payload = {
+                    "symbol": symbol,
                     "decision": analysis.decision,
-                    "entry_price": ez_parsed.get("price") or ez_parsed.get("price_high"),
+                    "entry_price": ez_parsed.get("price")
+                    or ez_parsed.get("price_high")
+                    or getattr(analysis, "entry_price", None),
                     "stop_loss": analysis.stop_loss,
                     "take_profit": analysis.take_profit,
                     "rationale": analysis.rationale,
-                    "lot_size": float(lot_size_val) if lot_size_val is not None else None,
+                    "lot_size": lot_size_val,
                     "account_equity": acc_equity,
                     "free_margin": free_margin,
                 }

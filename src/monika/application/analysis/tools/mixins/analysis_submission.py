@@ -79,7 +79,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 if brief_pi_score is not None and submitted_pi is not None:
                     priced_in_override = inp.get("priced_in_override_justification")
 
-                    # Check: Stage 2 asset score jauh lebih tinggi dari Stage 1 macro score
+                    # Check: Stage 2 asset score is significantly higher than Stage 1 macro score
                     if submitted_pi >= 8 and brief_pi_score <= 4 and decision in ("buy", "sell"):
                         if not (
                             isinstance(priced_in_override, dict)
@@ -101,7 +101,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                             priced_in_override.get(k)
                             for k in ["override_reason", "why_stage1_wrong", "post_event_evidence"]
                         ):
-                            # Override diterima - log untuk audit
+                            # Override accepted - log for audit trail
                             rationale = (
                                 rationale
                                 + f"\n\n[SYSTEM: Priced-in override accepted with explicit justification: {_j.dumps(priced_in_override)}]"
@@ -292,11 +292,11 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
 
                     if relevant_conf >= 0.55 and not has_valid_adjudication:
                         errors.append(
-                            f"CONTRA_MACRO_HARD_REJECT: Keputusan {decision.upper()} untuk {symbol} secara langsung "
-                            f"menentang bias makro Stage 1 ({contra_str}) dengan confidence ({relevant_conf:.2f} >= 0.55). "
-                            f"Trading melawan makro dilarang kecuali Anda mengisi field 'specialist_adjudication' secara lengkap "
+                            f"CONTRA_MACRO_HARD_REJECT: Decision {decision.upper()} for {symbol} directly "
+                            f"opposes Stage 1 macro bias ({contra_str}) with conviction ({relevant_conf:.2f} >= 0.55). "
+                            f"Trading against the macro bias is prohibited unless you complete the 'specialist_adjudication' object "
                             f"(conflict_detected=true, resolution_path in ('override_macro', 'cancel_setup', 'hedged_entry', 'scale_out'), "
-                            f"dan justifikasi pembatalan level harga struktural minimal 15 karakter)."
+                            f"and provide structural level invalidation justification >= 15 characters)."
                         )
                     else:
                         _rationale_lower = (rationale or "").lower()
@@ -376,7 +376,33 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                             + str(adj_obj.get("conflict_reason", ""))
                         ).lower()
                         combined_text = _rationale_lower + " " + adj_text
-                        _reconciled = any(
+                        _has_substantive_adj = len(adj_text.strip()) >= 30 or (
+                            len(_rationale_lower.strip()) >= 120
+                            and any(
+                                token in _rationale_lower
+                                for token in (
+                                    "price action",
+                                    "structure",
+                                    "discount",
+                                    "premium",
+                                    "order block",
+                                    "absorption",
+                                    "divergence",
+                                    "fvg",
+                                    "cvd",
+                                    "brief",
+                                    "specialist",
+                                    "macro",
+                                    "sentiment",
+                                    "catalyst",
+                                    "momentum",
+                                    "trend",
+                                    "reversal",
+                                    "liquidity",
+                                )
+                            )
+                        )
+                        _reconciled = _has_substantive_adj or any(
                             kw in combined_text
                             for kw in [
                                 "trust price action",
@@ -395,6 +421,9 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                                 "override_macro",
                                 "price action overrides",
                                 "macro overrides",
+                                "override",
+                                "reconcile",
+                                "adjudicat",
                             ]
                         )
                         if not _reconciled:
@@ -620,7 +649,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
     ) -> None:
         if decision in ("buy", "sell"):
             if not inp.get("confluence_score"):
-                errors.append("Ditolak: Confluence score kosong. Wajib diisi untuk trade buy/sell.")
+                errors.append("Rejected: Missing confluence_score. Must be provided for actionable buy/sell decisions.")
             try:
                 import json as _j2
 
@@ -710,8 +739,8 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             logger.debug(f"Unified threshold enforcement failed: {e}")
 
     async def _tool_submit_asset_analysis(self, inp: dict) -> dict:
-        """Menyimpan analisis per aset dan memicu eksekusi."""
-        inp.pop("submit_attempts", None)  # Toleransi tambahan argumen dari LLM
+        """Persist per-asset analysis and trigger execution workflow."""
+        inp.pop("submit_attempts", None)  # Tolerate supplementary attempt argument emitted by LLM
         is_preverified_bracket = False
 
         if isinstance(inp, dict):
@@ -875,7 +904,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 effective_point_map = await self._get_effective_factor_point_map()
                 expected_from_factors = sum((effective_point_map.get(f, 0) for f in declared_factors))
                 claimed_score = inp["confluence_score"]
-                gap = abs(claimed_score - expected_from_factors)
+                overclaim_gap = claimed_score - expected_from_factors
                 effective_tolerance = FACTOR_CONSISTENCY_TOLERANCE
                 if any(f in FACTORS_WITH_VARIABLE_WEIGHT for f in declared_factors):
                     effective_tolerance += 1
@@ -890,12 +919,12 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     "uncrowded_institutional_synergy": 2,
                 }
                 effective_tolerance += sum(v for f, v in BONUS_FACTORS_BEYOND_CORE_14.items() if f in declared_factors)
-                if gap > effective_tolerance:
+                if overclaim_gap > effective_tolerance:
                     errors.append(
-                        f"FACTOR_SCORE_MISMATCH: confluence_factors {declared_factors} secara matematis "
-                        f"bernilai {expected_from_factors} poin, tapi confluence_score yang disubmit={claimed_score} "
-                        f"(selisih {gap} > toleransi {FACTOR_CONSISTENCY_TOLERANCE}). Periksa ulang scorecard Anda — "
-                        f"daftar confluence_factors harus mencerminkan skor yang Anda klaim."
+                        f"FACTOR_SCORE_MISMATCH: confluence_factors {declared_factors} mathematically "
+                        f"evaluate to only {expected_from_factors} points, but submitted confluence_score={claimed_score} "
+                        f"(overclaim {overclaim_gap} > tolerance {effective_tolerance}). Re-evaluate your scorecard — "
+                        f"the declared confluence_factors must substantiate your claimed score."
                     )
 
         # === CONFLUENCE OVERLAP DETECTION ===
@@ -920,7 +949,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 effective_score = confluence_score
 
                 if zone_factor_score >= 3:
-                    # Proporsional cap: 1st zone full points, subsequent zones heavily discounted
+                    # Proportional cap: 1st zone full points, subsequent zones heavily discounted
                     effective_zone_contribution = min(
                         max(2, 2 + (len(active_zone_factors) - 1) * 0.5), zone_factor_score
                     )
@@ -974,10 +1003,10 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                         relevant_conf = max(base_conf, quote_conf)
                         if relevant_conf < 0.55:
                             errors.append(
-                                f"FUNDAMENTAL_BIAS_LOW_CONFIDENCE: Kamu klaim faktor 'fundamental_bias' "
-                                f"(+2 poin) tapi currency_confidence Stage 1 hanya {relevant_conf:.2f} "
-                                f"(< 0.55 threshold). Hapus faktor ini dari confluence_factors, atau berikan "
-                                f"konfirmasi independen lain (DXY, teknikal) yang menggantikannya."
+                                f"FUNDAMENTAL_BIAS_LOW_CONFIDENCE: You claimed the 'fundamental_bias' factor "
+                                f"(+2 points) but Stage 1 currency_confidence is only {relevant_conf:.2f} "
+                                f"(< 0.55 threshold). Remove this factor from confluence_factors or provide "
+                                f"independent confirmation (DXY, technical structure) to support the thesis."
                             )
             except Exception as e:
                 logger.debug(f"fundamental_bias confidence check failed (non-fatal): {e}")
@@ -1002,7 +1031,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 ).scalar_one_or_none()
                 if not cot_row:
                     errors.append(
-                        "COT_ALIGNED_NO_DATA: factor 'cot_aligned' diklaim (+1) tapi tidak ada data COT untuk simbol ini. Hapus faktor ini."
+                        "COT_ALIGNED_NO_DATA: Factor 'cot_aligned' claimed (+1) but no COT data exists for this symbol. Remove this factor."
                     )
                 else:
                     days_old = (
@@ -1015,7 +1044,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     ).days
                     if days_old > 10:
                         errors.append(
-                            f"COT_ALIGNED_STALE: factor 'cot_aligned' diklaim (+1) tapi data COT berumur {days_old} hari (>10 hari, dianggap tidak reliable). Hapus faktor ini dari confluence_factors."
+                            f"COT_ALIGNED_STALE: Factor 'cot_aligned' claimed (+1) but COT data is {days_old} days old (>10 days, considered stale/unreliable). Remove this factor from confluence_factors."
                         )
 
         if "vix_ok" in factors and decision in ("buy", "sell"):
@@ -1024,7 +1053,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             ).scalar_one_or_none()
             if vix_row and vix_row.close >= 20:
                 errors.append(
-                    f"VIX_OK_INVALID: factor 'vix_ok' diklaim (+1) tapi VIX aktual={vix_row.close:.1f} (>=20, bukan kondisi 'ok'). Hapus faktor ini."
+                    f"VIX_OK_INVALID: Factor 'vix_ok' claimed (+1) but actual VIX={vix_row.close:.1f} (>=20, elevated volatility regime). Remove this factor."
                 )
 
         if "liquidity_sweep_confirmed" in factors and decision in ("buy", "sell"):
@@ -1157,7 +1186,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             if tp_price is not None and tp_price <= 0:
                 errors.append("take_profit MUST be greater than 0.")
 
-            # Jika market order (entry_price None), ambil harga terakhir dari DB
+            # For market order (entry_price is None), fetch latest price bar from DB
             if entry_price is None and decision in ("buy", "sell"):
                 try:
                     last_bar = (
@@ -1172,13 +1201,13 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     if last_bar:
                         entry_price = last_bar.close
                 except Exception:
-                    pass  # Non-fatal, validasi dilewati jika tidak ada data
+                    pass  # Non-fatal, validation skipped if market data unavailable
 
             if entry_price and sl_price and tp_price:
                 sl_dist = abs(entry_price - sl_price)
                 tp_dist = abs(entry_price - tp_price)
 
-                # SL tidak boleh 0
+                # Stop-loss distance cannot be zero
                 if sl_dist == 0:
                     errors.append("stop_loss distance cannot be 0")
 
@@ -1543,8 +1572,8 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     f"AI must specify exact price level or concrete event for re-evaluation."
                 )
                 errors.append(
-                    f"VAGUE_WAIT_TRIGGER: Reevaluation trigger untuk WAIT tidak spesifik ('{trigger_detail[:60]}'). "
-                    f"Untuk trigger non-time, WAJIB sertakan field 'price' numerik atau 'detail' konkret (>=15 karakter dengan level harga/event terukur)."
+                    f"VAGUE_WAIT_TRIGGER: Reevaluation trigger for WAIT is non-specific ('{trigger_detail[:60]}'). "
+                    f"For non-time triggers, you MUST include a numeric 'price' field or concrete 'detail' (>=15 characters with measurable price level or catalyst event)."
                 )
 
         await self._enforce_specialist_and_threshold_checks(symbol, decision, rationale, inp, errors)
@@ -1628,12 +1657,11 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 )
             det_score = det_calc.get("computed_score", 0)
             non_det_uplift = submitted_score - det_score
-            # Skor deterministik dihitung ULANG di waktu submission dengan state pasar
-            # real-time (sesi, RSI, dsb) yang bisa bergeser selama model bernalar
-            # (15-18 tool turns). Toleransi dipisah jadi soft-warn vs hard-block agar
-            # drift wajar tidak memicu rejection palsu, tapi skor yang jelas dikarang
-            # tetap diblok.
-            HARD_BLOCK_UPLIFT = 6  # Proporsional pada skala 14
+            # Deterministic score is RECOMPUTED at submission time using real-time market
+            # state (session, RSI, etc.) which may drift while model reasons across turns.
+            # Tolerance is split into soft-warn vs hard-block so natural drift does not
+            # trigger false rejections, while outright hallucinated scores remain blocked.
+            HARD_BLOCK_UPLIFT = 6  # Proportional on a 14-point scale
             SOFT_WARN_UPLIFT = 3
             if non_det_uplift > HARD_BLOCK_UPLIFT:
                 max_allowable_score = det_score + SOFT_WARN_UPLIFT
@@ -1670,10 +1698,10 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 inp["rationale"] = rationale
         if errors:
             attempts = self.submit_attempts + 1
-            # Gunakan SystemConfig untuk counter persisten
+            # Use SystemConfig for persistent cycle retry counter
             try:
                 now_str = clock.now().strftime("%Y%m%d_%H")
-                # Menggunakan tanggal_jam sebagai cycle proxy
+                # Use date_hour as cycle proxy
                 cfg_key = f"submit_attempt_{symbol}_{now_str}"
                 cfg = (
                     await self.session.execute(select(SystemConfig).where(SystemConfig.key == cfg_key))
@@ -1974,7 +2002,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
             source_strategy_id=playbook_id,
         )
 
-        # Ambil harga terkini saat AI menyimpan analisis
+        # Capture latest price bar at the exact moment analysis is persisted
         try:
             last_bar = (
                 await self.session.execute(

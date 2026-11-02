@@ -58,7 +58,8 @@ class RegimeClassifier:
         y_val = float(us10y_yield) if (us10y_yield is not None and us10y_yield > 0) else None
 
         if dxy_val >= 101.0:
-            if y_val is not None and y_val >= 1.50:
+            is_extreme_yield = y_val is not None and y_val >= 1.50
+            if is_extreme_yield:
                 return MacroEnvironment(
                     dxy_value=dxy_val,
                     us10y_yield=y_val,
@@ -66,8 +67,8 @@ class RegimeClassifier:
                     allowed_commodity_longs=False,
                     allowed_crypto_longs=False,
                     reasoning=(
-                        f"Liquidity contraction regime: DXY={dxy_val:.2f} >= 101.0 and US 10Y Real Yield={y_val:.2f}% >= 1.50%. "
-                        "Long positions in commodities and crypto are strictly prohibited."
+                        f"Liquidity contraction regime: DXY={dxy_val:.2f} >= 101.0 and US 10Y Yield={y_val:.2f}% (extreme contraction). "
+                        "Long positions in commodities and crypto are strictly prohibited without structural deep discount exception."
                     ),
                 )
             return MacroEnvironment(
@@ -78,7 +79,7 @@ class RegimeClassifier:
                 allowed_crypto_longs=False,
                 reasoning=(
                     f"Strong Dollar regime: DXY={dxy_val:.2f} >= 101.0 creates persistent headwinds. "
-                    "Long positions in commodities and crypto are prohibited without structural H4 shift."
+                    "Long positions in commodities and crypto are restricted without structural H4 discount shift."
                 ),
             )
 
@@ -111,6 +112,9 @@ class RegimeClassifier:
         direction: str,
         dxy: float,
         us10y_yield: Optional[float] = None,
+        dealing_range_pos: Optional[float] = None,
+        technical_bias: Optional[str] = None,
+        confluence_score: Optional[int] = None,
     ) -> Tuple[bool, str]:
         """
         Validates whether a proposed trade direction is permitted under current macro regime.
@@ -127,12 +131,37 @@ class RegimeClassifier:
         is_commodity = any(k in sym_upper for k in ("XAU", "XTI", "XBR", "GOLD", "OIL"))
         is_crypto = any(k in sym_upper for k in ("BTC", "ETH", "SOL"))
 
+        has_structural_discount = (
+            dealing_range_pos is not None
+            and dealing_range_pos <= 0.38
+            and (
+                str(technical_bias or "").lower() in ("bullish", "strong_bullish")
+                or (confluence_score is not None and confluence_score >= 8)
+            )
+        )
+
         if is_commodity and not env.allowed_commodity_longs:
+            if has_structural_discount:
+                msg = (
+                    f"Macro Regime Exception: BUY permitted on commodity {symbol} despite strong DXY ({dxy:.2f}) "
+                    f"due to structural Deep Discount (pos={dealing_range_pos:.2f}) and confirmed H4 technical alignment. "
+                    f"Risk sizing restricted to 0.50x."
+                )
+                logger.info(f"[{symbol}] {msg}")
+                return True, msg
             msg = f"Macro Filter Blocked: BUY on commodity {symbol} rejected under {env.regime.value}. {env.reasoning}"
             logger.info(f"[{symbol}] {msg}")
             return False, msg
 
         if is_crypto and not env.allowed_crypto_longs:
+            if has_structural_discount:
+                msg = (
+                    f"Macro Regime Exception: BUY permitted on crypto {symbol} despite strong DXY ({dxy:.2f}) "
+                    f"due to structural Deep Discount (pos={dealing_range_pos:.2f}) and confirmed H4 technical alignment. "
+                    f"Risk sizing restricted to 0.50x."
+                )
+                logger.info(f"[{symbol}] {msg}")
+                return True, msg
             msg = f"Macro Filter Blocked: BUY on crypto {symbol} rejected under {env.regime.value}. {env.reasoning}"
             logger.info(f"[{symbol}] {msg}")
             return False, msg

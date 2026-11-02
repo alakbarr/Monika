@@ -772,9 +772,15 @@ class TurnToolPipeline:
                     "validation_failed",
                     "rejected_verification_required",
                     "rejected_confluence_too_low",
+                    "blocked",
+                    "error",
+                    "failed",
                 }
                 st = res_obj.get("status") if isinstance(res_obj, dict) else None
-                if st in validation_fail_statuses:
+                has_err = is_tool_err or (
+                    isinstance(res_obj, dict) and "error" in res_obj and st not in ("saved", "success", "updated")
+                )
+                if st in validation_fail_statuses or has_err:
                     tracking.unpersisted_validation_failures.add(c_name)
                 else:
                     tracking.unpersisted_validation_failures.discard(c_name)
