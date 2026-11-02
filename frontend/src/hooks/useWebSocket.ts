@@ -27,7 +27,7 @@ export const useWebSocket = () => {
   const pingTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const lastSeq = useRef<number>(0);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (typeof window === 'undefined') return;
 
     // Clean up any existing connection without triggering reconnection storm
@@ -42,10 +42,23 @@ export const useWebSocket = () => {
       }
     }
 
+    let authParam = '';
+    try {
+      const ticketRes = await api.createWsTicket();
+      if (ticketRes?.ticket) {
+        authParam = `ticket=${encodeURIComponent(ticketRes.ticket)}`;
+      }
+    } catch {
+      // Fallback: unauthenticated or offline
+    }
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const seqQuery = lastSeq.current > 0 ? `?since_seq=${lastSeq.current}` : '';
-    const url = `${protocol}//${host}/ws/live-feed${seqQuery}`;
+    const queryParts: string[] = [];
+    if (lastSeq.current > 0) queryParts.push(`since_seq=${lastSeq.current}`);
+    if (authParam) queryParts.push(authParam);
+    const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+    const url = `${protocol}//${host}/ws/live-feed${queryString}`;
 
     try {
       const socket = new WebSocket(url);
@@ -54,24 +67,13 @@ export const useWebSocket = () => {
         reconnectAttempts.current = 0;
         useDashboardStore.getState().setWsConnected(true);
 
-        // Authenticate via ephemeral ticket with API key fallback (H-13)
-        api.createWsTicket()
-          .then((res) => {
-            if (res?.ticket && socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({ type: 'authenticate', ticket: res.ticket }));
-            } else {
-              const apiKey = getStoredToken();
-              if (apiKey && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'authenticate', token: apiKey }));
-              }
-            }
-          })
-          .catch(() => {
-            const apiKey = getStoredToken();
-            if (apiKey && socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({ type: 'authenticate', token: apiKey }));
-            }
-          });
+        // Fallback: If ticket was not provided in query param, authenticate in-band immediately
+        if (!authParam) {
+          const apiKey = getStoredToken();
+          if (apiKey && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'authenticate', token: apiKey }));
+          }
+        }
 
         // Keep-alive heartbeat ping every 25 seconds
         if (pingTimer.current) clearInterval(pingTimer.current);

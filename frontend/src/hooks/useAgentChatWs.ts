@@ -36,12 +36,8 @@ export function useAgentChatWs() {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pingTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!isMountedRef.current) return;
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = location.host;
-    const apiKey = getStoredToken();
-    const url = `${protocol}//${host}/ws/agent-chat`;
 
     if (socketRef.current) {
       try {
@@ -51,6 +47,22 @@ export function useAgentChatWs() {
         // ignore
       }
     }
+
+    let authParam = '';
+    try {
+      const ticketRes = await api.createWsTicket();
+      if (ticketRes?.ticket) {
+        authParam = `?ticket=${encodeURIComponent(ticketRes.ticket)}`;
+      }
+    } catch {
+      // Fallback: unauthenticated or offline
+    }
+
+    if (!isMountedRef.current) return;
+
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = location.host;
+    const url = `${protocol}//${host}/ws/agent-chat${authParam}`;
 
     const ws = new WebSocket(url);
 
@@ -62,20 +74,13 @@ export function useAgentChatWs() {
       reconnectAttemptsRef.current = 0;
       setWsConnected(true);
 
-      // Authenticate via ephemeral ticket with API key fallback (H-13)
-      api.createWsTicket()
-        .then((res) => {
-          if (res?.ticket && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'authenticate', ticket: res.ticket }));
-          } else if (apiKey && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'authenticate', token: apiKey }));
-          }
-        })
-        .catch(() => {
-          if (apiKey && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'authenticate', token: apiKey }));
-          }
-        });
+      // Fallback: If ticket was not provided in query param, authenticate in-band immediately
+      if (!authParam) {
+        const apiKey = getStoredToken();
+        if (apiKey && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'authenticate', token: apiKey }));
+        }
+      }
 
       if (pingTimerRef.current) clearInterval(pingTimerRef.current);
       pingTimerRef.current = setInterval(() => {

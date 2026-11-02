@@ -125,7 +125,7 @@ async def websocket_live_feed(websocket: WebSocket):
 
     if not authenticated:
         try:
-            raw_auth = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+            raw_auth = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
             auth_msg = json.loads(raw_auth)
             if auth_msg.get("type") == "authenticate":
                 if auth_msg.get("ticket"):
@@ -155,7 +155,12 @@ async def websocket_live_feed(websocket: WebSocket):
             logger.info(f"[Dashboard WS] Client disconnected during handshake from {client_host}")
             return
         except (asyncio.TimeoutError, json.JSONDecodeError, PermissionError) as auth_err:
-            logger.warning(f"[Dashboard WS] Handshake auth failed from {client_host}: {auth_err}")
+            err_detail = (
+                str(auth_err)
+                if str(auth_err)
+                else f"{type(auth_err).__name__} (timed out waiting for authenticate message)"
+            )
+            logger.warning(f"[Dashboard WS] Handshake auth failed from {client_host}: {err_detail}")
             try:
                 await websocket.close(code=1008, reason="Unauthorized: Authentication handshake failed")
             except Exception:
@@ -442,7 +447,7 @@ async def websocket_agent_chat(websocket: WebSocket):
 
     if not authenticated:
         try:
-            raw_auth = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+            raw_auth = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
             auth_msg = json.loads(raw_auth)
             if auth_msg.get("type") == "authenticate":
                 if auth_msg.get("ticket"):
@@ -472,7 +477,12 @@ async def websocket_agent_chat(websocket: WebSocket):
             logger.info(f"[AgentChat WS] Client disconnected during handshake from {client_host}")
             return
         except (asyncio.TimeoutError, json.JSONDecodeError, PermissionError) as auth_err:
-            logger.warning(f"[AgentChat WS] Handshake auth failed from {client_host}: {auth_err}")
+            err_detail = (
+                str(auth_err)
+                if str(auth_err)
+                else f"{type(auth_err).__name__} (timed out waiting for authenticate message)"
+            )
+            logger.warning(f"[AgentChat WS] Handshake auth failed from {client_host}: {err_detail}")
             try:
                 await websocket.close(code=1008, reason="Unauthorized: Authentication handshake failed")
             except Exception:

@@ -136,8 +136,12 @@ const App: React.FC = () => {
         setAuthModalOpen(true);
       }
     };
+    window.addEventListener('dashboard-auth-error', handleAuthError);
     window.addEventListener('monika:auth-error', handleAuthError);
-    return () => window.removeEventListener('monika:auth-error', handleAuthError);
+    return () => {
+      window.removeEventListener('dashboard-auth-error', handleAuthError);
+      window.removeEventListener('monika:auth-error', handleAuthError);
+    };
   }, []);
 
   useWebSocket();

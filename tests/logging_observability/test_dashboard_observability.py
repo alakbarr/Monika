@@ -7,6 +7,7 @@ from tests.conftest import create_mock_async_session
 Unit tests for Phase 2: RBAC Middleware, Config Editor, Sessions, and Agent Chat.
 """
 
+import asyncio
 import json
 import os
 import pytest
@@ -373,3 +374,51 @@ def test_websocket_live_feed_disconnect_during_handshake_clean(client):
     """Verify client disconnecting during /ws/live-feed handshake exits gracefully without ASGI exception."""
     with client.websocket_connect("/ws/live-feed") as ws:
         ws.close(1000)
+
+
+def test_websocket_ticket_query_param_instant_auth(client):
+    """Verify ephemeral tickets passed via query param authenticate both WS feeds immediately."""
+    env = {"DASHBOARD_API_KEYS": "admin:adm_key,operator:ops_key", "DASHBOARD_API_KEY": ""}
+    with patch.dict(os.environ, env):
+        # 1. Acquire ticket for live-feed
+        res_ticket = client.post("/api/v1/ws/ticket", headers={"X-API-Key": "adm_key"})
+        assert res_ticket.status_code == 200
+        ticket1 = res_ticket.json()["ticket"]
+
+        with client.websocket_connect(f"/ws/live-feed?ticket={ticket1}") as ws:
+            init_msg = ws.receive_json()
+            assert init_msg["type"] == "connection_established"
+            assert init_msg["status"] == "connected"
+
+        # 2. Acquire ticket for agent-chat
+        res_ticket2 = client.post("/api/v1/ws/ticket", headers={"X-API-Key": "adm_key"})
+        assert res_ticket2.status_code == 200
+        ticket2 = res_ticket2.json()["ticket"]
+
+        with client.websocket_connect(f"/ws/agent-chat?ticket={ticket2}") as ws:
+            init_msg2 = ws.receive_json()
+            assert init_msg2["type"] == "connection_established"
+            assert init_msg2["role"] == "admin"
+
+
+def test_websocket_handshake_error_formatting_on_timeout(client, caplog):
+    """Verify that handshake timeout logs contain explicit error detail rather than empty string."""
+    env = {"DASHBOARD_API_KEYS": "admin:adm_key", "DASHBOARD_API_KEY": ""}
+    with patch.dict(os.environ, env):
+
+        async def _fake_wait_for(fut, timeout=None):
+            if asyncio.iscoroutine(fut):
+                fut.close()
+            raise asyncio.TimeoutError()
+
+        with patch("asyncio.wait_for", side_effect=_fake_wait_for):
+            import logging
+
+            with caplog.at_level(logging.WARNING):
+                try:
+                    with client.websocket_connect("/ws/live-feed"):
+                        pass
+                except Exception:
+                    pass
+
+                assert any("timed out waiting for authenticate message" in record.message for record in caplog.records)
