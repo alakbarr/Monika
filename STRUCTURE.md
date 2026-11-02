@@ -2293,6 +2293,7 @@ Monika/
 │   │   ├── test_isolated_harness.py
 │   │   ├── test_jev_news_classifier.py
 │   │   ├── test_jev_verifiers_and_builders.py
+│   │   ├── test_langgraph_pipeline_remediation.py
 │   │   ├── test_layered_memory.py
 │   │   ├── test_level_optimizer_rr_pairing.py
 │   │   ├── test_llm_factory.py
@@ -3179,4 +3180,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 274 | **Total Tracked Files**: 2875
+**Total Tracked Directories**: 274 | **Total Tracked Files**: 2876

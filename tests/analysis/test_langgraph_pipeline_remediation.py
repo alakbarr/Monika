@@ -382,12 +382,6 @@ def test_team_compiler_requires_majority_or_hard_risk_for_veto():
         DeskRole(role_id="risk", name="Risk Manager", system_prompt=""),
     ]
 
-    mock_cfg = MagicMock()
-    mock_cfg.roles = roles
-    mock_cfg.desk_name = "FX Desk"
-    mock_cfg.consensus_protocol = "majority"
-    TeamCompiler.load_desk_config = MagicMock(return_value=mock_cfg)
-
     veto_reasons = []
     hard_risk_violation = False
     for r_res, r_def in zip(results, roles):
