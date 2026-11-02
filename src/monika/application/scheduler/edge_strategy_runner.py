@@ -44,6 +44,7 @@ class EdgeStrategyRunner:
         self._running = False
         self._last_stale_warn_time = 0.0
         self._signal_cooldowns: dict[tuple[str, str], float] = {}
+        self._consecutive_stops: dict[tuple[str, str], int] = {}
         self._gate_rejection_log_time: dict[tuple[str, str, str], float] = {}
         self.cooldown_seconds = float(
             self.settings.get("trading", {}).get("edge_strategy", {}).get("signal_cooldown_seconds", 3600)
@@ -110,12 +111,17 @@ class EdgeStrategyRunner:
 
     async def _is_in_cooldown(self, session, strategy_id: str, symbol: str, now_ts: float) -> bool:
         """Cek cooldown sinyal menggunakan in-memory cache dengan fallback persistent ke database."""
+        eff_cooldown = self.cooldown_seconds
+        # Dynamic Stoploss Guard: extend cooldown to 2x if consecutive stops >= 2
+        if self._consecutive_stops.get((strategy_id, symbol), 0) >= 2:
+            eff_cooldown = max(eff_cooldown * 2.0, 7200.0)
+
         last_sig_time = self._signal_cooldowns.get((strategy_id, symbol), 0.0)
-        if now_ts - last_sig_time < self.cooldown_seconds:
+        if now_ts - last_sig_time < eff_cooldown:
             return True
 
         # Fallback ke database jika in-memory cache kosong (mis. setelah restart)
-        cutoff = clock.now() - timedelta(seconds=self.cooldown_seconds)
+        cutoff = clock.now() - timedelta(seconds=eff_cooldown)
         recent_analysis = (
             await session.execute(
                 select(AssetAnalysis.generated_at)
@@ -261,7 +267,9 @@ class EdgeStrategyRunner:
                             if "trend" in sig.tags
                             else getattr(sig, "factor_family", None)
                         )
-                        allowed, reason = await evaluate_pretrade_gate(session, symbol, self.settings, strat_type)
+                        allowed, reason = await evaluate_pretrade_gate(
+                            session, symbol, self.settings, strat_type, signal=sig
+                        )
                         if not allowed:
                             gate_key = (sig.strategy_id, symbol, str(reason))
                             last_rej = self._gate_rejection_log_time.get(gate_key, 0.0)

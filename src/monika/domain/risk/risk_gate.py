@@ -294,6 +294,23 @@ class RiskGate(
         checks_failed: list[str] = []
         rejections: list[str] = []
 
+        # Asymmetric Exit Pass-Through:
+        # Exits and liquidations reduce market exposure and must never be blocked by entry risk limits.
+        req_action = str(direction).lower()
+        if req_action in ("close", "exit", "flatten") or str(getattr(analysis, "action", "")).lower() in (
+            "close",
+            "exit",
+            "flatten",
+        ):
+            return RiskVerdict(
+                approved=True,
+                symbol=symbol,
+                proposed_lots=sizing.recommended_lots if sizing else 0.0,
+                checks_passed=["asymmetric_exit_pass_through"],
+                checks_failed=[],
+                rejection_reasons=[],
+            )
+
         effective_pair_group = pair_group_id or getattr(analysis, "pair_group_id", None)
         effective_is_paper = (
             is_paper if is_paper is not None else self.settings.get("paper_trading", {}).get("enabled", True)

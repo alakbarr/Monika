@@ -328,7 +328,10 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
             if ev_store is None:
                 return False, "Evidence gate rejected: evidence store unavailable (fail-closed)."
 
-            is_valid, reason = ev_store.validate_strategy_for_trade(strat_id, regime)
+            try:
+                is_valid, reason = ev_store.validate_strategy_for_trade(strat_id, regime, symbol=symbol)
+            except TypeError:
+                is_valid, reason = ev_store.validate_strategy_for_trade(strat_id, regime)
             if not is_valid:
                 return False, f"EvidenceStore rejected trade: {reason}"
         except Exception as e:

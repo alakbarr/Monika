@@ -251,3 +251,52 @@ class BracketOptimizer:
             adjusted=adjusted,
             adjustments=adjustments,
         )
+
+    @classmethod
+    def validate_bracket_coherence(
+        cls,
+        direction: str = "buy",
+        entry: float = 0.0,
+        sl: float = 0.0,
+        tp: float = 0.0,
+        min_rr: float = 1.0,
+        max_rr: float = 10.0,
+        **kwargs: Any,
+    ) -> tuple[bool, str]:
+        """
+        Validates bracket geometric coherence and R:R bounds before order creation.
+        Guarantees:
+        1. Directional physics: Buy (SL < entry < TP), Sell (TP < entry < SL).
+        2. Non-zero SL distance.
+        3. R:R ratio within [min_rr, max_rr].
+        """
+        eff_entry = float(entry or kwargs.get("entry_price", 0.0))
+        eff_sl = float(sl or kwargs.get("stop_loss", 0.0))
+        eff_tp = float(tp or kwargs.get("take_profit", 0.0))
+        dir_clean = str(direction).lower().strip()
+        if eff_entry <= 0 or eff_sl <= 0 or eff_tp <= 0:
+            return False, "non_positive_price"
+
+        if dir_clean == "buy":
+            if not (eff_sl < eff_entry < eff_tp):
+                return False, f"incoherent_buy_geometry: SL={eff_sl}, Entry={eff_entry}, TP={eff_tp}"
+            sl_dist = eff_entry - eff_sl
+            tp_dist = eff_tp - eff_entry
+        elif dir_clean == "sell":
+            if not (eff_tp < eff_entry < eff_sl):
+                return False, f"incoherent_sell_geometry: TP={eff_tp}, Entry={eff_entry}, SL={eff_sl}"
+            sl_dist = eff_sl - eff_entry
+            tp_dist = eff_entry - eff_tp
+        else:
+            return False, f"invalid_direction: {direction}"
+
+        if sl_dist <= 1e-7:
+            return False, "zero_sl_distance"
+
+        rr = tp_dist / sl_dist
+        if rr < min_rr:
+            return False, f"sub_minimum_rr: {rr:.2f} < {min_rr:.2f}"
+        if rr > max_rr:
+            return False, f"excessive_rr: {rr:.2f} > {max_rr:.2f}"
+
+        return True, "coherent"

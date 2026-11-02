@@ -148,6 +148,9 @@ BRIER SCORE CALIBRATION WEIGHING (Subsystem 4):
 - The analyst with lower Brier score has superior empirical calibration; give their arguments proportionally higher weight.
 
 DIRECTIONAL ADJUDICATION RULES:
+- ANTI-FENCE-SITTING MANDATE:
+  * Do not default to 'avoid' simply because of market uncertainty or opposing views in debate. A valid edge with positive expected value and favorable R:R must be executed.
+  * 'avoid' is strictly reserved for: 1) direct conflict with hard macro regime shifts, 2) incoherent bracket geometry, 3) equilibrium chop dead-zones, or 4) risk multiplier < 0.20.
 - INTRADAY ADR GEOMETRY & R:R COMPLIANCE (CRITICAL):
   * Any bracket with net R:R >= 1.50 (including LONG_OPTION_A and SHORT_OPTION_B with R:R = 1.50 - 1.65) and SL >= 1.0x H4 ATR (or ADR-harmonized floor >= 0.95x ATR / <= 0.50x ADR) is 100% COMPLIANT with Monika's intraday ADR geometry.
   * NEVER reject or downgrade a trade solely because R:R is 1.50 - 1.70 instead of R:R >= 1.75 or R:R >= 2.00.

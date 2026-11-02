@@ -23,6 +23,7 @@ class DynamicCorrelationMatrix:
     def __init__(self, rolling_days: int = 30, correlation_threshold: float = 0.65):
         self.rolling_days = rolling_days
         self.correlation_threshold = correlation_threshold
+        self._is_fused = False
 
     @staticmethod
     def calculate_pearson_correlation(series_a: list[float], series_b: list[float]) -> float:
@@ -113,8 +114,24 @@ class DynamicCorrelationMatrix:
                     )
 
         total_heat_score = max(0.0, total_heat_score)
+        n_pos = len(positions)
+        total_possible_edges = (n_pos * (n_pos - 1)) / 2 if n_pos >= 3 else 0
+        edge_density = (len(correlated_pairs) / total_possible_edges) if total_possible_edges >= 3 else 0.0
+
+        # Schmitt-trigger hysteresis for correlation contagion fusing (requires multi-asset cluster >= 3 edges)
+        if total_possible_edges >= 3:
+            if edge_density >= 0.32:
+                self._is_fused = True
+            elif edge_density <= 0.18:
+                self._is_fused = False
+        else:
+            self._is_fused = False
+
+        status = "fused" if self._is_fused else ("elevated" if total_heat_score > 2.0 else "normal")
         return {
             "portfolio_heat": round(total_heat_score, 4),
             "correlated_pairs": correlated_pairs,
-            "status": "elevated" if total_heat_score > 2.0 else "normal",
+            "status": status,
+            "is_fused": self._is_fused,
+            "edge_density": round(edge_density, 4),
         }

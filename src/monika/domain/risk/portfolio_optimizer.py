@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -130,6 +130,22 @@ class PortfolioOptimizer:
             self.expected_returns = np.asarray(expected_returns, dtype=np.float64)
         else:
             self.expected_returns = np.zeros(len(self.symbols), dtype=np.float64)
+
+    @staticmethod
+    def compute_position_return_covariance(
+        cov_matrix: np.ndarray, positions_direction: Sequence[float | int]
+    ) -> np.ndarray:
+        """
+        Transforms asset-return covariance matrix to position-return covariance space:
+        Sigma_pos = D * Sigma * D
+        where D = diag(d_1, ..., d_n) and d_i in {+1.0 (long), -1.0 (short)}.
+        """
+        cov = np.asarray(cov_matrix, dtype=np.float64)
+        d = np.asarray(positions_direction, dtype=np.float64)
+        if cov.ndim != 2 or cov.shape[0] != cov.shape[1] or cov.shape[0] != len(d):
+            return cov
+        d_diag = np.diag(d)
+        return d_diag @ cov @ d_diag
 
     def solve_equal_volatility(self) -> OptimizationResult:
         """

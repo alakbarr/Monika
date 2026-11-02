@@ -354,6 +354,15 @@ class TrailingStopManager:
                     new_sl = trailing_sl
                     reason = f"trailing_stop (profit={profit_distance:.4f}, trail={trailing_sl:.4f}, mult={effective_trail_mult}x)"
 
+            # Near-TP profit ratchet lock
+            if pos.tp and pos.tp > entry:
+                tp_dist = pos.tp - entry
+                if profit_distance >= 0.90 * tp_dist:
+                    lock_sl = entry + (0.45 * tp_dist)
+                    if lock_sl > (current_sl or 0.0) and (new_sl is None or lock_sl > new_sl):
+                        new_sl = lock_sl
+                        reason = f"near_tp_lock (profit={profit_distance:.5f} >= 0.90 TP, locked 0.45 TP {lock_sl:.5f})"
+
         elif pos.direction == "sell":
             profit_distance = entry - current_price
             sl_distance = current_sl - entry if current_sl else None
@@ -374,6 +383,15 @@ class TrailingStopManager:
                 if (current_sl is None or trailing_sl < current_sl) and (new_sl is None or trailing_sl < new_sl):
                     new_sl = trailing_sl
                     reason = f"trailing_stop (profit={profit_distance:.4f}, trail={trailing_sl:.4f}, mult={effective_trail_mult}x)"
+
+            # Near-TP profit ratchet lock
+            if pos.tp and pos.tp < entry:
+                tp_dist = entry - pos.tp
+                if profit_distance >= 0.90 * tp_dist:
+                    lock_sl = entry - (0.45 * tp_dist)
+                    if (current_sl is None or lock_sl < current_sl) and (new_sl is None or lock_sl < new_sl):
+                        new_sl = lock_sl
+                        reason = f"near_tp_lock (profit={profit_distance:.5f} >= 0.90 TP, locked 0.45 TP {lock_sl:.5f})"
 
         # Check TP1 milestone and advance TradePlan status to PARTIAL_TP1_HIT
         is_tp1_hit = profit_distance >= (1.0 * atr)

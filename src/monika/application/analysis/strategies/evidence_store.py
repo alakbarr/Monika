@@ -154,9 +154,20 @@ class StrategyEvidenceStore:
                 data = json.load(f)
             for item in data:
                 ev = StrategyEvidence.from_dict(item)
-                self._store[ev.strategy_id] = self._refresh_status(ev)
+                refreshed = self._refresh_status(ev)
+                self._store[ev.strategy_id] = refreshed
+                if ev.symbol:
+                    self._store[f"{ev.strategy_id}:{ev.symbol.upper()}"] = refreshed
         except Exception as e:
             logger.error(f"Failed loading evidence store from {self.file_path}: {e}")
+
+    def get_evidence(self, strategy_id: str, symbol: Optional[str] = None) -> Optional[StrategyEvidence]:
+        """Lookup evidence record by composite (strategy_id, symbol) or fallback to strategy_id."""
+        if symbol:
+            composite_key = f"{strategy_id}:{symbol.upper()}"
+            if composite_key in self._store:
+                return self._store[composite_key]
+        return self._store.get(strategy_id)
 
     @staticmethod
     def _refresh_status(ev: StrategyEvidence) -> StrategyEvidence:
@@ -186,7 +197,14 @@ class StrategyEvidenceStore:
 
     def _save(self) -> None:
         try:
-            payload = [ev.to_dict() for ev in self._store.values()]
+            seen: set[tuple[str, str]] = set()
+            unique_evs: list[StrategyEvidence] = []
+            for ev in self._store.values():
+                ev_key = (ev.strategy_id, ev.symbol)
+                if ev_key not in seen:
+                    seen.add(ev_key)
+                    unique_evs.append(ev)
+            payload = [ev.to_dict() for ev in unique_evs]
             tmp = self.file_path.with_suffix(".tmp")
             with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(payload, f, indent=2)
@@ -274,6 +292,8 @@ class StrategyEvidenceStore:
         )
 
         self._store[strategy_id] = ev
+        if symbol:
+            self._store[f"{strategy_id}:{symbol.upper()}"] = ev
         self._save()
         logger.info(
             f"Recorded evidence for [{strategy_id}] {symbol}: Breakeven={be_bps}bps, Age={age_days}d ({status.value})"
@@ -299,15 +319,22 @@ class StrategyEvidenceStore:
 
         return transitions
 
-    def is_strategy_eligible_to_trade(self, strategy_id: str, min_breakeven_bps: float = 3.0) -> Tuple[bool, str]:
+    def is_strategy_eligible_to_trade(
+        self,
+        strategy_id: str,
+        min_breakeven_bps: float = 3.0,
+        symbol: Optional[str] = None,
+    ) -> Tuple[bool, str]:
         """
         Enforces evidence gates:
         1. Must not be STALE (>= 180 days without re-validation).
         2. Breakeven bps must exceed broker spread/commission floor (default 3.0 bps).
+        3. Symbol-level edge verification: rejects trading on empirically negative symbols.
         """
-        ev = self._store.get(strategy_id)
+        ev = self.get_evidence(strategy_id, symbol)
         if not ev:
-            return False, f"No verified backtest evidence on file for {strategy_id}"
+            sym_desc = f" for {symbol}" if symbol else ""
+            return False, f"No verified backtest evidence on file for {strategy_id}{sym_desc}"
 
         # Recalculate status against current wall-clock date before evaluating gate
         ev = self._refresh_status(ev)
@@ -318,6 +345,19 @@ class StrategyEvidenceStore:
                 f"Strategy evidence is STALE ({ev.evidence_age_days} days old >= 180d). Re-validation required.",
             )
 
+        if symbol and ev.symbol and ev.symbol.upper() == symbol.upper():
+            if ev.gross_return < 0.0:
+                return (
+                    False,
+                    f"Strategy {strategy_id} has negative gross return ({ev.gross_return:.4f}) on {symbol}.",
+                )
+            all_regime = ev.regime_breakdown.get("ALL")
+            if all_regime and all_regime.trade_count >= 5 and all_regime.profit_factor < 1.0:
+                return (
+                    False,
+                    f"Strategy {strategy_id} has sub-breakeven profit factor ({all_regime.profit_factor:.2f}) on {symbol}.",
+                )
+
         if ev.breakeven_bps < min_breakeven_bps:
             return False, (
                 f"Sizing-corrected breakeven ({ev.breakeven_bps:.1f} bps) below minimum "
@@ -326,9 +366,31 @@ class StrategyEvidenceStore:
 
         return True, "Approved by Evidence Gate"
 
-    def validate_strategy_for_trade(self, strategy_id: str, regime: str = "UNKNOWN") -> Tuple[bool, str]:
-        """Validates strategy trade eligibility against decay status and regime performance."""
-        return self.is_strategy_eligible_to_trade(strategy_id)
+    def validate_strategy_for_trade(
+        self,
+        strategy_id: str,
+        regime: str = "UNKNOWN",
+        symbol: Optional[str] = None,
+    ) -> Tuple[bool, str]:
+        """Validates strategy trade eligibility against decay status, symbol edge, and regime performance."""
+        eligible, reason = self.is_strategy_eligible_to_trade(strategy_id, symbol=symbol)
+        if not eligible:
+            return False, reason
+
+        if regime and regime.upper() not in ("UNKNOWN", "ALL"):
+            ev = self.get_evidence(strategy_id, symbol)
+            if ev and ev.regime_breakdown:
+                regime_norm = regime.upper()
+                r_ev = ev.regime_breakdown.get(regime_norm)
+                if r_ev and r_ev.trade_count >= 5:
+                    if r_ev.profit_factor < 0.90 or r_ev.win_rate < 0.28:
+                        return (
+                            False,
+                            f"Strategy {strategy_id} underperforms in regime {regime_norm} "
+                            f"(PF={r_ev.profit_factor:.2f}, WR={r_ev.win_rate * 100:.1f}%).",
+                        )
+
+        return True, "Approved by Evidence Gate"
 
 
 # Backward-compatibility alias

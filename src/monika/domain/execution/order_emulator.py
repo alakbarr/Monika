@@ -409,6 +409,16 @@ class ClientOrderEmulator:
                     new_sl = trail_sl
                     reason = f"trailing_stop (profit={profit_distance:.5f}, trail={trail_sl:.5f})"
 
+            # 3. Near-TP profit ratchet lock
+            curr_tp = getattr(pos, "current_tp", None) or getattr(pos, "tp", None)
+            if curr_tp is not None and curr_tp > entry:
+                tp_dist = curr_tp - entry
+                if profit_distance >= (0.90 * tp_dist):
+                    lock_sl = entry + (0.45 * tp_dist)
+                    if lock_sl > (new_sl or current_sl):
+                        new_sl = lock_sl
+                        reason = f"near_tp_lock (profit={profit_distance:.5f} >= 0.90 TP, locked 0.45 TP {lock_sl:.5f})"
+
         elif pos.direction == "sell":
             profit_distance = entry - current_price
 
@@ -427,6 +437,16 @@ class ClientOrderEmulator:
                 if (current_sl - trail_sl) >= min_step and (new_sl is None or trail_sl < new_sl):
                     new_sl = trail_sl
                     reason = f"trailing_stop (profit={profit_distance:.5f}, trail={trail_sl:.5f})"
+
+            # 3. Near-TP profit ratchet lock
+            curr_tp = getattr(pos, "current_tp", None) or getattr(pos, "tp", None)
+            if curr_tp is not None and curr_tp < entry:
+                tp_dist = entry - curr_tp
+                if profit_distance >= (0.90 * tp_dist):
+                    lock_sl = entry - (0.45 * tp_dist)
+                    if lock_sl < (new_sl or current_sl):
+                        new_sl = lock_sl
+                        reason = f"near_tp_lock (profit={profit_distance:.5f} >= 0.90 TP, locked 0.45 TP {lock_sl:.5f})"
         if new_sl is not None:
             # Financial Fortress: Physical Directional Sanity & Minimum Breathing Room Invariant
             min_stop_distance = float(self.settings.get("stops_level", 0.0) or 0.0)

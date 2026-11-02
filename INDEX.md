@@ -1304,6 +1304,7 @@
   - `class BracketOptimizer`: Deterministic bracket optimizer.
     - `__init__(default_min_rr: float) -> None`
     - `optimize(symbol: str, direction: str, entry_price: float, ...) -> OptimizedBrackets` - *Calculates optimized brackets respecting ATR noise floors, ADR bands,*
+    - `validate_bracket_coherence(direction: str, entry: float, sl: float, ...) -> tuple[bool, str]` - *Validates bracket geometric coherence and R:R bounds before order creation.*
 - **Top-Level Functions**:
   - `get_symbol_decimals(symbol: str) -> int`: Derives standard price display/order decimals for a given symbol.
 
@@ -4559,6 +4560,7 @@
   - `class OptimizationResult`
   - `class PortfolioOptimizer`: Mathematical portfolio weight optimizer with risk constraints and pure-NumPy fallbacks.
     - `__init__(symbols: list[str], cov_matrix: np.ndarray, expected_returns: np.ndarray | None)`
+    - `compute_position_return_covariance(cov_matrix: np.ndarray, positions_direction: Sequence[float | int]) -> np.ndarray` - *Transforms asset-return covariance matrix to position-return covariance space:*
     - `solve_equal_volatility() -> OptimizationResult` - *Sizes assets inversely proportional to their empirical volatility: w_i ~ 1 / sigma_i.*
     - `solve_risk_parity_erc() -> OptimizationResult` - *Equal Risk Contribution (ERC) via Cyclical Coordinate Descent (Griveau-Billion et al. 2013).*
     - `solve_mean_variance(risk_free_rate: float, max_weight: float) -> OptimizationResult` - *Maximizes Sharpe Ratio under simplex and box constraints.*
@@ -7174,10 +7176,11 @@
     - `from_dict(data: dict[str, Any]) -> StrategyEvidence`
   - `class StrategyEvidenceStore`: Manages empirical performance evidence and lifecycle decay.
     - `__init__(file_path: Path | str) -> None`
+    - `get_evidence(strategy_id: str, symbol: Optional[str]) -> Optional[StrategyEvidence]` - *Lookup evidence record by composite (strategy_id, symbol) or fallback to strategy_id.*
     - `record_evidence(strategy_id: str, symbol: str, timeframe: str, ...) -> StrategyEvidence` - *Records new empirical backtest evidence and computes breakeven fee.*
     - `update_decay_statuses() -> int` - *Scans all stored evidence and updates aging status based on calendar age.*
-    - `is_strategy_eligible_to_trade(strategy_id: str, min_breakeven_bps: float) -> Tuple[bool, str]` - *Enforces evidence gates:*
-    - `validate_strategy_for_trade(strategy_id: str, regime: str) -> Tuple[bool, str]` - *Validates strategy trade eligibility against decay status and regime performance.*
+    - `is_strategy_eligible_to_trade(strategy_id: str, min_breakeven_bps: float, symbol: Optional[str]) -> Tuple[bool, str]` - *Enforces evidence gates:*
+    - `validate_strategy_for_trade(strategy_id: str, regime: str, symbol: Optional[str]) -> Tuple[bool, str]` - *Validates strategy trade eligibility against decay status, symbol edge, and regime performance.*
 - **Top-Level Functions**:
   - `compute_sizing_corrected_breakeven_bps(gross_return: float, total_trades: int, avg_position_size: float, ...) -> float`: Computes sizing-corrected breakeven fee in basis points:
 

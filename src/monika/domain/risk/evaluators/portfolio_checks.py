@@ -402,6 +402,11 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
                             f"Correlated exposure limit exceeded: calculated portfolio heat {heat['portfolio_heat']:.2f} "
                             f"> limit {self.correlation_limit}"
                         )
+                    if heat.get("is_fused"):
+                        return False, (
+                            f"Correlation contagion fused: portfolio graph edge density {heat.get('edge_density', 0.0):.2f} "
+                            f">= 0.32 critical contagion threshold"
+                        )
             except Exception as exc:
                 logger.debug(f"DynamicCorrelationMatrix evaluation fallback: {exc}")
 
