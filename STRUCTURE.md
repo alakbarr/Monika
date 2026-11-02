@@ -3033,6 +3033,7 @@ Monika/
 │   │   ├── signals.py
 │   │   ├── targeted_signals.py
 │   │   └── ultra_signals.py
+│   ├── antigravity_bridge_server.py
 │   ├── audit_settings_keys.py
 │   ├── audit_token_usage.py
 │   ├── benchmark_debate_openrouter.py
@@ -3180,4 +3181,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 274 | **Total Tracked Files**: 2876
+**Total Tracked Directories**: 274 | **Total Tracked Files**: 2877

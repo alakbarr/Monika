@@ -184,8 +184,13 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
         )
 
         # 3. Invoke Antigravity Engine
-        cmd = [AGY_PATH, "-p", full_prompt, "--model", agy_model, "--output-format", "text"]
+        cmd = [AGY_PATH, "-p", full_prompt, "--model", agy_model, "--output-format", "json"]
         start_t = time.time()
+        output_text = ""
+        prompt_tokens = max(len(full_prompt.split()), 1)
+        completion_tokens = 1
+        thinking_tokens = 0
+        cached_tokens = 0
         try:
             proc = subprocess.run(
                 cmd,
@@ -201,16 +206,43 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
                 logger.error("agy execution failed in %.2fs: %s", elapsed, err_msg)
                 output_text = f"Antigravity Execution Error: {err_msg}"
             else:
-                output_text = proc.stdout.strip()
-                logger.info("agy execution succeeded in %.2fs (%d chars response)", elapsed, len(output_text))
+                raw_out = proc.stdout.strip()
+                try:
+                    agy_data = json.loads(raw_out)
+                    output_text = str(agy_data.get("response", "")).strip()
+                    usage_data = agy_data.get("usage", {})
+                    if usage_data:
+                        prompt_tokens = usage_data.get("input_tokens", prompt_tokens)
+                        completion_tokens = usage_data.get("output_tokens", completion_tokens)
+                        thinking_tokens = usage_data.get("thinking_tokens", 0)
+                        cached_tokens = usage_data.get("cache_read_tokens", 0)
+                except Exception:
+                    output_text = raw_out
+                logger.info(
+                    "agy execution succeeded in %.2fs (%d chars, prompt_tok: %d, comp_tok: %d, cached_tok: %d)",
+                    elapsed,
+                    len(output_text),
+                    prompt_tokens,
+                    completion_tokens,
+                    cached_tokens,
+                )
         except Exception as exc:
             elapsed = time.time() - start_t
             logger.error("agy call threw exception in %.2fs: %s", elapsed, exc)
             output_text = f"Antigravity Bridge Error: {str(exc)}"
 
         completion_id = f"chatcmpl-{uuid.uuid4().hex[:16]}"
-        prompt_tokens = max(len(full_prompt.split()), 1)
-        completion_tokens = max(len(output_text.split()), 1)
+        usage_payload = {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": prompt_tokens + completion_tokens,
+            "prompt_tokens_details": {
+                "cached_tokens": cached_tokens,
+            },
+            "completion_tokens_details": {
+                "reasoning_tokens": thinking_tokens,
+            },
+        }
 
         # 4. Check for Extracted Tool Call
         parsed_tool_calls = None
@@ -306,11 +338,7 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
                 "created": int(time.time()),
                 "model": raw_model,
                 "choices": [{"index": 0, "delta": {}, "finish_reason": finish_reason}],
-                "usage": {
-                    "prompt_tokens": prompt_tokens,
-                    "completion_tokens": completion_tokens,
-                    "total_tokens": prompt_tokens + completion_tokens,
-                },
+                "usage": usage_payload,
             }
             self.wfile.write(f"data: {json.dumps(event_2)}\n\n".encode("utf-8"))
             self.wfile.write(b"data: [DONE]\n\n")
@@ -329,11 +357,7 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
                 "created": int(time.time()),
                 "model": raw_model,
                 "choices": [{"index": 0, "message": msg_obj, "finish_reason": finish_reason}],
-                "usage": {
-                    "prompt_tokens": prompt_tokens,
-                    "completion_tokens": completion_tokens,
-                    "total_tokens": prompt_tokens + completion_tokens,
-                },
+                "usage": usage_payload,
             }
             self._send_json(200, response)
 
