@@ -36,7 +36,8 @@ class MacroDataScheduler:
         if msg:
             return msg
         if isinstance(e, TimeoutError):
-            return f"TimeoutError (exceeded {self.FETCH_TIMEOUT_SECS:.0f}s)"
+            secs = getattr(self, "fetch_timeout_secs", self.FETCH_TIMEOUT_SECS)
+            return f"TimeoutError (exceeded {secs:.0f}s)"
         return type(e).__name__
 
     @classmethod
@@ -53,6 +54,9 @@ class MacroDataScheduler:
         self.settings = settings
         sched_cfg = settings.get("trading", {}).get("schedule", {})
         self.interval_minutes: float = float(sched_cfg.get("macro_data_refresh_minutes", 30))
+        self.fetch_timeout_secs: float = float(
+            sched_cfg.get("macro_data_fetch_timeout_seconds", self.FETCH_TIMEOUT_SECS)
+        )
         self._running = False
         self._stop_event = asyncio.Event()
         self._sync_lock = self._get_global_lock()

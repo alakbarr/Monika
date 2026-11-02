@@ -149,14 +149,15 @@ class VIXFetcher:
         range_param = range_map.get(period, "1mo")
         url = f"{YAHOO_VIX_CHART_URL}?interval=1d&range={range_param}"
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-US,en;q=0.9",
         }
         try:
             res = await fetch_with_retry(
                 url,
                 headers=headers,
-                timeout=8,
+                timeout=12,
                 max_retries=2,
                 base_delay=0.5,
                 response_type="json",

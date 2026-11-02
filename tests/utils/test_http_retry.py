@@ -268,3 +268,32 @@ class TestHTTPRetry:
         assert res == {"ok": True}
         assert _CIRCUIT_BREAKER_FAILURES.get(domain) == 0
         assert domain not in _CIRCUIT_BREAKER
+
+    @pytest.mark.asyncio
+    @patch("monika.infrastructure.api.http_retry.aiohttp.ClientSession")
+    async def test_fetch_with_provided_session_reuses_connection(self, mock_session_cls):
+        """Verifies session passthrough does not create new ClientSession and reuses provided session."""
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.json = AsyncMock(return_value={"pooled": True})
+
+        mock_req_ctx = AsyncMock()
+        mock_req_ctx.__aenter__.return_value = mock_resp
+
+        custom_session = MagicMock()
+        custom_session.request.return_value = mock_req_ctx
+
+        res = await fetch_with_retry(
+            "http://pooled-test.com/api",
+            session=custom_session,
+            max_retries=1,
+            use_circuit_breaker=False,
+        )
+        assert res == {"pooled": True}
+        # ClientSession should NOT have been instantiated
+        mock_session_cls.assert_not_called()
+        # Custom session request should have been awaited
+        custom_session.request.assert_called_once()
+        _, kwargs = custom_session.request.call_args
+        assert kwargs["timeout"].total == 30
+        assert kwargs["timeout"].connect == 15.0

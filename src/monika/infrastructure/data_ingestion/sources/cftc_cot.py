@@ -57,6 +57,7 @@ class CFTCCOTFetcher:
         self.session = session
         self.markets: dict[str, str] = config.get("markets", {})  # {name: code}
         self.timeout = aiohttp.ClientTimeout(total=30)
+        self._active_http_session: Optional[aiohttp.ClientSession] = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -69,33 +70,38 @@ class CFTCCOTFetcher:
             return 0
 
         total_saved = 0
-        for market_name, market_code in self.markets.items():
+        async with aiohttp.ClientSession(timeout=self.timeout) as http_client:
+            self._active_http_session = http_client
             try:
-                # Pilih dataset endpoint berdasarkan tipe komoditas vs financial futures
-                if market_code in COMMODITY_CODES:
-                    url = DISAGGREGATED_URL
-                else:
-                    url = FINANCIAL_URL
+                for market_name, market_code in self.markets.items():
+                    try:
+                        # Pilih dataset endpoint berdasarkan tipe komoditas vs financial futures
+                        if market_code in COMMODITY_CODES:
+                            url = DISAGGREGATED_URL
+                        else:
+                            url = FINANCIAL_URL
 
-                # Query kanonikal CFTC API menggunakan cftc_contract_market_code
-                params = {
-                    "$where": f"cftc_contract_market_code='{market_code}'",
-                    "$order": "report_date_as_yyyy_mm_dd DESC",
-                    "$limit": "52",
-                }
+                        # Query kanonikal CFTC API menggunakan cftc_contract_market_code
+                        params = {
+                            "$where": f"cftc_contract_market_code='{market_code}'",
+                            "$order": "report_date_as_yyyy_mm_dd DESC",
+                            "$limit": "52",
+                        }
 
-                saved = await self._fetch_and_save(url, params, market_name, market_code)
-                total_saved += saved
+                        saved = await self._fetch_and_save(url, params, market_name, market_code)
+                        total_saved += saved
 
-                # Rate limiting (delay) untuk free-tier
-                await asyncio.sleep(0.5)
-            except Exception as e:
-                logger.error(f"COT fetch failed for {market_name} ({market_code}): {e}")
-                try:
-                    await self.session.rollback()
-                except Exception:
-                    pass
-                continue
+                        # Rate limiting (delay) untuk free-tier
+                        await asyncio.sleep(0.1)
+                    except Exception as e:
+                        logger.error(f"COT fetch failed for {market_name} ({market_code}): {e}")
+                        try:
+                            await self.session.rollback()
+                        except Exception:
+                            pass
+                        continue
+            finally:
+                self._active_http_session = None
 
         logger.info(f"COT fetch complete. {total_saved} new records saved.")
         return total_saved
@@ -112,7 +118,12 @@ class CFTCCOTFetcher:
         market_code: str,
     ) -> int:
         """Fungsi generik: mengambil dari API, parsing respons, dan menyimpan ke DB."""
-        data = await fetch_with_retry(url, params=params, timeout=30)
+        data = await fetch_with_retry(
+            url,
+            params=params,
+            timeout=30,
+            session=self._active_http_session,
+        )
 
         if not data:
             logger.warning(f"No COT data returned for {market_name} ({market_code})")

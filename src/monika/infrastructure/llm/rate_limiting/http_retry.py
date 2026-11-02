@@ -8,6 +8,7 @@ import asyncio
 import logging
 import os
 import ssl
+from contextlib import asynccontextmanager
 from typing import Any, Callable, Optional
 
 import aiohttp
@@ -140,6 +141,26 @@ def _sanitize_url(url: str) -> str:
         return url
 
 
+@asynccontextmanager
+async def _http_request_context(
+    session: Optional[aiohttp.ClientSession],
+    timeout_obj: aiohttp.ClientTimeout,
+    method: str,
+    url: str,
+    req_kwargs: dict[str, Any],
+):
+    """Context manager executing HTTP request with session reuse if provided."""
+    if session is not None:
+        call_kwargs = dict(req_kwargs)
+        call_kwargs["timeout"] = timeout_obj
+        async with session.request(method, url, **call_kwargs) as resp:
+            yield resp
+    else:
+        async with aiohttp.ClientSession(timeout=timeout_obj) as http:
+            async with http.request(method, url, **req_kwargs) as resp:
+                yield resp
+
+
 async def fetch_with_retry(
     url: str,
     method: str = "GET",
@@ -155,18 +176,21 @@ async def fetch_with_retry(
     response_type: str = "json",
     timeout_seconds: Optional[int] = None,
     ssl: Any = None,
+    session: Optional[aiohttp.ClientSession] = None,
     **kwargs,
 ) -> Any:
     """
     Eksekusi HTTP request dengan retry otomatis & exponential backoff.
+    Jika session disediakan, koneksi TCP/TLS digunakan kembali (Keep-Alive connection pooling).
     Jika return_error_info=True, return dict {_error: True, _status: int, _body: str} saat gagal.
     Returns: JSON dict, text string, atau None jika gagal.
     """
     effective_timeout = timeout_seconds if timeout_seconds is not None else (kwargs.get("timeout_sec") or timeout)
     if effective_timeout:
-        conn_timeout = min(10.0, float(effective_timeout), max(7.0, float(effective_timeout) * 0.7))
+        eff_f = float(effective_timeout)
+        conn_timeout = min(15.0, eff_f) if eff_f >= 20.0 else max(4.0, eff_f * 0.75)
     else:
-        conn_timeout = 10.0
+        conn_timeout = 15.0
     timeout_obj = aiohttp.ClientTimeout(total=effective_timeout, connect=conn_timeout, sock_connect=conn_timeout)
     effective_ssl = ssl if ssl is not None else kwargs.get("ssl", _DEFAULT_SSL_CONTEXT)
     domain = url.split("/")[2] if "//" in url else url
@@ -194,69 +218,74 @@ async def fetch_with_retry(
             return {"_error": True, "_status": 503, "_body": "Circuit breaker OPEN", "_url": safe_url}
         return None
 
+    req_kwargs: dict[str, Any] = {
+        "params": params,
+        "headers": req_headers,
+        "json": json,
+        "ssl": effective_ssl,
+        "proxy": proxy,
+    }
+
     for attempt in range(max_retries):
         try:
-            async with aiohttp.ClientSession(timeout=timeout_obj) as http:
-                async with http.request(
-                    method, url, params=params, headers=req_headers, json=json, ssl=effective_ssl, proxy=proxy
-                ) as resp:
-                    raw_ra = resp.headers.get("Retry-After") or resp.headers.get("retry-after")
-                    parsed_retry_after: Optional[float] = None
-                    if raw_ra:
-                        try:
-                            parsed_retry_after = float(raw_ra)
-                        except ValueError, TypeError:
-                            parsed_retry_after = None
-
-                    if resp.status == 429:  # Rate limited
-                        body = await resp.text()
-                        if raise_on_429:
-                            if use_circuit_breaker:
-                                _CIRCUIT_BREAKER[domain] = time.time() + 60.0
-                            raise RateLimitError(
-                                f"HTTP 429 Too Many Requests on {safe_url}",
-                                body=body,
-                                retry_after=parsed_retry_after,
-                                status=429,
-                            )
-                        wait = (
-                            (_jitter_retry_after(parsed_retry_after) + 1.0)
-                            if parsed_retry_after is not None
-                            else (_jittered_delay(base_delay, attempt) + 5)
-                        )
-                        logger.warning(f"Rate limited on {safe_url}, waiting {wait:.1f}s")
-                        await asyncio.sleep(wait)
-                        continue
-
-                    if resp.status in (500, 502, 503, 504):  # Server errors
-                        wait = (
-                            (_jitter_retry_after(parsed_retry_after) + 1.0)
-                            if parsed_retry_after is not None
-                            else _jittered_delay(base_delay, attempt)
-                        )
-                        logger.warning(f"Server error {resp.status} on {safe_url}, retry in {wait:.1f}s")
-                        await asyncio.sleep(wait)
-                        continue
-
-                    if resp.status != 200:
-                        body = await resp.text()
-                        err_summary = format_api_error_summary(resp.status, body, safe_url)
-                        logger.error(f"{err_summary} [url: {safe_url}]")
-                        if return_error_info:
-                            return {"_error": True, "_status": resp.status, "_body": body, "_url": safe_url}
-                        return None
-
-                    if use_circuit_breaker:
-                        _CIRCUIT_BREAKER_FAILURES[domain] = 0
-                        if domain in _CIRCUIT_BREAKER:
-                            _CIRCUIT_BREAKER.pop(domain, None)
-
-                    if response_type == "text":
-                        return await resp.text()
+            async with _http_request_context(session, timeout_obj, method, url, req_kwargs) as resp:
+                raw_ra = resp.headers.get("Retry-After") or resp.headers.get("retry-after")
+                parsed_retry_after: Optional[float] = None
+                if raw_ra:
                     try:
-                        return await resp.json()
-                    except Exception:
-                        return await resp.text()
+                        parsed_retry_after = float(raw_ra)
+                    except ValueError, TypeError:
+                        parsed_retry_after = None
+
+                if resp.status == 429:  # Rate limited
+                    body = await resp.text()
+                    if raise_on_429:
+                        if use_circuit_breaker:
+                            _CIRCUIT_BREAKER[domain] = time.time() + 60.0
+                        raise RateLimitError(
+                            f"HTTP 429 Too Many Requests on {safe_url}",
+                            body=body,
+                            retry_after=parsed_retry_after,
+                            status=429,
+                        )
+                    wait = (
+                        (_jitter_retry_after(parsed_retry_after) + 1.0)
+                        if parsed_retry_after is not None
+                        else (_jittered_delay(base_delay, attempt) + 5)
+                    )
+                    logger.warning(f"Rate limited on {safe_url}, waiting {wait:.1f}s")
+                    await asyncio.sleep(wait)
+                    continue
+
+                if resp.status in (500, 502, 503, 504):  # Server errors
+                    wait = (
+                        (_jitter_retry_after(parsed_retry_after) + 1.0)
+                        if parsed_retry_after is not None
+                        else _jittered_delay(base_delay, attempt)
+                    )
+                    logger.warning(f"Server error {resp.status} on {safe_url}, retry in {wait:.1f}s")
+                    await asyncio.sleep(wait)
+                    continue
+
+                if resp.status != 200:
+                    body = await resp.text()
+                    err_summary = format_api_error_summary(resp.status, body, safe_url)
+                    logger.error(f"{err_summary} [url: {safe_url}]")
+                    if return_error_info:
+                        return {"_error": True, "_status": resp.status, "_body": body, "_url": safe_url}
+                    return None
+
+                if use_circuit_breaker:
+                    _CIRCUIT_BREAKER_FAILURES[domain] = 0
+                    if domain in _CIRCUIT_BREAKER:
+                        _CIRCUIT_BREAKER.pop(domain, None)
+
+                if response_type == "text":
+                    return await resp.text()
+                try:
+                    return await resp.json()
+                except Exception:
+                    return await resp.text()
 
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             wait = _jittered_delay(base_delay, attempt)
