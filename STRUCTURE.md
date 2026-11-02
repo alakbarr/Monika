@@ -3065,6 +3065,7 @@ Monika/
 │   ├── reset_paper_trades.py
 │   ├── run_tests.bat
 │   ├── run_tests.sh
+│   ├── simulate_websocket_handshake.py
 │   ├── test_m15_playbooks.py
 │   ├── test_strict_edge.py
 │   ├── update_economic_calendar.py
@@ -3181,4 +3182,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 274 | **Total Tracked Files**: 2877
+**Total Tracked Directories**: 274 | **Total Tracked Files**: 2878

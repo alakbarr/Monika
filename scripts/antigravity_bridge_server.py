@@ -183,8 +183,8 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
             len(tool_names),
         )
 
-        # 3. Invoke Antigravity Engine
-        cmd = [AGY_PATH, "-p", full_prompt, "--model", agy_model, "--output-format", "json"]
+        # 3. Invoke Antigravity Engine via STDIN to bypass OS command-line character limits
+        cmd = [AGY_PATH, "--model", agy_model, "--output-format", "json"]
         start_t = time.time()
         output_text = ""
         prompt_tokens = max(len(full_prompt.split()), 1)
@@ -194,6 +194,7 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
         try:
             proc = subprocess.run(
                 cmd,
+                input=full_prompt,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,

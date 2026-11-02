@@ -276,3 +276,61 @@ def test_ensure_antigravity_bridge_running_spawn_success():
             success = ensure_antigravity_bridge_running(wait_seconds=1.0, force_in_test=True)
             assert success is True
             assert mock_popen.called
+
+
+def test_antigravity_bridge_handler_large_prompt_via_stdin():
+    import importlib.util
+    from monika.core.paths import get_repo_root
+
+    bridge_server_path = get_repo_root() / "scripts" / "antigravity_bridge_server.py"
+    spec = importlib.util.spec_from_file_location("antigravity_bridge_server", str(bridge_server_path))
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    HandlerClass = mod.AntigravityBridgeHandler
+
+    # Mock request body with prompt > 32KB
+    large_text = "Market analysis data. " * 3000
+    body_dict = {
+        "model": "gemini-3.8-flash",
+        "messages": [{"role": "user", "content": large_text}],
+    }
+    body_bytes = json.dumps(body_dict).encode("utf-8")
+
+    mock_wfile = io.BytesIO()
+    mock_rfile = io.BytesIO(body_bytes)
+
+    class TestBridgeHandler(HandlerClass):
+        def __init__(self):
+            self.path = "/v1/chat/completions"
+            self.headers = {"Content-Length": str(len(body_bytes))}
+            self.rfile = mock_rfile
+            self.wfile = mock_wfile
+            self._headers_buffer = []
+
+        def send_response(self, code, message=None):
+            self.status_code = code
+
+        def send_header(self, keyword, value):
+            pass
+
+        def end_headers(self):
+            pass
+
+    mock_proc = MagicMock()
+    mock_proc.returncode = 0
+    mock_proc.stdout = json.dumps({"response": "SUCCESS_VIA_STDIN", "usage": {}})
+
+    with patch("subprocess.run", return_value=mock_proc) as mock_run:
+        handler = TestBridgeHandler()
+        handler.do_POST()
+        assert handler.status_code == 200
+
+        # Verify that subprocess.run was called with input=... (stdin) and NOT -p
+        assert mock_run.called
+        call_args, call_kwargs = mock_run.call_args
+        cmd = call_args[0]
+        assert "-p" not in cmd
+        assert "input" in call_kwargs
+        assert large_text in call_kwargs["input"]
