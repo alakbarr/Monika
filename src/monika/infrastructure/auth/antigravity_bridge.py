@@ -431,6 +431,7 @@ def check_antigravity_bridge_health(proxy_url: str | None = None, timeout: float
                 "status_code": status,
                 "proxy_url": base,
                 "authenticated": status == 200,
+                "healthy": status == 200,
                 "message": "Antigravity Bridge is active and responsive.",
             }
     except urllib.error.HTTPError as err:
@@ -439,6 +440,7 @@ def check_antigravity_bridge_health(proxy_url: str | None = None, timeout: float
             "status_code": err.code,
             "proxy_url": base,
             "authenticated": err.code != 401,
+            "healthy": False,
             "message": f"Bridge responded with HTTP {err.code}: {err.reason}",
         }
     except Exception as exc:
@@ -447,5 +449,6 @@ def check_antigravity_bridge_health(proxy_url: str | None = None, timeout: float
             "status_code": None,
             "proxy_url": base,
             "authenticated": False,
+            "healthy": False,
             "message": f"Could not connect to Antigravity Bridge at {base}: {exc}",
         }

@@ -268,11 +268,17 @@ class OpenAIProvider(BaseLLMClient):
         try:
             from openai import AsyncOpenAI
 
-            provider_cfg = (settings or {}).get("llm", {}).get("providers", {}).get("openai", {})
+            provider_cfg = (settings or {}).get("llm", {}).get("providers", {}).get(target_prov, {}) or (
+                settings or {}
+            ).get("llm", {}).get("providers", {}).get("openai", {})
             max_retries = provider_cfg.get("max_retries", 3)
             timeout_sec = float(provider_cfg.get("timeout_seconds", 360.0))
+            base_url = kwargs.get("base_url") or provider_cfg.get("base_url")
+            client_kwargs = {"api_key": self.api_key, "max_retries": max_retries, "timeout": timeout_sec}
+            if base_url:
+                client_kwargs["base_url"] = str(base_url)
             if self.api_key:
-                self.client = AsyncOpenAI(api_key=self.api_key, max_retries=max_retries, timeout=timeout_sec)
+                self.client = AsyncOpenAI(**client_kwargs)
             else:
                 self.client = None
         except ImportError:

@@ -143,10 +143,11 @@ def test_resolve_antigravity_access_token_active():
         "access_token": "ya29.valid_token",
         "expires_at": 9999999999.0,
     }
-    with patch("monika.infrastructure.auth.antigravity_bridge.get_oauth_tokens", return_value=mock_record):
-        with patch("monika.infrastructure.auth.antigravity_bridge.is_token_expiring", return_value=False):
-            token = resolve_antigravity_access_token()
-            assert token == "ya29.valid_token"
+    with patch("monika.infrastructure.auth.antigravity_bridge.get_oauth_accounts", return_value=[]):
+        with patch("monika.infrastructure.auth.antigravity_bridge.get_oauth_tokens", return_value=mock_record):
+            with patch("monika.infrastructure.auth.antigravity_bridge.is_token_expiring", return_value=False):
+                token = resolve_antigravity_access_token()
+                assert token == "ya29.valid_token"
 
 
 def test_resolve_antigravity_access_token_expired():
@@ -157,14 +158,15 @@ def test_resolve_antigravity_access_token_expired():
         "refresh_token": "1//refresh_token",
         "expires_at": 100.0,
     }
-    with patch("monika.infrastructure.auth.antigravity_bridge.get_oauth_tokens", return_value=mock_record):
-        with patch("monika.infrastructure.auth.antigravity_bridge.is_token_expiring", return_value=True):
-            with patch(
-                "monika.infrastructure.auth.antigravity_bridge.refresh_antigravity_token",
-                return_value={"access_token": "ya29.new_token"},
-            ):
-                token = resolve_antigravity_access_token()
-                assert token == "ya29.new_token"
+    with patch("monika.infrastructure.auth.antigravity_bridge.get_oauth_accounts", return_value=[]):
+        with patch("monika.infrastructure.auth.antigravity_bridge.get_oauth_tokens", return_value=mock_record):
+            with patch("monika.infrastructure.auth.antigravity_bridge.is_token_expiring", return_value=True):
+                with patch(
+                    "monika.infrastructure.auth.antigravity_bridge.refresh_antigravity_token",
+                    return_value={"access_token": "ya29.new_token"},
+                ):
+                    token = resolve_antigravity_access_token()
+                    assert token == "ya29.new_token"
 
 
 def test_oauth_callback_handler_get():

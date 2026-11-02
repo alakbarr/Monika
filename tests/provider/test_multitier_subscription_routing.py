@@ -147,13 +147,14 @@ def test_gemini_provider_oauth_bearer_auth():
     oauth_token = "ya29.a0AfH6SMTestMockAccessToken"
 
     with patch.dict("os.environ", {}, clear=True):
-        provider = GeminiProvider(
-            model="gemini-4-argon",
-            api_key=oauth_token,
-            settings=settings,
-        )
-        assert provider._is_paid_key(oauth_token) is True
-        assert provider._get_api_key() == oauth_token
+        with patch("monika.infrastructure.auth.antigravity_bridge.resolve_antigravity_access_token", return_value=None):
+            provider = GeminiProvider(
+                model="gemini-4-argon",
+                api_key=oauth_token,
+                settings=settings,
+            )
+            assert provider._is_paid_key(oauth_token) is True
+            assert provider._get_api_key() == oauth_token
 
 
 def test_gemini_provider_argon_auto_paid_key_resolution():
