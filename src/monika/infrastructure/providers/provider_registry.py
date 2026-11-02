@@ -401,7 +401,24 @@ def _register_builtins():
                 base_url=base_url,
             )
 
-        # 2. Native Google OAuth PKCE token available -> route directly to GeminiProvider without local proxy
+        # 2. Try auto-spawning local Antigravity Bridge proxy in a separate terminal if offline
+        from monika.infrastructure.auth.antigravity_bridge import ensure_antigravity_bridge_running
+
+        if not custom_base and ensure_antigravity_bridge_running(base_url):
+            return OpenAIProvider(
+                model=model_name,
+                max_tokens=max_tokens,
+                max_tool_turns=max_tool_turns,
+                thinking_level=thinking_level,
+                settings=settings,
+                temperature=temperature,
+                role=task_role,
+                api_key="antigravity_local_token",
+                provider_name="antigravity",
+                base_url=base_url,
+            )
+
+        # 3. Native Google OAuth PKCE token available -> route directly to GeminiProvider without local proxy
         oauth_token = resolve_antigravity_access_token()
         if oauth_token:
             return GeminiProvider(
@@ -414,7 +431,7 @@ def _register_builtins():
                 api_key=oauth_token,
             )
 
-        # 3. Fallback to default local proxy
+        # 4. Fallback to default local proxy
         return OpenAIProvider(
             model=model_name,
             max_tokens=max_tokens,

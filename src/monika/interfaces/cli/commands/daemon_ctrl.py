@@ -448,6 +448,21 @@ async def _acli_run(args: Any) -> None:
 
     configure_from_settings(settings)
 
+    # Auto-detect and spawn Antigravity Bridge Server in a separate terminal if needed
+    try:
+        from monika.infrastructure.auth.antigravity_bridge import (
+            ensure_antigravity_bridge_running,
+            is_antigravity_needed_in_settings,
+        )
+
+        if is_antigravity_needed_in_settings(settings):
+            logger.info(
+                "[Antigravity] Detected 'provider: antigravity' in settings.yaml. Ensuring Antigravity Bridge is running..."
+            )
+            ensure_antigravity_bridge_running()
+    except Exception as exc:
+        logger.warning("[Antigravity] Notice while checking Antigravity Bridge: %s", exc)
+
     # 3. Init DB & Health Checks
     from monika.application.bootstrap import bootstrap_application
 

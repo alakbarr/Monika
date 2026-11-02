@@ -452,3 +452,129 @@ def check_antigravity_bridge_health(proxy_url: str | None = None, timeout: float
             "healthy": False,
             "message": f"Could not connect to Antigravity Bridge at {base}: {exc}",
         }
+
+
+def is_antigravity_needed_in_settings(settings: dict[str, Any] | None) -> bool:
+    """
+    Detect if any model or task role in settings is configured to use provider: antigravity.
+    Scans default_provider, task_roles providers mapping, and explicit slot overrides.
+    """
+    if not isinstance(settings, dict):
+        return False
+    llm_cfg = settings.get("llm", {})
+    if not isinstance(llm_cfg, dict):
+        return False
+
+    default_prov = str(llm_cfg.get("default_provider") or "").strip().lower()
+    if default_prov in ("antigravity", "agy"):
+        return True
+
+    task_roles = llm_cfg.get("task_roles", {})
+    if isinstance(task_roles, dict):
+        for _role_name, role_cfg in task_roles.items():
+            if not isinstance(role_cfg, dict):
+                continue
+            prov = role_cfg.get("provider")
+            if isinstance(prov, str) and prov.strip().lower() in ("antigravity", "agy"):
+                return True
+            if isinstance(prov, dict):
+                for slot_val in prov.values():
+                    if isinstance(slot_val, str) and slot_val.strip().lower() in ("antigravity", "agy"):
+                        return True
+            provs = role_cfg.get("providers")
+            if isinstance(provs, dict):
+                for slot_val in provs.values():
+                    if isinstance(slot_val, str) and slot_val.strip().lower() in ("antigravity", "agy"):
+                        return True
+            if str(role_cfg.get("primary_provider") or "").strip().lower() in ("antigravity", "agy"):
+                return True
+            for i in range(1, 11):
+                if str(role_cfg.get(f"fallback_{i}_provider") or "").strip().lower() in ("antigravity", "agy"):
+                    return True
+            for key in ("primary", *(f"fallback_{i}" for i in range(1, 11))):
+                val = str(role_cfg.get(key) or "").strip().lower()
+                if val.startswith(("antigravity:", "agy:")):
+                    return True
+
+    return False
+
+
+def ensure_antigravity_bridge_running(
+    proxy_url: str | None = None,
+    wait_seconds: float = 4.0,
+    open_terminal: bool = True,
+    force_in_test: bool = False,
+) -> bool:
+    """
+    Ensure the local Antigravity Bridge proxy server is running and responsive.
+    If offline, automatically spawns `scripts/antigravity_bridge_server.py`.
+    On Windows with open_terminal=True, spawns in a new dedicated console window.
+    """
+    import subprocess
+    import sys
+
+    if not force_in_test and (("pytest" in sys.modules) or ("PYTEST_CURRENT_TEST" in os.environ)):
+        return False
+
+    target_url = proxy_url or DEFAULT_ANTIGRAVITY_PROXY_URL
+    current_health = check_antigravity_bridge_health(target_url, timeout=1.0)
+    if current_health.get("healthy"):
+        return True
+
+    from monika.core.paths import get_repo_root
+
+    repo_root = get_repo_root()
+    server_script = repo_root / "scripts" / "antigravity_bridge_server.py"
+    if not server_script.exists():
+        logger.warning("[Antigravity] Bridge server script not found at %s", server_script)
+        return False
+
+    python_exe = sys.executable or "python"
+    logger.info(
+        "[Antigravity] Auto-spawning Antigravity Bridge Server in %s...",
+        "a separate terminal" if (os.name == "nt" and open_terminal) else "background",
+    )
+
+    try:
+        if os.name == "nt" and open_terminal:
+            CREATE_NEW_CONSOLE = 0x00000010
+            CREATE_NEW_PROCESS_GROUP = 0x00000200
+            subprocess.Popen(
+                [python_exe, str(server_script)],
+                creationflags=CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP,
+                cwd=str(repo_root),
+            )
+        elif os.name == "nt":
+            CREATE_NEW_PROCESS_GROUP = 0x00000200
+            DETACHED_PROCESS = 0x00000008
+            subprocess.Popen(
+                [python_exe, str(server_script)],
+                creationflags=CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                cwd=str(repo_root),
+            )
+        else:
+            subprocess.Popen(
+                [python_exe, str(server_script)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                start_new_session=True,
+                cwd=str(repo_root),
+            )
+
+        start_time = time.time()
+        while time.time() - start_time < wait_seconds:
+            time.sleep(0.3)
+            h = check_antigravity_bridge_health(target_url, timeout=1.0)
+            if h.get("healthy"):
+                logger.info("[Antigravity] Antigravity Bridge Server is active and healthy at %s.", target_url)
+                return True
+
+        logger.warning("[Antigravity] Timed out waiting for Antigravity Bridge Server at %s.", target_url)
+        return False
+    except Exception as exc:
+        logger.warning("[Antigravity] Failed to auto-spawn Antigravity Bridge Server: %s", exc)
+        return False

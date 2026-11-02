@@ -212,3 +212,67 @@ def test_oauth_callback_handler_get():
     assert h2.status_code == 200
     assert OAuthCallbackHandler.captured_code == "4/0A_valid_code"
     assert ready_event.is_set()
+
+
+def test_is_antigravity_needed_in_settings():
+    from monika.infrastructure.auth.antigravity_bridge import is_antigravity_needed_in_settings
+
+    # 1. Empty or None
+    assert is_antigravity_needed_in_settings(None) is False
+    assert is_antigravity_needed_in_settings({}) is False
+
+    # 2. default_provider
+    assert is_antigravity_needed_in_settings({"llm": {"default_provider": "antigravity"}}) is True
+    assert is_antigravity_needed_in_settings({"llm": {"default_provider": "agy"}}) is True
+    assert is_antigravity_needed_in_settings({"llm": {"default_provider": "openrouter"}}) is False
+
+    # 3. task_roles with string provider
+    assert is_antigravity_needed_in_settings({"llm": {"task_roles": {"stage1": {"provider": "antigravity"}}}}) is True
+
+    # 4. task_roles with dict provider
+    assert (
+        is_antigravity_needed_in_settings({"llm": {"task_roles": {"stage1": {"provider": {"primary": "antigravity"}}}}})
+        is True
+    )
+
+    # 5. task_roles with primary_provider / fallback_provider
+    assert (
+        is_antigravity_needed_in_settings({"llm": {"task_roles": {"stage1": {"primary_provider": "antigravity"}}}})
+        is True
+    )
+    assert (
+        is_antigravity_needed_in_settings({"llm": {"task_roles": {"stage1": {"fallback_1_provider": "antigravity"}}}})
+        is True
+    )
+
+    # 6. task_roles with prefix
+    assert (
+        is_antigravity_needed_in_settings(
+            {"llm": {"task_roles": {"stage1": {"primary": "antigravity:gemini-3.8-flash"}}}}
+        )
+        is True
+    )
+
+
+def test_ensure_antigravity_bridge_running_already_healthy():
+    from monika.infrastructure.auth.antigravity_bridge import ensure_antigravity_bridge_running
+
+    with patch(
+        "monika.infrastructure.auth.antigravity_bridge.check_antigravity_bridge_health",
+        return_value={"healthy": True},
+    ):
+        assert ensure_antigravity_bridge_running(force_in_test=True) is True
+
+
+def test_ensure_antigravity_bridge_running_spawn_success():
+    from monika.infrastructure.auth.antigravity_bridge import ensure_antigravity_bridge_running
+
+    mock_proc = MagicMock()
+    with patch(
+        "monika.infrastructure.auth.antigravity_bridge.check_antigravity_bridge_health",
+        side_effect=[{"healthy": False}, {"healthy": True}],
+    ):
+        with patch("subprocess.Popen", return_value=mock_proc) as mock_popen:
+            success = ensure_antigravity_bridge_running(wait_seconds=1.0, force_in_test=True)
+            assert success is True
+            assert mock_popen.called

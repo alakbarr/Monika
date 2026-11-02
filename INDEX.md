@@ -10996,6 +10996,8 @@
   - `get_antigravity_pool_summary() -> dict[str, Any]`: Return summary statistics of active Antigravity account pool.
   - `resolve_antigravity_access_token(tier: str | None, model: str | None) -> str | None`: Retrieve and automatically refresh active Google Antigravity access token from account pool.
   - `check_antigravity_bridge_health(proxy_url: str | None, timeout: float) -> dict[str, Any]`: Probe the local Antigravity proxy server to verify it is responsive and authenticated.
+  - `is_antigravity_needed_in_settings(settings: dict[str, Any] | None) -> bool`: Detect if any model or task role in settings is configured to use provider: antigravity.
+  - `ensure_antigravity_bridge_running(proxy_url: str | None, wait_seconds: float, open_terminal: bool, ...) -> bool`: Ensure the local Antigravity Bridge proxy server is running and responsive.
 
 #### `claude_oauth.py` - *Claude (Anthropic) OAuth Integration & Credential Resolver.*
 - **Path**: [`src/monika/infrastructure/auth/claude_oauth.py`](src/monika/infrastructure/auth/claude_oauth.py)

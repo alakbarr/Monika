@@ -363,6 +363,20 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
 
 
 def main():
+    if os.name == "nt":
+        try:
+            import ctypes
+
+            ctypes.windll.kernel32.SetConsoleTitleW(f"Monika - Antigravity Bridge Server (Port {PORT})")
+        except Exception:
+            pass
+
+    print("=" * 60)
+    print(f"  Monika Antigravity Bridge Server (Port {PORT})")
+    print(f"  Bridged to Google Antigravity CLI: {AGY_PATH}")
+    print(f"  Listening on http://127.0.0.1:{PORT}/v1")
+    print("=" * 60)
+
     if not os.path.exists(AGY_PATH):
         logger.warning("Antigravity binary not found at %s. Ensure Antigravity CLI is installed.", AGY_PATH)
     else:

@@ -141,6 +141,26 @@ def test_provider_registry_antigravity_direct_oauth_fallback():
         assert client_proxy.model == "gemini-4-argon"
         assert client_proxy.provider_name == "antigravity"
 
+    # Case 3: Local proxy was offline, but auto-spawn succeeded -> uses OpenAIProvider
+    with patch(
+        "monika.infrastructure.auth.antigravity_bridge.check_antigravity_bridge_health",
+        return_value={"running": False, "authenticated": False, "healthy": False},
+    ):
+        with patch(
+            "monika.infrastructure.auth.antigravity_bridge.ensure_antigravity_bridge_running",
+            return_value=True,
+        ) as mock_spawn:
+            client_spawn = ProviderRegistry.create_client(
+                provider_name="antigravity",
+                model_name="gemini-3.8-flash",
+                settings=settings,
+                role_config=role_config,
+            )
+            assert isinstance(client_spawn, OpenAIProvider)
+            assert client_spawn.model == "gemini-3.8-flash"
+            assert client_spawn.provider_name == "antigravity"
+            assert mock_spawn.called
+
 
 def test_gemini_provider_oauth_bearer_auth():
     settings = {"llm": {"providers": {"gemini": {}}}}
