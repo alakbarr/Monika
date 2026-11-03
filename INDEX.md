@@ -951,7 +951,7 @@
   - `default_serializer(obj: Any) -> Any`: Default serializer for types not natively handled by orjson.
   - `dumps_bytes(obj: Any) -> bytes`: Serialize an object to JSON bytes.
   - `dumps(obj: Any) -> str`: Serialize an object to JSON str.
-  - `loads(s: Union[str, bytes, bytearray, memoryview]) -> Any`: Deserialize JSON from str or bytes into Python objects.
+  - `loads(s: Union[str, bytes, bytearray]) -> Any`: Deserialize JSON from str or bytes into Python objects.
 
 ### Folder: `src/monika/core/streaming` <a id="folder-srcmonikacorestreaming"></a>
 

@@ -11,11 +11,8 @@ from uuid import UUID
 
 try:
     import orjson
-
-    _HAS_ORJSON = True
 except ImportError:
-    orjson = None  # type: ignore[assignment]
-    _HAS_ORJSON = False
+    orjson = None
 
 
 def default_serializer(obj: Any) -> Any:
@@ -45,7 +42,7 @@ def dumps_bytes(
     Serialize an object to JSON bytes.
     Zero-copy UTF-8 output powered by orjson.
     """
-    if _HAS_ORJSON:
+    if orjson is not None:
         opt = option
         if opt is None:
             opt = orjson.OPT_NON_STR_KEYS | orjson.OPT_SERIALIZE_NUMPY | orjson.OPT_UTC_Z
@@ -71,15 +68,15 @@ def dumps(
     return dumps_bytes(obj, default=default, option=option).decode("utf-8")
 
 
-def loads(s: Union[str, bytes, bytearray, memoryview]) -> Any:
+def loads(s: Union[str, bytes, bytearray]) -> Any:
     """
     Deserialize JSON from str or bytes into Python objects.
     """
-    if _HAS_ORJSON:
+    if orjson is not None:
         try:
             return orjson.loads(s)
         except Exception:
             pass
     if isinstance(s, (bytes, bytearray)):
-        s = s.decode("utf-8")
+        return json.loads(s.decode("utf-8"))
     return json.loads(s)

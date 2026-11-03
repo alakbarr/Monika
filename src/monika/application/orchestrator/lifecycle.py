@@ -119,6 +119,7 @@ class AgentLifecycleMixin:
     _run_paper_trade_monitor: Callable[[], Coroutine[Any, Any, None]]
     _run_db_health_check: Callable[[], Coroutine[Any, Any, None]]
     _run_cache_reaper_loop: Callable[[], Coroutine[Any, Any, None]]
+    _run_memory_supervisor: Callable[[], Coroutine[Any, Any, None]]
     _run_scraper_loop: Callable[[], Coroutine[Any, Any, None]]
     _run_whatif_resolver: Callable[[], Coroutine[Any, Any, None]]
     _run_micro_playbook_compiler_loop: Callable[[], Coroutine[Any, Any, None]]
