@@ -145,7 +145,9 @@ class PlaybookLedger:
         if playbooks_dir:
             self.playbooks_dir = playbooks_dir
         else:
-            self.playbooks_dir = str(get_skills_dir() / "trading" / "playbooks")
+            from monika.core.paths import get_runtime_playbooks_dir
+
+            self.playbooks_dir = str(get_runtime_playbooks_dir())
 
         self.ledger_file = os.path.join(self.playbooks_dir, ".curator_ledger.jsonl")
         self.blobs_dir = os.path.join(self.playbooks_dir, ".backups", "blobs")

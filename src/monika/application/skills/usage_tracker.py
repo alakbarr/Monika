@@ -16,7 +16,24 @@ class SkillUsageTracker:
 
     @staticmethod
     def _get_usage_file(skill_path: Union[str, Path]) -> Path:
+        from monika.core.paths import get_runtime_skills_dir, get_static_skills_dir
+
         target = Path(skill_path).resolve()
+        static_root = get_static_skills_dir().resolve()
+        try:
+            is_skills_tree = ("skills" in target.parts) or target.is_relative_to(static_root)
+        except Exception:
+            is_skills_tree = "skills" in target.parts
+
+        if is_skills_tree:
+            name_part = target.parent.name if target.name == "SKILL.md" else target.stem
+            cat_part = target.parent.parent.name if target.name == "SKILL.md" else target.parent.name
+            safe_key = f"{cat_part}__{name_part}".strip("_")
+            telemetry_dir = get_runtime_skills_dir() / "telemetry"
+            telemetry_dir.mkdir(parents=True, exist_ok=True)
+            return telemetry_dir / f"{safe_key}.usage.json"
+
+        # Adjacent to target for hermetic isolation in tests / custom directories
         if target.is_dir():
             return target / ".usage.json"
         if target.name == "SKILL.md":
@@ -44,8 +61,9 @@ class SkillUsageTracker:
         """Saves usage telemetry to .usage.json file."""
         uf = cls._get_usage_file(skill_path)
         try:
-            uf.parent.mkdir(parents=True, exist_ok=True)
-            uf.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            from monika.core.paths import atomic_write_text
+
+            atomic_write_text(uf, json.dumps(data, indent=2), encoding="utf-8")
         except Exception as e:
             logger.debug(f"Failed to write usage json {uf}: {e}")
 

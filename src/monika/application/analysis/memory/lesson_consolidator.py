@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import monika.core.primitives.clock as clock
-from monika.core.paths import get_skills_dir
+from monika.core.paths import atomic_write_text, get_runtime_skills_dir, get_skills_dir, get_static_skills_dir
 
 logger = logging.getLogger("TradingAgent.LessonConsolidator")
 
@@ -344,11 +344,21 @@ async def promote_lesson_to_playbook(content: str) -> None:
     from pathlib import Path
 
     now = clock.now()
-    base_skills = get_skills_dir() / "trading"
-    target_skill = base_skills / "lessons-learned" / "SKILL.md"
-    legacy_skill = base_skills / "lessons_learned.md"
-    path = target_skill if target_skill.exists() or not legacy_skill.exists() else legacy_skill
-    existing_text = path.read_text(encoding="utf-8") if path.exists() else ""
+    runtime_trading = get_runtime_skills_dir() / "trading"
+    target_skill = runtime_trading / "lessons-learned" / "SKILL.md"
+    static_trading = get_static_skills_dir() / "trading"
+    static_skill = static_trading / "lessons-learned" / "SKILL.md"
+    legacy_skill = static_trading / "lessons_learned.md"
+
+    path = target_skill
+    if target_skill.exists() and target_skill.stat().st_size > 0:
+        existing_text = target_skill.read_text(encoding="utf-8")
+    elif static_skill.exists() and static_skill.stat().st_size > 0:
+        existing_text = static_skill.read_text(encoding="utf-8")
+    elif legacy_skill.exists() and legacy_skill.stat().st_size > 0:
+        existing_text = legacy_skill.read_text(encoding="utf-8")
+    else:
+        existing_text = ""
 
     section_marker = "## 4. Pelajaran Empiris Terkonsolidasi (Auto-Consolidated)"
 
@@ -385,8 +395,7 @@ async def promote_lesson_to_playbook(content: str) -> None:
         f"{base_rules}\n\n{section_marker}\n*(Diperbarui tervalidasi OOS: {now.strftime('%Y-%m-%d')})*\n\n{sec4_body}\n"
     )
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(updated_content, encoding="utf-8")
+    atomic_write_text(path, updated_content, encoding="utf-8")
     try:
         from monika.application.skills.loader import invalidate_cache
 

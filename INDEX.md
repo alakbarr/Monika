@@ -219,6 +219,12 @@
   - `get_subagent_logs_dir() -> Path`: Return canonical subagent logs directory, ensuring it exists.
   - `get_builtin_skills_dir() -> Path`: Return canonical skills directory (backward compatibility alias).
   - `get_skills_dir() -> Path`: Return canonical skills directory, ensuring it exists.
+  - `get_static_skills_dir() -> Path`: Return immutable git-tracked static skills directory (anchored to REPO_ROOT).
+  - `get_static_strategies_dir() -> Path`: Return immutable git-tracked static synthesized strategies directory.
+  - `get_runtime_skills_dir() -> Path`: Return dynamic runtime skills directory inside DATA_DIR (respecting MONIKA_RUNTIME_DATA_DIR).
+  - `get_runtime_strategies_dir() -> Path`: Return dynamic runtime strategies directory inside DATA_DIR.
+  - `get_runtime_playbooks_dir() -> Path`: Return dynamic runtime playbooks directory inside runtime skills.
+  - `atomic_write_text(target: Union[str, Path], content: str, encoding: str, ...) -> None`: Atomically writes text using a temporary file and os.replace with backoff retry.
   - `resolve_data_path(rel_or_name: str) -> Path`: Resolve a filename or sub-path inside the canonical data directory.
   - `resolve_config_path(rel_or_name: str) -> Path`: Resolve a config filename, checking active config/ first, then repo config/.
 

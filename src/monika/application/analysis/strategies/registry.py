@@ -15,6 +15,7 @@ from monika.application.analysis.strategies.base_strategy import (
     StrategyTier,
 )
 from monika.infrastructure.database.models import SystemConfig
+from monika.core.paths import get_runtime_strategies_dir, get_static_strategies_dir
 
 logger = logging.getLogger("TradingAgent.StrategyRegistry")
 
@@ -28,7 +29,7 @@ class StrategyRegistry:
     _last_load_time: float = 0.0
     _load_interval: float = 60.0
     MAX_SYNTHESIZED_PER_SYMBOL: int = 5
-    SYNTHESIZED_DIR: Path = Path(__file__).resolve().parent / "synthesized"
+    SYNTHESIZED_DIR: Path = get_runtime_strategies_dir()
 
     @classmethod
     def get_tier(cls, strategy_id: str) -> StrategyTier:
@@ -353,6 +354,10 @@ class StrategyRegistry:
                         else:
                             # Self-healing fallback: Check if a valid version exists on disk
                             disk_path = cls.SYNTHESIZED_DIR / f"{s_id}.py"
+                            if not disk_path.exists():
+                                static_p = get_static_strategies_dir() / f"{s_id}.py"
+                                if static_p.exists():
+                                    disk_path = static_p
                             healed = False
                             if disk_path.exists():
                                 try:

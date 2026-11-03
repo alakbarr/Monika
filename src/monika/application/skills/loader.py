@@ -17,7 +17,12 @@ from typing import Optional
 
 logger = logging.getLogger("TradingAgent.SkillLoader")
 
-from monika.core.paths import get_skills_dir
+from monika.core.paths import (
+    get_skills_dir,
+    get_runtime_skills_dir,
+    get_runtime_playbooks_dir,
+    get_static_skills_dir,
+)
 
 # Resolve canonical skills base directory
 _SKILLS_DIR = get_skills_dir() / "trading"
@@ -69,7 +74,17 @@ def _read_skill_raw(name: str) -> str:
     base_root = _SKILLS_DIR.parent.resolve()
     candidate_paths: list[Path] = []
 
+    runtime_dir = get_runtime_skills_dir()
     for v in variants:
+        # Dynamic runtime candidates (take precedence)
+        candidate_paths.append(runtime_dir / "trading" / v / "SKILL.md")
+        candidate_paths.append(runtime_dir / "trading" / f"{v}.md")
+        candidate_paths.append(runtime_dir / "playbooks" / v / "SKILL.md")
+        candidate_paths.append(runtime_dir / "playbooks" / f"{v}.md")
+        candidate_paths.append(runtime_dir / "crystallized" / v / "SKILL.md")
+        candidate_paths.append(runtime_dir / "crystallized" / f"{v}.md")
+        candidate_paths.append(runtime_dir / "crystallized" / f"{v.removeprefix('crystallized_')}.md")
+        # Static tracked candidates
         # 1. Folder-based in _SKILLS_DIR (e.g. trading/<v>/SKILL.md)
         candidate_paths.append(_SKILLS_DIR / v / "SKILL.md")
         # 2. Direct .md in _SKILLS_DIR
@@ -84,11 +99,16 @@ def _read_skill_raw(name: str) -> str:
         # 5. General folder
         candidate_paths.append(_SKILLS_DIR.parent / "general" / v / "SKILL.md")
 
+    allowed_roots = [
+        base_root,
+        get_static_skills_dir().resolve(),
+        runtime_dir.resolve(),
+    ]
     for path in candidate_paths:
-        if path.exists() and path.is_file():
+        if path.exists() and path.is_file() and path.stat().st_size > 0:
             resolved = path.resolve()
-            if not resolved.is_relative_to(base_root):
-                raise ValueError(f"Directory traversal detected outside skills folder: '{name}'")
+            if not any(resolved.is_relative_to(root) for root in allowed_roots):
+                raise ValueError(f"Directory traversal detected outside skills folders: '{name}'")
             return path.read_text(encoding="utf-8")
 
     raise FileNotFoundError(f"Skill '{name}' not found at {_SKILLS_DIR}. Available skills: {list_skills()}")
@@ -216,6 +236,23 @@ def list_skills() -> list[str]:
         for p in gen_dir.glob("*/SKILL.md"):
             _collect_skill_identifiers(p)
         for p in gen_dir.glob("*.md"):
+            if p.name != "SKILL.md":
+                _collect_skill_identifiers(p)
+
+    # 5. Runtime dynamic skills directory
+    rt_dir = get_runtime_skills_dir()
+    if rt_dir.exists():
+        for p in (rt_dir / "trading").glob("*/SKILL.md"):
+            _collect_skill_identifiers(p)
+        for p in (rt_dir / "trading").glob("*.md"):
+            if p.name != "SKILL.md":
+                _collect_skill_identifiers(p)
+        for p in (rt_dir / "playbooks").glob("*.md"):
+            if p.name != "SKILL.md":
+                _collect_skill_identifiers(p)
+        for p in (rt_dir / "crystallized").glob("*/SKILL.md"):
+            _collect_skill_identifiers(p)
+        for p in (rt_dir / "crystallized").glob("*.md"):
             if p.name != "SKILL.md":
                 _collect_skill_identifiers(p)
 
@@ -408,8 +445,9 @@ def get_dynamic_micro_skills(symbol: str, context: Optional[dict] = None) -> lis
     if active_pb:
         for candidate in (active_pb, f"{active_pb}_playbook", active_pb.removesuffix("_playbook")):
             candidate_clean = candidate.lower()
+            rt_pb = get_runtime_playbooks_dir() / f"{candidate_clean}.md"
             pb_path = _SKILLS_DIR / "playbooks" / f"{candidate_clean}.md"
-            if pb_path.exists() and candidate_clean not in skills:
+            if (rt_pb.exists() or pb_path.exists()) and candidate_clean not in skills:
                 skills.insert(2, candidate_clean)
                 break
 
@@ -434,8 +472,9 @@ def get_dynamic_micro_skills(symbol: str, context: Optional[dict] = None) -> lis
             for candidate_playbook in (f"{sym.lower()}_{r}_playbook", f"{sym.lower()}_{r}"):
                 if candidate_playbook not in seen_candidates:
                     seen_candidates.add(candidate_playbook)
+                    rt_playbook = get_runtime_playbooks_dir() / f"{candidate_playbook}.md"
                     playbook_path = _SKILLS_DIR / "playbooks" / f"{candidate_playbook}.md"
-                    if playbook_path.exists() and candidate_playbook not in skills:
+                    if (rt_playbook.exists() or playbook_path.exists()) and candidate_playbook not in skills:
                         skills.insert(2, candidate_playbook)
                         matched = True
                         break

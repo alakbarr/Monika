@@ -21,10 +21,10 @@ from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecor
 
 logger = logging.getLogger("TradingAgent.PerformanceReviewer")
 
-from monika.core.paths import get_skills_dir
+from monika.core.paths import atomic_write_text, get_runtime_skills_dir, get_skills_dir
 
-PERFORMANCE_NOTES_PATH = get_skills_dir() / "trading" / "performance-notes" / "SKILL.md"
-FUNDAMENTAL_PERFORMANCE_NOTES_PATH = get_skills_dir() / "trading" / "fundamental-performance-notes" / "SKILL.md"
+PERFORMANCE_NOTES_PATH = get_runtime_skills_dir() / "trading" / "performance-notes" / "SKILL.md"
+FUNDAMENTAL_PERFORMANCE_NOTES_PATH = get_runtime_skills_dir() / "trading" / "fundamental-performance-notes" / "SKILL.md"
 
 
 async def generate_fundamental_performance_review(session: AsyncSession) -> str | None:
@@ -82,8 +82,7 @@ async def generate_fundamental_performance_review(session: AsyncSession) -> str 
     content = "\n".join(lines)
 
     try:
-        FUNDAMENTAL_PERFORMANCE_NOTES_PATH.parent.mkdir(parents=True, exist_ok=True)
-        FUNDAMENTAL_PERFORMANCE_NOTES_PATH.write_text(content, encoding="utf-8")
+        atomic_write_text(FUNDAMENTAL_PERFORMANCE_NOTES_PATH, content, encoding="utf-8")
         logger.info(f"Fundamental performance notes updated: {FUNDAMENTAL_PERFORMANCE_NOTES_PATH}")
         try:
             from monika.application.skills.loader import invalidate_cache
@@ -454,8 +453,7 @@ async def generate_weekly_review(session: AsyncSession, settings: dict) -> str |
 
     # Write to file
     try:
-        PERFORMANCE_NOTES_PATH.parent.mkdir(parents=True, exist_ok=True)
-        PERFORMANCE_NOTES_PATH.write_text(content, encoding="utf-8")
+        atomic_write_text(PERFORMANCE_NOTES_PATH, content, encoding="utf-8")
         logger.info(f"Performance notes updated: {PERFORMANCE_NOTES_PATH}")
         # CRITICAL: Clear LRU cache so next analysis cycle reads the new content
         try:

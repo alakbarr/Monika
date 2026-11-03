@@ -59,7 +59,9 @@ class PlaybookLifecycleFSM:
         if playbooks_dir:
             self.playbooks_dir = playbooks_dir
         else:
-            self.playbooks_dir = str(get_skills_dir() / "trading" / "playbooks")
+            from monika.core.paths import get_runtime_playbooks_dir
+
+            self.playbooks_dir = str(get_runtime_playbooks_dir())
 
         self.state_file = os.path.join(self.playbooks_dir, ".playbook_lifecycle.json")
         self.ledger = ledger or PlaybookLedger(self.playbooks_dir)

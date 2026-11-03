@@ -516,9 +516,10 @@ class StartupChecker:
                         .all()
                     )
                     healed_boot_count = 0
-                    synth_dir = (
-                        pathlib.Path(__file__).resolve().parent.parent / "analysis" / "strategies" / "synthesized"
-                    )
+                    from monika.core.paths import get_runtime_strategies_dir, get_static_strategies_dir
+
+                    synth_dir = get_runtime_strategies_dir()
+                    static_synth_dir = get_static_strategies_dir()
                     for sr in synth_rows:
                         if not sr or not sr.value:
                             continue
@@ -530,6 +531,10 @@ class StartupChecker:
                             lint_ok, _ = StrategySynthesisScheduler._lint_check_code(sanitized)
                             if not lint_ok and s_id:
                                 dfile = synth_dir / f"{s_id}.py"
+                                if not dfile.exists():
+                                    static_dfile = static_synth_dir / f"{s_id}.py"
+                                    if static_dfile.exists():
+                                        dfile = static_dfile
                                 if dfile.exists():
                                     dcode = dfile.read_text(encoding="utf-8")
                                     d_sanitized = StrategySynthesisScheduler.sanitize_strategy_code(dcode)
@@ -876,10 +881,18 @@ class StartupChecker:
         try:
             from monika.application.skills.loader import _SKILLS_DIR
             from monika.core.analytics.performance_reviewer import PERFORMANCE_NOTES_PATH
+            from monika.core.paths import get_runtime_skills_dir, get_skills_dir, get_static_skills_dir
 
-            if not PERFORMANCE_NOTES_PATH.resolve().is_relative_to(_SKILLS_DIR.resolve()):
+            resolved_notes = PERFORMANCE_NOTES_PATH.resolve()
+            allowed_skills_dirs = [
+                get_runtime_skills_dir().resolve(),
+                get_skills_dir().resolve(),
+                get_static_skills_dir().resolve(),
+                _SKILLS_DIR.resolve(),
+            ]
+            if not any(resolved_notes.is_relative_to(d) for d in allowed_skills_dirs):
                 logger.error(
-                    f"[STARTUP CHECK FAIL] performance_notes write path {PERFORMANCE_NOTES_PATH} is not inside skills read path {_SKILLS_DIR}"
+                    f"[STARTUP CHECK FAIL] performance_notes write path {PERFORMANCE_NOTES_PATH} is not inside allowed skills read paths {allowed_skills_dirs}"
                 )
                 ok = False
         except Exception as e:

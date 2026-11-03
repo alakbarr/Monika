@@ -62,10 +62,22 @@ class PlaybookCatalogRepository:
         specs: List[PlaybookSpec] = []
         prefix = sym_clean.lower() + "_"
 
-        for f in pb_dir.glob("*.md"):
-            fname = f.name.lower()
-            if not fname.startswith(prefix):
-                continue
+        candidate_files: Dict[str, Path] = {}
+        # 1. Scan static dir first
+        if pb_dir.exists():
+            for f in pb_dir.glob("*.md"):
+                if f.name.lower().startswith(prefix):
+                    candidate_files[f.name.lower()] = f
+        # 2. Scan runtime playbooks dir (overriding static if identical name)
+        from monika.core.paths import get_runtime_playbooks_dir
+
+        rt_pb_dir = get_runtime_playbooks_dir()
+        if rt_pb_dir.exists():
+            for f in rt_pb_dir.glob("*.md"):
+                if f.name.lower().startswith(prefix):
+                    candidate_files[f.name.lower()] = f
+
+        for fname, f in candidate_files.items():
             try:
                 spec = self.parse_playbook_file(f, sym_clean)
                 if spec is not None:

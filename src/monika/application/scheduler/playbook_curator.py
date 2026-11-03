@@ -23,6 +23,13 @@ from monika.infrastructure.database.db import get_session
 
 logger = logging.getLogger("TradingAgent.PlaybookCurator")
 
+from monika.core.paths import (
+    atomic_write_text,
+    get_runtime_playbooks_dir,
+    get_runtime_skills_dir,
+    get_skills_dir,
+)
+
 
 class PlaybookCurator:
     """
@@ -32,12 +39,16 @@ class PlaybookCurator:
 
     def __init__(self, settings: Optional[Dict[str, Any]] = None):
         self.settings = settings or {}
-        from monika.core.paths import get_skills_dir
+        from monika.core.paths import (
+            atomic_write_text,
+            get_runtime_playbooks_dir,
+            get_runtime_skills_dir,
+            get_skills_dir,
+        )
 
-        skills_dir = get_skills_dir()
-        self.playbooks_dir = skills_dir / "trading" / "playbooks"
-        self.playbooks_dir.mkdir(parents=True, exist_ok=True)
-        self.crystallized_dir = skills_dir / "trading"
+        self.playbooks_dir = get_runtime_playbooks_dir()
+        self.crystallized_dir = get_runtime_skills_dir() / "crystallized"
+        self.crystallized_dir.mkdir(parents=True, exist_ok=True)
         self.ledger = PlaybookLedger(str(self.playbooks_dir))
         self.linter = PlaybookLinter(min_rr_threshold=1.0)
 
@@ -208,13 +219,8 @@ class PlaybookCurator:
                 author="playbook_curator",
             )
 
-            tmp_pb = playbook_path.with_name(f"{playbook_path.name}.tmp")
-            tmp_pb.write_text(full_content, encoding="utf-8")
-            os.replace(tmp_pb, playbook_path)
-
-            tmp_cr = crystallized_path.with_name(f"{crystallized_path.name}.tmp")
-            tmp_cr.write_text(full_content, encoding="utf-8")
-            os.replace(tmp_cr, crystallized_path)
+            atomic_write_text(playbook_path, full_content, encoding="utf-8")
+            atomic_write_text(crystallized_path, full_content, encoding="utf-8")
             logger.info(f"[{clean_sym}] Successfully curated playbook -> {playbook_path.name} (hash={blob_hash[:8]})")
 
             # Record adopted playbook in Harness Domain Experience Library

@@ -47,6 +47,9 @@ import os
 import tempfile
 
 os.environ.setdefault("PTB_TIMEDELTA", "1")
+_test_rt_dir = os.path.join(tempfile.gettempdir(), "monika_test_runtime_data")
+os.makedirs(_test_rt_dir, exist_ok=True)
+os.environ.setdefault("MONIKA_RUNTIME_DATA_DIR", _test_rt_dir)
 _cache_dir = os.path.join(tempfile.gettempdir(), "monika_test_cache", "matplotlib")
 os.makedirs(_cache_dir, exist_ok=True)
 os.environ.setdefault("MPLCONFIGDIR", _cache_dir)

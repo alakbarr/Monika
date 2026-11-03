@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from monika.core.paths import get_skills_dir
+from monika.core.paths import atomic_write_text, get_runtime_skills_dir, get_skills_dir, get_static_skills_dir
 
 """
 Closed-Loop Skill Crystallizer.
@@ -63,7 +63,7 @@ class SkillCrystallizer:
     Crystallizes empirical trading successes into reusable skill definitions.
     """
 
-    SKILLS_DIR = get_skills_dir() / "crystallized"
+    SKILLS_DIR = get_runtime_skills_dir() / "crystallized"
 
     def __init__(self, settings: Optional[dict] = None):
         self.settings = settings or {}
@@ -367,26 +367,48 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
         Returns filenames of active, non-deprecated crystallized skills matching target symbol.
         Pruned/deprecated skills are excluded from dynamic micro-skill injection.
         """
-        target_dir = skills_dir or cls.SKILLS_DIR
-        if not symbol or not target_dir.exists():
+        if not symbol:
             return []
         sym_clean = symbol.strip().lower().replace("/", "")
-        matching = []
-        for f in target_dir.glob("*.md"):
-            if sym_clean in f.name.lower():
-                try:
-                    content = f.read_text(encoding="utf-8")
-                    if (
-                        "status: deprecated" in content
-                        or "status: 'deprecated'" in content
-                        or 'status: "deprecated"' in content
-                        or "is_deprecated: true" in content
-                    ):
-                        logger.debug(f"[SkillCrystallizer] Skipping deprecated crystallized skill: {f.name}")
+
+        search_dirs: list[Path] = []
+        if skills_dir:
+            search_dirs = [skills_dir]
+        else:
+            search_dirs = [
+                cls.SKILLS_DIR,
+                get_static_skills_dir() / "crystallized",
+                get_skills_dir() / "crystallized",
+            ]
+
+        matching: list[str] = []
+        seen_stems: set[str] = set()
+
+        for s_dir in search_dirs:
+            if not s_dir.exists():
+                continue
+            for f in s_dir.glob("*.md"):
+                stem = f.stem
+                if stem in seen_stems:
+                    continue
+                seen_stems.add(stem)
+
+                if sym_clean in f.name.lower():
+                    if cls.is_skill_deprecated(stem, skills_dir=s_dir):
                         continue
-                except Exception:
-                    pass
-                matching.append(f.stem)
+                    try:
+                        content_str = f.read_text(encoding="utf-8")
+                        if (
+                            "status: deprecated" in content_str
+                            or "status: 'deprecated'" in content_str
+                            or 'status: "deprecated"' in content_str
+                            or "is_deprecated: true" in content_str
+                        ):
+                            logger.debug(f"[SkillCrystallizer] Skipping deprecated crystallized skill: {f.name}")
+                            continue
+                    except Exception:
+                        pass
+                    matching.append(stem)
         return matching
 
     @classmethod
@@ -398,22 +420,35 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
         if not skill_name:
             return False
         clean_name = skill_name.strip().lower().replace(".md", "")
-        base_dir = skills_dir or cls.SKILLS_DIR
-        candidates = [
-            base_dir / f"{clean_name}.md",
-            base_dir / f"{clean_name.replace('crystallized_', '')}.md",
-            base_dir.parent / "trading" / "playbooks" / f"{clean_name}.md",
-            base_dir.parent / "trading" / f"{clean_name}.md",
-        ]
+        search_dirs = (
+            [skills_dir]
+            if skills_dir
+            else [
+                cls.SKILLS_DIR,
+                get_static_skills_dir() / "crystallized",
+                get_skills_dir() / "crystallized",
+            ]
+        )
+        candidates = []
+        for base_dir in search_dirs:
+            candidates.extend(
+                [
+                    base_dir / f"{clean_name}.md",
+                    base_dir / f"{clean_name.replace('crystallized_', '')}.md",
+                    base_dir.parent / "trading" / "playbooks" / f"{clean_name}.md",
+                    base_dir.parent / "trading" / f"{clean_name}.md",
+                    base_dir.parent / "playbooks" / f"{clean_name}.md",
+                ]
+            )
         for p in candidates:
             if p.exists():
                 try:
-                    content = p.read_text(encoding="utf-8")
+                    content_str = p.read_text(encoding="utf-8")
                     if (
-                        "status: deprecated" in content
-                        or "status: 'deprecated'" in content
-                        or 'status: "deprecated"' in content
-                        or "is_deprecated: true" in content
+                        "status: deprecated" in content_str
+                        or "status: 'deprecated'" in content_str
+                        or 'status: "deprecated"' in content_str
+                        or "is_deprecated: true" in content_str
                     ):
                         return True
                 except Exception:
@@ -429,6 +464,10 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
         candidates = [
             self.SKILLS_DIR / f"{clean_name}.md",
             self.SKILLS_DIR / f"{clean_name.replace('crystallized_', '')}.md",
+            get_static_skills_dir() / "crystallized" / f"{clean_name}.md",
+            get_static_skills_dir() / "crystallized" / f"{clean_name.replace('crystallized_', '')}.md",
+            get_skills_dir() / "crystallized" / f"{clean_name}.md",
+            get_skills_dir() / "crystallized" / f"{clean_name.replace('crystallized_', '')}.md",
         ]
         target_path = None
         for p in candidates:
@@ -445,6 +484,7 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
             if "status: deprecated" in content:
                 return True
 
+            destination = self.SKILLS_DIR / target_path.name
             if "---" in content:
                 parts = content.split("---", 2)
                 if len(parts) >= 3:
@@ -452,15 +492,15 @@ This skill was autonomously crystallized by the Closed-Loop Learning engine base
                     body = parts[2]
                     frontmatter += f"\nstatus: deprecated\nis_deprecated: true\ndeprecated_at: {datetime.now(timezone.utc).isoformat()}\ndeprecation_reason: {reason or 'win_rate_below_50pct'}\n"
                     new_content = f"---{frontmatter}---{body}"
-                    target_path.write_text(new_content, encoding="utf-8")
+                    atomic_write_text(destination, new_content, encoding="utf-8")
                     invalidate_cache()
-                    logger.info(f"[SkillCrystallizer] Deprecated skill: {target_path.name} (reason: {reason})")
+                    logger.info(f"[SkillCrystallizer] Deprecated skill: {destination.name} (reason: {reason})")
                     return True
 
             new_content = (
                 f"---\nstatus: deprecated\nis_deprecated: true\ndeprecation_reason: {reason}\n---\n\n" + content
             )
-            target_path.write_text(new_content, encoding="utf-8")
+            atomic_write_text(destination, new_content, encoding="utf-8")
             invalidate_cache()
             return True
         except Exception as e:

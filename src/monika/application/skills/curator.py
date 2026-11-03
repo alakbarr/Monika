@@ -42,12 +42,15 @@ class SkillCurator:
     ):
         if skills_dir:
             self.skills_dir = Path(skills_dir).resolve()
+            self.archive_dir = self.skills_dir / ".archive"
         else:
+            from monika.core.paths import get_runtime_skills_dir
+
             self.skills_dir = get_skills_dir()
+            self.archive_dir = get_runtime_skills_dir() / ".archive"
 
         self.stale_days = stale_days or self.STALE_AFTER_DAYS
         self.archive_days = archive_days or self.ARCHIVE_AFTER_DAYS
-        self.archive_dir = self.skills_dir / ".archive"
 
     def apply_lifecycle_transitions(self, reference_time: Optional[datetime] = None) -> Dict[str, List[str]]:
         """

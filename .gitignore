@@ -49,6 +49,10 @@ logs/
 *.log
 *.log.*
 
+# Dynamic Skill Telemetry
+**/.usage.json
+**/*.usage.json
+
 # Agent & Session State / Scratch files
 .monika_tier
 */.monika_tier

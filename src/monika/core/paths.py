@@ -4,7 +4,10 @@ Provides CWD-invariant absolute paths for data, logs, configs, and repository ro
 """
 
 import os
+import time
+import uuid
 from pathlib import Path
+from typing import Union
 
 
 def _resolve_repo_root() -> Path:
@@ -54,6 +57,11 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]  # src/monika
 SKILLS_DIR = BASE_DIR / "skills"
 BUILTIN_SKILLS_DIR = SKILLS_DIR
 USER_SKILLS_DIR = SKILLS_DIR
+STATIC_SKILLS_DIR = REPO_ROOT / "skills"
+STATIC_STRATEGIES_DIR = PACKAGE_ROOT / "application" / "analysis" / "strategies" / "synthesized"
+RUNTIME_SKILLS_DIR = DATA_DIR / "runtime_skills"
+RUNTIME_STRATEGIES_DIR = DATA_DIR / "runtime_strategies"
+RUNTIME_PLAYBOOKS_DIR = RUNTIME_SKILLS_DIR / "playbooks"
 
 
 def get_repo_root() -> Path:
@@ -106,6 +114,67 @@ def get_skills_dir() -> Path:
     """Return canonical skills directory, ensuring it exists."""
     SKILLS_DIR.mkdir(parents=True, exist_ok=True)
     return SKILLS_DIR
+
+
+def get_static_skills_dir() -> Path:
+    """Return immutable git-tracked static skills directory (anchored to REPO_ROOT)."""
+    return STATIC_SKILLS_DIR
+
+
+def get_static_strategies_dir() -> Path:
+    """Return immutable git-tracked static synthesized strategies directory."""
+    return STATIC_STRATEGIES_DIR
+
+
+def get_runtime_skills_dir() -> Path:
+    """Return dynamic runtime skills directory inside DATA_DIR (respecting MONIKA_RUNTIME_DATA_DIR)."""
+    override = os.environ.get("MONIKA_RUNTIME_DATA_DIR")
+    base = Path(override).resolve() if override else get_data_dir()
+    p = base / "runtime_skills"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def get_runtime_strategies_dir() -> Path:
+    """Return dynamic runtime strategies directory inside DATA_DIR."""
+    override = os.environ.get("MONIKA_RUNTIME_DATA_DIR")
+    base = Path(override).resolve() if override else get_data_dir()
+    p = base / "runtime_strategies"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def get_runtime_playbooks_dir() -> Path:
+    """Return dynamic runtime playbooks directory inside runtime skills."""
+    p = get_runtime_skills_dir() / "playbooks"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def atomic_write_text(target: Union[str, Path], content: str, encoding: str = "utf-8", max_retries: int = 3) -> None:
+    """
+    Atomically writes text using a temporary file and os.replace with backoff retry.
+    Prevents 0-byte truncation poisoning and Windows WinError 32 file lock conflicts.
+    """
+    target_path = Path(target).resolve()
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = target_path.parent / f".tmp_{uuid.uuid4().hex}"
+    try:
+        tmp_path.write_text(content, encoding=encoding)
+        for attempt in range(max_retries):
+            try:
+                os.replace(tmp_path, target_path)
+                break
+            except PermissionError, OSError:
+                if attempt == max_retries - 1:
+                    raise
+                time.sleep(0.05 * (2**attempt))
+    finally:
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
 
 
 def resolve_data_path(rel_or_name: str) -> Path:

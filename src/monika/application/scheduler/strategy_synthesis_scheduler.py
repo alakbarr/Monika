@@ -98,7 +98,9 @@ class StrategySynthesisScheduler:
     into the active StrategyRegistry.
     """
 
-    SYNTHESIZED_DIR = Path(__file__).resolve().parent.parent / "analysis" / "strategies" / "synthesized"
+    from monika.core.paths import get_runtime_strategies_dir
+
+    SYNTHESIZED_DIR = get_runtime_strategies_dir()
 
     def __init__(
         self,
@@ -1452,7 +1454,9 @@ class StrategySynthesisScheduler:
             except Exception as fe:
                 logger.debug(f"[StrategySynthesis] Ruff formatting skipped for {strategy_id}: {fe}")
 
-            file_path.write_text(formatted_code, encoding="utf-8")
+            from monika.core.paths import atomic_write_text
+
+            atomic_write_text(file_path, formatted_code, encoding="utf-8")
             lint_ok, lint_err = await asyncio.to_thread(self._lint_check_code, formatted_code)
             if not lint_ok:
                 logger.error(f"[StrategySynthesis] Post-write lint verification failed for {strategy_id}: {lint_err}")
