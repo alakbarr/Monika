@@ -409,42 +409,51 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
     async def _load_ohlcv(self, symbol: str, timeframe: str) -> Optional[pd.DataFrame]:
         """Memuat OHLCV secara descending, lalu dibalik menjadi kronologis untuk kalkulasi."""
         fetch_limit = 1000 if timeframe.upper() in ("D1", "H4") else 500
-        if not self.session:
-            return None
 
-        from monika.core.primitives import clock
+        from monika.domain.market.market_data_bus import MarketDataBus
 
-        result = await self.session.execute(
-            select(PriceOHLCV)
-            .where(PriceOHLCV.symbol == symbol)
-            .where(PriceOHLCV.timeframe == timeframe)
-            .where(PriceOHLCV.timestamp <= clock.now())
-            .order_by(PriceOHLCV.timestamp.desc())
-            .limit(fetch_limit)
-        )
-        rows = result.scalars().all()
-        if not rows:
-            logger.warning(f"No OHLCV data found for {symbol}/{timeframe}")
-            return None
+        bus = MarketDataBus.get_instance()
+        cached_df = bus.get_candles_df(symbol, timeframe, count=fetch_limit)
+        if cached_df is not None and len(cached_df) >= min(fetch_limit, 50):
+            df = cached_df.copy()
+        else:
+            if not self.session:
+                return None
 
-        rows = list(reversed(rows))
+            from monika.core.primitives import clock
 
-        def _get_ts(r: Any) -> Any:
-            c = getattr(r, "canonical_timestamp", None)
-            return c if isinstance(c, datetime) else getattr(r, "timestamp", None)
+            result = await self.session.execute(
+                select(PriceOHLCV)
+                .where(PriceOHLCV.symbol == symbol)
+                .where(PriceOHLCV.timeframe == timeframe)
+                .where(PriceOHLCV.timestamp <= clock.now())
+                .order_by(PriceOHLCV.timestamp.desc())
+                .limit(fetch_limit)
+            )
+            rows = result.scalars().all()
+            if not rows:
+                logger.warning(f"No OHLCV data found for {symbol}/{timeframe}")
+                return None
 
-        df = pd.DataFrame(
-            {
-                "timestamp": [_get_ts(r) for r in rows],
-                "open": [r.open for r in rows],
-                "high": [r.high for r in rows],
-                "low": [r.low for r in rows],
-                "close": [r.close for r in rows],
-                "volume": [r.volume for r in rows],
-            }
-        )
-        df.set_index("timestamp", inplace=True)
-        df.index = pd.to_datetime(df.index, utc=True)
+            rows = list(reversed(rows))
+            bus.seed_from_records(symbol, timeframe, rows)
+
+            def _get_ts(r: Any) -> Any:
+                c = getattr(r, "canonical_timestamp", None)
+                return c if isinstance(c, datetime) else getattr(r, "timestamp", None)
+
+            df = pd.DataFrame(
+                {
+                    "timestamp": [_get_ts(r) for r in rows],
+                    "open": [r.open for r in rows],
+                    "high": [r.high for r in rows],
+                    "low": [r.low for r in rows],
+                    "close": [r.close for r in rows],
+                    "volume": [r.volume for r in rows],
+                }
+            )
+            df.set_index("timestamp", inplace=True)
+            df.index = pd.to_datetime(df.index, utc=True)
 
         if not df.index.is_monotonic_increasing:
             df.sort_index(inplace=True)

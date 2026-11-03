@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
@@ -70,6 +71,7 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
         super().__init__(session=session, settings=settings)
         self._last_analyzed_candle: dict[tuple[str, str], tuple[Any, float, float, float]] = {}
         self._last_analysis_counts: dict[tuple[str, str], dict[str, int]] = {}
+        self._last_prune_time: dict[tuple[str, str], float] = {}
 
     # ------------------------------------------------------------------
     # Public API
@@ -251,7 +253,13 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
         return results
 
     async def _prune_old_data(self, symbol: str, timeframe: str) -> None:
-        """Menghapus data lama (retensi FVG ditangani spesifik di _save_fvg)."""
+        """Menghapus data lama dengan pembatasan interval (maksimal sekali per jam per pair/tf)."""
+        prune_key = (symbol.upper(), timeframe.upper())
+        now_mono = time.monotonic()
+        if prune_key in self._last_prune_time and (now_mono - self._last_prune_time[prune_key]) < 3600.0:
+            return
+        self._last_prune_time[prune_key] = now_mono
+
         cutoff = datetime.now(timezone.utc) - timedelta(days=90)
         try:
             if not self.session:
@@ -277,7 +285,16 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
     # ------------------------------------------------------------------
 
     async def _load_ohlcv(self, symbol: str, timeframe: str) -> Optional[pd.DataFrame]:
-        """Memuat OHLCV dari DB, diurutkan secara kronologis (terlama ke terbaru)."""
+        """Memuat OHLCV dari DB atau in-memory MarketDataBus secara kronologis."""
+        from monika.domain.market.market_data_bus import MarketDataBus
+
+        bus = MarketDataBus.get_instance()
+        cached_df = bus.get_candles_df(symbol, timeframe, count=500)
+        if cached_df is not None and len(cached_df) >= 50:
+            df = cached_df[["open", "high", "low", "close"]].copy()
+            df = df.loc[~df.index.duplicated(keep="last")]
+            return df
+
         if not self.session:
             return None
 
@@ -296,6 +313,7 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             return None
 
         rows = list(reversed(rows))
+        bus.seed_from_records(symbol, timeframe, rows)
 
         def _get_ts(r: Any) -> Any:
             c = getattr(r, "canonical_timestamp", None)

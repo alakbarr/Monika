@@ -4337,6 +4337,19 @@
   - `get_cot_code_for_symbol(symbol: str) -> Optional[str]`: Deterministically returns the CFTC COT code for any symbol or alias.
   - `get_symbol_for_cot_code(cot_code: str) -> Optional[str]`: Deterministically returns the canonical symbol for a CFTC COT code.
 
+#### `market_data_bus.py` - *Monika In-Memory Real-Time Market Data Bus.*
+- **Path**: [`src/monika/domain/market/market_data_bus.py`](src/monika/domain/market/market_data_bus.py)
+- **Classes**:
+  - `class MarketDataBus`: Unified In-Memory Market Data Bus.
+    - `__init__(hub: Optional[RingBufferHub])`
+    - `get_instance() -> MarketDataBus`
+    - `reset() -> None`
+    - `get_candles_df(symbol: str, timeframe: str, count: Optional[int]) -> Optional[pd.DataFrame]` - *Retrieve recent candles as a pandas DataFrame directly from in-memory ring buffers.*
+    - `get_latest_candles(symbol: str, timeframe: str, count: int) -> list[dict[str, Any]]` - *Retrieve recent candles as a list of dicts directly from memory.*
+    - `seed_from_records(symbol: str, timeframe: str, rows: Sequence[Any]) -> int` - *Seed or append OHLCV records to the in-memory buffer.*
+    - `on_tick(symbol: str, bid: float, ask: float, ...) -> None` - *Stream tick arrival into forming bars in memory.*
+    - `has_sufficient_bars(symbol: str, timeframe: str, min_bars: int) -> bool` - *Check if buffer has at least min_bars available.*
+
 #### `news_impact_keywords.py` - *Sumber tunggal untuk taksonomi shock/high-impact keywords — dipakai oleh*
 - **Path**: [`src/monika/domain/market/news_impact_keywords.py`](src/monika/domain/market/news_impact_keywords.py)
 

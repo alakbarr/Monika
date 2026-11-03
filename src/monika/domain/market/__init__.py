@@ -1,5 +1,6 @@
 """Domain market utilities and playbook screener."""
 
+from monika.domain.market.market_data_bus import MarketDataBus
 from monika.domain.market.playbook_screener import (
     PlaybookRegistry,
     PlaybookScreeningReport,
@@ -9,6 +10,7 @@ from monika.domain.market.playbook_screener import (
 )
 
 __all__ = [
+    "MarketDataBus",
     "PlaybookRegistry",
     "PlaybookScreeningReport",
     "PlaybookScreener",

@@ -1504,6 +1504,7 @@ Monika/
 │       │   │   ├── direction.py
 │       │   │   ├── dynamic_correlation.py
 │       │   │   ├── instrument_identity.py
+│       │   │   ├── market_data_bus.py
 │       │   │   ├── news_impact_keywords.py
 │       │   │   ├── playbook_screener.py
 │       │   │   ├── session_info.py
@@ -2511,6 +2512,7 @@ Monika/
 │   │   ├── test_bracket_optimizer_buffers.py
 │   │   ├── test_candle_ring_buffer.py
 │   │   ├── test_macro_regime_classifier.py
+│   │   ├── test_market_data_bus.py
 │   │   └── test_risk_gate_macro_regime.py
 │   ├── evals/
 │   │   ├── __init__.py
@@ -3208,4 +3210,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 275 | **Total Tracked Files**: 2903
+**Total Tracked Directories**: 275 | **Total Tracked Files**: 2905
