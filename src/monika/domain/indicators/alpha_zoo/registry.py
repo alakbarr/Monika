@@ -182,6 +182,7 @@ class FactorRegistry:
         name: str,
         df: pd.DataFrame,
         strict_masking: bool = True,
+        precomputed_panel: Optional[Dict[str, pd.DataFrame]] = None,
     ) -> pd.Series:
         """
         Executes a factor calculation with deterministic NaN dependency masking.
@@ -190,6 +191,7 @@ class FactorRegistry:
             name: Factor identifier
             df: OHLCV DataFrame (must contain required columns)
             strict_masking: If True, any bar with NaN in required inputs becomes NaN in output.
+            precomputed_panel: Optional precomputed 2D single-asset column dictionary to bypass re-allocation.
 
         Returns:
             Computed factor Series with strict NaN guarantees.
@@ -220,7 +222,11 @@ class FactorRegistry:
         # 3. Compute factor:
         # Wrap into single-asset 2D column dictionary panel for universal formula compatibility
         # (guarantees .columns compatibility with WorldQuant, GTJA 191, Qlib, and Academic alphas).
-        panel_dict = {c: pd.DataFrame({"asset": df_eval[c]}) for c in df_eval.columns}
+        panel_dict = (
+            precomputed_panel
+            if precomputed_panel is not None
+            else {c: pd.DataFrame({"asset": df_eval[c]}) for c in df_eval.columns}
+        )
         try:
             res = fn(panel_dict)
         except Exception:
@@ -265,14 +271,35 @@ class FactorRegistry:
     ) -> pd.DataFrame:
         """
         Computes all registered factors (optionally filtered by category)
-        and joins them into a single wide DataFrame.
+        and joins them into a single wide DataFrame with zero redundant panel allocations.
         """
         results: Dict[str, pd.Series] = {}
         target_factors = cls.list_factors(category=category)
 
+        # Synthesize required base columns and 2D panel view once for the entire batch
+        df_eval = df.copy(deep=False)
+        if "amount" not in df_eval.columns and "close" in df_eval.columns and "volume" in df_eval.columns:
+            df_eval["amount"] = df_eval["close"] * df_eval["volume"]
+        if (
+            "vwap" not in df_eval.columns
+            and "high" in df_eval.columns
+            and "low" in df_eval.columns
+            and "close" in df_eval.columns
+        ):
+            df_eval["vwap"] = (
+                df_eval["high"] + df_eval["low"] + df_eval["close"] + df_eval.get("open", df_eval["close"])
+            ) / 4.0
+
+        base_panel = {c: pd.DataFrame({"asset": df_eval[c]}) for c in df_eval.columns}
+
         for meta in target_factors:
             try:
-                results[meta.name] = cls.compute(meta.name, df, strict_masking=strict_masking)
+                results[meta.name] = cls.compute(
+                    meta.name,
+                    df_eval,
+                    strict_masking=strict_masking,
+                    precomputed_panel=base_panel,
+                )
             except Exception:
                 results[meta.name] = pd.Series(np.nan, index=df.index, name=meta.name)
 

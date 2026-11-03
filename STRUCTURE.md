@@ -1495,6 +1495,7 @@ Monika/
 │       │   ├── market/
 │       │   │   ├── __init__.py
 │       │   │   ├── bias_utils.py
+│       │   │   ├── candle_ring_buffer.py
 │       │   │   ├── currency_utils.py
 │       │   │   ├── direction.py
 │       │   │   ├── dynamic_correlation.py
@@ -2501,6 +2502,7 @@ Monika/
 │   │   ├── execution/
 │   │   │   └── test_bracket_optimizer.py
 │   │   ├── test_bracket_optimizer_buffers.py
+│   │   ├── test_candle_ring_buffer.py
 │   │   ├── test_macro_regime_classifier.py
 │   │   └── test_risk_gate_macro_regime.py
 │   ├── evals/
@@ -3197,4 +3199,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 274 | **Total Tracked Files**: 2893
+**Total Tracked Directories**: 274 | **Total Tracked Files**: 2895

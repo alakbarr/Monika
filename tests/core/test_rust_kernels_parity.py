@@ -11,9 +11,14 @@ from monika.application.backtest.monte_carlo_engine import MonteCarloStressTeste
 from monika.core.native.rust_bridge import (
     decay_linear_f64,
     is_rust_accelerator_available,
+    macd_f64,
     monte_carlo_simulate_f64,
     rolling_corr_f64,
+    stochastic_f64,
+    ts_argmax_f64,
+    ts_argmin_f64,
     ts_rank_f64,
+    yang_zhang_f64,
 )
 from monika.domain.indicators.factor_primitives import decay_linear, ts_corr, ts_rank
 
@@ -152,3 +157,76 @@ def test_monte_carlo_stress_tester_integration():
     assert result["var_95_drawdown_pct"] >= 0.0
     assert result["max_simulated_dd_pct"] >= result["var_95_drawdown_pct"]
     assert "median_p50" in result["final_equity_distribution"]
+
+
+def test_yang_zhang_parity():
+    np.random.seed(101)
+    n = 60
+    close = 100.0 + np.cumsum(np.random.normal(0, 1, n))
+    high = close + np.random.uniform(0.5, 2.0, n)
+    low = close - np.random.uniform(0.5, 2.0, n)
+    open_p = close + np.random.uniform(-0.5, 0.5, n)
+
+    yz_arr = yang_zhang_f64(open_p, high, low, close, window=14)
+    assert yz_arr is not None
+    assert len(yz_arr) == n
+    assert np.isnan(yz_arr[:14]).all()
+    assert (yz_arr[14:] >= 0.0).all()
+    assert (yz_arr[14:] > 0.0).any()
+
+
+def test_stochastic_parity():
+    np.random.seed(202)
+    n = 50
+    close = 100.0 + np.cumsum(np.random.normal(0, 1, n))
+    high = close + np.random.uniform(0.5, 2.0, n)
+    low = close - np.random.uniform(0.5, 2.0, n)
+
+    res = stochastic_f64(high, low, close, k_period=14, d_period=3)
+    assert res is not None
+    k, d = res
+    assert len(k) == n
+    assert len(d) == n
+    # Warmup NaNs
+    assert np.isnan(k[:13]).all()
+    assert (k[13:] >= 0.0).all() and (k[13:] <= 100.0).all()
+    assert (d[15:] >= 0.0).all() and (d[15:] <= 100.0).all()
+
+
+def test_macd_parity():
+    np.random.seed(303)
+    n = 80
+    close = 100.0 + np.cumsum(np.random.normal(0, 1, n))
+
+    res = macd_f64(close, fast_period=12, slow_period=26, signal_period=9)
+    assert res is not None
+    m_line, s_line, h_diff = res
+    assert len(m_line) == n
+    assert np.isnan(m_line[:25]).all()
+    assert not np.isnan(m_line[25:]).any()
+    sig_start = 25 + 9 - 1
+    assert np.isnan(s_line[:sig_start]).all()
+    assert not np.isnan(s_line[sig_start:]).any()
+    # Hist = macd - signal
+    np.testing.assert_allclose(h_diff[sig_start:], m_line[sig_start:] - s_line[sig_start:], rtol=1e-12)
+
+
+def test_ts_argmax_argmin_parity():
+    np.random.seed(404)
+    arr = np.array([10.0, 30.0, 20.0, 5.0, 40.0, 15.0, 25.0])
+    w = 3
+    max_idx = ts_argmax_f64(arr, w)
+    min_idx = ts_argmin_f64(arr, w)
+    assert max_idx is not None and min_idx is not None
+    assert np.isnan(max_idx[:2]).all()
+    assert np.isnan(min_idx[:2]).all()
+
+    # Index 2: [10, 30, 20] -> max 30 at offset 1, min 10 at offset 0
+    assert max_idx[2] == 1.0
+    assert min_idx[2] == 0.0
+    # Index 3: [30, 20, 5] -> max 30 at offset 0, min 5 at offset 2
+    assert max_idx[3] == 0.0
+    assert min_idx[3] == 2.0
+    # Index 4: [20, 5, 40] -> max 40 at offset 2, min 5 at offset 1
+    assert max_idx[4] == 2.0
+    assert min_idx[4] == 1.0

@@ -647,6 +647,11 @@
   - `atr_f64(highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, ...) -> Optional[np.ndarray]`: Average True Range (ATR) using compiled Rust kernel.
   - `bollinger_bands_f64(arr: np.ndarray, period: int, num_std: float) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]`: Bollinger Bands (middle, upper, lower) using compiled Rust kernel.
   - `find_fvg_f64(highs: np.ndarray, lows: np.ndarray, atr: np.ndarray, ...) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]`: Fair Value Gap (FVG) detection using compiled Rust kernel.
+  - `yang_zhang_f64(opens: np.ndarray, highs: np.ndarray, lows: np.ndarray, ...) -> Optional[np.ndarray]`: Yang-Zhang historical volatility estimator using compiled Rust kernel.
+  - `stochastic_f64(highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, ...) -> Optional[tuple[np.ndarray, np.ndarray]]`: Stochastic %K and %D using compiled Rust kernel.
+  - `macd_f64(closes: np.ndarray, fast_period: int, slow_period: int, ...) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]`: Moving Average Convergence Divergence (MACD, signal, diff) using compiled Rust kernel.
+  - `ts_argmax_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]`: Rolling argmax returning 0-based offset into window using compiled Rust kernel.
+  - `ts_argmin_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]`: Rolling argmin returning 0-based offset into window using compiled Rust kernel.
 
 ### Folder: `src/monika/core/primitives` <a id="folder-srcmonikacoreprimitives"></a>
 
@@ -701,7 +706,10 @@
   - `class PreRiskGateEvent(AppEvent)`: Domain hook triggered prior to RiskGate evaluation.
   - `class PreOrderEvent(AppEvent)`: Domain hook triggered immediately before order dispatch to broker.
   - `class PostFillEvent(AppEvent)`: Domain hook triggered immediately after order fill confirmation.
-  - `class Subscription`: Handler subscription record with priority ordering.
+  - `class Subscription`: Handler subscription record with weak reference support and pre-compiled reflection.
+    - `__init__(event_type: type[AppEvent], handler: Callable[..., Union[Coroutine[Any, Any, None], Any]], priority: int)`
+    - `handler() -> Optional[Callable]` - *Resolves the live callable or None if the weak reference has died.*
+    - `is_alive() -> bool` - *Check whether the underlying handler is still alive.*
   - `class EventBus`: Central Asynchronous Event Bus.
     - `__init__()`
     - `subscribe(event_type: type[E], handler: Union[Callable[[E], Union[Coroutine[Any, Any, None], Any]], Callable[[E, Any], Union[Coroutine[Any, Any, Any], Any]]], priority: int) -> Any` - *Register a subscriber for a specific event type or base class.*
@@ -1678,8 +1686,8 @@
   - `compute_lag1_autocorrelation(close: pd.Series, window: int) -> pd.Series`: Menghitung lag-1 return autocorrelation rolling window.
   - `compute_moving_averages(close: pd.Series, sma_periods: tuple[int, ...], ema_periods: tuple[int, ...]) -> dict[str, pd.Series]`: Computes SMAs and EMAs for specified periods with native Rust acceleration.
   - `compute_rsi(close: pd.Series, period: int) -> pd.Series`: Computes RSI (Relative Strength Index) with native Rust acceleration.
-  - `compute_stochastic(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series]`: Computes Stochastic %K and %D.
-  - `compute_macd(close: pd.Series, fast: int, slow: int, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes MACD line, signal line, and histogram.
+  - `compute_stochastic(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series]`: Computes Stochastic %K and %D with native Rust acceleration.
+  - `compute_macd(close: pd.Series, fast: int, slow: int, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes MACD line, signal line, and histogram with native Rust acceleration.
   - `compute_bollinger_bands(close: pd.Series, period: int, std_dev: float) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]`: Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth with native Rust acceleration.
   - `compute_atr(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> pd.Series`: Computes Average True Range with native Rust acceleration.
   - `compute_adx(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes ADX, +DI, and -DI.
@@ -1762,7 +1770,7 @@
     - `get(name: str) -> Tuple[FactorCallable, AlphaMeta]`
     - `list_factors(category: Optional[str]) -> List[AlphaMeta]`
     - `clear() -> None` - *Clears the registry (useful for testing).*
-    - `compute(name: str, df: pd.DataFrame, strict_masking: bool) -> pd.Series` - *Executes a factor calculation with deterministic NaN dependency masking.*
+    - `compute(name: str, df: pd.DataFrame, strict_masking: bool, ...) -> pd.Series` - *Executes a factor calculation with deterministic NaN dependency masking.*
     - `compute_all(df: pd.DataFrame, category: Optional[str], strict_masking: bool) -> pd.DataFrame` - *Computes all registered factors (optionally filtered by category)*
     - `load_zoo_factors(factors_dir: Optional[Path | str]) -> int` - *Dynamically discovers and registers all 462 quantitative alpha factor*
 - **Top-Level Functions**:
@@ -4261,6 +4269,30 @@
   - `is_bullish(bias: Optional[str]) -> bool`
   - `is_bearish(bias: Optional[str]) -> bool`
   - `is_neutral(bias: Optional[str]) -> bool`
+
+#### `candle_ring_buffer.py` - *High-Performance Zero-Copy In-Memory Candle RingBuffer.*
+- **Path**: [`src/monika/domain/market/candle_ring_buffer.py`](src/monika/domain/market/candle_ring_buffer.py)
+- **Classes**:
+  - `class CandleRingBuffer`: Fixed-capacity, lock-free/low-contention circular buffer for OHLCV bars.
+    - `__init__(capacity: int)`
+    - `size() -> int`
+    - `clear() -> None`
+    - `append_or_update(timestamp: Union[int, float, datetime], open_: float, high: float, ...) -> None` - *Appends a new candle or updates the latest candle in-place if timestamps match.*
+    - `append_bulk(rows: Sequence[Any]) -> int` - *Bulk appends chronological OHLCV rows.*
+    - `get_latest(count: int) -> np.ndarray` - *Retrieves the latest `count` candles ordered chronologically (oldest to newest).*
+    - `get_latest_dicts(count: int) -> list[dict[str, Any]]` - *Retrieves the latest candles as a list of dicts compatible with CandleDict.*
+    - `to_dataframe(count: Optional[int]) -> pd.DataFrame` - *Converts latest candles to a pandas DataFrame with UTC DatetimeIndex.*
+  - `class RingBufferHub`: Central Thread-Safe In-Memory Hub managing CandleRingBuffers for all instruments and timeframes.
+    - `__init__(default_capacity: int)`
+    - `get_instance(default_capacity: int) -> RingBufferHub`
+    - `reset() -> None`
+    - `clear_all() -> None`
+    - `get_buffer(symbol: str, timeframe: str, capacity: Optional[int]) -> CandleRingBuffer`
+    - `has_buffer(symbol: str, timeframe: str) -> bool`
+    - `update_from_ohlcv_rows(symbol: str, timeframe: str, rows: Sequence[Any]) -> int` - *Seed or append OHLCV records to the ring buffer.*
+    - `on_tick(symbol: str, bid: float, ask: float, ...) -> None` - *Updates the forming bar across fast timeframes (M1, M5, M15) on tick reception.*
+    - `get_latest_candles(symbol: str, timeframe: str, count: int) -> list[dict[str, Any]]` - *Ultra-fast zero-DB retrieval of recent candles.*
+    - `get_latest_dataframe(symbol: str, timeframe: str, count: Optional[int]) -> Optional[pd.DataFrame]` - *Ultra-fast zero-DB retrieval of recent candles as pandas DataFrame.*
 
 #### `currency_utils.py` - *Utilitas pemetaan simbol instrumen trading ke mata uang terkait.*
 - **Path**: [`src/monika/domain/market/currency_utils.py`](src/monika/domain/market/currency_utils.py)

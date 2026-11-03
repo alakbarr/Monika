@@ -290,6 +290,62 @@ def _load_library() -> Optional[ctypes.CDLL]:
         ]
         lib.monika_find_fvg_f64.restype = ctypes.c_ssize_t
 
+        # 18. monika_yang_zhang_f64
+        lib.monika_yang_zhang_f64.argtypes = [
+            f64_p,
+            f64_p,
+            f64_p,
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            f64_p,
+        ]
+        lib.monika_yang_zhang_f64.restype = ctypes.c_int32
+
+        # 19. monika_stochastic_f64
+        lib.monika_stochastic_f64.argtypes = [
+            f64_p,
+            f64_p,
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            f64_p,
+            f64_p,
+        ]
+        lib.monika_stochastic_f64.restype = ctypes.c_int32
+
+        # 20. monika_macd_f64
+        lib.monika_macd_f64.argtypes = [
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            f64_p,
+            f64_p,
+            f64_p,
+        ]
+        lib.monika_macd_f64.restype = ctypes.c_int32
+
+        # 21. monika_ts_argmax_f64
+        lib.monika_ts_argmax_f64.argtypes = [
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            f64_p,
+        ]
+        lib.monika_ts_argmax_f64.restype = ctypes.c_int32
+
+        # 22. monika_ts_argmin_f64
+        lib.monika_ts_argmin_f64.argtypes = [
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            f64_p,
+        ]
+        lib.monika_ts_argmin_f64.restype = ctypes.c_int32
+
         _LIB_INSTANCE = lib
         logger.info(f"[RustBridge] Successfully loaded native Rust accelerator from {load_path}")
         return _LIB_INSTANCE
@@ -895,3 +951,167 @@ def find_fvg_f64(
         out_gap_low[:k],
         out_filled_idx[:k],
     )
+
+
+def yang_zhang_f64(
+    opens: np.ndarray,
+    highs: np.ndarray,
+    lows: np.ndarray,
+    closes: np.ndarray,
+    window: int = 14,
+) -> Optional[np.ndarray]:
+    """
+    Yang-Zhang historical volatility estimator using compiled Rust kernel.
+    Returns 1D np.ndarray with leading NaNs, or None if unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    n = len(opens)
+    if n < window + 1 or window < 2 or len(highs) != n or len(lows) != n or len(closes) != n:
+        return None
+
+    o_arr = np.ascontiguousarray(opens, dtype=np.float64)
+    h_arr = np.ascontiguousarray(highs, dtype=np.float64)
+    l_arr = np.ascontiguousarray(lows, dtype=np.float64)
+    c_arr = np.ascontiguousarray(closes, dtype=np.float64)
+    out_arr = np.empty_like(o_arr)
+
+    code = lib.monika_yang_zhang_f64(
+        o_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        h_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        l_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        c_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(n),
+        ctypes.c_size_t(window),
+        out_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return out_arr
+
+
+def stochastic_f64(
+    highs: np.ndarray,
+    lows: np.ndarray,
+    closes: np.ndarray,
+    k_period: int = 14,
+    d_period: int = 3,
+) -> Optional[tuple[np.ndarray, np.ndarray]]:
+    """
+    Stochastic %K and %D using compiled Rust kernel.
+    Returns (out_k, out_d) with leading NaNs, or None if unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    n = len(highs)
+    if n < k_period or k_period < 1 or d_period < 1 or len(lows) != n or len(closes) != n:
+        return None
+
+    h_arr = np.ascontiguousarray(highs, dtype=np.float64)
+    l_arr = np.ascontiguousarray(lows, dtype=np.float64)
+    c_arr = np.ascontiguousarray(closes, dtype=np.float64)
+    out_k = np.empty_like(h_arr)
+    out_d = np.empty_like(h_arr)
+
+    code = lib.monika_stochastic_f64(
+        h_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        l_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        c_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(n),
+        ctypes.c_size_t(k_period),
+        ctypes.c_size_t(d_period),
+        out_k.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        out_d.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return out_k, out_d
+
+
+def macd_f64(
+    closes: np.ndarray,
+    fast_period: int = 12,
+    slow_period: int = 26,
+    signal_period: int = 9,
+) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """
+    Moving Average Convergence Divergence (MACD, signal, diff) using compiled Rust kernel.
+    Returns (out_macd, out_signal, out_hist) with leading NaNs, or None if unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    n = len(closes)
+    if n < slow_period or fast_period < 1 or slow_period <= fast_period or signal_period < 1:
+        return None
+
+    c_arr = np.ascontiguousarray(closes, dtype=np.float64)
+    out_macd = np.empty_like(c_arr)
+    out_signal = np.empty_like(c_arr)
+    out_hist = np.empty_like(c_arr)
+
+    code = lib.monika_macd_f64(
+        c_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(n),
+        ctypes.c_size_t(fast_period),
+        ctypes.c_size_t(slow_period),
+        ctypes.c_size_t(signal_period),
+        out_macd.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        out_signal.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        out_hist.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return out_macd, out_signal, out_hist
+
+
+def ts_argmax_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]:
+    """
+    Rolling argmax returning 0-based offset into window using compiled Rust kernel.
+    Returns 1D np.ndarray with leading NaNs, or None if unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    if arr.ndim != 1 or window < 1 or len(arr) < window:
+        return None
+
+    inp_arr = np.ascontiguousarray(arr, dtype=np.float64)
+    out_arr = np.empty_like(inp_arr)
+
+    code = lib.monika_ts_argmax_f64(
+        inp_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(len(inp_arr)),
+        ctypes.c_size_t(window),
+        out_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return out_arr
+
+
+def ts_argmin_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]:
+    """
+    Rolling argmin returning 0-based offset into window using compiled Rust kernel.
+    Returns 1D np.ndarray with leading NaNs, or None if unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    if arr.ndim != 1 or window < 1 or len(arr) < window:
+        return None
+
+    inp_arr = np.ascontiguousarray(arr, dtype=np.float64)
+    out_arr = np.empty_like(inp_arr)
+
+    code = lib.monika_ts_argmin_f64(
+        inp_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(len(inp_arr)),
+        ctypes.c_size_t(window),
+        out_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return out_arr

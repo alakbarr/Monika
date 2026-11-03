@@ -538,7 +538,7 @@ def ts_argmax(df: Any, n: int) -> Any: ...
 def ts_argmax(df: Any, n: int) -> Any:
     """
     Rolling argmax returning 0-based index into the n-bar window.
-    Warmup -> NaN. Uses Bottleneck move_argmax if available, else numpy sliding window.
+    Warmup -> NaN. Uses native Rust C-ABI kernel if available, then Bottleneck, then numpy sliding window.
     """
     if n < 1:
         raise ValueError(f"ts_argmax window must be >= 1, got {n}")
@@ -546,8 +546,27 @@ def ts_argmax(df: Any, n: int) -> Any:
     s_name = df.name if is_series else None
     input_df = df.to_frame() if is_series else (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df))
 
+    arr = input_df.to_numpy(dtype=np.float64)
+    _, C = arr.shape
+
+    # Fast-path via native Rust C-ABI kernel (monika_core_rs)
+    from monika.core.native.rust_bridge import ts_argmax_f64
+
+    rust_cols = []
+    rust_ok = True
+    for c in range(C):
+        col_res = ts_argmax_f64(arr[:, c], n)
+        if col_res is None:
+            rust_ok = False
+            break
+        rust_cols.append(col_res)
+    if rust_ok and len(rust_cols) == C:
+        res_arr = np.column_stack(rust_cols)
+        if is_series:
+            return pd.Series(res_arr[:, 0], index=input_df.index, name=s_name)
+        return pd.DataFrame(res_arr, index=input_df.index, columns=input_df.columns)
+
     if HAS_BOTTLENECK and bn is not None:
-        arr = input_df.to_numpy(dtype=np.float64)
         raw = bn.move_argmax(arr, window=n, min_count=n, axis=0)
         # Convert bottleneck reverse-offset (0=right, n-1=left) to 0-based window index (0=left, n-1=right)
         converted = (n - 1) - raw
@@ -573,7 +592,7 @@ def ts_argmin(df: Any, n: int) -> Any: ...
 def ts_argmin(df: Any, n: int) -> Any:
     """
     Rolling argmin returning 0-based index into the n-bar window.
-    Warmup -> NaN. Uses Bottleneck move_argmin if available, else numpy sliding window.
+    Warmup -> NaN. Uses native Rust C-ABI kernel if available, then Bottleneck, then numpy sliding window.
     """
     if n < 1:
         raise ValueError(f"ts_argmin window must be >= 1, got {n}")
@@ -581,8 +600,27 @@ def ts_argmin(df: Any, n: int) -> Any:
     s_name = df.name if is_series else None
     input_df = df.to_frame() if is_series else (df if isinstance(df, pd.DataFrame) else pd.DataFrame(df))
 
+    arr = input_df.to_numpy(dtype=np.float64)
+    _, C = arr.shape
+
+    # Fast-path via native Rust C-ABI kernel (monika_core_rs)
+    from monika.core.native.rust_bridge import ts_argmin_f64
+
+    rust_cols = []
+    rust_ok = True
+    for c in range(C):
+        col_res = ts_argmin_f64(arr[:, c], n)
+        if col_res is None:
+            rust_ok = False
+            break
+        rust_cols.append(col_res)
+    if rust_ok and len(rust_cols) == C:
+        res_arr = np.column_stack(rust_cols)
+        if is_series:
+            return pd.Series(res_arr[:, 0], index=input_df.index, name=s_name)
+        return pd.DataFrame(res_arr, index=input_df.index, columns=input_df.columns)
+
     if HAS_BOTTLENECK and bn is not None:
-        arr = input_df.to_numpy(dtype=np.float64)
         raw = bn.move_argmin(arr, window=n, min_count=n, axis=0)
         # Convert bottleneck reverse-offset (0=right, n-1=left) to 0-based window index (0=left, n-1=right)
         converted = (n - 1) - raw

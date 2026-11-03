@@ -582,40 +582,25 @@ async def transactional_advisory_lock(
         return
 
     if dialect_name == "postgresql":
-        eng = engine if engine is not None else get_engine()
         acquired = False
-        async with eng.connect() as lock_conn:
-            await lock_conn.execution_options(isolation_level="AUTOCOMMIT")
-            try:
-                res = await lock_conn.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": numeric_key})
-                acquired = bool(res.scalar())
-                if not acquired:
-                    logger.warning(
-                        f"[DB] Could not acquire PostgreSQL advisory lock {numeric_key} (concurrent execution active)."
-                    )
-            except Exception as e:
-                logger.critical(
-                    f"[DB] PostgreSQL advisory lock failed with error: {e}. BLOCKING execution (Fail-Closed)."
-                )
-                acquired = False
-
+        try:
+            res = await session.execute(text("SELECT pg_try_advisory_xact_lock(:key)"), {"key": numeric_key})
+            val = res.scalar() if hasattr(res, "scalar") else None
+            acquired = bool(val) if val is not None else True
             if not acquired:
-                yield False
-                return
+                logger.warning(
+                    f"[DB] Could not acquire PostgreSQL transaction-scoped advisory lock {numeric_key} (concurrent execution active)."
+                )
+        except Exception as e:
+            logger.critical(f"[DB] PostgreSQL advisory lock failed with error: {e}. BLOCKING execution (Fail-Closed).")
+            acquired = False
 
-            try:
-                yield True
-            finally:
-                try:
-                    await asyncio.shield(
-                        lock_conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": numeric_key})
-                    )
-                except Exception as unl_err:
-                    logger.warning(f"[DB] Advisory unlock failed for {numeric_key}: {unl_err}")
-                    try:
-                        await lock_conn.invalidate()
-                    except Exception:
-                        pass
+        if not acquired:
+            yield False
+            return
+
+        yield True
+        return
     else:
         loop = asyncio.get_running_loop()
         lock = _IN_MEMORY_EXECUTION_LOCKS.setdefault((loop, numeric_key), asyncio.Lock())

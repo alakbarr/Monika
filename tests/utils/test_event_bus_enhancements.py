@@ -98,3 +98,39 @@ def test_service_predicates():
     statuses = ServicePredicate.check_all()
     assert statuses["mt5_terminal"] is True
     assert statuses["news_feed"] is False
+
+
+@pytest.mark.asyncio
+async def test_event_bus_weakref_autoprune():
+    """Verify that subscriber instances are weak-referenced and auto-pruned when destroyed."""
+    import gc
+
+    bus = EventBus()
+
+    class TransientSubscriber:
+        def __init__(self):
+            self.count = 0
+
+        async def on_event(self, evt: PreOrderEvent):
+            self.count += 1
+
+    sub = TransientSubscriber()
+    bus.subscribe(PreOrderEvent, sub.on_event)
+
+    # When living, subscriber receives events
+    evt = PreOrderEvent(symbol="EURUSD")
+    await bus.publish(evt)
+    assert sub.count == 1
+    assert len(bus.get_subscribers(PreOrderEvent)) == 1
+
+    # Destroy instance
+    del sub
+    gc.collect()
+
+    # Dead subscriber should be automatically pruned
+    subs_after = bus.get_subscribers(PreOrderEvent)
+    assert len(subs_after) == 0
+
+    # Publishing now completes with zero deliveries and zero errors
+    await bus.publish(evt)
+    assert len(bus.get_subscribers(PreOrderEvent)) == 0

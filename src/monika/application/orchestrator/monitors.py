@@ -410,8 +410,9 @@ class AgentMonitorsMixin:
                     logger.debug(f"[CacheReaper] Reaped {evicted} expired replay cache entries")
 
                 # Clean completed background event bus tasks to prevent task set growth
-                if hasattr(self, "event_bus") and self.event_bus:
-                    cleaned_tasks = getattr(self.event_bus, "clean_finished_tasks", lambda: 0)()
+                eb = getattr(self, "event_bus", None)
+                if eb is not None:
+                    cleaned_tasks = getattr(eb, "clean_finished_tasks", lambda: 0)()
                     if cleaned_tasks > 0:
                         logger.debug(f"[CacheReaper] Cleaned {cleaned_tasks} finished event tasks")
 

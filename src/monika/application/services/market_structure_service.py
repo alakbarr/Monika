@@ -382,41 +382,59 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             delete(SwingPoint).where(SwingPoint.symbol == symbol).where(SwingPoint.timeframe == timeframe)
         )
 
-        saved = 0
-        for _, row in highs.iterrows():
-            ts_val = row["confirmed_at"] if "confirmed_at" in row.index else None
-            ts_confirmed = (
-                ts_val
-                if ts_val is not None and str(ts_val).strip() not in ("", "nan", "NaT", "None")
-                else row["timestamp"]
-            )
-            self.session.add(
-                SwingPoint(
-                    symbol=symbol,
-                    timeframe=timeframe,
-                    timestamp=pd.Timestamp(str(ts_confirmed)).to_pydatetime(),
-                    type="high",
-                    price=float(np.asarray(row["price"]).item()),
+        swing_objects: list[SwingPoint] = []
+
+        if not highs.empty:
+            has_confirmed = "confirmed_at" in highs.columns
+            ts_confirmed_col = (
+                highs["confirmed_at"].where(
+                    highs["confirmed_at"].notna()
+                    & ~highs["confirmed_at"].astype(str).str.strip().isin(["", "nan", "NaT", "None"]),
+                    highs["timestamp"],
                 )
+                if has_confirmed
+                else highs["timestamp"]
             )
-            saved += 1
-        for _, row in lows.iterrows():
-            ts_val = row["confirmed_at"] if "confirmed_at" in row.index else None
-            ts_confirmed = (
-                ts_val
-                if ts_val is not None and str(ts_val).strip() not in ("", "nan", "NaT", "None")
-                else row["timestamp"]
-            )
-            self.session.add(
-                SwingPoint(
-                    symbol=symbol,
-                    timeframe=timeframe,
-                    timestamp=pd.Timestamp(str(ts_confirmed)).to_pydatetime(),
-                    type="low",
-                    price=float(np.asarray(row["price"]).item()),
+            prices = highs["price"].to_numpy(dtype=float)
+            timestamps = [pd.Timestamp(str(t)).to_pydatetime() for t in ts_confirmed_col]
+            for ts, p in zip(timestamps, prices):
+                swing_objects.append(
+                    SwingPoint(
+                        symbol=symbol,
+                        timeframe=timeframe,
+                        timestamp=ts,
+                        type="high",
+                        price=float(p),
+                    )
                 )
+
+        if not lows.empty:
+            has_confirmed = "confirmed_at" in lows.columns
+            ts_confirmed_col = (
+                lows["confirmed_at"].where(
+                    lows["confirmed_at"].notna()
+                    & ~lows["confirmed_at"].astype(str).str.strip().isin(["", "nan", "NaT", "None"]),
+                    lows["timestamp"],
+                )
+                if has_confirmed
+                else lows["timestamp"]
             )
-            saved += 1
+            prices = lows["price"].to_numpy(dtype=float)
+            timestamps = [pd.Timestamp(str(t)).to_pydatetime() for t in ts_confirmed_col]
+            for ts, p in zip(timestamps, prices):
+                swing_objects.append(
+                    SwingPoint(
+                        symbol=symbol,
+                        timeframe=timeframe,
+                        timestamp=ts,
+                        type="low",
+                        price=float(p),
+                    )
+                )
+
+        if swing_objects:
+            self.session.add_all(swing_objects)
+        saved = len(swing_objects)
 
         if commit:
             await self.session.commit()

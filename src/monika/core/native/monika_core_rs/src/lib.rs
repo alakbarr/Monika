@@ -1098,3 +1098,313 @@ pub extern "C" fn monika_find_fvg_f64(
 
     count as isize
 }
+
+#[no_mangle]
+pub extern "C" fn monika_yang_zhang_f64(
+    opens_ptr: *const f64,
+    highs_ptr: *const f64,
+    lows_ptr: *const f64,
+    closes_ptr: *const f64,
+    len: usize,
+    window: usize,
+    out_ptr: *mut f64,
+) -> i32 {
+    if opens_ptr.is_null()
+        || highs_ptr.is_null()
+        || lows_ptr.is_null()
+        || closes_ptr.is_null()
+        || out_ptr.is_null()
+        || len < window + 1
+        || window < 2
+    {
+        return -1;
+    }
+    let opens = unsafe { slice::from_raw_parts(opens_ptr, len) };
+    let highs = unsafe { slice::from_raw_parts(highs_ptr, len) };
+    let lows = unsafe { slice::from_raw_parts(lows_ptr, len) };
+    let closes = unsafe { slice::from_raw_parts(closes_ptr, len) };
+    let out = unsafe { slice::from_raw_parts_mut(out_ptr, len) };
+
+    for i in 0..len {
+        out[i] = f64::NAN;
+    }
+
+    let n = window;
+    let n_f = n as f64;
+    let k = 0.34 / (1.34 + ((n_f + 1.0) / (n_f - 1.0)));
+
+    let mut log_oc = vec![0.0_f64; len];
+    let mut log_co = vec![0.0_f64; len];
+    let mut rs_term = vec![0.0_f64; len];
+
+    for i in 0..len {
+        let op = opens[i].max(1e-6);
+        let hp = highs[i].max(op);
+        let lp = lows[i].max(1e-6);
+        let cp = closes[i].max(1e-6);
+
+        log_oc[i] = (cp / (op + 1e-12)).ln();
+
+        if i > 0 {
+            let cp_prev = closes[i - 1].max(1e-6);
+            log_co[i] = (op / (cp_prev + 1e-12)).ln();
+        }
+
+        let lho = (hp / (op + 1e-12)).ln();
+        let llo = (lp / (op + 1e-12)).ln();
+        let lhc = (hp / (cp + 1e-12)).ln();
+        let llc = (lp / (cp + 1e-12)).ln();
+        rs_term[i] = lho * lhc + llo * llc;
+    }
+
+    for i in n..len {
+        let mut rs_sum = 0.0_f64;
+        let mut co_sum = 0.0_f64;
+        let mut oc_sum = 0.0_f64;
+        for j in (i - n + 1)..=i {
+            rs_sum += rs_term[j];
+            co_sum += log_co[j];
+            oc_sum += log_oc[j];
+        }
+        let rs_mean = rs_sum / n_f;
+        let co_mean = co_sum / n_f;
+        let oc_mean = oc_sum / n_f;
+
+        let mut co_var_sum = 0.0_f64;
+        let mut oc_var_sum = 0.0_f64;
+        for j in (i - n + 1)..=i {
+            let d_co = log_co[j] - co_mean;
+            co_var_sum += d_co * d_co;
+            let d_oc = log_oc[j] - oc_mean;
+            oc_var_sum += d_oc * d_oc;
+        }
+        let co_var = co_var_sum / (n_f - 1.0);
+        let oc_var = oc_var_sum / (n_f - 1.0);
+
+        let yz_var = co_var + (oc_var * k) + (rs_mean * (1.0 - k));
+        out[i] = if yz_var > 0.0 { yz_var.sqrt() } else { 0.0 };
+    }
+
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn monika_stochastic_f64(
+    highs_ptr: *const f64,
+    lows_ptr: *const f64,
+    closes_ptr: *const f64,
+    len: usize,
+    k_period: usize,
+    d_period: usize,
+    out_k_ptr: *mut f64,
+    out_d_ptr: *mut f64,
+) -> i32 {
+    if highs_ptr.is_null()
+        || lows_ptr.is_null()
+        || closes_ptr.is_null()
+        || out_k_ptr.is_null()
+        || out_d_ptr.is_null()
+        || len < k_period
+        || k_period == 0
+        || d_period == 0
+    {
+        return -1;
+    }
+    let highs = unsafe { slice::from_raw_parts(highs_ptr, len) };
+    let lows = unsafe { slice::from_raw_parts(lows_ptr, len) };
+    let closes = unsafe { slice::from_raw_parts(closes_ptr, len) };
+    let out_k = unsafe { slice::from_raw_parts_mut(out_k_ptr, len) };
+    let out_d = unsafe { slice::from_raw_parts_mut(out_d_ptr, len) };
+
+    for i in 0..len {
+        out_k[i] = f64::NAN;
+        out_d[i] = f64::NAN;
+    }
+
+    for i in (k_period - 1)..len {
+        let mut min_l = f64::INFINITY;
+        let mut max_h = f64::NEG_INFINITY;
+        for j in (i - k_period + 1)..=i {
+            if lows[j] < min_l {
+                min_l = lows[j];
+            }
+            if highs[j] > max_h {
+                max_h = highs[j];
+            }
+        }
+        let diff = max_h - min_l;
+        out_k[i] = if diff.abs() > 1e-12 {
+            100.0 * (closes[i] - min_l) / diff
+        } else {
+            50.0
+        };
+    }
+
+    let min_d_idx = k_period - 1 + d_period - 1;
+    if len > min_d_idx {
+        for i in min_d_idx..len {
+            let mut sum_k = 0.0_f64;
+            for j in (i - d_period + 1)..=i {
+                sum_k += out_k[j];
+            }
+            out_d[i] = sum_k / (d_period as f64);
+        }
+    }
+
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn monika_macd_f64(
+    closes_ptr: *const f64,
+    len: usize,
+    fast_period: usize,
+    slow_period: usize,
+    signal_period: usize,
+    out_macd_ptr: *mut f64,
+    out_signal_ptr: *mut f64,
+    out_hist_ptr: *mut f64,
+) -> i32 {
+    if closes_ptr.is_null()
+        || out_macd_ptr.is_null()
+        || out_signal_ptr.is_null()
+        || out_hist_ptr.is_null()
+        || len < slow_period
+        || fast_period == 0
+        || slow_period <= fast_period
+        || signal_period == 0
+    {
+        return -1;
+    }
+    let closes = unsafe { slice::from_raw_parts(closes_ptr, len) };
+    let out_macd = unsafe { slice::from_raw_parts_mut(out_macd_ptr, len) };
+    let out_signal = unsafe { slice::from_raw_parts_mut(out_signal_ptr, len) };
+    let out_hist = unsafe { slice::from_raw_parts_mut(out_hist_ptr, len) };
+
+    for i in 0..len {
+        out_macd[i] = f64::NAN;
+        out_signal[i] = f64::NAN;
+        out_hist[i] = f64::NAN;
+    }
+
+    let fast_alpha = 2.0_f64 / (fast_period as f64 + 1.0_f64);
+    let slow_alpha = 2.0_f64 / (slow_period as f64 + 1.0_f64);
+    let signal_alpha = 2.0_f64 / (signal_period as f64 + 1.0_f64);
+
+    let mut fast_curr = closes[0];
+    let mut slow_curr = closes[0];
+
+    let mut fast_ema = vec![f64::NAN; len];
+
+    for t in 1..(fast_period - 1) {
+        fast_curr = fast_alpha * closes[t] + (1.0_f64 - fast_alpha) * fast_curr;
+    }
+    for t in (fast_period - 1)..len {
+        fast_curr = fast_alpha * closes[t] + (1.0_f64 - fast_alpha) * fast_curr;
+        fast_ema[t] = fast_curr;
+    }
+
+    for t in 1..(slow_period - 1) {
+        slow_curr = slow_alpha * closes[t] + (1.0_f64 - slow_alpha) * slow_curr;
+    }
+    for t in (slow_period - 1)..len {
+        slow_curr = slow_alpha * closes[t] + (1.0_f64 - slow_alpha) * slow_curr;
+        out_macd[t] = fast_ema[t] - slow_curr;
+    }
+
+    let t0 = slow_period - 1;
+    let mut sig_curr = out_macd[t0];
+
+    for t in (t0 + 1)..(t0 + signal_period - 1) {
+        if t < len {
+            sig_curr = signal_alpha * out_macd[t] + (1.0_f64 - signal_alpha) * sig_curr;
+        }
+    }
+
+    let sig_start = t0 + signal_period - 1;
+    for t in sig_start..len {
+        sig_curr = signal_alpha * out_macd[t] + (1.0_f64 - signal_alpha) * sig_curr;
+        out_signal[t] = sig_curr;
+        out_hist[t] = out_macd[t] - sig_curr;
+    }
+
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn monika_ts_argmax_f64(
+    arr_ptr: *const f64,
+    len: usize,
+    window: usize,
+    out_ptr: *mut f64,
+) -> i32 {
+    if arr_ptr.is_null() || out_ptr.is_null() || len < window || window < 1 {
+        return -1;
+    }
+    let arr = unsafe { slice::from_raw_parts(arr_ptr, len) };
+    let out = unsafe { slice::from_raw_parts_mut(out_ptr, len) };
+
+    for i in 0..(window - 1) {
+        out[i] = f64::NAN;
+    }
+
+    for i in (window - 1)..len {
+        let start = i - window + 1;
+        let mut max_val = f64::NEG_INFINITY;
+        let mut max_idx = 0usize;
+        let mut has_nan = false;
+
+        for offset in 0..window {
+            let v = arr[start + offset];
+            if v.is_nan() {
+                has_nan = true;
+                break;
+            }
+            if v > max_val {
+                max_val = v;
+                max_idx = offset;
+            }
+        }
+        out[i] = if has_nan { f64::NAN } else { max_idx as f64 };
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn monika_ts_argmin_f64(
+    arr_ptr: *const f64,
+    len: usize,
+    window: usize,
+    out_ptr: *mut f64,
+) -> i32 {
+    if arr_ptr.is_null() || out_ptr.is_null() || len < window || window < 1 {
+        return -1;
+    }
+    let arr = unsafe { slice::from_raw_parts(arr_ptr, len) };
+    let out = unsafe { slice::from_raw_parts_mut(out_ptr, len) };
+
+    for i in 0..(window - 1) {
+        out[i] = f64::NAN;
+    }
+
+    for i in (window - 1)..len {
+        let start = i - window + 1;
+        let mut min_val = f64::INFINITY;
+        let mut min_idx = 0usize;
+        let mut has_nan = false;
+
+        for offset in 0..window {
+            let v = arr[start + offset];
+            if v.is_nan() {
+                has_nan = true;
+                break;
+            }
+            if v < min_val {
+                min_val = v;
+                min_idx = offset;
+            }
+        }
+        out[i] = if has_nan { f64::NAN } else { min_idx as f64 };
+    }
+    0
+}

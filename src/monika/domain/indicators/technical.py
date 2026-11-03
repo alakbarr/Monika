@@ -34,7 +34,16 @@ import ta.trend
 import ta.volatility
 import ta.volume
 
-from monika.core.native.rust_bridge import atr_f64, bollinger_bands_f64, ema_f64, rsi_f64, sma_f64
+from monika.core.native.rust_bridge import (
+    atr_f64,
+    bollinger_bands_f64,
+    ema_f64,
+    macd_f64,
+    rsi_f64,
+    sma_f64,
+    stochastic_f64,
+    yang_zhang_f64,
+)
 
 logger = logging.getLogger("TradingAgent.Indicators")
 
@@ -57,6 +66,18 @@ def compute_yang_zhang_volatility(df: pd.DataFrame, window: int = 20) -> pd.Seri
     high_p = df["high"].astype(float).clip(lower=open_p)
     low_p = df["low"].astype(float).clip(lower=1e-6)
     close_p = df["close"].astype(float).clip(lower=1e-6)
+
+    # Fast-path via native Rust C-ABI kernel (monika_core_rs)
+    yz_arr = yang_zhang_f64(
+        open_p.to_numpy(dtype=np.float64),
+        high_p.to_numpy(dtype=np.float64),
+        low_p.to_numpy(dtype=np.float64),
+        close_p.to_numpy(dtype=np.float64),
+        n,
+    )
+    if yz_arr is not None:
+        # Fill warmup with 0.0 to match legacy interface contract
+        return pd.Series(np.nan_to_num(yz_arr, nan=0.0), index=df.index, dtype=float)
 
     # Log components
     log_oc = pd.Series(np.log(close_p / (open_p + 1e-12)), index=df.index)
@@ -141,7 +162,17 @@ def compute_stochastic(
     k_period: int = 14,
     d_period: int = 3,
 ) -> tuple[pd.Series, pd.Series]:
-    """Computes Stochastic %K and %D."""
+    """Computes Stochastic %K and %D with native Rust acceleration."""
+    high_vals = high.to_numpy(dtype=float) if isinstance(high, pd.Series) else np.asarray(high, dtype=float)
+    low_vals = low.to_numpy(dtype=float) if isinstance(low, pd.Series) else np.asarray(low, dtype=float)
+    close_vals = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
+
+    stoch_res = stochastic_f64(high_vals, low_vals, close_vals, k_period, d_period)
+    if stoch_res is not None:
+        idx = close.index if isinstance(close, pd.Series) else None
+        out_k, out_d = stoch_res
+        return pd.Series(out_k, index=idx), pd.Series(out_d, index=idx)
+
     stoch = ta.momentum.StochasticOscillator(
         high=high, low=low, close=close, window=k_period, smooth_window=d_period, fillna=False
     )
@@ -154,7 +185,14 @@ def compute_macd(
     slow: int = 26,
     signal: int = 9,
 ) -> tuple[pd.Series, pd.Series, pd.Series]:
-    """Computes MACD line, signal line, and histogram."""
+    """Computes MACD line, signal line, and histogram with native Rust acceleration."""
+    close_vals = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
+    macd_res = macd_f64(close_vals, fast, slow, signal)
+    if macd_res is not None:
+        idx = close.index if isinstance(close, pd.Series) else None
+        m_line, s_line, h_diff = macd_res
+        return pd.Series(m_line, index=idx), pd.Series(s_line, index=idx), pd.Series(h_diff, index=idx)
+
     macd_obj = ta.trend.MACD(close, window_fast=fast, window_slow=slow, window_sign=signal, fillna=False)
     return pd.Series(macd_obj.macd()), pd.Series(macd_obj.macd_signal()), pd.Series(macd_obj.macd_diff())
 

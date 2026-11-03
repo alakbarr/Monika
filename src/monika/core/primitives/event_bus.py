@@ -13,6 +13,7 @@ Supports:
 import asyncio
 import inspect
 import logging
+import weakref
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional, Set, Type, TypeVar, Union
@@ -128,13 +129,59 @@ class PostFillEvent(AppEvent):
 # ==============================================================================
 
 
-@dataclass
 class Subscription:
-    """Handler subscription record with priority ordering."""
+    """Handler subscription record with weak reference support and pre-compiled reflection."""
 
-    event_type: type[AppEvent]
-    handler: Callable[..., Union[Coroutine[Any, Any, None], Any]]
-    priority: int = 0  # Higher integer = earlier execution
+    def __init__(
+        self,
+        event_type: type[AppEvent],
+        handler: Callable[..., Union[Coroutine[Any, Any, None], Any]],
+        priority: int = 0,
+    ):
+        self.event_type = event_type
+        self.priority = priority
+
+        # Pre-compile reflection metadata once at subscription time
+        self.is_async: bool = inspect.iscoroutinefunction(handler) or (
+            callable(handler) and inspect.iscoroutinefunction(handler.__call__)
+        )
+        try:
+            sig = inspect.signature(handler)
+            self.takes_payload: bool = len(sig.parameters) >= 2
+        except ValueError, TypeError:
+            self.takes_payload = False
+
+        # Attempt weak referencing for bound methods and standard objects
+        self._is_weak: bool = False
+        self._weak_handler: Optional[Any] = None
+        self._strong_handler: Optional[Callable] = None
+
+        if inspect.ismethod(handler):
+            try:
+                self._weak_handler = weakref.WeakMethod(handler)
+                self._is_weak = True
+            except TypeError:
+                self._strong_handler = handler
+        else:
+            try:
+                self._weak_handler = weakref.ref(handler)
+                self._is_weak = True
+            except TypeError:
+                self._strong_handler = handler
+
+    @property
+    def handler(self) -> Optional[Callable]:
+        """Resolves the live callable or None if the weak reference has died."""
+        if self._is_weak and self._weak_handler is not None:
+            return self._weak_handler()
+        return self._strong_handler
+
+    @property
+    def is_alive(self) -> bool:
+        """Check whether the underlying handler is still alive."""
+        if self._is_weak and self._weak_handler is not None:
+            return self._weak_handler() is not None
+        return self._strong_handler is not None
 
 
 # ==============================================================================
@@ -218,7 +265,9 @@ class EventBus:
             return False
 
         initial_len = len(self._subscribers[event_type])
-        self._subscribers[event_type] = [s for s in self._subscribers[event_type] if s.handler != handler]
+        self._subscribers[event_type] = [
+            s for s in self._subscribers[event_type] if s.is_alive and s.handler != handler
+        ]
         removed = len(self._subscribers[event_type]) < initial_len
         if removed:
             logger.debug(
@@ -229,17 +278,31 @@ class EventBus:
     def get_subscribers(self, event_type: type[AppEvent]) -> list[Subscription]:
         """Get all subscriptions matching the event type, including polymorphic bases."""
         matching: list[Subscription] = []
+        dead_subs: list[tuple[type[AppEvent], Subscription]] = []
+
         for registered_type, subs in self._subscribers.items():
             if issubclass(event_type, registered_type):
-                matching.extend(subs)
+                for s in subs:
+                    if s.is_alive:
+                        matching.append(s)
+                    else:
+                        dead_subs.append((registered_type, s))
+
+        # Auto-prune dead weak references to prevent lingering objects
+        if dead_subs:
+            for reg_type, dead_s in dead_subs:
+                if reg_type in self._subscribers and dead_s in self._subscribers[reg_type]:
+                    self._subscribers[reg_type].remove(dead_s)
+
         # Sort all matching by priority descending
         matching.sort(key=lambda s: s.priority, reverse=True)
         # Deduplicate by handler preserving highest registered priority
         seen_handlers = set()
         deduped: list[Subscription] = []
         for s in matching:
-            if s.handler not in seen_handlers:
-                seen_handlers.add(s.handler)
+            h = s.handler
+            if h is not None and h not in seen_handlers:
+                seen_handlers.add(h)
                 deduped.append(s)
         return deduped
 
@@ -280,16 +343,19 @@ class EventBus:
             group = priority_groups[p]
 
             async def _invoke_safe(sub: Subscription) -> Any:
+                h = sub.handler
+                if h is None:
+                    return None
                 try:
-                    if inspect.iscoroutinefunction(sub.handler):
-                        return await sub.handler(event)
+                    if sub.is_async:
+                        return await h(event)
                     else:
-                        res = sub.handler(event)
+                        res = h(event)
                         if inspect.isawaitable(res):
                             return await res
                         return res
                 except Exception as exc:
-                    handler_name = getattr(sub.handler, "__name__", str(sub.handler))
+                    handler_name = getattr(h, "__name__", str(h))
                     logger.error(
                         f"[EventBus] Handler '{handler_name}' raised error processing "
                         f"{event.__class__.__name__}: {exc}",
@@ -312,6 +378,9 @@ class EventBus:
         """
         try:
             loop = asyncio.get_running_loop()
+            if len(self._pending_tasks) > 256:
+                self.clean_finished_tasks()
+
             task = loop.create_task(self.publish(event))
             self._pending_tasks.add(task)
 
@@ -358,25 +427,26 @@ class EventBus:
         current_val = initial_payload
 
         for sub in subscriptions:
+            h = sub.handler
+            if h is None:
+                continue
             try:
-                sig = inspect.signature(sub.handler)
-                takes_payload = len(sig.parameters) >= 2
-                if inspect.iscoroutinefunction(sub.handler):
-                    if takes_payload:
-                        current_val = await sub.handler(event, current_val)
+                if sub.is_async:
+                    if sub.takes_payload:
+                        current_val = await h(event, current_val)
                     else:
-                        current_val = await sub.handler(event)
+                        current_val = await h(event)
                 else:
-                    if takes_payload:
-                        res = sub.handler(event, current_val)
+                    if sub.takes_payload:
+                        res = h(event, current_val)
                     else:
-                        res = sub.handler(event)
+                        res = h(event)
                     if inspect.isawaitable(res):
                         current_val = await res
                     else:
                         current_val = res
             except Exception as exc:
-                handler_name = getattr(sub.handler, "__name__", str(sub.handler))
+                handler_name = getattr(h, "__name__", str(h))
                 logger.error(
                     f"[EventBus.waterfall] Error in {handler_name} processing {event.__class__.__name__}: {exc}",
                     exc_info=True,
@@ -395,17 +465,20 @@ class EventBus:
         subscriptions = self.get_subscribers(type(event))
 
         for sub in subscriptions:
+            h = sub.handler
+            if h is None:
+                continue
             try:
-                if inspect.iscoroutinefunction(sub.handler):
-                    res = await sub.handler(event)
+                if sub.is_async:
+                    res = await h(event)
                 else:
-                    res = sub.handler(event)
+                    res = h(event)
                     if inspect.isawaitable(res):
                         res = await res
                 if res:
                     return res
             except Exception as exc:
-                handler_name = getattr(sub.handler, "__name__", str(sub.handler))
+                handler_name = getattr(h, "__name__", str(h))
                 logger.error(
                     f"[EventBus.bail] Error in {handler_name} processing {event.__class__.__name__}: {exc}",
                     exc_info=True,
