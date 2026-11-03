@@ -190,3 +190,18 @@ async def safe_upsert(
                     setattr(existing, col, val)
         else:
             session.add(model(**values))
+
+
+async def atomic_upsert_system_config(
+    session: AsyncSession,
+    key: str,
+    value: str,
+    description: Optional[str] = None,
+) -> None:
+    """Atomically upsert a key-value pair in SystemConfig table.
+
+    Uses native ON CONFLICT (key) DO UPDATE to guarantee safety against concurrent race conditions.
+    """
+    from monika.infrastructure.database.models import SystemConfig
+
+    await SystemConfig.upsert(session, key=key, value=value, description=description)

@@ -807,3 +807,294 @@ pub extern "C" fn monika_rolling_corr_f64(
     }
     0
 }
+
+#[no_mangle]
+pub extern "C" fn monika_sma_f64(
+    arr_ptr: *const f64,
+    len: usize,
+    period: usize,
+    out_ptr: *mut f64,
+) -> i32 {
+    if arr_ptr.is_null() || out_ptr.is_null() || len < period || period == 0 {
+        return -1;
+    }
+    let arr = unsafe { slice::from_raw_parts(arr_ptr, len) };
+    let out = unsafe { slice::from_raw_parts_mut(out_ptr, len) };
+
+    for i in 0..(period - 1) {
+        out[i] = f64::NAN;
+    }
+
+    let p_f = period as f64;
+    let mut sum = 0.0_f64;
+    for i in 0..period {
+        sum += arr[i];
+    }
+    out[period - 1] = sum / p_f;
+
+    for i in period..len {
+        sum += arr[i] - arr[i - period];
+        out[i] = sum / p_f;
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn monika_ema_f64(
+    arr_ptr: *const f64,
+    len: usize,
+    period: usize,
+    out_ptr: *mut f64,
+) -> i32 {
+    if arr_ptr.is_null() || out_ptr.is_null() || len < period || period == 0 {
+        return -1;
+    }
+    let arr = unsafe { slice::from_raw_parts(arr_ptr, len) };
+    let out = unsafe { slice::from_raw_parts_mut(out_ptr, len) };
+
+    for i in 0..(period - 1) {
+        out[i] = f64::NAN;
+    }
+
+    let alpha = 2.0_f64 / (period as f64 + 1.0_f64);
+    let mut curr = arr[0];
+
+    for t in 1..(period - 1) {
+        curr = alpha * arr[t] + (1.0_f64 - alpha) * curr;
+    }
+
+    for t in (period - 1)..len {
+        curr = alpha * arr[t] + (1.0_f64 - alpha) * curr;
+        out[t] = curr;
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn monika_rsi_f64(
+    arr_ptr: *const f64,
+    len: usize,
+    period: usize,
+    out_ptr: *mut f64,
+) -> i32 {
+    if arr_ptr.is_null() || out_ptr.is_null() || len < period || period == 0 {
+        return -1;
+    }
+    let arr = unsafe { slice::from_raw_parts(arr_ptr, len) };
+    let out = unsafe { slice::from_raw_parts_mut(out_ptr, len) };
+
+    for i in 0..(period - 1) {
+        out[i] = f64::NAN;
+    }
+
+    let alpha = 1.0_f64 / (period as f64);
+    let mut curr_up = 0.0_f64;
+    let mut curr_dn = 0.0_f64;
+
+    for t in 1..len {
+        let diff = arr[t] - arr[t - 1];
+        let up = if diff > 0.0 { diff } else { 0.0 };
+        let dn = if diff < 0.0 { -diff } else { 0.0 };
+        curr_up = alpha * up + (1.0_f64 - alpha) * curr_up;
+        curr_dn = alpha * dn + (1.0_f64 - alpha) * curr_dn;
+
+        if t >= period - 1 {
+            if curr_dn == 0.0 {
+                out[t] = 100.0;
+            } else {
+                let rs = curr_up / curr_dn;
+                out[t] = 100.0 - (100.0 / (1.0 + rs));
+            }
+        }
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn monika_atr_f64(
+    highs_ptr: *const f64,
+    lows_ptr: *const f64,
+    closes_ptr: *const f64,
+    len: usize,
+    period: usize,
+    out_ptr: *mut f64,
+) -> i32 {
+    if highs_ptr.is_null() || lows_ptr.is_null() || closes_ptr.is_null() || out_ptr.is_null() || len < period || period == 0 {
+        return -1;
+    }
+    let highs = unsafe { slice::from_raw_parts(highs_ptr, len) };
+    let lows = unsafe { slice::from_raw_parts(lows_ptr, len) };
+    let closes = unsafe { slice::from_raw_parts(closes_ptr, len) };
+    let out = unsafe { slice::from_raw_parts_mut(out_ptr, len) };
+
+    for i in 0..(period - 1) {
+        out[i] = 0.0;
+    }
+
+    let mut tr_sum = 0.0_f64;
+    let mut prev_atr = 0.0_f64;
+    let p_f = period as f64;
+
+    for i in 0..len {
+        let h = highs[i];
+        let l = lows[i];
+        let tr = if i == 0 {
+            h - l
+        } else {
+            let cp = closes[i - 1];
+            (h - l).max((h - cp).abs()).max((l - cp).abs())
+        };
+
+        if i < period {
+            tr_sum += tr;
+            if i == period - 1 {
+                prev_atr = tr_sum / p_f;
+                out[i] = prev_atr;
+            }
+        } else {
+            prev_atr = (prev_atr * (p_f - 1.0) + tr) / p_f;
+            out[i] = prev_atr;
+        }
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn monika_bollinger_bands_f64(
+    arr_ptr: *const f64,
+    len: usize,
+    period: usize,
+    num_std: f64,
+    out_mid_ptr: *mut f64,
+    out_upper_ptr: *mut f64,
+    out_lower_ptr: *mut f64,
+) -> i32 {
+    if arr_ptr.is_null() || out_mid_ptr.is_null() || out_upper_ptr.is_null() || out_lower_ptr.is_null() || len < period || period == 0 {
+        return -1;
+    }
+    let arr = unsafe { slice::from_raw_parts(arr_ptr, len) };
+    let out_mid = unsafe { slice::from_raw_parts_mut(out_mid_ptr, len) };
+    let out_upper = unsafe { slice::from_raw_parts_mut(out_upper_ptr, len) };
+    let out_lower = unsafe { slice::from_raw_parts_mut(out_lower_ptr, len) };
+
+    for i in 0..(period - 1) {
+        out_mid[i] = f64::NAN;
+        out_upper[i] = f64::NAN;
+        out_lower[i] = f64::NAN;
+    }
+
+    let p_f = period as f64;
+
+    for i in (period - 1)..len {
+        let start = i + 1 - period;
+        let mut sum = 0.0_f64;
+        let mut sq_sum = 0.0_f64;
+        for k in start..=i {
+            let v = arr[k];
+            sum += v;
+            sq_sum += v * v;
+        }
+        let mean = sum / p_f;
+        let var = ((sq_sum / p_f) - (mean * mean)).max(0.0);
+        let std = var.sqrt();
+
+        out_mid[i] = mean;
+        out_upper[i] = mean + num_std * std;
+        out_lower[i] = mean - num_std * std;
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn monika_find_fvg_f64(
+    highs_ptr: *const f64,
+    lows_ptr: *const f64,
+    atr_ptr: *const f64,
+    len: usize,
+    min_atr_factor: f64,
+    out_indices_ptr: *mut usize,
+    out_types_ptr: *mut u8,
+    out_gap_high_ptr: *mut f64,
+    out_gap_low_ptr: *mut f64,
+    out_filled_idx_ptr: *mut isize,
+) -> isize {
+    if highs_ptr.is_null()
+        || lows_ptr.is_null()
+        || atr_ptr.is_null()
+        || out_indices_ptr.is_null()
+        || out_types_ptr.is_null()
+        || out_gap_high_ptr.is_null()
+        || out_gap_low_ptr.is_null()
+        || out_filled_idx_ptr.is_null()
+        || len < 3
+    {
+        return -1;
+    }
+    let highs = unsafe { slice::from_raw_parts(highs_ptr, len) };
+    let lows = unsafe { slice::from_raw_parts(lows_ptr, len) };
+    let atr = unsafe { slice::from_raw_parts(atr_ptr, len) };
+
+    let out_indices = unsafe { slice::from_raw_parts_mut(out_indices_ptr, len) };
+    let out_types = unsafe { slice::from_raw_parts_mut(out_types_ptr, len) };
+    let out_gap_high = unsafe { slice::from_raw_parts_mut(out_gap_high_ptr, len) };
+    let out_gap_low = unsafe { slice::from_raw_parts_mut(out_gap_low_ptr, len) };
+    let out_filled_idx = unsafe { slice::from_raw_parts_mut(out_filled_idx_ptr, len) };
+
+    let mut count = 0usize;
+
+    for i in 0..(len - 2) {
+        let c1_h = highs[i];
+        let c1_l = lows[i];
+        let c3_h = highs[i + 2];
+        let c3_l = lows[i + 2];
+        let current_atr = atr[i + 2];
+
+        // Bullish FVG: candle_3_low > candle_1_high
+        if c3_l > c1_h {
+            let gap_low = c1_h;
+            let gap_high = c3_l;
+            let gap_size = gap_high - gap_low;
+
+            if gap_size >= current_atr * min_atr_factor {
+                let gap_mid = (gap_high + gap_low) / 2.0;
+                let mut filled: isize = -1;
+                for j in (i + 3)..len {
+                    if lows[j] <= gap_mid {
+                        filled = j as isize;
+                        break;
+                    }
+                }
+                out_indices[count] = i + 2;
+                out_types[count] = 1; // 1 = bullish
+                out_gap_high[count] = gap_high;
+                out_gap_low[count] = gap_low;
+                out_filled_idx[count] = filled;
+                count += 1;
+            }
+        } else if c3_h < c1_l {
+            // Bearish FVG: candle_3_high < candle_1_low
+            let gap_high = c1_l;
+            let gap_low = c3_h;
+            let gap_size = gap_high - gap_low;
+
+            if gap_size >= current_atr * min_atr_factor {
+                let gap_mid = (gap_high + gap_low) / 2.0;
+                let mut filled: isize = -1;
+                for j in (i + 3)..len {
+                    if highs[j] >= gap_mid {
+                        filled = j as isize;
+                        break;
+                    }
+                }
+                out_indices[count] = i + 2;
+                out_types[count] = 2; // 2 = bearish
+                out_gap_high[count] = gap_high;
+                out_gap_low[count] = gap_low;
+                out_filled_idx[count] = filled;
+                count += 1;
+            }
+        }
+    }
+
+    count as isize
+}

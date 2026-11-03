@@ -641,11 +641,30 @@
   - `ts_rank_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]`: Rolling time-series rank percentile in [0, 1] within a window.
   - `decay_linear_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]`: Linear decay-weighted moving average with weights 1..window normalized.
   - `rolling_corr_f64(x: np.ndarray, y: np.ndarray, window: int) -> Optional[np.ndarray]`: Rolling Pearson correlation between two 1D series with min_periods=window.
+  - `sma_f64(arr: np.ndarray, period: int) -> Optional[np.ndarray]`: Simple Moving Average (SMA) using compiled Rust kernel.
+  - `ema_f64(arr: np.ndarray, period: int) -> Optional[np.ndarray]`: Exponential Moving Average (EMA) using compiled Rust kernel.
+  - `rsi_f64(arr: np.ndarray, period: int) -> Optional[np.ndarray]`: Relative Strength Index (RSI) using compiled Rust kernel.
+  - `atr_f64(highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, ...) -> Optional[np.ndarray]`: Average True Range (ATR) using compiled Rust kernel.
+  - `bollinger_bands_f64(arr: np.ndarray, period: int, num_std: float) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]`: Bollinger Bands (middle, upper, lower) using compiled Rust kernel.
+  - `find_fvg_f64(highs: np.ndarray, lows: np.ndarray, atr: np.ndarray, ...) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]`: Fair Value Gap (FVG) detection using compiled Rust kernel.
 
 ### Folder: `src/monika/core/primitives` <a id="folder-srcmonikacoreprimitives"></a>
 
 #### `__init__.py` - *Pure Core Primitives.*
 - **Path**: [`src/monika/core/primitives/__init__.py`](src/monika/core/primitives/__init__.py)
+
+#### `bounded_lru_cache.py`
+- **Path**: [`src/monika/core/primitives/bounded_lru_cache.py`](src/monika/core/primitives/bounded_lru_cache.py)
+- **Classes**:
+  - `class BoundedLRUCache(Generic[K, V])`: Thread-safe bounded LRU cache with deterministic capacity ceiling and monotonic TTL pruning.
+    - `__init__(maxsize: int, default_ttl_seconds: float) -> None`
+    - `get(key: K, default: Optional[V]) -> Optional[V]` - *Retrieve cached value if present and unexpired.*
+    - `put(key: K, value: V, ttl_seconds: Optional[float]) -> None` - *Store key-value pair with TTL and LRU capacity enforcement.*
+    - `reap_expired() -> int` - *Active reaper: purges all expired entries from cache. Returns count of purged entries.*
+    - `invalidate(key: K) -> bool` - *Invalidate a specific key if present.*
+    - `invalidate_prefix(prefix: str) -> int` - *Invalidate all keys matching prefix string.*
+    - `clear() -> int` - *Clear all entries and return count of cleared entries.*
+    - `stats() -> dict[str, Any]` - *Return cache access telemetry.*
 
 #### `clock.py` - *Clock Abstraction Module for Deterministic Time and Point-in-Time Simulation.*
 - **Path**: [`src/monika/core/primitives/clock.py`](src/monika/core/primitives/clock.py)
@@ -698,6 +717,7 @@
     - `async publish_buffered(event: AppEvent, queue_name: str, backpressure_mode: str, ...) -> bool` - *Put event into buffered queue with backpressure policies.*
     - `start_queue_worker(queue_name: str) -> asyncio.Task` - *Start a background worker task that consumes from queue and publishes to subscribers.*
     - `stop_workers() -> None` - *Stop all background queue worker tasks.*
+    - `clean_finished_tasks() -> int` - *Remove completed or cancelled background tasks from the tracking set to free memory.*
     - `clear() -> None` - *Clear all subscribers, queues, and worker tasks (useful for testing).*
     - `get_default_bus() -> EventBus` - *Get or initialize singleton default EventBus instance.*
     - `subscribe_default(event_type: type[E], handler: Callable[[E], Union[Coroutine[Any, Any, None], Any]], priority: int) -> Callable[[E], Union[Coroutine[Any, Any, None], Any]]`
@@ -974,6 +994,20 @@
   - `shutdown_logging() -> None`: Stop the background QueueListener worker thread cleanly.
   - `setup_logging(log_dir: str, level: int, max_bytes: int, ...) -> logging.Logger`: Setup root logger with non-blocking QueueHandler and RedactingFormatter.
   - `get_activity_logger() -> ActivityLogger`: Mendapatkan singleton instance `ActivityLogger`.
+
+#### `batched_sink.py`
+- **Path**: [`src/monika/core/telemetry/batched_sink.py`](src/monika/core/telemetry/batched_sink.py)
+- **Classes**:
+  - `class BatchedTelemetrySink`: High-performance batched telemetry sink implementing TelemetrySink.
+    - `__init__(flush_interval_seconds: float, max_batch_size: int, max_queue_size: int) -> None`
+    - `start() -> None` - *Start the background batch flusher task.*
+    - `async stop() -> None` - *Gracefully stop and flush all queued telemetry.*
+    - `async persist_activity(category: str, description: str, related_id: Optional[int], ...) -> Optional[int]` - *Dual-lane activity persistence.*
+    - `async persist_spans(spans: list[Any]) -> None` - *Persist evicted tracing spans.*
+    - `async flush() -> int` - *Flush all pending activities to database in a single transaction.*
+- **Top-Level Functions**:
+  - `enable_batched_telemetry(flush_interval_seconds: float) -> BatchedTelemetrySink`: Enable global batched telemetry sink for high-throughput non-stop operation.
+  - `async disable_batched_telemetry() -> None`: Disable and flush global batched telemetry sink.
 
 #### `delegation_live_log.py` - *Subagent Delegation Live Transcript & Streaming Logger.*
 - **Path**: [`src/monika/core/telemetry/delegation_live_log.py`](src/monika/core/telemetry/delegation_live_log.py)
@@ -1642,12 +1676,12 @@
 - **Top-Level Functions**:
   - `compute_yang_zhang_volatility(df: pd.DataFrame, window: int) -> pd.Series`: Yang-Zhang (2000) historical volatility estimator.
   - `compute_lag1_autocorrelation(close: pd.Series, window: int) -> pd.Series`: Menghitung lag-1 return autocorrelation rolling window.
-  - `compute_moving_averages(close: pd.Series, sma_periods: tuple[int, ...], ema_periods: tuple[int, ...]) -> dict[str, pd.Series]`: Computes SMAs and EMAs for specified periods.
-  - `compute_rsi(close: pd.Series, period: int) -> pd.Series`: Computes RSI (Relative Strength Index).
+  - `compute_moving_averages(close: pd.Series, sma_periods: tuple[int, ...], ema_periods: tuple[int, ...]) -> dict[str, pd.Series]`: Computes SMAs and EMAs for specified periods with native Rust acceleration.
+  - `compute_rsi(close: pd.Series, period: int) -> pd.Series`: Computes RSI (Relative Strength Index) with native Rust acceleration.
   - `compute_stochastic(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series]`: Computes Stochastic %K and %D.
   - `compute_macd(close: pd.Series, fast: int, slow: int, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes MACD line, signal line, and histogram.
-  - `compute_bollinger_bands(close: pd.Series, period: int, std_dev: float) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]`: Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth.
-  - `compute_atr(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> pd.Series`: Computes Average True Range.
+  - `compute_bollinger_bands(close: pd.Series, period: int, std_dev: float) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]`: Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth with native Rust acceleration.
+  - `compute_atr(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> pd.Series`: Computes Average True Range with native Rust acceleration.
   - `compute_adx(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes ADX, +DI, and -DI.
   - `compute_pivot_points(high: float, low: float, close: float, ...) -> dict[str, Any]`: Menghitung Classical / Camarilla / Fibonacci / Woodie Pivot Points dari satu bar D1/W1.
   - `compute_ichimoku(df: pd.DataFrame, tenkan_period: int, kijun_period: int, ...) -> dict[str, Any]`: Menghitung komponen Ichimoku Kinko Hyo:
@@ -7259,6 +7293,7 @@
 - **Path**: [`src/monika/application/analysis/strategies/registry.py`](src/monika/application/analysis/strategies/registry.py)
 - **Classes**:
   - `class StrategyRegistry`
+    - `invalidate_tier_cache(strategy_id: Optional[str]) -> None` - *Invalidate strategy tier cache for one strategy or all strategies.*
     - `get_tier(strategy_id: str) -> StrategyTier`
     - `register(strategy_cls: Type[EdgeStrategy], overwrite: bool) -> Type[EdgeStrategy]`
     - `get_strategy_counts() -> tuple[int, dict[str, int]]` - *Returns total registered count and count per instrument.*
@@ -10788,6 +10823,20 @@
     - `async get_recent_candles(session: AsyncSession, symbol: str, timeframe: str, ...) -> List[CandleDTO]` - *Fetch latest cached OHLCV candles from persistence store as detached DTOs.*
     - `async get_upcoming_economic_events(session: AsyncSession, currencies: Optional[List[str]], impact_levels: Optional[List[str]], ...) -> List[EconomicEventDTO]` - *Fetch upcoming economic calendar news events as detached DTOs.*
 
+#### `market_snapshot_service.py`
+- **Path**: [`src/monika/application/services/market_snapshot_service.py`](src/monika/application/services/market_snapshot_service.py)
+- **Classes**:
+  - `class AssetMarketSnapshot`: Ground truth market bar & indicator snapshot for a symbol and timeframe.
+    - `is_fresh(max_age_seconds: float) -> bool` - *Check if snapshot was refreshed within max_age_seconds.*
+    - `to_dict() -> Dict[str, Any]` - *Convert to dictionary matching VerifiedMarketSnapshot format.*
+  - `class MarketSnapshotService`: Thread-safe in-memory cache for asset ground-truth snapshots.
+    - `__init__() -> None`
+    - `get_instance() -> MarketSnapshotService`
+    - `reset() -> None` - *Reset singleton (for test hermeticity).*
+    - `set_snapshot(symbol: str, timeframe: str, timestamp: datetime, ...) -> AssetMarketSnapshot` - *Store or update in-memory snapshot for a symbol/timeframe.*
+    - `get_snapshot(symbol: str, timeframe: str, max_age_seconds: float) -> Optional[AssetMarketSnapshot]` - *Retrieve cached snapshot if present and unexpired.*
+    - `clear() -> int` - *Clear all snapshots.*
+
 #### `market_structure_service.py` - *Market Structure Application Service.*
 - **Path**: [`src/monika/application/services/market_structure_service.py`](src/monika/application/services/market_structure_service.py)
 - **Classes**:
@@ -12043,6 +12092,7 @@
   - `async safe_nested_db_op(session: AsyncSession, operation: Callable) -> Any`: Convenience helper: Execute a DB operation isolated inside a SAVEPOINT.
   - `async safe_commit(session: AsyncSession, label: str, max_retries: int) -> bool`: Commit an active transaction with guaranteed automatic rollback on failure.
   - `async safe_upsert(session: AsyncSession, model: type, values: Dict[str, Any], ...) -> None`: Execute an upsert statement compatible with PostgreSQL and SQLite.
+  - `async atomic_upsert_system_config(session: AsyncSession, key: str, value: str, ...) -> None`: Atomically upsert a key-value pair in SystemConfig table.
 
 #### `session_db_wal.py` - *High-Performance SQLite WAL Session Database with Bounded Read Pool & Lock Guards.*
 - **Path**: [`src/monika/infrastructure/database/session_db_wal.py`](src/monika/infrastructure/database/session_db_wal.py)

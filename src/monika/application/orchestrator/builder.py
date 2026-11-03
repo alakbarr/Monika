@@ -446,6 +446,18 @@ class AgentBuilderMixin:
         # Wire EventBus subscribers for sub-second reactive protection & live observability
         if self.event_bus:
             from monika.core.primitives.event_bus import OrderStateChangedEvent, TickPriceEvent
+            from monika.domain.market.candle_ring_buffer import RingBufferHub
+
+            async def _on_ring_buffer_tick(evt: TickPriceEvent):
+                RingBufferHub.get_instance().on_tick(
+                    symbol=evt.symbol,
+                    bid=evt.bid,
+                    ask=evt.ask,
+                    last=evt.last,
+                    timestamp=evt.timestamp,
+                )
+
+            self.event_bus.subscribe(TickPriceEvent, _on_ring_buffer_tick, priority=20)
 
             if self.flash_crash_detector and hasattr(self.flash_crash_detector, "on_tick"):
                 self.event_bus.subscribe(TickPriceEvent, self.flash_crash_detector.on_tick, priority=10)

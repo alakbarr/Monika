@@ -16,19 +16,31 @@ import monika.core.native.rust_bridge as rb
 from monika.application.backtest.monte_carlo_engine import MonteCarloStressTester
 from monika.application.backtest.statistical_tests import probability_of_backtest_overfitting
 from monika.core.native.rust_bridge import (
+    atr_f64,
+    bollinger_bands_f64,
     cscv_pbo_from_chunks_f64,
+    ema_f64,
     eval_equity_paths_f64,
+    find_fvg_f64,
     find_swing_pivots_f64,
     find_swings_f64,
     is_rust_accelerator_available,
     kyle_lambda_ols_f64,
+    rsi_f64,
+    sma_f64,
     tick_rule_cvd_f64,
     vpin_fractional_f64,
 )
 from monika.domain.indicators.chart_patterns import find_swing_pivots
 from monika.domain.indicators.microstructure import compute_kyle_lambda, compute_vpin
 from monika.domain.indicators.order_flow import OrderFlowEngine
-from monika.domain.indicators.structure import find_swings
+from monika.domain.indicators.structure import find_fvg, find_swings
+from monika.domain.indicators.technical import (
+    compute_atr,
+    compute_bollinger_bands,
+    compute_moving_averages,
+    compute_rsi,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -61,6 +73,12 @@ class TestRustNativeBridgeAvailability:
         assert tick_rule_cvd_f64(np.array([1.0, 2.0]), np.array([10.0, 20.0])) is None
         assert find_swings_f64(np.ones(10), np.ones(10), 2) is None
         assert find_swing_pivots_f64(np.ones(10), np.ones(10), 2) is None
+        assert sma_f64(np.ones(10), 3) is None
+        assert ema_f64(np.ones(10), 3) is None
+        assert rsi_f64(np.ones(10), 3) is None
+        assert atr_f64(np.ones(10), np.ones(10), np.ones(10), 3) is None
+        assert bollinger_bands_f64(np.ones(10), 3) is None
+        assert find_fvg_f64(np.ones(10), np.ones(10), np.ones(10)) is None
 
 
 class TestRustNumericalParity:
@@ -245,6 +263,118 @@ class TestRustNumericalParity:
         assert pbo_rust["is_overfit"] == pbo_fallback["is_overfit"]
         assert pbo_rust["median_oos_rank"] == pbo_fallback["median_oos_rank"]
         assert pbo_rust["n_combinations"] == pbo_fallback["n_combinations"]
+
+    def test_sma_and_ema_parity(self, monkeypatch):
+        """Verify SMA and EMA exact parity between Rust accelerator and fallback."""
+        rng = np.random.default_rng(707)
+        close = pd.Series(100.0 + np.cumsum(rng.normal(0, 0.5, size=200)))
+
+        # 1. Rust mode
+        monkeypatch.delenv("MONIKA_DISABLE_RUST_ACCEL", raising=False)
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        ma_rust = compute_moving_averages(close, sma_periods=(20, 50), ema_periods=(9, 21))
+
+        # 2. Python fallback mode
+        monkeypatch.setenv("MONIKA_DISABLE_RUST_ACCEL", "1")
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        ma_fallback = compute_moving_averages(close, sma_periods=(20, 50), ema_periods=(9, 21))
+
+        for k in ("SMA_20", "SMA_50", "EMA_9", "EMA_21"):
+            np.testing.assert_allclose(ma_rust[k].dropna().values, ma_fallback[k].dropna().values, rtol=1e-10)
+
+    def test_rsi_parity(self, monkeypatch):
+        """Verify RSI exact parity between Rust accelerator and fallback."""
+        rng = np.random.default_rng(808)
+        close = pd.Series(50.0 + np.cumsum(rng.normal(0, 0.3, size=150)))
+
+        # 1. Rust mode
+        monkeypatch.delenv("MONIKA_DISABLE_RUST_ACCEL", raising=False)
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        rsi_rust = compute_rsi(close, period=14)
+
+        # 2. Python fallback mode
+        monkeypatch.setenv("MONIKA_DISABLE_RUST_ACCEL", "1")
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        rsi_fallback = compute_rsi(close, period=14)
+
+        np.testing.assert_allclose(rsi_rust.dropna().values, rsi_fallback.dropna().values, rtol=1e-10)
+
+    def test_atr_parity(self, monkeypatch):
+        """Verify ATR exact parity between Rust accelerator and fallback."""
+        rng = np.random.default_rng(909)
+        close = pd.Series(100.0 + np.cumsum(rng.normal(0, 0.5, size=120)))
+        high = close + rng.uniform(0.1, 1.0, size=120)
+        low = close - rng.uniform(0.1, 1.0, size=120)
+
+        # 1. Rust mode
+        monkeypatch.delenv("MONIKA_DISABLE_RUST_ACCEL", raising=False)
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        atr_rust = compute_atr(high, low, close, period=14)
+
+        # 2. Python fallback mode
+        monkeypatch.setenv("MONIKA_DISABLE_RUST_ACCEL", "1")
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        atr_fallback = compute_atr(high, low, close, period=14)
+
+        np.testing.assert_allclose(atr_rust.values[14:], atr_fallback.values[14:], rtol=1e-10)
+
+    def test_bollinger_bands_parity(self, monkeypatch):
+        """Verify Bollinger Bands exact parity between Rust accelerator and fallback."""
+        rng = np.random.default_rng(1010)
+        close = pd.Series(100.0 + np.cumsum(rng.normal(0, 0.5, size=150)))
+
+        # 1. Rust mode
+        monkeypatch.delenv("MONIKA_DISABLE_RUST_ACCEL", raising=False)
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        bb_rust = compute_bollinger_bands(close, period=20, std_dev=2.0)
+
+        # 2. Python fallback mode
+        monkeypatch.setenv("MONIKA_DISABLE_RUST_ACCEL", "1")
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        bb_fallback = compute_bollinger_bands(close, period=20, std_dev=2.0)
+
+        for i in range(5):
+            np.testing.assert_allclose(bb_rust[i].dropna().values, bb_fallback[i].dropna().values, rtol=1e-10)
+
+    def test_find_fvg_parity(self, monkeypatch):
+        """Verify FVG detection parity between Rust accelerator and fallback."""
+        rng = np.random.default_rng(1111)
+        close = pd.Series(
+            100.0 + np.cumsum(rng.normal(0, 1.0, size=100)),
+            index=pd.date_range("2025-01-01", periods=100, freq="1h"),
+        )
+        high = close + rng.uniform(0.2, 1.5, size=100)
+        low = close - rng.uniform(0.2, 1.5, size=100)
+        open_p = close - rng.normal(0, 0.5, size=100)
+        df = pd.DataFrame({"open": open_p, "high": high, "low": low, "close": close}, index=close.index)
+
+        # 1. Rust mode
+        monkeypatch.delenv("MONIKA_DISABLE_RUST_ACCEL", raising=False)
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        fvg_rust = find_fvg(df, symbol="EURUSD", timeframe="H1")
+
+        # 2. Python fallback mode
+        monkeypatch.setenv("MONIKA_DISABLE_RUST_ACCEL", "1")
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        fvg_fallback = find_fvg(df, symbol="EURUSD", timeframe="H1")
+
+        assert len(fvg_rust) == len(fvg_fallback)
+        for r, f in zip(fvg_rust, fvg_fallback):
+            assert r.formed_at == f.formed_at
+            assert r.filled_at == f.filled_at
+            assert r.direction == f.direction
+            assert math.isclose(r.gap_high, f.gap_high, rel_tol=1e-9)
+            assert math.isclose(r.gap_low, f.gap_low, rel_tol=1e-9)
 
 
 class TestRustEdgeCasesAndFailClosed:

@@ -7,7 +7,7 @@ import asyncio
 import json as _json
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
 logger = logging.getLogger("TradingAgent.DrawdownMonitor")
 
@@ -19,6 +19,8 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
     """
     consecutive_breach_count = 0
     BREACH_THRESHOLD = 2
+    cached_start_balance_date: Optional[str] = None
+    cached_start_balance_val: Optional[float] = None
 
     if hasattr(agent, "_recovery_complete") and agent._recovery_complete:
         try:
@@ -61,10 +63,34 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
 
                             from monika.infrastructure.database.db import get_session
                             from monika.infrastructure.database.models import SystemConfig
-                            from monika.infrastructure.database.safe_ops import safe_commit
+                            from monika.infrastructure.database.safe_ops import atomic_upsert_system_config, safe_commit
 
                             now_utc = datetime.now(timezone.utc)
                             today_str = now_utc.strftime("%Y-%m-%d")
+                            balance_key = f"mt5_balance_start_{today_str}"
+
+                            if cached_start_balance_date == today_str and cached_start_balance_val is not None:
+                                starting_balance = cached_start_balance_val
+                            else:
+                                async with get_session() as cfg_session:
+                                    balance_cfg = (
+                                        await cfg_session.execute(
+                                            _sel(SystemConfig).where(SystemConfig.key == balance_key)
+                                        )
+                                    ).scalar_one_or_none()
+                                    if not balance_cfg or balance_cfg.value is None:
+                                        await atomic_upsert_system_config(
+                                            cfg_session, key=balance_key, value=str(balance)
+                                        )
+                                        await safe_commit(cfg_session, label="drawdown_monitor_start_balance")
+                                        starting_balance = balance
+                                    else:
+                                        starting_balance = float(balance_cfg.value)
+                                cached_start_balance_date = today_str
+                                cached_start_balance_val = starting_balance
+
+                            daily_pnl = equity - starting_balance
+                            daily_pnl_pct = round(daily_pnl / starting_balance * 100, 4) if starting_balance > 0 else 0
                             real_state = {
                                 "balance": balance,
                                 "equity": equity,
@@ -72,36 +98,15 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
                                 "floating_pnl_pct": round((equity - balance) / balance * 100, 4) if balance > 0 else 0,
                                 "date": today_str,
                                 "updated_at": now_utc.isoformat(),
+                                "starting_balance": starting_balance,
+                                "daily_pnl": daily_pnl,
+                                "daily_pnl_pct": daily_pnl_pct,
                             }
+
+                            state_key = "mt5_real_risk_state"
+                            state_json = _json.dumps(real_state)
                             async with get_session() as cfg_session:
-                                balance_key = f"mt5_balance_start_{today_str}"
-                                balance_cfg = (
-                                    await cfg_session.execute(_sel(SystemConfig).where(SystemConfig.key == balance_key))
-                                ).scalar_one_or_none()
-                                if not balance_cfg or balance_cfg.value is None:
-                                    cfg_session.add(SystemConfig(key=balance_key, value=str(balance)))
-                                    await safe_commit(cfg_session, label="drawdown_monitor_start_balance")
-                                    starting_balance = balance
-                                else:
-                                    starting_balance = float(balance_cfg.value)
-
-                                daily_pnl = equity - starting_balance
-                                daily_pnl_pct = (
-                                    round(daily_pnl / starting_balance * 100, 4) if starting_balance > 0 else 0
-                                )
-                                real_state["starting_balance"] = starting_balance
-                                real_state["daily_pnl"] = daily_pnl
-                                real_state["daily_pnl_pct"] = daily_pnl_pct
-
-                                state_key = "mt5_real_risk_state"
-                                state_cfg = (
-                                    await cfg_session.execute(_sel(SystemConfig).where(SystemConfig.key == state_key))
-                                ).scalar_one_or_none()
-                                state_json = _json.dumps(real_state)
-                                if state_cfg:
-                                    state_cfg.value = state_json
-                                else:
-                                    cfg_session.add(SystemConfig(key=state_key, value=state_json))
+                                await atomic_upsert_system_config(cfg_session, key=state_key, value=state_json)
                                 await safe_commit(cfg_session, label="drawdown_monitor_risk_state")
                         except Exception as e:
                             logger.debug(f"Real risk state write failed (non-fatal): {e}")

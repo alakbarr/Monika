@@ -225,6 +225,71 @@ def _load_library() -> Optional[ctypes.CDLL]:
         ]
         lib.monika_rolling_corr_f64.restype = ctypes.c_int32
 
+        # 12. monika_sma_f64
+        lib.monika_sma_f64.argtypes = [
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            f64_p,
+        ]
+        lib.monika_sma_f64.restype = ctypes.c_int32
+
+        # 13. monika_ema_f64
+        lib.monika_ema_f64.argtypes = [
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            f64_p,
+        ]
+        lib.monika_ema_f64.restype = ctypes.c_int32
+
+        # 14. monika_rsi_f64
+        lib.monika_rsi_f64.argtypes = [
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            f64_p,
+        ]
+        lib.monika_rsi_f64.restype = ctypes.c_int32
+
+        # 15. monika_atr_f64
+        lib.monika_atr_f64.argtypes = [
+            f64_p,
+            f64_p,
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            f64_p,
+        ]
+        lib.monika_atr_f64.restype = ctypes.c_int32
+
+        # 16. monika_bollinger_bands_f64
+        lib.monika_bollinger_bands_f64.argtypes = [
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            ctypes.c_double,
+            f64_p,
+            f64_p,
+            f64_p,
+        ]
+        lib.monika_bollinger_bands_f64.restype = ctypes.c_int32
+
+        # 17. monika_find_fvg_f64
+        lib.monika_find_fvg_f64.argtypes = [
+            f64_p,
+            f64_p,
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_double,
+            usize_p,
+            u8_p,
+            f64_p,
+            f64_p,
+            ctypes.POINTER(ctypes.c_ssize_t),
+        ]
+        lib.monika_find_fvg_f64.restype = ctypes.c_ssize_t
+
         _LIB_INSTANCE = lib
         logger.info(f"[RustBridge] Successfully loaded native Rust accelerator from {load_path}")
         return _LIB_INSTANCE
@@ -638,3 +703,195 @@ def rolling_corr_f64(x: np.ndarray, y: np.ndarray, window: int) -> Optional[np.n
     if code != 0:
         return None
     return out_arr
+
+
+def sma_f64(arr: np.ndarray, period: int) -> Optional[np.ndarray]:
+    """
+    Simple Moving Average (SMA) using compiled Rust kernel.
+    Returns 1D np.ndarray with leading NaNs, or None if unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    if arr.ndim != 1 or period < 1 or len(arr) < period:
+        return None
+
+    inp_arr = np.ascontiguousarray(arr, dtype=np.float64)
+    out_arr = np.empty_like(inp_arr)
+
+    code = lib.monika_sma_f64(
+        inp_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(len(inp_arr)),
+        ctypes.c_size_t(period),
+        out_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return out_arr
+
+
+def ema_f64(arr: np.ndarray, period: int) -> Optional[np.ndarray]:
+    """
+    Exponential Moving Average (EMA) using compiled Rust kernel.
+    Returns 1D np.ndarray with leading NaNs, or None if unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    if arr.ndim != 1 or period < 1 or len(arr) < period:
+        return None
+
+    inp_arr = np.ascontiguousarray(arr, dtype=np.float64)
+    out_arr = np.empty_like(inp_arr)
+
+    code = lib.monika_ema_f64(
+        inp_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(len(inp_arr)),
+        ctypes.c_size_t(period),
+        out_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return out_arr
+
+
+def rsi_f64(arr: np.ndarray, period: int) -> Optional[np.ndarray]:
+    """
+    Relative Strength Index (RSI) using compiled Rust kernel.
+    Returns 1D np.ndarray in [0, 100] with leading NaNs, or None if unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    if arr.ndim != 1 or period < 1 or len(arr) < period:
+        return None
+
+    inp_arr = np.ascontiguousarray(arr, dtype=np.float64)
+    out_arr = np.empty_like(inp_arr)
+
+    code = lib.monika_rsi_f64(
+        inp_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(len(inp_arr)),
+        ctypes.c_size_t(period),
+        out_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return out_arr
+
+
+def atr_f64(highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, period: int) -> Optional[np.ndarray]:
+    """
+    Average True Range (ATR) using compiled Rust kernel.
+    Returns 1D np.ndarray with leading 0.0s, or None if unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    n = len(highs)
+    if n < period or period < 1 or len(lows) != n or len(closes) != n:
+        return None
+
+    h_arr = np.ascontiguousarray(highs, dtype=np.float64)
+    l_arr = np.ascontiguousarray(lows, dtype=np.float64)
+    c_arr = np.ascontiguousarray(closes, dtype=np.float64)
+    out_arr = np.empty_like(h_arr)
+
+    code = lib.monika_atr_f64(
+        h_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        l_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        c_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(n),
+        ctypes.c_size_t(period),
+        out_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return out_arr
+
+
+def bollinger_bands_f64(
+    arr: np.ndarray,
+    period: int,
+    num_std: float = 2.0,
+) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """
+    Bollinger Bands (middle, upper, lower) using compiled Rust kernel.
+    Returns tuple of 3 1D np.ndarrays with leading NaNs, or None if unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    if arr.ndim != 1 or period < 1 or len(arr) < period:
+        return None
+
+    inp_arr = np.ascontiguousarray(arr, dtype=np.float64)
+    mid_arr = np.empty_like(inp_arr)
+    upper_arr = np.empty_like(inp_arr)
+    lower_arr = np.empty_like(inp_arr)
+
+    code = lib.monika_bollinger_bands_f64(
+        inp_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(len(inp_arr)),
+        ctypes.c_size_t(period),
+        ctypes.c_double(num_std),
+        mid_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        upper_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        lower_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return mid_arr, upper_arr, lower_arr
+
+
+def find_fvg_f64(
+    highs: np.ndarray,
+    lows: np.ndarray,
+    atr: np.ndarray,
+    min_atr_factor: float = 0.3,
+) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    """
+    Fair Value Gap (FVG) detection using compiled Rust kernel.
+    Returns (formed_indices, types, gap_highs, gap_lows, filled_indices) or None.
+    types: 1=bullish, 2=bearish. filled_indices: index of fill candle or -1.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    n = len(highs)
+    if n < 3 or len(lows) != n or len(atr) != n:
+        return None
+
+    h_arr = np.ascontiguousarray(highs, dtype=np.float64)
+    l_arr = np.ascontiguousarray(lows, dtype=np.float64)
+    atr_arr = np.ascontiguousarray(atr, dtype=np.float64)
+
+    out_indices = np.zeros(n, dtype=np.uint64)
+    out_types = np.zeros(n, dtype=np.uint8)
+    out_gap_high = np.zeros(n, dtype=np.float64)
+    out_gap_low = np.zeros(n, dtype=np.float64)
+    out_filled_idx = np.zeros(n, dtype=np.int64)
+
+    count = lib.monika_find_fvg_f64(
+        h_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        l_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        atr_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(n),
+        ctypes.c_double(min_atr_factor),
+        out_indices.ctypes.data_as(ctypes.POINTER(ctypes.c_size_t)),
+        out_types.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)),
+        out_gap_high.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        out_gap_low.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        out_filled_idx.ctypes.data_as(ctypes.POINTER(ctypes.c_ssize_t)),
+    )
+    if count < 0:
+        return None
+
+    k = int(count)
+    return (
+        out_indices[:k],
+        out_types[:k],
+        out_gap_high[:k],
+        out_gap_low[:k],
+        out_filled_idx[:k],
+    )

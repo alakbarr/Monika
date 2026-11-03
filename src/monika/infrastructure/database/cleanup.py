@@ -320,7 +320,7 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
             cp_db_path = BASE_DIR / ".agent_state" / "checkpoints.sqlite"
             if not is_running_under_test_suite() and cp_db_path.exists():
                 checkpointer = SqliteCheckpointSaver(db_path=str(cp_db_path))
-                await checkpointer.aprune_disk_checkpoints(max_threads=500, retention_days=7)
+                await checkpointer.aprune_disk_checkpoints(max_threads=50, retention_days=3)
         except Exception as cp_err:
             logger.debug(f"SqliteCheckpointSaver disk pruning skip: {cp_err}")
 

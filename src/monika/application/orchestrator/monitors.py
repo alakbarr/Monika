@@ -409,9 +409,15 @@ class AgentMonitorsMixin:
                 if evicted > 0:
                     logger.debug(f"[CacheReaper] Reaped {evicted} expired replay cache entries")
 
-                # Perform generational GC pass every 10 cycles (10 min) to break unreferenced cyclic graphs
+                # Clean completed background event bus tasks to prevent task set growth
+                if hasattr(self, "event_bus") and self.event_bus:
+                    cleaned_tasks = getattr(self.event_bus, "clean_finished_tasks", lambda: 0)()
+                    if cleaned_tasks > 0:
+                        logger.debug(f"[CacheReaper] Cleaned {cleaned_tasks} finished event tasks")
+
+                # Perform generational GC pass every 5 cycles (5 min) to break unreferenced cyclic graphs
                 reaper_counter += 1
-                if reaper_counter % 10 == 0:
+                if reaper_counter % 5 == 0:
                     collected = gc.collect()
                     logger.debug(f"[MemoryReaper] Generational GC pass: collected {collected} objects")
             except Exception as e:

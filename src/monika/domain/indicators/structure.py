@@ -489,6 +489,30 @@ def find_fvg(
                 )
             )
 
+    from monika.core.native.rust_bridge import find_fvg_f64
+
+    rust_fvg = find_fvg_f64(highs, lows, atr, min_atr_factor=0.3)
+    if rust_fvg is not None:
+        f_indices, f_types, f_gap_high, f_gap_low, f_filled = rust_fvg
+        for k in range(len(f_indices)):
+            form_idx = int(f_indices[k])
+            dir_str = "bullish" if f_types[k] == 1 else "bearish"
+            fill_idx = int(f_filled[k])
+            f_at = timestamps[fill_idx] if fill_idx >= 0 else None
+            zones.append(
+                FVGData(
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    gap_high=float(f_gap_high[k]),
+                    gap_low=float(f_gap_low[k]),
+                    direction=dir_str,
+                    formed_at=timestamps[form_idx],
+                    filled_at=f_at,
+                )
+            )
+        logger.debug(f"Found {len(zones)} FVG zones")
+        return zones
+
     for i in range(n - 2):
         candle_1_high = highs[i]
         candle_1_low = lows[i]

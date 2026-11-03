@@ -549,6 +549,12 @@ class EventBus:
     # Lifecycle & Cleanup
     # --------------------------------------------------------------------------
 
+    def clean_finished_tasks(self) -> int:
+        """Remove completed or cancelled background tasks from the tracking set to free memory."""
+        finished = {t for t in self._pending_tasks if t.done()}
+        self._pending_tasks.difference_update(finished)
+        return len(finished)
+
     def clear(self) -> None:
         """Clear all subscribers, queues, and worker tasks (useful for testing)."""
         self.stop_workers()

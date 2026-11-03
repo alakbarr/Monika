@@ -30,9 +30,30 @@ class StrategyRegistry:
     _load_interval: float = 60.0
     MAX_SYNTHESIZED_PER_SYMBOL: int = 5
     SYNTHESIZED_DIR: Path = get_runtime_strategies_dir()
+    _tier_cache: dict[str, tuple[float, StrategyTier]] = {}
+    _tier_cache_ttl: float = 60.0
+
+    @classmethod
+    def invalidate_tier_cache(cls, strategy_id: Optional[str] = None) -> None:
+        """Invalidate strategy tier cache for one strategy or all strategies."""
+        if strategy_id:
+            cls._tier_cache.pop(strategy_id, None)
+        else:
+            cls._tier_cache.clear()
 
     @classmethod
     def get_tier(cls, strategy_id: str) -> StrategyTier:
+        now = time.monotonic()
+        cached = cls._tier_cache.get(strategy_id)
+        if cached is not None and (now - cached[0]) < cls._tier_cache_ttl:
+            return cached[1]
+
+        tier = cls._resolve_tier(strategy_id)
+        cls._tier_cache[strategy_id] = (now, tier)
+        return tier
+
+    @classmethod
+    def _resolve_tier(cls, strategy_id: str) -> StrategyTier:
         if strategy_id in cls.QUARANTINED_STRATEGY_IDS:
             return StrategyTier.QUARANTINED
         try:

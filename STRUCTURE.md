@@ -809,6 +809,7 @@ Monika/
 │       │   │   ├── general_harness_service.py
 │       │   │   ├── market_data_service.py
 │       │   │   ├── market_intel_service.py
+│       │   │   ├── market_snapshot_service.py
 │       │   │   ├── market_structure_service.py
 │       │   │   ├── order_flow_service.py
 │       │   │   ├── portfolio_service.py
@@ -884,6 +885,7 @@ Monika/
 │       │   │   └── rust_bridge.py
 │       │   ├── primitives/
 │       │   │   ├── __init__.py
+│       │   │   ├── bounded_lru_cache.py
 │       │   │   ├── clock.py
 │       │   │   ├── constants.py
 │       │   │   ├── content_distiller.py
@@ -929,6 +931,7 @@ Monika/
 │       │   │   │   └── tracer.py
 │       │   │   ├── __init__.py
 │       │   │   ├── activity_logger.py
+│       │   │   ├── batched_sink.py
 │       │   │   ├── delegation_live_log.py
 │       │   │   ├── doctor.py
 │       │   │   ├── metrics_exporter.py
@@ -2453,6 +2456,9 @@ Monika/
 │   │   ├── test_settings_task_roles.py
 │   │   └── test_skill_risk_contract_sync.py
 │   ├── core/
+│   │   ├── test_bounded_lru_cache.py
+│   │   ├── test_market_snapshot_and_telemetry.py
+│   │   ├── test_rust_kernels_parity.py
 │   │   └── test_rust_native_bridge.py
 │   ├── data_sources/
 │   │   ├── __init__.py
@@ -3098,6 +3104,7 @@ Monika/
 │   ├── designs/
 │   │   ├── database_architecture_modernization.md
 │   │   ├── README.md
+│   │   ├── runtime_performance_and_stability_architecture.md
 │   │   ├── runtime_storage_separation.md
 │   │   └── SITEMAP.md
 │   ├── images/
@@ -3190,4 +3197,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 274 | **Total Tracked Files**: 2886
+**Total Tracked Directories**: 274 | **Total Tracked Files**: 2893

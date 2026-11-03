@@ -34,6 +34,8 @@ import ta.trend
 import ta.volatility
 import ta.volume
 
+from monika.core.native.rust_bridge import atr_f64, bollinger_bands_f64, ema_f64, rsi_f64, sma_f64
+
 logger = logging.getLogger("TradingAgent.Indicators")
 
 
@@ -101,17 +103,34 @@ def compute_moving_averages(
     sma_periods: tuple[int, ...] = (20, 50, 200),
     ema_periods: tuple[int, ...] = (9, 21, 50, 200),
 ) -> dict[str, pd.Series]:
-    """Computes SMAs and EMAs for specified periods."""
+    """Computes SMAs and EMAs for specified periods with native Rust acceleration."""
     result: dict[str, pd.Series] = {}
+    close_vals = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
+    idx = close.index if isinstance(close, pd.Series) else None
+
     for p in sma_periods:
-        result[f"SMA_{p}"] = pd.Series(ta.trend.sma_indicator(close, window=p, fillna=False))
+        s_arr = sma_f64(close_vals, p)
+        if s_arr is not None:
+            result[f"SMA_{p}"] = pd.Series(s_arr, index=idx)
+        else:
+            result[f"SMA_{p}"] = pd.Series(ta.trend.sma_indicator(close, window=p, fillna=False))
+
     for p in ema_periods:
-        result[f"EMA_{p}"] = pd.Series(ta.trend.ema_indicator(close, window=p, fillna=False))
+        e_arr = ema_f64(close_vals, p)
+        if e_arr is not None:
+            result[f"EMA_{p}"] = pd.Series(e_arr, index=idx)
+        else:
+            result[f"EMA_{p}"] = pd.Series(ta.trend.ema_indicator(close, window=p, fillna=False))
+
     return result
 
 
 def compute_rsi(close: pd.Series, period: int = 14) -> pd.Series:
-    """Computes RSI (Relative Strength Index)."""
+    """Computes RSI (Relative Strength Index) with native Rust acceleration."""
+    close_vals = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
+    r_arr = rsi_f64(close_vals, period)
+    if r_arr is not None:
+        return pd.Series(r_arr, index=close.index if isinstance(close, pd.Series) else None)
     return pd.Series(ta.momentum.rsi(close, window=period, fillna=False))
 
 
@@ -145,7 +164,24 @@ def compute_bollinger_bands(
     period: int = 20,
     std_dev: float = 2.0,
 ) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]:
-    """Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth."""
+    """Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth with native Rust acceleration."""
+    close_vals = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
+    bb_arrs = bollinger_bands_f64(close_vals, period, std_dev)
+    if bb_arrs is not None:
+        idx = close.index if isinstance(close, pd.Series) else None
+        mavg, upper, lower = bb_arrs
+        diff = upper - lower
+        safe_diff = np.where(diff != 0.0, diff, 1.0)
+        pct_b = np.where(diff != 0.0, (close_vals - lower) / safe_diff, 0.0)
+        safe_mavg = np.where(mavg != 0.0, mavg, 1.0)
+        wband = np.where(mavg != 0.0, (diff / safe_mavg) * 100.0, 0.0)
+        return (
+            pd.Series(upper, index=idx),
+            pd.Series(mavg, index=idx),
+            pd.Series(lower, index=idx),
+            pd.Series(pct_b, index=idx),
+            pd.Series(wband, index=idx),
+        )
     bb = ta.volatility.BollingerBands(close=close, window=period, window_dev=int(std_dev), fillna=False)
     return (
         pd.Series(bb.bollinger_hband()),
@@ -162,7 +198,13 @@ def compute_atr(
     close: pd.Series,
     period: int = 14,
 ) -> pd.Series:
-    """Computes Average True Range."""
+    """Computes Average True Range with native Rust acceleration."""
+    h_arr = high.to_numpy(dtype=float) if isinstance(high, pd.Series) else np.asarray(high, dtype=float)
+    l_arr = low.to_numpy(dtype=float) if isinstance(low, pd.Series) else np.asarray(low, dtype=float)
+    c_arr = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
+    a_arr = atr_f64(h_arr, l_arr, c_arr, period)
+    if a_arr is not None:
+        return pd.Series(a_arr, index=close.index if isinstance(close, pd.Series) else None)
     return pd.Series(ta.volatility.average_true_range(high=high, low=low, close=close, window=period, fillna=False))
 
 
@@ -1489,6 +1531,15 @@ def evaluate_workspace_indicators(
     figures_dict["CLOSE"] = round(last_close, 5)
 
     def _pack_series(s: pd.Series) -> list[dict[str, Any]]:
+        if s is None or len(s) == 0:
+            return []
+        # Fast-path: aligned numpy array slice (avoids millions of pandas Index lookups)
+        if len(s) == n_total:
+            arr = s.to_numpy(dtype=np.float64, na_value=np.nan)
+            if slice_len < n_total:
+                arr = arr[slice_start:]
+            return [{"time": t, "value": round(float(v), 6)} for t, v in zip(target_ts, arr) if np.isfinite(v)]
+        # Fallback for custom-indexed series
         pts: list[dict[str, Any]] = []
         for t, idx in zip(target_ts, target_idx):
             v = s.get(idx)

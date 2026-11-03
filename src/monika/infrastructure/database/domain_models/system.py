@@ -175,12 +175,12 @@ class SystemConfig(Base):
         """Upsert key-value record safely and atomically across concurrent transactions."""
         from sqlalchemy import select
 
-        bind = session.bind
-        dialect_name = bind.dialect.name if bind else "postgresql"
+        bind = getattr(session, "bind", None) or (session.get_bind() if hasattr(session, "get_bind") else None)
+        dialect_name = getattr(getattr(bind, "dialect", None), "name", None) or "postgresql"
+        now = _utcnow()
         if dialect_name == "postgresql":
             from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-            now = _utcnow()
             update_dict: dict[str, Any] = {"updated_at": now}
             if value is not None:
                 update_dict["value"] = value
@@ -193,6 +193,34 @@ class SystemConfig(Base):
                 .on_conflict_do_update(index_elements=["key"], set_=update_dict)
             )
             await session.execute(stmt)
+            res = await session.execute(select(cls).where(cls.key == key))
+            cfg = res.scalar_one_or_none()
+            if cfg is None:
+                try:
+                    cfg = res.scalar_one()
+                except Exception:
+                    pass
+            if cfg is not None and value is not None:
+                try:
+                    cfg.value = value
+                except Exception:
+                    pass
+            return cfg if cfg is not None else cls(key=key, value=value, description=description, updated_at=now)
+        elif dialect_name == "sqlite":
+            from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
+            update_dict_sqlite: dict[str, Any] = {"updated_at": now}
+            if value is not None:
+                update_dict_sqlite["value"] = value
+            if description is not None:
+                update_dict_sqlite["description"] = description
+
+            stmt_sqlite = (
+                sqlite_insert(cls)
+                .values(key=key, value=value, description=description, updated_at=now)
+                .on_conflict_do_update(index_elements=["key"], set_=update_dict_sqlite)
+            )
+            await session.execute(stmt_sqlite)
             res = await session.execute(select(cls).where(cls.key == key))
             cfg = res.scalar_one_or_none()
             if cfg is None:

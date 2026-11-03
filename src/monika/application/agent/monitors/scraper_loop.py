@@ -18,6 +18,7 @@ async def run_scraper_loop(agent: Any) -> None:
 
     from monika.infrastructure.database.db import get_session as _gs_scraper
     from monika.infrastructure.database.models import SystemConfig
+    from monika.infrastructure.database.safe_ops import atomic_upsert_system_config, safe_commit
 
     min_interval_minutes = agent.settings.get("scraping", {}).get("min_interval_minutes", 45)
     cycle_count = 0
@@ -60,17 +61,9 @@ async def run_scraper_loop(agent: Any) -> None:
                     agent._active_scraper_runner = None
 
                 async with _gs_scraper() as save_session:
-                    cfg = (
-                        await save_session.execute(
-                            _sel_scraper(SystemConfig).where(SystemConfig.key == "last_scraper_run_at")
-                        )
-                    ).scalar_one_or_none()
                     now_iso = datetime.now(timezone.utc).isoformat()
-                    if cfg:
-                        cfg.value = now_iso
-                    else:
-                        save_session.add(SystemConfig(key="last_scraper_run_at", value=now_iso))
-                    await save_session.commit()
+                    await atomic_upsert_system_config(save_session, key="last_scraper_run_at", value=now_iso)
+                    await safe_commit(save_session, label="scraper_last_run_at")
 
             from monika.application.analysis.prefetch.news_digest import NewsDigestProcessor
             from monika.infrastructure.database.db import get_session

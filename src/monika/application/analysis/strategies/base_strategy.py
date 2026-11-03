@@ -179,11 +179,25 @@ class EdgeStrategy(ABC):
         as_of: Optional[Any] = None,
     ) -> list[CandleDict]:
         """Built-in helper for quantitative strategies to retrieve historical OHLCV candles."""
+        norm_tf = timeframe.upper()
+
+        # Check in-memory Zero-Copy RingBuffer first (sub-microsecond latency, 0 DB roundtrips)
+        if as_of is None:
+            try:
+                from monika.domain.market.candle_ring_buffer import RingBufferHub
+
+                hub = RingBufferHub.get_instance()
+                if hub.has_buffer(symbol, norm_tf):
+                    hub_candles = hub.get_latest_candles(symbol, norm_tf, limit)
+                    if len(hub_candles) >= min(limit, 20):
+                        return [CandleDict(c) for c in hub_candles]
+            except Exception:
+                pass
+
         from sqlalchemy import select
 
         from monika.infrastructure.database.models import PriceOHLCV
 
-        norm_tf = timeframe.upper()
         cache_key = (symbol, norm_tf, str(as_of) if as_of is not None else None)
 
         # Check session-level in-memory cache to eliminate N+1 DB query storms
@@ -222,6 +236,16 @@ class EdgeStrategy(ABC):
         ]
         if hasattr(session, "info") and isinstance(session.info, dict):
             session.info.setdefault("candle_cache", {})[cache_key] = candles
+
+        # Seed RingBufferHub on cold-start so subsequent strategies never hit DB
+        if as_of is None and rows:
+            try:
+                from monika.domain.market.candle_ring_buffer import RingBufferHub
+
+                RingBufferHub.get_instance().update_from_ohlcv_rows(symbol, norm_tf, rows)
+            except Exception:
+                pass
+
         return candles
 
     @staticmethod

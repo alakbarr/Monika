@@ -96,7 +96,7 @@ class SqliteCheckpointSaver(InMemorySaver):
             conn.close()
         self._load_from_sqlite()
 
-    def prune_disk_checkpoints(self, max_threads: int = 500, retention_days: Optional[int] = 7) -> int:
+    def prune_disk_checkpoints(self, max_threads: int = 50, retention_days: Optional[int] = 3) -> int:
         """Prune checkpoints and writes older than retention_days or exceeding max_threads from SQLite database."""
         deleted_count = 0
         conn = self._get_connection()
@@ -129,6 +129,13 @@ class SqliteCheckpointSaver(InMemorySaver):
             )
             deleted_count += cursor.rowcount
             conn.commit()
+
+            # Truncate WAL journal to reclaim disk space and prevent unbounded growth during 24/7 execution
+            try:
+                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            except Exception:
+                pass
+
             if deleted_count > 0:
                 logger.info(f"[SqliteCheckpointer] Pruned {deleted_count} stale checkpoint/write entries from disk.")
         except Exception as e:
@@ -137,7 +144,7 @@ class SqliteCheckpointSaver(InMemorySaver):
             conn.close()
         return deleted_count
 
-    async def aprune_disk_checkpoints(self, max_threads: int = 500, retention_days: Optional[int] = 7) -> int:
+    async def aprune_disk_checkpoints(self, max_threads: int = 50, retention_days: Optional[int] = 3) -> int:
         """Asynchronously prune checkpoints and writes from SQLite disk database."""
         return await asyncio.to_thread(self.prune_disk_checkpoints, max_threads, retention_days)
 
@@ -234,7 +241,7 @@ class SqliteCheckpointSaver(InMemorySaver):
         self._put_counter += 1
         if self._put_counter % 100 == 0:
             try:
-                self.prune_disk_checkpoints(max_threads=500, retention_days=7)
+                self.prune_disk_checkpoints(max_threads=50, retention_days=3)
             except Exception as e:
                 logger.debug(f"[SqliteCheckpointer] Auto disk pruning error: {e}")
         try:
@@ -294,7 +301,7 @@ class SqliteCheckpointSaver(InMemorySaver):
         self._put_counter += 1
         if self._put_counter % 100 == 0:
             try:
-                await self.aprune_disk_checkpoints(max_threads=500, retention_days=7)
+                await self.aprune_disk_checkpoints(max_threads=50, retention_days=3)
             except Exception as e:
                 logger.debug(f"[SqliteCheckpointer] Auto disk pruning error: {e}")
         try:
