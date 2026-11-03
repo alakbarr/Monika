@@ -124,3 +124,85 @@ async def test_bond_yield_deduplication(db_session):
         (await db_session.execute(select(BondYieldData).where(BondYieldData.country_tenor == "DE_10Y"))).scalars().all()
     )
     assert len(rows) == 1
+
+
+@pytest.mark.asyncio
+async def test_bond_yield_ecb_timeout_fallback_to_cbw(db_session):
+    """Memastikan saat ECB Data Portal timeout (seperti insiden 35s), CBW langsung mengisi DE_10Y dan DE_2Y."""
+    fetcher = BondYieldFetcher(db_session)
+
+    cbw_mock_data = {
+        "DE_10Y": 2.45,
+        "DE_2Y": 2.10,
+        "UK_10Y": 4.25,
+        "UK_2Y": 4.10,
+        "JP_10Y": 1.15,
+        "JP_2Y": 0.55,
+        "AU_10Y": 4.05,
+        "AU_2Y": 3.75,
+    }
+
+    # Simulasikan ECB gagal dengan TimeoutError / None
+    with patch.object(fetcher, "_fetch_ecb_yield", new_callable=AsyncMock, side_effect=TimeoutError("ECB Timeout")):
+        with patch(
+            "monika.infrastructure.data_ingestion.sources.central_bank_watch.CentralBankWatchFetcher.fetch_sovereign_yields",
+            new_callable=AsyncMock,
+            return_value=cbw_mock_data,
+        ):
+            results = await fetcher.fetch()
+
+            # Verifikasi semua 8 tenor berhasil diisi via CBW fallback
+            assert results.get("DE_10Y") == 1
+            assert results.get("DE_2Y") == 1
+            assert results.get("UK_10Y") == 1
+            assert results.get("UK_2Y") == 1
+            assert results.get("JP_10Y") == 1
+            assert results.get("JP_2Y") == 1
+            assert results.get("AU_10Y") == 1
+            assert results.get("AU_2Y") == 1
+
+
+@pytest.mark.asyncio
+async def test_bond_yield_ecb_500_504_error_fallback(db_session):
+    """Memastikan saat ECB mengembalikan HTTP 500 / 504 (-1), pipeline tidak crash dan jatuh ke CBW."""
+    fetcher = BondYieldFetcher(db_session)
+
+    cbw_mock_data = {
+        "DE_10Y": 2.50,
+        "DE_2Y": 2.20,
+    }
+
+    with patch.object(fetcher, "_fetch_ecb_yield", new_callable=AsyncMock, return_value=-1):
+        with patch(
+            "monika.infrastructure.data_ingestion.sources.central_bank_watch.CentralBankWatchFetcher.fetch_sovereign_yields",
+            new_callable=AsyncMock,
+            return_value=cbw_mock_data,
+        ):
+            results = await fetcher.fetch()
+            assert results.get("DE_10Y") == 1
+            assert results.get("DE_2Y") == 1
+
+
+@pytest.mark.asyncio
+async def test_bond_yield_ecb_budget_protection(db_session):
+    """Memastikan proteksi budget membatalkan ECB jika menggantung, tanpa membunuh CBW & FRED."""
+    fetcher = BondYieldFetcher(db_session)
+
+    cbw_mock_data = {
+        "DE_10Y": 2.30,
+        "DE_2Y": 2.05,
+        "UK_10Y": 4.15,
+    }
+
+    # Simulasikan TimeoutError saat budget ECB habis
+    with patch.object(fetcher, "_fetch_ecb_yield", new_callable=AsyncMock, side_effect=TimeoutError()):
+        with patch(
+            "monika.infrastructure.data_ingestion.sources.central_bank_watch.CentralBankWatchFetcher.fetch_sovereign_yields",
+            new_callable=AsyncMock,
+            return_value=cbw_mock_data,
+        ):
+            results = await fetcher.fetch()
+            # Karena ECB dibatalkan oleh timeout, CBW mengisi tanpa hambatan
+            assert results.get("DE_10Y") == 1
+            assert results.get("DE_2Y") == 1
+            assert results.get("UK_10Y") == 1

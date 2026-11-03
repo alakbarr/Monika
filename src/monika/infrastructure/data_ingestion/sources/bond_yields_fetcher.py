@@ -55,6 +55,7 @@ class BondYieldFetcher:
     def __init__(self, session: AsyncSession, fred_api_key: Optional[str] = None):
         self.session = session
         self.fred_api_key = fred_api_key or os.getenv("FRED_API_KEY", "")
+        self._session_lock = asyncio.Lock()
 
     async def fetch(self, period: str = "15d") -> dict[str, int]:
         """
@@ -73,31 +74,39 @@ class BondYieldFetcher:
 
         try:
             async with asyncio.timeout(35.0):
-                # 1. Fetch DE_10Y & DE_2Y via ECB Data Portal API (High-frequency daily Euro AAA Yields)
+                # 1. Fetch DE_10Y & DE_2Y via ECB Data Portal API concurrently with local timeout budget
                 try:
-                    ecb_10y_saved = await self._fetch_ecb_yield(ECB_AAA_YIELD_URL, "DE_10Y")
-                    results["DE_10Y"] = max(1, ecb_10y_saved) if ecb_10y_saved >= 0 else 0
-                    if ecb_10y_saved > 0:
-                        logger.info(f"Saved {ecb_10y_saved} DE_10Y records from ECB Data Portal API")
-                except Exception as e:
-                    logger.warning(f"ECB Data Portal 10Y fetch failed: {e}")
+                    async with asyncio.timeout(12.0):
+                        t10 = self._fetch_ecb_yield(ECB_AAA_YIELD_URL, "DE_10Y")
+                        t2 = self._fetch_ecb_yield(ECB_AAA_2Y_URL, "DE_2Y")
+                        ecb_10y_res, ecb_2y_res = await asyncio.gather(t10, t2, return_exceptions=True)
 
-                try:
-                    ecb_2y_saved = await self._fetch_ecb_yield(ECB_AAA_2Y_URL, "DE_2Y")
-                    results["DE_2Y"] = max(1, ecb_2y_saved) if ecb_2y_saved >= 0 else 0
-                    if ecb_2y_saved > 0:
-                        logger.info(f"Saved {ecb_2y_saved} DE_2Y records from ECB Data Portal API")
-                except Exception as e:
-                    logger.warning(f"ECB Data Portal 2Y fetch failed: {e}")
+                        if isinstance(ecb_10y_res, int) and ecb_10y_res >= 0:
+                            results["DE_10Y"] = max(1, ecb_10y_res)
+                            if ecb_10y_res > 0:
+                                logger.info(f"Saved {ecb_10y_res} DE_10Y records from ECB Data Portal API")
+                        elif isinstance(ecb_10y_res, Exception):
+                            logger.warning(f"ECB Data Portal 10Y fetch failed: {ecb_10y_res}")
 
-                # 2. Fetch sovereign curves via CentralBankWatch (UK, JP, AU 2Y & 10Y daily snapshots)
+                        if isinstance(ecb_2y_res, int) and ecb_2y_res >= 0:
+                            results["DE_2Y"] = max(1, ecb_2y_res)
+                            if ecb_2y_res > 0:
+                                logger.info(f"Saved {ecb_2y_res} DE_2Y records from ECB Data Portal API")
+                        elif isinstance(ecb_2y_res, Exception):
+                            logger.warning(f"ECB Data Portal 2Y fetch failed: {ecb_2y_res}")
+                except TimeoutError, asyncio.TimeoutError:
+                    logger.warning("ECB Data Portal fetch timed out (12s budget reached); falling back to CBW")
+                except Exception as e:
+                    logger.warning(f"ECB Data Portal fetch error: {e}")
+
+                # 2. Fetch sovereign curves via CentralBankWatch (DE, UK, JP, AU 2Y & 10Y daily snapshots)
                 try:
                     from monika.infrastructure.data_ingestion.sources.central_bank_watch import CentralBankWatchFetcher
 
                     cbw_fetcher = CentralBankWatchFetcher(self.session)
                     cbw_yields = await cbw_fetcher.fetch_sovereign_yields(cache_ttl_sec=300.0)
-                    for k in ("UK_10Y", "UK_2Y", "JP_10Y", "JP_2Y", "AU_10Y", "AU_2Y"):
-                        if k in cbw_yields:
+                    for k in ("DE_10Y", "DE_2Y", "UK_10Y", "UK_2Y", "JP_10Y", "JP_2Y", "AU_10Y", "AU_2Y"):
+                        if k in cbw_yields and results.get(k, 0) == 0:
                             results[k] = 1
                     if cbw_yields:
                         logger.info(f"CentralBankWatch sovereign curves updated: {list(cbw_yields.keys())}")
@@ -108,7 +117,7 @@ class BondYieldFetcher:
                 if self.fred_api_key:
                     for label, series_id in FRED_BOND_SERIES.items():
                         if results.get(label, 0) > 0:
-                            continue  # Sudah terisi dari sumber primer
+                            continue  # Sudah terisi dari sumber primer / CBW
                         try:
                             fred_saved = await self._fetch_fred_bond_series(series_id, label)
                             results[label] = max(1, fred_saved) if fred_saved >= 0 else 0
@@ -135,8 +144,8 @@ class BondYieldFetcher:
             url=url,
             method="GET",
             params=params,
-            timeout_seconds=10,
-            max_retries=2,
+            timeout_seconds=8,
+            max_retries=1,
             base_delay=0.5,
             headers={"Accept": "text/csv"},
             response_type="text",
@@ -157,36 +166,37 @@ class BondYieldFetcher:
         if len(df) > 60:
             df = df.tail(60)
 
-        # Batch query existing dates in one query to avoid N roundtrips
-        existing_res = await self.session.execute(
-            select(BondYieldData.date).where(BondYieldData.country_tenor == label)
-        )
-        existing_date_strs = {d.strftime("%Y-%m-%d") for d in existing_res.scalars().all() if d is not None}
+        # Batch query existing dates and persist within session lock
+        async with self._session_lock:
+            existing_res = await self.session.execute(
+                select(BondYieldData.date).where(BondYieldData.country_tenor == label)
+            )
+            existing_date_strs = {d.strftime("%Y-%m-%d") for d in existing_res.scalars().all() if d is not None}
 
-        saved = 0
-        for _, row in df.iterrows():
-            try:
-                date_str = str(row["TIME_PERIOD"]).strip()
-                val_raw = row["OBS_VALUE"]
-                if bool(pd.isna(val_raw)) or str(val_raw).strip() == ".":
+            saved = 0
+            for _, row in df.iterrows():
+                try:
+                    date_str = str(row["TIME_PERIOD"]).strip()
+                    val_raw = row["OBS_VALUE"]
+                    if bool(pd.isna(val_raw)) or str(val_raw).strip() == ".":
+                        continue
+                    val = float(str(val_raw))
+                    if date_str in existing_date_strs:
+                        continue
+
+                    dt = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                    self.session.add(BondYieldData(country_tenor=label, date=dt, yield_percent=val))
+                    existing_date_strs.add(date_str)
+                    saved += 1
+                except Exception:
                     continue
-                val = float(str(val_raw))
-                if date_str in existing_date_strs:
-                    continue
 
-                dt = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-                self.session.add(BondYieldData(country_tenor=label, date=dt, yield_percent=val))
-                existing_date_strs.add(date_str)
-                saved += 1
-            except Exception:
-                continue
+            if saved:
+                from monika.infrastructure.database.safe_ops import safe_commit
 
-        if saved:
-            from monika.infrastructure.database.safe_ops import safe_commit
+                await safe_commit(self.session, label="BondYield.ECB")
 
-            await safe_commit(self.session, label="BondYield.ECB")
-
-        return saved
+            return saved
 
     async def _fetch_fred_bond_series(self, series_id: str, label: str, limit: int = 15) -> int:
         """
