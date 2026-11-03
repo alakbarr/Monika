@@ -12,6 +12,8 @@ Gaya tampilan gelap (dark theme) yang selaras dengan terminal trading.
 
 import io
 import logging
+import sys
+import types
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -21,6 +23,21 @@ import matplotlib
 matplotlib.use("Agg")  # Headless mode — wajib sebelum import mplfinance
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+
+if "six" not in sys.modules:
+    try:
+        import six
+
+        _ = six
+    except ImportError:
+        six_mod = types.ModuleType("six")
+        moves_mod = types.ModuleType("six.moves")
+        setattr(moves_mod, "zip", zip)
+        setattr(moves_mod, "xrange", range)
+        setattr(six_mod, "moves", moves_mod)
+        sys.modules["six"] = six_mod
+        sys.modules["six.moves"] = moves_mod
+
 import mplfinance as mpf
 import numpy as np
 import pandas as pd

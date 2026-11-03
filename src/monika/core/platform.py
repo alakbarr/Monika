@@ -45,7 +45,10 @@ def configure_event_loop() -> Dict[str, Any]:
         return {}
 
     if IS_WINDOWS:
-        return {"loop_factory": asyncio.ProactorEventLoop}
+        proactor = getattr(asyncio, "ProactorEventLoop", None)
+        if proactor is not None:
+            return {"loop_factory": proactor}
+        return {}
     else:
         try:
             import uvloop

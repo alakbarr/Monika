@@ -172,10 +172,7 @@ class ActivePositionStateCache:
                 new_open: Set[str] = set()
                 new_orphan: Set[str] = set()
                 for item in rows:
-                    if hasattr(item, "symbol") and hasattr(item, "status"):
-                        sym = str(item.symbol or "")
-                        stat = str(item.status or "")
-                    elif isinstance(item, (tuple, list)) and len(item) >= 2:
+                    if isinstance(item, (tuple, list)) and len(item) >= 2:
                         sym = str(item[0] or "")
                         stat = str(item[1] or "")
                     else:

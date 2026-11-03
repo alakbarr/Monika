@@ -6,6 +6,22 @@ _src_dir = _repo_root / "src"
 if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 
+if "six" not in sys.modules:
+    try:
+        import six
+
+        _ = six
+    except ImportError:
+        import types
+
+        six_mod = types.ModuleType("six")
+        moves_mod = types.ModuleType("six.moves")
+        setattr(moves_mod, "zip", zip)
+        setattr(moves_mod, "xrange", range)
+        setattr(six_mod, "moves", moves_mod)
+        sys.modules["six"] = six_mod
+        sys.modules["six.moves"] = moves_mod
+
 import monika
 import monika.infrastructure.database.models
 from monika.domain.risk.ports import (

@@ -82,9 +82,11 @@ def get_static_skills_dir() -> Path:
     """Return immutable git-tracked static skills directory (anchored to REPO_ROOT)."""
     return REPO_ROOT / "skills"
 
+
 def get_static_strategies_dir() -> Path:
     """Return immutable git-tracked static synthesized strategies directory."""
     return PACKAGE_ROOT / "application" / "analysis" / "strategies" / "synthesized"
+
 
 def get_runtime_skills_dir() -> Path:
     """Return dynamic runtime skills directory inside DATA_DIR (respecting MONIKA_RUNTIME_DATA_DIR)."""
@@ -94,6 +96,7 @@ def get_runtime_skills_dir() -> Path:
     p.mkdir(parents=True, exist_ok=True)
     return p
 
+
 def get_runtime_strategies_dir() -> Path:
     """Return dynamic runtime strategies directory inside DATA_DIR."""
     override = os.environ.get("MONIKA_RUNTIME_DATA_DIR")
@@ -101,6 +104,7 @@ def get_runtime_strategies_dir() -> Path:
     p = base / "runtime_strategies"
     p.mkdir(parents=True, exist_ok=True)
     return p
+
 
 def get_runtime_playbooks_dir() -> Path:
     """Return dynamic runtime playbooks directory inside runtime skills."""
@@ -128,7 +132,7 @@ def atomic_write_text(target: Path, content: str, encoding: str = "utf-8", max_r
             except (PermissionError, OSError) as exc:
                 if attempt == max_retries - 1:
                     raise
-                time.sleep(0.05 * (2 ** attempt))
+                time.sleep(0.05 * (2**attempt))
     finally:
         if tmp_path.exists():
             try:

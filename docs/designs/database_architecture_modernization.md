@@ -104,7 +104,7 @@ flowchart TD
     def _on_connection_checkin(dbapi_connection, connection_record):
         # Guaranteed defense against pool poisoning: unconditionally clear advisory locks
         try:
-            dbapi_connection.terminate_or_reset() # asyncpg resets or execute unlock_all
+            dbapi_connection.terminate_or_reset()  # asyncpg resets or execute unlock_all
         except Exception:
             pass
     ```
