@@ -163,11 +163,7 @@ class Subscription:
             except TypeError:
                 self._strong_handler = handler
         else:
-            try:
-                self._weak_handler = weakref.ref(handler)
-                self._is_weak = True
-            except TypeError:
-                self._strong_handler = handler
+            self._strong_handler = handler
 
     @property
     def handler(self) -> Optional[Callable]:

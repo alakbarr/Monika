@@ -564,3 +564,25 @@ def reset_executed_analysis_ids():
         _EXECUTED_ANALYSIS_IDS.clear()
     except Exception:
         pass
+
+
+@pytest.fixture(autouse=True)
+def isolate_market_data_bus():
+    """Ensure in-memory MarketDataBus and RingBufferHub singletons do not leak across tests."""
+    try:
+        from monika.domain.market.candle_ring_buffer import RingBufferHub
+        from monika.domain.market.market_data_bus import MarketDataBus
+
+        MarketDataBus.reset()
+        RingBufferHub.reset()
+    except Exception:
+        pass
+    yield
+    try:
+        from monika.domain.market.candle_ring_buffer import RingBufferHub
+        from monika.domain.market.market_data_bus import MarketDataBus
+
+        MarketDataBus.reset()
+        RingBufferHub.reset()
+    except Exception:
+        pass

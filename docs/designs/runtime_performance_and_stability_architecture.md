@@ -88,6 +88,7 @@ K = TypeVar("K")
 V = TypeVar("V")
 _MISSING = object()
 
+
 class BoundedLRUCache(Generic[K, V]):
     """Thread-safe bounded LRU cache with monotonic TTL expiration and deterministic capacity ceiling."""
 
@@ -301,11 +302,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Optional
 
+
 @dataclass(frozen=True)
 class AssetMarketSnapshot:
     symbol: str
     technical_bar_time: datetime  # M15 / H1 candle timestamp
-    macro_as_of: datetime         # Daily macro snapshot timestamp
+    macro_as_of: datetime  # Daily macro snapshot timestamp
 
     # Fast-Decay Technicals (TTL: 1 bar)
     atr_h4: float

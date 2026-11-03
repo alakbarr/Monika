@@ -77,9 +77,11 @@ class MemorySupervisor:
         os_trimmed = False
         if sys.platform.startswith("win"):
             try:
-                handle = ctypes.windll.kernel32.GetCurrentProcess()
-                ctypes.windll.psapi.EmptyWorkingSet(handle)
-                os_trimmed = True
+                windll = getattr(ctypes, "windll", None)
+                if windll is not None:
+                    handle = windll.kernel32.GetCurrentProcess()
+                    windll.psapi.EmptyWorkingSet(handle)
+                    os_trimmed = True
             except Exception as e:
                 logger.debug(f"[MemorySupervisor] EmptyWorkingSet trim error: {e}")
 
