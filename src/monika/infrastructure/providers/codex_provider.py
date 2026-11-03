@@ -125,6 +125,8 @@ class CodexProvider(OpenAIProvider):
             **kwargs,
         )
 
-    async def run_tool_agent(self, messages: list, tools: list, system_prompt: Any) -> Any:
+    async def run_tool_agent(
+        self, messages: list, tools: list, system_prompt: Any, tool_choice: Optional[Any] = None
+    ) -> Any:
         self._ensure_active_token()
-        return await super().run_tool_agent(messages, tools, system_prompt)
+        return await super().run_tool_agent(messages, tools, system_prompt, tool_choice=tool_choice)

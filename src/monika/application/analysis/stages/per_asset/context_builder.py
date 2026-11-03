@@ -1366,7 +1366,7 @@ Read STEP 0 in your SMC/ICT playbook. You MUST adjust your confluence threshold 
             f"- If concluding WAIT on Turn 1: cite the pre-loaded SMC zones, Dealing Range position, and H4 displacement impulse directly from the bundle (only call `get_smc_zones` or `get_structure_breaks` if the pre-fetched bundle is absent).\n"
             f"- You MUST conclude your analysis by invoking the `submit_asset_analysis` tool with your decision (buy/sell/wait/avoid) "
             f'and full structured parameters for {symbol} (ensure argument "symbol": "{symbol}" is included).\n'
-            f"DO NOT just write a markdown text answer. The system rejects text-only conclusions without a tool call."
+            f"DO NOT output conversational text or a markdown-only response before calling the tool. Call 'submit_asset_analysis' directly as your final action."
         )
 
         return msg
@@ -1404,7 +1404,7 @@ HYPOTHESIS-DRIVEN REASONING DIRECTIVE (Max 2-3 Iterative Turns):
 
 CRITICAL MANDATORY REQUIREMENT:
 You MUST conclude your analysis by invoking the `submit_asset_analysis` tool.
-DO NOT just write a markdown text answer. The system rejects text-only conclusions without a tool call."""
+DO NOT output conversational text or a markdown-only response before calling the tool. Call 'submit_asset_analysis' directly as your final action."""
         return msg
 
 

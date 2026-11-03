@@ -845,7 +845,7 @@ class OpenRouterProvider(OpenAIProvider):
                 raise
         return None
 
-    async def run_tool_agent(self, messages: list, tools: list, system_prompt: Any):
+    async def run_tool_agent(self, messages: list, tools: list, system_prompt: Any, tool_choice: Optional[Any] = None):
         attempts = max(1, len(self._all_keys)) if self.is_free else 1
         for attempt in range(attempts):
             api_key = self._get_api_key()
@@ -859,7 +859,7 @@ class OpenRouterProvider(OpenAIProvider):
                 continue
 
             try:
-                return await super().run_tool_agent(messages, tools, system_prompt)
+                return await super().run_tool_agent(messages, tools, system_prompt, tool_choice=tool_choice)
             except Exception as e:
                 err_str = str(e).lower()
                 if (

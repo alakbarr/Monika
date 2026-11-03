@@ -1004,7 +1004,9 @@ class GeminiProvider(BaseLLMClient):
         logger.warning(f"Gemini classify_json: parse failed (schema={bool(schema)}): {result[:200]}")
         return None
 
-    async def run_tool_agent(self, messages: list, tools: list, system_prompt: Any) -> MockResponse:
+    async def run_tool_agent(
+        self, messages: list, tools: list, system_prompt: Any, tool_choice: Optional[Any] = None
+    ) -> MockResponse:
         gemini_tools = []
         if tools:
             from monika.infrastructure.providers.schema_normalizer import ToolSchemaNormalizer
@@ -1243,6 +1245,23 @@ class GeminiProvider(BaseLLMClient):
             payload["systemInstruction"] = {"parts": [{"text": anchored_sys}]}
         if gemini_tools:
             payload["tools"] = gemini_tools
+            if tool_choice is not None:
+                fn_name = None
+                if isinstance(tool_choice, str):
+                    if tool_choice not in ("auto", "none", "required"):
+                        fn_name = tool_choice
+                elif isinstance(tool_choice, dict) and tool_choice.get("type") == "function":
+                    fn_name = tool_choice.get("function", {}).get("name")
+
+                if fn_name:
+                    payload["toolConfig"] = {
+                        "functionCallingConfig": {
+                            "mode": "ANY",
+                            "allowedFunctionNames": [fn_name],
+                        }
+                    }
+                elif tool_choice == "required":
+                    payload["toolConfig"] = {"functionCallingConfig": {"mode": "ANY"}}
 
         provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get("gemini", {})
         use_streaming = provider_cfg.get("streaming", {}).get("enabled", bool(self.settings))

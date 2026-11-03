@@ -693,6 +693,18 @@ class OpenAIProvider(BaseLLMClient):
                     current_kwargs["max_tokens"] = current_kwargs.pop("max_completion_tokens")
                     continue
 
+                # Case 5: tool_choice unsupported by proxy/model (e.g. 400 error)
+                if (
+                    "tool_choice" in err_str
+                    or "tool choice" in err_str
+                    or "unsupported parameter: tool_choice" in err_str
+                ) and "tool_choice" in current_kwargs:
+                    logger.warning(
+                        f"[{self.model}] tool_choice parameter not supported by endpoint; auto-recovering without tool_choice."
+                    )
+                    current_kwargs.pop("tool_choice", None)
+                    continue
+
                 # If no recovery rule matched, re-raise original exception
                 raise
 
@@ -1627,7 +1639,7 @@ class OpenAIProvider(BaseLLMClient):
                 norm_messages.append(dict(m))
         return norm_messages
 
-    async def run_tool_agent(self, messages: list, tools: list, system_prompt: Any):
+    async def run_tool_agent(self, messages: list, tools: list, system_prompt: Any, tool_choice: Optional[Any] = None):
         if not self.client:
             raise Exception("OpenAI API client not initialized")
 
@@ -1696,6 +1708,14 @@ class OpenAIProvider(BaseLLMClient):
         }
         if openai_tools:
             kwargs["tools"] = openai_tools
+            if tool_choice is not None:
+                if isinstance(tool_choice, str):
+                    if tool_choice in ("auto", "none", "required"):
+                        kwargs["tool_choice"] = tool_choice
+                    else:
+                        kwargs["tool_choice"] = {"type": "function", "function": {"name": tool_choice}}
+                elif isinstance(tool_choice, dict):
+                    kwargs["tool_choice"] = tool_choice
 
         self._apply_reasoning_params(kwargs)
 

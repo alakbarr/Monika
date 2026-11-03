@@ -1523,6 +1523,8 @@ class FallbackClientWrapper(BaseLLMClient):
 
                     self.model = model
                     self._active_slot = slot_name
+                    if isinstance(result, dict):
+                        result["model_used"] = model
                     self.thinking_level = getattr(client, "thinking_level", self.thinking_level)
                     ProviderCircuitBreaker.record_provider_success(provider, model=model)
                     # Reset backoff count and clear cooldown for this slot on success
@@ -1951,8 +1953,12 @@ class FallbackClientWrapper(BaseLLMClient):
             "system_one", state=state, questions=questions, timeout=timeout, **kwargs
         )
 
-    async def run_tool_agent(self, messages: list, tools: list, system_prompt: str, **kwargs) -> MockResponse:
-        return await self._execute_with_fallback("run_tool_agent", messages, tools, system_prompt, **kwargs)
+    async def run_tool_agent(
+        self, messages: list, tools: list, system_prompt: Any, tool_choice: Optional[Any] = None, **kwargs
+    ) -> MockResponse:
+        return await self._execute_with_fallback(
+            "run_tool_agent", messages, tools, system_prompt, tool_choice=tool_choice, **kwargs
+        )
 
     async def run_agent(
         self,

@@ -247,6 +247,29 @@ class TurnLLMRunner:
                     turn_state.current_phase = TurnPhase.API_CALL
                     t_api_start = asyncio.get_event_loop().time()
                     _watchdog_ref: Optional[TurnLivenessWatchdog] = None
+
+                    effective_tool_choice = getattr(harness, "_next_turn_tool_choice", None)
+                    if effective_tool_choice is not None:
+                        harness._next_turn_tool_choice = None
+                    elif turns >= effective_max_turns:
+                        m_tool = (
+                            harness.get_mandatory_tool_for_stage(stage_name)
+                            if hasattr(harness, "get_mandatory_tool_for_stage")
+                            else None
+                        )
+                        called_t = set()
+                        if hasattr(harness, "tracking") and hasattr(harness.tracking, "called_tools"):
+                            called_t = harness.tracking.called_tools
+                        elif hasattr(harness, "called_tools"):
+                            called_t = harness.called_tools
+                        if m_tool and m_tool not in called_t:
+                            has_m_tool = any(
+                                (t.get("name") if isinstance(t, dict) else getattr(t, "name", None)) == m_tool
+                                for t in effective_tools
+                            )
+                            if has_m_tool:
+                                effective_tool_choice = {"type": "function", "function": {"name": m_tool}}
+
                     try:
                         async with TurnLivenessWatchdog(
                             turn_id=f"{stage_name}_{turns}",
@@ -255,8 +278,16 @@ class TurnLLMRunner:
                             abort_on_hang=True,
                         ) as watchdog:
                             _watchdog_ref = watchdog
+                            try:
+                                api_call = harness.llm_client.run_tool_agent(
+                                    send_messages, effective_tools, effective_sys, tool_choice=effective_tool_choice
+                                )
+                            except TypeError:
+                                api_call = harness.llm_client.run_tool_agent(
+                                    send_messages, effective_tools, effective_sys
+                                )
                             api_coro = run_bounded_async(
-                                harness.llm_client.run_tool_agent(send_messages, effective_tools, effective_sys),
+                                api_call,
                                 timeout_seconds=turn_timeout,
                                 timeout_message=f"Turn {turns} LLM call timed out after {turn_timeout:.0f}s",
                             )

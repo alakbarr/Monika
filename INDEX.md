@@ -13177,7 +13177,7 @@
     - `set_thinking_budget(budget: int) -> None` - *Sets thinking budget and resolves corresponding Anthropic thinking parameters.*
     - `async generate(prompt: str, system: str, temperature: Optional[float], ...) -> Optional[str]` - *Single-turn text generation dengan retry otomatis untuk transient errors & dukungan reasoning penuh.*
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]` - *Menghasilkan output JSON valid.*
-    - `async run_tool_agent(messages: list, tools: list, system_prompt: str | tuple) -> Any` - *Low-level multi-turn tool-calling. (Digunakan internal atau by agent_from_messages).*
+    - `async run_tool_agent(messages: list, tools: list, system_prompt: str | tuple, ...) -> Any` - *Low-level multi-turn tool-calling. (Digunakan internal atau by agent_from_messages).*
     - `async run_chat_loop(system_prompt: str, conversation_history: list[dict], new_user_message: str, ...) -> dict`
 
 #### `backend_identity.py` - *Backend Identity & Failure Scope Routing for Fast-Skip Failover Chains.*
@@ -13218,7 +13218,7 @@
     - `async classify_json_with_diagnostic_retry(prompt: str, system_prompt: Optional[str], schema: Optional[Dict[str, Any]], ...) -> Optional[Dict[str, Any]]` - *Execute classify_json with a diagnostic self-correction retry if output is missing required schema keys.*
     - `async generate_text(user_prompt: str, system_prompt: str, max_tokens: Optional[int], ...) -> str` - *Single-turn text generation (ClaudeClient compatibility).*
     - `async ask(prompt: str, system: str) -> str` - *Alias for generate_text (ClaudeClient compatibility).*
-    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any) -> Any` - *Low-level multi-turn tool-calling. Returns MockResponse or native Message.*
+    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any, ...) -> Any` - *Low-level multi-turn tool-calling. Returns MockResponse or native Message.*
     - `register_agent_harness_factory(factory: Any) -> None` - *Register the AgentHarness factory to avoid infrastructure -> application cyclic imports.*
     - `async run_agent(session, system_prompt: str | tuple[str, str] | Any, user_message: str, ...) -> dict` - *Full agent loop with tool execution + logging via AgentHarness.*
     - `async run_chat_loop(system_prompt: str, conversation_history: list, new_user_message: str, ...) -> dict` - *Chat loop (Telegram).*
@@ -13248,7 +13248,7 @@
     - `__init__(model: str, max_tokens: int, api_key: Optional[str], ...)`
     - `async generate(prompt: str, system: Optional[Any], temperature: Optional[float], ...) -> Optional[str]`
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`
-    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any) -> Any`
+    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any, ...) -> Any`
 
 #### `deepseek_provider.py`
 - **Path**: [`src/monika/infrastructure/providers/deepseek_provider.py`](src/monika/infrastructure/providers/deepseek_provider.py)
@@ -13271,7 +13271,7 @@
     - `set_thinking_budget(budget: int) -> None` - *Sets thinking budget and resolves corresponding Gemini thinking level.*
     - `async generate(prompt: str, system: Any, temperature: Optional[float], ...) -> Optional[str]`
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`
-    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any) -> MockResponse`
+    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any, ...) -> MockResponse`
     - `async run_chat_loop(system_prompt: str, conversation_history: list, new_user_message: str, ...) -> dict`
 
 #### `groq_provider.py` - *GroqProvider — Provider untuk model Groq via OpenAI-compatible API.*
@@ -13282,7 +13282,7 @@
     - `set_api_key(api_key: str) -> None` - *Update active API key and underlying client for GroqProvider.*
     - `async generate(prompt: str, system: Optional[Any], temperature: Optional[float], ...) -> Optional[str]`
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`
-    - `async run_tool_agent(messages: list, tools: list, system_prompt: str)`
+    - `async run_tool_agent(messages: list, tools: list, system_prompt: str, ...)`
 
 #### `llm_factory.py` - *LLM Factory: Satu pintu masuk untuk membuat klien LLM.*
 - **Path**: [`src/monika/infrastructure/providers/llm_factory.py`](src/monika/infrastructure/providers/llm_factory.py)
@@ -13349,7 +13349,7 @@
     - `async generate(prompt: str, system: Optional[Any], temperature: Optional[float], ...) -> Optional[str]`
     - `async generate_content(system_prompt: str, user_message: str, response_schema: Optional[dict], ...) -> Optional[str]`
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`
-    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any)`
+    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any, ...)`
     - `async run_chat_loop(system_prompt: str, conversation_history: list, new_user_message: str, ...) -> dict`
 - **Top-Level Functions**:
   - `sanitize_tool_parameters_schema(schema_dict: Any) -> Any`: Sanitize JSON Schema for OpenAI / OpenRouter function calling parameters.
@@ -13372,7 +13372,7 @@
     - `async generate(prompt: str, system: Optional[Any], temperature: Optional[float], ...) -> Optional[str]`
     - `async generate_content(system_prompt: str, user_message: str, response_schema: Optional[dict], ...) -> Optional[str]`
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`
-    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any)`
+    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any, ...)`
 
 #### `pricing_catalog.py` - *File: src/monika/infrastructure/providers/pricing_catalog.py*
 - **Path**: [`src/monika/infrastructure/providers/pricing_catalog.py`](src/monika/infrastructure/providers/pricing_catalog.py)
@@ -13476,7 +13476,7 @@
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]` - *Executes System One evaluation using Jev primitives or OpenRouter completion.*
     - `async generate(prompt: str, system: str, temperature: Optional[float], ...) -> Optional[str]` - *Jev is a System One decision model and does not generate free text.*
     - `async run_chat_loop(system_prompt: str, conversation_history: list, new_user_message: str, ...) -> dict` - *Jev does not support interactive chat loops.*
-    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any) -> Any` - *Jev does not support tool-calling agent loops.*
+    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any, ...) -> Any` - *Jev does not support tool-calling agent loops.*
     - `async ping() -> bool` - *Pings TypeSafe Jev API with a minimal test evaluation.*
 
 #### `zai_provider.py` - *Z.AI / GLM Provider Client for Monika Trading Agent.*

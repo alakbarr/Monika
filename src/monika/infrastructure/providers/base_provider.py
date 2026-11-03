@@ -732,7 +732,9 @@ class BaseLLMClient(LlmPort, ABC):
     # --- Agent/Tool methods ---
 
     @abstractmethod
-    async def run_tool_agent(self, messages: list, tools: list, system_prompt: Any) -> Any:
+    async def run_tool_agent(
+        self, messages: list, tools: list, system_prompt: Any, tool_choice: Optional[Any] = None
+    ) -> Any:
         """Low-level multi-turn tool-calling. Returns MockResponse or native Message."""
         pass
 

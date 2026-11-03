@@ -641,7 +641,9 @@ class AnthropicProvider(BaseLLMClient):
 
         return sanitized
 
-    async def run_tool_agent(self, messages: list, tools: list, system_prompt: str | tuple) -> Any:
+    async def run_tool_agent(
+        self, messages: list, tools: list, system_prompt: str | tuple, tool_choice: Optional[Any] = None
+    ) -> Any:
         """Low-level multi-turn tool-calling. (Digunakan internal atau by agent_from_messages)."""
         if not self.client:
             raise Exception("Anthropic API client not initialized")
@@ -709,6 +711,21 @@ class AnthropicProvider(BaseLLMClient):
             "tools": cached_tools,
             "messages": cached_messages,
         }
+        if tool_choice is not None:
+            if isinstance(tool_choice, str):
+                if tool_choice in ("auto", "none"):
+                    create_kwargs["tool_choice"] = {"type": tool_choice}
+                elif tool_choice == "required":
+                    create_kwargs["tool_choice"] = {"type": "any"}
+                else:
+                    create_kwargs["tool_choice"] = {"type": "tool", "name": tool_choice}
+            elif isinstance(tool_choice, dict):
+                if tool_choice.get("type") == "function":
+                    fn_name = tool_choice.get("function", {}).get("name")
+                    if fn_name:
+                        create_kwargs["tool_choice"] = {"type": "tool", "name": fn_name}
+                else:
+                    create_kwargs["tool_choice"] = tool_choice
 
         # Safe auto-ceiling for Anthropic to prevent token truncation
         is_haiku = "haiku" in self.model.lower()

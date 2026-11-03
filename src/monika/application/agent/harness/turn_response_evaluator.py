@@ -377,6 +377,31 @@ class TurnResponseEvaluator:
             for b in assistant_content
             if (b.get("type") if isinstance(b, dict) else getattr(b, "type", None)) == "tool_use"
         ]
+        if not tool_use_blocks and final_text:
+            from monika.application.agent.harness.pseudo_tool_parser import extract_pseudo_tool_calls
+
+            avail_names = set()
+            for t in getattr(harness, "effective_tools", []) or []:
+                t_name = t.get("name") if isinstance(t, dict) else getattr(t, "name", None)
+                if t_name:
+                    avail_names.add(str(t_name))
+            m_tool = (
+                harness.get_mandatory_tool_for_stage(stage_name)
+                if hasattr(harness, "get_mandatory_tool_for_stage")
+                else None
+            )
+            pseudo_blocks = extract_pseudo_tool_calls(
+                final_text,
+                available_tool_names=avail_names,
+                mandatory_tool=m_tool,
+            )
+            if pseudo_blocks:
+                logger.info(
+                    f"[{stage_name}][AgentHarness] Extracted {len(pseudo_blocks)} pseudo-tool call(s) from assistant text."
+                )
+                tool_use_blocks = pseudo_blocks
+                assistant_content.extend(pseudo_blocks)
+
         if tool_use_blocks and hasattr(harness, "tool_call_recovery") and harness.tool_call_recovery:
             harness.tool_call_recovery.register_assistant_tool_calls(tool_use_blocks)
 

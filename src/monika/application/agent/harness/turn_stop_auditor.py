@@ -88,6 +88,23 @@ class TurnStopAuditor:
                 f"{'unpersisted/validation_failed' if is_mandatory_unpersisted else 'missing'} "
                 f"on turn {turns}/{effective_max_turns}. Nudging agent..."
             )
+            harness._next_turn_tool_choice = {"type": "function", "function": {"name": mandatory_tool}}
+            if (
+                turns >= 2
+                and tool_calls_made == 0
+                and getattr(harness, "fallback_client", None) is not None
+                and hasattr(harness, "_try_fallback_swap")
+            ):
+                logger.warning(
+                    f"[{stage_name}][AgentHarness] Proactive failover: Model produced 0 tool calls after {turns} turns "
+                    f"despite mandatory tool '{mandatory_tool}' requirement. Swapping to fallback client."
+                )
+                harness._try_fallback_swap(
+                    stage_name,
+                    RuntimeError(
+                        f"Model produced 0 tool calls after {turns} turns; refusing mandatory tool '{mandatory_tool}'."
+                    ),
+                )
             current_messages.append({"role": "user", "content": nudge_text})
             return StopAuditVerdict(
                 can_break=False,

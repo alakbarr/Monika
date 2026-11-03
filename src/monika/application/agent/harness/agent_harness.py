@@ -179,6 +179,7 @@ class AgentHarness:
         # Dual-Queue Steering Engine (Immediate Steering + Follow-Up Processing)
         self._steering_queue: deque = deque()
         self._follow_up_queue: deque = deque()
+        self._next_turn_tool_choice: Optional[Any] = None
 
         # Surface Node 0: Immutable System Prompt Tracking & Invariance
         self._cached_surface_prompt: Optional[Any] = None
@@ -1506,11 +1507,17 @@ class AgentHarness:
 
         # Ensure mandatory tool failure is accurately reflected in result success
         mandatory_tool = self.get_mandatory_tool_for_stage(stage_name)
-        if mandatory_tool and mandatory_tool in tracking.unpersisted_validation_failures:
-            if unverified_stop_gate_error is None:
-                unverified_stop_gate_error = (
-                    f"Mandatory submission tool '{mandatory_tool}' failed validation and was not persisted."
-                )
+        if mandatory_tool:
+            if mandatory_tool in tracking.unpersisted_validation_failures:
+                if unverified_stop_gate_error is None:
+                    unverified_stop_gate_error = (
+                        f"Mandatory submission tool '{mandatory_tool}' failed validation and was not persisted."
+                    )
+            elif mandatory_tool not in tracking.called_tools:
+                if unverified_stop_gate_error is None:
+                    unverified_stop_gate_error = (
+                        f"Mandatory submission tool '{mandatory_tool}' was never called by agent."
+                    )
 
         if (total_input_tokens > 0 or total_output_tokens > 0) and hasattr(self.llm_client, "_save_token_usage"):
             try:

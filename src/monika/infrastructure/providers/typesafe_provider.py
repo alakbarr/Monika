@@ -467,7 +467,9 @@ class TypeSafeProvider(BaseLLMClient):
         """Jev does not support interactive chat loops."""
         raise NotImplementedError(f"Model '{self.model}' (TypeSafe Jev) does not support interactive chat loops.")
 
-    async def run_tool_agent(self, messages: list, tools: list, system_prompt: Any) -> Any:
+    async def run_tool_agent(
+        self, messages: list, tools: list, system_prompt: Any, tool_choice: Optional[Any] = None
+    ) -> Any:
         """Jev does not support tool-calling agent loops."""
         raise NotImplementedError(f"Model '{self.model}' (TypeSafe Jev) does not support tool-calling loops.")
 

@@ -281,7 +281,7 @@ class GroqProvider(OpenAIProvider):
                 raise
         return None
 
-    async def run_tool_agent(self, messages: list, tools: list, system_prompt: str):
+    async def run_tool_agent(self, messages: list, tools: list, system_prompt: str, tool_choice: Optional[Any] = None):
         if not self._api_keys:
             raise RuntimeError("Groq API key not configured (GROQ_API_KEYS missing in environment)")
         for attempt in range(max(1, len(self._api_keys))):
@@ -295,7 +295,7 @@ class GroqProvider(OpenAIProvider):
             if not self.client:
                 continue
             try:
-                return await super().run_tool_agent(messages, tools, system_prompt)
+                return await super().run_tool_agent(messages, tools, system_prompt, tool_choice=tool_choice)
             except Exception as e:
                 err_str = str(e).lower()
                 if self._is_transient_error(err_str):
