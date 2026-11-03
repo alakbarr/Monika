@@ -100,7 +100,7 @@ class MemorySupervisor:
             "os_trimmed": os_trimmed,
         }
 
-    async def run_loop(self) -> None:
+    async def run_loop(self, stop_event: Optional[asyncio.Event] = None) -> None:
         """Continuous background monitoring loop."""
         self._running = True
         logger.info(
@@ -109,7 +109,14 @@ class MemorySupervisor:
         )
         while self._running:
             try:
-                await asyncio.sleep(self.interval_seconds)
+                if stop_event is not None:
+                    try:
+                        await asyncio.wait_for(stop_event.wait(), timeout=self.interval_seconds)
+                        break
+                    except asyncio.TimeoutError:
+                        pass
+                else:
+                    await asyncio.sleep(self.interval_seconds)
                 if not self._running:
                     break
 
@@ -151,6 +158,7 @@ class MemorySupervisor:
 
 
 async def run_memory_supervisor(
+    stop_event: Optional[asyncio.Event] = None,
     interval_seconds: float = 30.0,
     warn_mb: float = DEFAULT_WARN_MB,
     compact_mb: float = DEFAULT_COMPACT_MB,
@@ -163,7 +171,7 @@ async def run_memory_supervisor(
         compact_mb=compact_mb,
         hard_limit_mb=hard_limit_mb,
     )
-    await supervisor.run_loop()
+    await supervisor.run_loop(stop_event=stop_event)
 
 
 __all__ = [

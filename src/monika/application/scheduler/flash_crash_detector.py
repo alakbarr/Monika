@@ -406,18 +406,25 @@ class FlashCrashDetector:
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
 
-        history = self._tick_history.setdefault(sym_clean, [])
+        history = self._tick_history.get(sym_clean)
+        if history is None or not hasattr(history, "popleft"):
+            from collections import deque
+
+            history = deque(maxlen=600)
+            self._tick_history[sym_clean] = history
+
         history.append((now, current_price))
 
         cutoff = now - timedelta(minutes=self.lookback_minutes)
-        self._tick_history[sym_clean] = [h for h in history if h[0] >= cutoff]
-        history = self._tick_history[sym_clean]
+        while history and history[0][0] < cutoff:
+            history.popleft()
 
         if len(history) < 2:
             return
 
-        prices = [h[1] for h in history]
-        range_move = max(prices) - min(prices)
+        min_price = min(h[1] for h in history)
+        max_price = max(h[1] for h in history)
+        range_move = max_price - min_price
         move_pct = (range_move / current_price) * 100.0
 
         _, min_pct_thresh = self.get_symbol_thresholds(sym_clean)

@@ -63,22 +63,28 @@ class _PopenStreamReader:
     def __init__(self, pipe: Any, loop: asyncio.AbstractEventLoop):
         self._pipe = pipe
         self._loop = loop
-        self._queue: asyncio.Queue[bytes] = asyncio.Queue()
+        self._queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=1000)
         self._eof = False
         self._remainder = b""
         self._thread = threading.Thread(target=self._reader_thread, daemon=True)
         self._thread.start()
+
+    def _safe_put(self, data: bytes) -> None:
+        try:
+            self._queue.put_nowait(data)
+        except asyncio.QueueFull:
+            pass
 
     def _reader_thread(self) -> None:
         try:
             while True:
                 line = self._pipe.readline()
                 if not line:
-                    self._loop.call_soon_threadsafe(self._queue.put_nowait, b"")
+                    self._loop.call_soon_threadsafe(self._safe_put, b"")
                     break
-                self._loop.call_soon_threadsafe(self._queue.put_nowait, line)
+                self._loop.call_soon_threadsafe(self._safe_put, line)
         except Exception:
-            self._loop.call_soon_threadsafe(self._queue.put_nowait, b"")
+            self._loop.call_soon_threadsafe(self._safe_put, b"")
 
     async def read(self, n: int = -1) -> bytes:
         if self._remainder:

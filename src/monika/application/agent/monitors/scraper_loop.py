@@ -59,6 +59,14 @@ async def run_scraper_loop(agent: Any) -> None:
                 finally:
                     runner.stop()
                     agent._active_scraper_runner = None
+                    try:
+                        from monika.infrastructure.data_ingestion.scrapers.profile_reaper import (
+                            BrowserProfileReaper,
+                        )
+
+                        BrowserProfileReaper.prune_profile_caches()
+                    except Exception as reap_err:
+                        logger.debug(f"ProfileReaper note: {reap_err}")
 
                 async with _gs_scraper() as save_session:
                     now_iso = datetime.now(timezone.utc).isoformat()

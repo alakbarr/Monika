@@ -57,6 +57,7 @@ Monika/
 │       │   │   │   ├── db_health.py
 │       │   │   │   ├── drawdown_monitor.py
 │       │   │   │   ├── margin_monitor.py
+│       │   │   │   ├── memory_supervisor.py
 │       │   │   │   ├── paper_trade_monitor.py
 │       │   │   │   ├── process_guardian.py
 │       │   │   │   ├── scraper_loop.py
@@ -1644,7 +1645,8 @@ Monika/
 │       │   │   │   │   └── twitter_watch.py
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── base_scraper.py
-│       │   │   │   └── models.py
+│       │   │   │   ├── models.py
+│       │   │   │   └── profile_reaper.py
 │       │   │   ├── sources/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── academic_search.py
@@ -2125,6 +2127,7 @@ Monika/
 │   │   ├── test_mandatory_tool_enforcement.py
 │   │   ├── test_mcp_write_approval.py
 │   │   ├── test_memory_skills_and_traps.py
+│   │   ├── test_memory_supervisor.py
 │   │   ├── test_moa_loop.py
 │   │   ├── test_multiagent_and_delegation.py
 │   │   ├── test_p0_safety_and_invariants.py
@@ -2763,6 +2766,7 @@ Monika/
 │   │   ├── __init__.py
 │   │   ├── test_base_scraper.py
 │   │   ├── test_profile_lock_concurrency.py
+│   │   ├── test_profile_reaper.py
 │   │   ├── test_scraper_language_isolation.py
 │   │   └── test_scraper_models.py
 │   ├── security/
@@ -2982,6 +2986,7 @@ Monika/
 │   ├── test_main.py
 │   ├── test_margin_monitor.py
 │   ├── test_memory_constructors.py
+│   ├── test_memory_supervisor.py
 │   ├── test_model_quadrant_analysis_html.py
 │   ├── test_model_quadrant_generator.py
 │   ├── test_model_routing_config.py
@@ -3199,4 +3204,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 274 | **Total Tracked Files**: 2895
+**Total Tracked Directories**: 274 | **Total Tracked Files**: 2900

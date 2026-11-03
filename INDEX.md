@@ -5669,6 +5669,19 @@
 - **Top-Level Functions**:
   - `async run_margin_monitor(agent: Any, alert_threshold_pct: float, poll_interval: float) -> None`: Monitors account margin level periodically.
 
+#### `memory_supervisor.py`
+- **Path**: [`src/monika/application/agent/monitors/memory_supervisor.py`](src/monika/application/agent/monitors/memory_supervisor.py)
+- **Classes**:
+  - `class MemorySupervisor`: 24/7 Process Health & RSS Memory Supervisor.
+    - `__init__(interval_seconds: float, warn_mb: float, compact_mb: float, ...)`
+    - `get_rss_mb() -> float` - *Get current process Resident Set Size (RSS) in Megabytes.*
+    - `compact_memory(reason: str) -> dict[str, Any]` - *Executes progressive memory compaction:*
+    - `async run_loop(stop_event: Optional[asyncio.Event]) -> None` - *Continuous background monitoring loop.*
+    - `start() -> asyncio.Task` - *Start the background monitor task.*
+    - `stop() -> None` - *Stop the background monitor task.*
+- **Top-Level Functions**:
+  - `async run_memory_supervisor(stop_event: Optional[asyncio.Event], interval_seconds: float, warn_mb: float, ...) -> None`: Coroutine entrypoint for running the memory supervisor.
+
 #### `paper_trade_monitor.py` - *File: src/monika/application/agent/monitors/paper_trade_monitor.py*
 - **Path**: [`src/monika/application/agent/monitors/paper_trade_monitor.py`](src/monika/application/agent/monitors/paper_trade_monitor.py)
 - **Top-Level Functions**:
@@ -11589,6 +11602,14 @@
   - `class ScrapedTweet`
   - `class FedProbability`
   - `class FedMeeting`
+
+#### `profile_reaper.py`
+- **Path**: [`src/monika/infrastructure/data_ingestion/scrapers/profile_reaper.py`](src/monika/infrastructure/data_ingestion/scrapers/profile_reaper.py)
+- **Classes**:
+  - `class BrowserProfileReaper`: Automated Browser Profile Cache Reaper & Disk Hygiene Sanitizer.
+    - `get_profiles_dir() -> Path`
+    - `prune_profile_caches(max_cache_size_mb: float) -> int` - *Scans all profile directories and prunes disposable cache subdirectories*
+    - `prune_stale_test_profiles(max_age_days: float) -> int` - *Purges test_*, debug_*, bench_*, and trace_* directories older than max_age_days.*
 
 ### Folder: `src/monika/infrastructure/data_ingestion/scrapers/calendar` <a id="folder-srcmonikainfrastructuredataingestionscraperscalendar"></a>
 

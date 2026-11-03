@@ -59,7 +59,7 @@ async def list_mcp_tools(request: Request):
 async def mcp_sse_endpoint(request: Request):
     """Server-Sent Events (SSE) endpoint for standard MCP client connections."""
     session_id = str(uuid.uuid4())
-    queue: asyncio.Queue = asyncio.Queue()
+    queue: asyncio.Queue = asyncio.Queue(maxsize=500)
     _active_mcp_sessions[session_id] = queue
 
     logger.info(f"[MCP-SSE] Client connected. Session ID: {session_id}")
@@ -112,7 +112,10 @@ async def mcp_post_message(request: Request, sessionId: Optional[str] = Query(No
     # If associated with an active SSE session queue, push onto queue and return 202
     if sessionId and sessionId in _active_mcp_sessions:
         if resp is not None:
-            await _active_mcp_sessions[sessionId].put(resp)
+            try:
+                _active_mcp_sessions[sessionId].put_nowait(resp)
+            except asyncio.QueueFull:
+                logger.warning(f"[MCP-SSE] Session {sessionId} queue full; dropping message.")
         return Response(status_code=202, content="Accepted")
 
     # Otherwise return response directly in HTTP response body

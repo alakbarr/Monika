@@ -429,5 +429,11 @@ class AgentMonitorsMixin:
             except asyncio.TimeoutError:
                 pass
 
+    async def _run_memory_supervisor(self) -> None:
+        """24/7 Process RSS Memory Supervisor & Progressive Compactor."""
+        from monika.application.agent.monitors.memory_supervisor import run_memory_supervisor
+
+        await run_memory_supervisor(stop_event=self.shutdown_event)
+
 
 __all__ = ["AgentMonitorsMixin"]

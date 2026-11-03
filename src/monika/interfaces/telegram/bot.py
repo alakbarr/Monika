@@ -134,7 +134,7 @@ class TelegramBot(
         )
 
         self._is_running: bool = False
-        self._outbound_queue: asyncio.Queue = asyncio.Queue()
+        self._outbound_queue: asyncio.Queue = asyncio.Queue(maxsize=1000)
         self._outbound_worker_task: Optional[asyncio.Task] = None
         self._last_send_global: float = 0.0
         self._last_send_per_chat: dict[int, float] = {}
@@ -478,7 +478,10 @@ class TelegramBot(
                     self._save_to_offline_buffer(item)
                 await asyncio.sleep(retry_seconds + 0.1)
                 if not is_critical:
-                    await self._outbound_queue.put(item)
+                    try:
+                        self._outbound_queue.put_nowait(item)
+                    except asyncio.QueueFull:
+                        logger.warning("[TelegramOutbound] Queue full during FloodControl requeue; dropping item.")
             except Exception as send_err:
                 if "can't parse entities" in str(send_err).lower() or "parsing entity" in str(send_err).lower():
                     try:
@@ -594,16 +597,22 @@ class TelegramBot(
                 and self._outbound_worker_task is not None
                 and not self._outbound_worker_task.done()
             ):
-                await self._outbound_queue.put(
-                    {
-                        "chat_id": target_chat_id,
-                        "text": formatted_chunk,
-                        "raw_text": chunk,
-                        "parse_mode": parse_mode,
-                        "extra_kwargs": extra_kwargs,
-                        "is_critical": critical_alert,
-                    }
-                )
+                payload = {
+                    "chat_id": target_chat_id,
+                    "text": formatted_chunk,
+                    "raw_text": chunk,
+                    "parse_mode": parse_mode,
+                    "extra_kwargs": extra_kwargs,
+                    "is_critical": critical_alert,
+                }
+                try:
+                    self._outbound_queue.put_nowait(payload)
+                except asyncio.QueueFull:
+                    if critical_alert:
+                        self._save_to_offline_buffer(payload)
+                        logger.warning("[TelegramOutbound] Queue full; critical alert diverted to offline disk buffer.")
+                    else:
+                        logger.warning("[TelegramOutbound] Queue full (maxsize=1000); dropping non-critical alert.")
             else:
                 try:
                     await self._app.bot.send_message(
