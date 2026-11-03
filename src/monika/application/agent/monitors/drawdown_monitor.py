@@ -6,6 +6,7 @@ Floating drawdown monitoring with hysteresis and auto-kill-switch.
 import asyncio
 import json as _json
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -21,6 +22,10 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
     BREACH_THRESHOLD = 2
     cached_start_balance_date: Optional[str] = None
     cached_start_balance_val: Optional[float] = None
+    last_saved_balance: Optional[float] = None
+    last_saved_equity: Optional[float] = None
+    last_saved_date: Optional[str] = None
+    last_saved_mono: float = 0.0
 
     if hasattr(agent, "_recovery_complete") and agent._recovery_complete:
         try:
@@ -103,11 +108,31 @@ async def run_floating_drawdown_monitor(agent: Any) -> None:
                                 "daily_pnl_pct": daily_pnl_pct,
                             }
 
-                            state_key = "mt5_real_risk_state"
-                            state_json = _json.dumps(real_state)
-                            async with get_session() as cfg_session:
-                                await atomic_upsert_system_config(cfg_session, key=state_key, value=state_json)
-                                await safe_commit(cfg_session, label="drawdown_monitor_risk_state")
+                            now_mono = time.monotonic()
+                            needs_save = False
+                            if last_saved_date != today_str:
+                                needs_save = True
+                            elif last_saved_balance is None or last_saved_equity is None:
+                                needs_save = True
+                            elif abs(balance - last_saved_balance) > 0.01:
+                                needs_save = True
+                            elif abs(equity - last_saved_equity) / (last_saved_equity or 1.0) >= 0.0005:
+                                needs_save = True
+                            elif (now_mono - last_saved_mono) >= 900.0:
+                                needs_save = True
+
+                            if needs_save:
+                                from monika.core.serialization import fast_json
+
+                                state_key = "mt5_real_risk_state"
+                                state_json = fast_json.dumps(real_state)
+                                async with get_session() as cfg_session:
+                                    await atomic_upsert_system_config(cfg_session, key=state_key, value=state_json)
+                                    await safe_commit(cfg_session, label="drawdown_monitor_risk_state")
+                                last_saved_balance = balance
+                                last_saved_equity = equity
+                                last_saved_date = today_str
+                                last_saved_mono = now_mono
                         except Exception as e:
                             logger.debug(f"Real risk state write failed (non-fatal): {e}")
 

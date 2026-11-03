@@ -2136,6 +2136,7 @@ Monika/
 │   │   ├── test_multiagent_and_delegation.py
 │   │   ├── test_p0_safety_and_invariants.py
 │   │   ├── test_pgvector_startup_check.py
+│   │   ├── test_reactor_monitors_perf.py
 │   │   ├── test_runtime_enhancements.py
 │   │   ├── test_runtime_lifecycle.py
 │   │   ├── test_startup_watchdog.py
@@ -3210,4 +3211,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 275 | **Total Tracked Files**: 2905
+**Total Tracked Directories**: 275 | **Total Tracked Files**: 2906

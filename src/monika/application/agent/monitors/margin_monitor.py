@@ -3,6 +3,8 @@ File: src/monika/application/agent/monitors/margin_monitor.py
 Margin level watcher and threshold alerting monitor (MarginGuardian).
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from typing import Any, Optional
@@ -31,6 +33,16 @@ async def run_margin_monitor(agent: Any, alert_threshold_pct: float = 200.0, pol
 
     while not agent.shutdown_event.is_set():
         try:
+            from monika.application.scheduler.position_state_cache import get_position_state_cache
+
+            cache = get_position_state_cache()
+            if cache.is_fresh() and not cache.has_any_open_positions:
+                try:
+                    await asyncio.wait_for(agent.shutdown_event.wait(), timeout=poll_interval)
+                except asyncio.TimeoutError:
+                    pass
+                continue
+
             account_info: Optional[dict] = None
             if getattr(agent, "execution_service", None):
                 if getattr(agent.execution_service, "broker_adapter", None):
