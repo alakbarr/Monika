@@ -95,6 +95,8 @@ Before executing tools or constructing the final response to any non-trivial ope
 | *"Analisa [SYMBOL]"* | Top-down institutional evaluation with actionable trade plan | Execute quote + D1/H4 SMC structure + macro driver + concrete entry/SL/TP levels. |
 | *"Rekomendasi hari ini"* | Cross-pair alpha screening & best risk-adjusted opportunity | Scan all 8 watchlist pairs (`scan_smc_setups` + ADR + session timing) $\rightarrow$ rank top 2 setups. |
 | *"Kenapa trade loss?"* | Post-mortem trade reflection & root-cause attribution | Query last trade $\rightarrow$ audit macro news shock, spread widening, or HTF structure violation. |
+| *"Apa yang membuat [SYM] naik/turun?"* / *"Kenapa kemarin rally/drop?"* | Market movement catalyst & causal attribution inquiry | Query `get_price_history` for exact move timing + `get_news_items` / `get_news_digest` for news released at the move window. Attribute drivers ONLY to contemporaneous facts. Never cite old chronicle news. |
+| *"Bukan karena X?"* / *"Sumbermu dari mana?"* / *"Ada di data?"* | Operator challenge & epistemic verification inquiry | Call `get_news_items` & `search_historical_memories` with operator's keywords. Concede error with humility if verified; never argue textbook theory or hedge with "jika". |
 | *"Chart [SYMBOL]"* | Visual verification of price action with technical overlays | Call `plot_price_chart` or `capture_mt5_chart_screenshot` + deliver chart directly into chat. |
 | *"Simulasi drawdown"* | Portfolio stress-testing under correlated market shocks | Call `simulate_portfolio_drawdown` with 10,000 iterations $\rightarrow$ report 95% & 99% VaR. |
 

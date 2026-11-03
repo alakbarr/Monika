@@ -35,6 +35,7 @@ TIER_LITE_TOOL_NAMES: tuple[str, ...] = (
 TIER_MEDIUM_TOOL_NAMES: tuple[str, ...] = (
     "calculate_position_size",
     "get_account_info",
+    "get_active_triggers",
     "get_asset_analysis",
     "get_atr",
     "get_chart",
@@ -45,12 +46,15 @@ TIER_MEDIUM_TOOL_NAMES: tuple[str, ...] = (
     "get_market_session",
     "get_multi_timeframe_summary",
     "get_news_digest",
+    "get_news_items",
     "get_open_positions",
     "get_paper_trading_performance",
     "get_price_history",
+    "get_rejection_history",
     "get_risk_state",
     "get_smc_zones",
     "get_technical_indicators",
+    "retrieve_spilled_context",
 )
 
 TIER_DEEP_TOOL_NAMES: tuple[str, ...] = (
@@ -58,6 +62,7 @@ TIER_DEEP_TOOL_NAMES: tuple[str, ...] = (
     "calculate_position_size",
     "detect_candlestick_patterns",
     "get_account_info",
+    "get_active_triggers",
     "get_asset_analysis",
     "get_atr",
     "get_central_bank_expectations",
@@ -75,12 +80,14 @@ TIER_DEEP_TOOL_NAMES: tuple[str, ...] = (
     "get_market_session",
     "get_multi_timeframe_summary",
     "get_news_digest",
+    "get_news_items",
     "get_open_positions",
     "get_order_blocks",
     "get_paper_trading_performance",
     "get_pnl_summary",
     "get_price_history",
     "get_price_momentum",
+    "get_rejection_history",
     "get_risk_state",
     "get_smc_zones",
     "get_spread_snapshot",
@@ -89,7 +96,13 @@ TIER_DEEP_TOOL_NAMES: tuple[str, ...] = (
     "get_system_health",
     "get_technical_indicators",
     "get_timesfm_forecast",
+    "get_trade_history",
+    "get_vix",
     "propose_action",
+    "read_url",
+    "retrieve_spilled_context",
+    "search_historical_memories",
+    "web_search",
 )
 
 _INTERACTIVE_MAP = {t.get("name"): t for t in OPERATOR_INTERACTIVE_TOOLS if t.get("name")}

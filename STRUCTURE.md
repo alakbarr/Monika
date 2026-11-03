@@ -34,6 +34,7 @@ Monika/
 │       │   │   │   ├── interactive_todo.py
 │       │   │   │   ├── message_repair.py
 │       │   │   │   ├── physical_deliverable_gate.py
+│       │   │   │   ├── pseudo_tool_parser.py
 │       │   │   │   ├── repeat_tool_guard.py
 │       │   │   │   ├── repetition_guard.py
 │       │   │   │   ├── session_surface.py
@@ -2116,6 +2117,7 @@ Monika/
 │   │   ├── test_core_and_error_taxonomy.py
 │   │   ├── test_file_write_approval.py
 │   │   ├── test_harness_effort_recovery_and_antislop.py
+│   │   ├── test_mandatory_tool_enforcement.py
 │   │   ├── test_mcp_write_approval.py
 │   │   ├── test_memory_skills_and_traps.py
 │   │   ├── test_moa_loop.py
@@ -3187,4 +3189,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 274 | **Total Tracked Files**: 2883
+**Total Tracked Directories**: 274 | **Total Tracked Files**: 2885

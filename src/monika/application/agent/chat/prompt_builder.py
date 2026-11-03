@@ -183,6 +183,27 @@ class PromptBuilderMixin(_ChatAgentMixinBase):
         if re.search(ACTION_VERBS, msg_lower):
             return "complex"
 
+        # Market Catalyst, Causal Drivers, & Diagnostic inquiries (always complex)
+        CAUSAL_PATTERNS = (
+            r"\b(apa\s+yang\s+(membuat|menyebabkan|mendorong)|"
+            r"kenapa|mengapa|why\s+(did|is|are)|"
+            r"penyebab|katalis|driver|faktor|alasan|reason|catalyst|"
+            r"sumber(mu)?\s+dari\s+mana|source|"
+            r"dampak\s+dari|imbas\s+dari|"
+            r"ada\s+berita\s+apa|ada\s+apa\s+dengan)\b"
+        )
+        if re.search(CAUSAL_PATTERNS, msg_lower):
+            return "complex"
+
+        # Operator Challenge & Verification queries (challenging agent premise or verifying database)
+        CHALLENGE_PATTERNS = (
+            r"\b(bukan\s+karena|apakah\s+(benar|memang|tidak)|"
+            r"kenapa\s+kamu\s+(mengata|bilang)|kenapa\s+bilang|"
+            r"di\s+data\s+(yang\s+)?(aku|anda|kita)|apakah\s+ada\s+data|kenapa\s+[\'\"]?jika[\'\"]?)\b"
+        )
+        if re.search(CHALLENGE_PATTERNS, msg_lower):
+            return "complex"
+
         # Super short greetings/thanks
         if len(msg) < 15 and any(
             w in msg_lower
@@ -308,7 +329,16 @@ class PromptBuilderMixin(_ChatAgentMixinBase):
             "## Anti-Hallucination Rules (MANDATORY)",
             "- When asked about past trade rationale/decisions, you MUST call get_asset_analysis or get_fundamental_brief to fetch the ORIGINAL recorded rationale before answering. Never reconstruct from generic memory.",
             "- When asked about PnL, paper trading performance, trade history, active triggers, open positions, account balance, win rate, or statistical edge, you MUST call the appropriate tool (get_paper_trading_performance, get_trade_history, get_open_positions, get_account_info, get_active_triggers, get_edge_tracker_status) before answering. Never guess numbers or claim that tools are unavailable.",
-            "- If a tool returns an error or empty data, state transparently to the user that data is unavailable. Never guess numbers.",
+            "- When asked why an asset price moved, surged, rallied, dropped, or crashed (e.g. 'kenapa emas naik?', 'apa yang membuat oil turun?'), you MUST query actual market news and price action via tools (get_news_items, get_news_digest, get_price_history, get_fear_greed_sentiment) before attributing any cause. NEVER invent or retroactively match unrelated news (such as events from last week or structural chronicle headlines) as the direct catalyst for intraday or daily price action without checking the news released at or around the exact time of the move.",
+            "- When asked why a trade was rejected, why no trades were taken, or why an order was blocked (e.g. 'kenapa order ditolak?', 'kenapa belum ada posisi?'), you MUST call get_rejection_history and get_debate_statistics or get_active_triggers to retrieve the exact deterministic gate or debate decision recorded in the database. Never guess or invent theoretical reasons.",
+            "- When the operator challenges, corrects, or questions your premise or claims (e.g. 'Bukan karena X?', 'Sumbermu dari mana?', 'Apakah di data tidak ada?'):",
+            "  * NEVER defensively rationalize or use textbook theory to justify a prior erroneous statement.",
+            "  * NEVER assume the operator is mistaken or that data 'does not exist in the system' before performing a targeted database search using tools (get_news_items, get_news_digest, search_historical_memories).",
+            "  * Call tools immediately with the operator's keywords (e.g. query='iran', 'perundingan', 'talks', 'doha') to verify the facts.",
+            "  * If the operator's point is corroborated by tools, concede gracefully, thank the operator for the correction, and present the factual data without hedging with words like 'Jika' ('if').",
+            "  * If and only if comprehensive tool searches return zero matching records across all relevant tables, explain transparently what queries were checked and state that the specific report is not indexed in the local terminal database.",
+            "- The PERSISTENT MARKET CHRONICLE in context contains ONLY high-level structural macro milestones across the past 30 days. It is NOT a substitute for live daily news or intraday catalyst feeds. NEVER cite a multi-day-old chronicle event as the intraday driver of today's or yesterday's price action unless confirmed by fresh news from get_news_items.",
+            "- If a tool returns an error or empty data, state transparently to the user that data is unavailable. Never guess numbers or fabricate events.",
             "",
             "## Workspace & Second-Brain Integration (Obsidian, Excel, Notion)",
             "- You have direct MCP tool access to user files, notes, and spreadsheets across local drives.",
@@ -487,5 +517,6 @@ class PromptBuilderMixin(_ChatAgentMixinBase):
             "You are Monika, an autonomous MT5 Trading Agent assistant.\n"
             "Your role in this turn is to provide fast, direct, and accurate answers to operator queries.\n"
             "Use the provided tools to retrieve real-time facts whenever needed. Keep answers concise, factual, and formatted with clean Markdown.\n"
+            "Never invent facts, prices, economic events, or market catalysts. If asked about market events, price movements, or specific data, you MUST call the appropriate tools or state that deeper analysis is required.\n"
             "Answer in the user's language (Indonesian or English)."
         )

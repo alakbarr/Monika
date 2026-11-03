@@ -65,6 +65,16 @@ CHRONICLE_CATEGORIES = {
         "red sea",
         "nato",
         "blockade",
+        "peace",
+        "peace talks",
+        "talks",
+        "deal",
+        "negotiation",
+        "diplomacy",
+        "doha",
+        "accord",
+        "draft proposal",
+        "reopening",
     ],
     "data_shock": [
         "emergency cut",
@@ -480,7 +490,9 @@ class ChronicleWriter:
 
         from monika.application.agent.harness.anti_slop_gate import smart_distill_text
 
-        lines = [f"--- PERSISTENT MARKET CHRONICLE (Ongoing Regimes & Macro Milestones) ---"]
+        lines = [
+            "--- PERSISTENT MARKET CHRONICLE (Ongoing Long-Term Macro Regimes & Structural Milestones Only — NOT a daily news feed; use get_news_items for daily/intraday news) ---"
+        ]
         for c in chronicles:
             dt_str = c.event_date.strftime("%Y-%m-%d")
             status = "ACTIVE ONGOING" if c.is_ongoing else "RESOLVED"

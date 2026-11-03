@@ -123,37 +123,6 @@ GEOPOLITICAL_LEADERS = [
     "zelenskiy",
 ]
 
-HIGH_IMPACT_KEYWORDS = [
-    "fomc",
-    "federal reserve",
-    "fed rate",
-    "rate hike",
-    "rate cut",
-    "emergency cut",
-    "powell",
-    "rate decision",
-    "monetary policy",
-    "quantitative tightening",
-    "qt",
-    "recession",
-    "financial crisis",
-    "nfp",
-    "non-farm payroll",
-    "cpi surprise",
-    "inflation surge",
-    "gdp contraction",
-    "unemployment spike",
-    "ecb rate",
-    "boe rate",
-    "boj",
-    "bank of japan intervention",
-    "rba rate",
-    "reserve bank australia",
-    "bitcoin halving",
-    "sec etf decision",
-    "crypto market structure",
-] + SHOCK_KEYWORDS
-
 DEESCALATION_KEYWORDS = [
     "ceasefire",
     "truce",
@@ -171,7 +140,53 @@ DEESCALATION_KEYWORDS = [
     "trade deal agreed",
     "sanctions relief",
     "border agreement",
+    "us-iran talks",
+    "iran-us talks",
+    "us-iran deal",
+    "iran-us deal",
+    "doha talks",
+    "hormuz reopening",
+    "reopen the strait",
+    "lifting blockade",
+    "naval blockade",
+    "diplomatic breakthrough",
+    "draft proposal",
 ]
+
+HIGH_IMPACT_KEYWORDS = (
+    [
+        "fomc",
+        "federal reserve",
+        "fed rate",
+        "rate hike",
+        "rate cut",
+        "emergency cut",
+        "powell",
+        "rate decision",
+        "monetary policy",
+        "quantitative tightening",
+        "qt",
+        "recession",
+        "financial crisis",
+        "nfp",
+        "non-farm payroll",
+        "cpi surprise",
+        "inflation surge",
+        "gdp contraction",
+        "unemployment spike",
+        "ecb rate",
+        "boe rate",
+        "boj",
+        "bank of japan intervention",
+        "rba rate",
+        "reserve bank australia",
+        "bitcoin halving",
+        "sec etf decision",
+        "crypto market structure",
+    ]
+    + SHOCK_KEYWORDS
+    + DEESCALATION_KEYWORDS
+)
 
 REHASH_KEYWORDS = [
     "reiterates stance",

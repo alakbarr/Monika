@@ -166,13 +166,17 @@ class ChatAgent(
         if complexity == "deep_research":
             return "deep_research"
 
-        is_sticky_enabled = self.settings.get("llm", {}).get("chat_sticky_model", True)
-        if is_sticky_enabled and self._active_session_tier and self._active_session_tier != "deep_research":
-            return self._active_session_tier
-
         resolved_tier = (
             "tier_lite" if complexity == "simple" else ("tier_medium" if complexity == "medium" else "tier_deep")
         )
+
+        is_sticky_enabled = self.settings.get("llm", {}).get("chat_sticky_model", True)
+        if is_sticky_enabled and self._active_session_tier and self._active_session_tier != "deep_research":
+            tier_order = {"tier_lite": 1, "tier_medium": 2, "tier_deep": 3}
+            if tier_order.get(resolved_tier, 1) > tier_order.get(self._active_session_tier, 1):
+                self._active_session_tier = resolved_tier
+            return self._active_session_tier
+
         if is_sticky_enabled:
             self._active_session_tier = resolved_tier
         return resolved_tier
@@ -628,19 +632,70 @@ class ChatAgent(
             has_meaningful_number = any(len(m.replace(",", "").replace(".", "")) >= 3 for m in matches)
             return has_meaningful_number and bool(re.search(keyword_pattern, reply_text, re.IGNORECASE))
 
-        if _reply_makes_unfounded_price_claim(reply_text, response.get("tool_calls_made", 0)):
-            logger.warning(
-                "[ChatAgent] Unfounded price/PnL/status claim terdeteksi dengan 0 tool calls — memaksa retry grounded."
+        def _reply_makes_unfounded_market_driver_claim(clean_msg: str, reply: str, tool_calls_made: int) -> bool:
+            if tool_calls_made > 0:
+                return False
+
+            driver_query_pattern = (
+                r"\b(apa\s+yang\s+(membuat|menyebabkan|mendorong)|"
+                r"kenapa|mengapa|why\s+(did|is|are)|"
+                r"penyebab|katalis|driver|faktor|alasan|reason|catalyst|"
+                r"sumber(mu)?\s+dari\s+mana|source|"
+                r"bukan\s+karena|di\s+data\s+(yang\s+)?(aku|anda|kita)|"
+                r"kenapa\s+kamu\s+(mengata|bilang)|"
+                r"kenapa\s+(order|posisi|trade)?\s*(ditolak|rejection|loss|kalah))\b"
             )
-            forced_prompt = (
-                f"{clean_message}\n\n"
-                "[SYSTEM MANDATE]: Your previous response cited specific numbers, prices, PnL, win rates, triggers, "
-                "or account balances WITHOUT calling any data tools. You are STRICTLY REQUIRED to call the appropriate tool "
-                "(e.g. get_paper_trading_performance, get_open_positions, get_trade_history, get_active_triggers, "
-                "get_system_health, get_price_history, get_smc_zones, get_account_info, get_edge_tracker_status, get_chart, etc.) "
-                "before citing any numbers. Re-answer completely grounded in fresh tool data, in Bahasa Indonesia. "
-                "Do NOT include previous unrelated topics. Answer ONLY the specific question asked."
+            is_driver_query = bool(re.search(driver_query_pattern, clean_msg, re.IGNORECASE))
+            if not is_driver_query:
+                return False
+
+            # Educational/glossary exemption
+            edu_pattern = r"\b(definisi|adalah|yaitu|pengertian|maksudnya|rumus)\b"
+            if re.search(edu_pattern, reply, re.IGNORECASE) and not re.search(
+                r"\b(kemarin|senin|hari ini|minggu lalu|waktu|saat ini|jam|pukul)\b", reply, re.IGNORECASE
+            ):
+                return False
+
+            # Driver/catalyst claims in reply
+            driver_claim_pattern = (
+                r"\b(dipicu\s+oleh|disebabkan\s+oleh|akibat|mendorong|lonjakan|penurunan|anjlok|rally|"
+                r"eskalasi|krisis|perundingan|kesepakatan|laporan|berita|katalis|rebound|short-covering|"
+                r"ditolak\s+karena|gate|alasan\s+penolakan)\b"
             )
+            return bool(re.search(driver_claim_pattern, reply, re.IGNORECASE))
+
+        is_unfounded_price = _reply_makes_unfounded_price_claim(reply_text, response.get("tool_calls_made", 0))
+        is_unfounded_driver = _reply_makes_unfounded_market_driver_claim(
+            clean_message, reply_text, response.get("tool_calls_made", 0)
+        )
+
+        if is_unfounded_price or is_unfounded_driver:
+            if is_unfounded_driver:
+                logger.warning(
+                    "[ChatAgent] Unfounded market driver/catalyst claim terdeteksi dengan 0 tool calls — memaksa retry grounded."
+                )
+                forced_prompt = (
+                    f"{clean_message}\n\n"
+                    "[SYSTEM MANDATE]: Your previous response attempted to explain market price movements, news catalysts, "
+                    "or trade rejection reasons WITHOUT calling any data tools. You are STRICTLY REQUIRED to call data tools "
+                    "(e.g. get_news_items, get_news_digest, get_price_history, get_rejection_history, get_debate_statistics, "
+                    "or search_historical_memories) before asserting any causal driver, catalyst, or rejection reason. "
+                    "Re-answer completely grounded in verified database tool data, in Bahasa Indonesia. "
+                    "Do NOT speculate, guess, or attribute movements to unrelated old chronicle news."
+                )
+            else:
+                logger.warning(
+                    "[ChatAgent] Unfounded price/PnL/status claim terdeteksi dengan 0 tool calls — memaksa retry grounded."
+                )
+                forced_prompt = (
+                    f"{clean_message}\n\n"
+                    "[SYSTEM MANDATE]: Your previous response cited specific numbers, prices, PnL, win rates, triggers, "
+                    "or account balances WITHOUT calling any data tools. You are STRICTLY REQUIRED to call the appropriate tool "
+                    "(e.g. get_paper_trading_performance, get_open_positions, get_trade_history, get_active_triggers, "
+                    "get_system_health, get_price_history, get_smc_zones, get_account_info, get_edge_tracker_status, get_chart, etc.) "
+                    "before citing any numbers. Re-answer completely grounded in fresh tool data, in Bahasa Indonesia. "
+                    "Do NOT include previous unrelated topics. Answer ONLY the specific question asked."
+                )
             async with get_session() as retry_session:
                 retry_executor = ToolExecutor(retry_session, settings=self.settings)
                 retry_executor.is_admin = getattr(self, "is_admin", False)
@@ -673,11 +728,17 @@ class ChatAgent(
                 reply_text = _sanitize_chat_format(response.get("reply", reply_text))
                 proposed_call = response.get("proposed_action")
             else:
-                # Retry tetap tidak memanggil tool — jangan biarkan angka tanpa dasar sampai ke user.
-                reply_text = (
-                    "[Peringatan] Saya tidak dapat memberikan angka, PnL, harga, atau status spesifik tanpa memverifikasi "
-                    "data real-time dari sistem. Silakan ulangi pertanyaan atau gunakan perintah langsung seperti /stats, /positions, atau /report."
-                )
+                # Retry tetap tidak memanggil tool — jangan biarkan klaim tanpa dasar sampai ke user.
+                if is_unfounded_driver:
+                    reply_text = (
+                        "Saya tidak dapat memastikan penyebab pergerakan harga atau keputusan tersebut tanpa memverifikasi "
+                        "data riil dan rilis berita dari database sistem. Silakan periksa rilis berita atau gunakan /macro untuk jadwal data ekonomi."
+                    )
+                else:
+                    reply_text = (
+                        "[Peringatan] Saya tidak dapat memberikan angka, PnL, harga, atau status spesifik tanpa memverifikasi "
+                        "data real-time dari sistem. Silakan ulangi pertanyaan atau gunakan perintah langsung seperti /stats, /positions, atau /report."
+                    )
                 proposed_call = None
 
         # Simpan teks bersih ke DB (tanpa footer metadata)
@@ -685,6 +746,7 @@ class ChatAgent(
             await self._save_message(session, "assistant", reply_text, session_id=session_id)
 
         # Format pesan tampilan dengan footer bersih tanpa emoji
+        model_label = response.get("model_used") or model_label
         inp = response.get("input_tokens", 0)
         outp = response.get("output_tokens", 0)
         if inp > 0 or outp > 0:

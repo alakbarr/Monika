@@ -5393,6 +5393,11 @@
     - `verify_deliverables_batch(paths: List[str], min_bytes: int) -> DeliverableVerdict` - *Probes multiple deliverables, collecting verified and missing paths.*
     - `audit_claimed_completion(response_text: str, touched_files: Optional[List[str]], ledger: Optional[Any]) -> DeliverableVerdict` - *Audits model response text for claimed file operations.*
 
+#### `pseudo_tool_parser.py` - *File: src/monika/application/agent/harness/pseudo_tool_parser.py*
+- **Path**: [`src/monika/application/agent/harness/pseudo_tool_parser.py`](src/monika/application/agent/harness/pseudo_tool_parser.py)
+- **Top-Level Functions**:
+  - `extract_pseudo_tool_calls(text: str, available_tool_names: Optional[Set[str]], mandatory_tool: Optional[str]) -> List[Dict[str, Any]]`: Extract tool calls emitted inside text/markdown instead of native API tool blocks.
+
 #### `repeat_tool_guard.py` - *Repetition guard monitoring consecutive identical tool invocations.*
 - **Path**: [`src/monika/application/agent/harness/repeat_tool_guard.py`](src/monika/application/agent/harness/repeat_tool_guard.py)
 - **Classes**:
@@ -13311,7 +13316,7 @@
     - `async generate_content(system_prompt: str, user_message: str, response_schema: Optional[dict], ...) -> Optional[str]`
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`
     - `async system_one(state: Any, questions: dict, timeout: float) -> Any`
-    - `async run_tool_agent(messages: list, tools: list, system_prompt: str) -> MockResponse`
+    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any, ...) -> MockResponse`
     - `async run_agent(session, system_prompt: str | tuple[str, str] | Any, user_message: str, ...) -> dict`
     - `async run_chat_loop(system_prompt: str, conversation_history: list, new_user_message: str, ...) -> dict`
     - `async run_agent_from_messages(session, system_prompt: str | tuple[str, str] | Any, messages: list, ...) -> dict`
