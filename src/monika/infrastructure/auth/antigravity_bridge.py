@@ -535,6 +535,11 @@ def ensure_antigravity_bridge_running(
         "a separate terminal" if (os.name == "nt" and open_terminal) else "background",
     )
 
+    import tempfile
+
+    sandbox_dir = Path(tempfile.gettempdir()) / "monika_antigravity_sandbox"
+    sandbox_dir.mkdir(parents=True, exist_ok=True)
+
     try:
         if os.name == "nt" and open_terminal:
             CREATE_NEW_CONSOLE = 0x00000010
@@ -542,7 +547,7 @@ def ensure_antigravity_bridge_running(
             subprocess.Popen(
                 [python_exe, str(server_script)],
                 creationflags=CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP,
-                cwd=str(repo_root),
+                cwd=str(sandbox_dir),
             )
         elif os.name == "nt":
             CREATE_NEW_PROCESS_GROUP = 0x00000200
@@ -553,7 +558,7 @@ def ensure_antigravity_bridge_running(
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL,
-                cwd=str(repo_root),
+                cwd=str(sandbox_dir),
             )
         else:
             subprocess.Popen(
@@ -562,7 +567,7 @@ def ensure_antigravity_bridge_running(
                 stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL,
                 start_new_session=True,
-                cwd=str(repo_root),
+                cwd=str(sandbox_dir),
             )
 
         start_time = time.time()

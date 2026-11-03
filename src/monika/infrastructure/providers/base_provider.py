@@ -1076,7 +1076,11 @@ class BaseLLMClient(LlmPort, ABC):
 
             resolved_is_paid = is_paid
             if resolved_is_paid is None:
-                if is_direct_free_tier is True:
+                if provider_name in ("antigravity", "agy", "antigravity_bridge", "agy_bridge") or (
+                    model_name and str(model_name).lower().startswith(("antigravity:", "antigravity/", "agy:", "agy/"))
+                ):
+                    resolved_is_paid = False
+                elif is_direct_free_tier is True:
                     resolved_is_paid = False
                 elif is_direct_free_tier is False:
                     resolved_is_paid = True
@@ -1091,6 +1095,8 @@ class BaseLLMClient(LlmPort, ABC):
             if not resolved_cost_source:
                 if exact_cost is not None and provider_name in ("openrouter", "openai"):
                     resolved_cost_source = "openrouter_exact"
+                elif provider_name in ("antigravity", "agy", "antigravity_bridge", "agy_bridge"):
+                    resolved_cost_source = "antigravity_free_tier"
                 elif provider_name == "gemini":
                     resolved_cost_source = "gemini_paid_exact" if resolved_is_paid else "gemini_free_tier"
                 elif not resolved_is_paid:

@@ -404,6 +404,8 @@ def infer_provider_from_model(model_name: str) -> str:
     if not model_name:
         return "unknown"
     clean = str(model_name).strip().lower()
+    if clean.startswith(("antigravity/", "antigravity:", "agy/", "agy:")):
+        return "antigravity"
     if clean.startswith(("9router/", "9r/", "kr/", "if/", "oc/", "ocz/", "mmf/", "gc/", "af/", "combo/")):
         return "9router"
     if clean.startswith("vertex/"):
@@ -440,15 +442,24 @@ def is_paid_model(
     Evaluasi apakah pemanggilan model masuk kategori Berbayar (Paid Tier).
     Kembalikan True jika berbayar, False jika gratis ($0 / free tier).
     """
-    if is_direct_free_tier is False:
-        return True
-    if is_direct_free_tier is True:
-        return False
-
     clean_name = str(model_name).strip().lower()
     prov = (provider or "").strip().lower()
     if not prov:
         prov = infer_provider_from_model(model_name)
+
+    # Antigravity desktop bridge & OAuth models are treated as free tier ($0 marginal per-token cost)
+    if prov in (
+        "antigravity",
+        "agy",
+        "antigravity_bridge",
+        "agy_bridge",
+    ) or clean_name.startswith(("antigravity/", "antigravity:", "agy/", "agy:")):
+        return False
+
+    if is_direct_free_tier is False:
+        return True
+    if is_direct_free_tier is True:
+        return False
 
     # 1. OpenRouter & 9Router free models & endpoint suffix :free
     if clean_name.endswith(":free") or ":free" in clean_name or clean_name == "openrouter/free":
@@ -462,7 +473,17 @@ def is_paid_model(
             return False
 
     # 3. Provider Free Tiers
-    if prov in ("groq", "ollama", "opencode", "opencode_go", "opencode-go"):
+    if prov in (
+        "groq",
+        "ollama",
+        "opencode",
+        "opencode_go",
+        "opencode-go",
+        "antigravity",
+        "agy",
+        "antigravity_bridge",
+        "agy_bridge",
+    ):
         return False
 
     if prov == "gemini":
@@ -482,7 +503,7 @@ def is_paid_model(
 def is_free_tier(model_name: str, provider: str | None = None, is_direct_free_tier: bool | None = None) -> bool:
     """
     Evaluasi apakah pemanggilan model masuk kategori Free Tier ($0).
-    Mendukung Gemini (GEMINI_API_KEYS), Groq Developer Tier, OpenRouter :free & openrouter/free, Ollama, OpenCode, dan 9Router Free Tier.
+    Mendukung Antigravity Bridge/OAuth, Gemini (GEMINI_API_KEYS), Groq Developer Tier, OpenRouter :free & openrouter/free, Ollama, OpenCode, dan 9Router Free Tier.
     """
     return not is_paid_model(model_name, provider=provider, is_direct_free_tier=is_direct_free_tier)
 
@@ -493,6 +514,10 @@ def get_price(model_name: str) -> Price:
         return _FREE
 
     clean_name = str(model_name).strip().lower()
+
+    # Antigravity desktop bridge & OAuth models ($0 marginal per-token cost)
+    if clean_name.startswith(("antigravity/", "antigravity:", "agy/", "agy:")):
+        return _FREE
 
     # 1. Cek langsung model Free Tier
     if clean_name in FREE_TIER_MODELS or clean_name.endswith(":free") or ":free" in clean_name:

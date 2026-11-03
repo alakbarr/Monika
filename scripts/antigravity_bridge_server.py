@@ -37,12 +37,12 @@ POSSIBLE_AGY_PATHS = [
 AGY_PATH = next((str(p) for p in POSSIBLE_AGY_PATHS if p.exists()), "agy.exe")
 
 MODEL_ALIASES = {
-    "gemini-3.8-flash": "gemini-3.8-flash-high",
-    "gemini-3.8": "gemini-3.8-flash-high",
+    "gemini-3.8-flash": "gemini-3.8-flash-medium",
+    "gemini-3.8": "gemini-3.8-flash-medium",
     "gemini-3.8-flash-high": "gemini-3.8-flash-high",
     "gemini-3.8-flash-medium": "gemini-3.8-flash-medium",
     "gemini-3.8-flash-low": "gemini-3.8-flash-low",
-    "gemini-3.5-flash": "gemini-3.8-flash-high",
+    "gemini-3.5-flash": "gemini-3.8-flash-medium",
     "gemini-4-argon": "gemini-4-argon-high",
     "gemini-4": "gemini-4-argon-high",
     "gemini-4-argon-high": "gemini-4-argon-high",
@@ -53,12 +53,124 @@ MODEL_ALIASES = {
 
 AVAILABLE_MODELS = [
     {"id": "gemini-3.8-flash", "object": "model", "owned_by": "google"},
+    {"id": "gemini-3.8-flash-low", "object": "model", "owned_by": "google"},
+    {"id": "gemini-3.8-flash-medium", "object": "model", "owned_by": "google"},
     {"id": "gemini-3.8-flash-high", "object": "model", "owned_by": "google"},
     {"id": "gemini-4-argon", "object": "model", "owned_by": "google"},
+    {"id": "gemini-4-argon-low", "object": "model", "owned_by": "google"},
+    {"id": "gemini-4-argon-medium", "object": "model", "owned_by": "google"},
     {"id": "gemini-4-argon-high", "object": "model", "owned_by": "google"},
+    {"id": "claude-sonnet-5-5-low", "object": "model", "owned_by": "anthropic"},
     {"id": "claude-sonnet-5-5-medium", "object": "model", "owned_by": "anthropic"},
+    {"id": "claude-sonnet-5-5-high", "object": "model", "owned_by": "anthropic"},
+    {"id": "claude-opus-5-5-low", "object": "model", "owned_by": "anthropic"},
     {"id": "claude-opus-5-5-medium", "object": "model", "owned_by": "anthropic"},
+    {"id": "claude-opus-5-5-high", "object": "model", "owned_by": "anthropic"},
 ]
+
+
+def get_isolated_sandbox_dir() -> Path:
+    """
+    Return and initialize a clean, isolated scratch workspace directory for agy.exe.
+    Guarantees that agy.exe never runs inside Monika's repository root, preventing
+    it from scanning Monika's git history, AGENTS.md, or executing commands on codebase files.
+    """
+    import tempfile
+
+    sandbox = Path(tempfile.gettempdir()) / "monika_antigravity_sandbox"
+    sandbox.mkdir(parents=True, exist_ok=True)
+
+    # Write headless rule anchors in the sandbox so agy.exe adheres to headless API worker mode
+    rules_content = (
+        "# Headless Computational Worker Governance\n\n"
+        "You are an isolated computational backend API worker for Monika.\n"
+        "You have NO host filesystem or terminal permissions.\n"
+        "Strictly emit text responses or requested application tool calls.\n"
+        "Never attempt to inspect local files, run git commands, or invoke shell tools.\n"
+    )
+    agents_file = sandbox / "AGENTS.md"
+    gemini_file = sandbox / "GEMINI.md"
+    try:
+        if not agents_file.exists() or agents_file.stat().st_size == 0:
+            agents_file.write_text(rules_content, encoding="utf-8")
+        if not gemini_file.exists() or gemini_file.stat().st_size == 0:
+            gemini_file.write_text(rules_content, encoding="utf-8")
+    except Exception as exc:
+        logger.debug("Failed writing headless rule anchors in sandbox: %s", exc)
+
+    return sandbox
+
+
+def normalize_effort(effort_raw: object) -> str | None:
+    if not effort_raw:
+        return None
+    val = str(effort_raw).strip().lower()
+    if val in ("low", "min", "minimal", "1"):
+        return "low"
+    elif val in ("high", "xhigh", "extended", "max", "3"):
+        return "high"
+    elif val in ("medium", "med", "default", "standard", "2"):
+        return "medium"
+    elif val in ("none", "off", "disabled", "0"):
+        return "low"
+    return "medium"
+
+
+def extract_request_effort(req_data: dict) -> str | None:
+    for key in ("reasoning_effort", "thinking_level", "effort"):
+        if key in req_data:
+            eff = normalize_effort(req_data[key])
+            if eff:
+                return eff
+    th = req_data.get("thinking")
+    if isinstance(th, str):
+        eff = normalize_effort(th)
+        if eff:
+            return eff
+    elif isinstance(th, dict):
+        eff = normalize_effort(th.get("level") or th.get("effort") or th.get("type"))
+        if eff:
+            return eff
+    extra = req_data.get("extra_body")
+    if isinstance(extra, dict):
+        return extract_request_effort(extra)
+    return None
+
+
+def resolve_model_with_effort(raw_model: str, req_data: dict) -> tuple[str, str]:
+    """
+    Resolve model and reasoning effort dynamically based on model name and request attributes.
+    Returns (agy_model, resolved_effort).
+    """
+    m = (raw_model or "gemini-3.8-flash").strip().lower()
+    req_effort = extract_request_effort(req_data)
+
+    # 1. Explicit effort suffix already present in raw model string
+    for suffix in ("-low", "-medium", "-high"):
+        if m.endswith(suffix):
+            effort = suffix.lstrip("-")
+            return m, effort
+
+    # 2. Determine base model family and default effort
+    if any(k in m for k in ("gemini-3.8", "gemini-3.5", "flash")):
+        base = "gemini-3.8-flash"
+        default_effort = "medium"
+    elif any(k in m for k in ("gemini-4", "argon", "pro")):
+        base = "gemini-4-argon"
+        default_effort = "high"
+    elif any(k in m for k in ("sonnet", "claude-3-5-sonnet", "claude-sonnet")):
+        base = "claude-sonnet-5-5"
+        default_effort = "medium"
+    elif any(k in m for k in ("opus", "claude-opus")):
+        base = "claude-opus-5-5"
+        default_effort = "high"
+    else:
+        base = MODEL_ALIASES.get(m, m)
+        default_effort = "medium"
+
+    effort = req_effort or default_effort
+    agy_model = f"{base}-{effort}"
+    return agy_model, effort
 
 
 class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
@@ -67,15 +179,24 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
         pass
 
     def _send_json(self, status_code: int, data: dict):
-        body = json.dumps(data).encode("utf-8")
-        self.send_response(status_code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "*")
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            body = json.dumps(data).encode("utf-8")
+            self.send_response(status_code)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "*")
+            self.end_headers()
+            self.wfile.write(body)
+        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError) as e:
+            logger.warning(
+                "Client disconnected before JSON response could be sent (status %d): %s",
+                status_code,
+                e,
+            )
+        except Exception as e:
+            logger.warning("Failed to send JSON response (status %d): %s", status_code, e)
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -87,9 +208,16 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?")[0].rstrip("/")
         if path in ("", "/v1", "/health", "/v1/health"):
+            sandbox_dir = get_isolated_sandbox_dir()
             self._send_json(
                 200,
-                {"status": "healthy", "service": "Antigravity Bridge", "agy_path": AGY_PATH, "version": "1.1.0"},
+                {
+                    "status": "healthy",
+                    "service": "Antigravity Bridge",
+                    "agy_path": AGY_PATH,
+                    "sandbox_path": str(sandbox_dir),
+                    "version": "1.2.0",
+                },
             )
             return
 
@@ -118,7 +246,7 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
             return
 
         raw_model = req_data.get("model", "gemini-3.8-flash")
-        agy_model = MODEL_ALIASES.get(raw_model, raw_model)
+        agy_model, resolved_effort = resolve_model_with_effort(raw_model, req_data)
         is_stream = bool(req_data.get("stream", False))
 
         # 1. Flatten messages into structured conversation turns
@@ -164,33 +292,61 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
             if tool_prompts:
                 directive = (
                     "\n\n[AVAILABLE TOOLS FOR THIS TASK]\n"
-                    "You have access to the following tools to execute:\n"
+                    "You have access to the following application tools to execute:\n"
                     + "\n".join(tool_prompts)
-                    + "\n\nIf you choose to invoke a tool, you MUST output ONLY a JSON block formatted exactly as:\n"
+                    + "\n\nCRITICAL EXECUTION DIRECTIVES:\n"
+                    "1. You are operating as a stateless computational backend model for Monika.\n"
+                    "2. You do NOT have access to the local operating system or terminal.\n"
+                    "3. Do NOT attempt to run shell commands, git operations, or read repository files.\n"
+                    "4. If you choose to invoke a tool, you MUST output ONLY a JSON block formatted exactly as:\n"
                     "```tool_call\n"
                     '{"name": "<tool_name>", "arguments": {<valid_arguments>}}\n'
                     "```\n"
                     "If no tool is needed or you are presenting your final conclusions, output normal text."
                 )
                 prompt_segments.append(directive)
+        else:
+            prompt_segments.append(
+                "\n\n[SYSTEM DIRECTIVE]: You are operating as a stateless computational backend model for Monika. "
+                "Do NOT attempt to run shell commands, git operations, or inspect local repository files. "
+                "Respond directly with your quantitative analysis or answer."
+            )
 
         full_prompt = "\n\n".join(prompt_segments)
         logger.info(
-            "Completion request for '%s' (agy: %s, prompt_len: %d chars, tools: %d)",
+            "Completion request for '%s' (agy: %s, effort: %s, prompt_len: %d chars, tools: %d)",
             raw_model,
             agy_model,
+            resolved_effort,
             len(full_prompt),
             len(tool_names),
         )
 
         # 3. Invoke Antigravity Engine via STDIN to bypass OS command-line character limits
-        cmd = [AGY_PATH, "--model", agy_model, "--output-format", "json"]
+        agy_timeout = int(os.environ.get("ANTIGRAVITY_TIMEOUT", 90))
+        cmd = [
+            AGY_PATH,
+            "--model",
+            agy_model,
+            "--output-format",
+            "json",
+            "--print-timeout",
+            f"{max(agy_timeout - 5, 10)}s",
+            "--disable-slash-commands",
+        ]
+        raw_effort = extract_request_effort(req_data)
+        if raw_effort in ("xhigh", "max"):
+            cmd.extend(["--effort", "max"])
+        elif resolved_effort:
+            cmd.extend(["--effort", resolved_effort])
+
         start_t = time.time()
         output_text = ""
         prompt_tokens = max(len(full_prompt.split()), 1)
         completion_tokens = 1
         thinking_tokens = 0
         cached_tokens = 0
+        sandbox_dir = get_isolated_sandbox_dir()
         try:
             proc = subprocess.run(
                 cmd,
@@ -198,18 +354,57 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                timeout=240,
+                timeout=agy_timeout,
                 encoding="utf-8",
+                cwd=str(sandbox_dir),
             )
             elapsed = time.time() - start_t
             if proc.returncode != 0:
                 err_msg = proc.stderr.strip() or f"Process exited with code {proc.returncode}"
                 logger.error("agy execution failed in %.2fs: %s", elapsed, err_msg)
-                output_text = f"Antigravity Execution Error: {err_msg}"
+                self._send_json(
+                    502,
+                    {
+                        "error": {
+                            "message": f"Antigravity CLI execution failed: {err_msg}",
+                            "type": "server_error",
+                            "code": "antigravity_cli_failed",
+                        }
+                    },
+                )
+                return
             else:
                 raw_out = proc.stdout.strip()
+                if not raw_out:
+                    logger.error("agy execution produced empty output in %.2fs", elapsed)
+                    self._send_json(
+                        502,
+                        {
+                            "error": {
+                                "message": "Antigravity CLI produced empty response",
+                                "type": "server_error",
+                                "code": "antigravity_empty_response",
+                            }
+                        },
+                    )
+                    return
                 try:
                     agy_data = json.loads(raw_out)
+                    status = str(agy_data.get("status", "")).upper()
+                    if status and status not in ("SUCCESS", "OK", "COMPLETED"):
+                        err_detail = agy_data.get("error") or agy_data.get("message") or status
+                        logger.error("agy execution returned error status in %.2fs: %s", elapsed, err_detail)
+                        self._send_json(
+                            502,
+                            {
+                                "error": {
+                                    "message": f"Antigravity CLI error status: {err_detail}",
+                                    "type": "server_error",
+                                    "code": "antigravity_error_status",
+                                }
+                            },
+                        )
+                        return
                     output_text = str(agy_data.get("response", "")).strip()
                     usage_data = agy_data.get("usage", {})
                     if usage_data:
@@ -230,7 +425,17 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
         except Exception as exc:
             elapsed = time.time() - start_t
             logger.error("agy call threw exception in %.2fs: %s", elapsed, exc)
-            output_text = f"Antigravity Bridge Error: {str(exc)}"
+            self._send_json(
+                502,
+                {
+                    "error": {
+                        "message": f"Antigravity Bridge execution error: {str(exc)}",
+                        "type": "server_error",
+                        "code": "antigravity_bridge_exception",
+                    }
+                },
+            )
+            return
 
         completion_id = f"chatcmpl-{uuid.uuid4().hex[:16]}"
         usage_payload = {
@@ -312,38 +517,43 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
 
         # 5. Format OpenAI Compatible Response
         if is_stream:
-            self.send_response(200)
-            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
-            self.send_header("Cache-Control", "no-cache")
-            self.send_header("Connection", "keep-alive")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
+            try:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Connection", "keep-alive")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
 
-            if parsed_tool_calls:
-                delta_payload = {"role": "assistant", "content": None, "tool_calls": parsed_tool_calls}
-            else:
-                delta_payload = {"role": "assistant", "content": output_text}
+                if parsed_tool_calls:
+                    delta_payload = {"role": "assistant", "content": None, "tool_calls": parsed_tool_calls}
+                else:
+                    delta_payload = {"role": "assistant", "content": output_text}
 
-            event_1 = {
-                "id": completion_id,
-                "object": "chat.completion.chunk",
-                "created": int(time.time()),
-                "model": raw_model,
-                "choices": [{"index": 0, "delta": delta_payload, "finish_reason": None}],
-            }
-            self.wfile.write(f"data: {json.dumps(event_1)}\n\n".encode("utf-8"))
+                event_1 = {
+                    "id": completion_id,
+                    "object": "chat.completion.chunk",
+                    "created": int(time.time()),
+                    "model": raw_model,
+                    "choices": [{"index": 0, "delta": delta_payload, "finish_reason": None}],
+                }
+                self.wfile.write(f"data: {json.dumps(event_1)}\n\n".encode("utf-8"))
 
-            event_2 = {
-                "id": completion_id,
-                "object": "chat.completion.chunk",
-                "created": int(time.time()),
-                "model": raw_model,
-                "choices": [{"index": 0, "delta": {}, "finish_reason": finish_reason}],
-                "usage": usage_payload,
-            }
-            self.wfile.write(f"data: {json.dumps(event_2)}\n\n".encode("utf-8"))
-            self.wfile.write(b"data: [DONE]\n\n")
-            self.wfile.flush()
+                event_2 = {
+                    "id": completion_id,
+                    "object": "chat.completion.chunk",
+                    "created": int(time.time()),
+                    "model": raw_model,
+                    "choices": [{"index": 0, "delta": {}, "finish_reason": finish_reason}],
+                    "usage": usage_payload,
+                }
+                self.wfile.write(f"data: {json.dumps(event_2)}\n\n".encode("utf-8"))
+                self.wfile.write(b"data: [DONE]\n\n")
+                self.wfile.flush()
+            except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError) as e:
+                logger.warning("Client disconnected before SSE stream chunks could be flushed: %s", e)
+            except Exception as e:
+                logger.warning("Failed to stream SSE chunks: %s", e)
         else:
             msg_obj = {"role": "assistant"}
             if parsed_tool_calls:

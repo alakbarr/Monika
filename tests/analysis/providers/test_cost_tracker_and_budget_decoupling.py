@@ -40,6 +40,30 @@ class TestCostTrackingAndBudgetDecoupling:
         assert is_paid_model("claude-opus-5.5", provider="anthropic") is True
         assert is_paid_model("gpt-6.1-sol", provider="openai") is True
 
+        # 5. Antigravity Desktop Bridge / OAuth ($0 marginal API dollar cost)
+        assert is_paid_model("gemini-3.8-flash", provider="antigravity") is False
+        assert is_paid_model("gemini-4-argon", provider="antigravity") is False
+        assert is_paid_model("gemini-3.8-flash", provider="agy") is False
+        assert is_paid_model("gemini-4-argon", provider="antigravity", is_direct_free_tier=False) is False
+        assert is_paid_model("antigravity:gemini-4-argon") is False
+        assert is_paid_model("antigravity/gemini-3.8-flash") is False
+        assert is_paid_model("agy:gemini-3.8-flash") is False
+        assert is_free_tier("gemini-3.8-flash", provider="antigravity") is True
+        assert is_free_tier("gemini-4-argon", provider="antigravity") is True
+        assert cost_usd("gemini-3.8-flash", 1000, 500, provider="antigravity") == 0.0
+        assert cost_usd_decimal("gemini-4-argon", 5000, 2000, provider="antigravity") == Decimal("0.000000")
+
+    def test_antigravity_token_usage_log_and_factory_free_model(self):
+        """Verify Antigravity model calls result in is_paid=False and antigravity_free_tier cost_source."""
+        factory = LLMFactory(settings={})
+        role_cfg = {"provider": "antigravity"}
+        assert factory.is_model_paid("gemini-3.8-flash", role_config=role_cfg, slot_name="primary") is False
+        assert factory.is_model_paid("gemini-4-argon", role_config=role_cfg, slot_name="primary") is False
+
+        # Even if slot_tier was set to paid from account pool record
+        role_cfg_pool = {"provider": "antigravity", "primary_tier": "paid"}
+        assert factory.is_model_paid("gemini-4-argon", role_config=role_cfg_pool, slot_name="primary") is False
+
     def test_factory_is_model_paid_with_slot_tier_override(self):
         """Test LLMFactory.is_model_paid honors slot-level tier overrides."""
         factory = LLMFactory(settings={})

@@ -334,3 +334,277 @@ def test_antigravity_bridge_handler_large_prompt_via_stdin():
         assert "-p" not in cmd
         assert "input" in call_kwargs
         assert large_text in call_kwargs["input"]
+        assert "cwd" in call_kwargs
+        assert "monika_antigravity_sandbox" in call_kwargs["cwd"]
+
+
+def test_antigravity_bridge_handler_failure_returns_502():
+    import importlib.util
+    from monika.core.paths import get_repo_root
+
+    bridge_server_path = get_repo_root() / "scripts" / "antigravity_bridge_server.py"
+    spec = importlib.util.spec_from_file_location("antigravity_bridge_server", str(bridge_server_path))
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    HandlerClass = mod.AntigravityBridgeHandler
+
+    body_dict = {
+        "model": "gemini-4-argon",
+        "messages": [{"role": "user", "content": "Test prompt"}],
+    }
+    body_bytes = json.dumps(body_dict).encode("utf-8")
+
+    mock_wfile = io.BytesIO()
+    mock_rfile = io.BytesIO(body_bytes)
+
+    class TestBridgeHandler(HandlerClass):
+        def __init__(self):
+            self.path = "/v1/chat/completions"
+            self.headers = {"Content-Length": str(len(body_bytes))}
+            self.rfile = mock_rfile
+            self.wfile = mock_wfile
+            self._headers_buffer = []
+
+        def send_response(self, code, message=None):
+            self.status_code = code
+
+        def send_header(self, keyword, value):
+            pass
+
+        def end_headers(self):
+            pass
+
+    mock_proc = MagicMock()
+    mock_proc.returncode = 1
+    mock_proc.stderr = "You are not logged into Antigravity."
+
+    with patch("subprocess.run", return_value=mock_proc):
+        handler = TestBridgeHandler()
+        handler.do_POST()
+        assert handler.status_code == 502
+        response_data = json.loads(mock_wfile.getvalue().decode("utf-8"))
+        assert "error" in response_data
+        assert "You are not logged into Antigravity" in response_data["error"]["message"]
+
+
+def test_antigravity_bridge_dynamic_thinking_resolution():
+    import importlib.util
+    from monika.core.paths import get_repo_root
+
+    bridge_server_path = get_repo_root() / "scripts" / "antigravity_bridge_server.py"
+    spec = importlib.util.spec_from_file_location("antigravity_bridge_server", str(bridge_server_path))
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    resolve_fn = mod.resolve_model_with_effort
+
+    # Flash with various thinking levels
+    assert resolve_fn("gemini-3.8-flash", {"reasoning_effort": "low"}) == ("gemini-3.8-flash-low", "low")
+    assert resolve_fn("gemini-3.8-flash", {"thinking": "medium"}) == ("gemini-3.8-flash-medium", "medium")
+    assert resolve_fn("gemini-3.8-flash", {"thinking_level": "high"}) == ("gemini-3.8-flash-high", "high")
+    assert resolve_fn("gemini-3.8-flash", {"reasoning_effort": "xhigh"}) == ("gemini-3.8-flash-high", "high")
+    assert resolve_fn("gemini-3.8-flash", {"thinking": "max"}) == ("gemini-3.8-flash-high", "high")
+    assert resolve_fn("gemini-3.8-flash", {"thinking": "none"}) == ("gemini-3.8-flash-low", "low")
+    assert resolve_fn("gemini-3.8-flash", {}) == ("gemini-3.8-flash-medium", "medium")  # Smart default for flash
+
+    # Argon with various thinking levels
+    assert resolve_fn("gemini-4-argon", {"reasoning_effort": "low"}) == ("gemini-4-argon-low", "low")
+    assert resolve_fn("gemini-4-argon", {"thinking": "medium"}) == ("gemini-4-argon-medium", "medium")
+    assert resolve_fn("gemini-4-argon", {}) == ("gemini-4-argon-high", "high")  # Smart default for argon
+
+    # Explicit model string preserved
+    assert resolve_fn("gemini-3.8-flash-low", {}) == ("gemini-3.8-flash-low", "low")
+    assert resolve_fn("gemini-4-argon-high", {}) == ("gemini-4-argon-high", "high")
+
+
+def test_antigravity_bridge_passes_effort_and_flags_to_cli():
+    import importlib.util
+    from monika.core.paths import get_repo_root
+
+    bridge_server_path = get_repo_root() / "scripts" / "antigravity_bridge_server.py"
+    spec = importlib.util.spec_from_file_location("antigravity_bridge_server", str(bridge_server_path))
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    HandlerClass = mod.AntigravityBridgeHandler
+
+    body_dict = {
+        "model": "gemini-3.8-flash",
+        "reasoning_effort": "low",
+        "messages": [{"role": "user", "content": "Test prompt"}],
+    }
+    body_bytes = json.dumps(body_dict).encode("utf-8")
+
+    mock_wfile = io.BytesIO()
+    mock_rfile = io.BytesIO(body_bytes)
+
+    class TestBridgeHandler(HandlerClass):
+        def __init__(self):
+            self.path = "/v1/chat/completions"
+            self.headers = {"Content-Length": str(len(body_bytes))}
+            self.rfile = mock_rfile
+            self.wfile = mock_wfile
+            self._headers_buffer = []
+
+        def send_response(self, code, message=None):
+            self.status_code = code
+
+        def send_header(self, keyword, value):
+            pass
+
+        def end_headers(self):
+            pass
+
+    mock_proc = MagicMock()
+    mock_proc.returncode = 0
+    mock_proc.stdout = json.dumps({"response": "ok", "usage": {}})
+
+    with patch("subprocess.run", return_value=mock_proc) as mock_run:
+        handler = TestBridgeHandler()
+        handler.do_POST()
+        assert handler.status_code == 200
+
+        cmd = mock_run.call_args[0][0]
+        assert "--model" in cmd
+        model_idx = cmd.index("--model")
+        assert cmd[model_idx + 1] == "gemini-3.8-flash-low"
+        assert "--effort" in cmd
+        effort_idx = cmd.index("--effort")
+        assert cmd[effort_idx + 1] == "low"
+        assert "--print-timeout" in cmd
+        assert "--disable-slash-commands" in cmd
+
+
+def test_antigravity_bridge_handles_connection_aborted_gracefully():
+    import importlib.util
+    from monika.core.paths import get_repo_root
+
+    bridge_server_path = get_repo_root() / "scripts" / "antigravity_bridge_server.py"
+    spec = importlib.util.spec_from_file_location("antigravity_bridge_server", str(bridge_server_path))
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    HandlerClass = mod.AntigravityBridgeHandler
+
+    class AbortingBytesIO(io.BytesIO):
+        def write(self, b):
+            raise ConnectionAbortedError(
+                10053, "An established connection was aborted by the software in your host machine"
+            )
+
+    mock_wfile = AbortingBytesIO()
+    mock_rfile = io.BytesIO(b"")
+
+    class TestBridgeHandler(HandlerClass):
+        def __init__(self):
+            self.path = "/v1/chat/completions"
+            self.rfile = mock_rfile
+            self.wfile = mock_wfile
+            self._headers_buffer = []
+
+        def send_response(self, code, message=None):
+            self.status_code = code
+
+        def send_header(self, keyword, value):
+            pass
+
+        def end_headers(self):
+            pass
+
+    handler = TestBridgeHandler()
+    # Must not raise ConnectionAbortedError
+    handler._send_json(502, {"error": "test abort"})
+
+
+def test_antigravity_bridge_tool_call_extraction_and_sandbox_isolation():
+    import importlib.util
+    from pathlib import Path
+    from monika.core.paths import get_repo_root
+
+    bridge_server_path = get_repo_root() / "scripts" / "antigravity_bridge_server.py"
+    spec = importlib.util.spec_from_file_location("antigravity_bridge_server", str(bridge_server_path))
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    HandlerClass = mod.AntigravityBridgeHandler
+
+    body_dict = {
+        "model": "gemini-3.8-flash",
+        "messages": [
+            {"role": "user", "content": "Evaluate EURUSD H1."},
+        ],
+        "tools": [
+            {
+                "type": "function",
+                "function": {
+                    "name": "submit_asset_analysis",
+                    "description": "Submit asset analysis",
+                    "parameters": {"type": "object", "properties": {"symbol": {"type": "string"}}},
+                },
+            }
+        ],
+    }
+    body_bytes = json.dumps(body_dict).encode("utf-8")
+
+    mock_wfile = io.BytesIO()
+    mock_rfile = io.BytesIO(body_bytes)
+
+    class TestBridgeHandler(HandlerClass):
+        def __init__(self):
+            self.path = "/v1/chat/completions"
+            self.headers = {"Content-Length": str(len(body_bytes))}
+            self.rfile = mock_rfile
+            self.wfile = mock_wfile
+            self._headers_buffer = []
+
+        def send_response(self, code, message=None):
+            self.status_code = code
+
+        def send_header(self, keyword, value):
+            pass
+
+        def end_headers(self):
+            pass
+
+    mock_proc = MagicMock()
+    mock_proc.returncode = 0
+    mock_proc.stdout = json.dumps(
+        {
+            "status": "SUCCESS",
+            "response": '```tool_call\n{"name": "submit_asset_analysis", "arguments": {"symbol": "EURUSD", "action": "BUY"}}\n```',
+            "usage": {"input_tokens": 100, "output_tokens": 50},
+        }
+    )
+
+    with patch("subprocess.run", return_value=mock_proc) as mock_run:
+        handler = TestBridgeHandler()
+        handler.do_POST()
+        assert handler.status_code == 200
+
+        # Verify subprocess was executed in isolated sandbox
+        assert mock_run.called
+        call_args, call_kwargs = mock_run.call_args
+        assert "cwd" in call_kwargs
+        sandbox_path = Path(call_kwargs["cwd"])
+        assert "monika_antigravity_sandbox" in str(sandbox_path)
+        assert (sandbox_path / "AGENTS.md").exists()
+        assert (sandbox_path / "GEMINI.md").exists()
+
+        # Verify prompt had headless directives
+        input_prompt = call_kwargs["input"]
+        assert "CRITICAL EXECUTION DIRECTIVES" in input_prompt
+        assert "stateless computational backend model" in input_prompt
+
+        # Verify response payload has finish_reason: tool_calls
+        mock_wfile.seek(0)
+        resp_data = json.loads(mock_wfile.read().decode("utf-8"))
+        assert resp_data["choices"][0]["finish_reason"] == "tool_calls"
+        assert resp_data["choices"][0]["message"]["content"] is None
+        assert len(resp_data["choices"][0]["message"]["tool_calls"]) == 1
+        assert resp_data["choices"][0]["message"]["tool_calls"][0]["function"]["name"] == "submit_asset_analysis"
