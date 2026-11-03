@@ -11970,6 +11970,7 @@
 - **Top-Level Functions**:
   - `async cleanup_old_data(session: AsyncSession, settings: Optional[dict])`: Hapus data lama untuk mencegah db bloat, menggunakan kebijakan retensi dari settings['data_retention_days'].
   - `async drop_expired_partitions(session: AsyncSession, older_than_days: int) -> int`: Drop PostgreSQL partitions from price_ohlcv_partitioned whose upper bound is older than cutoff.
+  - `async run_post_cleanup_maintenance(engine: Optional[AsyncEngine], force: bool) -> dict[str, Any]`: Run storage hygiene and physical optimization (VACUUM ANALYZE for Postgres,
   - `async reset_paper_trading_history(session: AsyncSession, create_backup: bool, backup_dir: Optional[str], ...) -> dict`: Mereset seluruh riwayat paper trading (simulasi) dan data terkait secara aman.
 
 #### `db.py`
@@ -11981,7 +11982,7 @@
   - `get_tier() -> str`: Detect configured tier via canonical settings resolver with fallback to trial.
   - `get_canonical_db_path() -> Path`: Return absolute canonical database file path for Monika SQLite database.
   - `get_engine()`: Lazy engine factory with connection pooling (thread-safe).
-  - `get_sessionmaker()`: Lazy sessionmaker factory bound to engine (thread-safe).
+  - `get_sessionmaker()`: Lazy sessionmaker factory bound to engine (thread-safe, loop-aware).
   - `async init_db() -> None`: Initialize database schema via Alembic migrations, falling back to create_all if offline/testing.
   - `async get_db() -> AsyncGenerator[AsyncSession, None]`: Yield database session for FastAPI dependency injection.
   - `async get_session(read_only: bool) -> AsyncGenerator[AsyncSession, None]`: Yield an async session as an asynchronous context manager (optimistic / non-blocking).
@@ -12027,7 +12028,8 @@
 #### `safe_ops.py` - *Safe database operation helpers that prevent PendingRollbackError cascades.*
 - **Path**: [`src/monika/infrastructure/database/safe_ops.py`](src/monika/infrastructure/database/safe_ops.py)
 - **Top-Level Functions**:
-  - `async safe_db_op(session: AsyncSession, operation: Callable) -> Any`: Execute a DB operation with automatic rollback on failure.
+  - `async safe_db_op(session: AsyncSession, operation: Callable) -> Any`: Execute a DB operation with automatic rollback/savepoint isolation on failure.
+  - `async safe_nested_db_op(session: AsyncSession, operation: Callable) -> Any`: Convenience helper: Execute a DB operation isolated inside a SAVEPOINT.
   - `async safe_commit(session: AsyncSession, label: str, max_retries: int) -> bool`: Commit an active transaction with guaranteed automatic rollback on failure.
   - `async safe_upsert(session: AsyncSession, model: type, values: Dict[str, Any], ...) -> None`: Execute an upsert statement compatible with PostgreSQL and SQLite.
 
@@ -12056,6 +12058,8 @@
     - `close() -> None` - *Close connection and connection pool.*
 - **Top-Level Functions**:
   - `check_fd_headroom(reserve: int) -> bool`: Check if the host operating system has enough file descriptor headroom.
+  - `get_session_db_wal(db_path: Optional[Path]) -> SessionDbWal`: Retrieve or initialize the global shared SessionDbWal instance.
+  - `close_session_db_wal() -> None`: Close and reset the global shared SessionDbWal instance.
 
 #### `session_lifecycle.py` - *Session Lifecycle, Lineage Tracking & Portable State Portability Engine.*
 - **Path**: [`src/monika/infrastructure/database/session_lifecycle.py`](src/monika/infrastructure/database/session_lifecycle.py)
@@ -12318,6 +12322,12 @@
 - **Top-Level Functions**:
   - `upgrade() -> None`: Upgrade schema: Add ix_decision_reflections_position_id index on decision_reflections(position_id).
   - `downgrade() -> None`: Downgrade schema: Drop ix_decision_reflections_position_id index on decision_reflections.
+
+#### `0016_dedup_price_ohlcv_indexes.py` - *dedup price_ohlcv redundant btree index*
+- **Path**: [`src/monika/infrastructure/database/migrations/versions/0016_dedup_price_ohlcv_indexes.py`](src/monika/infrastructure/database/migrations/versions/0016_dedup_price_ohlcv_indexes.py)
+- **Top-Level Functions**:
+  - `upgrade() -> None`: Upgrade schema: Drop redundant idx_price_sym_tf_ts index duplicate of uq_price_sym_tf_ts.
+  - `downgrade() -> None`: Downgrade schema: Recreate idx_price_sym_tf_ts index on price_ohlcv.
 
 #### `c83c5e451412_sync_schema_indexes_types_and_.py` - *sync_schema_indexes_types_and_constraints*
 - **Path**: [`src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py`](src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py)

@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from typing import Optional, Sequence
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.domain.ports.repository import AnalysisRepositoryPort
@@ -37,8 +37,8 @@ class SqlAlchemyAssetAnalysisRepository(AnalysisRepositoryPort):
         stmt = (
             select(Position.analysis_id)
             .where(Position.analysis_id.is_not(None))
-            .distinct()
-            .order_by(desc(Position.id))
+            .group_by(Position.analysis_id)
+            .order_by(func.max(Position.id).desc())
             .limit(limit)
         )
         res = await self.session.execute(stmt)

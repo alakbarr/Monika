@@ -1694,6 +1694,7 @@ Monika/
 │       │   │   │   │   ├── 0013_token_usage_cost_source_and_is_paid.py
 │       │   │   │   │   ├── 0014_widen_source_strategy_id.py
 │       │   │   │   │   ├── 0015_decision_refl_pos_idx.py
+│       │   │   │   │   ├── 0016_dedup_price_ohlcv_indexes.py
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   └── c83c5e451412_sync_schema_indexes_types_and_.py
 │       │   │   │   ├── __init__.py
@@ -2993,6 +2994,7 @@ Monika/
 │   ├── test_reflector_alpha.py
 │   ├── test_remediation_fixes.py
 │   ├── test_rolling_correlation.py
+│   ├── test_runtime_storage_separation.py
 │   ├── test_scraper_check_scripts.py
 │   ├── test_sentiment_aggregator.py
 │   ├── test_smc_advanced.py
@@ -3091,7 +3093,9 @@ Monika/
 │   ├── architecture/
 │   │   └── OVERVIEW.md
 │   ├── designs/
+│   │   ├── database_architecture_modernization.md
 │   │   ├── README.md
+│   │   ├── runtime_storage_separation.md
 │   │   └── SITEMAP.md
 │   ├── images/
 │   │   ├── dashboard/
@@ -3183,4 +3187,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 274 | **Total Tracked Files**: 2879
+**Total Tracked Directories**: 274 | **Total Tracked Files**: 2883

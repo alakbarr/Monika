@@ -5,8 +5,8 @@ When a caller catches exceptions inside `async with get_session()` and
 continues the loop, the session stays in a failed transaction state.
 Subsequent queries fail with PendingRollbackError.
 
-This module provides `safe_db_op()` which wraps individual DB operations
-with proper rollback on failure.
+This module provides `safe_db_op()` and `safe_nested_db_op()` which wrap individual
+DB operations with proper savepoint/rollback isolation on failure.
 """
 
 import asyncio
@@ -40,22 +40,45 @@ async def safe_db_op(
     *args,
     default: Any = None,
     label: str = "db_op",
+    nested: bool = False,
     **kwargs,
 ) -> Any:
-    """Execute a DB operation with automatic rollback on failure.
+    """Execute a DB operation with automatic rollback/savepoint isolation on failure.
 
-    Prevents PendingRollbackError cascade by rolling back failed
-    transactions before returning control to caller's loop.
+    Prevents PendingRollbackError cascades. When `nested=True` is specified, wraps
+    the operation in a SAVEPOINT (`session.begin_nested()`), ensuring that an inner
+    failure rolls back ONLY to the savepoint without discarding uncommitted work
+    in the outer parent transaction.
 
     Args:
         session: Active async session
         operation: Async callable that performs DB work
         default: Value to return on failure
         label: Human-readable label for logging
+        nested: If True, uses session.begin_nested() (SAVEPOINT) to isolate from parent tx
 
     Returns:
         Operation result on success, `default` on failure.
     """
+    if not getattr(session, "is_active", True):
+        logger.warning(f"safe_db_op [{label}] skipped: session is inactive/closed.")
+        return default
+
+    if nested:
+        try:
+            async with session.begin_nested():
+                return await operation(session, *args, **kwargs)
+        except asyncio.CancelledError:
+            try:
+                await asyncio.shield(session.rollback())
+                await _safe_expunge_all(session)
+            except Exception:
+                pass
+            raise
+        except Exception as e:
+            logger.warning(f"safe_db_op [{label}] nested sub-op failed (rolled back to savepoint): {e}")
+            return default
+
     try:
         return await operation(session, *args, **kwargs)
     except asyncio.CancelledError:
@@ -73,6 +96,21 @@ async def safe_db_op(
         except Exception as rb_err:
             logger.error(f"safe_db_op [{label}] rollback failed: {rb_err}")
         return default
+
+
+async def safe_nested_db_op(
+    session: AsyncSession,
+    operation: Callable,
+    *args,
+    default: Any = None,
+    label: str = "nested_db_op",
+    **kwargs,
+) -> Any:
+    """Convenience helper: Execute a DB operation isolated inside a SAVEPOINT.
+
+    Guarantees that sub-operation failure never destroys parent transaction state.
+    """
+    return await safe_db_op(session, operation, *args, default=default, label=label, nested=True, **kwargs)
 
 
 async def safe_commit(session: AsyncSession, label: str = "commit", max_retries: int = 1) -> bool:
@@ -117,7 +155,7 @@ async def safe_upsert(
     Uses native ON CONFLICT DO UPDATE when supported by dialect,
     falling back to check-and-update when dialect is unknown or custom.
     """
-    bind = getattr(session, "bind", None)
+    bind = getattr(session, "bind", None) or (session.get_bind() if hasattr(session, "get_bind") else None)
     dialect_name = getattr(getattr(bind, "dialect", None), "name", None) or "postgresql"
 
     cols_to_update = update_cols if update_cols is not None else [k for k in values.keys() if k not in index_elements]

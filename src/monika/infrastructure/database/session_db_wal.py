@@ -85,6 +85,7 @@ class FileLockGuard:
                     import msvcrt
 
                     # Lock 1 byte at position 0 non-blocking
+                    os.lseek(self._fd, 0, os.SEEK_SET)
                     msvcrt.locking(self._fd, msvcrt.LK_NBLCK, 1)
                 else:
                     import fcntl
@@ -114,6 +115,7 @@ class FileLockGuard:
                     import msvcrt
 
                     try:
+                        os.lseek(self._fd, 0, os.SEEK_SET)
                         msvcrt.locking(self._fd, msvcrt.LK_UNLCK, 1)
                     except OSError:
                         pass
@@ -226,10 +228,7 @@ class SessionDbReadPool:
                 except queue.Empty:
                     break
             for conn in list(self._all_conns):
-                try:
-                    conn.close()
-                except Exception:
-                    pass
+                self._close_conn(conn)
             self._all_conns.clear()
             self._allocated = 0
 
@@ -564,3 +563,26 @@ class SessionDbWal:
 
         if hasattr(self._local, "conn"):
             self._local.conn = None
+
+
+_GLOBAL_SESSION_DB_WAL: Optional[SessionDbWal] = None
+_GLOBAL_SESSION_DB_WAL_LOCK = threading.RLock()
+
+
+def get_session_db_wal(db_path: Optional[Path] = None) -> SessionDbWal:
+    """Retrieve or initialize the global shared SessionDbWal instance."""
+    global _GLOBAL_SESSION_DB_WAL
+    if _GLOBAL_SESSION_DB_WAL is None:
+        with _GLOBAL_SESSION_DB_WAL_LOCK:
+            if _GLOBAL_SESSION_DB_WAL is None:
+                _GLOBAL_SESSION_DB_WAL = SessionDbWal(db_path=db_path)
+    return _GLOBAL_SESSION_DB_WAL
+
+
+def close_session_db_wal() -> None:
+    """Close and reset the global shared SessionDbWal instance."""
+    global _GLOBAL_SESSION_DB_WAL
+    with _GLOBAL_SESSION_DB_WAL_LOCK:
+        if _GLOBAL_SESSION_DB_WAL is not None:
+            _GLOBAL_SESSION_DB_WAL.close()
+            _GLOBAL_SESSION_DB_WAL = None

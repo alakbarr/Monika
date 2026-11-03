@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from tests.conftest import create_mock_async_session
-from monika.infrastructure.database.cleanup import cleanup_old_data
+from monika.infrastructure.database.cleanup import cleanup_old_data, run_post_cleanup_maintenance
 from sqlalchemy import delete
 
 
@@ -230,3 +230,40 @@ class TestCleanup:
         assert res["positions_deleted"] == 1
         assert res["paper_trades_deleted"] == 1
         assert mock_session.commit.call_count == 1
+
+
+class TestPostCleanupMaintenance:
+    @pytest.mark.asyncio
+    async def test_run_post_cleanup_maintenance_postgres(self):
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.dialect.name = "postgresql"
+        mock_autocommit_conn = AsyncMock()
+        mock_conn.execution_options = AsyncMock(return_value=mock_autocommit_conn)
+
+        # Async context manager for engine.connect()
+        mock_engine.connect.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        res = await run_post_cleanup_maintenance(engine=mock_engine)
+        assert res["status"] == "ok"
+        assert len(res["operations"]) == 6
+        assert any("VACUUM (ANALYZE) technical_indicators" in op for op in res["operations"])
+        assert mock_autocommit_conn.execute.call_count == 6
+
+    @pytest.mark.asyncio
+    async def test_run_post_cleanup_maintenance_sqlite(self):
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.dialect.name = "sqlite"
+        mock_autocommit_conn = AsyncMock()
+        mock_conn.execution_options = AsyncMock(return_value=mock_autocommit_conn)
+
+        mock_engine.connect.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        res = await run_post_cleanup_maintenance(engine=mock_engine)
+        assert res["status"] == "ok"
+        assert "PRAGMA wal_checkpoint(TRUNCATE)" in res["operations"]
+        assert "PRAGMA optimize" in res["operations"]
+        assert mock_autocommit_conn.execute.call_count == 2

@@ -78,8 +78,8 @@ def test_alembic_migration_chain_continuity():
 
     assert len(visited) == len(nodes), f"Broken chain! Total nodes: {len(nodes)}, Visited in sequence: {len(visited)}"
     assert visited[0] == "t1a2b3c4d5e6", f"Expected root revision to be t1a2b3c4d5e6, got {visited[0]}"
-    assert visited[-1] == "0015_decision_refl_pos_idx", (
-        f"Expected head revision to be 0015_decision_refl_pos_idx, got {visited[-1]}"
+    assert visited[-1] == "0016_dedup_price_ohlcv_indexes", (
+        f"Expected head revision to be 0016_dedup_price_ohlcv_indexes, got {visited[-1]}"
     )
 
 
@@ -438,5 +438,70 @@ def test_migration_0015_decision_reflections_position_id_index():
         current_indexes.clear()
         mod.downgrade()
         assert len(dropped_indexes) == 1
+    finally:
+        sa.inspect = orig_inspect
+
+
+def test_migration_0016_dedup_price_ohlcv_indexes():
+    """Verify migration 0016 idempotently drops and recreates idx_price_sym_tf_ts."""
+    _ensure_mock_alembic()
+    created_indexes: list[tuple[str, str, list[str], bool]] = []
+    dropped_indexes: list[tuple[str, str | None]] = []
+
+    class MockOp0016:
+        @staticmethod
+        def get_bind():
+            return object()
+
+        @staticmethod
+        def create_index(idx_name, table_name, cols, unique=False, **kw):
+            created_indexes.append((idx_name, table_name, list(cols), bool(unique)))
+
+        @staticmethod
+        def drop_index(idx_name, table_name=None, **kw):
+            dropped_indexes.append((idx_name, table_name))
+
+    mig_path = os.path.join(
+        os.path.dirname(__file__),
+        "../../src/monika/infrastructure/database/migrations/versions/0016_dedup_price_ohlcv_indexes.py",
+    )
+    spec = importlib.util.spec_from_file_location("mig_0016", mig_path)
+    assert spec is not None and spec.loader is not None
+    mod: Any = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    setattr(mod, "op", MockOp0016)
+
+    orig_inspect = sa.inspect
+    try:
+        current_indexes: list[dict[str, str]] = [{"name": "idx_price_sym_tf_ts"}, {"name": "uq_price_sym_tf_ts"}]
+
+        def mock_insp(conn):
+            class MockInsp:
+                def get_table_names(self):
+                    return ["price_ohlcv"]
+
+                def get_indexes(self, t_name):
+                    return list(current_indexes)
+
+            return MockInsp()
+
+        sa.inspect = mock_insp
+        # Upgrade drops the redundant index
+        mod.upgrade()
+        assert dropped_indexes == [("idx_price_sym_tf_ts", "price_ohlcv")]
+
+        # Idempotent second upgrade should not drop missing index
+        current_indexes.pop(0)  # remove idx_price_sym_tf_ts
+        mod.upgrade()
+        assert len(dropped_indexes) == 1
+
+        # Downgrade recreates missing index
+        mod.downgrade()
+        assert created_indexes == [("idx_price_sym_tf_ts", "price_ohlcv", ["symbol", "timeframe", "timestamp"], False)]
+
+        # Idempotent second downgrade should not recreate existing index
+        current_indexes.append({"name": "idx_price_sym_tf_ts"})
+        mod.downgrade()
+        assert len(created_indexes) == 1
     finally:
         sa.inspect = orig_inspect

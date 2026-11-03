@@ -876,11 +876,16 @@ class GraphCycleScheduler(CycleScheduler):
             # Track cost & cleanup
             # DB Cleanup (using correct import)
             try:
-                from monika.infrastructure.database.cleanup import cleanup_old_data
+                from monika.infrastructure.database.cleanup import cleanup_old_data, run_post_cleanup_maintenance
 
                 async with get_session() as session:
                     await cleanup_old_data(session, settings=self.settings)
                 logger.debug("Post-cycle DB cleanup completed")
+                try:
+                    await run_post_cleanup_maintenance()
+                    logger.debug("Post-cycle DB autocommit maintenance completed")
+                except Exception as maint_err:
+                    logger.debug(f"Post-cycle DB maintenance skipped (non-fatal): {maint_err}")
             except Exception as e:
                 logger.error(f"Post-cycle DB cleanup failed: {e}")
 

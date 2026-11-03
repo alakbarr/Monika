@@ -6,8 +6,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from sqlalchemy import and_, delete, or_
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import and_, delete, or_, text
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from monika.infrastructure.database.models import (
     ActivityLog,
@@ -341,8 +341,8 @@ async def drop_expired_partitions(session: AsyncSession, older_than_days: int = 
     Eliminates MVCC dead-tuples and vacuum bloat via instantaneous DDL DROP.
     """
     try:
-        bind = session.bind or session.get_bind()
-        if not bind or getattr(bind.dialect, "name", "") != "postgresql":
+        bind = getattr(session, "bind", None) or (session.get_bind() if hasattr(session, "get_bind") else None)
+        if not bind or getattr(getattr(bind, "dialect", None), "name", "") != "postgresql":
             return 0
 
         from sqlalchemy import text
@@ -378,6 +378,77 @@ async def drop_expired_partitions(session: AsyncSession, older_than_days: int = 
     except Exception as e:
         logger.debug(f"drop_expired_partitions failed (non-fatal): {e}")
         return 0
+
+
+async def run_post_cleanup_maintenance(engine: Optional[AsyncEngine] = None, force: bool = False) -> dict[str, Any]:
+    """
+    Run storage hygiene and physical optimization (VACUUM ANALYZE for Postgres,
+    wal_checkpoint(TRUNCATE) & optimize for SQLite) in an autocommit connection
+    outside of an active transaction.
+
+    PostgreSQL VACUUM is gated to weekend/market-closed windows (unless force=True)
+    to protect MT5 tick ingestion and order execution latency from disk I/O spikes.
+    """
+    if engine is None:
+        from monika.infrastructure.database.db import get_engine
+
+        engine = get_engine()
+
+    results: dict[str, Any] = {"status": "ok", "operations": []}
+    try:
+        async with engine.connect() as conn:
+            autocommit_conn = await conn.execution_options(isolation_level="AUTOCOMMIT")
+            dialect_name = getattr(conn.dialect, "name", "")
+            if dialect_name == "postgresql":
+                market_closed = False
+                try:
+                    from monika.core.primitives import clock
+                    from monika.core.validation.data_validator import is_forex_market_closed
+
+                    now_utc = clock.now()
+                    market_closed = is_forex_market_closed(now_utc)
+                except Exception:
+                    market_closed = False
+
+                from monika.infrastructure.database.db import is_running_under_test_suite
+
+                if not force and not market_closed and not is_running_under_test_suite():
+                    logger.info(
+                        "[DBMaintenance] PostgreSQL VACUUM (ANALYZE) deferred: Financial markets are currently OPEN. "
+                        "Maintenance scheduled for weekend market closure."
+                    )
+                    results["operations"].append("DEFERRED: Markets are OPEN (weekend maintenance only)")
+                    return results
+                tables = [
+                    "technical_indicators",
+                    "price_ohlcv",
+                    "activity_log",
+                    "token_usage_log",
+                    "asset_analysis",
+                    "news_items",
+                ]
+                for tbl in tables:
+                    try:
+                        await autocommit_conn.execute(text(f"VACUUM (ANALYZE) {tbl};"))
+                        results["operations"].append(f"VACUUM (ANALYZE) {tbl}")
+                        logger.info(f"[DBMaintenance] VACUUM (ANALYZE) {tbl} completed.")
+                    except Exception as e:
+                        logger.debug(f"[DBMaintenance] VACUUM on {tbl} skipped: {e}")
+                        results["operations"].append(f"SKIP {tbl}: {e}")
+            elif dialect_name == "sqlite":
+                try:
+                    await autocommit_conn.execute(text("PRAGMA wal_checkpoint(TRUNCATE);"))
+                    await autocommit_conn.execute(text("PRAGMA optimize;"))
+                    results["operations"].extend(["PRAGMA wal_checkpoint(TRUNCATE)", "PRAGMA optimize"])
+                    logger.info("[DBMaintenance] SQLite WAL checkpoint (TRUNCATE) and optimize completed.")
+                except Exception as e:
+                    logger.debug(f"[DBMaintenance] SQLite optimize skipped: {e}")
+                    results["operations"].append(f"SKIP sqlite optimize: {e}")
+    except Exception as e:
+        logger.warning(f"[DBMaintenance] Maintenance run failed (non-fatal): {e}")
+        results["status"] = "failed"
+        results["error"] = str(e)
+    return results
 
 
 async def reset_paper_trading_history(

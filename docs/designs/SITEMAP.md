@@ -45,6 +45,7 @@ flowchart TD
 
 | Specification | Author / Date | Status | Primary Subsystem | Target Files / Contracts |
 | :------------ | :------------ | :----- | :---------------- | :----------------------- |
+| [Database Architecture Modernization](database_architecture_modernization.md) | Antigravity Core / 2026-11-03 | `Draft` | `infrastructure/database` | `src/monika/infrastructure/database/` |
 | [Runtime Storage Separation & Layered Overlay](runtime_storage_separation.md) | Antigravity Core / 2026-11-03 | `Draft` | `core/paths`, `application/skills`, `application/strategies` | `src/monika/core/paths.py`, `src/monika/application/skills/loader.py`, `src/monika/application/analysis/strategies/registry.py` |
 | *(Example / Template)* | Monika Team | Template | `domain/risk` | `src/monika/domain/risk/` |
 

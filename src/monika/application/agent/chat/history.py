@@ -83,13 +83,13 @@ class HistoryMixin(_ChatAgentMixinBase):
 
         # Close/reset in SessionDbWal & SessionLifecycle if active
         try:
-            from monika.infrastructure.database.session_db_wal import DEFAULT_SESSION_DB_PATH, SessionDbWal
+            from monika.infrastructure.database.session_db_wal import DEFAULT_SESSION_DB_PATH, get_session_db_wal
             from monika.infrastructure.database.session_lifecycle import SessionLifecycleManager
 
             if DEFAULT_SESSION_DB_PATH.exists():
 
                 def _close_wal():
-                    wal_db = SessionDbWal(DEFAULT_SESSION_DB_PATH)
+                    wal_db = get_session_db_wal()
                     lifecycle = SessionLifecycleManager(wal_db)
                     lifecycle.mark_session_closed(uid_str, reason="user_reset")
 

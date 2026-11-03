@@ -243,7 +243,6 @@ class PriceOHLCV(Base):
     volume_num: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 4), nullable=True)
 
     __table_args__ = (
-        Index("idx_price_sym_tf_ts", "symbol", "timeframe", "timestamp"),
         Index("idx_price_sym_tf_canonical_ts", "symbol", "timeframe", "canonical_timestamp"),
         UniqueConstraint("symbol", "timeframe", "timestamp", name="uq_price_sym_tf_ts"),
     )

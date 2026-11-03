@@ -210,10 +210,10 @@ class TelegramAdminCommandsMixin(_TelegramBotMixinBase):
 
         try:
             from monika.application.agent.state_rewind import StateRewindManager
-            from monika.infrastructure.database.session_db_wal import DEFAULT_SESSION_DB_PATH, SessionDbWal
+            from monika.infrastructure.database.session_db_wal import DEFAULT_SESSION_DB_PATH, get_session_db_wal
 
             if DEFAULT_SESSION_DB_PATH.exists():
-                wal_db = SessionDbWal(DEFAULT_SESSION_DB_PATH)
+                wal_db = get_session_db_wal()
                 rewinder = StateRewindManager(wal_db)
                 await asyncio.to_thread(rewinder.rewind_session, user_id)
         except Exception:
