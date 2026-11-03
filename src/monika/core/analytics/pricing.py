@@ -435,7 +435,7 @@ def infer_provider_from_model(model_name: str) -> str:
 
 def is_paid_model(
     model_name: str,
-    provider: str | None = None,
+    provider: str | dict[str, Any] | None = None,
     is_direct_free_tier: bool | None = None,
 ) -> bool:
     """
@@ -443,7 +443,23 @@ def is_paid_model(
     Kembalikan True jika berbayar, False jika gratis ($0 / free tier).
     """
     clean_name = str(model_name).strip().lower()
-    prov = (provider or "").strip().lower()
+    prov_str: str | None = None
+    if isinstance(provider, dict):
+        raw_p = provider.get("primary") or provider.get("provider") or provider.get("name")
+        if not raw_p:
+            for v in provider.values():
+                if isinstance(v, str) and v.strip():
+                    raw_p = v
+                    break
+        prov_str = str(raw_p) if raw_p is not None else ""
+    elif isinstance(provider, str):
+        prov_str = provider
+    elif provider is not None:
+        prov_str = str(provider)
+    else:
+        prov_str = ""
+
+    prov = prov_str.strip().lower()
     if not prov:
         prov = infer_provider_from_model(model_name)
 
@@ -500,7 +516,11 @@ def is_paid_model(
     return False
 
 
-def is_free_tier(model_name: str, provider: str | None = None, is_direct_free_tier: bool | None = None) -> bool:
+def is_free_tier(
+    model_name: str,
+    provider: str | dict[str, Any] | None = None,
+    is_direct_free_tier: bool | None = None,
+) -> bool:
     """
     Evaluasi apakah pemanggilan model masuk kategori Free Tier ($0).
     Mendukung Antigravity Bridge/OAuth, Gemini (GEMINI_API_KEYS), Groq Developer Tier, OpenRouter :free & openrouter/free, Ollama, OpenCode, dan 9Router Free Tier.
@@ -629,7 +649,7 @@ def cost_usd_decimal(
     input_tokens: int,
     output_tokens: int,
     cached_tokens: int = 0,
-    provider: str | None = None,
+    provider: str | dict[str, Any] | None = None,
     is_direct_free_tier: bool | None = None,
     is_already_uncached: bool | None = None,
     cache_creation_tokens: int = 0,
@@ -698,7 +718,7 @@ def cost_usd(
     input_tokens: int,
     output_tokens: int,
     cached_tokens: int = 0,
-    provider: str | None = None,
+    provider: str | dict[str, Any] | None = None,
     is_direct_free_tier: bool | None = None,
     is_already_uncached: bool | None = None,
     cache_creation_tokens: int = 0,
@@ -722,7 +742,7 @@ def cost_usd(
 def cost_decimal_from_canonical(
     model_name: str,
     usage: CanonicalUsage,
-    provider: str | None = None,
+    provider: str | dict[str, Any] | None = None,
 ) -> Decimal:
     """Calculate Decimal USD cost directly from CanonicalUsage."""
     return cost_usd_decimal(
@@ -739,7 +759,7 @@ def cost_decimal_from_canonical(
 def cost_from_canonical(
     model_name: str,
     usage: CanonicalUsage,
-    provider: str | None = None,
+    provider: str | dict[str, Any] | None = None,
 ) -> float:
     """Calculate USD cost directly from CanonicalUsage."""
     return cost_usd(

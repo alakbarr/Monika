@@ -371,13 +371,13 @@
     - `from_gemini(usage_metadata: Any) -> CanonicalUsage`
 - **Top-Level Functions**:
   - `infer_provider_from_model(model_name: str) -> str`: Inferensi otomatis provider berdasarkan nama model jika provider tidak diberikan.
-  - `is_paid_model(model_name: str, provider: str | None, is_direct_free_tier: bool | None) -> bool`: Evaluasi apakah pemanggilan model masuk kategori Berbayar (Paid Tier).
-  - `is_free_tier(model_name: str, provider: str | None, is_direct_free_tier: bool | None) -> bool`: Evaluasi apakah pemanggilan model masuk kategori Free Tier ($0).
+  - `is_paid_model(model_name: str, provider: str | dict[str, Any] | None, is_direct_free_tier: bool | None) -> bool`: Evaluasi apakah pemanggilan model masuk kategori Berbayar (Paid Tier).
+  - `is_free_tier(model_name: str, provider: str | dict[str, Any] | None, is_direct_free_tier: bool | None) -> bool`: Evaluasi apakah pemanggilan model masuk kategori Free Tier ($0).
   - `get_price(model_name: str) -> Price`: Mengembalikan objek Price untuk model yang diberikan.
   - `cost_usd_decimal(model_name: str, input_tokens: int, output_tokens: int, ...) -> Decimal`: Menghitung estimasi biaya pemanggilan API dalam USD menggunakan decimal.Decimal
   - `cost_usd(model_name: str, input_tokens: int, output_tokens: int, ...) -> float`: Menghitung estimasi biaya pemanggilan API dalam USD (kembalian float).
-  - `cost_decimal_from_canonical(model_name: str, usage: CanonicalUsage, provider: str | None) -> Decimal`: Calculate Decimal USD cost directly from CanonicalUsage.
-  - `cost_from_canonical(model_name: str, usage: CanonicalUsage, provider: str | None) -> float`: Calculate USD cost directly from CanonicalUsage.
+  - `cost_decimal_from_canonical(model_name: str, usage: CanonicalUsage, provider: str | dict[str, Any] | None) -> Decimal`: Calculate Decimal USD cost directly from CanonicalUsage.
+  - `cost_from_canonical(model_name: str, usage: CanonicalUsage, provider: str | dict[str, Any] | None) -> float`: Calculate USD cost directly from CanonicalUsage.
   - `async fetch_openrouter_pricing_async(cache_path: str | None) -> dict[str, Price]`: Fetches live model pricing from OpenRouter API (/api/v1/models) with local disk caching.
 
 #### `specialist_tracker.py`

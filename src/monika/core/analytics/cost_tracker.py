@@ -21,6 +21,23 @@ class CostTracker:
     _cached_pause_time = None
 
     @staticmethod
+    def _resolve_task_provider(role_cfg: Any, model_name: str) -> str:
+        """Ekstraksi nama provider secara aman dari konfigurasi task_role (string atau dict multi-fallback)."""
+        from monika.core.analytics.pricing import infer_provider_from_model
+
+        if isinstance(role_cfg, dict):
+            raw = role_cfg.get("provider")
+            if isinstance(raw, dict):
+                raw = raw.get("primary")
+            if not raw or not isinstance(raw, str):
+                providers_dict = role_cfg.get("providers")
+                if isinstance(providers_dict, dict):
+                    raw = providers_dict.get("primary")
+            if isinstance(raw, str) and raw.strip():
+                return raw.strip()
+        return infer_provider_from_model(model_name)
+
+    @staticmethod
     async def log_cycle_cost(
         session: AsyncSession,
         stage1_input: int,
@@ -57,27 +74,31 @@ class CostTracker:
             try:
                 from monika.infrastructure.database.models import TokenUsageLog
 
-                db_cycle_cost = (
+                cycle_records_cnt = (
                     await session.execute(
-                        select(func.sum(TokenUsageLog.cost_estimate)).where(
-                            TokenUsageLog.cycle_id == str(cycle_id),
-                            (TokenUsageLog.is_paid.is_(True)) | (TokenUsageLog.cost_estimate > 0.0),
-                        )
+                        select(func.count(TokenUsageLog.id)).where(TokenUsageLog.cycle_id == str(cycle_id))
                     )
-                ).scalar()
-                if db_cycle_cost is not None:
-                    calculated_cost = round(float(db_cycle_cost), 4)
+                ).scalar() or 0
+
+                if cycle_records_cnt > 0:
+                    db_cycle_cost = (
+                        await session.execute(
+                            select(func.sum(TokenUsageLog.cost_estimate)).where(
+                                TokenUsageLog.cycle_id == str(cycle_id),
+                                (TokenUsageLog.is_paid.is_(True)) | (TokenUsageLog.cost_estimate > 0.0),
+                            )
+                        )
+                    ).scalar()
+                    calculated_cost = round(float(db_cycle_cost or 0.0), 4)
             except Exception as e:
                 logger.debug(f"Could not query TokenUsageLog for cycle {cycle_id}: {e}")
 
         # 2. Fallback ke kalkulasi manual jika belum terhitung
         if calculated_cost is None:
-            from monika.core.analytics.pricing import cost_usd, infer_provider_from_model
+            from monika.core.analytics.pricing import cost_usd
 
-            p1 = task_roles.get("stage1_fundamental", {}).get("provider") or infer_provider_from_model(stage1_model)
-            p2 = task_roles.get("stage2_per_asset_primary", {}).get("provider") or infer_provider_from_model(
-                stage2_model
-            )
+            p1 = CostTracker._resolve_task_provider(task_roles.get("stage1_fundamental", {}), stage1_model)
+            p2 = CostTracker._resolve_task_provider(task_roles.get("stage2_per_asset_primary", {}), stage2_model)
             cost_stage1 = cost_usd(stage1_model, stage1_input, stage1_output, provider=p1)
             cost_stage2 = cost_usd(stage2_model, stage2_input, stage2_output, provider=p2)
             calculated_cost = round(cost_stage1 + cost_stage2, 4)

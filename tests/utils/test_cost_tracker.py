@@ -125,6 +125,140 @@ class TestCostTracker:
         assert round(cost, 3) == 0.068
 
     @pytest.mark.asyncio
+    async def test_log_cycle_cost_dict_provider_antigravity_free_tier(self):
+        """Memverifikasi bahwa task_role dengan format provider berupa dictionary (antigravity) tidak crash dan bernilai $0.0."""
+        mock_session = create_mock_async_session()
+        mock_session.add = MagicMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_result.scalar.return_value = None
+        mock_session.execute.return_value = mock_result
+
+        settings = {
+            "llm": {
+                "task_roles": {
+                    "stage1_fundamental": {
+                        "primary": "gemini-3.5-flash-lite",
+                        "provider": {
+                            "primary": "antigravity",
+                            "fallback_1": "openrouter",
+                            "fallback_2": "gemini",
+                        },
+                    },
+                    "stage2_per_asset_primary": {
+                        "primary": "gemini-3.5-flash-lite",
+                        "provider": {
+                            "primary": "antigravity",
+                            "fallback_1": "openrouter",
+                        },
+                    },
+                }
+            }
+        }
+
+        cost = await CostTracker.log_cycle_cost(
+            mock_session, 10000, 2000, 20000, 4000, settings=settings, cycle_id="cycle_free_1"
+        )
+        assert cost == 0.0
+
+    @pytest.mark.asyncio
+    async def test_log_cycle_cost_dict_provider_paid_tier(self):
+        """Memverifikasi task_role dengan provider dictionary mengarah ke provider berbayar."""
+        mock_session = create_mock_async_session()
+        mock_session.add = MagicMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_result.scalar.return_value = None
+        mock_session.execute.return_value = mock_result
+
+        settings = {
+            "llm": {
+                "task_roles": {
+                    "stage1_fundamental": {
+                        "primary": "claude-sonnet-5",
+                        "provider": {"primary": "anthropic", "fallback_1": "openrouter"},
+                    },
+                    "stage2_per_asset_primary": {
+                        "primary": "claude-sonnet-5",
+                        "provider": {"primary": "anthropic"},
+                    },
+                }
+            }
+        }
+
+        cost = await CostTracker.log_cycle_cost(mock_session, 1000, 2000, 3000, 4000, settings=settings)
+        assert round(cost, 3) == 0.068
+
+    @pytest.mark.asyncio
+    async def test_log_cycle_cost_token_usage_log_free_tier_cycle(self):
+        """Memverifikasi jika TokenUsageLog memiliki row untuk cycle_id namun seluruhnya free-tier, biaya $0.0 tidak fallback ke error."""
+        mock_session = create_mock_async_session()
+        mock_session.add = MagicMock()
+
+        call_count = 0
+
+        def execute_side_effect(stmt):
+            nonlocal call_count
+            call_count += 1
+            mock_res = MagicMock()
+            if call_count == 1:
+                # count query: ada 3 record log
+                mock_res.scalar.return_value = 3
+            elif call_count == 2:
+                # sum query: seluruh record bernilai 0 / free tier sehingga sum = None
+                mock_res.scalar.return_value = None
+            else:
+                mock_res.scalar.return_value = None
+                mock_res.scalar_one_or_none.return_value = None
+            return mock_res
+
+        mock_session.execute.side_effect = execute_side_effect
+
+        settings = {
+            "llm": {
+                "task_roles": {
+                    "stage1_fundamental": {
+                        "primary": "gemini-3.5-flash-lite",
+                        "provider": {"primary": "antigravity"},
+                    },
+                    "stage2_per_asset_primary": {
+                        "primary": "gemini-3.5-flash-lite",
+                        "provider": {"primary": "antigravity"},
+                    },
+                }
+            }
+        }
+
+        cost = await CostTracker.log_cycle_cost(
+            mock_session, 5000, 1000, 10000, 2000, settings=settings, cycle_id="cycle_free_all"
+        )
+        assert cost == 0.0
+
+    def test_pricing_dict_provider_variants(self):
+        """Memverifikasi bahwa seluruh varian dict provider dapat diterima oleh modul pricing tanpa AttributeError."""
+        from monika.core.analytics.pricing import is_paid_model
+
+        # 1. Dict dengan key 'primary'
+        assert is_paid_model("gemini-3.5-flash-lite", provider={"primary": "antigravity"}) is False
+        assert is_paid_model("claude-sonnet-5", provider={"primary": "anthropic"}) is True
+
+        # 2. Dict dengan key 'provider'
+        assert is_paid_model("groq-compound", provider={"provider": "groq"}) is False
+
+        # 3. Dict dengan key arbitrary
+        assert is_paid_model("llama3.2", provider={"default": "ollama"}) is False
+
+        # 4. Dict kosong -> fallback ke inferensi model
+        assert is_paid_model("gemini-3.5-flash-lite", provider={}) is False
+        assert is_paid_model("claude-sonnet-5", provider={}) is True
+
+        # 5. cost_usd dan cost_usd_decimal dengan dict provider
+        assert cost_usd("gemini-3.5-flash-lite", 1000, 500, provider={"primary": "antigravity"}) == 0.0
+        assert cost_usd_decimal("gemini-3.5-flash-lite", 1000, 500, provider={"primary": "antigravity"}) == Decimal(
+            "0.000000"
+        )
+
+    @pytest.mark.asyncio
     async def test_check_and_update_budget_status_ssot_and_invariants(self):
         """Memverifikasi bahwa TokenUsageLog menjadi SSOT dan mtd_cost >= daily_cost selalu ditegakkan."""
         mock_session = create_mock_async_session()
