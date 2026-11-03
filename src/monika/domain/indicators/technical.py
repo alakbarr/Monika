@@ -1272,6 +1272,17 @@ def compute_supertrend(
     if len(close) < p:
         return pd.Series(np.nan, index=close.index, dtype=float), pd.Series(1, index=close.index, dtype=int)
 
+    h_arr = high.to_numpy(dtype=float) if isinstance(high, pd.Series) else np.asarray(high, dtype=float)
+    l_arr = low.to_numpy(dtype=float) if isinstance(low, pd.Series) else np.asarray(low, dtype=float)
+    c_arr = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
+
+    from monika.core.native.rust_bridge import supertrend_f64
+
+    res = supertrend_f64(h_arr, l_arr, c_arr, period=p, multiplier=mult)
+    if res is not None:
+        idx = close.index if isinstance(close, pd.Series) else None
+        return pd.Series(res[0], index=idx, dtype=float), pd.Series(res[1], index=idx, dtype=int)
+
     atr = compute_atr(high, low, close, period=p)
     hl2 = (high.astype(float) + low.astype(float)) / 2.0
 
@@ -1363,8 +1374,22 @@ def compute_donchian_channels(
     close: pd.Series,
     window: int = 20,
 ) -> tuple[pd.Series, pd.Series, pd.Series]:
-    """Computes Donchian Channels: upper, middle, lower."""
+    """Computes Donchian Channels: upper, middle, lower with native Rust acceleration."""
     w = max(2, min(500, int(window)))
+    h_arr = high.to_numpy(dtype=float) if isinstance(high, pd.Series) else np.asarray(high, dtype=float)
+    l_arr = low.to_numpy(dtype=float) if isinstance(low, pd.Series) else np.asarray(low, dtype=float)
+
+    from monika.core.native.rust_bridge import donchian_f64
+
+    res = donchian_f64(h_arr, l_arr, window=w)
+    if res is not None:
+        idx = close.index if isinstance(close, pd.Series) else None
+        return (
+            pd.Series(res[0], index=idx),
+            pd.Series(res[1], index=idx),
+            pd.Series(res[2], index=idx),
+        )
+
     upper = pd.Series(high.astype(float).rolling(w).max(), index=close.index)
     lower = pd.Series(low.astype(float).rolling(w).min(), index=close.index)
     mid = (upper + lower) / 2.0

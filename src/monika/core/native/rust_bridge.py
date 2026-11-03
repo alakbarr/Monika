@@ -346,6 +346,31 @@ def _load_library() -> Optional[ctypes.CDLL]:
         ]
         lib.monika_ts_argmin_f64.restype = ctypes.c_int32
 
+        # 23. monika_donchian_f64
+        lib.monika_donchian_f64.argtypes = [
+            f64_p,
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            f64_p,
+            f64_p,
+            f64_p,
+        ]
+        lib.monika_donchian_f64.restype = ctypes.c_int32
+
+        # 24. monika_supertrend_f64
+        lib.monika_supertrend_f64.argtypes = [
+            f64_p,
+            f64_p,
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            ctypes.c_double,
+            f64_p,
+            ctypes.POINTER(ctypes.c_int32),
+        ]
+        lib.monika_supertrend_f64.restype = ctypes.c_int32
+
         _LIB_INSTANCE = lib
         logger.info(f"[RustBridge] Successfully loaded native Rust accelerator from {load_path}")
         return _LIB_INSTANCE
@@ -1115,3 +1140,86 @@ def ts_argmin_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]:
     if code != 0:
         return None
     return out_arr
+
+
+def donchian_f64(
+    highs: np.ndarray,
+    lows: np.ndarray,
+    window: int = 20,
+) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """
+    Computes Donchian Channels (upper, middle, lower) using compiled Rust kernel.
+    Returns (upper, mid, lower) tuple of 1D np.ndarrays with leading NaNs, or None if unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    if highs.ndim != 1 or lows.ndim != 1 or len(highs) != len(lows) or window < 2 or len(highs) < window:
+        return None
+
+    h_arr = np.ascontiguousarray(highs, dtype=np.float64)
+    l_arr = np.ascontiguousarray(lows, dtype=np.float64)
+    out_upper = np.empty_like(h_arr)
+    out_lower = np.empty_like(l_arr)
+    out_mid = np.empty_like(h_arr)
+
+    code = lib.monika_donchian_f64(
+        h_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        l_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(len(h_arr)),
+        ctypes.c_size_t(window),
+        out_upper.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        out_lower.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        out_mid.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return out_upper, out_mid, out_lower
+
+
+def supertrend_f64(
+    highs: np.ndarray,
+    lows: np.ndarray,
+    closes: np.ndarray,
+    period: int = 10,
+    multiplier: float = 3.0,
+) -> Optional[tuple[np.ndarray, np.ndarray]]:
+    """
+    Computes Supertrend indicator and direction using compiled Rust kernel.
+    Returns (supertrend, direction) tuple of 1D np.ndarrays, or None if unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    n = len(closes)
+    if (
+        highs.ndim != 1
+        or lows.ndim != 1
+        or closes.ndim != 1
+        or len(highs) != n
+        or len(lows) != n
+        or period < 2
+        or n < period
+        or multiplier <= 0.0
+    ):
+        return None
+
+    h_arr = np.ascontiguousarray(highs, dtype=np.float64)
+    l_arr = np.ascontiguousarray(lows, dtype=np.float64)
+    c_arr = np.ascontiguousarray(closes, dtype=np.float64)
+    out_st = np.empty_like(c_arr)
+    out_dir = np.empty(n, dtype=np.int32)
+
+    code = lib.monika_supertrend_f64(
+        h_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        l_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        c_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(n),
+        ctypes.c_size_t(period),
+        ctypes.c_double(multiplier),
+        out_st.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        out_dir.ctypes.data_as(ctypes.POINTER(ctypes.c_int32)),
+    )
+    if code != 0:
+        return None
+    return out_st, out_dir

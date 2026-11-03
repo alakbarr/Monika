@@ -1408,3 +1408,190 @@ pub extern "C" fn monika_ts_argmin_f64(
     }
     0
 }
+
+#[no_mangle]
+pub extern "C" fn monika_donchian_f64(
+    highs_ptr: *const f64,
+    lows_ptr: *const f64,
+    len: usize,
+    window: usize,
+    out_upper_ptr: *mut f64,
+    out_lower_ptr: *mut f64,
+    out_mid_ptr: *mut f64,
+) -> i32 {
+    if highs_ptr.is_null()
+        || lows_ptr.is_null()
+        || out_upper_ptr.is_null()
+        || out_lower_ptr.is_null()
+        || out_mid_ptr.is_null()
+        || len < window
+        || window < 2
+    {
+        return -1;
+    }
+    let highs = unsafe { slice::from_raw_parts(highs_ptr, len) };
+    let lows = unsafe { slice::from_raw_parts(lows_ptr, len) };
+    let out_upper = unsafe { slice::from_raw_parts_mut(out_upper_ptr, len) };
+    let out_lower = unsafe { slice::from_raw_parts_mut(out_lower_ptr, len) };
+    let out_mid = unsafe { slice::from_raw_parts_mut(out_mid_ptr, len) };
+
+    for i in 0..(window - 1) {
+        out_upper[i] = f64::NAN;
+        out_lower[i] = f64::NAN;
+        out_mid[i] = f64::NAN;
+    }
+
+    for i in (window - 1)..len {
+        let start = i + 1 - window;
+        let mut max_h = f64::NEG_INFINITY;
+        let mut min_l = f64::INFINITY;
+        let mut has_nan = false;
+
+        for k in start..=i {
+            let h = highs[k];
+            let l = lows[k];
+            if h.is_nan() || l.is_nan() {
+                has_nan = true;
+                break;
+            }
+            if h > max_h {
+                max_h = h;
+            }
+            if l < min_l {
+                min_l = l;
+            }
+        }
+
+        if has_nan {
+            out_upper[i] = f64::NAN;
+            out_lower[i] = f64::NAN;
+            out_mid[i] = f64::NAN;
+        } else {
+            out_upper[i] = max_h;
+            out_lower[i] = min_l;
+            out_mid[i] = (max_h + min_l) / 2.0;
+        }
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn monika_supertrend_f64(
+    highs_ptr: *const f64,
+    lows_ptr: *const f64,
+    closes_ptr: *const f64,
+    len: usize,
+    period: usize,
+    multiplier: f64,
+    out_st_ptr: *mut f64,
+    out_dir_ptr: *mut i32,
+) -> i32 {
+    if highs_ptr.is_null()
+        || lows_ptr.is_null()
+        || closes_ptr.is_null()
+        || out_st_ptr.is_null()
+        || out_dir_ptr.is_null()
+        || len < period
+        || period < 2
+        || multiplier <= 0.0
+    {
+        return -1;
+    }
+    let highs = unsafe { slice::from_raw_parts(highs_ptr, len) };
+    let lows = unsafe { slice::from_raw_parts(lows_ptr, len) };
+    let closes = unsafe { slice::from_raw_parts(closes_ptr, len) };
+    let out_st = unsafe { slice::from_raw_parts_mut(out_st_ptr, len) };
+    let out_dir = unsafe { slice::from_raw_parts_mut(out_dir_ptr, len) };
+
+    // Compute ATR via Wilder's smoothing
+    let mut atr = vec![0.0_f64; len];
+    let mut tr_sum = 0.0_f64;
+    let mut prev_atr = 0.0_f64;
+    let p_f = period as f64;
+
+    for i in 0..len {
+        let h = highs[i];
+        let l = lows[i];
+        let tr = if i == 0 {
+            h - l
+        } else {
+            let cp = closes[i - 1];
+            (h - l).max((h - cp).abs()).max((l - cp).abs())
+        };
+
+        if i < period {
+            tr_sum += tr;
+            if i == period - 1 {
+                prev_atr = tr_sum / p_f;
+                atr[i] = prev_atr;
+            }
+        } else {
+            prev_atr = (prev_atr * (p_f - 1.0) + tr) / p_f;
+            atr[i] = prev_atr;
+        }
+    }
+
+    let start_idx = period - 1;
+    for i in 0..start_idx {
+        out_st[i] = f64::NAN;
+        out_dir[i] = 1;
+    }
+
+    let mut final_upper = vec![0.0_f64; len];
+    let mut final_lower = vec![0.0_f64; len];
+
+    let hl2_0 = (highs[start_idx] + lows[start_idx]) / 2.0;
+    let bu_0 = hl2_0 + multiplier * atr[start_idx];
+    let bl_0 = hl2_0 - multiplier * atr[start_idx];
+    final_upper[start_idx] = bu_0;
+    final_lower[start_idx] = bl_0;
+
+    if closes[start_idx] <= final_upper[start_idx] {
+        out_st[start_idx] = final_upper[start_idx];
+        out_dir[start_idx] = -1;
+    } else {
+        out_st[start_idx] = final_lower[start_idx];
+        out_dir[start_idx] = 1;
+    }
+
+    for i in (start_idx + 1)..len {
+        let hl2 = (highs[i] + lows[i]) / 2.0;
+        let bu = hl2 + multiplier * atr[i];
+        let bl = hl2 - multiplier * atr[i];
+
+        if bu < final_upper[i - 1] || closes[i - 1] > final_upper[i - 1] {
+            final_upper[i] = bu;
+        } else {
+            final_upper[i] = final_upper[i - 1];
+        }
+
+        if bl > final_lower[i - 1] || closes[i - 1] < final_lower[i - 1] {
+            final_lower[i] = bl;
+        } else {
+            final_lower[i] = final_lower[i - 1];
+        }
+
+        let prev_st = out_st[i - 1];
+        let prev_fu = final_upper[i - 1];
+
+        if prev_st == prev_fu {
+            if closes[i] <= final_upper[i] {
+                out_st[i] = final_upper[i];
+                out_dir[i] = -1;
+            } else {
+                out_st[i] = final_lower[i];
+                out_dir[i] = 1;
+            }
+        } else {
+            if closes[i] >= final_lower[i] {
+                out_st[i] = final_lower[i];
+                out_dir[i] = 1;
+            } else {
+                out_st[i] = final_upper[i];
+                out_dir[i] = -1;
+            }
+        }
+    }
+
+    0
+}

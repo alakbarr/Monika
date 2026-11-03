@@ -19,6 +19,7 @@ from monika.core.native.rust_bridge import (
     atr_f64,
     bollinger_bands_f64,
     cscv_pbo_from_chunks_f64,
+    donchian_f64,
     ema_f64,
     eval_equity_paths_f64,
     find_fvg_f64,
@@ -28,6 +29,7 @@ from monika.core.native.rust_bridge import (
     kyle_lambda_ols_f64,
     rsi_f64,
     sma_f64,
+    supertrend_f64,
     tick_rule_cvd_f64,
     vpin_fractional_f64,
 )
@@ -38,8 +40,10 @@ from monika.domain.indicators.structure import find_fvg, find_swings
 from monika.domain.indicators.technical import (
     compute_atr,
     compute_bollinger_bands,
+    compute_donchian_channels,
     compute_moving_averages,
     compute_rsi,
+    compute_supertrend,
 )
 
 
@@ -79,6 +83,8 @@ class TestRustNativeBridgeAvailability:
         assert atr_f64(np.ones(10), np.ones(10), np.ones(10), 3) is None
         assert bollinger_bands_f64(np.ones(10), 3) is None
         assert find_fvg_f64(np.ones(10), np.ones(10), np.ones(10)) is None
+        assert donchian_f64(np.ones(10), np.ones(10), 3) is None
+        assert supertrend_f64(np.ones(10), np.ones(10), np.ones(10), 3, 3.0) is None
 
 
 class TestRustNumericalParity:
@@ -375,6 +381,57 @@ class TestRustNumericalParity:
             assert r.direction == f.direction
             assert math.isclose(r.gap_high, f.gap_high, rel_tol=1e-9)
             assert math.isclose(r.gap_low, f.gap_low, rel_tol=1e-9)
+
+    def test_donchian_channels_parity(self, monkeypatch):
+        """Verify Donchian Channels parity between Rust kernel and pandas rolling fallback."""
+        rng = np.random.default_rng(2222)
+        close = pd.Series(
+            100.0 + np.cumsum(rng.normal(0, 0.5, size=150)),
+            index=pd.date_range("2025-01-01", periods=150, freq="1h"),
+        )
+        high = close + rng.uniform(0.1, 1.0, size=150)
+        low = close - rng.uniform(0.1, 1.0, size=150)
+
+        # 1. Rust mode
+        monkeypatch.delenv("MONIKA_DISABLE_RUST_ACCEL", raising=False)
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        u_rust, m_rust, l_rust = compute_donchian_channels(high, low, close, window=20)
+
+        # 2. Fallback mode
+        monkeypatch.setenv("MONIKA_DISABLE_RUST_ACCEL", "1")
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        u_fb, m_fb, l_fb = compute_donchian_channels(high, low, close, window=20)
+
+        np.testing.assert_allclose(u_rust.dropna().values, u_fb.dropna().values, rtol=1e-12)
+        np.testing.assert_allclose(m_rust.dropna().values, m_fb.dropna().values, rtol=1e-12)
+        np.testing.assert_allclose(l_rust.dropna().values, l_fb.dropna().values, rtol=1e-12)
+
+    def test_supertrend_parity(self, monkeypatch):
+        """Verify Supertrend and direction parity between Rust kernel and iterative fallback."""
+        rng = np.random.default_rng(3333)
+        close = pd.Series(
+            100.0 + np.cumsum(rng.normal(0, 0.8, size=120)),
+            index=pd.date_range("2025-01-01", periods=120, freq="1h"),
+        )
+        high = close + rng.uniform(0.2, 1.5, size=120)
+        low = close - rng.uniform(0.2, 1.5, size=120)
+
+        # 1. Rust mode
+        monkeypatch.delenv("MONIKA_DISABLE_RUST_ACCEL", raising=False)
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        st_rust, dir_rust = compute_supertrend(high, low, close, period=10, multiplier=3.0)
+
+        # 2. Fallback mode
+        monkeypatch.setenv("MONIKA_DISABLE_RUST_ACCEL", "1")
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        st_fb, dir_fb = compute_supertrend(high, low, close, period=10, multiplier=3.0)
+
+        np.testing.assert_allclose(st_rust.dropna().values, st_fb.dropna().values, rtol=1e-10)
+        np.testing.assert_array_equal(dir_rust.values, dir_fb.values)
 
 
 class TestRustEdgeCasesAndFailClosed:

@@ -653,6 +653,8 @@
   - `macd_f64(closes: np.ndarray, fast_period: int, slow_period: int, ...) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]`: Moving Average Convergence Divergence (MACD, signal, diff) using compiled Rust kernel.
   - `ts_argmax_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]`: Rolling argmax returning 0-based offset into window using compiled Rust kernel.
   - `ts_argmin_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]`: Rolling argmin returning 0-based offset into window using compiled Rust kernel.
+  - `donchian_f64(highs: np.ndarray, lows: np.ndarray, window: int) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]`: Computes Donchian Channels (upper, middle, lower) using compiled Rust kernel.
+  - `supertrend_f64(highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, ...) -> Optional[tuple[np.ndarray, np.ndarray]]`: Computes Supertrend indicator and direction using compiled Rust kernel.
 
 ### Folder: `src/monika/core/primitives` <a id="folder-srcmonikacoreprimitives"></a>
 
@@ -1714,7 +1716,7 @@
   - `compute_vwap(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> pd.Series`: Computes Volume-Weighted Average Price (VWAP).
   - `compute_supertrend(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series]`: Computes Supertrend indicator and trend direction.
   - `compute_keltner_channels(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes Keltner Channels: upper, middle, lower.
-  - `compute_donchian_channels(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes Donchian Channels: upper, middle, lower.
+  - `compute_donchian_channels(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes Donchian Channels: upper, middle, lower with native Rust acceleration.
   - `compute_ichimoku_series(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> dict[str, pd.Series]`: Computes Ichimoku Kinko Hyo full series:
   - `compute_obv(close: pd.Series, volume: pd.Series) -> pd.Series`: Computes On-Balance Volume (OBV).
   - `compute_cvd_series(open_: pd.Series, high: pd.Series, low: pd.Series, ...) -> pd.Series`: Computes Cumulative Volume Delta (CVD) series from intrabar buying/selling pressure.
