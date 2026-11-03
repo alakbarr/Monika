@@ -911,6 +911,9 @@ Monika/
 │       │   │   ├── terminal_guard.py
 │       │   │   ├── threat_detector.py
 │       │   │   └── threat_scanner.py
+│       │   ├── serialization/
+│       │   │   ├── __init__.py
+│       │   │   └── fast_json.py
 │       │   ├── streaming/
 │       │   │   ├── __init__.py
 │       │   │   ├── sanitizer.py
@@ -2461,6 +2464,7 @@ Monika/
 │   │   └── test_skill_risk_contract_sync.py
 │   ├── core/
 │   │   ├── test_bounded_lru_cache.py
+│   │   ├── test_fast_json.py
 │   │   ├── test_market_snapshot_and_telemetry.py
 │   │   ├── test_rust_kernels_parity.py
 │   │   └── test_rust_native_bridge.py
@@ -3204,4 +3208,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 274 | **Total Tracked Files**: 2900
+**Total Tracked Directories**: 275 | **Total Tracked Files**: 2903

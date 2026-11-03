@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional, Sequence, cast
 
 import numpy as np
 import pandas as pd
+from monika.core.serialization import fast_json
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -142,7 +143,7 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
                     symbol=symbol,
                     timeframe=timeframe,
                     indicator_name="ORDER_FLOW_SNAPSHOT",
-                    value_json=json.dumps(of_snapshot.to_dict()),
+                    value_json=fast_json.dumps(of_snapshot.to_dict()),
                     timestamp=bar_ts,
                 )
             )
@@ -583,7 +584,7 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
             for entry in clean_indicators.get(ts, []):
                 val_json = entry.get("value_json")
                 if val_json is None and "value" in entry:
-                    val_json = json.dumps(entry["value"])
+                    val_json = fast_json.dumps(entry["value"])
                 self.session.add(
                     TechnicalIndicator(
                         symbol=symbol,
@@ -619,7 +620,7 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
         row = result.scalar_one_or_none()
         if row is None:
             return None
-        return {"timestamp": row.timestamp, "value": json.loads(row.value_json)}
+        return {"timestamp": row.timestamp, "value": fast_json.loads(row.value_json)}
 
     async def get_snapshot(
         self, symbol: str, timeframe: str, series_depth: int = 15, as_of: Optional[datetime] = None
@@ -671,7 +672,7 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
                     .where(TechnicalIndicator.timeframe == timeframe)
                     .where(TechnicalIndicator.timestamp == prev_ts)
                 )
-                prev_map = {r.indicator_name: (r, json.loads(r.value_json)) for r in result_prev.scalars().all()}
+                prev_map = {r.indicator_name: (r, fast_json.loads(r.value_json)) for r in result_prev.scalars().all()}
 
             for r in latest_rows:
                 pair = [r]
@@ -722,8 +723,8 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
             latest_row = next((r for r in reversed(rows) if r.timestamp == latest_ts), rows[-1])
             prev_row = next((r for r in reversed(rows) if prev_ts and r.timestamp == prev_ts), None)
 
-            curr_val = json.loads(latest_row.value_json)
-            prev_val = json.loads(prev_row.value_json) if prev_row else None
+            curr_val = fast_json.loads(latest_row.value_json)
+            prev_val = fast_json.loads(prev_row.value_json) if prev_row else None
             curr_num = _extract_scalar(curr_val)
             prev_num = _extract_scalar(prev_val) if prev_val is not None else None
 
@@ -748,7 +749,7 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
             if ind_name in KEY_SERIES_INDICATORS and len(rows) > 1:
                 series_vals = []
                 for r in rows:
-                    parsed = json.loads(r.value_json)
+                    parsed = fast_json.loads(r.value_json)
                     if isinstance(parsed, dict) and "histogram" in parsed:
                         series_vals.append(round(float(parsed.get("histogram", 0)), 5))
                     elif isinstance(parsed, dict) and "k" in parsed and "d" in parsed:

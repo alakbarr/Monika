@@ -15,6 +15,7 @@
 - [`src/monika/core/primitives`](#folder-srcmonikacoreprimitives)
 - [`src/monika/core/risk`](#folder-srcmonikacorerisk)
 - [`src/monika/core/security`](#folder-srcmonikacoresecurity)
+- [`src/monika/core/serialization`](#folder-srcmonikacoreserialization)
 - [`src/monika/core/streaming`](#folder-srcmonikacorestreaming)
 - [`src/monika/core/telemetry`](#folder-srcmonikacoretelemetry)
 - [`src/monika/core/telemetry/reporting`](#folder-srcmonikacoretelemetryreporting)
@@ -936,6 +937,19 @@
 - **Top-Level Functions**:
   - `scan_content(text: str) -> list[tuple[str, str]]`: Scans input text for prompt injection and trade manipulation patterns.
   - `sanitize_or_block(text: str, source: str) -> str`: Evaluates content for threats via PromptInjectionScanner.
+
+### Folder: `src/monika/core/serialization` <a id="folder-srcmonikacoreserialization"></a>
+
+#### `__init__.py` - *High-throughput serialization package.*
+- **Path**: [`src/monika/core/serialization/__init__.py`](src/monika/core/serialization/__init__.py)
+
+#### `fast_json.py` - *High-throughput JSON serialization utilities powered by orjson with standard library fallback.*
+- **Path**: [`src/monika/core/serialization/fast_json.py`](src/monika/core/serialization/fast_json.py)
+- **Top-Level Functions**:
+  - `default_serializer(obj: Any) -> Any`: Default serializer for types not natively handled by orjson.
+  - `dumps_bytes(obj: Any) -> bytes`: Serialize an object to JSON bytes.
+  - `dumps(obj: Any) -> str`: Serialize an object to JSON str.
+  - `loads(s: Union[str, bytes, bytearray, memoryview]) -> Any`: Deserialize JSON from str or bytes into Python objects.
 
 ### Folder: `src/monika/core/streaming` <a id="folder-srcmonikacorestreaming"></a>
 
