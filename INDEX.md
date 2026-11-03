@@ -637,6 +637,10 @@
   - `find_swing_pivots_f64(highs: np.ndarray, lows: np.ndarray, order: int) -> Optional[list[dict[str, Any]]]`: Detect alternating swing pivots using Rust kernel.
   - `eval_equity_paths_f64(sampled_matrix: np.ndarray, initial_equity: float, ruin_drawdown_pct: float) -> Optional[tuple[np.ndarray, np.ndarray, int]]`: Evaluate equity paths, max drawdowns, and ruin occurrences using Rust kernel.
   - `cscv_pbo_from_chunks_f64(chunk_sums: np.ndarray, chunk_sq_sums: np.ndarray, chunk_counts: np.ndarray, ...) -> Optional[tuple[int, np.ndarray]]`: Compute CSCV Combinatorial Purged Cross-Validation PBO using Rust kernel.
+  - `monte_carlo_simulate_f64(returns: np.ndarray, num_simulations: int, initial_equity: float, ...) -> Optional[tuple[np.ndarray, np.ndarray, int]]`: Run high-speed Monte Carlo simulations (IID bootstrap or stationary block bootstrap) in Rust.
+  - `ts_rank_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]`: Rolling time-series rank percentile in [0, 1] within a window.
+  - `decay_linear_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]`: Linear decay-weighted moving average with weights 1..window normalized.
+  - `rolling_corr_f64(x: np.ndarray, y: np.ndarray, window: int) -> Optional[np.ndarray]`: Rolling Pearson correlation between two 1D series with min_periods=window.
 
 ### Folder: `src/monika/core/primitives` <a id="folder-srcmonikacoreprimitives"></a>
 
@@ -4965,11 +4969,13 @@
 - **Classes**:
   - `class CacheEntry`
     - `is_expired() -> bool`
-  - `class ReadOnlyReplayCache`: Thread-safe TTL replay cache for read-only agent tools.
-    - `__init__(default_ttl_seconds: float)`
+  - `class ReadOnlyReplayCache`: Thread-safe bounded TTL replay cache for read-only agent tools.
+    - `__init__(default_ttl_seconds: float, maxsize: int)`
     - `get_instance() -> ReadOnlyReplayCache`
+    - `reset() -> None` - *Reset singleton instance (useful for test isolation).*
     - `get(tool_name: str, kwargs: Dict[str, Any]) -> Optional[Any]` - *Retrieves cached result if present and unexpired.*
     - `put(tool_name: str, kwargs: Dict[str, Any], result: Any, ...) -> None` - *Stores tool execution result with TTL.*
+    - `reap_expired() -> int` - *Active reaper: purges all expired entries to prevent 24/7 memory accumulation.*
     - `invalidate(tool_name: Optional[str]) -> int` - *Invalidates all cached entries, or all entries for a specific tool.*
     - `clear() -> int` - *Alias for invalidate() to clear entire cache.*
     - `stats() -> Dict[str, Any]` - *Returns cache telemetry.*
@@ -12679,7 +12685,7 @@
 - **Path**: [`src/monika/infrastructure/llm/data_dedup.py`](src/monika/infrastructure/llm/data_dedup.py)
 - **Classes**:
   - `class DataFetchDeduplicator`: Tracks market data query results within an analysis cycle.
-    - `__init__()`
+    - `__init__(maxsize: int)`
     - `check_and_record(tool_name: str, args: Dict[str, Any], result_str: str) -> Optional[str]` - *If result_str is identical to a prior call with same args in the current generation,*
     - `invalidate_on_compaction() -> None` - *Increments generation counter and clears cached results after context compaction.*
 

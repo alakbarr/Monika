@@ -195,12 +195,12 @@ class MarketGroundingEngine:
             "| :--- | :--- | :--- | :--- | :--- | :--- |",
         ]
         recent = df.tail(5)
-        for idx, row in recent.iterrows():
-            d_str = str(idx)[:10]
-            o_val = float(str(row["open"]))
-            h_val = float(str(row["high"]))
-            l_val = float(str(row["low"]))
-            c_val = float(str(row["close"]))
-            vol_val = float(str(row.get("volume", 0.0) or 0.0))
+        for row in recent.itertuples():
+            d_str = str(row[0])[:10]
+            o_val = float(str(getattr(row, "open", 0.0)))
+            h_val = float(str(getattr(row, "high", 0.0)))
+            l_val = float(str(getattr(row, "low", 0.0)))
+            c_val = float(str(getattr(row, "close", 0.0)))
+            vol_val = float(str(getattr(row, "volume", 0.0) or 0.0))
             sections.append(f"| {d_str} | {o_val:.4f} | {h_val:.4f} | {l_val:.4f} | {c_val:.4f} | {vol_val:,.0f} |")
         return "\n".join(sections)

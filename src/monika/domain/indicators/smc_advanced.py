@@ -446,9 +446,9 @@ def detect_judas_swing(
         return JudasSwingResult()
 
     # Scan recent bars in M15
-    for idx, row in df_m15.iterrows():
+    for row in df_m15.itertuples():
         # Check London Open session window (08:00 - 09:30 UTC)
-        ts_val = row.get("timestamp", idx)
+        ts_val = getattr(row, "timestamp", row[0])
         if isinstance(ts_val, (pd.Timestamp, datetime)):
             bar_time = ts_val.astimezone(timezone.utc) if getattr(ts_val, "tzinfo", None) else ts_val
             hour, minute = bar_time.hour, bar_time.minute
@@ -465,10 +465,10 @@ def detect_judas_swing(
             except Exception:
                 pass
 
-        bar_high = float(np.asarray(row["high"]).item())
-        bar_low = float(np.asarray(row["low"]).item())
-        bar_open = float(np.asarray(row["open"]).item())
-        bar_close = float(np.asarray(row["close"]).item())
+        bar_high = float(getattr(row, "high", 0.0))
+        bar_low = float(getattr(row, "low", 0.0))
+        bar_open = float(getattr(row, "open", 0.0))
+        bar_close = float(getattr(row, "close", 0.0))
         candle_range = max(bar_high - bar_low, 1e-6)
 
         # Case 1: Bearish Trap (Swept Asian High)
@@ -476,7 +476,7 @@ def detect_judas_swing(
             upper_wick = bar_high - max(bar_open, bar_close)
             rejection_ratio = upper_wick / candle_range
             if rejection_ratio >= 0.35:
-                ts_str = str(row.get("timestamp", idx))
+                ts_str = str(ts_val)
                 return JudasSwingResult(
                     judas_detected=True,
                     trap_direction="BEARISH_TRAP",
@@ -493,7 +493,7 @@ def detect_judas_swing(
             lower_wick = min(bar_open, bar_close) - bar_low
             rejection_ratio = lower_wick / candle_range
             if rejection_ratio >= 0.35:
-                ts_str = str(row.get("timestamp", idx))
+                ts_str = str(ts_val)
                 return JudasSwingResult(
                     judas_detected=True,
                     trap_direction="BULLISH_TRAP",

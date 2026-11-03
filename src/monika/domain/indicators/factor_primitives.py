@@ -324,6 +324,24 @@ def ts_rank(df: Any, n: int) -> Any:
 
     arr = input_df.to_numpy(dtype=np.float64)
     T, C = arr.shape
+
+    # Fast-path via native Rust C-ABI kernel (monika_core_rs)
+    from monika.core.native.rust_bridge import ts_rank_f64
+
+    rust_cols = []
+    rust_ok = True
+    for c in range(C):
+        col_res = ts_rank_f64(arr[:, c], n)
+        if col_res is None:
+            rust_ok = False
+            break
+        rust_cols.append(col_res)
+    if rust_ok and len(rust_cols) == C:
+        res_arr = np.column_stack(rust_cols)
+        if is_series:
+            return pd.Series(res_arr[:, 0], index=input_df.index, name=s_name)
+        return pd.DataFrame(res_arr, index=input_df.index, columns=input_df.columns)
+
     if T < n:
 
         def _last_rank(sub: np.ndarray) -> float:
@@ -378,6 +396,14 @@ def ts_corr(x: Any, y: Any, n: int) -> Any:
     if n < 2:
         raise ValueError(f"ts_corr window must be >= 2, got {n}")
     if isinstance(x, pd.Series) and isinstance(y, pd.Series):
+        from monika.core.native.rust_bridge import rolling_corr_f64
+
+        x_vals = x.to_numpy(dtype=np.float64)
+        y_vals = y.to_numpy(dtype=np.float64)
+        rust_corr = rolling_corr_f64(x_vals, y_vals, n)
+        if rust_corr is not None:
+            return pd.Series(rust_corr, index=x.index, name=x.name)
+
         corr = x.astype(float).rolling(window=n, min_periods=n).corr(y.astype(float))
         return corr.replace([np.inf, -np.inf], np.nan)
 
@@ -596,6 +622,24 @@ def decay_linear(df: Any, n: int) -> Any:
 
     arr = input_df.to_numpy(dtype=np.float64)
     T, C = arr.shape
+
+    # Fast-path via native Rust C-ABI kernel (monika_core_rs)
+    from monika.core.native.rust_bridge import decay_linear_f64
+
+    rust_cols = []
+    rust_ok = True
+    for c in range(C):
+        col_res = decay_linear_f64(arr[:, c], n)
+        if col_res is None:
+            rust_ok = False
+            break
+        rust_cols.append(col_res)
+    if rust_ok and len(rust_cols) == C:
+        res_arr = np.column_stack(rust_cols)
+        if is_series:
+            return pd.Series(res_arr[:, 0], index=input_df.index, name=s_name)
+        return pd.DataFrame(res_arr, index=input_df.index, columns=input_df.columns)
+
     if T < n:
 
         def _apply(sub: np.ndarray) -> float:

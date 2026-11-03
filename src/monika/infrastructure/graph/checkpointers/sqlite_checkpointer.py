@@ -141,7 +141,7 @@ class SqliteCheckpointSaver(InMemorySaver):
         """Asynchronously prune checkpoints and writes from SQLite disk database."""
         return await asyncio.to_thread(self.prune_disk_checkpoints, max_threads, retention_days)
 
-    def _prune_memory_cache(self, max_threads: int = 50) -> None:
+    def _prune_memory_cache(self, max_threads: int = 5) -> None:
         """Limit in-memory cache to the most recent active threads to prevent memory leak."""
         if len(self.storage) > max_threads:
             excess = len(self.storage) - max_threads

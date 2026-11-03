@@ -214,23 +214,24 @@ class MarketDataService:
             if df is not None and not df.empty:
                 df = df.tail(count)
                 bars = []
-                for idx, row in df.iterrows():
-                    ts_dt = pd.Timestamp(str(idx)).to_pydatetime()
+                for row in df.itertuples():
+                    ts_dt = pd.Timestamp(str(row[0])).to_pydatetime()
                     if not isinstance(ts_dt, datetime):
                         continue
                     if ts_dt.tzinfo is not None:
                         ts_dt = ts_dt.astimezone(timezone.utc)
                     else:
                         ts_dt = ts_dt.replace(tzinfo=timezone.utc)
+                    vol = _extract_float(getattr(row, "Volume", 0.0))
                     bars.append(
                         {
                             "time": ts_dt.isoformat(),
-                            "open": _extract_float(row.get("Open", 0.0)),
-                            "high": _extract_float(row.get("High", 0.0)),
-                            "low": _extract_float(row.get("Low", 0.0)),
-                            "close": _extract_float(row.get("Close", 0.0)),
-                            "volume": _extract_float(row.get("Volume", 0.0)),
-                            "tick_volume": _extract_float(row.get("Volume", 0.0)),
+                            "open": _extract_float(getattr(row, "Open", 0.0)),
+                            "high": _extract_float(getattr(row, "High", 0.0)),
+                            "low": _extract_float(getattr(row, "Low", 0.0)),
+                            "close": _extract_float(getattr(row, "Close", 0.0)),
+                            "volume": vol,
+                            "tick_volume": vol,
                         }
                     )
                 return bars

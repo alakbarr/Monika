@@ -118,6 +118,7 @@ class AgentLifecycleMixin:
     _run_margin_monitor: Callable[[], Coroutine[Any, Any, None]]
     _run_paper_trade_monitor: Callable[[], Coroutine[Any, Any, None]]
     _run_db_health_check: Callable[[], Coroutine[Any, Any, None]]
+    _run_cache_reaper_loop: Callable[[], Coroutine[Any, Any, None]]
     _run_scraper_loop: Callable[[], Coroutine[Any, Any, None]]
     _run_whatif_resolver: Callable[[], Coroutine[Any, Any, None]]
     _run_micro_playbook_compiler_loop: Callable[[], Coroutine[Any, Any, None]]
@@ -362,6 +363,7 @@ class AgentLifecycleMixin:
         _launch_task("MarginGuardian", self._run_margin_monitor, "margin_guardian")
         _launch_task("PaperTradeMonitor", self._run_paper_trade_monitor, "paper_trade_monitor")
         _launch_task("DBHealthCheck", self._run_db_health_check, "db_health_check")
+        _launch_task("CacheReaper", self._run_cache_reaper_loop, "cache_reaper")
         _launch_task("ScraperLoop", self._run_scraper_loop, "scraper_loop")
         _launch_task("WhatIfResolver", self._run_whatif_resolver, "whatif_resolver")
         if self.notifier and hasattr(self.notifier, "flush_outbox_loop"):

@@ -638,3 +638,172 @@ pub extern "C" fn monika_cscv_pbo_from_chunks_f64(
 
     underperforming
 }
+
+#[no_mangle]
+pub extern "C" fn monika_ts_rank_f64(
+    arr_ptr: *const f64,
+    len: usize,
+    window: usize,
+    out_ptr: *mut f64,
+) -> i32 {
+    if arr_ptr.is_null() || out_ptr.is_null() || len < window || window == 0 {
+        return -1;
+    }
+    let arr = unsafe { slice::from_raw_parts(arr_ptr, len) };
+    let out = unsafe { slice::from_raw_parts_mut(out_ptr, len) };
+
+    for i in 0..(window - 1) {
+        out[i] = f64::NAN;
+    }
+
+    let w_f = window as f64;
+    for t in (window - 1)..len {
+        let win_start = t + 1 - window;
+        let last = arr[t];
+        if !last.is_finite() {
+            out[t] = f64::NAN;
+            continue;
+        }
+
+        let mut has_nan = false;
+        let mut count_less = 0usize;
+        let mut count_eq = 0usize;
+
+        for i in win_start..=t {
+            let v = arr[i];
+            if !v.is_finite() {
+                has_nan = true;
+                break;
+            }
+            if v < last {
+                count_less += 1;
+            } else if v == last {
+                count_eq += 1;
+            }
+        }
+
+        if has_nan {
+            out[t] = f64::NAN;
+        } else {
+            out[t] = (count_less as f64 + 0.5 * (count_eq as f64 + 1.0)) / w_f;
+        }
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn monika_decay_linear_f64(
+    arr_ptr: *const f64,
+    len: usize,
+    window: usize,
+    out_ptr: *mut f64,
+) -> i32 {
+    if arr_ptr.is_null() || out_ptr.is_null() || len < window || window == 0 {
+        return -1;
+    }
+    let arr = unsafe { slice::from_raw_parts(arr_ptr, len) };
+    let out = unsafe { slice::from_raw_parts_mut(out_ptr, len) };
+
+    for i in 0..(window - 1) {
+        out[i] = f64::NAN;
+    }
+
+    let sum_w = (window * (window + 1) / 2) as f64;
+
+    for t in (window - 1)..len {
+        let win_start = t + 1 - window;
+        let mut has_nan = false;
+        let mut weighted_sum = 0.0_f64;
+
+        for k in 0..window {
+            let v = arr[win_start + k];
+            if !v.is_finite() {
+                has_nan = true;
+                break;
+            }
+            let w = (k + 1) as f64;
+            weighted_sum += v * w;
+        }
+
+        if has_nan {
+            out[t] = f64::NAN;
+        } else {
+            out[t] = weighted_sum / sum_w;
+        }
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn monika_rolling_corr_f64(
+    x_ptr: *const f64,
+    y_ptr: *const f64,
+    len: usize,
+    window: usize,
+    out_ptr: *mut f64,
+) -> i32 {
+    if x_ptr.is_null() || y_ptr.is_null() || out_ptr.is_null() || len < window || window < 2 {
+        return -1;
+    }
+    let x = unsafe { slice::from_raw_parts(x_ptr, len) };
+    let y = unsafe { slice::from_raw_parts(y_ptr, len) };
+    let out = unsafe { slice::from_raw_parts_mut(out_ptr, len) };
+
+    for i in 0..(window - 1) {
+        out[i] = f64::NAN;
+    }
+
+    let w_f = window as f64;
+    let denom_deg = (window - 1) as f64;
+
+    for t in (window - 1)..len {
+        let win_start = t + 1 - window;
+        let mut has_nan = false;
+        let mut sum_x = 0.0_f64;
+        let mut sum_y = 0.0_f64;
+
+        for i in win_start..=t {
+            let xi = x[i];
+            let yi = y[i];
+            if !xi.is_finite() || !yi.is_finite() {
+                has_nan = true;
+                break;
+            }
+            sum_x += xi;
+            sum_y += yi;
+        }
+
+        if has_nan {
+            out[t] = f64::NAN;
+            continue;
+        }
+
+        let mean_x = sum_x / w_f;
+        let mean_y = sum_y / w_f;
+
+        let mut var_x = 0.0_f64;
+        let mut var_y = 0.0_f64;
+        let mut cov_xy = 0.0_f64;
+
+        for i in win_start..=t {
+            let dx = x[i] - mean_x;
+            let dy = y[i] - mean_y;
+            var_x += dx * dx;
+            var_y += dy * dy;
+            cov_xy += dx * dy;
+        }
+
+        let var_x_sample = var_x / denom_deg;
+        let var_y_sample = var_y / denom_deg;
+
+        if var_x_sample <= 1e-14 || var_y_sample <= 1e-14 {
+            out[t] = f64::NAN;
+        } else {
+            let std_prod = (var_x_sample * var_y_sample).sqrt();
+            let cov_sample = cov_xy / denom_deg;
+            let corr = (cov_sample / std_prod).clamp(-1.0, 1.0);
+            out[t] = corr;
+        }
+    }
+    0
+}

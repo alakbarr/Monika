@@ -395,5 +395,32 @@ class AgentMonitorsMixin:
 
         await run_db_health_check(self)
 
+    async def _run_cache_reaper_loop(self) -> None:
+        """Periodic memory reaper loop (60s): evicts expired entries and enforces generational GC."""
+        import gc
+        from monika.application.agent.readonly_replay_cache import ReadOnlyReplayCache
+
+        logger.info("Starting memory cache reaper loop (interval: 60s)")
+        reaper_counter = 0
+        while not self.shutdown_event.is_set():
+            try:
+                cache = ReadOnlyReplayCache.get_instance()
+                evicted = cache.reap_expired()
+                if evicted > 0:
+                    logger.debug(f"[CacheReaper] Reaped {evicted} expired replay cache entries")
+
+                # Perform generational GC pass every 10 cycles (10 min) to break unreferenced cyclic graphs
+                reaper_counter += 1
+                if reaper_counter % 10 == 0:
+                    collected = gc.collect()
+                    logger.debug(f"[MemoryReaper] Generational GC pass: collected {collected} objects")
+            except Exception as e:
+                logger.debug(f"CacheReaper loop iteration error (non-fatal): {e}")
+
+            try:
+                await asyncio.wait_for(self.shutdown_event.wait(), timeout=60.0)
+            except asyncio.TimeoutError:
+                pass
+
 
 __all__ = ["AgentMonitorsMixin"]

@@ -36,6 +36,19 @@ class VerifiedMarketSnapshot:
         now = as_of or datetime.now(timezone.utc)
         sym = symbol.strip().upper().replace("/", "")
 
+        if as_of is None:
+            from monika.application.services.market_snapshot_service import MarketSnapshotService
+
+            cached_snap = MarketSnapshotService.get_instance().get_snapshot(sym, timeframe, max_age_seconds=180.0)
+            if cached_snap is not None:
+                d = cached_snap.to_dict()
+                d["note"] = (
+                    "GROUND TRUTH — computed from raw data, no LLM involvement. "
+                    "If ANY of your generated values conflict with these, "
+                    "you MUST use these values instead."
+                )
+                return d
+
         # Latest OHLCV (filtered by timeframe with fallback)
         ohlcv_q = (
             select(PriceOHLCV)

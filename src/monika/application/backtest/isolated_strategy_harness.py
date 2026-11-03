@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Type, Union
 
+import re as _re
 import numpy as np
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,6 +36,15 @@ from monika.application.backtest.statistical_tests import (
     probabilistic_sharpe_ratio,
 )
 from monika.infrastructure.database.models import BacktestTrade, PriceOHLCV
+
+_RE_EMA = _re.compile(r"EMA_(\d+)")
+_RE_SMA = _re.compile(r"SMA_(\d+)")
+_RE_RSI = _re.compile(r"RSI_(\d+)")
+_RE_FROM = _re.compile(r"FROM\s+([a-zA-Z_][\w]*)")
+_RE_GTE = _re.compile(r"timestamp\s*>=\s*'([^']+)'", _re.IGNORECASE)
+_RE_LT = _re.compile(r"timestamp\s*<\s*'([^']+)'", _re.IGNORECASE)
+_RE_LTE = _re.compile(r"timestamp\s*<=\s*'([^']+)'", _re.IGNORECASE)
+_RE_GT = _re.compile(r"timestamp\s*>\s*'([^']+)'", _re.IGNORECASE)
 
 logger = logging.getLogger("TradingAgent.IsolatedStrategyHarness")
 
@@ -306,7 +316,7 @@ class ZeroLookaheadSliceSession(AsyncSession):
                 return _SliceScalarResult([mock_row])
 
             elif "EMA" in stmt_str:
-                m = _re.search(r"EMA_(\d+)", stmt_str)
+                m = _RE_EMA.search(stmt_str)
                 period = int(m.group(1)) if m else 20
                 if len(h1_candles) >= period:
                     closes = [float(c.close) for c in h1_candles]
@@ -324,7 +334,7 @@ class ZeroLookaheadSliceSession(AsyncSession):
                 return _SliceScalarResult([mock_row])
 
             elif "SMA" in stmt_str:
-                m = _re.search(r"SMA_(\d+)", stmt_str)
+                m = _RE_SMA.search(stmt_str)
                 period = int(m.group(1)) if m else 20
                 if len(h1_candles) >= period:
                     sma_val = round(float(np.mean([float(c.close) for c in h1_candles[-period:]])), 5)
@@ -337,7 +347,7 @@ class ZeroLookaheadSliceSession(AsyncSession):
                 return _SliceScalarResult([mock_row])
 
             elif "RSI" in stmt_str:
-                m = _re.search(r"RSI_(\d+)", stmt_str)
+                m = _RE_RSI.search(stmt_str)
                 period = int(m.group(1)) if m else 14
                 if len(h1_candles) >= period + 1:
                     closes = [float(c.close) for c in h1_candles]
@@ -416,7 +426,7 @@ class ZeroLookaheadSliceSession(AsyncSession):
         #    exactly like a database without those rows. Falling through to the
         #    candle branch would hand the strategy candle rows where it expects
         #    zone rows, which fails with an unrelated AttributeError.
-        m_from = _re.search(r"FROM\s+([a-zA-Z_][\w]*)", comp_str)
+        m_from = _RE_FROM.search(comp_str)
         source_table = (m_from.group(1) if m_from else "").lower()
         if source_table and source_table != "price_ohlcv":
             return _SliceScalarResult([])
@@ -442,10 +452,10 @@ class ZeroLookaheadSliceSession(AsyncSession):
         is_asc = " ASC" in stmt_str or "ASCENDING" in stmt_str
         filtered = list(candles)
         try:
-            m_gte = _re.search(r"timestamp\s*>=\s*'([^']+)'", comp_str, _re.IGNORECASE)
-            m_lt = _re.search(r"timestamp\s*<\s*'([^']+)'", comp_str, _re.IGNORECASE)
-            m_lte = _re.search(r"timestamp\s*<=\s*'([^']+)'", comp_str, _re.IGNORECASE)
-            m_gt = _re.search(r"timestamp\s*>\s*'([^']+)'", comp_str, _re.IGNORECASE)
+            m_gte = _RE_GTE.search(comp_str)
+            m_lt = _RE_LT.search(comp_str)
+            m_lte = _RE_LTE.search(comp_str)
+            m_gt = _RE_GT.search(comp_str)
 
             def _get_time(c):
                 t = getattr(c, "time", None) or getattr(c, "timestamp", None)

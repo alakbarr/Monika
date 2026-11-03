@@ -2112,6 +2112,7 @@ Monika/
 │   └── vite.config.ts
 │   ├── agent/
 │   │   ├── test_agent_loop.py
+│   │   ├── test_chat_grounding_and_causal_inquiry.py
 │   │   ├── test_chat_memory_budget.py
 │   │   ├── test_chat_router_tiers.py
 │   │   ├── test_core_and_error_taxonomy.py
@@ -3189,4 +3190,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 274 | **Total Tracked Files**: 2885
+**Total Tracked Directories**: 274 | **Total Tracked Files**: 2886

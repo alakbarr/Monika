@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 import time
 from typing import Any, Optional, cast
 
+import numpy as np
 import pandas as pd
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -308,21 +309,42 @@ class MT5MarketDataMixin(MT5MixinBase):
 
         broker_offset = await self.get_broker_utc_offset_seconds()
         saved = 0
-        parsed_rows: list[tuple[datetime, datetime, Any]] = []
-        for _, row in df.iterrows():
-            row_data: Any = row
-            ts = row_data["time"]
-            if isinstance(ts, pd.Timestamp):
-                ts_dt = ts.to_pydatetime()
-                if ts_dt.tzinfo is None:
-                    ts_dt = ts_dt.replace(tzinfo=timezone.utc)
+        parsed_rows: list[tuple[datetime, datetime, float, float, float, float, float]] = []
+
+        times = df["time"]
+        if hasattr(times, "dt"):
+            dt_series = times.dt.to_pydatetime()
+        else:
+            dt_series = list(times)
+
+        opens = df["open"].to_numpy(dtype=np.float64)
+        highs = df["high"].to_numpy(dtype=np.float64)
+        lows = df["low"].to_numpy(dtype=np.float64)
+        closes = df["close"].to_numpy(dtype=np.float64)
+        vols = df["volume"].to_numpy(dtype=np.float64)
+
+        for i, raw_ts in enumerate(dt_series):
+            if isinstance(raw_ts, pd.Timestamp):
+                ts_dt = raw_ts.to_pydatetime()
             else:
-                ts_dt = ts
+                ts_dt = raw_ts
+            if ts_dt.tzinfo is None:
+                ts_dt = ts_dt.replace(tzinfo=timezone.utc)
 
             canonical_ts = BrokerTimeResolver.to_canonical_bar_timestamp(
                 ts_dt, timeframe, offset_seconds=broker_offset, settings=self.settings
             )
-            parsed_rows.append((ts_dt, canonical_ts, row_data))
+            parsed_rows.append(
+                (
+                    ts_dt,
+                    canonical_ts,
+                    float(opens[i]),
+                    float(highs[i]),
+                    float(lows[i]),
+                    float(closes[i]),
+                    float(vols[i]),
+                )
+            )
 
         existing_by_canonical: dict[datetime, Any] = {}
         existing_by_legacy_ts: dict[datetime, Any] = {}
@@ -358,7 +380,7 @@ class MT5MarketDataMixin(MT5MixinBase):
                     elif r_ts is not None:
                         existing_by_legacy_ts[r_ts] = rec
 
-        for ts_dt, canonical_ts, row_data in parsed_rows:
+        for ts_dt, canonical_ts, r_open, r_high, r_low, r_close, r_vol in parsed_rows:
             if use_bulk_lookup:
                 existing_record = existing_by_canonical.get(canonical_ts) or existing_by_legacy_ts.get(ts_dt)
             else:
@@ -380,11 +402,6 @@ class MT5MarketDataMixin(MT5MixinBase):
                 if existing_record.canonical_timestamp is None:
                     existing_record.canonical_timestamp = canonical_ts
                 # Update bar yang sedang aktif jika nilai OHLCV berubah
-                r_open = float(row_data["open"])
-                r_high = float(row_data["high"])
-                r_low = float(row_data["low"])
-                r_close = float(row_data["close"])
-                r_vol = float(row_data["volume"])
                 if (
                     existing_record.close != r_close
                     or existing_record.high != r_high
@@ -405,16 +422,34 @@ class MT5MarketDataMixin(MT5MixinBase):
                 timeframe=timeframe,
                 timestamp=ts_dt,
                 canonical_timestamp=canonical_ts,
-                open=float(row_data["open"]),
-                high=float(row_data["high"]),
-                low=float(row_data["low"]),
-                close=float(row_data["close"]),
-                volume=float(row_data["volume"]),
+                open=r_open,
+                high=r_high,
+                low=r_low,
+                close=r_close,
+                volume=r_vol,
             )
             session.add(record)
             if use_bulk_lookup:
                 existing_by_canonical[canonical_ts] = record
             saved += 1
+
+        if parsed_rows:
+            last_ts, _, l_open, l_high, l_low, l_close, l_vol = parsed_rows[-1]
+            try:
+                from monika.application.services.market_snapshot_service import MarketSnapshotService
+
+                MarketSnapshotService.get_instance().set_snapshot(
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    timestamp=last_ts,
+                    open_=l_open,
+                    high=l_high,
+                    low=l_low,
+                    close=l_close,
+                    volume=l_vol,
+                )
+            except Exception:
+                pass
 
         if saved:
             from monika.infrastructure.database.safe_ops import safe_commit

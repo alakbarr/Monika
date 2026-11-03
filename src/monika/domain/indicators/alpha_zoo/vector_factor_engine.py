@@ -177,14 +177,21 @@ class VectorFactorEngine:
                 top_factors=[],
             )
 
-        # Standardize column names
-        df_eval = df.copy()
-        df_eval.columns = [c.lower() for c in df_eval.columns]
+        # Standardize column names without full deep copy when already lowercase
+        cols_lower = [str(c).lower() for c in df.columns]
+        if cols_lower == list(df.columns):
+            df_eval = df
+        else:
+            df_eval = df.rename(columns=dict(zip(df.columns, cols_lower)))
 
-        # Precompute amount and vwap once per batch if volume and close exist
+        # Precompute amount and vwap once per batch if volume and close exist (only if missing)
         if "amount" not in df_eval.columns and "volume" in df_eval.columns and "close" in df_eval.columns:
+            if df_eval is df:
+                df_eval = df.copy()
             df_eval["amount"] = df_eval["close"] * df_eval["volume"]
         if "vwap" not in df_eval.columns and "amount" in df_eval.columns and "volume" in df_eval.columns:
+            if df_eval is df:
+                df_eval = df.copy()
             safe_vol = df_eval["volume"].replace(0, np.nan)
             df_eval["vwap"] = df_eval["amount"] / safe_vol
 

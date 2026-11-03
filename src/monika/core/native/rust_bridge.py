@@ -197,6 +197,34 @@ def _load_library() -> Optional[ctypes.CDLL]:
         ]
         lib.monika_cscv_pbo_from_chunks_f64.restype = ctypes.c_ssize_t
 
+        # 9. monika_ts_rank_f64
+        lib.monika_ts_rank_f64.argtypes = [
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            f64_p,
+        ]
+        lib.monika_ts_rank_f64.restype = ctypes.c_int32
+
+        # 10. monika_decay_linear_f64
+        lib.monika_decay_linear_f64.argtypes = [
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            f64_p,
+        ]
+        lib.monika_decay_linear_f64.restype = ctypes.c_int32
+
+        # 11. monika_rolling_corr_f64
+        lib.monika_rolling_corr_f64.argtypes = [
+            f64_p,
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            f64_p,
+        ]
+        lib.monika_rolling_corr_f64.restype = ctypes.c_int32
+
         _LIB_INSTANCE = lib
         logger.info(f"[RustBridge] Successfully loaded native Rust accelerator from {load_path}")
         return _LIB_INSTANCE
@@ -485,3 +513,128 @@ def cscv_pbo_from_chunks_f64(
         return None
 
     return int(underperforming), out_ranks
+
+
+def monte_carlo_simulate_f64(
+    returns: np.ndarray,
+    num_simulations: int,
+    initial_equity: float,
+    ruin_drawdown_pct: float,
+    mode_code: int = 0,
+    block_size: int = 5,
+    seed: int = 42,
+) -> Optional[tuple[np.ndarray, np.ndarray, int]]:
+    """
+    Run high-speed Monte Carlo simulations (IID bootstrap or stationary block bootstrap) in Rust.
+    Returns (out_max_dds, out_final_eqs, ruin_count) or None if unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    if returns.ndim != 1 or len(returns) == 0 or num_simulations == 0:
+        return None
+    if initial_equity <= 0.0 or not math.isfinite(initial_equity):
+        return None
+
+    ret_arr = np.ascontiguousarray(returns, dtype=np.float64)
+    if not np.all(np.isfinite(ret_arr)):
+        return None
+
+    out_max_dds = np.zeros(num_simulations, dtype=np.float64)
+    out_final_eqs = np.zeros(num_simulations, dtype=np.float64)
+    out_ruin_count = ctypes.c_size_t(0)
+
+    code = lib.monika_monte_carlo_simulate_f64(
+        ret_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(len(ret_arr)),
+        ctypes.c_size_t(num_simulations),
+        ctypes.c_double(initial_equity),
+        ctypes.c_double(ruin_drawdown_pct),
+        ctypes.c_uint32(mode_code),
+        ctypes.c_size_t(block_size),
+        ctypes.c_uint64(seed),
+        out_max_dds.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        out_final_eqs.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.byref(out_ruin_count),
+    )
+    if code != 0:
+        return None
+
+    return out_max_dds, out_final_eqs, int(out_ruin_count.value)
+
+
+def ts_rank_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]:
+    """
+    Rolling time-series rank percentile in [0, 1] within a window.
+    Returns 1D np.ndarray or None if Rust accelerator unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    if arr.ndim != 1 or window < 1 or len(arr) < window:
+        return None
+
+    inp_arr = np.ascontiguousarray(arr, dtype=np.float64)
+    out_arr = np.empty_like(inp_arr)
+
+    code = lib.monika_ts_rank_f64(
+        inp_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(len(inp_arr)),
+        ctypes.c_size_t(window),
+        out_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return out_arr
+
+
+def decay_linear_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]:
+    """
+    Linear decay-weighted moving average with weights 1..window normalized.
+    Returns 1D np.ndarray or None if Rust accelerator unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    if arr.ndim != 1 or window < 1 or len(arr) < window:
+        return None
+
+    inp_arr = np.ascontiguousarray(arr, dtype=np.float64)
+    out_arr = np.empty_like(inp_arr)
+
+    code = lib.monika_decay_linear_f64(
+        inp_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(len(inp_arr)),
+        ctypes.c_size_t(window),
+        out_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return out_arr
+
+
+def rolling_corr_f64(x: np.ndarray, y: np.ndarray, window: int) -> Optional[np.ndarray]:
+    """
+    Rolling Pearson correlation between two 1D series with min_periods=window.
+    Returns 1D np.ndarray or None if Rust accelerator unavailable.
+    """
+    lib = _load_library()
+    if lib is None:
+        return None
+    if x.ndim != 1 or y.ndim != 1 or len(x) != len(y) or window < 2 or len(x) < window:
+        return None
+
+    x_arr = np.ascontiguousarray(x, dtype=np.float64)
+    y_arr = np.ascontiguousarray(y, dtype=np.float64)
+    out_arr = np.empty_like(x_arr)
+
+    code = lib.monika_rolling_corr_f64(
+        x_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        y_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        ctypes.c_size_t(len(x_arr)),
+        ctypes.c_size_t(window),
+        out_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+    )
+    if code != 0:
+        return None
+    return out_arr

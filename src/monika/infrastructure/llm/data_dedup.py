@@ -5,6 +5,7 @@ Generation-tracked deduplication for repeated market data fetches.
 import hashlib
 import json
 import logging
+from collections import OrderedDict
 from typing import Any, Dict, Optional, Tuple
 
 logger = logging.getLogger("TradingAgent.DataDedup")
@@ -43,8 +44,11 @@ class DataFetchDeduplicator:
         }
     )
 
-    def __init__(self):
-        self._cache: Dict[str, Tuple[str, int]] = {}  # key -> (content_hash, generation)
+    MAX_CACHE_ENTRIES = 500
+
+    def __init__(self, maxsize: int = 500):
+        self._maxsize = maxsize
+        self._cache: OrderedDict[str, Tuple[str, int]] = OrderedDict()  # key -> (content_hash, generation)
         self._generation: int = 1
 
     def _make_key(self, tool_name: str, args: Dict[str, Any]) -> str:
@@ -72,7 +76,11 @@ class DataFetchDeduplicator:
         if key in self._cache:
             prev_hash, prev_gen = self._cache[key]
             if prev_hash == content_hash and prev_gen == self._generation:
+                self._cache.move_to_end(key)
                 return f"[Data unchanged since previous fetch in this cycle (gen {self._generation}). Refer to earlier tool observation.]"
+            del self._cache[key]
+        elif len(self._cache) >= self._maxsize:
+            self._cache.popitem(last=False)
 
         self._cache[key] = (content_hash, self._generation)
         return None
