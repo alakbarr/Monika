@@ -119,6 +119,7 @@ async def test_retrieve_spilled_context_unified_registry():
     anthropic_schema = tool_entry.get_anthropic_schema()
     assert anthropic_schema["name"] == "retrieve_spilled_context"
     assert "blob_id" in anthropic_schema["input_schema"]["properties"]
+    assert "file_path" in anthropic_schema["input_schema"]["properties"]
 
 
 @pytest.mark.asyncio
@@ -129,3 +130,38 @@ async def test_retrieve_spilled_context_default_tool_registry():
     # Test alias resolution
     canonical = default_tool_registry.resolve_name("read_spilled_blob")
     assert canonical == "retrieve_spilled_context"
+
+
+@pytest.mark.asyncio
+async def test_retrieve_spilled_context_file_path_and_limit_alias(tmp_path):
+    """Verify passing file_path and limit (matching the exact runtime incident) validates and succeeds."""
+    spill_file = tmp_path / "get_news_digest_e21e7b25ffef.json"
+    lines = [f"News item {i}: Headline update" for i in range(100)]
+    spill_file.write_text("\n".join(lines), encoding="utf-8")
+
+    # 1. Pydantic validation
+    input_data = {"limit": 50, "file_path": str(spill_file)}
+    validated = RetrieveSpilledContextInput.model_validate(input_data)
+    assert validated.file_path == str(spill_file)
+    assert validated.blob_id is None
+    assert validated.line_limit == 50
+
+    # 2. Handler execution
+    res = await handle_retrieve_spilled_context(input_data)
+    assert res["success"] is True
+    assert res["returned_lines"] == 50
+    assert "News item 0" in res["content"]
+
+
+@pytest.mark.asyncio
+async def test_retrieve_spilled_context_unified_registry_execution(tmp_path):
+    """Verify unified_tool_registry.execute_tool succeeds end-to-end with file_path and limit."""
+    spill_file = tmp_path / "get_macro_digest_1234.json"
+    spill_file.write_text("Line 1\nLine 2\nLine 3\n", encoding="utf-8")
+
+    res = await unified_tool_registry.execute_tool(
+        "retrieve_spilled_context",
+        {"file_path": str(spill_file), "limit": 2},
+    )
+    assert res["success"] is True
+    assert res["returned_lines"] == 2

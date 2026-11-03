@@ -99,7 +99,7 @@ def spill_tool_output(
                 "notice": (
                     f"Tool output exceeded {threshold_chars} characters and was spilled to disk. Full data: {filepath}. "
                     f"To inspect the complete content, use tool 'read_file(path=\"{filepath}\", offset=1, limit=200)' "
-                    f"or 'retrieve_spilled_context'. Do NOT use terminal shell commands."
+                    f"or 'retrieve_spilled_context(blob_id=\"{filepath}\")'. Do NOT use terminal shell commands."
                 ),
             }
             return json.dumps(payload)
@@ -109,7 +109,7 @@ def spill_tool_output(
             f"{preview}\n\n"
             f"[... Tool output truncated: {len(tool_output)} characters total. "
             f"Full raw output spilled to disk: {filepath}. "
-            f"Use tool 'read_file' or 'retrieve_spilled_context' to inspect full content. "
+            f"Use tool 'read_file(path=\"{filepath}\")' or 'retrieve_spilled_context(blob_id=\"{filepath}\")' to inspect full content. "
             f"Do NOT use terminal shell commands. ...]"
         )
     except Exception as e:

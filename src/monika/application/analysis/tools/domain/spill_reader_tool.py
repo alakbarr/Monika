@@ -26,11 +26,27 @@ class RetrieveSpilledContextInput(BaseModel):
 
     blob_id: Optional[str] = Field(
         default=None,
-        description="The pointer or ID of the spilled blob (e.g. 'spill_a1b2c3d4e5f6' or 'db://spill/spill_a1b2c3d4e5f6').",
+        description="The pointer, ID, or file path of the spilled blob (e.g. 'spill_a1b2c3d4e5f6', 'db://spill/spill_a1b2c3d4e5f6', or 'data/tool_spill/foo.json').",
     )
     storage_key: Optional[str] = Field(
         default=None,
         description="Backward-compatible alias for blob_id.",
+    )
+    file_path: Optional[str] = Field(
+        default=None,
+        description="Direct file path of the spilled output on disk (alias for blob_id).",
+    )
+    filepath: Optional[str] = Field(
+        default=None,
+        description="Direct file path of the spilled output on disk (alias for blob_id).",
+    )
+    path: Optional[str] = Field(
+        default=None,
+        description="Direct file path of the spilled output on disk (alias for blob_id).",
+    )
+    full_output_file: Optional[str] = Field(
+        default=None,
+        description="Full output file path from spill notice (alias for blob_id).",
     )
     offset: int = Field(0, ge=0, description="Character offset to start reading from for pagination.")
     max_chars: int = Field(4000, ge=100, le=15000, description="Maximum number of characters to retrieve in one call.")
@@ -49,13 +65,35 @@ class RetrieveSpilledContextInput(BaseModel):
         le=500,
         description="Optional maximum number of lines to retrieve when using line pagination (1-500).",
     )
+    limit: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Generic pagination limit alias (maps to line_limit if <= 500 or max_chars if > 500).",
+    )
 
     @model_validator(mode="before")
     @classmethod
     def validate_id_present(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            if not data.get("blob_id") and not data.get("storage_key"):
-                raise ValueError("Either 'blob_id' or 'storage_key' must be provided.")
+            raw_id = (
+                data.get("blob_id")
+                or data.get("file_path")
+                or data.get("filepath")
+                or data.get("path")
+                or data.get("storage_key")
+                or data.get("full_output_file")
+            )
+            if not raw_id:
+                raise ValueError("Either 'blob_id', 'storage_key', or 'file_path' must be provided.")
+            if "limit" in data and data.get("limit") is not None:
+                try:
+                    lim = int(data["limit"])
+                    if lim <= 500 and data.get("line_limit") is None:
+                        data["line_limit"] = lim
+                    elif lim > 500 and data.get("max_chars") is None:
+                        data["max_chars"] = min(15000, lim)
+                except ValueError, TypeError:
+                    pass
         return data
 
 
@@ -65,7 +103,15 @@ async def handle_retrieve_spilled_context(
     """
     Retrieves spilled content from PostgreSQL or disk spill caches.
     """
-    raw_blob_id = str(args.get("blob_id") or args.get("storage_key") or "").strip()
+    raw_blob_id = str(
+        args.get("blob_id")
+        or args.get("file_path")
+        or args.get("filepath")
+        or args.get("path")
+        or args.get("storage_key")
+        or args.get("full_output_file")
+        or ""
+    ).strip()
     if not raw_blob_id:
         return {"error": "Missing required argument 'blob_id'"}
 
@@ -75,6 +121,15 @@ async def handle_retrieve_spilled_context(
     grep_pattern = args.get("grep_pattern")
     line_offset = args.get("line_offset")
     line_limit = args.get("line_limit")
+    if line_limit is None and "limit" in args and args.get("limit") is not None:
+        try:
+            lim = int(args["limit"])
+            if lim <= 500:
+                line_limit = lim
+            else:
+                max_chars = min(15000, max(100, lim))
+        except ValueError, TypeError:
+            pass
 
     content: Optional[str] = None
     source = "unknown"

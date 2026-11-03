@@ -108,14 +108,22 @@ EXECUTE_ANALYSIS_CODE = _tool(
 RETRIEVE_SPILLED_CONTEXT = _tool(
     name="retrieve_spilled_context",
     description=(
-        "Retrieve spilled tool observations or large context blobs from PostgreSQL or disk caches by blob_id. "
-        "Supports pagination via offset/max_chars, line pagination via line_offset/line_limit, "
+        "Retrieve spilled tool observations or large context blobs from PostgreSQL or disk caches by blob_id or file_path. "
+        "Supports pagination via offset/max_chars, line pagination via line_offset/line_limit (or limit), "
         "or search via grep_pattern."
     ),
     properties={
         "blob_id": {
             "type": "string",
-            "description": "The blob pointer or identifier (e.g. 'spill_1234abcd' or 'db://spill/spill_1234abcd').",
+            "description": "The blob pointer, identifier, or file path (e.g. 'spill_1234abcd', 'db://spill/spill_1234abcd', or 'data/tool_spill/foo.json').",
+        },
+        "file_path": {
+            "type": "string",
+            "description": "Direct file path to the spilled output file on disk (alias for blob_id).",
+        },
+        "path": {
+            "type": "string",
+            "description": "Direct file path to the spilled output file on disk (alias for blob_id).",
         },
         "storage_key": {
             "type": "string",
@@ -128,6 +136,10 @@ RETRIEVE_SPILLED_CONTEXT = _tool(
         "max_chars": {
             "type": "integer",
             "description": "Maximum characters to retrieve (default 4000, max 15000).",
+        },
+        "limit": {
+            "type": "integer",
+            "description": "Generic limit on lines or characters to retrieve (alias for line_limit or max_chars).",
         },
         "grep_pattern": {
             "type": "string",
@@ -142,7 +154,7 @@ RETRIEVE_SPILLED_CONTEXT = _tool(
             "description": "Maximum number of lines to retrieve when using line pagination (1-500).",
         },
     },
-    required=["blob_id"],
+    required=[],
 )
 
 
