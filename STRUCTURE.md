@@ -240,8 +240,13 @@ Monika/
 │       │   │   │   └── macro_playbook_runner.py
 │       │   │   ├── schemas/
 │       │   │   │   ├── __init__.py
+│       │   │   │   ├── analysis_schemas.py
+│       │   │   │   ├── brief_schemas.py
+│       │   │   │   ├── common.py
 │       │   │   │   ├── pydantic_schemas.py
-│       │   │   │   └── schemas.py
+│       │   │   │   ├── schemas.py
+│       │   │   │   ├── strict_schema.py
+│       │   │   │   └── sub_models.py
 │       │   │   ├── stages/
 │       │   │   │   ├── per_asset/
 │       │   │   │   │   ├── runner_mixins/
@@ -260,6 +265,8 @@ Monika/
 │       │   │   │   │   ├── specialist_pipeline.py
 │       │   │   │   │   └── verifiers.py
 │       │   │   │   ├── __init__.py
+│       │   │   │   ├── fundamental_debate.py
+│       │   │   │   ├── fundamental_fallback.py
 │       │   │   │   ├── fundamental_stage.py
 │       │   │   │   ├── fundamental_stage_recovery.py
 │       │   │   │   ├── per_asset_stage.py
@@ -799,6 +806,7 @@ Monika/
 │       │   │   ├── post_release_analyzer.py
 │       │   │   ├── scraper_runner.py
 │       │   │   ├── strategy_synthesis_scheduler.py
+│       │   │   ├── synthesis_validator.py
 │       │   │   ├── task_plugin.py
 │       │   │   ├── trailing_stop_manager.py
 │       │   │   ├── trigger_checker.py
@@ -843,6 +851,8 @@ Monika/
 │       │   │   ├── edge_tracker.py
 │       │   │   ├── models_dev_sync.py
 │       │   │   ├── news_classification_tracker.py
+│       │   │   ├── paper_analytics.py
+│       │   │   ├── paper_suspension.py
 │       │   │   ├── paper_tracker.py
 │       │   │   ├── pdf_report_generator.py
 │       │   │   ├── performance_reviewer.py
@@ -1816,14 +1826,20 @@ Monika/
 │       │   │   ├── backend_identity.py
 │       │   │   ├── base_provider.py
 │       │   │   ├── capabilities.py
+│       │   │   ├── capabilities_catalog.py
+│       │   │   ├── circuit_breaker.py
 │       │   │   ├── codex_provider.py
 │       │   │   ├── deepseek_provider.py
 │       │   │   ├── error_classifier.py
+│       │   │   ├── fallback_wrapper.py
+│       │   │   ├── gemini_protocol.py
 │       │   │   ├── gemini_provider.py
 │       │   │   ├── groq_provider.py
 │       │   │   ├── llm_factory.py
 │       │   │   ├── nine_router_provider.py
 │       │   │   ├── ollama_provider.py
+│       │   │   ├── openai_chat.py
+│       │   │   ├── openai_protocol.py
 │       │   │   ├── openai_provider.py
 │       │   │   ├── opencode_provider.py
 │       │   │   ├── openrouter_provider.py
@@ -2013,6 +2029,17 @@ Monika/
 │   │   │   └── vite.svg
 │   │   ├── components/
 │   │   │   ├── charts/
+│   │   │   │   ├── candlestick/
+│   │   │   │   │   ├── ChartControlsToolbar.tsx
+│   │   │   │   │   ├── ChartHud.tsx
+│   │   │   │   │   ├── ChartStatusBar.tsx
+│   │   │   │   │   └── chartUtils.ts
+│   │   │   │   ├── indicator_studio/
+│   │   │   │   │   └── tabs/
+│   │   │   │   │       ├── ExecutionTab.tsx
+│   │   │   │   │       ├── OscillatorsTab.tsx
+│   │   │   │   │       ├── OverlaysTab.tsx
+│   │   │   │   │       └── SmcTab.tsx
 │   │   │   │   ├── CandlestickChart.tsx
 │   │   │   │   ├── DecisionDistribution.tsx
 │   │   │   │   ├── EquityChart.tsx
@@ -3119,6 +3146,8 @@ Monika/
 │   │   └── OVERVIEW.md
 │   ├── designs/
 │   │   ├── database_architecture_modernization.md
+│   │   ├── modular_refactor_of_god_modules.md
+│   │   ├── polars_adoption_architecture.md
 │   │   ├── README.md
 │   │   ├── runtime_performance_and_stability_architecture.md
 │   │   ├── runtime_storage_separation.md
@@ -3213,4 +3242,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 275 | **Total Tracked Files**: 2908
+**Total Tracked Directories**: 278 | **Total Tracked Files**: 2934

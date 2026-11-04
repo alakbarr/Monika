@@ -26,6 +26,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
+import polars as pl
+from monika.core.dataframe.polars_bridge import to_polars
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -72,69 +74,71 @@ class MatrixAlignmentEngine:
     @classmethod
     def align_dataframes(
         cls,
-        df_dict: Dict[str, pd.DataFrame],
+        df_dict: Dict[str, Union[pd.DataFrame, pl.DataFrame]],
         method: str = "outer",
     ) -> AlignedMarketMatrix:
-        """Aligns a dictionary of symbol DataFrames {sym: df} having columns (open, high, low, close, volume)."""
+        """
+        Aligns a dictionary of symbol DataFrames {sym: df} having columns (open, high, low, close, volume).
+        Accelerated via high-performance multithreaded Polars LazyFrame joins and unified timestamp grid.
+        """
         if not df_dict:
             raise ValueError("df_dict cannot be empty")
 
-        # Collect all unique timestamps
-        all_timestamps = set()
-        cleaned_dfs: Dict[str, pd.DataFrame] = {}
-
+        pl_dfs: Dict[str, pl.DataFrame] = {}
         for sym, df in df_dict.items():
-            if df.empty:
+            if df is None:
                 continue
-            df_copy = df.copy()
-            if not isinstance(df_copy.index, pd.DatetimeIndex):
-                if "timestamp" in df_copy.columns:
-                    df_copy["timestamp"] = pd.to_datetime(df_copy["timestamp"])
-                    df_copy.set_index("timestamp", inplace=True)
-                else:
-                    df_copy.index = pd.to_datetime(df_copy.index)
-            df_copy = df_copy.sort_index()
-            # De-duplicate index
-            if isinstance(df_copy, pd.DataFrame):
-                cleaned_dfs[sym.upper()] = df_copy
-            else:
-                cleaned_dfs[sym.upper()] = pd.DataFrame(df_copy)
-            all_timestamps.update(df_copy.index)
+            if isinstance(df, pd.DataFrame) and df.empty:
+                continue
+            pl_df = to_polars(df)
+            if len(pl_df) == 0:
+                continue
 
-        if not all_timestamps:
+            rename_map = {c: c.lower() for c in pl_df.columns if c.lower() != c}
+            if rename_map:
+                pl_df = pl_df.rename(rename_map)
+
+            if "timestamp" not in pl_df.columns:
+                continue
+
+            pl_df = pl_df.unique(subset=["timestamp"], keep="last").sort("timestamp")
+            pl_dfs[sym.upper()] = pl_df
+
+        if not pl_dfs:
             raise ValueError("No valid timestamps found across DataFrames")
 
-        sorted_times = sorted(list(all_timestamps))
-        idx_series = pd.DatetimeIndex(sorted_times)
+        # Extract sorted union of all unique timestamps across instruments
+        all_ts = pl.concat([df.select("timestamp") for df in pl_dfs.values()]).unique().sort("timestamp")
 
-        instruments = tuple(sorted(cleaned_dfs.keys()))
+        instruments = tuple(sorted(pl_dfs.keys()))
         inst_to_idx = {sym: i for i, sym in enumerate(instruments)}
-        T = len(sorted_times)
-        N = len(instruments)
 
-        open_arr = np.full((T, N), np.nan, dtype=np.float64)
-        high_arr = np.full((T, N), np.nan, dtype=np.float64)
-        low_arr = np.full((T, N), np.nan, dtype=np.float64)
-        close_arr = np.full((T, N), np.nan, dtype=np.float64)
-        vol_arr = np.full((T, N), 0.0, dtype=np.float64)
+        grid = all_ts
+        for sym in instruments:
+            df = pl_dfs[sym]
+            sub = df.select(
+                [
+                    "timestamp",
+                    pl.col("open").alias(f"open_{sym}"),
+                    pl.col("high").alias(f"high_{sym}"),
+                    pl.col("low").alias(f"low_{sym}"),
+                    pl.col("close").alias(f"close_{sym}"),
+                    pl.col("volume").alias(f"volume_{sym}"),
+                ]
+            )
+            grid = grid.join(sub, on="timestamp", how="left")
 
-        for sym, df in cleaned_dfs.items():
-            col_idx = inst_to_idx[sym]
-            reindexed = df.reindex(idx_series)
+        open_arr = grid.select([f"open_{sym}" for sym in instruments]).to_numpy().astype(np.float64)
+        high_arr = grid.select([f"high_{sym}" for sym in instruments]).to_numpy().astype(np.float64)
+        low_arr = grid.select([f"low_{sym}" for sym in instruments]).to_numpy().astype(np.float64)
+        close_arr = grid.select([f"close_{sym}" for sym in instruments]).to_numpy().astype(np.float64)
+        vol_arr = grid.select([f"volume_{sym}" for sym in instruments]).fill_null(0.0).to_numpy().astype(np.float64)
 
-            if "open" in reindexed:
-                open_arr[:, col_idx] = reindexed["open"].to_numpy(dtype=np.float64)
-            if "high" in reindexed:
-                high_arr[:, col_idx] = reindexed["high"].to_numpy(dtype=np.float64)
-            if "low" in reindexed:
-                low_arr[:, col_idx] = reindexed["low"].to_numpy(dtype=np.float64)
-            if "close" in reindexed:
-                close_arr[:, col_idx] = reindexed["close"].to_numpy(dtype=np.float64)
-            if "volume" in reindexed:
-                vol_arr[:, col_idx] = np.nan_to_num(reindexed["volume"].to_numpy(dtype=np.float64), nan=0.0)
+        ts_series = grid["timestamp"].to_pandas()
+        ts_arr = pd.DatetimeIndex(ts_series).to_numpy()
 
         return AlignedMarketMatrix(
-            timestamps=idx_series.to_numpy(),
+            timestamps=ts_arr,
             instruments=instruments,
             instrument_to_idx=inst_to_idx,
             open=open_arr,

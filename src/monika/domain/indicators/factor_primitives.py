@@ -24,6 +24,7 @@ from typing import Any, Optional, TypeVar, overload
 
 import numpy as np
 import pandas as pd
+import polars as pl
 from numpy.lib.stride_tricks import sliding_window_view
 
 logger = logging.getLogger("TradingAgent.Indicators.FactorPrimitives")
@@ -118,6 +119,30 @@ def safe_div(
     Division with zero/NaN guards: a / (b + eps * sign(b)).
     If b is exactly 0.0 or NaN, the result is strictly NaN (never +/- inf or silent 0).
     """
+    # Polars Expr / Series / DataFrame fast path
+    if isinstance(a, pl.Expr) or isinstance(b, pl.Expr):
+        a_expr = a if isinstance(a, pl.Expr) else pl.lit(a)
+        b_expr = b if isinstance(b, pl.Expr) else pl.lit(b)
+        sign = pl.when(b_expr >= 0.0).then(1.0).otherwise(-1.0)
+        denom = b_expr + eps * sign
+        return pl.when((b_expr == 0.0) | b_expr.is_null() | b_expr.is_nan()).then(None).otherwise(a_expr / denom)
+
+    if isinstance(a, pl.Series) or isinstance(b, pl.Series):
+        s_name = getattr(a, "name", None) or getattr(b, "name", "safe_div")
+        a_expr = pl.col("a") if isinstance(a, pl.Series) else pl.lit(a)
+        b_expr = pl.col("b") if isinstance(b, pl.Series) else pl.lit(b)
+        n_rows = len(a) if isinstance(a, pl.Series) else (len(b) if isinstance(b, pl.Series) else 1)
+        df_tmp = pl.DataFrame(
+            {
+                "a": a if isinstance(a, pl.Series) else [a] * n_rows,
+                "b": b if isinstance(b, pl.Series) else [b] * n_rows,
+            }
+        )
+        sign = pl.when(b_expr >= 0.0).then(1.0).otherwise(-1.0)
+        denom = b_expr + eps * sign
+        expr = pl.when((b_expr == 0.0) | b_expr.is_null() | b_expr.is_nan()).then(None).otherwise(a_expr / denom)
+        return df_tmp.select(expr.alias(s_name)).to_series()
+
     if isinstance(a, pd.DataFrame):
         df_target: pd.DataFrame | None = a
     elif isinstance(b, pd.DataFrame):
@@ -276,6 +301,10 @@ def delta(df: Any, d: int) -> Any:
     """
     if d < 1:
         raise ValueError(f"delta lag must be >= 1 (lookahead violation forbidden), got {d}")
+    if isinstance(df, pl.Expr):
+        return df.diff(d)
+    if isinstance(df, (pl.DataFrame, pl.Series)):
+        return df.diff(d)
     if hasattr(df, "shift"):
         return df - df.shift(d)
     arr = np.asarray(df)
@@ -459,6 +488,8 @@ def ts_mean(df: Any, n: int) -> Any:
     """Rolling arithmetic mean with strict warmup -> NaN."""
     if n < 1:
         raise ValueError(f"ts_mean window must be >= 1, got {n}")
+    if isinstance(df, (pl.Expr, pl.Series, pl.DataFrame)):
+        return df.rolling_mean(window_size=n, min_samples=n)
     if hasattr(df, "rolling"):
         return df.rolling(window=n, min_periods=n).mean()
     s = pd.Series(df)
@@ -475,6 +506,8 @@ def ts_sum(df: Any, n: int) -> Any:
     """Rolling sum with strict warmup -> NaN."""
     if n < 1:
         raise ValueError(f"ts_sum window must be >= 1, got {n}")
+    if isinstance(df, (pl.Expr, pl.Series, pl.DataFrame)):
+        return df.rolling_sum(window_size=n, min_samples=n)
     if hasattr(df, "rolling"):
         return df.rolling(window=n, min_periods=n).sum()
     s = pd.Series(df)
@@ -491,6 +524,8 @@ def ts_std(df: Any, n: int) -> Any:
     """Rolling sample standard deviation (ddof=1) with warmup -> NaN."""
     if n < 2:
         raise ValueError(f"ts_std window must be >= 2, got {n}")
+    if isinstance(df, (pl.Expr, pl.Series, pl.DataFrame)):
+        return df.rolling_std(window_size=n, min_samples=n, ddof=1)
     if hasattr(df, "rolling"):
         return df.rolling(window=n, min_periods=n).std(ddof=1)
     s = pd.Series(df)
@@ -507,6 +542,8 @@ def ts_max(df: Any, n: int) -> Any:
     """Rolling maximum with warmup -> NaN."""
     if n < 1:
         raise ValueError(f"ts_max window must be >= 1, got {n}")
+    if isinstance(df, (pl.Expr, pl.Series, pl.DataFrame)):
+        return df.rolling_max(window_size=n, min_samples=n)
     if hasattr(df, "rolling"):
         return df.rolling(window=n, min_periods=n).max()
     s = pd.Series(df)
@@ -523,6 +560,8 @@ def ts_min(df: Any, n: int) -> Any:
     """Rolling minimum with warmup -> NaN."""
     if n < 1:
         raise ValueError(f"ts_min window must be >= 1, got {n}")
+    if isinstance(df, (pl.Expr, pl.Series, pl.DataFrame)):
+        return df.rolling_min(window_size=n, min_samples=n)
     if hasattr(df, "rolling"):
         return df.rolling(window=n, min_periods=n).min()
     s = pd.Series(df)
@@ -651,6 +690,27 @@ def decay_linear(df: Any, n: int) -> Any:
     """
     if n < 1:
         raise ValueError(f"decay_linear window must be >= 1, got {n}")
+
+    if isinstance(df, pl.Expr):
+        weights = [n - i for i in range(n)]
+        denom = float(sum(weights))
+        terms = [df.shift(i) * w for i, w in enumerate(weights)]
+        expr = terms[0]
+        for t in terms[1:]:
+            expr = expr + t
+        return expr / denom
+
+    if isinstance(df, pl.Series):
+        s_name = df.name or "value"
+        weights = [n - i for i in range(n)]
+        denom = float(sum(weights))
+        terms = [pl.col(s_name).shift(i) * w for i, w in enumerate(weights)]
+        expr = terms[0]
+        for t in terms[1:]:
+            expr = expr + t
+        expr = expr / denom
+        return df.to_frame().select(expr.alias(s_name)).to_series()
+
     weights = np.arange(1, n + 1, dtype=np.float64)
     weights /= weights.sum()
 

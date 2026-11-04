@@ -13,6 +13,8 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
+import polars as pl
+from monika.core.dataframe.polars_bridge import to_polars
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -175,3 +177,30 @@ class CanonicalPriceLoader:
                     "max_allowed": max_gap_pct,
                 },
             )
+
+    async def load_series_polars(
+        self,
+        session: AsyncSession,
+        symbol: str,
+        timeframe: str,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        limit: int = 5000,
+        min_bars: int = 100,
+        max_gap_pct: float = 0.05,
+    ) -> pl.DataFrame:
+        """
+        Load clean, deduplicated, monotonically ascending OHLCV Polars DataFrame.
+        Fails closed with DataQualityError if min_bars not satisfied or gap ratio exceeds max_gap_pct.
+        """
+        pdf = await self.load_series(
+            session=session,
+            symbol=symbol,
+            timeframe=timeframe,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+            min_bars=min_bars,
+            max_gap_pct=max_gap_pct,
+        )
+        return to_polars(pdf)

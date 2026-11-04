@@ -1,8 +1,10 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import numpy as np
 import pandas as pd
+import polars as pl
+from monika.core.dataframe.polars_bridge import is_polars, to_pandas, to_polars
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +62,18 @@ class OfflineSignalEngine:
         res = 100 - (100 / (1 + rs))
         return pd.Series(res, index=df.index)
 
-    def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
+    def generate_signals(self, df: Union[pd.DataFrame, pl.DataFrame]) -> Union[pd.DataFrame, pl.DataFrame]:
         """
         Generates buy/sell signals based on technical confluence.
         Adds columns: 'Signal' (1 for buy, -1 for sell, 0 for hold),
         'ConfluenceScore', 'ATR', 'EMA_50', 'EMA_200', 'RSI'
         Applies 1-bar shift to prevent look-ahead bias on signal generation.
+        Accepts either Pandas or Polars DataFrames seamlessly.
         """
+        input_is_polars = is_polars(df)
+        if input_is_polars:
+            df = to_pandas(df)
+
         if df.empty or len(df) < 200:
             logger.warning("DataFrame is too small for accurate signal generation")
             df = df.copy()
@@ -128,7 +135,14 @@ class OfflineSignalEngine:
         cols_to_drop = ["Trend_Up", "Trend_Down", "RSI_Oversold", "RSI_Overbought"]
         df = df.drop(columns=cols_to_drop)
 
+        if input_is_polars:
+            return to_polars(df)
         return df
+
+    def generate_signals_polars(self, df: Union[pd.DataFrame, pl.DataFrame]) -> pl.DataFrame:
+        """Dedicated Polars entrypoint guaranteed to return a Polars DataFrame."""
+        res = self.generate_signals(df)
+        return to_polars(res)
 
     def calculate_stops_and_targets(self, df: pd.DataFrame, risk_reward_ratio: float = 2.0) -> pd.DataFrame:
         """

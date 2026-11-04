@@ -327,6 +327,23 @@
   - `async compute_and_apply_tier_calibration(session: AsyncSession, days_back: int) -> dict`: Memperluas auto-correction news classification ke tier HIGH dan MEDIUM, bukan hanya
   - `async compute_news_classification_calibration(session: AsyncSession, days_back: int) -> dict`: Alias resmi — ini nama fungsi yang benar-benar dipanggil oleh
 
+#### `paper_analytics.py` - *Statistical Aggregation & Equity Curve Simulation for Paper Trading.*
+- **Path**: [`src/monika/core/analytics/paper_analytics.py`](src/monika/core/analytics/paper_analytics.py)
+- **Top-Level Functions**:
+  - `aggregate_trade_statistics(results: Sequence[Any]) -> dict[str, Any]`: Aggregate win-rate, profit-factor, Sharpe, and breakdown metrics from closed trade records.
+  - `calculate_equity_curve(records: Sequence[Any], starting_equity: float) -> dict[str, Any]`: Simulate equity curve, peak equity, and maximum drawdown percentage.
+
+#### `paper_suspension.py` - *Symbol Suspension & Streak Policy Engine for Paper Trading.*
+- **Path**: [`src/monika/core/analytics/paper_suspension.py`](src/monika/core/analytics/paper_suspension.py)
+- **Top-Level Functions**:
+  - `async get_suspended_symbols(session: AsyncSession) -> list[str]`: Return list of symbols currently suspended due to poor performance
+  - `async check_and_suspend_poor_performers(session: AsyncSession, settings: dict) -> list[str]`: Auto-suspend symbols with consecutive losses.
+  - `async suspend_symbol(session: AsyncSession, symbol: str, duration_hours: float, ...) -> dict`: Suspend trading untuk simbol tertentu secara manual dengan durasi waktu.
+  - `async unsuspend_symbol(session: AsyncSession, symbol: str) -> bool`: Buka suspensi untuk simbol tertentu.
+  - `async unsuspend_all(session: AsyncSession) -> list[str]`: Buka suspensi untuk semua simbol.
+  - `async get_streak_status(session: AsyncSession, symbol: str, settings: Optional[dict]) -> dict`: Mengambil status streak loss dan suspensi untuk simbol tertentu.
+  - `async check_recent_streak(session: AsyncSession, lookback: int) -> dict`: Deteksi losing streak mendadak (misal: 5 kerugian beruntun memicu alarm).
+
 #### `paper_tracker.py` - *Paper Tracker — Melacak estimasi PnL (profit and loss) untuk mode dry_run.*
 - **Path**: [`src/monika/core/analytics/paper_tracker.py`](src/monika/core/analytics/paper_tracker.py)
 - **Classes**:
@@ -7007,13 +7024,118 @@
 #### `__init__.py` - *Monika Analysis Schemas Package.*
 - **Path**: [`src/monika/application/analysis/schemas/__init__.py`](src/monika/application/analysis/schemas/__init__.py)
 
+#### `analysis_schemas.py` - *Submit Asset Analysis Schema Definition and Multi-layer Validators.*
+- **Path**: [`src/monika/application/analysis/schemas/analysis_schemas.py`](src/monika/application/analysis/schemas/analysis_schemas.py)
+- **Classes**:
+  - `class SubmitAssetAnalysisSchema(BaseModel)`
+    - `validate_playbook_id_field(v)`
+    - `coerce_string_fields(v)` - *Coerce dict/list/non-string to string for LLMs that return structured data.*
+    - `coerce_string_lists(v)` - *Coerce list of mixed dicts/strings/numbers into a clean list of strings.*
+    - `validate_asset_confidence(v)`
+    - `validate_prices(v)`
+    - `validate_scores(v)`
+    - `validate_invalidation_direction(v)`
+    - `validate_specialist_adjudication_field(v)`
+    - `validate_override_justification_field(v)`
+    - `normalize_and_alias_fields(data: Any) -> Any` - *Resolve symbol aliases and normalize symbol casing/formatting before validation.*
+    - `validate_trade_parameters()` - *Enforce SL/TP/entry_condition presence when decision is buy or sell.*
+
+#### `brief_schemas.py` - *Submit Fundamental Brief Schema Definition and Specialized Macro Validators.*
+- **Path**: [`src/monika/application/analysis/schemas/brief_schemas.py`](src/monika/application/analysis/schemas/brief_schemas.py)
+- **Classes**:
+  - `class SubmitFundamentalBriefSchema(BaseModel)`
+    - `harmonize_counter_thesis_and_primitives(data: Any) -> Any`
+    - `validate_macro_regime_sfbs(v)`
+    - `validate_yield_curve_regime(v)`
+    - `validate_systemic_liquidity_trend(v)`
+    - `validate_risk_sentiment_sfbs(v)`
+    - `validate_currency_bias_sfbs(v)`
+    - `validate_asset_pi_scores(v)`
+    - `validate_confidence(v)`
+    - `validate_currency_confidence(v)`
+    - `validate_upcoming_risks(v)`
+    - `validate_string_dicts(v)`
+    - `validate_brief_narratives(v)`
+
+#### `common.py` - *Common Enums and Coercion Utilities for Analysis Schemas.*
+- **Path**: [`src/monika/application/analysis/schemas/common.py`](src/monika/application/analysis/schemas/common.py)
+- **Classes**:
+  - `class TradeDirection(str, Enum)`
+  - `class ConfidenceLevel(str, Enum)`
+  - `class SentimentBand(str, Enum)`
+  - `class MacroRegime(str, Enum)`
+- **Top-Level Functions**:
+  - `coerce_str(v: Any, default: str) -> str`: Safely coerces any value (dict, list, int, float, string, None) into a clean string.
+  - `coerce_string_list(v: Any, default: Optional[List[str]]) -> Optional[List[str]]`: Safely coerces any value (list, tuple, set, dict, single string, numbers, None)
+  - `coerce_float(v: Any, default: Optional[float]) -> Optional[float]`: Safely coerces strings, percentages, numbers, and common LLM non-numeric strings
+  - `coerce_int(v: Any, default: Optional[int]) -> Optional[int]`: Safely coerces strings (e.g. '8', '8/10', '8.0', 'N/A') into int or None.
+
 #### `pydantic_schemas.py` - *Monika Analysis Schemas Facade.*
 - **Path**: [`src/monika/application/analysis/schemas/pydantic_schemas.py`](src/monika/application/analysis/schemas/pydantic_schemas.py)
 
 #### `schemas.py` - *Deprecated module: import directly from monika.application.analysis.schemas instead.*
 - **Path**: [`src/monika/application/analysis/schemas/schemas.py`](src/monika/application/analysis/schemas/schemas.py)
 
+#### `strict_schema.py` - *OpenAI Strict Mode Schema Converters and Pydantic Ref-inliners.*
+- **Path**: [`src/monika/application/analysis/schemas/strict_schema.py`](src/monika/application/analysis/schemas/strict_schema.py)
+- **Top-Level Functions**:
+  - `make_openai_strict_schema(schema_dict: dict) -> dict`: Transforms standard Pydantic JSON schema into OpenAI strict: true compliant schema.
+  - `get_tool_schema(pydantic_model: type[BaseModel]) -> dict`: Generate a flattened JSON schema for a tool definition.
+
+#### `sub_models.py` - *Supporting Value Objects and Sub-Schemas for Asset Analysis & Fundamental Briefs.*
+- **Path**: [`src/monika/application/analysis/schemas/sub_models.py`](src/monika/application/analysis/schemas/sub_models.py)
+- **Classes**:
+  - `class FundamentalBriefSchema(BaseModel)`
+    - `harmonize_from_submit_brief(data: Any) -> Any`
+    - `validate_macro_regime_fbs(v)`
+    - `validate_risk_sentiment_fbs(v)`
+    - `validate_currency_bias_fbs(v)`
+    - `validate_brief_string_lists(v)`
+    - `validate_macro_bias(v)`
+  - `class SentimentAnalysisSchema(BaseModel)`
+    - `validate_overall_band(v)`
+    - `validate_confidence(v)`
+    - `validate_overall_score(v)`
+    - `validate_strings(v)`
+  - `class SpecialistAdjudication(BaseModel)`
+    - `coerce_specialist_adjudication(data: Any) -> Any`
+  - `class EntryCondition(BaseModel)`
+    - `coerce_entry_condition(data: Any) -> Any`
+  - `class ReevaluationTrigger(BaseModel)`
+    - `coerce_reevaluation_trigger(data: Any) -> Any`
+    - `validate_and_extract_price_level() -> 'ReevaluationTrigger'`
+  - `class PricedInOverrideJustification(BaseModel)`
+    - `coerce_override_justification(data: Any) -> Any`
+  - `class UpcomingRiskEvent(BaseModel)`
+    - `coerce_risk_event(data: Any) -> Any`
+  - `class PricedInAssessment(BaseModel)`
+    - `validate_sell_the_news_risk(v)`
+    - `validate_unpriced_drivers(v)`
+    - `validate_dominant_driver(v)`
+    - `validate_priced_in_score(v)`
+    - `validate_percentiles(v)`
+  - `class ChecklistVerification(BaseModel)`
+    - `coerce_bool(v: Any) -> bool`
+  - `class KeyDataPointsUsed(BaseModel)`
+    - `validate_vix_close(v)`
+    - `validate_optional_pcts(v)`
+  - `class AssetMacroContext(BaseModel)`
+    - `validate_asset_confidence(v)`
+    - `validate_asset_bias(v)`
+    - `coerce_context_strings(v)`
+
 ### Folder: `src/monika/application/analysis/stages` <a id="folder-srcmonikaapplicationanalysisstages"></a>
+
+#### `fundamental_debate.py` - *Macro Debate Execution Helper for FundamentalStage.*
+- **Path**: [`src/monika/application/analysis/stages/fundamental_debate.py`](src/monika/application/analysis/stages/fundamental_debate.py)
+- **Top-Level Functions**:
+  - `async run_macro_debate(stage_instance, session: AsyncSession, brief, ...) -> dict`: Menjalankan debate Bull/Bear/Judge macro. Dijalankan SEBELUM keputusan eskalasi
+
+#### `fundamental_fallback.py` - *Deterministic Fallback Brief Generator & Brief Patcher for FundamentalStage.*
+- **Path**: [`src/monika/application/analysis/stages/fundamental_fallback.py`](src/monika/application/analysis/stages/fundamental_fallback.py)
+- **Top-Level Functions**:
+  - `async generate_deterministic_fallback_brief(stage_instance, session: AsyncSession, prefetched_data: Any, ...) -> Optional[FundamentalBrief]`: Generate deterministic baseline brief when LLM fails or fails to call submit tool.
+  - `async patch_brief(stage_instance, session: AsyncSession, catalyst_text: str, ...) -> Optional[FundamentalBrief]`: Surgical Macro Delta Revision (Tier 2).
 
 #### `fundamental_stage.py` - *Tahap Analisis Fundamental (Tahap 1).*
 - **Path**: [`src/monika/application/analysis/stages/fundamental_stage.py`](src/monika/application/analysis/stages/fundamental_stage.py)
@@ -9040,7 +9162,7 @@
     - `shape() -> Tuple[int, int]`
     - `get_bar_dict(t_idx: int, symbol: str) -> Optional[Dict[str, Any]]`
   - `class MatrixAlignmentEngine`: Pre-aligns multi-instrument time series into unified matrix representations.
-    - `align_dataframes(df_dict: Dict[str, pd.DataFrame], method: str) -> AlignedMarketMatrix` - *Aligns a dictionary of symbol DataFrames {sym: df} having columns (open, high, low, close, volume).*
+    - `align_dataframes(df_dict: Dict[str, Union[pd.DataFrame, pl.DataFrame]], method: str) -> AlignedMarketMatrix` - *Aligns a dictionary of symbol DataFrames {sym: df} having columns (open, high, low, close, volume).*
     - `async load_and_align_from_db(session: AsyncSession, symbols: Sequence[str], timeframe: str, ...) -> AlignedMarketMatrix` - *Pulls OHLCV bars directly from the database and aligns them in memory.*
 
 #### `monte_carlo_engine.py` - *Institutional Monte Carlo Stress Tester & Scenario Shock Engine.*
@@ -9056,7 +9178,8 @@
 - **Classes**:
   - `class OfflineSignalEngine`: Vectorized version of structure.py and confluence_calculator.py
     - `__init__(settings: Dict[str, Any])`
-    - `generate_signals(df: pd.DataFrame) -> pd.DataFrame` - *Generates buy/sell signals based on technical confluence.*
+    - `generate_signals(df: Union[pd.DataFrame, pl.DataFrame]) -> Union[pd.DataFrame, pl.DataFrame]` - *Generates buy/sell signals based on technical confluence.*
+    - `generate_signals_polars(df: Union[pd.DataFrame, pl.DataFrame]) -> pl.DataFrame` - *Dedicated Polars entrypoint guaranteed to return a Polars DataFrame.*
     - `calculate_stops_and_targets(df: pd.DataFrame, risk_reward_ratio: float) -> pd.DataFrame` - *Calculates Stop Loss and Take Profit levels for generated signals using ATR.*
 
 #### `outcome_evaluator.py` - *OutcomeEvaluator: High-fidelity trade outcome evaluation against historical OHLCV data.*
@@ -9090,6 +9213,7 @@
   - `class CanonicalPriceLoader`: Canonical price series loader for backtesting, strategy validation, and playbooks.
     - `__init__(settings: Optional[dict]) -> None`
     - `async load_series(session: AsyncSession, symbol: str, timeframe: str, ...) -> pd.DataFrame` - *Load clean, deduplicated, monotonically ascending OHLCV dataframe.*
+    - `async load_series_polars(session: AsyncSession, symbol: str, timeframe: str, ...) -> pl.DataFrame` - *Load clean, deduplicated, monotonically ascending OHLCV Polars DataFrame.*
 
 #### `report_generator.py` - *Comprehensive Backtest Report Generator with Daily-Resampled Sharpe & Sortino Ratios.*
 - **Path**: [`src/monika/application/backtest/report_generator.py`](src/monika/application/backtest/report_generator.py)
@@ -10711,6 +10835,17 @@
     - `async run_synthesis_cycle() -> List[SynthesizedStrategyCandidate]` - *Runs one synthesis cycle across target symbols.*
     - `async start() -> None` - *Main autonomous scheduler loop.*
     - `stop() -> None`
+
+#### `synthesis_validator.py` - *AST Code Safety Validator, Security Scanner, and Delimiter/Indent Repair Engine.*
+- **Path**: [`src/monika/application/scheduler/synthesis_validator.py`](src/monika/application/scheduler/synthesis_validator.py)
+- **Top-Level Functions**:
+  - `validate_code_safety(code_str: str) -> bool`: Institutional-grade AST validation:
+  - `lint_check_code(code_str: str) -> tuple[bool, str]`: Static verification using symtable (stdlib) and ruff (if available).
+  - `sanitize_strategy_code(code_str: str) -> str`: Sanitizes synthesized strategy code for modern pandas compatibility (>= 2.1/2.2)
+  - `repair_invalid_replace_calls(code_str: str) -> str`: Auto-repairs invalid pandas .replace([inf, -inf], <non_scalar>) calls.
+  - `repair_unclosed_delimiters(code_str: str) -> str`: Repairs unclosed parentheses '(', brackets '[', braces '{', and string literals
+  - `reindent_unindented_methods(code_str: str) -> str`: Detects methods like 'async def evaluate' or 'def evaluate' (or common aliases)
+  - `repair_unclosed_try_blocks(code_str: str) -> str`: Repairs unclosed try statements (e.g. expected 'except' or 'finally' block)
 
 #### `task_plugin.py` - *Task and Scheduler Plugin Interfaces for Monika Trading Harness.*
 - **Path**: [`src/monika/application/scheduler/task_plugin.py`](src/monika/application/scheduler/task_plugin.py)
@@ -13314,6 +13449,26 @@
   - `clamp_reasoning_effort(model_name: str, requested_effort: str) -> str`: Maps requested reasoning effort ('high', 'medium', 'low') to the closest supported
   - `resolve_effective_max_tokens(model_name: Optional[str], provider_name: Optional[str], requested_max_tokens: Optional[int], ...) -> int`: Multi-Tier Max Output Tokens Resolution Cascade:
 
+#### `capabilities_catalog.py` - *Static Declarative Model Capabilities Catalog.*
+- **Path**: [`src/monika/infrastructure/providers/capabilities_catalog.py`](src/monika/infrastructure/providers/capabilities_catalog.py)
+- **Classes**:
+  - `class ModelCapabilities`: Declarative capability flags for a model or family of models.
+
+#### `circuit_breaker.py` - *Provider Circuit Breaker & Endpoint Blackhole Cache.*
+- **Path**: [`src/monika/infrastructure/providers/circuit_breaker.py`](src/monika/infrastructure/providers/circuit_breaker.py)
+- **Classes**:
+  - `class ProviderCircuitBreaker`: Tracks consecutive 5xx/timeouts and permanent entitlement errors across providers.
+    - `is_provider_available(provider: str, model: Optional[str]) -> bool`
+    - `record_provider_success(provider: str, model: Optional[str]) -> None`
+    - `record_provider_failure(provider: str, is_server_or_timeout: bool, reason: str, ...) -> None`
+    - `blacklist_model(provider: str, model: str, reason: str, ...) -> None`
+    - `is_model_blacklisted(provider: str, model: str) -> bool`
+    - `reset() -> None`
+  - `class EndpointBlackhole`: 30-second blackhole cache for unresponsive local models (Ollama/vLLM) or hanging endpoints.
+    - `is_blackholed(endpoint_or_model: str) -> bool`
+    - `blackhole_endpoint(endpoint_or_model: str, ttl_seconds: float) -> None`
+    - `reset() -> None`
+
 #### `codex_provider.py` - *OpenAI Codex Provider Client for Monika Trading Agent.*
 - **Path**: [`src/monika/infrastructure/providers/codex_provider.py`](src/monika/infrastructure/providers/codex_provider.py)
 - **Classes**:
@@ -13332,6 +13487,26 @@
 
 #### `error_classifier.py` - *Backward-compatibility shim.*
 - **Path**: [`src/monika/infrastructure/providers/error_classifier.py`](src/monika/infrastructure/providers/error_classifier.py)
+
+#### `fallback_wrapper.py` - *Fallback Client Wrapper.*
+- **Path**: [`src/monika/infrastructure/providers/fallback_wrapper.py`](src/monika/infrastructure/providers/fallback_wrapper.py)
+- **Classes**:
+  - `class FallbackClientWrapper(BaseLLMClient)`: Wrapper that tries primary model, and if it fails, tries fallback models.
+    - `__init__(factory: LLMFactory, primary: str, fallbacks: list[str], ...)`
+    - `provider_name() -> str` - *Returns the provider name of the currently active model slot.*
+    - `provider_name(value: str) -> None`
+    - `set_thinking_budget(budget: int) -> None` - *Sets thinking budget dynamically for wrapper and upcoming provider invocations.*
+    - `async generate(prompt: str, system: str, temperature: Optional[float], ...) -> Optional[str]`
+    - `async generate_content(system_prompt: str, user_message: str, response_schema: Optional[dict], ...) -> Optional[str]`
+    - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`
+    - `async system_one(state: Any, questions: dict, timeout: float) -> Any`
+    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any, ...) -> MockResponse`
+    - `async run_agent(session, system_prompt: str | tuple[str, str] | Any, user_message: str, ...) -> dict`
+    - `async run_chat_loop(system_prompt: str, conversation_history: list, new_user_message: str, ...) -> dict`
+    - `async run_agent_from_messages(session, system_prompt: str | tuple[str, str] | Any, messages: list, ...) -> dict`
+
+#### `gemini_protocol.py` - *Gemini Protocol, Schema Sanitization, and Response Liveness Checkers.*
+- **Path**: [`src/monika/infrastructure/providers/gemini_protocol.py`](src/monika/infrastructure/providers/gemini_protocol.py)
 
 #### `gemini_provider.py`
 - **Path**: [`src/monika/infrastructure/providers/gemini_provider.py`](src/monika/infrastructure/providers/gemini_provider.py)
@@ -13387,6 +13562,19 @@
 - **Classes**:
   - `class OllamaProvider(OpenAIProvider)`: Provider untuk model Ollama (local inference via native OpenAI-compatible API).
     - `__init__(model_name: Optional[str], settings: Optional[dict], max_tokens: int, ...)`
+
+#### `openai_chat.py` - *OpenAI Chat and Tool Execution Mixin.*
+- **Path**: [`src/monika/infrastructure/providers/openai_chat.py`](src/monika/infrastructure/providers/openai_chat.py)
+- **Classes**:
+  - `class OpenAIChatMixin(BaseLLMClient)`: Mixin for multi-turn chat, tool orchestration, and message normalization.
+    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any, ...)`
+    - `async run_chat_loop(system_prompt: str, conversation_history: list, new_user_message: str, ...) -> dict`
+
+#### `openai_protocol.py` - *OpenAI Protocol, Schema Canonicalization, and Text Extraction Helpers.*
+- **Path**: [`src/monika/infrastructure/providers/openai_protocol.py`](src/monika/infrastructure/providers/openai_protocol.py)
+- **Top-Level Functions**:
+  - `sanitize_tool_parameters_schema(schema_dict: Any) -> Any`: Sanitize JSON Schema for OpenAI / OpenRouter function calling parameters.
+  - `make_openai_strict_schema(schema_dict: dict) -> dict`: Transforms standard Pydantic JSON schema into OpenAI strict: true compliant schema.
 
 #### `openai_provider.py`
 - **Path**: [`src/monika/infrastructure/providers/openai_provider.py`](src/monika/infrastructure/providers/openai_provider.py)
