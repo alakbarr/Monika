@@ -443,23 +443,24 @@ def check_fvg_filled(
     lows = np.asarray(ohlcv["low"], dtype=float)
     highs = np.asarray(ohlcv["high"], dtype=float)
 
-    if "timestamp" in ohlcv.columns:
-        ts_source = ohlcv["timestamp"]
-        get_ts = lambda idx: ts_source.iloc[idx]
-    else:
-        ts_source = ohlcv.index
-        get_ts = lambda idx: ts_source[idx]
+    def _get_ts(idx: int) -> Optional[datetime]:
+        if "timestamp" in ohlcv.columns:
+            raw = ohlcv["timestamp"].iloc[idx]
+        else:
+            raw = ohlcv.index.values[idx]
+        ts = pd.to_datetime(raw, utc=True)
+        if isinstance(ts, pd.Timestamp):
+            return ts.to_pydatetime()
+        return None
 
     if direction == "bullish":
         hits = np.flatnonzero(lows[start_idx:] <= gap_mid)
         if len(hits) > 0:
-            ts = get_ts(start_idx + int(hits[0]))
-            return ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
+            return _get_ts(start_idx + int(hits[0]))
     else:
         hits = np.flatnonzero(highs[start_idx:] >= gap_mid)
         if len(hits) > 0:
-            ts = get_ts(start_idx + int(hits[0]))
-            return ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
+            return _get_ts(start_idx + int(hits[0]))
     return None
 
 

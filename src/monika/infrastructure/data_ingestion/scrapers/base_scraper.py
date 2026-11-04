@@ -208,11 +208,12 @@ def kill_process_tree(pid: Optional[int]) -> bool:
 
 
 class BaseScraper:
-    def __init__(self, headless=True, profile_name=None, load_mode="normal", no_imgs=False):
+    def __init__(self, headless=True, profile_name=None, load_mode="normal", no_imgs=False, lazy: bool = False):
         self.headless = headless
         self.profile_name = profile_name
         self.load_mode = load_mode
         self.no_imgs = no_imgs
+        self.lazy = lazy
         self._temp_profile_dir = None
         self.is_closed = False
         self.browser_pid: Optional[int] = None
@@ -220,6 +221,15 @@ class BaseScraper:
         self._close_lock = threading.Lock()
         self._profile_lock: Optional[ProfileLock] = None
         self._acquired_profile_lock: bool = False
+        self.page = None
+
+        if not self.lazy:
+            self.ensure_browser()
+
+    def ensure_browser(self):
+        """Ensures the browser is booted up, acquiring locks if needed."""
+        if self.page is not None or getattr(self, "is_closed", False):
+            return self.page
 
         if self.profile_name:
             with _PROFILE_LOCKS_GUARD:
@@ -245,6 +255,7 @@ class BaseScraper:
         except Exception:
             self.close()
             raise
+        return self.page
 
     def __del__(self):
         self.close()
@@ -583,6 +594,8 @@ class BaseScraper:
         """
         if getattr(self, "is_closed", False):
             return False
+        if not self.page:
+            self.ensure_browser()
         if not self.page:
             return False if disable_fallback else self._fallback(url, wait_selector)
         try:

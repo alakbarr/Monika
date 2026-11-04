@@ -164,11 +164,59 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
         Menjalankan komputasi untuk semua aset dan timeframe.
         Mendukung smart delta-check: jika timestamp indikator terbaru sudah cocok dengan
         bar OHLCV kanonikal terbaru, komputasi ulang yang memakan resource di-bypass.
+        Menggunakan batch dual-grouped query untuk mengevaluasi seluruh pair dalam O(1).
         """
         results = {}
         from monika.domain.market.market_data_bus import MarketDataBus
 
         bus = MarketDataBus.get_instance()
+
+        latest_price_map: dict[tuple[str, str], datetime] = {}
+        latest_ind_map: dict[tuple[str, str], datetime] = {}
+
+        if not force and self.session:
+            try:
+                from sqlalchemy import func, select
+                from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
+
+                ts_col = func.coalesce(PriceOHLCV.canonical_timestamp, PriceOHLCV.timestamp)
+                stmt_p = (
+                    select(PriceOHLCV.symbol, PriceOHLCV.timeframe, func.max(ts_col))
+                    .where(PriceOHLCV.symbol.in_(symbols), PriceOHLCV.timeframe.in_(timeframes))
+                    .group_by(PriceOHLCV.symbol, PriceOHLCV.timeframe)
+                )
+                stmt_i = (
+                    select(
+                        TechnicalIndicator.symbol, TechnicalIndicator.timeframe, func.max(TechnicalIndicator.timestamp)
+                    )
+                    .where(TechnicalIndicator.symbol.in_(symbols), TechnicalIndicator.timeframe.in_(timeframes))
+                    .group_by(TechnicalIndicator.symbol, TechnicalIndicator.timeframe)
+                )
+                res_p = await self.session.execute(stmt_p)
+                res_i = await self.session.execute(stmt_i)
+                if hasattr(res_p, "fetchall"):
+                    rows_p = res_p.fetchall()
+                    if isinstance(rows_p, list):
+                        for r in rows_p:
+                            if isinstance(r, (tuple, list)) and len(r) >= 3:
+                                latest_price_map[(str(r[0]), str(r[1]))] = r[2]
+                if not latest_price_map and hasattr(res_p, "scalar_one_or_none"):
+                    val_p = res_p.scalar_one_or_none()
+                    if val_p is not None and len(symbols) == 1 and len(timeframes) == 1:
+                        latest_price_map[(symbols[0], timeframes[0])] = val_p
+
+                if hasattr(res_i, "fetchall"):
+                    rows_i = res_i.fetchall()
+                    if isinstance(rows_i, list):
+                        for r in rows_i:
+                            if isinstance(r, (tuple, list)) and len(r) >= 3:
+                                latest_ind_map[(str(r[0]), str(r[1]))] = r[2]
+                if not latest_ind_map and hasattr(res_i, "scalar_one_or_none"):
+                    val_i = res_i.scalar_one_or_none()
+                    if val_i is not None and len(symbols) == 1 and len(timeframes) == 1:
+                        latest_ind_map[(symbols[0], timeframes[0])] = val_i
+            except Exception as batch_err:
+                logger.debug(f"Batch timestamp check failed, will fall back to individual checks: {batch_err}")
 
         for symbol in symbols:
             for tf in timeframes:
@@ -184,25 +232,8 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
                             continue
 
                     if not force and self.session:
-                        from sqlalchemy import func, select
-                        from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
-
-                        ts_col = func.coalesce(PriceOHLCV.canonical_timestamp, PriceOHLCV.timestamp)
-                        res_p = await self.session.execute(
-                            select(ts_col)
-                            .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == tf)
-                            .order_by(ts_col.desc())
-                            .limit(1)
-                        )
-                        latest_price_ts = res_p.scalar_one_or_none() if hasattr(res_p, "scalar_one_or_none") else None
-
-                        res_i = await self.session.execute(
-                            select(TechnicalIndicator.timestamp)
-                            .where(TechnicalIndicator.symbol == symbol, TechnicalIndicator.timeframe == tf)
-                            .order_by(TechnicalIndicator.timestamp.desc())
-                            .limit(1)
-                        )
-                        latest_ind_ts = res_i.scalar_one_or_none() if hasattr(res_i, "scalar_one_or_none") else None
+                        latest_price_ts = latest_price_map.get((symbol, tf))
+                        latest_ind_ts = latest_ind_map.get((symbol, tf))
 
                         if isinstance(latest_price_ts, datetime) and isinstance(latest_ind_ts, datetime):
                             p_ts = latest_price_ts
@@ -240,6 +271,15 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
                         except Exception:
                             pass
                     results[key] = 0
+
+        if hasattr(self.session, "expunge_all"):
+            try:
+                exp_res = self.session.expunge_all()
+                if inspect.isawaitable(exp_res):
+                    await exp_res
+            except Exception:
+                pass
+
         total_rows = sum(results.values())
         logger.info(f"Technical indicators complete: {len(results)} pairs ({total_rows} indicator rows computed)")
         return results

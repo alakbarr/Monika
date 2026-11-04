@@ -22,9 +22,10 @@ class SqliteCheckpointSaver(InMemorySaver):
     Serves as an autonomous tier between PostgreSQL and volatile MemorySaver (M-5).
     """
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: Optional[str] = None, load_limit: int = 2):
         super().__init__()
         self._put_counter: int = 0
+        self.load_limit: int = load_limit
         if db_path is None:
             from monika.core.paths import BASE_DIR
 
@@ -187,7 +188,7 @@ class SqliteCheckpointSaver(InMemorySaver):
                     SELECT thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_type, metadata_blob
                     FROM checkpoints
                     WHERE thread_id IN (
-                        SELECT DISTINCT thread_id FROM checkpoints ORDER BY rowid DESC LIMIT 50
+                        SELECT DISTINCT thread_id FROM checkpoints ORDER BY rowid DESC LIMIT 2
                     )
                 """)
                 rows = cursor.fetchall()
@@ -208,7 +209,7 @@ class SqliteCheckpointSaver(InMemorySaver):
                     SELECT thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, value_type, value_blob
                     FROM writes
                     WHERE thread_id IN (
-                        SELECT DISTINCT thread_id FROM checkpoints ORDER BY rowid DESC LIMIT 50
+                        SELECT DISTINCT thread_id FROM checkpoints ORDER BY rowid DESC LIMIT 2
                     )
                 """)
                 write_rows = cursor.fetchall()

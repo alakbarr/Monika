@@ -11724,6 +11724,7 @@
     - `release(force: bool) -> None`
   - `class BaseScraper`
     - `__init__(headless, profile_name, load_mode, ...)`
+    - `ensure_browser()` - *Ensures the browser is booted up, acquiring locks if needed.*
     - `navigate_with_fallback(url: str, wait_selector: Optional[str], disable_fallback: bool, ...) -> bool` - *Mencoba navigasi ke URL. Jika terdeteksi Cloudflare challenge atau pemblokiran,*
     - `close()`
 - **Top-Level Functions**:
@@ -11762,7 +11763,7 @@
 - **Path**: [`src/monika/infrastructure/data_ingestion/scrapers/calendar/calendar_forexfactory.py`](src/monika/infrastructure/data_ingestion/scrapers/calendar/calendar_forexfactory.py)
 - **Classes**:
   - `class ForexFactoryCalendarScraper(BaseScraper)`
-    - `__init__(headless, profile_name)`
+    - `__init__(headless, profile_name, lazy)`
     - `fetch_feed_events(max_cache_age: int, ignore_cache: bool) -> List[CalendarEvent]` - *Mengambil peristiwa kalender ekonomi langsung dari feed resmi FairEconomy / ForexFactory JSON.*
     - `fetch_events(prefer_feed: bool, max_cache_age: int, ignore_cache: bool) -> List[CalendarEvent]`
 - **Top-Level Functions**:
@@ -11829,7 +11830,7 @@
 - **Path**: [`src/monika/infrastructure/data_ingestion/scrapers/news/kitco_news.py`](src/monika/infrastructure/data_ingestion/scrapers/news/kitco_news.py)
 - **Classes**:
   - `class KitcoNewsScraper(BaseScraper)`
-    - `__init__(headless)`
+    - `__init__(headless, lazy)`
     - `fetch_news(limit: int) -> List[ScrapedNews]`
 
 #### `rss_base.py`
@@ -12765,7 +12766,7 @@
 - **Path**: [`src/monika/infrastructure/graph/checkpointers/sqlite_checkpointer.py`](src/monika/infrastructure/graph/checkpointers/sqlite_checkpointer.py)
 - **Classes**:
   - `class SqliteCheckpointSaver(InMemorySaver)`: Local SQLite checkpointer providing crash-safe state persistence across restarts.
-    - `__init__(db_path: Optional[str])`
+    - `__init__(db_path: Optional[str], load_limit: int)`
     - `prune_disk_checkpoints(max_threads: int, retention_days: Optional[int]) -> int` - *Prune checkpoints and writes older than retention_days or exceeding max_threads from SQLite database.*
     - `async aprune_disk_checkpoints(max_threads: int, retention_days: Optional[int]) -> int` - *Asynchronously prune checkpoints and writes from SQLite disk database.*
     - `put(config: RunnableConfig, checkpoint: Checkpoint, metadata: CheckpointMetadata, ...) -> RunnableConfig`

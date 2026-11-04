@@ -240,37 +240,38 @@ class FinnhubCalendarScraper:
 
         data = None
         max_retries = 3
-        timeout = aiohttp.ClientTimeout(total=15)
+        req_timeout = aiohttp.ClientTimeout(total=15)
+        from monika.infrastructure.network.http_client_factory import HttpClientFactory
 
         for attempt in range(max_retries):
             try:
-                async with aiohttp.ClientSession(timeout=timeout) as session:
-                    params = {
-                        "from": start_date.isoformat(),
-                        "to": end.isoformat(),
-                        "token": self.api_key,
-                    }
-                    async with session.get(self.BASE_URL, params=params) as resp:
-                        if resp.status == 403:
-                            FinnhubCalendarScraper._endpoint_403_detected = True
-                            FinnhubCalendarScraper._endpoint_403_until = time.time() + 1800.0  # 30-min cooldown
-                            logger.info("Finnhub economic calendar returned 403 Forbidden — cooling down for 30m")
-                            return []
+                session = await HttpClientFactory.get_instance().get_session()
+                params = {
+                    "from": start_date.isoformat(),
+                    "to": end.isoformat(),
+                    "token": self.api_key,
+                }
+                async with session.get(self.BASE_URL, params=params, timeout=req_timeout) as resp:
+                    if resp.status == 403:
+                        FinnhubCalendarScraper._endpoint_403_detected = True
+                        FinnhubCalendarScraper._endpoint_403_until = time.time() + 1800.0  # 30-min cooldown
+                        logger.info("Finnhub economic calendar returned 403 Forbidden — cooling down for 30m")
+                        return []
 
-                        if resp.status == 429:
-                            _CIRCUIT_BREAKER[domain] = time.time() + 60.0
-                            logger.warning(f"Finnhub rate limited (429), circuit breaker set for {domain}")
-                            await asyncio.sleep(2.0 * (attempt + 1))
-                            continue
+                    if resp.status == 429:
+                        _CIRCUIT_BREAKER[domain] = time.time() + 60.0
+                        logger.warning(f"Finnhub rate limited (429), circuit breaker set for {domain}")
+                        await asyncio.sleep(2.0 * (attempt + 1))
+                        continue
 
-                        if resp.status in (500, 502, 503, 504):
-                            logger.warning(f"Finnhub server error {resp.status}, retry {attempt + 1}/{max_retries}")
-                            await asyncio.sleep(1.0 * (2**attempt))
-                            continue
+                    if resp.status in (500, 502, 503, 504):
+                        logger.warning(f"Finnhub server error {resp.status}, retry {attempt + 1}/{max_retries}")
+                        await asyncio.sleep(1.0 * (2**attempt))
+                        continue
 
-                        resp.raise_for_status()
-                        data = await resp.json()
-                        break
+                    resp.raise_for_status()
+                    data = await resp.json()
+                    break
             except Exception as e:
                 logger.warning(f"Finnhub async calendar fetch attempt {attempt + 1}/{max_retries} failed: {e}")
                 await asyncio.sleep(1.0 * (2**attempt))

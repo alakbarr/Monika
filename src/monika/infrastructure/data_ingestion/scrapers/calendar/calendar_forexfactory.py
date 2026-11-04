@@ -27,8 +27,8 @@ def _clean_val(val: Any) -> Optional[str]:
 
 
 class ForexFactoryCalendarScraper(BaseScraper):
-    def __init__(self, headless=True, profile_name="ff_calendar"):
-        super().__init__(headless, profile_name, load_mode="eager", no_imgs=True)
+    def __init__(self, headless=True, profile_name="ff_calendar", lazy=True):
+        super().__init__(headless, profile_name, load_mode="eager", no_imgs=True, lazy=lazy)
         self.feed_url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
         self.urls = [
             "https://www.forexfactory.com/calendar?week=this",

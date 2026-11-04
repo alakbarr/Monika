@@ -14,14 +14,15 @@ logger = logging.getLogger("TradingAgent.KitcoNewsScraper")
 
 
 class KitcoNewsScraper(BaseScraper):
-    def __init__(self, headless=True):
-        super().__init__(headless)
+    def __init__(self, headless=True, lazy=True):
+        super().__init__(headless, lazy=lazy)
         self.target_url = "https://www.kitco.com/news/category/commodities"
 
     def fetch_news(self, limit: int = 30) -> List[ScrapedNews]:
         news_list = []
         try:
             logger.info(f"Navigating to Kitco News: {self.target_url}")
+            self.ensure_browser()
             success = self.navigate_with_fallback(self.target_url, 'css:a[href*="/news/article/"]')
             if not success or not self.page:
                 logger.warning("Failed to load Kitco news page or locate articles (anti-bot challenge or slow CDN).")
