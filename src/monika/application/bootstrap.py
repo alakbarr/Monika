@@ -491,6 +491,27 @@ def bootstrap_application(
     return container
 
 
+async def preseed_market_state(container: Any) -> None:
+    """Pre-seeds OHLCV bars and technical indicators on startup for all universe symbols."""
+    settings = container.get("settings", {}) if hasattr(container, "get") else {}
+    client = container.get("mt5_client") if hasattr(container, "get") else None
+    universe = settings.get("trading", {}).get("asset_universe") or ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD"]
+    timeframes = ["M15", "H1", "H4", "D1"]
+    if client and hasattr(client, "ensure_connected") and await client.ensure_connected():
+        from monika.infrastructure.database.db import get_write_session
+
+        async with get_write_session() as session:
+            logger.info(f"[Bootstrap] Pre-seeding OHLCV data for {len(universe)} universe assets...")
+            if hasattr(client, "fetch_and_save_all"):
+                await client.fetch_and_save_all(session, symbols=universe, timeframes=timeframes, count=200)
+            from monika.application.services.technical_indicator_service import TechnicalIndicatorService
+
+            svc = TechnicalIndicatorService(session=session, settings=settings)
+            if hasattr(svc, "compute_all_symbols"):
+                await svc.compute_all_symbols(symbols=universe, timeframes=timeframes, force=False)
+            logger.info("[Bootstrap] Market data pre-seeding completed.")
+
+
 __all__ = [
     "BootstrapRuntime",
     "race_dual_stack_socket",
@@ -498,4 +519,5 @@ __all__ = [
     "install_bootstrap_hardening",
     "build_application_container",
     "bootstrap_application",
+    "preseed_market_state",
 ]

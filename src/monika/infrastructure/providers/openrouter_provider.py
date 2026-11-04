@@ -804,6 +804,22 @@ class OpenRouterProvider(OpenAIProvider):
         max_tokens: Optional[int] = None,
         **kwargs: Any,
     ) -> Optional[dict]:
+        jev_questions = kwargs.get("jev_questions")
+        if jev_questions and not schema:
+            import json as _json
+            from monika.core.primitives.jev_primitives import (
+                jev_questions_to_schema,
+                list_to_jev_questions,
+            )
+
+            if isinstance(jev_questions, list):
+                jev_questions = list_to_jev_questions(jev_questions)
+            schema = jev_questions_to_schema(jev_questions)
+            state = kwargs.get("state")
+            if not prompt and state:
+                state_str = _json.dumps(state, default=str)
+                prompt = f"Evaluate the market/position state against the specified schema:\n{state_str}"
+
         attempts = max(1, len(self._all_keys)) if self.is_free else 1
         for attempt in range(attempts):
             api_key = self._get_api_key()

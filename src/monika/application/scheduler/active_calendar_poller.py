@@ -333,3 +333,21 @@ class ActiveCalendarPoller:
                 r_task = asyncio.create_task(_run_macro_trigger(ev_name))
                 self._background_tasks.add(r_task)
                 r_task.add_done_callback(self._background_tasks.discard)
+
+    async def ensure_calendar_freshness(self, max_age_hours: float = 6.0) -> bool:
+        """Verifies calendar freshness. If older than max_age_hours, proactively refreshes."""
+        async with get_session() as session:
+            res = await session.execute(select(func.max(EconomicCalendar.fetched_at)))
+            max_fetched = res.scalar()
+            now = datetime.now(timezone.utc)
+            if not max_fetched or (now - max_fetched).total_seconds() > max_age_hours * 3600:
+                logger.info(
+                    f"[ActiveCalendarPoller] Calendar data is older than {max_age_hours}h. Proactively refreshing..."
+                )
+                from monika.application.scheduler.scraper_runner import ScraperRunner
+
+                runner = ScraperRunner(settings=self.settings)
+                res_dict = await runner._fetch_calendar()
+                logger.info(f"[ActiveCalendarPoller] Proactively refreshed calendar: {res_dict}")
+                return True
+        return False

@@ -60,6 +60,9 @@ class ServiceContainer:
             return self._parent.get(name, default)
         return default
 
+    def resolve(self, name: str, default: Any = None) -> Any:
+        return self.get(name, default)
+
     def has(self, name: str) -> bool:
         """Check if service is registered in local container or any parent."""
         with self._lock:

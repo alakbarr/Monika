@@ -487,7 +487,7 @@ class PricedInAssessment(BaseModel):
         ...,
         ge=1,
         le=10,
-        description="Composite priced-in score (1-10). Sum of scores from FedWatch (0-3), COT extreme (0-3), price run-up (0-3), news saturation (0-2). 1=nothing priced in, 10=fully priced in.",
+        description="Composite priced-in score (1-10). Sum of scores from FedWatch (0-3), COT extreme (0-3), price run-up (0-3), news saturation (0-2). 1=nothing priced in, 10=fully priced in. STRICTLY use integer 1-10 scale; do NOT output percentages or 0-100 scale.",
     )
     sell_the_news_risk: Literal["high", "medium", "low", "not_applicable"] = Field(
         ..., description="Risk of counter-trend 'sell the news' reaction if expected event materializes as expected."
@@ -541,7 +541,14 @@ class PricedInAssessment(BaseModel):
     def validate_priced_in_score(cls, v):
         res = coerce_int(v)
         if res is None:
+            f_val = coerce_float(v)
+            if f_val is not None:
+                res = int(round(f_val))
+        if res is None:
             raise ValueError(f"priced_in_score must be a valid integer, got '{v}'")
+        # Defense-in-Depth: Auto-normalize 0-100 percentage scale to 1-10 scale
+        if res > 10:
+            res = int(round(res / 10.0)) if res <= 100 else 10
         return max(1, min(10, res))
 
     @field_validator("cot_positioning_percentile", "retail_sentiment_percentile", mode="before")

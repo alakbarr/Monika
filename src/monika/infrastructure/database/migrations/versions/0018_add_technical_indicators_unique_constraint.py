@@ -61,7 +61,9 @@ def upgrade() -> None:
         if hasattr(insp, "get_unique_constraints"):
             try:
                 existing_uqs = {
-                    uq.get("name") for uq in insp.get_unique_constraints("technical_indicators") if isinstance(uq, dict)
+                    str(uq.get("name"))
+                    for uq in insp.get_unique_constraints("technical_indicators")
+                    if isinstance(uq, dict) and uq.get("name")
                 }
             except Exception:
                 pass
@@ -84,7 +86,9 @@ def downgrade() -> None:
         if hasattr(insp, "get_unique_constraints"):
             try:
                 existing_uqs = {
-                    uq.get("name") for uq in insp.get_unique_constraints("technical_indicators") if isinstance(uq, dict)
+                    str(uq.get("name"))
+                    for uq in insp.get_unique_constraints("technical_indicators")
+                    if isinstance(uq, dict) and uq.get("name")
                 }
             except Exception:
                 pass

@@ -132,6 +132,8 @@ Monika/
 │       │   │   │   ├── universal_liquidity_analyzer.py
 │       │   │   │   ├── universal_macro_analyzer.py
 │       │   │   │   └── volume_profile.py
+│       │   │   ├── context/
+│       │   │   │   └── data_compactor.py
 │       │   │   ├── debate/
 │       │   │   │   ├── __init__.py
 │       │   │   │   ├── adjustment_validator.py
@@ -2741,6 +2743,7 @@ Monika/
 │   │   ├── test_pending_action.py
 │   │   ├── test_portfolio_correlation_gate.py
 │   │   ├── test_position_sizing.py
+│   │   ├── test_priced_in_normalization.py
 │   │   ├── test_property_sizing_hypothesis.py
 │   │   ├── test_quant_scorecard_gate.py
 │   │   ├── test_risk_gate.py
@@ -3012,6 +3015,7 @@ Monika/
 │   ├── test_core_remediation_invariants.py
 │   ├── test_critical_fixes_verification.py
 │   ├── test_dashboard_action_endpoints.py
+│   ├── test_data_compactor.py
 │   ├── test_database_concurrency.py
 │   ├── test_debate_concurrency.py
 │   ├── test_debate_node.py
@@ -3262,4 +3266,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 280 | **Total Tracked Files**: 2952
+**Total Tracked Directories**: 281 | **Total Tracked Files**: 2955

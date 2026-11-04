@@ -97,18 +97,22 @@ class SizingResult:
 class PositionSizer:
     """Menghitung rekomendasi ukuran lot berdasarkan parameter risiko dan equity."""
 
-    def __init__(self, settings: dict, mt5_client=None):
+    def __init__(self, settings: dict | None = None, mt5_client=None, **kwargs):
         """
         Args:
         settings:   Full settings dict (uses trading.risk section).
         mt5_client: Optional live MT5Client for live symbol info.
         Falls back to DEFAULT_INSTRUMENTS if None or disconnected.
         """
+        if settings is None:
+            settings = kwargs.get("settings") or {}
+        risk_cfg = kwargs.get("risk_cfg")
+        if risk_cfg is None:
+            risk_cfg = settings.get("trading", {}).get("risk", {}) or settings.get("risk", {})
         self.settings = settings
-        risk_cfg = settings.get("trading", {}).get("risk", {})
-        self.risk_percent: float = risk_cfg.get("risk_percent_per_trade", 1.0)
-        self.min_rr: float = risk_cfg.get("min_rr_ratio", 1.5)
-        self._mt5 = mt5_client
+        self.risk_percent: float = float(risk_cfg.get("risk_percent_per_trade", 1.0))
+        self.min_rr: float = float(risk_cfg.get("min_rr_ratio", 1.5))
+        self._mt5 = mt5_client or kwargs.get("client")
 
     @classmethod
     def update_usdjpy_cache(cls, rate: float):

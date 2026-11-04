@@ -51,6 +51,7 @@
 - [`src/monika/application/analysis`](#folder-srcmonikaapplicationanalysis)
 - [`src/monika/application/analysis/arbitration`](#folder-srcmonikaapplicationanalysisarbitration)
 - [`src/monika/application/analysis/calculators`](#folder-srcmonikaapplicationanalysiscalculators)
+- [`src/monika/application/analysis/context`](#folder-srcmonikaapplicationanalysiscontext)
 - [`src/monika/application/analysis/debate`](#folder-srcmonikaapplicationanalysisdebate)
 - [`src/monika/application/analysis/evaluation`](#folder-srcmonikaapplicationanalysisevaluation)
 - [`src/monika/application/analysis/grounding`](#folder-srcmonikaapplicationanalysisgrounding)
@@ -177,6 +178,7 @@
     - `register(name: str, instance: Any) -> None` - *Register an existing singleton instance.*
     - `register_factory(name: str, factory: Callable[['ServiceContainer'], Any]) -> None` - *Register a lazy factory for a service.*
     - `get(name: str, default: Any) -> Any` - *Resolve a service by name, walking parent chain if not present locally.*
+    - `resolve(name: str, default: Any) -> Any`
     - `has(name: str) -> bool` - *Check if service is registered in local container or any parent.*
     - `extend() -> 'ServiceContainer'` - *Returns a child scope inheriting this container with scoped isolation.*
     - `isolate(name: str) -> 'ServiceContainer'` - *Returns an independent child bucket isolated under a namespace.*
@@ -4839,7 +4841,7 @@
     - `sl_pips() -> float` - *Alias untuk sl_distance_pips demi kompatibilitas logging & risk gate.*
     - `summary() -> str`
   - `class PositionSizer`: Menghitung rekomendasi ukuran lot berdasarkan parameter risiko dan equity.
-    - `__init__(settings: dict, mt5_client)` - *Args:*
+    - `__init__(settings: dict | None, mt5_client)` - *Args:*
     - `update_usdjpy_cache(rate: float)`
     - `async calculate_with_session(session, symbol: str, direction: str, ...) -> SizingResult` - *Version baru dengan akses DB untuk pip value dinamis.*
     - `calculate(symbol: str, direction: str, entry_price: float, ...) -> SizingResult` - *Menghitung lot untuk trade yang diusulkan (synchronous fallback).*
@@ -5014,6 +5016,7 @@
   - `bootstrap_runtime() -> None`: One-shot idempotent runtime bootstrapper.
   - `build_application_container(settings: Optional[dict[str, Any]], overrides: Optional[dict[str, Any]]) -> Any`: Build and configure the canonical ServiceContainer for Monika.
   - `bootstrap_application(settings: Optional[dict[str, Any]], overrides: Optional[dict[str, Any]]) -> Any`: Unified one-shot application composition root.
+  - `async preseed_market_state(container: Any) -> None`: Pre-seeds OHLCV bars and technical indicators on startup for all universe symbols.
 
 #### `main.py` - *AI Trading Agent — Main Orchestrator Facade*
 - **Path**: [`src/monika/application/main.py`](src/monika/application/main.py)
@@ -6216,6 +6219,15 @@
   - `async compute_anchored_vwap(session: AsyncSession, symbol: str, as_of: Optional[datetime], ...) -> dict`: Compute Anchored VWAP with flexible anchor points: session, weekly_low, weekly_high, swing_low, custom.
   - `async compute_volume_profile(session: AsyncSession, symbol: str, settings: Optional[dict], ...) -> dict`: NOTE: MT5 FX/CFD 'volume' is broker TICK volume (no consolidated OTC
 
+### Folder: `src/monika/application/analysis/context` <a id="folder-srcmonikaapplicationanalysiscontext"></a>
+
+#### `data_compactor.py`
+- **Path**: [`src/monika/application/analysis/context/data_compactor.py`](src/monika/application/analysis/context/data_compactor.py)
+- **Top-Level Functions**:
+  - `compact_ohlcv_bars(bars: Iterable[Any]) -> str`: Serializes OHLCV bars into a compact columnar table string.
+  - `compact_indicators(indicators: Iterable[Any]) -> str`: Serializes technical indicators into a compact columnar table string.
+  - `compact_market_structure(ohlcv_bars: Optional[Iterable[Any]], indicators: Optional[Iterable[Any]]) -> str`: Combines compact OHLCV bars and technical indicators into high-density text.
+
 ### Folder: `src/monika/application/analysis/debate` <a id="folder-srcmonikaapplicationanalysisdebate"></a>
 
 #### `__init__.py`
@@ -7096,7 +7108,8 @@
     - `coerce_string_lists(v)` - *Coerce list of mixed dicts/strings/numbers into a clean list of strings.*
     - `validate_asset_confidence(v)`
     - `validate_prices(v)`
-    - `validate_scores(v)`
+    - `validate_confluence(v)`
+    - `validate_priced_in(v)`
     - `validate_invalidation_direction(v)`
     - `validate_specialist_adjudication_field(v)`
     - `validate_override_justification_field(v)`
@@ -10634,6 +10647,7 @@
     - `__init__(settings: dict)`
     - `async start()`
     - `stop()`
+    - `async ensure_calendar_freshness(max_age_hours: float) -> bool` - *Verifies calendar freshness. If older than max_age_hours, proactively refreshes.*
 
 #### `adhoc_proxy.py` - *Ad-Hoc Scheduler Proxy for standalone/on-demand LangGraph execution.*
 - **Path**: [`src/monika/application/scheduler/adhoc_proxy.py`](src/monika/application/scheduler/adhoc_proxy.py)

@@ -90,10 +90,16 @@ def evaluate_analysis_scorecard(
             f"priced_in_score is None. Priced-in assessment not completed. Blocking execution.",
         )
 
-    if float(priced_in_score) >= 8:
+    try:
+        val = float(priced_in_score)
+        norm_priced_in = val / 10.0 if val > 10.0 else val
+    except ValueError, TypeError:
+        return (False, f"priced_in_score={priced_in_score} is invalid or non-numeric.")
+
+    if norm_priced_in >= 8.0:
         return (
             False,
-            f"priced_in_score={priced_in_score} >= 8. Event fully priced in (score >= 8) — "
+            f"priced_in_score={norm_priced_in:.1f} >= 8. Event fully priced in (score >= 8) — "
             "high sell-the-news reversal risk.",
         )
 

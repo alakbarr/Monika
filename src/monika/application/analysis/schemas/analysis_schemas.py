@@ -161,10 +161,18 @@ class SubmitAssetAnalysisSchema(BaseModel):
             return None
         return val
 
-    @field_validator("confluence_score", "priced_in_score", mode="before")
+    @field_validator("confluence_score", mode="before")
     @classmethod
-    def validate_scores(cls, v):
+    def validate_confluence(cls, v):
         return coerce_int(v)
+
+    @field_validator("priced_in_score", mode="before")
+    @classmethod
+    def validate_priced_in(cls, v):
+        res = coerce_int(v)
+        if res is not None and res > 10:
+            res = int(round(res / 10.0)) if res <= 100 else 10
+        return res
 
     @field_validator("invalidation_direction", mode="before")
     @classmethod
