@@ -78,8 +78,8 @@ def test_alembic_migration_chain_continuity():
 
     assert len(visited) == len(nodes), f"Broken chain! Total nodes: {len(nodes)}, Visited in sequence: {len(visited)}"
     assert visited[0] == "t1a2b3c4d5e6", f"Expected root revision to be t1a2b3c4d5e6, got {visited[0]}"
-    assert visited[-1] == "0016_dedup_price_ohlcv_indexes", (
-        f"Expected head revision to be 0016_dedup_price_ohlcv_indexes, got {visited[-1]}"
+    assert visited[-1] == "0018_add_technical_indicators_unique_constraint", (
+        f"Expected head revision to be 0018_add_technical_indicators_unique_constraint, got {visited[-1]}"
     )
 
 
@@ -112,6 +112,9 @@ def test_schema_completeness_all_models():
                 tables[self.table_name][target] = str(type_) if type_ is not None else val
 
         def create_foreign_key(self, *a, **kw):
+            pass
+
+        def create_unique_constraint(self, *a, **kw):
             pass
 
         def drop_constraint(self, *a, **kw):
@@ -227,6 +230,9 @@ def test_schema_completeness_all_models():
                     return []
 
                 def get_foreign_keys(self, t_name):
+                    return []
+
+                def get_unique_constraints(self, t_name):
                     return []
 
             return MockInsp()
@@ -359,6 +365,9 @@ def test_migration_0012_widens_alembic_version_num_on_postgres():
                     return []
 
                 def get_foreign_keys(self, t_name):
+                    return []
+
+                def get_unique_constraints(self, t_name):
                     return []
 
             return MockInsp()

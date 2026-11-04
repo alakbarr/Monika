@@ -10,16 +10,15 @@ Evaluates multi-timeframe overlays and oscillators for UI charting and context b
 from __future__ import annotations
 
 import copy
-import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
-import ta
-import ta.trend
-import ta.volume
+
+from monika.core.native.rust_bridge import ema_f64
+from monika.core.serialization import fast_json
 
 from monika.domain.indicators.classic import (
     compute_adx,
@@ -553,7 +552,11 @@ def compute_keltner_channels(
     w_atr = max(2, min(500, int(window_atr)))
     mult = max(0.1, min(20.0, float(multiplier)))
 
-    mid = pd.Series(ta.trend.ema_indicator(close, window=w, fillna=False), index=close.index)
+    ema_vals = ema_f64(close.to_numpy(dtype=float), w)
+    mid = pd.Series(
+        ema_vals if ema_vals is not None else close.ewm(span=w, adjust=False).mean(),
+        index=close.index,
+    )
     atr = compute_atr(high, low, close, period=w_atr)
     upper = mid + (mult * atr)
     lower = mid - (mult * atr)
@@ -633,7 +636,13 @@ def compute_obv(close: pd.Series, volume: pd.Series) -> pd.Series:
         return pd.Series(dtype=float)
     if volume is None or len(volume) == 0 or not (volume > 0).any():
         return pd.Series(0.0, index=close.index, dtype=float)
-    return pd.Series(ta.volume.on_balance_volume(close, volume, fillna=False), index=close.index).fillna(0.0)
+    c_arr = close.to_numpy(dtype=float)
+    v_arr = volume.to_numpy(dtype=float)
+    diff = np.diff(c_arr, prepend=c_arr[0])
+    dir_arr = np.where(diff > 0, 1.0, np.where(diff < 0, -1.0, 0.0))
+    dir_arr[0] = 0.0
+    obv_arr = np.cumsum(dir_arr * v_arr)
+    return pd.Series(obv_arr, index=close.index, dtype=float).fillna(0.0)
 
 
 def compute_cvd_series(
@@ -806,7 +815,7 @@ def evaluate_workspace_indicators(
     ema_cfg = overlays.get("ema", {})
     if ema_cfg.get("enabled", False):
         for p in ema_cfg.get("periods", [20, 50, 200]):
-            ema_s = ta.trend.ema_indicator(close_s, window=p, fillna=False)
+            ema_s = pd.Series(close_s.ewm(span=p, adjust=False).mean(), index=close_s.index)
             series_dict[f"ema_{p}"] = _pack_series(ema_s)
             val = float(ema_s.iloc[-1]) if pd.notna(ema_s.iloc[-1]) else None
             prev_val = float(ema_s.iloc[-2]) if len(ema_s) >= 2 and pd.notna(ema_s.iloc[-2]) else val
@@ -834,7 +843,7 @@ def evaluate_workspace_indicators(
     sma_cfg = overlays.get("sma", {})
     if sma_cfg.get("enabled", False):
         for p in sma_cfg.get("periods", [20, 50]):
-            sma_s = ta.trend.sma_indicator(close_s, window=p, fillna=False)
+            sma_s = pd.Series(close_s.rolling(window=p).mean(), index=close_s.index)
             series_dict[f"sma_{p}"] = _pack_series(sma_s)
             val = float(sma_s.iloc[-1]) if pd.notna(sma_s.iloc[-1]) else None
             prev_val = float(sma_s.iloc[-2]) if len(sma_s) >= 2 and pd.notna(sma_s.iloc[-2]) else val

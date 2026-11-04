@@ -1722,6 +1722,7 @@ Monika/
 │       │   │   │   │   ├── 0014_widen_source_strategy_id.py
 │       │   │   │   │   ├── 0015_decision_refl_pos_idx.py
 │       │   │   │   │   ├── 0016_dedup_price_ohlcv_indexes.py
+│       │   │   │   │   ├── 0017_add_activity_log_composite_index.py
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   └── c83c5e451412_sync_schema_indexes_types_and_.py
 │       │   │   │   ├── __init__.py
@@ -2306,6 +2307,7 @@ Monika/
 │   │   ├── test_closed_loop_memory.py
 │   │   ├── test_composite_tools.py
 │   │   ├── test_concurrent_macro_analysts.py
+│   │   ├── test_confluence_snapshot_fast_path.py
 │   │   ├── test_confluence_verifier.py
 │   │   ├── test_consecutive_sl_query_fix.py
 │   │   ├── test_context_compressor_hardening.py
@@ -3255,4 +3257,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 280 | **Total Tracked Files**: 2945
+**Total Tracked Directories**: 280 | **Total Tracked Files**: 2947

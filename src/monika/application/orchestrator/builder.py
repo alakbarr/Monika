@@ -447,6 +447,20 @@ class AgentBuilderMixin:
         if self.event_bus:
             from monika.core.primitives.event_bus import OrderStateChangedEvent, TickPriceEvent
             from monika.domain.market.candle_ring_buffer import RingBufferHub
+            from monika.application.scheduler.position_state_cache import get_position_state_cache
+
+            pos_cache = get_position_state_cache()
+
+            async def _on_order_state_change(evt: OrderStateChangedEvent):
+                status = str(getattr(evt, "new_state", "") or getattr(evt, "to_state", "") or "").lower()
+                sym = str(getattr(evt, "symbol", "") or "")
+                if status in ("closed", "cancelled", "rejected", "expired") and sym:
+                    pos_cache.mark_symbol_closed(sym)
+                elif status in ("filled", "open") and sym:
+                    pos_cache.mark_symbol_open(sym)
+                pos_cache.invalidate()
+
+            self.event_bus.subscribe(OrderStateChangedEvent, _on_order_state_change, priority=100)
 
             async def _on_ring_buffer_tick(evt: TickPriceEvent):
                 RingBufferHub.get_instance().on_tick(

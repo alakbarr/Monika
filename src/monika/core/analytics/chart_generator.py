@@ -41,7 +41,6 @@ if "six" not in sys.modules:
 import mplfinance as mpf
 import numpy as np
 import pandas as pd
-import ta.trend
 
 from monika.domain.indicators.technical import (
     compute_adx,
@@ -511,7 +510,7 @@ def generate_configured_workspace_chart(
         periods = ema_cfg.get("periods", [20, 50, 200])
         for idx, p in enumerate(periods):
             if len(df) >= p:
-                ema_s = ta.trend.ema_indicator(close_s, window=p, fillna=False)
+                ema_s = close_s.ewm(span=p, adjust=False).mean()
                 color = ema_colors[idx % len(ema_colors)]
                 add_plots.append(mpf.make_addplot(ema_s, panel=0, color=color, width=1.0))
 
@@ -522,7 +521,7 @@ def generate_configured_workspace_chart(
         periods = sma_cfg.get("periods", [20, 50])
         for idx, p in enumerate(periods):
             if len(df) >= p:
-                sma_s = ta.trend.sma_indicator(close_s, window=p, fillna=False)
+                sma_s = close_s.rolling(window=p).mean()
                 color = sma_colors[idx % len(sma_colors)]
                 add_plots.append(mpf.make_addplot(sma_s, panel=0, color=color, width=1.0, linestyle="--"))
 

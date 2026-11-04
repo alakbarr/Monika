@@ -645,24 +645,38 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
             .where(TechnicalIndicator.timestamp.in_(timestamps))
         )
 
-        saved = 0
+        bulk_rows: list[dict[str, Any]] = []
         for ts in timestamps:
             for entry in clean_indicators.get(ts, []):
                 val_json = entry.get("value_json")
                 if val_json is None and "value" in entry:
                     val_json = fast_json.dumps(entry["value"])
-                self.session.add(
-                    TechnicalIndicator(
-                        symbol=symbol,
-                        timeframe=timeframe,
-                        timestamp=ts,
-                        indicator_name=entry["name"],
-                        value_json=str(val_json or ""),
-                    )
+                bulk_rows.append(
+                    {
+                        "symbol": symbol,
+                        "timeframe": timeframe,
+                        "timestamp": ts,
+                        "indicator_name": entry["name"],
+                        "value_json": str(val_json or ""),
+                    }
                 )
-                saved += 1
+
+        if not bulk_rows:
+            return 0
+
+        from monika.infrastructure.database.safe_ops import safe_bulk_upsert, safe_expunge_all
+
+        saved = await safe_bulk_upsert(
+            session=self.session,
+            model=TechnicalIndicator,
+            rows=bulk_rows,
+            index_elements=["symbol", "timeframe", "timestamp", "indicator_name"],
+            update_cols=["value_json"],
+            chunk_size=500,
+        )
 
         await self.session.commit()
+        await safe_expunge_all(self.session)
         return saved
 
     # ------------------------------------------------------------------

@@ -45,7 +45,17 @@ def test_fast_json_extended_types() -> None:
     s = dumps(data)
     parsed = loads(s)
 
-    assert parsed["dec"] == 123.45
+    # Strictly verify financial Decimal precision preservation as string
+    assert parsed["dec"] == "123.45"
     assert sorted(parsed["unique"]) == [1, 2, 3]
     assert parsed["id"] == str(uid)
     assert parsed["obj"] == {"name": "test"}
+
+
+def test_fast_json_sort_keys_and_indent() -> None:
+    data = {"b": 2, "a": 1}
+    s_sorted = dumps(data, sort_keys=True)
+    assert s_sorted.startswith('{"a":1') or s_sorted.startswith('{"a": 1')
+
+    s_indent = dumps(data, indent=2)
+    assert "\n" in s_indent

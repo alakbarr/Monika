@@ -44,23 +44,20 @@ async def handle_get_technical_indicators(args: dict, **ctx) -> dict:
             rsi_divergence = None
             macd_divergence = None
             try:
+                from monika.domain.indicators.classic import compute_macd, compute_rsi
                 from monika.domain.indicators.technical import detect_macd_divergence, detect_rsi_divergence
 
                 df = await calc._load_ohlcv(symbol, timeframe)
                 if df is not None and len(df) >= 20:
                     import pandas as pd
-                    import ta.momentum as ta_momentum
-                    import ta.trend as ta_trend
 
                     high_s = pd.Series(df["high"].astype(float))
                     low_s = pd.Series(df["low"].astype(float))
                     close_s = pd.Series(df["close"].astype(float))
-                    rsi_s = ta_momentum.rsi(close_s, window=14)
+                    rsi_s = compute_rsi(close_s, period=14)
                     rsi_divergence = detect_rsi_divergence(high_s, low_s, close_s, rsi_s)
-                    macd_obj = ta_trend.MACD(close_s)
-                    macd_divergence = detect_macd_divergence(
-                        high_s, low_s, close_s, macd_obj.macd(), macd_obj.macd_diff()
-                    )
+                    m_line, _, m_hist = compute_macd(close_s)
+                    macd_divergence = detect_macd_divergence(high_s, low_s, close_s, macd_line=m_line, macd_hist=m_hist)
             except Exception as div_err:
                 logger.debug(f"[{symbol}] Divergence calculation notice: {div_err}")
 
@@ -579,19 +576,16 @@ async def handle_get_divergences(args: dict, **ctx) -> dict:
             continue
         df = pd.DataFrame(bars)
 
-        import ta.momentum as ta_momentum
-        import ta.trend as ta_trend
+        from monika.domain.indicators.classic import compute_macd, compute_rsi
 
         high_s = pd.Series(df["high"].astype(float))
         low_s = pd.Series(df["low"].astype(float))
         close_s = pd.Series(df["close"].astype(float))
 
-        rsi_s = ta_momentum.rsi(close_s, window=14)
+        rsi_s = compute_rsi(close_s, period=14)
         rsi_div = detect_rsi_divergence(high_s, low_s, close_s, rsi_s)
 
-        m_calc = ta_trend.MACD(close_s)
-        m_line = m_calc.macd()
-        m_hist = m_calc.macd_diff()
+        m_line, _, m_hist = compute_macd(close_s)
         macd_div = detect_macd_divergence(high_s, low_s, close_s, macd_line=m_line, macd_hist=m_hist)
 
         results[tf] = {

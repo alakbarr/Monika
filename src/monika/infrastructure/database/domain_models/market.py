@@ -280,7 +280,10 @@ class TechnicalIndicator(Base):
     indicator_name: Mapped[str] = mapped_column(String(50))  # MA_20, RSI_14, MACD, etc.
     value_json: Mapped[str] = mapped_column(Text)  # JSON value(s)
 
-    __table_args__ = (Index("idx_indicator_sym_tf_ts", "symbol", "timeframe", "timestamp", "indicator_name"),)
+    __table_args__ = (
+        UniqueConstraint("symbol", "timeframe", "timestamp", "indicator_name", name="uq_technical_indicators_record"),
+        Index("idx_indicator_sym_tf_ts", "symbol", "timeframe", "timestamp", "indicator_name"),
+    )
 
 
 class SwingPoint(Base):

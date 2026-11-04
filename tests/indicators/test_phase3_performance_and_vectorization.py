@@ -269,19 +269,19 @@ async def test_technical_indicator_incremental_save():
     # Case A: Historical bar (timestamps[-3]) exists in database (scalar returns ID 42)
     mock_res_existing = MagicMock(scalar_one_or_none=MagicMock(return_value=42))
     mock_res_delete = MagicMock()
-    mock_session.execute = AsyncMock(side_effect=[mock_res_existing, mock_res_delete])
+    mock_res_insert = MagicMock()
+    mock_session.execute = AsyncMock(side_effect=[mock_res_existing, mock_res_delete, mock_res_insert])
 
     saved_count = await service._save("EURUSD", "H1", indicators)
     # Only 2 bars saved (timestamps[-2:]) x 2 indicators = 4 entries
     assert saved_count == 4
-    assert mock_session.add.call_count == 4
+    assert mock_session.commit.called
 
     # Case B: Cold start - historical bar does NOT exist (scalar returns None)
-    mock_session.add.reset_mock()
     mock_res_none = MagicMock(scalar_one_or_none=MagicMock(return_value=None))
-    mock_session.execute = AsyncMock(side_effect=[mock_res_none, mock_res_delete])
+    mock_session.execute = AsyncMock(side_effect=[mock_res_none, mock_res_delete, mock_res_insert])
 
     saved_all = await service._save("EURUSD", "H1", indicators)
     # All 5 bars saved x 2 indicators = 10 entries
     assert saved_all == 10
-    assert mock_session.add.call_count == 10
+    assert mock_session.commit.called

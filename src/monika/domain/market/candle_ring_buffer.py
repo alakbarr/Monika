@@ -203,13 +203,14 @@ class CandleRingBuffer:
         """
         Converts latest candles directly to a high-throughput Polars DataFrame.
         Zero intermediate Python datetime allocations; 7x faster than to_dataframe().
+        Strictly adheres to canonical microsecond schema (time_unit='us', time_zone='UTC').
         """
         n = count if count is not None else self._size
         arr = self.get_latest(n)
         if len(arr) == 0:
             return pl.DataFrame(
                 schema={
-                    "timestamp": pl.Datetime("ms", "UTC"),
+                    "timestamp": pl.Datetime("us", "UTC"),
                     "open": pl.Float64,
                     "high": pl.Float64,
                     "low": pl.Float64,
@@ -218,7 +219,10 @@ class CandleRingBuffer:
                 }
             )
         return pl.from_numpy(arr).with_columns(
-            pl.from_epoch(pl.col("timestamp"), time_unit="s").dt.replace_time_zone("UTC").alias("timestamp")
+            pl.from_epoch(pl.col("timestamp"), time_unit="s")
+            .dt.replace_time_zone("UTC")
+            .cast(pl.Datetime("us", "UTC"))
+            .alias("timestamp")
         )
 
     def get_latest_view(self, count: Optional[int] = None) -> np.ndarray:

@@ -55,19 +55,28 @@ class MemorySupervisor:
         except Exception:
             return 0.0
 
-    def compact_memory(self, reason: str = "manual") -> dict[str, Any]:
+    def compact_memory(self, reason: str = "manual", tier: int = 1) -> dict[str, Any]:
         """
         Executes progressive memory compaction:
-        1. Full Python progressive garbage collection across all 3 generations.
-        2. EventBus finished task cleanup.
-        3. Generational defragmentation without paging working set to disk.
+        1. CompactionRegistry target execution across registered targets for tier.
+        2. Python progressive garbage collection based on tier.
+        3. EventBus finished task cleanup.
         """
         rss_before = self.get_rss_mb()
 
+        # 0. Compaction targets from registry
+        registry_freed = 0
+        try:
+            from monika.core.primitives.compaction import get_compaction_registry
+
+            registry_freed = get_compaction_registry().compact_all(tier=tier)
+        except Exception as reg_err:
+            logger.debug(f"[MemorySupervisor] Compaction registry error: {reg_err}")
+
         # 1. Python GC (progressive multi-generational collection)
         c0 = gc.collect(0)
-        c1 = gc.collect(1)
-        c2 = gc.collect(2)
+        c1 = gc.collect(1) if tier >= 2 else 0
+        c2 = gc.collect(2) if tier >= 3 else 0
         collected = c0 + c1 + c2
 
         # 2. EventBus task prune
@@ -84,14 +93,16 @@ class MemorySupervisor:
         delta = rss_before - rss_after
 
         logger.info(
-            f"[MemorySupervisor] Compaction complete ({reason}): "
+            f"[MemorySupervisor] Compaction tier {tier} complete ({reason}): "
             f"RSS {rss_before:.1f} MB -> {rss_after:.1f} MB (freed {delta:.1f} MB, "
-            f"gc_collected={collected}, pruned_tasks={pruned_tasks}, os_trimmed={os_trimmed})"
+            f"registry_freed={registry_freed}, gc_collected={collected}, pruned_tasks={pruned_tasks})"
         )
         return {
             "rss_before_mb": rss_before,
             "rss_after_mb": rss_after,
             "freed_mb": delta,
+            "tier": tier,
+            "registry_freed": registry_freed,
             "gc_collected": collected,
             "pruned_tasks": pruned_tasks,
             "os_trimmed": os_trimmed,

@@ -18,7 +18,7 @@ except ImportError:
 def default_serializer(obj: Any) -> Any:
     """Default serializer for types not natively handled by orjson."""
     if isinstance(obj, Decimal):
-        return float(obj)
+        return str(obj)
     if isinstance(obj, (set, frozenset)):
         return list(obj)
     if isinstance(obj, UUID):
@@ -37,6 +37,8 @@ def dumps_bytes(
     *,
     default: Optional[Callable[[Any], Any]] = default_serializer,
     option: Optional[int] = None,
+    sort_keys: bool = False,
+    indent: Optional[int] = None,
 ) -> bytes:
     """
     Serialize an object to JSON bytes.
@@ -46,13 +48,17 @@ def dumps_bytes(
         opt = option
         if opt is None:
             opt = orjson.OPT_NON_STR_KEYS | orjson.OPT_SERIALIZE_NUMPY | orjson.OPT_UTC_Z
+        if sort_keys:
+            opt |= orjson.OPT_SORT_KEYS
+        if indent == 2:
+            opt |= orjson.OPT_INDENT_2
         try:
             return orjson.dumps(obj, default=default, option=opt)
         except Exception:
             # Fall back to stdlib json if edge case unsupported by orjson occurs
             pass
 
-    return json.dumps(obj, default=default).encode("utf-8")
+    return json.dumps(obj, default=default, sort_keys=sort_keys, indent=indent).encode("utf-8")
 
 
 def dumps(
@@ -60,12 +66,14 @@ def dumps(
     *,
     default: Optional[Callable[[Any], Any]] = default_serializer,
     option: Optional[int] = None,
+    sort_keys: bool = False,
+    indent: Optional[int] = None,
 ) -> str:
     """
     Serialize an object to JSON str.
     Decodes fast from orjson UTF-8 bytes.
     """
-    return dumps_bytes(obj, default=default, option=option).decode("utf-8")
+    return dumps_bytes(obj, default=default, option=option, sort_keys=sort_keys, indent=indent).decode("utf-8")
 
 
 def loads(s: Union[str, bytes, bytearray]) -> Any:

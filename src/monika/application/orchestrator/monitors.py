@@ -56,6 +56,10 @@ class AgentMonitorsMixin:
         )
         logger.info(f"TickStream loop started (interval: {interval}s, symbols: {len(symbols)})")
 
+        from monika.core.primitives.tick_coalescer import get_tick_coalescer
+
+        coalescer = get_tick_coalescer()
+
         while not self.shutdown_event.is_set():
             try:
                 if self.mt5_client and await self.mt5_client.is_connected():
@@ -69,7 +73,7 @@ class AgentMonitorsMixin:
                                 bid = float(quote.get("bid", 0.0) or 0.0)
                                 ask = float(quote.get("ask", 0.0) or 0.0)
                                 last = float(quote.get("last", 0.0) or 0.0)
-                                if bid > 0 or ask > 0:
+                                if (bid > 0 or ask > 0) and coalescer.should_emit(sym):
                                     await self.publish_tick(
                                         symbol=sym,
                                         bid=bid,

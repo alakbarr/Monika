@@ -111,7 +111,7 @@ class TestTechnicalIndicatorCalculator:
 
         saved = await calc._save("XAUUSD", "H1", indicators)
         assert saved == 1
-        calc.session.add.assert_called_once()
+        calc.session.execute.assert_called()
         calc.session.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -313,11 +313,15 @@ class TestTechnicalIndicatorCalculator:
 
         saved = await calc._save("XAUUSD", "D1", indicators)
         assert saved == 2
-        added_indicators = [call[0][0] for call in calc.session.add.call_args_list]
-        for ind in added_indicators:
-            assert isinstance(ind.timestamp, datetime)
-            assert ind.timestamp.tzinfo is not None
-            assert ind.timestamp.tzinfo == timezone.utc
+        # Verify that executed bulk insert parameters contain normalized UTC timestamps
+        bulk_stmt = calc.session.execute.call_args_list[-1][0][0]
+        params = bulk_stmt.compile().params
+        ts_params = [v for k, v in params.items() if "timestamp" in k]
+        assert len(ts_params) == 2
+        for ts_val in ts_params:
+            assert isinstance(ts_val, datetime)
+            assert ts_val.tzinfo is not None
+            assert ts_val.tzinfo == timezone.utc
 
     @pytest.mark.asyncio
     async def test_compute_all_and_save_bounded_to_recent_bars(self, calc):
@@ -346,4 +350,5 @@ class TestTechnicalIndicatorCalculator:
         calc.session.add = MagicMock()
         saved = await calc._save("EURUSD", "H1", inds)
         assert saved > 0
-        assert calc.session.add.call_count == saved
+        assert calc.session.execute.call_count >= 2
+        calc.session.commit.assert_awaited_once()

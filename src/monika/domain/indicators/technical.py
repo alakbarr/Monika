@@ -29,11 +29,6 @@ from typing import Any, Optional
 import numpy as np
 import pandas as pd
 from monika.core.serialization import fast_json
-import ta
-import ta.momentum
-import ta.trend
-import ta.volatility
-import ta.volume
 
 from monika.domain.indicators.classic import (
     compute_adx,

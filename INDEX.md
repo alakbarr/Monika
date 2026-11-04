@@ -690,6 +690,7 @@
   - `find_order_blocks_f64(opens: np.ndarray | Sequence[float], highs: np.ndarray | Sequence[float], lows: np.ndarray | Sequence[float], ...) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]`: Detects Order Blocks via native Rust C-ABI (monika_core_rs) with 100% NumPy fallback.
   - `find_sr_zones_f64(prices: np.ndarray | Sequence[float], timestamps: np.ndarray | Sequence[float], tolerance: float, ...) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]`: Finds S/R zones from swing points via native Rust C-ABI with 100% NumPy fallback.
   - `detect_structure_breaks_f64(closes: np.ndarray | Sequence[float], swing_indices: np.ndarray | Sequence[int], swing_prices: np.ndarray | Sequence[float], ...) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]`: Detects BOS and CHoCH breaks via native Rust C-ABI with 100% NumPy fallback.
+  - `keltner_channels_f64(highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, ...) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]`: Computes Keltner Channels: (upper, mid, lower).
 
 ### Folder: `src/monika/core/primitives` <a id="folder-srcmonikacoreprimitives"></a>
 
@@ -5767,7 +5768,7 @@
   - `class MemorySupervisor`: 24/7 Process Health & RSS Memory Supervisor.
     - `__init__(interval_seconds: float, warn_mb: float, compact_mb: float, ...)`
     - `get_rss_mb() -> float` - *Get current process Resident Set Size (RSS) in Megabytes.*
-    - `compact_memory(reason: str) -> dict[str, Any]` - *Executes progressive memory compaction:*
+    - `compact_memory(reason: str, tier: int) -> dict[str, Any]` - *Executes progressive memory compaction:*
     - `async run_loop(stop_event: Optional[asyncio.Event]) -> None` - *Continuous background monitoring loop.*
     - `start() -> asyncio.Task` - *Start the background monitor task.*
     - `stop() -> None` - *Stop the background monitor task.*
@@ -12282,6 +12283,7 @@
   - `async safe_commit(session: AsyncSession, label: str, max_retries: int) -> bool`: Commit an active transaction with guaranteed automatic rollback on failure.
   - `async safe_upsert(session: AsyncSession, model: type, values: Dict[str, Any], ...) -> None`: Execute an upsert statement compatible with PostgreSQL and SQLite.
   - `async atomic_upsert_system_config(session: AsyncSession, key: str, value: str, ...) -> None`: Atomically upsert a key-value pair in SystemConfig table.
+  - `async safe_bulk_upsert(session: AsyncSession, model: type, rows: List[Dict[str, Any]], ...) -> int`: Execute high-throughput Core bulk upsert without ORM identity_map overhead.
 
 #### `session_db_wal.py` - *High-Performance SQLite WAL Session Database with Bounded Read Pool & Lock Guards.*
 - **Path**: [`src/monika/infrastructure/database/session_db_wal.py`](src/monika/infrastructure/database/session_db_wal.py)
@@ -12578,6 +12580,12 @@
 - **Top-Level Functions**:
   - `upgrade() -> None`: Upgrade schema: Drop redundant idx_price_sym_tf_ts index duplicate of uq_price_sym_tf_ts.
   - `downgrade() -> None`: Downgrade schema: Recreate idx_price_sym_tf_ts index on price_ohlcv.
+
+#### `0017_add_activity_log_composite_index.py` - *add activity_log composite index*
+- **Path**: [`src/monika/infrastructure/database/migrations/versions/0017_add_activity_log_composite_index.py`](src/monika/infrastructure/database/migrations/versions/0017_add_activity_log_composite_index.py)
+- **Top-Level Functions**:
+  - `upgrade() -> None`: Upgrade schema: Create composite index on activity_log(category, timestamp).
+  - `downgrade() -> None`: Downgrade schema: Drop composite index on activity_log(category, timestamp).
 
 #### `c83c5e451412_sync_schema_indexes_types_and_.py` - *sync_schema_indexes_types_and_constraints*
 - **Path**: [`src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py`](src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py)

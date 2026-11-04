@@ -100,6 +100,11 @@ class PositionGuardian:
         if not self.enabled:
             return {"checked": True, "action_taken": False}
 
+        # Zero-cost in-memory fast exit when flat and kill switch disarmed
+        if not emergency and getattr(self, "state_cache", None) and self.state_cache.is_fresh():
+            if not self.state_cache.has_any_open_positions and not self.state_cache.kill_switch_active:
+                return {"checked": True, "action_taken": False, "fast_exit": True, "positions_checked": 0}
+
         now = clock.now()
         warning_window = now + timedelta(minutes=self.warning_minutes)
 

@@ -1606,3 +1606,41 @@ def detect_structure_breaks_f64(
         np.array(res_dir, dtype=np.uint8),
         np.array(res_prices, dtype=np.float64),
     )
+
+
+wma_f64 = decay_linear_f64
+
+
+def keltner_channels_f64(
+    highs: np.ndarray,
+    lows: np.ndarray,
+    closes: np.ndarray,
+    window: int = 20,
+    window_atr: int = 10,
+    multiplier: float = 2.0,
+) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """
+    Computes Keltner Channels: (upper, mid, lower).
+    Uses compiled ema_f64 for middle line and atr_f64 for ATR bands.
+    100% vectorized NumPy/Rust implementation with high performance.
+    """
+    if (
+        highs.ndim != 1
+        or lows.ndim != 1
+        or closes.ndim != 1
+        or len(highs) != len(lows)
+        or len(highs) != len(closes)
+        or len(closes) < max(window, window_atr)
+    ):
+        return None
+
+    c_arr = np.ascontiguousarray(closes, dtype=np.float64)
+    mid = ema_f64(c_arr, window)
+    atr = atr_f64(highs, lows, closes, window_atr)
+    if mid is None or atr is None:
+        return None
+
+    mult = float(multiplier)
+    upper = mid + (mult * atr)
+    lower = mid - (mult * atr)
+    return upper, mid, lower

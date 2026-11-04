@@ -205,3 +205,61 @@ async def atomic_upsert_system_config(
     from monika.infrastructure.database.models import SystemConfig
 
     await SystemConfig.upsert(session, key=key, value=value, description=description)
+
+
+async def safe_bulk_upsert(
+    session: AsyncSession,
+    model: type,
+    rows: List[Dict[str, Any]],
+    index_elements: List[str],
+    update_cols: Optional[List[str]] = None,
+    extra_update_values: Optional[Dict[str, Any]] = None,
+    chunk_size: int = 500,
+) -> int:
+    """Execute high-throughput Core bulk upsert without ORM identity_map overhead.
+
+    Handles parameter chunking for SQLite limits and native PostgreSQL ON CONFLICT DO UPDATE.
+    Returns the total count of rows upserted.
+    """
+    if not rows:
+        return 0
+
+    bind = getattr(session, "bind", None) or (session.get_bind() if hasattr(session, "get_bind") else None)
+    dialect_name = getattr(getattr(bind, "dialect", None), "name", None)
+
+    cols_to_update = update_cols if update_cols is not None else [k for k in rows[0].keys() if k not in index_elements]
+
+    total_saved = 0
+    safe_chunk = max(1, min(chunk_size, 1000))
+
+    for i in range(0, len(rows), safe_chunk):
+        chunk = rows[i : i + safe_chunk]
+        if dialect_name == "postgresql":
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+            stmt = pg_insert(model).values(chunk)
+            set_dict: Dict[str, Any] = {col: getattr(stmt.excluded, col) for col in cols_to_update}
+            if extra_update_values:
+                set_dict.update(extra_update_values)
+            stmt = stmt.on_conflict_do_update(index_elements=index_elements, set_=set_dict)
+            await session.execute(stmt)
+        elif dialect_name == "sqlite":
+            from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
+            stmt_sqlite = sqlite_insert(model).values(chunk)
+            set_dict = {col: getattr(stmt_sqlite.excluded, col) for col in cols_to_update}
+            if extra_update_values:
+                set_dict.update(extra_update_values)
+            stmt_sqlite = stmt_sqlite.on_conflict_do_update(index_elements=index_elements, set_=set_dict)
+            await session.execute(stmt_sqlite)
+        else:
+            for item in chunk:
+                add_fn = getattr(session, "add", None)
+                if callable(add_fn):
+                    add_fn(model(**item))
+        total_saved += len(chunk)
+
+    return total_saved
+
+
+safe_expunge_all = _safe_expunge_all
