@@ -32,10 +32,12 @@ class StrategyRegistry:
     SYNTHESIZED_DIR: Path = get_runtime_strategies_dir()
     _tier_cache: dict[str, tuple[float, StrategyTier]] = {}
     _tier_cache_ttl: float = 60.0
+    _instance_cache: dict[Any, Any] = {}
 
     @classmethod
     def invalidate_tier_cache(cls, strategy_id: Optional[str] = None) -> None:
         """Invalidate strategy tier cache for one strategy or all strategies."""
+        cls._instance_cache.clear()
         if strategy_id:
             cls._tier_cache.pop(strategy_id, None)
         else:
@@ -452,18 +454,21 @@ class StrategyRegistry:
         for strat_cls in list(cls._registry.values()):
             strat_name = getattr(strat_cls, "strategy_id", getattr(strat_cls, "__name__", "unknown"))
             try:
-                strat = None
-                # Resilient instantiation hierarchy (positional -> kwargs -> no-args)
-                if callable(strat_cls):
-                    try:
-                        strat = strat_cls(settings)
-                    except TypeError:
+                strat = cls._instance_cache.get(strat_cls)
+                if strat is None:
+                    # Resilient instantiation hierarchy (positional -> kwargs -> no-args)
+                    if callable(strat_cls):
                         try:
-                            strat = strat_cls(**(settings if isinstance(settings, dict) else {}))
+                            strat = strat_cls(settings)
                         except TypeError:
-                            strat = strat_cls()
-                else:
-                    strat = strat_cls
+                            try:
+                                strat = strat_cls(**(settings if isinstance(settings, dict) else {}))
+                            except TypeError:
+                                strat = strat_cls()
+                    else:
+                        strat = strat_cls
+                    if strat is not None:
+                        cls._instance_cache[strat_cls] = strat
 
                 if strat is None:
                     continue

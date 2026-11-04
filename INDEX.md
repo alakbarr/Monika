@@ -338,13 +338,13 @@
     - `async get_suspended_symbols(session: AsyncSession) -> list[str]` - *Return list of symbols currently suspended due to poor performance*
     - `async check_and_suspend_poor_performers(session: AsyncSession, settings: dict) -> list[str]` - *Auto-suspend symbols with consecutive losses.*
     - `async suspend_symbol(session: AsyncSession, symbol: str, duration_hours: float, ...) -> dict` - *Suspend trading untuk simbol tertentu secara manual dengan durasi waktu.*
-    - `async unsuspend_symbol(session: AsyncSession, symbol: str) -> bool` - *Buka suspensi untuk simbol tertentu.*
-    - `async unsuspend_all(session: AsyncSession) -> list[str]` - *Buka suspensi untuk semua simbol.*
-    - `async get_streak_status(session: AsyncSession, symbol: str) -> dict` - *Mengambil status streak loss dan suspensi untuk simbol tertentu.*
+    - `async unsuspend_symbol(session: AsyncSession, symbol: str) -> bool` - *Unsuspend trading for a symbol*
+    - `async unsuspend_all(session: AsyncSession) -> list[str]` - *Unsuspend all symbols*
+    - `async get_streak_status(session: AsyncSession, symbol: str, settings: Optional[dict]) -> dict` - *Mengambil status streak loss dan suspensi untuk simbol tertentu.*
     - `async get_statistics(session: AsyncSession, days_back: int | None, symbol: str | None) -> dict` - *Hitung win rate dan statistik performa komprehensif.*
     - `async check_and_alert_winrate(session: AsyncSession, settings: dict, min_trades: int) -> None` - *Kirim alert jika win rate jatuh di bawah batas minimum (breakeven).*
     - `async should_regenerate_performance_notes(session: AsyncSession) -> tuple[bool, str]` - *Returns (should_regenerate: bool, reason: str).*
-    - `async check_recent_streak(session: AsyncSession, lookback: int) -> dict` - *Deteksi losing streak mendadak (misal: 5 kerugian beruntun memicu alarm).*
+    - `async check_recent_streak(session: AsyncSession, lookback: int) -> dict` - *Deteksi losing streak mendadak.*
     - `async simulate_equity_curve(session: AsyncSession, starting_equity: float) -> dict` - *Simulasikan kurva ekuitas (equity curve) untuk hitung max drawdown & growth.*
 
 #### `pdf_report_generator.py` - *Backward-compatibility re-export shim for PDFReportGenerator.*
@@ -1497,6 +1497,23 @@
   - `detect_harmonic_patterns(pivots: List[Dict[str, Any]], tolerance: float) -> List[Dict[str, Any]]`: Detects 5-point XABCD Harmonic Patterns (Gartley, Bat, Butterfly, Crab).
   - `scan_all_chart_patterns(df: pd.DataFrame, order: int) -> Dict[str, Any]`: Comprehensive chart pattern scanner over a given OHLCV DataFrame.
 
+#### `classic.py` - *Pure Mathematical and Statistical Indicator Functions.*
+- **Path**: [`src/monika/domain/indicators/classic.py`](src/monika/domain/indicators/classic.py)
+- **Top-Level Functions**:
+  - `compute_yang_zhang_volatility(df: pd.DataFrame, window: int) -> pd.Series`: Yang-Zhang (2000) historical volatility estimator.
+  - `compute_lag1_autocorrelation(close: pd.Series, window: int) -> pd.Series`: Menghitung lag-1 return autocorrelation rolling window.
+  - `compute_moving_averages(close: pd.Series, sma_periods: tuple[int, ...], ema_periods: tuple[int, ...]) -> dict[str, pd.Series]`: Computes SMAs and EMAs for specified periods with native Rust acceleration.
+  - `compute_rsi(close: pd.Series, period: int) -> pd.Series`: Computes RSI (Relative Strength Index) with native Rust acceleration.
+  - `compute_stochastic(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series]`: Computes Stochastic %K and %D with native Rust acceleration.
+  - `compute_macd(close: pd.Series, fast: int, slow: int, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes MACD line, signal line, and histogram with native Rust acceleration.
+  - `compute_bollinger_bands(close: pd.Series, period: int, std_dev: float) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]`: Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth with native Rust acceleration.
+  - `compute_atr(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> pd.Series`: Computes Average True Range with native Rust acceleration.
+  - `compute_adx(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes ADX, +DI, and -DI.
+  - `compute_pivot_points(high: float, low: float, close: float, ...) -> dict[str, Any]`: Menghitung Classical / Camarilla / Fibonacci / Woodie Pivot Points dari satu bar D1/W1.
+  - `compute_ichimoku(df: pd.DataFrame, tenkan_period: int, kijun_period: int, ...) -> dict[str, Any]`: Menghitung komponen Ichimoku Kinko Hyo:
+  - `detect_rsi_divergence(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> dict[str, Any]`: Detect regular bullish and bearish RSI divergences:
+  - `detect_macd_divergence(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> dict[str, Any]`: Detect regular and hidden MACD divergences (Line and Histogram):
+
 #### `factor_primitives.py` - *Factor Primitives & Vectorized Numerical Foundation.*
 - **Path**: [`src/monika/domain/indicators/factor_primitives.py`](src/monika/domain/indicators/factor_primitives.py)
 - **Classes**:
@@ -1687,7 +1704,7 @@
   - `find_order_blocks(df: pd.DataFrame, symbol: str, timeframe: str, ...) -> list[OrderBlockData]`: Detect order blocks using ATR impulse qualification and 50% penetration mitigation.
   - `detect_structure_breaks(df: pd.DataFrame, swing_highs: pd.DataFrame, swing_lows: pd.DataFrame, ...) -> list[StructureBreakData]`: Detects BOS (Break of Structure) and CHoCH (Change of Character) with candle close confirmation.
 
-#### `technical.py` - *Kalkulator Indikator Teknikal Murni (Pure Domain Indicators).*
+#### `technical.py` - *Kalkulator Indikator Teknikal Murni (Pure Domain Indicators) & Facade.*
 - **Path**: [`src/monika/domain/indicators/technical.py`](src/monika/domain/indicators/technical.py)
 - **Classes**:
   - `class TechnicalIndicatorCalculator`: Pure Domain Technical Indicator Calculator.
@@ -1697,20 +1714,10 @@
     - `async compute_all_symbols(symbols: list[str], timeframes: list[str]) -> dict[str, int]` - *Contract stub for batch computation. Overridden by TechnicalIndicatorService.*
     - `async get_snapshot(symbol: str, timeframe: str, series_depth: int, ...) -> dict[str, Any]` - *Contract stub for indicator snapshot. Overridden by TechnicalIndicatorService.*
     - `async get_latest(symbol: str, timeframe: str, indicator_name: str) -> Optional[dict[str, Any]]` - *Contract stub for latest indicator. Overridden by TechnicalIndicatorService.*
+
+#### `workspace_indicators.py` - *Chart Workspace Indicator Presets, Series Normalizers, and Evaluator.*
+- **Path**: [`src/monika/domain/indicators/workspace_indicators.py`](src/monika/domain/indicators/workspace_indicators.py)
 - **Top-Level Functions**:
-  - `compute_yang_zhang_volatility(df: pd.DataFrame, window: int) -> pd.Series`: Yang-Zhang (2000) historical volatility estimator.
-  - `compute_lag1_autocorrelation(close: pd.Series, window: int) -> pd.Series`: Menghitung lag-1 return autocorrelation rolling window.
-  - `compute_moving_averages(close: pd.Series, sma_periods: tuple[int, ...], ema_periods: tuple[int, ...]) -> dict[str, pd.Series]`: Computes SMAs and EMAs for specified periods with native Rust acceleration.
-  - `compute_rsi(close: pd.Series, period: int) -> pd.Series`: Computes RSI (Relative Strength Index) with native Rust acceleration.
-  - `compute_stochastic(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series]`: Computes Stochastic %K and %D with native Rust acceleration.
-  - `compute_macd(close: pd.Series, fast: int, slow: int, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes MACD line, signal line, and histogram with native Rust acceleration.
-  - `compute_bollinger_bands(close: pd.Series, period: int, std_dev: float) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]`: Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth with native Rust acceleration.
-  - `compute_atr(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> pd.Series`: Computes Average True Range with native Rust acceleration.
-  - `compute_adx(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes ADX, +DI, and -DI.
-  - `compute_pivot_points(high: float, low: float, close: float, ...) -> dict[str, Any]`: Menghitung Classical / Camarilla / Fibonacci / Woodie Pivot Points dari satu bar D1/W1.
-  - `compute_ichimoku(df: pd.DataFrame, tenkan_period: int, kijun_period: int, ...) -> dict[str, Any]`: Menghitung komponen Ichimoku Kinko Hyo:
-  - `detect_rsi_divergence(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> dict[str, Any]`: Detect regular bullish and bearish RSI divergences:
-  - `detect_macd_divergence(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> dict[str, Any]`: Detect regular and hidden MACD divergences (Line and Histogram):
   - `normalize_chart_workspace_config(raw: Optional[dict[str, Any]]) -> dict[str, Any]`: Safely normalizes and deep-merges raw workspace configuration against canonical presets.
   - `compute_wma(close: pd.Series, period: int) -> pd.Series`: Computes Weighted Moving Average (WMA) for specified period.
   - `compute_vwap(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> pd.Series`: Computes Volume-Weighted Average Price (VWAP).
@@ -7000,83 +7007,8 @@
 #### `__init__.py` - *Monika Analysis Schemas Package.*
 - **Path**: [`src/monika/application/analysis/schemas/__init__.py`](src/monika/application/analysis/schemas/__init__.py)
 
-#### `pydantic_schemas.py`
+#### `pydantic_schemas.py` - *Monika Analysis Schemas Facade.*
 - **Path**: [`src/monika/application/analysis/schemas/pydantic_schemas.py`](src/monika/application/analysis/schemas/pydantic_schemas.py)
-- **Classes**:
-  - `class TradeDirection(str, Enum)`
-  - `class ConfidenceLevel(str, Enum)`
-  - `class SentimentBand(str, Enum)`
-  - `class MacroRegime(str, Enum)`
-  - `class FundamentalBriefSchema(BaseModel)`
-    - `harmonize_from_submit_brief(data: Any) -> Any`
-    - `validate_macro_regime_fbs(v)`
-    - `validate_risk_sentiment_fbs(v)`
-    - `validate_currency_bias_fbs(v)`
-    - `validate_brief_string_lists(v)`
-    - `validate_macro_bias(v)`
-  - `class SentimentAnalysisSchema(BaseModel)`
-    - `validate_overall_band(v)`
-    - `validate_confidence(v)`
-    - `validate_overall_score(v)`
-    - `validate_strings(v)`
-  - `class SpecialistAdjudication(BaseModel)`
-    - `coerce_specialist_adjudication(data: Any) -> Any`
-  - `class EntryCondition(BaseModel)`
-    - `coerce_entry_condition(data: Any) -> Any`
-  - `class ReevaluationTrigger(BaseModel)`
-    - `coerce_reevaluation_trigger(data: Any) -> Any`
-    - `validate_and_extract_price_level() -> 'ReevaluationTrigger'`
-  - `class PricedInOverrideJustification(BaseModel)`
-    - `coerce_override_justification(data: Any) -> Any`
-  - `class UpcomingRiskEvent(BaseModel)`
-    - `coerce_risk_event(data: Any) -> Any`
-  - `class PricedInAssessment(BaseModel)`
-    - `validate_sell_the_news_risk(v)`
-    - `validate_unpriced_drivers(v)`
-    - `validate_dominant_driver(v)`
-    - `validate_priced_in_score(v)`
-    - `validate_percentiles(v)`
-  - `class SubmitAssetAnalysisSchema(BaseModel)`
-    - `validate_playbook_id_field(v)`
-    - `coerce_string_fields(v)` - *Coerce dict/list/non-string to string for LLMs that return structured data.*
-    - `coerce_string_lists(v)` - *Coerce list of mixed dicts/strings/numbers into a clean list of strings.*
-    - `validate_asset_confidence(v)`
-    - `validate_prices(v)`
-    - `validate_scores(v)`
-    - `validate_invalidation_direction(v)`
-    - `validate_specialist_adjudication_field(v)`
-    - `validate_override_justification_field(v)`
-    - `normalize_and_alias_fields(data: Any) -> Any` - *Resolve symbol aliases and normalize symbol casing/formatting before validation.*
-    - `validate_trade_parameters()` - *Enforce SL/TP/entry_condition presence when decision is buy or sell.*
-  - `class ChecklistVerification(BaseModel)`
-    - `coerce_bool(v: Any) -> bool`
-  - `class KeyDataPointsUsed(BaseModel)`
-    - `validate_vix_close(v)`
-    - `validate_optional_pcts(v)`
-  - `class AssetMacroContext(BaseModel)`
-    - `validate_asset_confidence(v)`
-    - `validate_asset_bias(v)`
-    - `coerce_context_strings(v)`
-  - `class SubmitFundamentalBriefSchema(BaseModel)`
-    - `harmonize_counter_thesis_and_primitives(data: Any) -> Any`
-    - `validate_macro_regime_sfbs(v)`
-    - `validate_yield_curve_regime(v)`
-    - `validate_systemic_liquidity_trend(v)`
-    - `validate_risk_sentiment_sfbs(v)`
-    - `validate_currency_bias_sfbs(v)`
-    - `validate_asset_pi_scores(v)`
-    - `validate_confidence(v)`
-    - `validate_currency_confidence(v)`
-    - `validate_upcoming_risks(v)`
-    - `validate_string_dicts(v)`
-    - `validate_brief_narratives(v)`
-- **Top-Level Functions**:
-  - `coerce_str(v: Any, default: str) -> str`: Safely coerces any value (dict, list, int, float, string, None) into a clean string.
-  - `coerce_string_list(v: Any, default: Optional[List[str]]) -> Optional[List[str]]`: Safely coerces any value (list, tuple, set, dict, single string, numbers, None)
-  - `coerce_float(v: Any, default: Optional[float]) -> Optional[float]`: Safely coerces strings, percentages, numbers, and common LLM non-numeric strings
-  - `coerce_int(v: Any, default: Optional[int]) -> Optional[int]`: Safely coerces strings (e.g. '8', '8/10', '8.0', 'N/A') into int or None.
-  - `make_openai_strict_schema(schema_dict: dict) -> dict`: Transforms standard Pydantic JSON schema into OpenAI strict: true compliant schema.
-  - `get_tool_schema(pydantic_model: type[BaseModel]) -> dict`: Generate a flattened JSON schema for a tool definition.
 
 #### `schemas.py` - *Deprecated module: import directly from monika.application.analysis.schemas instead.*
 - **Path**: [`src/monika/application/analysis/schemas/schemas.py`](src/monika/application/analysis/schemas/schemas.py)
@@ -10768,8 +10700,8 @@
     - `async rollback()`
   - `class StrategySynthesisScheduler`: Autonomous scheduler that synthesizes novel EdgeStrategy code,
     - `__init__(settings: dict, interval_hours: float, min_sharpe: float, ...)`
-    - `validate_code_safety(code_str: str) -> bool` - *Institutional-grade AST validation:*
-    - `sanitize_strategy_code(code_str: str) -> str` - *Sanitizes synthesized strategy code for modern pandas compatibility (>= 2.1/2.2)*
+    - `validate_code_safety(code_str: str) -> bool` - *AST code safety validation delegated to synthesis_validator.*
+    - `sanitize_strategy_code(code_str: str) -> str` - *Code sanitization and AST repair delegated to synthesis_validator.*
     - `compile_strategy_class(code_str: str, class_name: str) -> Optional[Type[EdgeStrategy]]` - *Compiles sanitized code in a restricted namespace and retrieves the EdgeStrategy subclass.*
     - `run_backtest_sandbox(strategy_cls: Type[EdgeStrategy], symbol: str, simulated_returns: Optional[List[float]]) -> Dict[str, float]` - *Tests the strategy in an institutional backtest sandbox.*
     - `async run_historical_simulation(strategy_cls: Type[EdgeStrategy], symbol: str, lookback_candles: int, ...) -> List[float]` - *Simulates candidate EdgeStrategy bar-by-bar across real historical PriceOHLCV candles*
@@ -13373,10 +13305,8 @@
   - `extract_and_parse_json(text: str) -> Optional[dict]`: Robust extraction and parsing of JSON from LLM responses.
   - `extract_retry_after(error_or_headers: Any) -> Optional[float]`: Extract upstream Retry-After delay (in seconds) from HTTP headers or exception payloads.
 
-#### `capabilities.py` - *Declarative Model Capabilities Table.*
+#### `capabilities.py` - *Declarative Model Capabilities Resolver.*
 - **Path**: [`src/monika/infrastructure/providers/capabilities.py`](src/monika/infrastructure/providers/capabilities.py)
-- **Classes**:
-  - `class ModelCapabilities`: Declarative capability flags for a model or family of models.
 - **Top-Level Functions**:
   - `get_model_capabilities(model_name: Optional[str]) -> ModelCapabilities`: Look up capabilities for a model with prefix/substring matching and graceful default fallback.
   - `resolve_effective_context_window(model_name: Optional[str], provider_name: Optional[str], settings: Optional[dict], ...) -> int`: Multi-Tier Context Window Resolution Cascade:
@@ -13430,34 +13360,10 @@
 #### `llm_factory.py` - *LLM Factory: Satu pintu masuk untuk membuat klien LLM.*
 - **Path**: [`src/monika/infrastructure/providers/llm_factory.py`](src/monika/infrastructure/providers/llm_factory.py)
 - **Classes**:
-  - `class ProviderCircuitBreaker`: Tracks consecutive 5xx/timeouts and permanent entitlement errors across providers.
-    - `is_provider_available(provider: str, model: Optional[str]) -> bool`
-    - `record_provider_success(provider: str, model: Optional[str]) -> None`
-    - `record_provider_failure(provider: str, is_server_or_timeout: bool, reason: str, ...) -> None`
-    - `blacklist_model(provider: str, model: str, reason: str, ...) -> None`
-    - `is_model_blacklisted(provider: str, model: str) -> bool`
-    - `reset() -> None`
-  - `class EndpointBlackhole`: 30-second blackhole cache for unresponsive local models (Ollama/vLLM) or hanging endpoints.
-    - `is_blackholed(endpoint_or_model: str) -> bool`
-    - `blackhole_endpoint(endpoint_or_model: str, ttl_seconds: float) -> None`
-    - `reset() -> None`
   - `class LLMFactory`: Factory terpusat. Resolves:
     - `__init__(settings: dict)`
     - `get_client_for_task(task_role: str) -> 'BaseLLMClient'` - *Buat client untuk task role tertentu.*
     - `is_model_paid(model_name: str, role_config: Optional[dict], slot_name: Optional[str], ...) -> bool` - *Determines whether a candidate model/slot is paid or free.*
-  - `class FallbackClientWrapper(BaseLLMClient)`: Wrapper that tries primary model, and if it fails, tries fallback models.
-    - `__init__(factory: LLMFactory, primary: str, fallbacks: list[str], ...)`
-    - `provider_name() -> str` - *Returns the provider name of the currently active model slot.*
-    - `provider_name(value: str) -> None`
-    - `set_thinking_budget(budget: int) -> None` - *Sets thinking budget dynamically for wrapper and upcoming provider invocations.*
-    - `async generate(prompt: str, system: str, temperature: Optional[float], ...) -> Optional[str]`
-    - `async generate_content(system_prompt: str, user_message: str, response_schema: Optional[dict], ...) -> Optional[str]`
-    - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`
-    - `async system_one(state: Any, questions: dict, timeout: float) -> Any`
-    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any, ...) -> MockResponse`
-    - `async run_agent(session, system_prompt: str | tuple[str, str] | Any, user_message: str, ...) -> dict`
-    - `async run_chat_loop(system_prompt: str, conversation_history: list, new_user_message: str, ...) -> dict`
-    - `async run_agent_from_messages(session, system_prompt: str | tuple[str, str] | Any, messages: list, ...) -> dict`
 - **Top-Level Functions**:
   - `get_client_for_task(task_role: str, settings: Optional[dict]) -> BaseLLMClient`
   - `create_client(model_name: str, settings: dict, role_config: Optional[dict]) -> BaseLLMClient`
@@ -13485,18 +13391,13 @@
 #### `openai_provider.py`
 - **Path**: [`src/monika/infrastructure/providers/openai_provider.py`](src/monika/infrastructure/providers/openai_provider.py)
 - **Classes**:
-  - `class OpenAIProvider(BaseLLMClient)`: Provider untuk model OpenAI (GPT-4o, GPT-4o-mini).
+  - `class OpenAIProvider(OpenAIChatMixin, BaseLLMClient)`: Provider untuk model OpenAI (GPT-4o, GPT-4o-mini).
     - `__init__(model: str, max_tokens: int, api_key: Optional[str], ...)`
     - `set_api_key(api_key: str) -> None` - *Update active API key and re-initialize underlying AsyncOpenAI client.*
     - `set_thinking_budget(budget: int) -> None` - *Sets thinking budget and resolves corresponding reasoning effort.*
     - `async generate(prompt: str, system: Optional[Any], temperature: Optional[float], ...) -> Optional[str]`
     - `async generate_content(system_prompt: str, user_message: str, response_schema: Optional[dict], ...) -> Optional[str]`
     - `async classify_json(prompt: str, system_prompt: Optional[str], schema: Optional[dict], ...) -> Optional[dict]`
-    - `async run_tool_agent(messages: list, tools: list, system_prompt: Any, ...)`
-    - `async run_chat_loop(system_prompt: str, conversation_history: list, new_user_message: str, ...) -> dict`
-- **Top-Level Functions**:
-  - `sanitize_tool_parameters_schema(schema_dict: Any) -> Any`: Sanitize JSON Schema for OpenAI / OpenRouter function calling parameters.
-  - `make_openai_strict_schema(schema_dict: dict) -> dict`: Transforms standard Pydantic JSON schema into OpenAI strict: true compliant schema.
 
 #### `opencode_provider.py` - *OpenCode Go / Zen Provider Client for Monika Trading Agent.*
 - **Path**: [`src/monika/infrastructure/providers/opencode_provider.py`](src/monika/infrastructure/providers/opencode_provider.py)

@@ -643,6 +643,15 @@ class AgentLifecycleMixin:
             await asyncio.gather(*all_pending_tasks, return_exceptions=True)
             logger.info(f"  [OK] Cancelled {len(all_pending_tasks)} active agent and background tasks")
 
+        # Flush and stop batched telemetry before closing DB pool
+        try:
+            from monika.core.telemetry.batched_sink import disable_batched_telemetry
+
+            await disable_batched_telemetry()
+            logger.info("  [OK] Batched telemetry flushed and closed")
+        except Exception as telem_err:
+            logger.debug(f"Telemetry flush note: {telem_err}")
+
         # Close DB pool
         try:
             await close_db()

@@ -148,7 +148,7 @@ class SqliteCheckpointSaver(InMemorySaver):
         """Asynchronously prune checkpoints and writes from SQLite disk database."""
         return await asyncio.to_thread(self.prune_disk_checkpoints, max_threads, retention_days)
 
-    def _prune_memory_cache(self, max_threads: int = 5) -> None:
+    def _prune_memory_cache(self, max_threads: int = 3) -> None:
         """Limit in-memory cache to the most recent active threads to prevent memory leak."""
         if len(self.storage) > max_threads:
             excess = len(self.storage) - max_threads
@@ -237,11 +237,11 @@ class SqliteCheckpointSaver(InMemorySaver):
     ) -> RunnableConfig:
         versions: ChannelVersions = new_versions or {}
         res = super().put(config, checkpoint, metadata, new_versions=versions)
-        self._prune_memory_cache(50)
+        self._prune_memory_cache(3)
         self._put_counter += 1
         if self._put_counter % 100 == 0:
             try:
-                self.prune_disk_checkpoints(max_threads=50, retention_days=3)
+                self.prune_disk_checkpoints(max_threads=20, retention_days=2)
             except Exception as e:
                 logger.debug(f"[SqliteCheckpointer] Auto disk pruning error: {e}")
         try:
@@ -297,11 +297,11 @@ class SqliteCheckpointSaver(InMemorySaver):
     ) -> RunnableConfig:
         versions: ChannelVersions = new_versions or {}
         res = super().put(config, checkpoint, metadata, new_versions=versions)
-        self._prune_memory_cache(50)
+        self._prune_memory_cache(3)
         self._put_counter += 1
         if self._put_counter % 100 == 0:
             try:
-                await self.aprune_disk_checkpoints(max_threads=50, retention_days=3)
+                await self.aprune_disk_checkpoints(max_threads=20, retention_days=2)
             except Exception as e:
                 logger.debug(f"[SqliteCheckpointer] Auto disk pruning error: {e}")
         try:
@@ -385,7 +385,7 @@ class SqliteCheckpointSaver(InMemorySaver):
     ) -> None:
         super().put_writes(config, writes, task_id, task_path=task_path)
         if len(self.writes) > 200:
-            self._prune_memory_cache(50)
+            self._prune_memory_cache(3)
         try:
             cfg = getattr(config, "get", lambda k, d=None: {})("configurable", {}) or {}
             thread_id = str(cfg.get("thread_id", ""))
@@ -430,7 +430,7 @@ class SqliteCheckpointSaver(InMemorySaver):
     ) -> None:
         super().put_writes(config, writes, task_id, task_path=task_path)
         if len(self.writes) > 200:
-            self._prune_memory_cache(50)
+            self._prune_memory_cache(3)
         try:
             cfg = getattr(config, "get", lambda k, d=None: {})("configurable", {}) or {}
             thread_id = str(cfg.get("thread_id", ""))

@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
 
+from monika.core.serialization import fast_json
 from monika.core.streaming.stream_scrubber import StatefulStreamScrubber
 from monika.interfaces.dashboard.rbac import ROLE_HIERARCHY, Role, require_role, resolve_role
 from monika.interfaces.dashboard.routes.common import (
@@ -179,8 +180,10 @@ async def websocket_live_feed(websocket: WebSocket):
                     break
                 if isinstance(item, str):
                     await websocket.send_text(item)
+                elif isinstance(item, (bytes, bytearray)):
+                    await websocket.send_bytes(item)
                 else:
-                    await websocket.send_json(item)
+                    await websocket.send_text(fast_json.dumps(item))
                 queue.task_done()
         except Exception:
             pass

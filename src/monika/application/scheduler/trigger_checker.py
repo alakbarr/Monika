@@ -142,19 +142,42 @@ class TriggerChecker:
                         cur_px = None
                         if resolved_sym:
                             try:
-                                async with get_session() as s_px:
-                                    lb = (
-                                        await s_px.execute(
-                                            select(PriceOHLCV)
-                                            .where(PriceOHLCV.symbol == resolved_sym)
-                                            .order_by(PriceOHLCV.timestamp.desc())
-                                            .limit(1)
-                                        )
-                                    ).scalar_one_or_none()
-                                    if lb and getattr(lb, "close", None) is not None:
-                                        cur_px = float(lb.close)
+                                from monika.application.services.market_snapshot_service import MarketSnapshotService
+
+                                snap = MarketSnapshotService.get_instance().get_snapshot(
+                                    resolved_sym, "M15"
+                                ) or MarketSnapshotService.get_instance().get_snapshot(resolved_sym, "H1")
+                                if snap and snap.get("close") is not None:
+                                    cur_px = float(snap["close"])
                             except Exception:
                                 pass
+                            if cur_px is None:
+                                try:
+                                    from monika.domain.market.candle_ring_buffer import RingBufferHub
+
+                                    hub = RingBufferHub.get_instance()
+                                    candles = hub.get_latest_candles(resolved_sym, "M15", 1) or hub.get_latest_candles(
+                                        resolved_sym, "H1", 1
+                                    )
+                                    if candles and "close" in candles[-1]:
+                                        cur_px = float(candles[-1]["close"])
+                                except Exception:
+                                    pass
+                            if cur_px is None:
+                                try:
+                                    async with get_session() as s_px:
+                                        lb = (
+                                            await s_px.execute(
+                                                select(PriceOHLCV)
+                                                .where(PriceOHLCV.symbol == resolved_sym)
+                                                .order_by(PriceOHLCV.timestamp.desc())
+                                                .limit(1)
+                                            )
+                                        ).scalar_one_or_none()
+                                        if lb and getattr(lb, "close", None) is not None:
+                                            cur_px = float(lb.close)
+                                except Exception:
+                                    pass
                         macro_ctx = getattr(getattr(trigger, "analysis", None), "rationale", None) or ""
                         jev_val = await self.validate_trigger_with_jev(
                             trigger, symbol=resolved_sym, current_price=cur_px, macro_context=macro_ctx

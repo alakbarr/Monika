@@ -436,6 +436,15 @@ class MT5MarketDataMixin(MT5MixinBase):
         if parsed_rows:
             last_ts, _, l_open, l_high, l_low, l_close, l_vol = parsed_rows[-1]
             try:
+                from monika.domain.market.candle_ring_buffer import RingBufferHub
+
+                ring_buf = RingBufferHub.get_instance().get_buffer(symbol, timeframe)
+                for ts_dt, canonical_ts, r_open, r_high, r_low, r_close, r_vol in parsed_rows:
+                    ring_buf.append_or_update(canonical_ts or ts_dt, r_open, r_high, r_low, r_close, r_vol)
+            except Exception as ring_err:
+                logger.debug(f"RingBufferHub update error: {ring_err}")
+
+            try:
                 from monika.application.services.market_snapshot_service import MarketSnapshotService
 
                 MarketSnapshotService.get_instance().set_snapshot(

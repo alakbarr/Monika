@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import WebSocket
 from pydantic import BaseModel, Field
+from monika.core.serialization import fast_json
 
 logger = logging.getLogger("TradingAgent.DashboardAPI.Routes")
 
@@ -172,7 +173,7 @@ def _safe_json(raw: Optional[str], default: Any = None) -> Any:
     if raw is None:
         return default
     try:
-        return json.loads(raw)
+        return fast_json.loads(raw)
     except Exception:
         return default if default is not None else raw
 
@@ -189,10 +190,13 @@ async def broadcast_live_event(event_type: str, payload: dict) -> None:
     if not _active_websockets and not _client_queues:
         return
 
+    # Pre-encode once using fast_json
+    encoded = fast_json.dumps(message)
+
     dead = []
     for ws, q in list(_client_queues.items()):
         try:
-            q.put_nowait(message)
+            q.put_nowait(encoded)
         except asyncio.QueueFull:
             logger.warning("[Dashboard WS] Client queue full, marking dead")
             dead.append(ws)
@@ -203,7 +207,7 @@ async def broadcast_live_event(event_type: str, payload: dict) -> None:
     for ws in list(_active_websockets):
         if ws not in _client_queues:
             try:
-                await ws.send_json(message)
+                await ws.send_text(encoded)
             except Exception:
                 dead.append(ws)
 

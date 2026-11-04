@@ -481,6 +481,12 @@ def bootstrap_application(
     Hardens runtime/networking and configures the canonical ServiceContainer.
     """
     bootstrap_runtime()
+    try:
+        from monika.core.telemetry.batched_sink import enable_batched_telemetry
+
+        enable_batched_telemetry(flush_interval_seconds=2.0)
+    except Exception as e:
+        logger.debug(f"[Bootstrap] Notice enabling batched telemetry: {e}")
     container = build_application_container(settings=settings, overrides=overrides)
     return container
 

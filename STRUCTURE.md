@@ -1485,6 +1485,7 @@ Monika/
 │       │   │   ├── __init__.py
 │       │   │   ├── candlestick_patterns.py
 │       │   │   ├── chart_patterns.py
+│       │   │   ├── classic.py
 │       │   │   ├── factor_primitives.py
 │       │   │   ├── micro_alpha_zoo.py
 │       │   │   ├── microstructure.py
@@ -1492,7 +1493,8 @@ Monika/
 │       │   │   ├── regime_detector.py
 │       │   │   ├── smc_advanced.py
 │       │   │   ├── structure.py
-│       │   │   └── technical.py
+│       │   │   ├── technical.py
+│       │   │   └── workspace_indicators.py
 │       │   ├── macro/
 │       │   │   ├── __init__.py
 │       │   │   └── regime_classifier.py
@@ -3211,4 +3213,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 275 | **Total Tracked Files**: 2906
+**Total Tracked Directories**: 275 | **Total Tracked Files**: 2908
