@@ -44,7 +44,6 @@ class OrderStatus(str, Enum):
             OrderStatus.REJECTED,
             OrderStatus.EXPIRED,
             OrderStatus.CANCELLED,
-            OrderStatus.ABORT_REQUESTED,
             OrderStatus.INTERRUPTED,
         )
 

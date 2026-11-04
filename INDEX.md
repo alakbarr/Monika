@@ -722,6 +722,19 @@
   - `frozen_time(dt: datetime | None)`: Synchronous context manager to freeze simulated time deterministically per task/thread.
   - `async async_frozen_time(dt: datetime | None)`: Asynchronous context manager to freeze simulated time deterministically per coroutine.
 
+#### `compaction.py` - *Package: monika.core.primitives*
+- **Path**: [`src/monika/core/primitives/compaction.py`](src/monika/core/primitives/compaction.py)
+- **Classes**:
+  - `class CompactionTarget(Protocol)`: Protocol for components that participate in memory compaction.
+    - `compact(tier: int) -> int` - *Execute compaction for the given tier. Returns count of freed entries/objects.*
+  - `class CompactionRegistry`: Central registry of compaction targets.
+    - `__init__() -> None`
+    - `register(target: CompactionTarget) -> None` - *Register a compaction target.*
+    - `unregister(target: CompactionTarget) -> None` - *Unregister a compaction target.*
+    - `compact_all(tier: int) -> int` - *Trigger compaction across all registered targets for specified tier.*
+- **Top-Level Functions**:
+  - `get_compaction_registry() -> CompactionRegistry`: Singleton getter for CompactionRegistry.
+
 #### `constants.py`
 - **Path**: [`src/monika/core/primitives/constants.py`](src/monika/core/primitives/constants.py)
 
@@ -820,6 +833,16 @@
 - **Path**: [`src/monika/core/primitives/retry.py`](src/monika/core/primitives/retry.py)
 - **Top-Level Functions**:
   - `retryable(max_retries: int, base_delay: float, max_delay: float, ...) -> Callable[[Any], Any]`: Decorator for retrying functions on transient failures with exponential backoff.
+
+#### `tick_coalescer.py` - *High-throughput, monotonic tick coalescing and debouncing primitive.*
+- **Path**: [`src/monika/core/primitives/tick_coalescer.py`](src/monika/core/primitives/tick_coalescer.py)
+- **Classes**:
+  - `class TickCoalescer`: Per-symbol monotonic trailing debounce coalescer.
+    - `__init__(debounce_seconds: float) -> None`
+    - `should_emit(symbol: str, now_mono: Optional[float]) -> bool` - *Returns True if symbol has not been emitted within debounce_seconds.*
+    - `reset(symbol: Optional[str]) -> None` - *Reset cooldown for a specific symbol or all symbols.*
+- **Top-Level Functions**:
+  - `get_tick_coalescer() -> TickCoalescer`: Singleton getter for shared application-wide TickCoalescer.
 
 #### `turn_marker.py` - *File: utils/turn_marker.py*
 - **Path**: [`src/monika/core/primitives/turn_marker.py`](src/monika/core/primitives/turn_marker.py)
@@ -4435,7 +4458,7 @@
   - `class PlaybookRegistry`: In-memory registry and resolver for empirical playbook specifications.
     - `register_default_repository_factory(factory: Callable[[], PlaybookRepositoryProtocol]) -> None` - *Register the default infrastructure repository factory.*
     - `set_repository(repo: Optional[PlaybookRepositoryProtocol]) -> None` - *Set the active playbook repository adapter.*
-    - `get_repository() -> Optional[PlaybookRepositoryProtocol]` - *Get the active repository or lazily instantiate from registered factory.*
+    - `get_repository() -> Optional[PlaybookRepositoryProtocol]` - *Get the active repository or lazily instantiate from registered factory or default adapter.*
     - `register_specs(symbol: str, specs: List[PlaybookSpec]) -> None` - *Explicitly register in-memory specs for a symbol (testing/mocking).*
     - `clear_cache() -> None` - *Clear all cached playbook specifications.*
     - `get_playbooks_dir() -> Path` - *Resolve the playbooks directory path via repository.*
@@ -12586,6 +12609,12 @@
 - **Top-Level Functions**:
   - `upgrade() -> None`: Upgrade schema: Create composite index on activity_log(category, timestamp).
   - `downgrade() -> None`: Downgrade schema: Drop composite index on activity_log(category, timestamp).
+
+#### `0018_add_technical_indicators_unique_constraint.py` - *add technical_indicators unique constraint*
+- **Path**: [`src/monika/infrastructure/database/migrations/versions/0018_add_technical_indicators_unique_constraint.py`](src/monika/infrastructure/database/migrations/versions/0018_add_technical_indicators_unique_constraint.py)
+- **Top-Level Functions**:
+  - `upgrade() -> None`: Upgrade schema: Create unique constraint on technical_indicators(symbol, timeframe, timestamp, indicator_name).
+  - `downgrade() -> None`: Downgrade schema: Drop unique constraint on technical_indicators.
 
 #### `c83c5e451412_sync_schema_indexes_types_and_.py` - *sync_schema_indexes_types_and_constraints*
 - **Path**: [`src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py`](src/monika/infrastructure/database/migrations/versions/c83c5e451412_sync_schema_indexes_types_and_.py)

@@ -203,6 +203,7 @@ class GeminiProvider(BaseLLMClient):
                     return token
             except Exception:
                 pass
+
             if self.paid_api_key and not self._is_key_cooling(self.paid_api_key, now):
                 return self.paid_api_key
             logger.warning(
@@ -588,7 +589,8 @@ class GeminiProvider(BaseLLMClient):
 
         stream_config = self._build_stream_config()
         timeout_sec = float(provider_cfg.get("timeout_seconds", 360.0))
-        max_attempts = min(max(len(self.free_api_keys) if self.free_api_keys else 1, 1), 5)
+        num_free = len(self.free_api_keys) if self.free_api_keys else 0
+        max_attempts = min(max(num_free + 2, 2), 6)
         for attempt in range(max_attempts):
             api_key = self._get_api_key(sticky=True)
             if not api_key:
@@ -810,6 +812,21 @@ class GeminiProvider(BaseLLMClient):
             except Exception as e:
                 if self._is_transient_error(e):
                     self._handle_rate_limit_error(api_key, e, "generate", model_name=self.model)
+                    continue
+                err_str = str(e)
+                status_code = getattr(e, "status", None)
+                if (
+                    status_code == 403
+                    or "403" in err_str
+                    or "PERMISSION_DENIED" in err_str
+                    or "insufficient authentication scopes" in err_str
+                ) and api_key:
+                    clean_msg = format_api_error_summary(403, getattr(e, "body", "") or err_str)
+                    logger.warning(
+                        f"Gemini key ({mask_credential(api_key)}) rejected with 403 / insufficient scopes in generate. Cooling key for 24h and failing over to next pool key: {clean_msg}"
+                    )
+                    self._key_cooldowns[api_key] = time.time() + 86400.0
+                    self.rotate_api_key()
                     continue
                 clean_msg = format_api_error_summary(getattr(e, "status", 500), getattr(e, "body", "") or str(e))
                 logger.warning(

@@ -144,7 +144,7 @@ class NewsClassificationMixin(_NewsDigestMixinBase):
         now_utc = datetime.now(timezone.utc)
         now_str = now_utc.strftime("%Y-%m-%d %H:%M UTC")
         classified = 0
-        batch_size = self.settings.get("news_classification", {}).get("batch_size", 6)
+        batch_size = max(1, min(int(self.settings.get("news_classification", {}).get("batch_size", 6)), 8))
         seen_breaking_titles = []
 
         # FIX P0-3: Implement persistent daily BREAKING budget
@@ -169,6 +169,26 @@ class NewsClassificationMixin(_NewsDigestMixinBase):
 
         macro_grounding_context = await self._build_5day_macro_context(session, now_utc)
 
+        tier_directives_str = ""
+        try:
+            from sqlalchemy import select as _sel
+            from monika.infrastructure.database.models import SystemConfig
+
+            cfg = (
+                await session.execute(_sel(SystemConfig).where(SystemConfig.key == "news_tier_calibration_directives"))
+            ).scalar_one_or_none()
+            if cfg and cfg.value:
+                import json as _json
+
+                directives = _json.loads(cfg.value).get("directives", [])
+                if directives:
+                    tier_directives_str = (
+                        "\n\nCALIBRATION FEEDBACK (System Outcome Tracking Directives):\n"
+                        + "\n".join(f"- {d}" for d in directives)
+                    )
+        except Exception:
+            pass
+
         for i in range(0, len(news_items), batch_size):
             if i > 0 and (time.monotonic() - pass_start) >= max_pass_secs:
                 logger.info(
@@ -177,29 +197,6 @@ class NewsClassificationMixin(_NewsDigestMixinBase):
                 break
             batch = news_items[i : i + batch_size]
             calendar_priors = await self._get_calendar_impact_priors(session, batch, now_utc)
-
-            tier_directives_str = ""
-            try:
-                from sqlalchemy import select as _sel
-
-                from monika.infrastructure.database.models import SystemConfig
-
-                cfg = (
-                    await session.execute(
-                        _sel(SystemConfig).where(SystemConfig.key == "news_tier_calibration_directives")
-                    )
-                ).scalar_one_or_none()
-                if cfg and cfg.value:
-                    import json as _json
-
-                    directives = _json.loads(cfg.value).get("directives", [])
-                    if directives:
-                        tier_directives_str = (
-                            "\n\nCALIBRATION FEEDBACK (System Outcome Tracking Directives):\n"
-                            + "\n".join(f"- {d}" for d in directives)
-                        )
-            except Exception:
-                pass
 
             items_text_lines = []
             for j, item in enumerate(batch):

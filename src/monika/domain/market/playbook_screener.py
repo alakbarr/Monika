@@ -179,10 +179,21 @@ class PlaybookRegistry:
 
     @classmethod
     def get_repository(cls) -> Optional[PlaybookRepositoryProtocol]:
-        """Get the active repository or lazily instantiate from registered factory."""
+        """Get the active repository or lazily instantiate from registered factory or default adapter."""
         global _DEFAULT_PLAYBOOK_REPO_FACTORY
-        if cls._repository is None and _DEFAULT_PLAYBOOK_REPO_FACTORY is not None:
-            cls._repository = _DEFAULT_PLAYBOOK_REPO_FACTORY()
+        if cls._repository is None:
+            if _DEFAULT_PLAYBOOK_REPO_FACTORY is not None:
+                cls._repository = _DEFAULT_PLAYBOOK_REPO_FACTORY()
+            else:
+                try:
+                    import importlib
+
+                    repo_mod = importlib.import_module("monika.infrastructure.storage.playbook_catalog_repository")
+                    repo_cls = getattr(repo_mod, "PlaybookCatalogRepository", None)
+                    if repo_cls is not None:
+                        cls._repository = repo_cls()
+                except Exception as e:
+                    logger.debug(f"PlaybookRegistry lazy repository fallback unavailable: {e}")
         return cls._repository
 
     @classmethod

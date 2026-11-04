@@ -344,7 +344,7 @@ async def _case_macro_chronicle_curator(session: Any, settings: dict[str, Any], 
         schema={
             "type": "object",
             "properties": {
-                "proposals": {"type": "array"},
+                "proposals": {"type": "array", "items": {"type": "object"}},
                 "processed_tactical_ids": {"type": "array", "items": {"type": "integer"}},
                 "synthesis_summary": {"type": "string"},
             },

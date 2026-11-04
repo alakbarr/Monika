@@ -249,6 +249,6 @@ def test_order_status_is_terminal_contracts():
     assert OrderStatus.CANCELLED.is_terminal is True
     assert OrderStatus.REJECTED.is_terminal is True
     assert OrderStatus.EXPIRED.is_terminal is True
-    assert OrderStatus.ABORT_REQUESTED.is_terminal is True
+    assert OrderStatus.ABORT_REQUESTED.is_terminal is False
     assert OrderStatus.PENDING_SUBMIT.is_terminal is False
     assert OrderStatus.SUBMITTED.is_terminal is False

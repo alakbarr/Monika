@@ -522,9 +522,9 @@ class ContextBuilderMixin:
                     )
                 ).scalar_one_or_none()
             else:
-                from monika.infrastructure.database.db import get_session
+                from monika.infrastructure.database.db import get_read_session
 
-                async with get_session() as infl_session:
+                async with get_read_session() as infl_session:
                     infl_cfg = (
                         await infl_session.execute(
                             _sel(SystemConfig).where(SystemConfig.key == "score_inflation_correction_threshold")

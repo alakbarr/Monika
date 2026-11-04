@@ -901,12 +901,14 @@ Monika/
 │       │   │   ├── __init__.py
 │       │   │   ├── bounded_lru_cache.py
 │       │   │   ├── clock.py
+│       │   │   ├── compaction.py
 │       │   │   ├── constants.py
 │       │   │   ├── content_distiller.py
 │       │   │   ├── event_bus.py
 │       │   │   ├── jev_primitives.py
 │       │   │   ├── prompt_primitives.py
 │       │   │   ├── retry.py
+│       │   │   ├── tick_coalescer.py
 │       │   │   ├── turn_marker.py
 │       │   │   └── worktree.py
 │       │   ├── risk/
@@ -1723,6 +1725,7 @@ Monika/
 │       │   │   │   │   ├── 0015_decision_refl_pos_idx.py
 │       │   │   │   │   ├── 0016_dedup_price_ohlcv_indexes.py
 │       │   │   │   │   ├── 0017_add_activity_log_composite_index.py
+│       │   │   │   │   ├── 0018_add_technical_indicators_unique_constraint.py
 │       │   │   │   │   ├── __init__.py
 │       │   │   │   │   └── c83c5e451412_sync_schema_indexes_types_and_.py
 │       │   │   │   ├── __init__.py
@@ -2509,7 +2512,8 @@ Monika/
 │   │   ├── test_market_snapshot_and_telemetry.py
 │   │   ├── test_polars_bridge.py
 │   │   ├── test_rust_kernels_parity.py
-│   │   └── test_rust_native_bridge.py
+│   │   ├── test_rust_native_bridge.py
+│   │   └── test_tick_coalescer.py
 │   ├── data_sources/
 │   │   ├── __init__.py
 │   │   ├── test_bond_yields.py
@@ -2540,6 +2544,7 @@ Monika/
 │   │   ├── test_models.py
 │   │   ├── test_phase4_memory_and_cleanup.py
 │   │   ├── test_repositories.py
+│   │   ├── test_safe_bulk_upsert.py
 │   │   ├── test_schema_completeness_and_migrations.py
 │   │   ├── test_session_fts_and_rewind.py
 │   │   ├── test_sqlite_concurrency_fix.py
@@ -3257,4 +3262,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 280 | **Total Tracked Files**: 2947
+**Total Tracked Directories**: 280 | **Total Tracked Files**: 2952

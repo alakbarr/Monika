@@ -858,7 +858,10 @@ def register_advanced_quant_tools(registry=None):
             description="Simulate portfolio drawdown and margin utilization under multi-position correlation shocks (Q099).",
             parameters={
                 "type": "object",
-                "properties": {"positions": {"type": "array"}, "simulations": {"type": "integer"}},
+                "properties": {
+                    "positions": {"type": "array", "items": {"type": "object"}},
+                    "simulations": {"type": "integer"},
+                },
             },
             handler=handle_simulate_portfolio_drawdown,
             toolset="risk",
@@ -914,7 +917,7 @@ def register_advanced_quant_tools(registry=None):
                 "type": "object",
                 "properties": {
                     "symbol": {"type": "string"},
-                    "models": {"type": "array"},
+                    "models": {"type": "array", "items": {"type": "string"}},
                     "num_cases": {"type": "integer"},
                 },
             },

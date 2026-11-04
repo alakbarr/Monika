@@ -185,7 +185,10 @@ def register_macro_tools(registry: Optional[ToolRegistry] = None):
             description="Fetch CFTC Commitments of Traders (COT) institutional positioning.",
             parameters={
                 "type": "object",
-                "properties": {"symbol": {"type": "string"}, "market_codes": {"type": "array"}},
+                "properties": {
+                    "symbol": {"type": "string"},
+                    "market_codes": {"type": "array", "items": {"type": "string"}},
+                },
             },
             handler=handle_get_cot_report,
             toolset="macro",

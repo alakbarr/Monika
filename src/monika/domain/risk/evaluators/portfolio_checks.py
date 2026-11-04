@@ -304,18 +304,6 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
                     select(RiskState).where(RiskState.date >= today_start).order_by(RiskState.date.desc()).limit(1)
                 )
             ).scalar_one_or_none()
-            if state is None:
-                try:
-                    state = RiskState(
-                        date=clock.now(),
-                        daily_pnl=0.0,
-                        current_drawdown=0.0,
-                        trading_paused=False,
-                    )
-                    session.add(state)
-                    await session.flush()
-                except Exception as init_err:
-                    logger.debug(f"Failed to initialize baseline RiskState: {init_err}")
             realized_pnl = float(state.daily_pnl) if state is not None else 0.0
 
             unrealized_pnl = 0.0

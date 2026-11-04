@@ -667,6 +667,8 @@ class BaseLLMClient(LlmPort, ABC):
         """Execute classify_json with a diagnostic self-correction retry if output is missing required schema keys."""
         current_prompt = prompt
         result: Optional[Dict[str, Any]] = None
+        is_array_schema = isinstance(schema, dict) and str(schema.get("type", "")).lower() == "array"
+
         for attempt in range(max_retries + 1):
             result = await self.classify_json(
                 current_prompt,
@@ -676,34 +678,47 @@ class BaseLLMClient(LlmPort, ABC):
                 max_tokens=max_tokens,
                 **kwargs,
             )
-            if isinstance(result, dict):
-                req_keys = (
-                    [str(r) for r in schema.get("required", [])]
-                    if isinstance(schema, dict) and isinstance(schema.get("required"), list)
-                    else []
-                )
-                missing = [k for k in req_keys if k not in result or result.get(k) is None]
-                if not missing:
+            if isinstance(result, list):
+                if is_array_schema or not isinstance(schema, dict):
                     return result
-                err_reason = f"Missing required schema keys: {missing}. Provided keys: {sorted(result.keys())}"
+                err_reason = "Output was a JSON array, but expected a JSON object with properties."
+            elif isinstance(result, dict):
+                if is_array_schema:
+                    for array_key in ("items", "data", "results", "proposals", "list"):
+                        if isinstance(result.get(array_key), list):
+                            return result[array_key]
+                    err_reason = "Output was a JSON object, but expected a JSON array."
+                else:
+                    req_keys = (
+                        [str(r) for r in schema.get("required", [])]
+                        if isinstance(schema, dict) and isinstance(schema.get("required"), list)
+                        else []
+                    )
+                    missing = [k for k in req_keys if k not in result or result.get(k) is None]
+                    if not missing:
+                        return result
+                    err_reason = f"Missing required schema keys: {missing}. Provided keys: {sorted(result.keys())}"
             else:
-                err_reason = "Output was None or could not be parsed as a JSON object."
+                err_reason = "Output was None or could not be parsed as valid JSON."
 
             if attempt < max_retries:
-                req_summary = (
-                    f"Required keys: {schema.get('required', [])}"
-                    if isinstance(schema, dict) and schema.get("required")
-                    else "Must return a valid JSON object."
-                )
+                if is_array_schema:
+                    req_summary = "Must return a valid JSON array ([...])."
+                elif isinstance(schema, dict) and schema.get("required"):
+                    req_summary = f"Required keys: {schema.get('required', [])}"
+                else:
+                    req_summary = "Must return a valid JSON object."
                 current_prompt = (
                     f"{prompt}\n\n"
                     f"[TURN FAILURE DIAGNOSTIC — ATTEMPT {attempt + 1} SELF-CORRECTION REQUIRED]\n"
                     f"• What Failed: Structured JSON validation failed.\n"
                     f"• Root Cause: {err_reason}\n"
                     f"• Expected Schema Contract: {req_summary}\n"
-                    f"• Required Remediation: Return ONLY a valid JSON object containing all required keys."
+                    f"• Required Remediation: Return ONLY valid JSON adhering to the expected schema contract."
                 )
-        return result if isinstance(result, dict) else None
+        if is_array_schema and isinstance(result, list):
+            return result
+        return result if isinstance(result, (dict, list)) else None
 
     # --- Compatibility wrappers (generasi lama) ---
 

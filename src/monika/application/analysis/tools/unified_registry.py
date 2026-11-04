@@ -183,6 +183,9 @@ def _sanitize_schema_for_gemini(schema: dict) -> dict:
         else:
             sanitized[k] = v
 
+    if sanitized.get("type") == "ARRAY" and not sanitized.get("items"):
+        sanitized["items"] = {"type": "STRING"}
+
     return sanitized
 
 

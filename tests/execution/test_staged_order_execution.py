@@ -44,7 +44,7 @@ def test_order_model_two_phase_fields_and_transitions():
     assert order.is_terminal is True
 
 
-def test_order_transition_to_abort_requested_is_terminal():
+def test_order_transition_to_abort_requested_is_non_terminal():
     order = Order(
         symbol="XAUUSD",
         order_type="MARKET",
@@ -55,6 +55,9 @@ def test_order_transition_to_abort_requested_is_terminal():
     order.transition_to(OrderStatus.INTENT_COMMITTED)
     order.transition_to(OrderStatus.ABORT_REQUESTED, reason="Kill switch won race")
     assert order.status == OrderStatus.ABORT_REQUESTED
+    assert order.is_terminal is False
+    order.transition_to(OrderStatus.CANCELLED, reason="Broker confirmed cancellation")
+    assert order.status == OrderStatus.CANCELLED
     assert order.is_terminal is True
 
 

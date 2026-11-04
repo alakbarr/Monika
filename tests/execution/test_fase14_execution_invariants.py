@@ -27,11 +27,27 @@ from monika.infrastructure.brokers.ea_bridge.heartbeat_writer import HeartbeatMa
 from monika.infrastructure.brokers.idempotency_guard import IdempotencyGuard, IdempotencyState
 
 
-def test_order_status_abort_requested_is_terminal():
-    assert OrderStatus.ABORT_REQUESTED.is_terminal is True
+def test_order_status_abort_requested_is_non_terminal():
+    assert OrderStatus.ABORT_REQUESTED.is_terminal is False
     assert OrderStatus.FILLED.is_terminal is True
     assert OrderStatus.CANCELLED.is_terminal is True
     assert OrderStatus.REJECTED.is_terminal is True
+
+    # Invariant: ABORT_REQUESTED is non-terminal so broker confirmation can transition to CANCELLED
+    order = OrderEntity(
+        client_order_id="test_abort_1",
+        symbol="EURUSD",
+        order_type="MARKET",
+        direction="BUY",
+        requested_price=1.0850,
+        requested_volume=0.1,
+        status=OrderStatus.SUBMITTED,
+    )
+    order.transition_to(OrderStatus.ABORT_REQUESTED)
+    assert order.is_terminal is False
+    order.transition_to(OrderStatus.CANCELLED)
+    assert order.status == OrderStatus.CANCELLED
+    assert order.is_terminal is True
 
 
 def test_order_entity_terminal_state_transition_prevention():
