@@ -21,6 +21,13 @@ import monika.core.primitives.clock as clock
 from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
 from monika.domain.risk.position_math import validated_stop_distance
 from monika.infrastructure.database.models import AssetAnalysis, PaperTradeRecord, Position, PriceOHLCV
+from monika.core.analytics import paper_suspension
+from monika.core.analytics.paper_analytics import (
+    _group_by_symbol,
+    _group_by_symbol_direction,
+    aggregate_trade_statistics,
+    calculate_equity_curve,
+)
 
 logger = logging.getLogger("TradingAgent.PaperTracker")
 
@@ -897,288 +904,30 @@ class PaperTracker:
 
     async def get_suspended_symbols(self, session: AsyncSession) -> list[str]:
         """Return list of symbols currently suspended due to poor performance"""
-        from sqlalchemy import select
-
-        from monika.infrastructure.database.models import SystemConfig
-
-        cfg = (
-            await session.execute(select(SystemConfig).where(SystemConfig.key == "suspended_symbols"))
-        ).scalar_one_or_none()
-
-        if not cfg or not cfg.value:
-            return []
-
-        try:
-            import json
-
-            data = json.loads(cfg.value)
-            now = clock.now()
-            # Filter out suspensions that have expired
-            active = [s for s in data if datetime.fromisoformat(s["until"]) > now]
-            return [s["symbol"] for s in active]
-        except Exception:
-            return []
+        return await paper_suspension.get_suspended_symbols(session)
 
     async def check_and_suspend_poor_performers(self, session: AsyncSession, settings: dict) -> list[str]:
-        """
-        Auto-suspend symbols with consecutive losses.
-        Returns list of newly suspended symbols.
-        Respects trading.paper_trading.streak_loss_policy and prevents infinite re-suspension loop.
-        """
-        import json
-
-        from sqlalchemy import select
-
-        from monika.infrastructure.database.models import PaperTradeRecord, SystemConfig
-
-        paper_cfg = settings.get("trading", {}).get("paper_trading", {})
-        streak_policy = paper_cfg.get("streak_loss_policy", "warn_and_scale")
-        is_auto_execute = settings.get("trading", {}).get("auto_execute", False)
-
-        # Jika paper exploration mode (disabled / warn_and_scale) dan bukan live trading:
-        if not is_auto_execute and streak_policy in ("disabled", "warn_and_scale"):
-            logger.debug(f"[PaperTracker] Skipping auto-suspension (streak_loss_policy: '{streak_policy}')")
-            return []
-
-        newly_suspended = []
-        max_consecutive_losses = settings.get("trading", {}).get("risk", {}).get("max_consecutive_losses_per_symbol", 3)
-        suspension_hours = paper_cfg.get(
-            "suspension_hours",
-            settings.get("trading", {}).get("risk", {}).get("suspension_hours_after_consecutive_losses", 12),
-        )
-
-        asset_universe = settings.get("trading", {}).get("asset_universe", [])
-
-        cfg = (
-            await session.execute(select(SystemConfig).where(SystemConfig.key == "suspended_symbols"))
-        ).scalar_one_or_none()
-
-        current = []
-        if cfg and cfg.value:
-            try:
-                current = json.loads(cfg.value)
-            except Exception:
-                current = []
-
-        now = clock.now()
-
-        for symbol in asset_universe:
-            # FIX INFINITE LOOP: Cek apakah simbol ini sebelumnya pernah di-suspend
-            prev_entry = next((s for s in current if s.get("symbol") == symbol), None)
-            last_suspended_until = None
-            if prev_entry and "until" in prev_entry:
-                try:
-                    last_suspended_until = datetime.fromisoformat(prev_entry["until"])
-                except Exception:
-                    last_suspended_until = None
-
-            query = (
-                select(PaperTradeRecord)
-                .where(PaperTradeRecord.symbol == symbol)
-                .where(PaperTradeRecord.status == "closed")
-                .where(PaperTradeRecord.exit_reason.in_(["sl_hit", "tp_hit"]))
-            )
-            # Jika suspensi sebelumnya telah expired, HANYA hitung trade yang ditutup SETELAH masa suspensi berakhir
-            if last_suspended_until and last_suspended_until <= now:
-                query = query.where(PaperTradeRecord.closed_at > last_suspended_until)
-
-            recent = (
-                (
-                    await session.execute(
-                        query.order_by(PaperTradeRecord.closed_at.desc()).limit(max_consecutive_losses + 1)
-                    )
-                )
-                .scalars()
-                .all()
-            )
-
-            consecutive_losses = 0
-            for trade in recent:
-                if trade.exit_reason == "sl_hit":
-                    consecutive_losses += 1
-                else:
-                    break
-
-            if consecutive_losses >= max_consecutive_losses:
-                # Suspend this symbol
-                until = (now + timedelta(hours=suspension_hours)).isoformat()
-
-                # Remove old entry for this symbol if exists
-                current = [s for s in current if s.get("symbol") != symbol]
-                current.append(
-                    {
-                        "symbol": symbol,
-                        "suspended_at": now.isoformat(),
-                        "until": until,
-                        "reason": f"{consecutive_losses} consecutive losses",
-                    }
-                )
-
-                newly_suspended.append(symbol)
-                logger.warning(
-                    f"AUTO-SUSPENDED {symbol}: {consecutive_losses} consecutive SL hits. Suspended for {suspension_hours}h."
-                )
-
-                try:
-                    from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
-
-                    await AgentNotifier().send_warning(
-                        f"[DIJEDA] <b>{symbol} Auto-Suspended</b>\n"
-                        f"{consecutive_losses} consecutive losses detected.\n"
-                        f"Suspended for {suspension_hours}h until {until[:16]} UTC.\n"
-                        f"Review recent analyses to identify systematic issue."
-                    )
-                except Exception:
-                    pass
-
-        if newly_suspended:
-            if cfg:
-                cfg.value = json.dumps(current)
-            else:
-                session.add(SystemConfig(key="suspended_symbols", value=json.dumps(current)))
-            await session.commit()
-
-        return newly_suspended
+        """Auto-suspend symbols with consecutive losses."""
+        return await paper_suspension.check_and_suspend_poor_performers(session, settings)
 
     async def suspend_symbol(
         self, session: AsyncSession, symbol: str, duration_hours: float = 24.0, reason: str = "manual_command"
     ) -> dict:
         """Suspend trading untuk simbol tertentu secara manual dengan durasi waktu."""
-        import json
-        from datetime import timedelta
-
-        from sqlalchemy import select
-
-        from monika.infrastructure.database.models import SystemConfig
-
-        sym_norm = symbol.strip().upper().replace("/", "")
-        cfg = (
-            await session.execute(select(SystemConfig).where(SystemConfig.key == "suspended_symbols"))
-        ).scalar_one_or_none()
-
-        current = []
-        if cfg and cfg.value:
-            try:
-                current = json.loads(cfg.value)
-            except Exception:
-                current = []
-
-        now = clock.now()
-        until = now + timedelta(hours=duration_hours)
-        until_iso = until.isoformat()
-
-        entry = {"symbol": sym_norm, "until": until_iso, "reason": reason}
-        updated = False
-        for s in current:
-            if s.get("symbol", "").upper() == sym_norm:
-                s["until"] = until_iso
-                s["reason"] = reason
-                updated = True
-                break
-        if not updated:
-            current.append(entry)
-
-        if cfg:
-            cfg.value = json.dumps(current)
-        else:
-            session.add(SystemConfig(key="suspended_symbols", value=json.dumps(current)))
-        await session.commit()
-        logger.warning(f"[PaperTracker] Symbol {sym_norm} suspended manually until {until_iso} (reason={reason})")
-        return {"symbol": sym_norm, "until": until_iso, "duration_hours": duration_hours, "reason": reason}
+        return await paper_suspension.suspend_symbol(session, symbol, duration_hours, reason)
 
     async def unsuspend_symbol(self, session: AsyncSession, symbol: str) -> bool:
-        """Buka suspensi untuk simbol tertentu."""
-        import json
-
-        from sqlalchemy import select
-
-        from monika.infrastructure.database.models import SystemConfig
-
-        cfg = (
-            await session.execute(select(SystemConfig).where(SystemConfig.key == "suspended_symbols"))
-        ).scalar_one_or_none()
-        if not cfg or not cfg.value:
-            return False
-        try:
-            current = json.loads(cfg.value)
-            new_list = [s for s in current if s.get("symbol", "").upper() != symbol.upper()]
-            if len(new_list) != len(current):
-                cfg.value = json.dumps(new_list)
-                await session.commit()
-                logger.info(f"[PaperTracker] Symbol {symbol} unsuspended successfully.")
-                return True
-        except Exception as e:
-            logger.error(f"Failed to unsuspend {symbol}: {e}")
-        return False
+        """Unsuspend trading for a symbol"""
+        return await paper_suspension.unsuspend_symbol(session, symbol)
 
     async def unsuspend_all(self, session: AsyncSession) -> list[str]:
-        """Buka suspensi untuk semua simbol."""
-        import json
+        """Unsuspend all symbols"""
+        return await paper_suspension.unsuspend_all(session)
 
-        from sqlalchemy import select
-
-        from monika.infrastructure.database.models import SystemConfig
-
-        cfg = (
-            await session.execute(select(SystemConfig).where(SystemConfig.key == "suspended_symbols"))
-        ).scalar_one_or_none()
-        if not cfg or not cfg.value:
-            return []
-        try:
-            current = json.loads(cfg.value)
-            cleared_symbols = [s.get("symbol") for s in current if s.get("symbol")]
-            cfg.value = json.dumps([])
-            await session.commit()
-            logger.info(f"[PaperTracker] All symbols unsuspended: {cleared_symbols}")
-            return cleared_symbols
-        except Exception as e:
-            logger.error(f"Failed to unsuspend all: {e}")
-            return []
-
-    async def get_streak_status(self, session: AsyncSession, symbol: str) -> dict:
+    async def get_streak_status(self, session: AsyncSession, symbol: str, settings: Optional[dict] = None) -> dict:
         """Mengambil status streak loss dan suspensi untuk simbol tertentu."""
-        from sqlalchemy import select
-
-        from monika.infrastructure.database.models import PaperTradeRecord
-
-        recent = (
-            (
-                await session.execute(
-                    select(PaperTradeRecord)
-                    .where(PaperTradeRecord.symbol == symbol)
-                    .where(PaperTradeRecord.status == "closed")
-                    .where(PaperTradeRecord.exit_reason.in_(["sl_hit", "tp_hit"]))
-                    .order_by(PaperTradeRecord.closed_at.desc())
-                    .limit(5)
-                )
-            )
-            .scalars()
-            .all()
-        )
-
-        consecutive_losses = 0
-        for trade in recent:
-            if trade.exit_reason == "sl_hit":
-                consecutive_losses += 1
-            else:
-                break
-
-        suspended_list = await self.get_suspended_symbols(session)
-        is_suspended = symbol in suspended_list
-
-        paper_cfg = (
-            self.settings.get("trading", {}).get("paper_trading", {})
-            if hasattr(self, "settings") and self.settings
-            else {}
-        )
-        streak_policy = paper_cfg.get("streak_loss_policy", "warn_and_scale")
-
-        return {
-            "symbol": symbol,
-            "consecutive_losses": consecutive_losses,
-            "is_suspended": is_suspended,
-            "streak_policy": streak_policy,
-        }
+        eff_settings = settings if settings is not None else getattr(self, "settings", None)
+        return await paper_suspension.get_streak_status(session, symbol, eff_settings)
 
     async def get_statistics(
         self, session: AsyncSession, days_back: int | None = None, symbol: str | None = None
@@ -1192,9 +941,6 @@ class PaperTracker:
             select(PaperTradeRecord, AssetAnalysis)
             .outerjoin(AssetAnalysis, PaperTradeRecord.analysis_id == AssetAnalysis.id)
             .where(PaperTradeRecord.status == "closed")
-            # Phase 0: only rows with a verified entry-time risk anchor may
-            # contribute to expectancy/win-rate/PF. Unverified rows are excluded
-            # instead of being silently counted as breakeven.
             .where(PaperTradeRecord.accounting_status == "ok")
         )
         if days_back is not None:
@@ -1204,214 +950,7 @@ class PaperTracker:
             query = query.where(PaperTradeRecord.symbol == symbol)
 
         results = (await session.execute(query)).all()
-
-        if not results:
-            return {
-                "total_trades": 0,
-                "market_trades": 0,
-                "wins": 0,
-                "losses": 0,
-                "win_rate_market_pct": 0.0,
-                "win_rate_operational_pct": 0.0,
-                "win_rate_pct": 0.0,
-                "avg_pnl_pct": 0.0,
-                "total_pnl_pct": 0.0,
-                "avg_win_pct": 0.0,
-                "avg_loss_pct": 0.0,
-                "avg_rr_achieved": 0.0,
-                "expectancy_per_trade_pct": 0.0,
-                "expectancy_per_trade_R": 0.0,
-                "has_positive_edge": False,
-                "edge_alert": False,
-                "by_confluence": {},
-                "by_priced_in": {},
-                "session_buckets": {
-                    "tokyo_00_08": {"label": "Tokyo (00:00-08:00 UTC)", "wins": 0, "total": 0},
-                    "london_08_13": {"label": "London Pre-Overlap (08:00-13:00 UTC)", "wins": 0, "total": 0},
-                    "overlap_13_16": {"label": "NY-London Overlap (13:00-16:00 UTC)", "wins": 0, "total": 0},
-                    "ny_16_21": {"label": "NY Post-London (16:00-21:00 UTC)", "wins": 0, "total": 0},
-                    "offpeak_21_00": {"label": "Off-Peak (21:00-00:00 UTC)", "wins": 0, "total": 0},
-                },
-                "avg_win_hold_hours": 0.0,
-                "avg_loss_hold_hours": 0.0,
-                "by_symbol": {},
-                "by_symbol_direction": {},
-                "recent_20": [],
-            }
-
-        # Pisahkan list paper trades (r) dan list tuples untuk iterasi
-        records = [r for r, a in results]
-
-        win_records = [r for r in records if (r.pnl_pct or 0) > 0 or r.exit_reason == "tp_hit"]
-        loss_records = [r for r in records if (r.pnl_pct or 0) < 0 or r.exit_reason == "sl_hit"]
-        tp_hits = [r for r in records if r.exit_reason == "tp_hit"]
-        sl_hits = [r for r in records if r.exit_reason == "sl_hit"]
-        pnl_values = [r.pnl_pct or 0 for r in records]
-
-        market_records = [r for r in records if r.exit_reason in MARKET_OUTCOME_EXIT_REASONS]
-        market_wins = [r for r in market_records if (r.pnl_pct or 0) > 0 or r.exit_reason == "tp_hit"]
-
-        avg_win_pct = sum(r.pnl_pct or 0 for r in win_records) / len(win_records) if win_records else 0
-        avg_loss_pct = abs(sum(r.pnl_pct or 0 for r in loss_records) / len(loss_records)) if loss_records else 0
-
-        market_total = len(market_records)
-        win_rate_market = len(market_wins) / market_total if market_total > 0 else 0
-        loss_rate_market = 1 - win_rate_market if market_total > 0 else 0
-
-        win_rate_operational = len(win_records) / len(records) if records else 0
-
-        # Expectancy per trade
-        expectancy = (win_rate_market * avg_win_pct) - (loss_rate_market * avg_loss_pct)
-        avg_rr = avg_win_pct / avg_loss_pct if avg_loss_pct > 0 else 0
-        expectancy_r = (win_rate_market * avg_rr) - loss_rate_market
-
-        # Compute extended metrics (Confluence, Priced In, Sessions, Durations)
-        by_confluence = {}
-        by_priced_in = {}
-        session_buckets = {
-            "tokyo_00_08": {"label": "Tokyo (00:00-08:00 UTC)", "wins": 0, "total": 0},
-            "london_08_13": {"label": "London Pre-Overlap (08:00-13:00 UTC)", "wins": 0, "total": 0},
-            "overlap_13_16": {"label": "NY-London Overlap (13:00-16:00 UTC)", "wins": 0, "total": 0},
-            "ny_16_21": {"label": "NY Post-London (16:00-21:00 UTC)", "wins": 0, "total": 0},
-            "offpeak_21_00": {"label": "Off-Peak (21:00-00:00 UTC)", "wins": 0, "total": 0},
-        }
-
-        win_durations = []
-        loss_durations = []
-
-        for r, a in results:
-            is_win = (r.pnl_pct or 0) > 0
-
-            # Confluence
-            if a and a.confluence_score is not None:
-                cs = a.confluence_score
-                cb = f"{cs}"
-                if cb not in by_confluence:
-                    by_confluence[cb] = {"wins": 0, "total": 0}
-                by_confluence[cb]["total"] += 1
-                if is_win:
-                    by_confluence[cb]["wins"] += 1
-
-            # Priced In
-            if a and a.priced_in_score is not None:
-                ps = a.priced_in_score
-                pb = f"pi_{ps}"
-                if pb not in by_priced_in:
-                    by_priced_in[pb] = {"score": ps, "wins": 0, "total": 0}
-                by_priced_in[pb]["total"] += 1
-                if is_win:
-                    by_priced_in[pb]["wins"] += 1
-
-            # Sessions
-            if r.opened_at:
-                h = r.opened_at.hour
-                if 0 <= h < 8:
-                    key = "tokyo_00_08"
-                elif 8 <= h < 13:
-                    key = "london_08_13"
-                elif 13 <= h < 16:
-                    key = "overlap_13_16"
-                elif 16 <= h < 21:
-                    key = "ny_16_21"
-                else:
-                    key = "offpeak_21_00"
-                session_buckets[key]["total"] += 1
-                if is_win:
-                    session_buckets[key]["wins"] += 1
-
-            # Durations
-            if r.holding_hours:
-                if is_win:
-                    win_durations.append(r.holding_hours)
-                else:
-                    loss_durations.append(r.holding_hours)
-
-        history = []
-        for record in records:
-            history.append(
-                {
-                    "symbol": record.symbol,
-                    "direction": record.direction,
-                    "exit_reason": record.exit_reason,
-                    "pnl_pct": record.pnl_pct or 0,
-                    "opened_at": record.opened_at.isoformat() if record.opened_at else None,
-                    "closed_at": record.closed_at.isoformat() if record.closed_at else None,
-                }
-            )
-
-        # Comprehensive quantitative ratios (Sharpe, Sortino, Calmar, Profit Factor, Max Drawdown)
-        import math
-
-        gross_profit = sum(p for p in pnl_values if p > 0)
-        gross_loss = abs(sum(p for p in pnl_values if p < 0))
-        profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else (gross_profit if gross_profit > 0 else 0.0)
-
-        # Drawdown calculation
-        curr_eq = 100.0
-        peak = 100.0
-        max_dd = 0.0
-        for p in pnl_values:
-            curr_eq *= 1.0 + (p / 100.0)
-            if curr_eq > peak:
-                peak = curr_eq
-            dd = ((peak - curr_eq) / peak) * 100.0 if peak > 0 else 0.0
-            if dd > max_dd:
-                max_dd = dd
-
-        # Sharpe & Sortino ratios (annualized scaling based on 252 trading days)
-        if len(pnl_values) >= 2:
-            mean_ret = sum(pnl_values) / len(pnl_values)
-            variance = sum((p - mean_ret) ** 2 for p in pnl_values) / (len(pnl_values) - 1)
-            std_dev = math.sqrt(variance) if variance > 0 else 0.0
-            sharpe_ratio = (mean_ret / std_dev) * math.sqrt(252) if std_dev > 0 else 0.0
-
-            downside_pnl = [p for p in pnl_values if p < 0]
-            if downside_pnl:
-                downside_var = sum(p**2 for p in downside_pnl) / len(downside_pnl)
-                downside_std = math.sqrt(downside_var) if downside_var > 0 else 0.0
-                sortino_ratio = (mean_ret / downside_std) * math.sqrt(252) if downside_std > 0 else 0.0
-            else:
-                sortino_ratio = sharpe_ratio if sharpe_ratio > 0 else 0.0
-        else:
-            sharpe_ratio = 0.0
-            sortino_ratio = 0.0
-
-        total_pnl_val = sum(pnl_values)
-        calmar_ratio = (total_pnl_val / max_dd) if max_dd > 0 else (total_pnl_val if total_pnl_val > 0 else 0.0)
-
-        return {
-            "total_trades": len(records),
-            "market_trades": market_total,
-            "wins": len(tp_hits),
-            "losses": len(sl_hits),
-            "win_rate_market_pct": round(win_rate_market * 100, 1),
-            "win_rate_operational_pct": round(win_rate_operational * 100, 1),
-            "win_rate_pct": round(win_rate_market * 100, 1),
-            "avg_pnl_pct": round(sum(pnl_values) / len(pnl_values), 4) if len(pnl_values) > 0 else 0,
-            "total_pnl_pct": round(sum(pnl_values), 4),
-            "avg_win_pct": round(avg_win_pct, 3),
-            "avg_loss_pct": round(avg_loss_pct, 3),
-            "avg_rr_achieved": round(avg_rr, 2),
-            "expectancy_per_trade_pct": round(expectancy, 4),
-            "expectancy_per_trade_R": round(expectancy_r, 3),
-            "sharpe_ratio": round(sharpe_ratio, 2),
-            "sortino_ratio": round(sortino_ratio, 2),
-            "calmar_ratio": round(calmar_ratio, 2),
-            "profit_factor": round(profit_factor, 2),
-            "max_drawdown_pct": round(max_dd, 2),
-            "has_positive_edge": expectancy > 0,
-            "edge_alert": expectancy < -0.1,
-            "by_confluence": by_confluence,
-            "by_priced_in": by_priced_in,
-            "session_buckets": session_buckets,
-            "avg_win_hold_hours": sum(win_durations) / len(win_durations) if win_durations else 0,
-            "avg_loss_hold_hours": sum(loss_durations) / len(loss_durations) if loss_durations else 0,
-            "by_symbol": _group_by_symbol(history),
-            "by_symbol_direction": _group_by_symbol_direction(history),
-            "recent_20": [
-                {"symbol": h["symbol"], "exit_reason": h["exit_reason"], "pnl_pct": h["pnl_pct"]} for h in history[-20:]
-            ],
-        }
+        return aggregate_trade_statistics(results)
 
     async def check_and_alert_winrate(self, session: AsyncSession, settings: dict, min_trades: int = 10) -> None:
         """
@@ -1572,60 +1111,13 @@ class PaperTracker:
         return False, "no_trigger"
 
     async def check_recent_streak(self, session: AsyncSession, lookback: int = 5) -> dict:
-        """
-        Deteksi losing streak mendadak (misal: 5 kerugian beruntun memicu alarm).
-        Lebih sensitif mendeteksi kelemahan dibanding metrik all-time win rate.
-        """
-        recent = (
-            (
-                await session.execute(
-                    select(PaperTradeRecord)
-                    .where(PaperTradeRecord.status == "closed")
-                    .where(PaperTradeRecord.exit_reason.in_(["sl_hit", "tp_hit"]))
-                    .order_by(PaperTradeRecord.closed_at.desc())
-                    .limit(lookback)
-                )
-            )
-            .scalars()
-            .all()
-        )
-
-        if len(recent) < lookback:
-            return {"streak_data": "insufficient", "count": len(recent)}
-
-        losses = [r for r in recent if r.exit_reason == "sl_hit"]
-        wins = [r for r in recent if r.exit_reason == "tp_hit"]
-        recent_wr = len(wins) / len(recent) * 100
-
-        result = {
-            "lookback": lookback,
-            "recent_win_rate": recent_wr,
-            "recent_wins": len(wins),
-            "recent_losses": len(losses),
-            "alert_triggered": len(losses) >= lookback - 1,  # 4 dari 5 terakhir loss
-        }
-
-        if result["alert_triggered"]:
-            msg = (
-                f"[KRITIS] <b>LOSING STREAK DETECTED</b>\n"
-                f"Last {lookback} trades: {len(losses)} losses, {len(wins)} wins\n"
-                f"Recent win rate: {recent_wr:.0f}%\n"
-                f"Consider pausing and reviewing recent analyses."
-            )
-            try:
-                from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
-
-                await AgentNotifier().send_critical(msg)
-            except Exception:
-                pass
-
-        return result
+        """Deteksi losing streak mendadak."""
+        return await paper_suspension.check_recent_streak(session, lookback)
 
     async def simulate_equity_curve(self, session: AsyncSession, starting_equity: float = 10000.0) -> dict:
-        """
-        Simulasikan kurva ekuitas (equity curve) untuk hitung max drawdown & growth.
-        Menggunakan % risiko per trade dari konfigurasi.
-        """
+        """Simulasikan kurva ekuitas (equity curve) untuk hitung max drawdown & growth."""
+        from sqlalchemy import select
+
         records = (
             (
                 await session.execute(
@@ -1637,139 +1129,13 @@ class PaperTracker:
             .scalars()
             .all()
         )
-
-        if not records:
-            return {}
-
-        equity = starting_equity
-        peak_equity = starting_equity
-        max_drawdown = 0.0
-        equity_history = [
-            {"date": records[0].opened_at.isoformat() if records[0].opened_at else None, "equity": equity}
-        ]
-
-        RISK_PCT = 1.5 / 100  # Default 1.5% risk per trade
-
-        for record in records:
-            if record.pnl_pct is not None:
-                trade_pnl = equity * (record.pnl_pct / 100.0)
-            else:
-                trade_pnl = 0.0
-
-            equity += trade_pnl
-            peak_equity = max(peak_equity, equity)
-            drawdown = (peak_equity - equity) / peak_equity * 100
-            max_drawdown = max(max_drawdown, drawdown)
-
-            equity_history.append(
-                {
-                    "date": record.closed_at.isoformat() if record.closed_at else None,
-                    "equity": round(equity, 2),
-                    "trade_pnl": round(trade_pnl, 2),
-                    "symbol": record.symbol,
-                    "direction": record.direction,
-                }
-            )
-
-        return {
-            "starting_equity": starting_equity,
-            "final_equity": round(equity, 2),
-            "total_return_pct": round((equity - starting_equity) / starting_equity * 100, 2),
-            "max_drawdown_pct": round(max_drawdown, 2),
-            "equity_history": equity_history[-50:],
-        }
+        return calculate_equity_curve(records, starting_equity)
 
 
-def _group_by_symbol(history):
-    by_sym = {}
-    from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
-
-    for t in history:
-        sym = t.get("symbol")
-        if not sym:
-            continue
-        if sym not in by_sym:
-            by_sym[sym] = {
-                "trades": 0,
-                "total": 0,
-                "wins": 0,
-                "losses": 0,
-                "pnl_pct": 0.0,
-                "total_pnl_pct": 0.0,
-                "win_rate": 0.0,
-                "_win_pnls": [],
-                "_loss_pnls": [],
-            }
-
-        # Only count trades for win_rate if they are market exits
-        if t.get("exit_reason") in MARKET_OUTCOME_EXIT_REASONS:
-            by_sym[sym]["trades"] += 1
-            by_sym[sym]["total"] += 1
-            if t.get("exit_reason") == "tp_hit" or (t.get("pnl_pct") or 0) > 0:
-                by_sym[sym]["wins"] += 1
-            else:
-                by_sym[sym]["losses"] += 1
-
-        pnl = t.get("pnl_pct", 0) or 0.0
-        if pnl > 0:
-            by_sym[sym]["_win_pnls"].append(float(pnl))
-        elif pnl < 0:
-            by_sym[sym]["_loss_pnls"].append(abs(float(pnl)))
-
-        by_sym[sym]["pnl_pct"] = round(by_sym[sym]["pnl_pct"] + pnl, 4)
-        by_sym[sym]["total_pnl_pct"] = by_sym[sym]["pnl_pct"]
-        by_sym[sym]["win_rate"] = (
-            round(by_sym[sym]["wins"] / by_sym[sym]["trades"] * 100, 1) if by_sym[sym]["trades"] > 0 else 0.0
-        )
-
-    for s_data in by_sym.values():
-        win_list = s_data.pop("_win_pnls", [])
-        loss_list = s_data.pop("_loss_pnls", [])
-        avg_w = sum(win_list) / len(win_list) if win_list else 0.0
-        avg_l = sum(loss_list) / len(loss_list) if loss_list else 0.0
-        payoff = round(avg_w / avg_l, 2) if avg_l > 0 else (round(avg_w, 2) if avg_w > 0 else 1.0)
-        s_data["avg_win_pct"] = round(avg_w, 4)
-        s_data["avg_loss_pct"] = round(avg_l, 4)
-        s_data["payoff_ratio"] = payoff
-
-    return by_sym
-
-
-def _group_by_symbol_direction(history):
-    by_sym_dir = {}
-    from monika.core.primitives.constants import MARKET_OUTCOME_EXIT_REASONS
-
-    for t in history:
-        sym = t.get("symbol")
-        direction = t.get("direction")
-        if not sym or not direction:
-            continue
-        key = f"{sym}_{str(direction).lower()}"
-        if key not in by_sym_dir:
-            by_sym_dir[key] = {
-                "trades": 0,
-                "total": 0,
-                "wins": 0,
-                "losses": 0,
-                "pnl_pct": 0.0,
-                "total_pnl_pct": 0.0,
-                "win_rate": 0.0,
-            }
-
-        if t.get("exit_reason") in MARKET_OUTCOME_EXIT_REASONS:
-            by_sym_dir[key]["trades"] += 1
-            by_sym_dir[key]["total"] += 1
-            if t.get("exit_reason") == "tp_hit" or (t.get("pnl_pct") or 0) > 0:
-                by_sym_dir[key]["wins"] += 1
-            else:
-                by_sym_dir[key]["losses"] += 1
-
-        pnl = t.get("pnl_pct", 0) or 0.0
-        by_sym_dir[key]["pnl_pct"] = round(by_sym_dir[key]["pnl_pct"] + pnl, 4)
-        by_sym_dir[key]["total_pnl_pct"] = by_sym_dir[key]["pnl_pct"]
-        by_sym_dir[key]["win_rate"] = (
-            round(by_sym_dir[key]["wins"] / by_sym_dir[key]["trades"] * 100, 1)
-            if by_sym_dir[key]["trades"] > 0
-            else 0.0
-        )
-    return by_sym_dir
+__all__ = [
+    "PaperTracker",
+    "_group_by_symbol",
+    "_group_by_symbol_direction",
+    "aggregate_trade_statistics",
+    "calculate_equity_curve",
+]

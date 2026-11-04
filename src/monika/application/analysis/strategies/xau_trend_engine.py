@@ -23,30 +23,53 @@ class XAUTrendEngine(EdgeStrategy):
         n = int(self.cfg.get("donchian_period", 20))
         tf = self.cfg.get("timeframe", "H1")
 
-        candles = await self.get_historical_candles(
-            session=session,
-            symbol=symbol,
-            timeframe=tf,
-            limit=max(n + 15, 60),
-            as_of=now,
-        )
-        if candles:
-            bars = list(reversed(candles))
-        else:
-            bars_res = await session.execute(
-                select(PriceOHLCV)
-                .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == tf, PriceOHLCV.timestamp <= now)
-                .order_by(PriceOHLCV.timestamp.desc())
-                .limit(max(n + 15, 60))
+        fast_row = (
+            await session.execute(
+                select(TechnicalIndicator)
+                .where(
+                    TechnicalIndicator.symbol == symbol,
+                    TechnicalIndicator.timeframe == tf,
+                    TechnicalIndicator.indicator_name == f"EMA_{self.cfg.get('ema_fast', 20)}",
+                    TechnicalIndicator.timestamp <= now,
+                )
+                .order_by(TechnicalIndicator.timestamp.desc())
+                .limit(1)
             )
-            bars = (
-                bars_res.scalars().all()
-                if hasattr(bars_res, "scalars")
-                else (bars_res if isinstance(bars_res, list) else [])
+        ).scalar_one_or_none()
+        slow_row = (
+            await session.execute(
+                select(TechnicalIndicator)
+                .where(
+                    TechnicalIndicator.symbol == symbol,
+                    TechnicalIndicator.timeframe == tf,
+                    TechnicalIndicator.indicator_name == f"EMA_{self.cfg.get('ema_slow', 50)}",
+                    TechnicalIndicator.timestamp <= now,
+                )
+                .order_by(TechnicalIndicator.timestamp.desc())
+                .limit(1)
             )
+        ).scalar_one_or_none()
 
-        fast_row = None
-        slow_row = None
+        bars_res = await session.execute(
+            select(PriceOHLCV)
+            .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == tf, PriceOHLCV.timestamp <= now)
+            .order_by(PriceOHLCV.timestamp.desc())
+            .limit(max(n + 15, 60))
+        )
+        bars = (
+            bars_res.scalars().all()
+            if hasattr(bars_res, "scalars")
+            else (bars_res if isinstance(bars_res, list) else [])
+        )
+        if not bars:
+            raw_candles = await self.get_historical_candles(
+                session=session,
+                symbol=symbol,
+                timeframe=tf,
+                limit=max(n + 15, 60),
+                as_of=now,
+            )
+            bars = list(reversed(raw_candles))
 
         if len(bars) < n + 5:
             return EdgeSignal(
@@ -63,7 +86,7 @@ class XAUTrendEngine(EdgeStrategy):
             fast, slow = safe_float(fast_val), safe_float(slow_val)
 
         if fast is None or slow is None:
-            # High-performance zero-DB native Rust EMA calculation directly from bars
+            # Fallback: compute EMA directly from candle close prices
             import numpy as np
             from monika.core.native.rust_bridge import ema_f64
 
@@ -87,18 +110,20 @@ class XAUTrendEngine(EdgeStrategy):
                 import pandas as pd
 
                 closes = pd.Series(close_vals)
-            if len(closes) >= int(self.cfg.get("ema_slow", 50)):
-                fast = float(closes.ewm(span=int(self.cfg.get("ema_fast", 20)), adjust=False).mean().iloc[-1])
-                slow = float(closes.ewm(span=int(self.cfg.get("ema_slow", 50)), adjust=False).mean().iloc[-1])
-            elif len(closes) >= n + 5:
-                fast = float(
-                    closes.ewm(span=min(len(closes) // 2, int(self.cfg.get("ema_fast", 20))), adjust=False)
-                    .mean()
-                    .iloc[-1]
-                )
-                slow = float(closes.ewm(span=len(closes), adjust=False).mean().iloc[-1])
-            else:
-                return EdgeSignal(self.strategy_id, symbol, None, False, 0.0, rationale=f"EMA data unavailable on {tf}")
+                if len(closes) >= int(self.cfg.get("ema_slow", 50)):
+                    fast = float(closes.ewm(span=int(self.cfg.get("ema_fast", 20)), adjust=False).mean().iloc[-1])
+                    slow = float(closes.ewm(span=int(self.cfg.get("ema_slow", 50)), adjust=False).mean().iloc[-1])
+                elif len(closes) >= n + 5:
+                    fast = float(
+                        closes.ewm(span=min(len(closes) // 2, int(self.cfg.get("ema_fast", 20))), adjust=False)
+                        .mean()
+                        .iloc[-1]
+                    )
+                    slow = float(closes.ewm(span=len(closes), adjust=False).mean().iloc[-1])
+                else:
+                    return EdgeSignal(
+                        self.strategy_id, symbol, None, False, 0.0, rationale=f"EMA data unavailable on {tf}"
+                    )
 
         def _px(item: Any, field: str) -> float:
             return float(getattr(item, field, item.get(field, 0.0) if isinstance(item, dict) else 0.0))
@@ -112,7 +137,7 @@ class XAUTrendEngine(EdgeStrategy):
         breakout_down = _px(latest, "close") < ch_low
 
         size_mult = float(self.cfg.get("size_multiplier", 0.8))
-        entry_p = float(latest.close)
+        entry_p = float(_px(latest, "close"))
         ch_mid = (ch_high + ch_low) / 2.0
 
         # Enforce minimum volatility buffer on Gold ($3.00) to avoid broker spread suicide

@@ -111,6 +111,44 @@ class _ToolExecutorMixinBase:
             atr: float,
             confluence_factors: Optional[list[str]] = None,
         ) -> list[str]: ...
+        async def _get_precomputed_data(self, key: str) -> dict: ...
+        async def _validate_manual_order_structural(self, *args: Any, **kwargs: Any) -> Any: ...
+        async def _cross_validate_priced_in(
+            self,
+            symbol: str,
+            decision: str,
+            rationale: str,
+            inp: dict,
+            errors: list[str],
+            brief_row: Any,
+        ) -> tuple[str, Any]: ...
+        async def _cross_validate_directional_coherence(
+            self,
+            symbol: str,
+            decision: str,
+            rationale: str,
+            inp: dict,
+            errors: list[str],
+            brief_row: Any,
+        ) -> str: ...
+        async def _validate_ssvp_and_context_drift(
+            self,
+            symbol: str,
+            decision: str,
+            rationale: str,
+            inp: dict,
+            errors: list[str],
+        ) -> tuple[Optional[str], Optional[float]]: ...
+        async def _resolve_adopted_bracket(self, inp: dict) -> bool: ...
+        async def _auto_verify_position_sizing(self, symbol: str, decision: str, inp: dict) -> None: ...
+        async def _enforce_specialist_and_threshold_checks(
+            self,
+            symbol: str,
+            decision: str,
+            rationale: str,
+            inp: dict,
+            errors: list[str],
+        ) -> None: ...
         async def execute(self, tool_name: str, tool_input: dict) -> Any: ...
 
 

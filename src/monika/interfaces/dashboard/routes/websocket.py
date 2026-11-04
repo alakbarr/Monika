@@ -181,7 +181,7 @@ async def websocket_live_feed(websocket: WebSocket):
                 if isinstance(item, str):
                     await websocket.send_text(item)
                 elif isinstance(item, (bytes, bytearray)):
-                    await websocket.send_bytes(item)
+                    await websocket.send_bytes(bytes(item))
                 else:
                     await websocket.send_text(fast_json.dumps(item))
                 queue.task_done()

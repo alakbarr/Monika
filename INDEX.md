@@ -13391,7 +13391,7 @@
 #### `openai_provider.py`
 - **Path**: [`src/monika/infrastructure/providers/openai_provider.py`](src/monika/infrastructure/providers/openai_provider.py)
 - **Classes**:
-  - `class OpenAIProvider(OpenAIChatMixin, BaseLLMClient)`: Provider untuk model OpenAI (GPT-4o, GPT-4o-mini).
+  - `class OpenAIProvider(OpenAIChatMixin)`: Provider untuk model OpenAI (GPT-4o, GPT-4o-mini).
     - `__init__(model: str, max_tokens: int, api_key: Optional[str], ...)`
     - `set_api_key(api_key: str) -> None` - *Update active API key and re-initialize underlying AsyncOpenAI client.*
     - `set_thinking_budget(budget: int) -> None` - *Sets thinking budget and resolves corresponding reasoning effort.*

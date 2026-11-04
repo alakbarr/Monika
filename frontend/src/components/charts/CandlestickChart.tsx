@@ -21,16 +21,6 @@ import {
 } from 'lightweight-charts';
 import { api } from '../../lib/api';
 import { useDashboardStore } from '../../store/dashboardStore';
-import { Badge } from '../ui/Badge';
-import {
-  RefreshCw,
-  Maximize2,
-  Minimize2,
-  Sparkles,
-  SlidersHorizontal,
-  Pin,
-  Globe,
-} from 'lucide-react';
 import { getChartPalette } from '../../theme/tokens';
 import {
   computeClientIndicatorSeries,
@@ -39,8 +29,16 @@ import {
   type ClientCandle,
 } from '../../lib/chartIndicatorsClientMath';
 import { IndicatorStudioPopover } from './IndicatorStudioPopover';
+import {
+  computeVisibleVolumeProfile,
+  POPULAR_SYMBOLS,
+  type HudData,
+  type HudItem,
+} from './candlestick/chartUtils';
+import { ChartControlsToolbar } from './candlestick/ChartControlsToolbar';
+import { ChartHud } from './candlestick/ChartHud';
+import { ChartStatusBar } from './candlestick/ChartStatusBar';
 import type {
-  ChartPresetId,
   ActivePositionOverlay,
   AiProposalOverlay,
   IndicatorSummaryItem,
@@ -51,90 +49,6 @@ interface CandlestickChartProps {
   initialTimeframe?: string;
   height?: number;
   className?: string;
-}
-
-interface HudItem {
-  name: string;
-  value: string | number;
-  color?: string;
-}
-
-interface HudData {
-  timeStr: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume?: number;
-  changePct?: number;
-  indicators: HudItem[];
-}
-
-const POPULAR_SYMBOLS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'XAUUSD', 'BTCUSD'];
-const TIMEFRAMES = ['M5', 'M15', 'M30', 'H1', 'H4', 'D1'];
-
-const PRESET_BUTTONS: Array<{ id: ChartPresetId; label: string }> = [
-  { id: 'smc_institutional', label: 'SMC Institutional' },
-  { id: 'trend_momentum', label: 'Trend + Momentum' },
-  { id: 'volatility_reversion', label: 'Volatility & Reversion' },
-  { id: 'quant_orderflow', label: 'Quant & Orderflow' },
-];
-
-function formatPrice(p: number | undefined | null, sym: string): string {
-  if (typeof p !== 'number' || isNaN(p)) return '—';
-  if (sym.includes('JPY')) return p.toFixed(3);
-  if (sym.includes('XAU')) return p.toFixed(2);
-  if (sym.includes('BTC')) return p.toFixed(1);
-  if (p > 1000) return p.toFixed(2);
-  return p.toFixed(5);
-}
-
-function computeVisibleVolumeProfile(candles: ClientCandle[]): { poc: number; vah: number; val: number } | null {
-  if (!candles || candles.length < 5) return null;
-  let minLow = Infinity;
-  let maxHigh = -Infinity;
-  for (const c of candles) {
-    if (c.low < minLow) minLow = c.low;
-    if (c.high > maxHigh) maxHigh = c.high;
-  }
-  if (minLow >= maxHigh) return null;
-  const numBuckets = 30;
-  const bucketSize = (maxHigh - minLow) / numBuckets;
-  const bucketVolumes = new Float64Array(numBuckets);
-  let totalVol = 0;
-  for (const c of candles) {
-    const vol = c.volume && c.volume > 0 ? c.volume : 1;
-    totalVol += vol;
-    const bucketIdx = Math.min(numBuckets - 1, Math.max(0, Math.floor((c.close - minLow) / bucketSize)));
-    bucketVolumes[bucketIdx] += vol;
-  }
-  let maxVol = -1;
-  let pocIdx = 0;
-  for (let i = 0; i < numBuckets; i++) {
-    if (bucketVolumes[i] > maxVol) {
-      maxVol = bucketVolumes[i];
-      pocIdx = i;
-    }
-  }
-  const poc = minLow + (pocIdx + 0.5) * bucketSize;
-  const targetAreaVol = totalVol * 0.7;
-  let currentAreaVol = bucketVolumes[pocIdx];
-  let upIdx = pocIdx;
-  let downIdx = pocIdx;
-  while (currentAreaVol < targetAreaVol && (upIdx < numBuckets - 1 || downIdx > 0)) {
-    const nextUpVol = upIdx < numBuckets - 1 ? bucketVolumes[upIdx + 1] : -1;
-    const nextDownVol = downIdx > 0 ? bucketVolumes[downIdx - 1] : -1;
-    if (nextUpVol >= nextDownVol) {
-      upIdx++;
-      currentAreaVol += bucketVolumes[upIdx];
-    } else {
-      downIdx--;
-      currentAreaVol += bucketVolumes[downIdx];
-    }
-  }
-  const vah = minLow + (upIdx + 1) * bucketSize;
-  const val = minLow + downIdx * bucketSize;
-  return { poc, vah, val };
 }
 
 export const CandlestickChart: React.FC<CandlestickChartProps> = ({
@@ -1247,19 +1161,6 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     );
   };
 
-  const getSourceBadge = (src: string) => {
-    switch (src) {
-      case 'mt5':
-        return <Badge variant="profit" size="sm">MT5 LIVE</Badge>;
-      case 'database':
-        return <Badge variant="neutral" size="sm">DB HISTORICAL</Badge>;
-      case 'synthetic_preview':
-        return <Badge variant="warn" size="sm">SYNTHETIC PREVIEW</Badge>;
-      case 'demo':
-      default:
-        return <Badge variant="neutral" size="sm">DEMO</Badge>;
-    }
-  };
 
   const totalChartHeight = isFullscreen
     ? Math.max(560, window.innerHeight - 190)
@@ -1286,287 +1187,28 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         boxSizing: 'border-box',
       }}
     >
-      {/* ==================================================================== */}
-      {/* Row 1: Symbol Pills, Live Quote, Timeframe, Refresh                  */}
-      {/* ==================================================================== */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px',
-          borderBottom: '1px solid var(--color-border)',
-          paddingBottom: '12px',
-        }}
-      >
-        {/* Symbol Pills & Live Quote */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-            {displaySymbols.map((s) => {
-              const isSelected = symbol.toUpperCase() === s;
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => handleSelectSymbol(s)}
-                  className="touch-target-expand"
-                  style={{
-                    padding: '4px 8px',
-                    borderRadius: '2px',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    fontFamily: 'var(--font-mono)',
-                    border: `1px solid ${isSelected ? 'var(--color-ink)' : 'var(--color-border)'}`,
-                    background: isSelected ? 'var(--color-ink)' : 'transparent',
-                    color: isSelected ? 'var(--color-surface)' : 'var(--color-ink-muted)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {s}
-                </button>
-              );
-            })}
-          </div>
-
-          {lastPrice !== null && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span
-                className="tabular-nums"
-                style={{
-                  fontSize: '17px',
-                  fontWeight: 700,
-                  fontFamily: 'var(--font-mono)',
-                  color: 'var(--color-ink)',
-                }}
-              >
-                {formatPrice(lastPrice, symbol)}
-              </span>
-              {spreadPips !== null && (
-                <Badge variant="neutral" size="sm">
-                  SPREAD: {spreadPips.toFixed(1)} P
-                </Badge>
-              )}
-              {getSourceBadge(source)}
-            </div>
-          )}
-        </div>
-
-        {/* Timeframes & Refresh */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div
-            style={{
-              display: 'flex',
-              gap: '2px',
-              background: 'var(--color-surface-well)',
-              padding: '2px',
-              borderRadius: '2px',
-            }}
-          >
-            {TIMEFRAMES.map((tf) => {
-              const isTfSelected = timeframe === tf;
-              return (
-                <button
-                  key={tf}
-                  type="button"
-                  onClick={() => handleSelectTimeframe(tf)}
-                  className="touch-target-expand"
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    fontFamily: 'var(--font-mono)',
-                    borderRadius: '2px',
-                    border: 'none',
-                    background: isTfSelected ? 'var(--color-surface)' : 'transparent',
-                    color: isTfSelected ? 'var(--color-ink)' : 'var(--color-ink-muted)',
-                    cursor: 'pointer',
-                    borderBottom: isTfSelected ? '2px solid var(--color-ink)' : 'none',
-                  }}
-                >
-                  {tf}
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => loadData()}
-            disabled={loading}
-            className="touch-target-expand"
-            style={{
-              padding: '6px',
-              borderRadius: '2px',
-              border: '1px solid var(--color-border)',
-              background: 'transparent',
-              color: 'var(--color-ink-muted)',
-              cursor: 'pointer',
-            }}
-            title="Refresh Market Candles & Telemetry"
-          >
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </div>
-
-      {/* ==================================================================== */}
-      {/* Row 2: Workstation Controls (Presets, Studio, Vision Sync, Fullscreen)*/}
-      {/* ==================================================================== */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '8px',
-          borderBottom: '1px solid var(--color-border)',
-          paddingBottom: '10px',
-        }}
-      >
-        {/* Preset Pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '10px', color: 'var(--color-ink-soft)', fontWeight: 700, marginRight: '4px' }}>
-            PRESET:
-          </span>
-          {PRESET_BUTTONS.map((p) => {
-            const isSelected = activeConfig.preset_id === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => applyChartPreset(symbol, p.id, isSymbolPinned ? 'symbol' : 'global')}
-                className="touch-target-expand"
-                style={{
-                  padding: '3px 8px',
-                  fontSize: '11px',
-                  fontWeight: isSelected ? 700 : 500,
-                  fontFamily: 'var(--font-mono)',
-                  borderRadius: '2px',
-                  border: `1px solid ${isSelected ? 'var(--color-ink)' : 'var(--color-border)'}`,
-                  background: isSelected ? 'var(--color-ink)' : 'transparent',
-                  color: isSelected ? 'var(--color-surface)' : 'var(--color-ink-muted)',
-                  cursor: 'pointer',
-                }}
-                title={`Apply ${p.label} Preset`}
-              >
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Studio Popover Toggle, Pin Scope, Vision Sync & Fullscreen */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          {/* Pin Scope Badge */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '3px 6px',
-              fontSize: '10px',
-              fontWeight: 600,
-              fontFamily: 'var(--font-mono)',
-              borderRadius: '2px',
-              border: '1px solid var(--color-border)',
-              color: isSymbolPinned ? 'var(--color-warning)' : 'var(--color-ink-muted)',
-              background: isSymbolPinned ? 'var(--color-warning-soft)' : 'transparent',
-            }}
-            title={isSymbolPinned ? `This asset has a custom pinned configuration` : `Using global workspace defaults`}
-          >
-            {isSymbolPinned ? <Pin size={10} /> : <Globe size={10} />}
-            <span>{isSymbolPinned ? `PINNED (${symbol})` : 'GLOBAL'}</span>
-          </div>
-
-          {/* Indicator Studio Button */}
-          <button
-            type="button"
-            onClick={() => setIsStudioOpen(true)}
-            className="touch-target-expand"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '3px 8px',
-              fontSize: '11px',
-              fontWeight: 700,
-              fontFamily: 'var(--font-mono)',
-              borderRadius: '2px',
-              border: '1px solid var(--color-ink)',
-              background: isStudioOpen ? 'var(--color-ink)' : 'transparent',
-              color: isStudioOpen ? 'var(--color-surface)' : 'var(--color-ink)',
-              cursor: 'pointer',
-            }}
-            title="Open Indicator Studio"
-          >
-            <SlidersHorizontal size={12} />
-            <span>INDICATORS</span>
-            <span
-              style={{
-                padding: '0 4px',
-                borderRadius: '2px',
-                fontSize: '10px',
-                fontWeight: 800,
-                background: isStudioOpen ? 'var(--color-surface)' : 'var(--color-ink)',
-                color: isStudioOpen ? 'var(--color-ink)' : 'var(--color-surface)',
-              }}
-            >
-              {activeIndicatorsCount.total}
-            </span>
-          </button>
-
-          {/* AI Vision Sync Toggle */}
-          <button
-            type="button"
-            onClick={handleToggleVisionSync}
-            className="touch-target-expand"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '3px 8px',
-              fontSize: '11px',
-              fontWeight: 600,
-              fontFamily: 'var(--font-mono)',
-              borderRadius: '2px',
-              border: `1px solid ${activeConfig.vision_sync_enabled ? 'var(--color-profit)' : 'var(--color-border)'}`,
-              background: activeConfig.vision_sync_enabled ? 'var(--color-profit-soft)' : 'transparent',
-              color: activeConfig.vision_sync_enabled ? 'var(--color-profit)' : 'var(--color-ink-muted)',
-              cursor: 'pointer',
-            }}
-            title="Toggle AI Vision & Quant Telemetry Synchronization"
-          >
-            <Sparkles size={12} />
-            <span>{activeConfig.vision_sync_enabled ? 'VISION + QUANT SYNC' : 'VISION SYNC OFF'}</span>
-          </button>
-
-          {/* Fullscreen Expand Button */}
-          <button
-            type="button"
-            onClick={() => setIsFullscreen((v) => !v)}
-            className="touch-target-expand"
-            style={{
-              padding: '4px 8px',
-              borderRadius: '2px',
-              border: '1px solid var(--color-border)',
-              background: isFullscreen ? 'var(--color-ink)' : 'transparent',
-              color: isFullscreen ? 'var(--color-surface)' : 'var(--color-ink-muted)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
-            }}
-            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen Workstation'}
-          >
-            {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-            <span>{isFullscreen ? 'EXIT' : 'EXPAND'}</span>
-          </button>
-        </div>
-      </div>
-
+      {/* Workstation Controls Toolbar */}
+      <ChartControlsToolbar
+        symbol={symbol}
+        displaySymbols={displaySymbols}
+        lastPrice={lastPrice}
+        spreadPips={spreadPips}
+        source={source}
+        timeframe={timeframe}
+        loading={loading}
+        activeConfig={activeConfig}
+        isSymbolPinned={isSymbolPinned}
+        isStudioOpen={isStudioOpen}
+        isFullscreen={isFullscreen}
+        activeIndicatorsCount={activeIndicatorsCount}
+        onSelectSymbol={handleSelectSymbol}
+        onSelectTimeframe={handleSelectTimeframe}
+        onRefresh={() => loadData()}
+        onApplyPreset={(pId) => applyChartPreset(symbol, pId, isSymbolPinned ? 'symbol' : 'global')}
+        onOpenStudio={() => setIsStudioOpen(true)}
+        onToggleVisionSync={handleToggleVisionSync}
+        onToggleFullscreen={() => setIsFullscreen((v) => !v)}
+      />
       {/* ==================================================================== */}
       {/* Chart Canvas & HUD Container                                         */}
       {/* ==================================================================== */}
@@ -1580,73 +1222,14 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         }}
       >
         {/* HUD Crosshair & Indicators Overlay */}
-        {activeHud && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '8px',
-              left: '10px',
-              zIndex: 10,
-              pointerEvents: 'none',
-              background: isLight ? 'rgba(255, 255, 255, 0.90)' : 'rgba(18, 19, 22, 0.90)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '2px',
-              padding: '4px 8px',
-              fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
-              color: 'var(--color-ink)',
-              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '3px',
-              maxWidth: 'calc(100% - 120px)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <strong style={{ color: 'var(--color-ink)' }}>{symbol}</strong>
-              <span style={{ color: 'var(--color-ink-muted)' }}>{timeframe}</span>
-              <span style={{ color: 'var(--color-ink-muted)' }}>{activeHud.timeStr}</span>
-              <span className="tabular-nums">
-                O: <strong>{formatPrice(activeHud.open, symbol)}</strong>
-              </span>
-              <span className="tabular-nums">
-                H: <strong>{formatPrice(activeHud.high, symbol)}</strong>
-              </span>
-              <span className="tabular-nums">
-                L: <strong>{formatPrice(activeHud.low, symbol)}</strong>
-              </span>
-              <span className="tabular-nums">
-                C: <strong>{formatPrice(activeHud.close, symbol)}</strong>
-              </span>
-              {typeof activeHud.changePct === 'number' && (
-                <span
-                  className="tabular-nums"
-                  style={{
-                    fontWeight: 700,
-                    color: activeHud.changePct >= 0 ? palette.upColor : palette.downColor,
-                  }}
-                >
-                  {activeHud.changePct >= 0 ? '+' : ''}{activeHud.changePct.toFixed(2)}%
-                </span>
-              )}
-              {typeof activeHud.volume === 'number' && activeHud.volume > 0 && (
-                <span className="tabular-nums" style={{ color: 'var(--color-ink-muted)' }}>
-                  V: {activeHud.volume.toLocaleString()}
-                </span>
-              )}
-            </div>
-            {activeHud.indicators.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '10px' }}>
-                {activeHud.indicators.slice(0, 7).map((ind, i) => (
-                  <span key={i} className="tabular-nums" style={{ color: ind.color || 'var(--color-ink-muted)' }}>
-                    <strong>{ind.name}:</strong> {typeof ind.value === 'number' ? formatPrice(ind.value, symbol) : String(ind.value)}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {/* HUD Crosshair & Indicators Overlay */}
+        <ChartHud
+          activeHud={activeHud}
+          symbol={symbol}
+          timeframe={timeframe}
+          palette={palette}
+          isLight={isLight}
+        />
 
         <div
           ref={chartContainerRef}
@@ -1658,61 +1241,13 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         />
       </div>
 
-      {/* ==================================================================== */}
-      {/* Footer Status Bar: SMC Telemetry & Model Projections                */}
-      {/* ==================================================================== */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '8px',
-          borderTop: '1px solid var(--color-border)',
-          paddingTop: '8px',
-          fontSize: '11px',
-          fontFamily: 'var(--font-mono)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <span style={{ color: 'var(--color-ink-soft)', fontWeight: 700 }}>SMC TELEMETRY:</span>
-          <Badge variant="neutral" size="sm">
-            {structureData?.order_blocks?.length || 0} OBS
-          </Badge>
-          <Badge variant="neutral" size="sm">
-            {structureData?.fair_value_gaps?.length || 0} FVGS
-          </Badge>
-          <Badge variant="neutral" size="sm">
-            {structureData?.structure_breaks?.length || structureData?.breaks?.length || 0} BREAKS
-          </Badge>
-          {structureData?.liquidity_pools && (
-            <Badge variant="neutral" size="sm">
-              {structureData.liquidity_pools.length} LIQ POOLS
-            </Badge>
-          )}
-          {structureData?.timesfm_cone && (
-            <Badge variant="warn" size="sm">
-              TIMESFM {structureData.timesfm_cone.drift >= 0 ? '▲ BULL' : '▼ BEAR'} (
-              {((structureData.timesfm_cone.drift || 0) * 100).toFixed(2)}%)
-            </Badge>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {activePositions.filter((p) => p.symbol.toUpperCase() === symbol.toUpperCase()).length > 0 && (
-            <Badge variant="profit" size="sm">
-              {activePositions.filter((p) => p.symbol.toUpperCase() === symbol.toUpperCase()).length} POS ACTIVE
-            </Badge>
-          )}
-          {latestAiProposal && latestAiProposal.symbol.toUpperCase() === symbol.toUpperCase() && (
-            <Badge variant="warn" size="sm">
-              AI {latestAiProposal.decision.toUpperCase()}
-              {latestAiProposal.confidence ? ` (${(latestAiProposal.confidence * 100).toFixed(0)}%)` : ''}
-            </Badge>
-          )}
-        </div>
-      </div>
-
+      {/* Footer Status Bar: SMC Telemetry & Model Projections */}
+      <ChartStatusBar
+        symbol={symbol}
+        structureData={structureData}
+        activePositions={activePositions}
+        latestAiProposal={latestAiProposal}
+      />
       {/* Indicator Studio Popover */}
       <IndicatorStudioPopover
         isOpen={isStudioOpen}

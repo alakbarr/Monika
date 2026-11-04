@@ -147,8 +147,9 @@ class TriggerChecker:
                                 snap = MarketSnapshotService.get_instance().get_snapshot(
                                     resolved_sym, "M15"
                                 ) or MarketSnapshotService.get_instance().get_snapshot(resolved_sym, "H1")
-                                if snap and snap.get("close") is not None:
-                                    cur_px = float(snap["close"])
+                                snap_close = getattr(snap, "close", None) if snap else None
+                                if snap_close is not None:
+                                    cur_px = float(snap_close)
                             except Exception:
                                 pass
                             if cur_px is None:

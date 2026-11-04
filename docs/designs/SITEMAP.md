@@ -48,6 +48,8 @@ flowchart TD
 | [Database Architecture Modernization](database_architecture_modernization.md) | Antigravity Core / 2026-11-03 | `Draft` | `infrastructure/database` | `src/monika/infrastructure/database/` |
 | [Runtime Storage Separation & Layered Overlay](runtime_storage_separation.md) | Antigravity Core / 2026-11-03 | `Draft` | `core/paths`, `application/skills`, `application/strategies` | `src/monika/core/paths.py`, `src/monika/application/skills/loader.py`, `src/monika/application/analysis/strategies/registry.py` |
 | [Runtime Performance & 24/7 Stability Architecture](runtime_performance_and_stability_architecture.md) | Antigravity Core / 2026-11-03 | `Draft` | `core/native`, `domain/indicators`, `application/services`, `orchestrator` | `src/monika/core/native/`, `src/monika/domain/indicators/`, `src/monika/application/` |
+| [Modular Refactoring of God Modules](modular_refactor_of_god_modules.md) | Antigravity Core / 2026-11-04 | `Draft` | `domain`, `application`, `infrastructure`, `core`, `frontend` | 14 files >1500 lines across `src/` and `frontend/` |
+| [Polars Adoption & High-Throughput Quantitative Pipeline](polars_adoption_architecture.md) | Antigravity Core / 2026-11-04 | `Draft` | `core/dataframe`, `domain/indicators`, `application/backtest` | `src/monika/core/dataframe/`, `src/monika/domain/indicators/`, `src/monika/application/backtest/` |
 | *(Example / Template)* | Monika Team | Template | `domain/risk` | `src/monika/domain/risk/` |
 
 > *Status values: `Draft` | `In Review` | `Approved` | `Implemented` | `Deprecated`*

@@ -207,7 +207,10 @@ async def broadcast_live_event(event_type: str, payload: dict) -> None:
     for ws in list(_active_websockets):
         if ws not in _client_queues:
             try:
-                await ws.send_text(encoded)
+                if hasattr(ws, "send_json"):
+                    await ws.send_json(message)
+                else:
+                    await ws.send_text(encoded)
             except Exception:
                 dead.append(ws)
 
