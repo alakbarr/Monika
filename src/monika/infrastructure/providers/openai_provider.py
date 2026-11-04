@@ -197,6 +197,7 @@ class OpenAIProvider(OpenAIChatMixin):
             "glm-5",
             "muse-spark",
             "kimi-k",
+            "gemini-3.8",
             "gemini-4",
             "fable",
             "opus-5",
@@ -565,7 +566,9 @@ class OpenAIProvider(OpenAIChatMixin):
                 key_str = f"monika_{key_str}"
             kwargs["prompt_cache_key"] = key_str[:64]
 
-        provider_cfg = (self.settings or {}).get("llm", {}).get(provider_name, {})
+        provider_cfg = (self.settings or {}).get("llm", {}).get("providers", {}).get(provider_name, {}) or (
+            self.settings or {}
+        ).get("llm", {}).get(provider_name, {})
         use_streaming = provider_cfg.get("streaming", {}).get("enabled", bool(self.settings))
 
         if use_streaming:

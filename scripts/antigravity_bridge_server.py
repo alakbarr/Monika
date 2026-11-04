@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import threading
 import time
 import uuid
 
@@ -323,15 +324,13 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
         )
 
         # 3. Invoke Antigravity Engine via STDIN to bypass OS command-line character limits
-        agy_timeout = int(os.environ.get("ANTIGRAVITY_TIMEOUT", 90))
+        agy_timeout = int(os.environ.get("ANTIGRAVITY_TIMEOUT", 360))
         cmd = [
             AGY_PATH,
             "--model",
             agy_model,
             "--output-format",
             "json",
-            "--print-timeout",
-            f"{max(agy_timeout - 5, 10)}s",
             "--disable-slash-commands",
         ]
         raw_effort = extract_request_effort(req_data)
@@ -348,19 +347,63 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
         cached_tokens = 0
         sandbox_dir = get_isolated_sandbox_dir()
         try:
-            proc = subprocess.run(
+            proc = subprocess.Popen(
                 cmd,
-                input=full_prompt,
+                stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                timeout=agy_timeout,
                 encoding="utf-8",
                 cwd=str(sandbox_dir),
             )
+
+            def _write_stdin():
+                try:
+                    proc.stdin.write(full_prompt)
+                    proc.stdin.flush()
+                    proc.stdin.close()
+                except Exception:
+                    pass
+
+            w_thread = threading.Thread(target=_write_stdin, daemon=True)
+            w_thread.start()
+
+            stderr_chunks = []
+
+            def _read_stderr():
+                try:
+                    for err_line in proc.stderr:
+                        stderr_chunks.append(err_line)
+                except Exception:
+                    pass
+
+            e_thread = threading.Thread(target=_read_stderr, daemon=True)
+            e_thread.start()
+
+            raw_out = ""
+            start_wait = time.time()
+            while time.time() - start_wait < agy_timeout:
+                line = proc.stdout.readline()
+                if not line:
+                    if proc.poll() is not None:
+                        break
+                    time.sleep(0.05)
+                    continue
+                line_str = line.strip()
+                if line_str.startswith("{") and line_str.endswith("}"):
+                    raw_out = line_str
+                    break
+
             elapsed = time.time() - start_t
-            if proc.returncode != 0:
-                err_msg = proc.stderr.strip() or f"Process exited with code {proc.returncode}"
+            if proc.poll() is None:
+                try:
+                    proc.terminate()
+                    proc.wait(timeout=1.0)
+                except Exception:
+                    proc.kill()
+
+            if not raw_out:
+                err_msg = "".join(stderr_chunks).strip() or "Process exited without producing JSON output"
                 logger.error("agy execution failed in %.2fs: %s", elapsed, err_msg)
                 self._send_json(
                     502,
@@ -373,55 +416,41 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
                     },
                 )
                 return
-            else:
-                raw_out = proc.stdout.strip()
-                if not raw_out:
-                    logger.error("agy execution produced empty output in %.2fs", elapsed)
+
+            try:
+                agy_data = json.loads(raw_out)
+                status = str(agy_data.get("status", "")).upper()
+                if status and status not in ("SUCCESS", "OK", "COMPLETED"):
+                    err_detail = agy_data.get("error") or agy_data.get("message") or status
+                    logger.error("agy execution returned error status in %.2fs: %s", elapsed, err_detail)
                     self._send_json(
                         502,
                         {
                             "error": {
-                                "message": "Antigravity CLI produced empty response",
+                                "message": f"Antigravity CLI error status: {err_detail}",
                                 "type": "server_error",
-                                "code": "antigravity_empty_response",
+                                "code": "antigravity_error_status",
                             }
                         },
                     )
                     return
-                try:
-                    agy_data = json.loads(raw_out)
-                    status = str(agy_data.get("status", "")).upper()
-                    if status and status not in ("SUCCESS", "OK", "COMPLETED"):
-                        err_detail = agy_data.get("error") or agy_data.get("message") or status
-                        logger.error("agy execution returned error status in %.2fs: %s", elapsed, err_detail)
-                        self._send_json(
-                            502,
-                            {
-                                "error": {
-                                    "message": f"Antigravity CLI error status: {err_detail}",
-                                    "type": "server_error",
-                                    "code": "antigravity_error_status",
-                                }
-                            },
-                        )
-                        return
-                    output_text = str(agy_data.get("response", "")).strip()
-                    usage_data = agy_data.get("usage", {})
-                    if usage_data:
-                        prompt_tokens = usage_data.get("input_tokens", prompt_tokens)
-                        completion_tokens = usage_data.get("output_tokens", completion_tokens)
-                        thinking_tokens = usage_data.get("thinking_tokens", 0)
-                        cached_tokens = usage_data.get("cache_read_tokens", 0)
-                except Exception:
-                    output_text = raw_out
-                logger.info(
-                    "agy execution succeeded in %.2fs (%d chars, prompt_tok: %d, comp_tok: %d, cached_tok: %d)",
-                    elapsed,
-                    len(output_text),
-                    prompt_tokens,
-                    completion_tokens,
-                    cached_tokens,
-                )
+                output_text = str(agy_data.get("response", "")).strip()
+                usage_data = agy_data.get("usage", {})
+                if usage_data:
+                    prompt_tokens = usage_data.get("input_tokens", prompt_tokens)
+                    completion_tokens = usage_data.get("output_tokens", completion_tokens)
+                    thinking_tokens = usage_data.get("thinking_tokens", 0)
+                    cached_tokens = usage_data.get("cache_read_tokens", 0)
+            except Exception:
+                output_text = raw_out
+            logger.info(
+                "agy execution succeeded in %.2fs (%d chars, prompt_tok: %d, comp_tok: %d, cached_tok: %d)",
+                elapsed,
+                len(output_text),
+                prompt_tokens,
+                completion_tokens,
+                cached_tokens,
+            )
         except Exception as exc:
             elapsed = time.time() - start_t
             logger.error("agy call threw exception in %.2fs: %s", elapsed, exc)
@@ -456,8 +485,8 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
 
         if tool_names:
             candidate_objs = []
-            # Check fenced blocks first (```tool_call or ```json)
-            for m in re.finditer(r"```(?:tool_call|json)?\s*([\[\{][\s\S]*?[\]\}])\s*```", output_text, re.DOTALL):
+            # Check fenced blocks first (```tool_call or ```json, allowing 3+ backticks)
+            for m in re.finditer(r"```+(?:tool_call|json)?\s*([\[\{][\s\S]*?[\]\}])\s*```+", output_text, re.DOTALL):
                 try:
                     loaded = json.loads(m.group(1).strip())
                     if isinstance(loaded, list):
