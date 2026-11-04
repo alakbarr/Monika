@@ -75,14 +75,12 @@ class TestGeminiTokenGovernance(unittest.IsolatedAsyncioTestCase):
 
         # Turn 2: model calls submit_asset_analysis
         turn2_resp = MagicMock()
-        turn2_resp.content = [
-            MagicMock(
-                type="tool_use",
-                name="submit_asset_analysis",
-                input={"symbol": "EURUSD", "decision": "buy"},
-                id="call_1",
-            )
-        ]
+        tool_block = MagicMock()
+        tool_block.type = "tool_use"
+        tool_block.name = "submit_asset_analysis"
+        tool_block.input = {"symbol": "EURUSD", "decision": "buy", "stop_loss": 1.0800}
+        tool_block.id = "call_1"
+        turn2_resp.content = [tool_block]
         turn2_resp.stop_reason = "tool_use"
         turn2_resp.input_tokens = 120
         turn2_resp.output_tokens = 60
@@ -100,6 +98,7 @@ class TestGeminiTokenGovernance(unittest.IsolatedAsyncioTestCase):
             patch.object(provider, "run_tool_agent", side_effect=[turn1_resp, turn2_resp, turn3_resp]) as mock_run_tool,
             patch(
                 "monika.application.analysis.tools.tool_executor.ToolExecutor.execute",
+                new_callable=AsyncMock,
                 return_value={"status": "recorded"},
             ),
             patch.object(provider, "_save_token_usage", new_callable=AsyncMock),

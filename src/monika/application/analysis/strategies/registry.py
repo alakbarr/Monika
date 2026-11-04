@@ -43,14 +43,7 @@ class StrategyRegistry:
 
     @classmethod
     def get_tier(cls, strategy_id: str) -> StrategyTier:
-        now = time.monotonic()
-        cached = cls._tier_cache.get(strategy_id)
-        if cached is not None and (now - cached[0]) < cls._tier_cache_ttl:
-            return cached[1]
-
-        tier = cls._resolve_tier(strategy_id)
-        cls._tier_cache[strategy_id] = (now, tier)
-        return tier
+        return cls._resolve_tier(strategy_id)
 
     @classmethod
     def _resolve_tier(cls, strategy_id: str) -> StrategyTier:

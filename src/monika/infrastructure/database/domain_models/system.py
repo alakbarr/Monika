@@ -200,11 +200,17 @@ class SystemConfig(Base):
                     cfg = res.scalar_one()
                 except Exception:
                     pass
-            if cfg is not None and value is not None:
-                try:
-                    cfg.value = value
-                except Exception:
-                    pass
+            if cfg is not None:
+                if value is not None:
+                    try:
+                        cfg.value = value
+                    except Exception:
+                        pass
+                if description is not None:
+                    try:
+                        cfg.description = description
+                    except Exception:
+                        pass
             return cfg if cfg is not None else cls(key=key, value=value, description=description, updated_at=now)
         elif dialect_name == "sqlite":
             from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -228,11 +234,17 @@ class SystemConfig(Base):
                     cfg = res.scalar_one()
                 except Exception:
                     pass
-            if cfg is not None and value is not None:
-                try:
-                    cfg.value = value
-                except Exception:
-                    pass
+            if cfg is not None:
+                if value is not None:
+                    try:
+                        cfg.value = value
+                    except Exception:
+                        pass
+                if description is not None:
+                    try:
+                        cfg.description = description
+                    except Exception:
+                        pass
             return cfg if cfg is not None else cls(key=key, value=value, description=description, updated_at=now)
         else:
             cfg = (await session.execute(select(cls).where(cls.key == key))).scalar_one_or_none()
