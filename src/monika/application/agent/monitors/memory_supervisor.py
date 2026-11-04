@@ -46,6 +46,7 @@ class MemorySupervisor:
         self._running: bool = False
         self._task: Optional[asyncio.Task] = None
         self._process = psutil.Process()
+        self._cycle_count: int = 0
 
     def get_rss_mb(self) -> float:
         """Get current process Resident Set Size (RSS) in Megabytes."""
@@ -63,8 +64,10 @@ class MemorySupervisor:
         """
         rss_before = self.get_rss_mb()
 
-        # 1. Python GC
-        collected = gc.collect()
+        # 1. Python GC (progressive multi-generational collection)
+        c1 = gc.collect(1)
+        c2 = gc.collect(2)
+        collected = c1 + c2
 
         # 2. EventBus task prune
         pruned_tasks = 0
@@ -121,6 +124,10 @@ class MemorySupervisor:
                     await asyncio.sleep(self.interval_seconds)
                 if not self._running:
                     break
+
+                self._cycle_count += 1
+                if self._cycle_count % 10 == 0:
+                    gc.collect(1)
 
                 rss = self.get_rss_mb()
                 if rss >= self.hard_limit_mb:

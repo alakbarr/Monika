@@ -11,6 +11,7 @@
 - [`src/monika/core/calibration`](#folder-srcmonikacorecalibration)
 - [`src/monika/core/config`](#folder-srcmonikacoreconfig)
 - [`src/monika/core/contracts`](#folder-srcmonikacorecontracts)
+- [`src/monika/core/dataframe`](#folder-srcmonikacoredataframe)
 - [`src/monika/core/native`](#folder-srcmonikacorenative)
 - [`src/monika/core/primitives`](#folder-srcmonikacoreprimitives)
 - [`src/monika/core/risk`](#folder-srcmonikacorerisk)
@@ -137,6 +138,7 @@
 - [`src/monika/infrastructure/mcp`](#folder-srcmonikainfrastructuremcp)
 - [`src/monika/infrastructure/mcp/servers`](#folder-srcmonikainfrastructuremcpservers)
 - [`src/monika/infrastructure/ml`](#folder-srcmonikainfrastructureml)
+- [`src/monika/infrastructure/network`](#folder-srcmonikainfrastructurenetwork)
 - [`src/monika/infrastructure/notifications`](#folder-srcmonikainfrastructurenotifications)
 - [`src/monika/infrastructure/providers`](#folder-srcmonikainfrastructureproviders)
 - [`src/monika/infrastructure/sandboxes`](#folder-srcmonikainfrastructuresandboxes)
@@ -639,6 +641,19 @@
     - `async on_config_reload(new_config: Dict[str, Any]) -> None` - *Handle live configuration updates on SIGHUP or settings watcher.*
     - `async on_stop() -> None` - *Orderly resource teardown, cancel background loops, flush outbox.*
 
+### Folder: `src/monika/core/dataframe` <a id="folder-srcmonikacoredataframe"></a>
+
+#### `__init__.py`
+- **Path**: [`src/monika/core/dataframe/__init__.py`](src/monika/core/dataframe/__init__.py)
+
+#### `polars_bridge.py`
+- **Path**: [`src/monika/core/dataframe/polars_bridge.py`](src/monika/core/dataframe/polars_bridge.py)
+- **Classes**:
+  - `class PolarsBridge`: Robust, fail-closed bridge for converting tabular structures between Pandas, Polars, and NumPy.
+    - `to_polars(df: Union[pd.DataFrame, pd.Series, pl.DataFrame, pl.Series, pl.LazyFrame, np.ndarray, dict]) -> pl.DataFrame` - *Converts arbitrary tabular input to a canonical Polars DataFrame.*
+    - `to_pandas(df: Union[pl.DataFrame, pl.LazyFrame, pd.DataFrame], set_datetime_index: bool, use_pyarrow: bool) -> pd.DataFrame` - *Converts Polars DataFrame back to Pandas DataFrame.*
+    - `is_polars(obj: Any) -> bool` - *Check if an object is a Polars DataFrame, Series, or LazyFrame.*
+
 ### Folder: `src/monika/core/native` <a id="folder-srcmonikacorenative"></a>
 
 #### `__init__.py`
@@ -672,6 +687,9 @@
   - `ts_argmin_f64(arr: np.ndarray, window: int) -> Optional[np.ndarray]`: Rolling argmin returning 0-based offset into window using compiled Rust kernel.
   - `donchian_f64(highs: np.ndarray, lows: np.ndarray, window: int) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray]]`: Computes Donchian Channels (upper, middle, lower) using compiled Rust kernel.
   - `supertrend_f64(highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, ...) -> Optional[tuple[np.ndarray, np.ndarray]]`: Computes Supertrend indicator and direction using compiled Rust kernel.
+  - `find_order_blocks_f64(opens: np.ndarray | Sequence[float], highs: np.ndarray | Sequence[float], lows: np.ndarray | Sequence[float], ...) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]`: Detects Order Blocks via native Rust C-ABI (monika_core_rs) with 100% NumPy fallback.
+  - `find_sr_zones_f64(prices: np.ndarray | Sequence[float], timestamps: np.ndarray | Sequence[float], tolerance: float, ...) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]`: Finds S/R zones from swing points via native Rust C-ABI with 100% NumPy fallback.
+  - `detect_structure_breaks_f64(closes: np.ndarray | Sequence[float], swing_indices: np.ndarray | Sequence[int], swing_prices: np.ndarray | Sequence[float], ...) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]`: Detects BOS and CHoCH breaks via native Rust C-ABI with 100% NumPy fallback.
 
 ### Folder: `src/monika/core/primitives` <a id="folder-srcmonikacoreprimitives"></a>
 
@@ -1519,13 +1537,13 @@
 - **Top-Level Functions**:
   - `compute_yang_zhang_volatility(df: pd.DataFrame, window: int) -> pd.Series`: Yang-Zhang (2000) historical volatility estimator.
   - `compute_lag1_autocorrelation(close: pd.Series, window: int) -> pd.Series`: Menghitung lag-1 return autocorrelation rolling window.
-  - `compute_moving_averages(close: pd.Series, sma_periods: tuple[int, ...], ema_periods: tuple[int, ...]) -> dict[str, pd.Series]`: Computes SMAs and EMAs for specified periods with native Rust acceleration.
-  - `compute_rsi(close: pd.Series, period: int) -> pd.Series`: Computes RSI (Relative Strength Index) with native Rust acceleration.
-  - `compute_stochastic(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series]`: Computes Stochastic %K and %D with native Rust acceleration.
-  - `compute_macd(close: pd.Series, fast: int, slow: int, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes MACD line, signal line, and histogram with native Rust acceleration.
-  - `compute_bollinger_bands(close: pd.Series, period: int, std_dev: float) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]`: Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth with native Rust acceleration.
-  - `compute_atr(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> pd.Series`: Computes Average True Range with native Rust acceleration.
-  - `compute_adx(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes ADX, +DI, and -DI.
+  - `compute_moving_averages(close: pd.Series, sma_periods: tuple[int, ...], ema_periods: tuple[int, ...]) -> dict[str, pd.Series]`: Computes SMAs and EMAs for specified periods with native Rust acceleration and Polars fallback.
+  - `compute_rsi(close: pd.Series, period: int) -> pd.Series`: Computes RSI (Relative Strength Index) with native Rust acceleration and Polars fallback.
+  - `compute_stochastic(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series]`: Computes Stochastic %K and %D with native Rust acceleration and Polars fallback.
+  - `compute_macd(close: pd.Series, fast: int, slow: int, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes MACD line, signal line, and histogram with native Rust acceleration and Polars fallback.
+  - `compute_bollinger_bands(close: pd.Series, period: int, std_dev: float) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]`: Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth with native Rust acceleration and Polars fallback.
+  - `compute_atr(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> pd.Series`: Computes Average True Range with native Rust acceleration and Polars fallback.
+  - `compute_adx(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> tuple[pd.Series, pd.Series, pd.Series]`: Computes ADX, +DI, and -DI using vectorized Polars engine.
   - `compute_pivot_points(high: float, low: float, close: float, ...) -> dict[str, Any]`: Menghitung Classical / Camarilla / Fibonacci / Woodie Pivot Points dari satu bar D1/W1.
   - `compute_ichimoku(df: pd.DataFrame, tenkan_period: int, kijun_period: int, ...) -> dict[str, Any]`: Menghitung komponen Ichimoku Kinko Hyo:
   - `detect_rsi_divergence(high: pd.Series, low: pd.Series, close: pd.Series, ...) -> dict[str, Any]`: Detect regular bullish and bearish RSI divergences:
@@ -1664,6 +1682,19 @@
     - `async analyze_order_flow(session: Optional[Any], symbol: str, lookback: int, ...) -> OrderFlowSnapshot` - *Entry point utama: coba DOM L2 jika broker mendukung, atau beralih ke Lee-Ready CVD.*
 - **Top-Level Functions**:
   - `async fetch_latest_order_flow(session: Any, symbol: str) -> OrderFlowSnapshot`: Ambil snapshot order flow terbaru.
+
+#### `polars_indicators.py` - *High-Performance Polars-Native Indicator Calculations.*
+- **Path**: [`src/monika/domain/indicators/polars_indicators.py`](src/monika/domain/indicators/polars_indicators.py)
+- **Top-Level Functions**:
+  - `compute_sma_polars(close: pl.Series, period: int) -> pl.Series`: Computes Simple Moving Average (SMA) via native Rust C-ABI with Polars fallback.
+  - `compute_ema_polars(close: pl.Series, period: int) -> pl.Series`: Computes Exponential Moving Average (EMA) via native Rust C-ABI with Polars fallback.
+  - `compute_rsi_polars(close: pl.Series, period: int) -> pl.Series`: Computes Relative Strength Index (RSI) using Wilder's smoothing.
+  - `compute_stochastic_polars(high: Union[pl.DataFrame, pl.Series], low: Optional[Union[pl.Series, np.ndarray]], close: Optional[Union[pl.Series, np.ndarray]], ...) -> pl.DataFrame`: Computes Stochastic Oscillator %K and %D.
+  - `compute_atr_polars(high: Union[pl.DataFrame, pl.Series], low: Optional[Union[pl.Series, np.ndarray]], close: Optional[Union[pl.Series, np.ndarray]], ...) -> pl.Series`: Computes Average True Range (ATR) with Wilder's exponential smoothing.
+  - `compute_bollinger_bands_polars(close: pl.Series, period: int, num_std: float) -> pl.DataFrame`: Computes Bollinger Bands: middle, upper, lower, pct_b, and bandwidth.
+  - `compute_yang_zhang_polars(df: pl.DataFrame, window: int) -> pl.Series`: Computes Yang-Zhang historical volatility estimator.
+  - `compute_macd_polars(close: pl.Series, fast: int, slow: int, ...) -> pl.DataFrame`: Computes Moving Average Convergence Divergence (MACD).
+  - `compute_adx_polars(high: Union[pl.DataFrame, pl.Series], low: Optional[Union[pl.Series, np.ndarray]], close: Optional[Union[pl.Series, np.ndarray]], ...) -> pl.DataFrame`: Computes Average Directional Index (ADX), +DI, and -DI with 100% Wilder parity.
 
 #### `regime_detector.py` - *Schmitt-Trigger Regime Detector: Stateful hysteresis-based market regime classification.*
 - **Path**: [`src/monika/domain/indicators/regime_detector.py`](src/monika/domain/indicators/regime_detector.py)
@@ -1804,15 +1835,16 @@
 - **Classes**:
   - `class RegistryError(Exception)`: Raised when factor registration, compilation, or execution violates invariants.
   - `class FactorRegistry`: Central registry and execution engine for quantitative alpha factors.
-    - `ensure_zoo_loaded() -> None` - *Lazily load all quantitative alpha factor definitions from the zoo directory.*
+    - `ensure_zoo_loaded() -> None` - *Lazily load quantitative alpha factor manifest from the catalog.*
+    - `load_manifest(catalog_path: Optional[Path | str]) -> int` - *Loads the quantitative alpha factor catalog manifest in milliseconds without importing modules.*
     - `register(meta: AlphaMeta)` - *Decorator to register a factor calculation function with its AlphaMeta.*
     - `register_manual(name: str, fn: FactorCallable, meta: AlphaMeta) -> None` - *Explicitly register a factor callable and its metadata.*
     - `get(name: str) -> Tuple[FactorCallable, AlphaMeta]`
     - `list_factors(category: Optional[str]) -> List[AlphaMeta]`
-    - `clear() -> None` - *Clears the registry (useful for testing).*
+    - `clear() -> None` - *Clears the registry loaded factors cache.*
     - `compute(name: str, df: pd.DataFrame, strict_masking: bool, ...) -> pd.Series` - *Executes a factor calculation with deterministic NaN dependency masking.*
     - `compute_all(df: pd.DataFrame, category: Optional[str], strict_masking: bool) -> pd.DataFrame` - *Computes all registered factors (optionally filtered by category)*
-    - `load_zoo_factors(factors_dir: Optional[Path | str]) -> int` - *Dynamically discovers and registers all 462 quantitative alpha factor*
+    - `load_zoo_factors(factors_dir: Optional[Path | str]) -> int` - *Dynamically discovers and registers all quantitative alpha factor definitions.*
 - **Top-Level Functions**:
   - `load_alpha_meta_from_py(file_path: Union[str, Path]) -> AlphaMeta`: Extracts __alpha_meta__ from a Python factor file via static AST parsing.
 
@@ -4316,12 +4348,15 @@
   - `class CandleRingBuffer`: Fixed-capacity, lock-free/low-contention circular buffer for OHLCV bars.
     - `__init__(capacity: int)`
     - `size() -> int`
+    - `latest_timestamp() -> Optional[int]` - *Returns the UTC epoch second timestamp of the latest recorded bar, or None if empty.*
     - `clear() -> None`
     - `append_or_update(timestamp: Union[int, float, datetime], open_: float, high: float, ...) -> None` - *Appends a new candle or updates the latest candle in-place if timestamps match.*
     - `append_bulk(rows: Sequence[Any]) -> int` - *Bulk appends chronological OHLCV rows.*
     - `get_latest(count: int) -> np.ndarray` - *Retrieves the latest `count` candles ordered chronologically (oldest to newest).*
     - `get_latest_dicts(count: int) -> list[dict[str, Any]]` - *Retrieves the latest candles as a list of dicts compatible with CandleDict.*
     - `to_dataframe(count: Optional[int]) -> pd.DataFrame` - *Converts latest candles to a pandas DataFrame with UTC DatetimeIndex.*
+    - `to_polars(count: Optional[int]) -> pl.DataFrame` - *Converts latest candles directly to a high-throughput Polars DataFrame.*
+    - `get_latest_view(count: Optional[int]) -> np.ndarray` - *Zero-copy contiguous view of the latest candles ordered chronologically.*
   - `class RingBufferHub`: Central Thread-Safe In-Memory Hub managing CandleRingBuffers for all instruments and timeframes.
     - `__init__(default_capacity: int)`
     - `get_instance(default_capacity: int) -> RingBufferHub`
@@ -4333,6 +4368,8 @@
     - `on_tick(symbol: str, bid: float, ask: float, ...) -> None` - *Updates the forming bar across fast timeframes (M1, M5, M15) on tick reception.*
     - `get_latest_candles(symbol: str, timeframe: str, count: int) -> list[dict[str, Any]]` - *Ultra-fast zero-DB retrieval of recent candles.*
     - `get_latest_dataframe(symbol: str, timeframe: str, count: Optional[int]) -> Optional[pd.DataFrame]` - *Ultra-fast zero-DB retrieval of recent candles as pandas DataFrame.*
+    - `get_latest_polars(symbol: str, timeframe: str, count: Optional[int]) -> Optional[pl.DataFrame]` - *Ultra-fast zero-DB retrieval of recent candles as high-throughput Polars DataFrame.*
+    - `get_latest_timestamp(symbol: str, timeframe: str) -> Optional[int]` - *Returns the UTC epoch second timestamp of the latest candle in memory, or None.*
 
 #### `currency_utils.py` - *Utilitas pemetaan simbol instrumen trading ke mata uang terkait.*
 - **Path**: [`src/monika/domain/market/currency_utils.py`](src/monika/domain/market/currency_utils.py)
@@ -4371,6 +4408,8 @@
     - `get_instance() -> MarketDataBus`
     - `reset() -> None`
     - `get_candles_df(symbol: str, timeframe: str, count: Optional[int]) -> Optional[pd.DataFrame]` - *Retrieve recent candles as a pandas DataFrame directly from in-memory ring buffers.*
+    - `get_candles_polars(symbol: str, timeframe: str, count: Optional[int]) -> Optional[pl.DataFrame]` - *Retrieve recent candles as a high-throughput Polars DataFrame directly from in-memory ring buffers.*
+    - `get_latest_timestamp(symbol: str, timeframe: str) -> Optional[int]` - *Returns the UTC epoch timestamp of the latest candle in memory, or None.*
     - `get_latest_candles(symbol: str, timeframe: str, count: int) -> list[dict[str, Any]]` - *Retrieve recent candles as a list of dicts directly from memory.*
     - `seed_from_records(symbol: str, timeframe: str, rows: Sequence[Any]) -> int` - *Seed or append OHLCV records to the in-memory buffer.*
     - `on_tick(symbol: str, bid: float, ask: float, ...) -> None` - *Stream tick arrival into forming bars in memory.*
@@ -9162,7 +9201,7 @@
     - `shape() -> Tuple[int, int]`
     - `get_bar_dict(t_idx: int, symbol: str) -> Optional[Dict[str, Any]]`
   - `class MatrixAlignmentEngine`: Pre-aligns multi-instrument time series into unified matrix representations.
-    - `align_dataframes(df_dict: Dict[str, Union[pd.DataFrame, pl.DataFrame]], method: str) -> AlignedMarketMatrix` - *Aligns a dictionary of symbol DataFrames {sym: df} having columns (open, high, low, close, volume).*
+    - `align_dataframes(df_dict: Mapping[str, Union[pd.DataFrame, pl.DataFrame]], method: str) -> AlignedMarketMatrix` - *Aligns a dictionary of symbol DataFrames {sym: df} having columns (open, high, low, close, volume).*
     - `async load_and_align_from_db(session: AsyncSession, symbols: Sequence[str], timeframe: str, ...) -> AlignedMarketMatrix` - *Pulls OHLCV bars directly from the database and aligns them in memory.*
 
 #### `monte_carlo_engine.py` - *Institutional Monte Carlo Stress Tester & Scenario Shock Engine.*
@@ -13335,6 +13374,21 @@
     - `async get_latest_forecast(session: AsyncSession, symbol: str, timeframe: str, ...) -> Optional[Dict[str, Any]]` - *Mengambil proyeksi TimesFM terbaru dari database yang masih valid (belum basi).*
     - `async get_or_generate_forecast(session: AsyncSession, symbol: str, timeframe: str, ...) -> Optional[Dict[str, Any]]` - *Mengambil proyeksi terbaru atau langsung komputasi & simpan jika belum ada.*
     - `async generate_and_store_universe_forecasts(session: AsyncSession, symbols: List[str], timeframe: str, ...) -> Dict[str, Any]` - *Batch generation untuk seluruh simbol di asset universe pada siklus analisis (CycleScheduler).*
+
+### Folder: `src/monika/infrastructure/network` <a id="folder-srcmonikainfrastructurenetwork"></a>
+
+#### `__init__.py`
+- **Path**: [`src/monika/infrastructure/network/__init__.py`](src/monika/infrastructure/network/__init__.py)
+
+#### `http_client_factory.py` - *High-Performance, Connection-Pooled Asynchronous HTTP Client Factory.*
+- **Path**: [`src/monika/infrastructure/network/http_client_factory.py`](src/monika/infrastructure/network/http_client_factory.py)
+- **Classes**:
+  - `class HttpClientFactory`: Singleton connection-pooled aiohttp session factory.
+    - `__init__(total_limit: int, per_host_limit: int, dns_cache_ttl: int, ...)`
+    - `get_instance() -> HttpClientFactory`
+    - `reset() -> None`
+    - `async get_session() -> aiohttp.ClientSession` - *Retrieves or initializes the active pooled aiohttp ClientSession.*
+    - `async close_all() -> None` - *Gracefully closes all open connections and underlying pooled connector.*
 
 ### Folder: `src/monika/infrastructure/notifications` <a id="folder-srcmonikainfrastructurenotifications"></a>
 

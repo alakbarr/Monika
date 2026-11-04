@@ -1595,3 +1595,354 @@ pub extern "C" fn monika_supertrend_f64(
 
     0
 }
+
+#[no_mangle]
+pub extern "C" fn monika_find_order_blocks_f64(
+    opens_ptr: *const f64,
+    highs_ptr: *const f64,
+    lows_ptr: *const f64,
+    closes_ptr: *const f64,
+    len: usize,
+    atr: f64,
+    out_indices_ptr: *mut usize,
+    out_directions_ptr: *mut u8,
+    out_price_high_ptr: *mut f64,
+    out_price_low_ptr: *mut f64,
+    out_confirmed_ptr: *mut usize,
+    out_mitigated_ptr: *mut isize,
+) -> isize {
+    if opens_ptr.is_null()
+        || highs_ptr.is_null()
+        || lows_ptr.is_null()
+        || closes_ptr.is_null()
+        || out_indices_ptr.is_null()
+        || out_directions_ptr.is_null()
+        || out_price_high_ptr.is_null()
+        || out_price_low_ptr.is_null()
+        || out_confirmed_ptr.is_null()
+        || out_mitigated_ptr.is_null()
+        || len < 10
+        || atr <= 0.0
+    {
+        return -1;
+    }
+
+    let opens = unsafe { slice::from_raw_parts(opens_ptr, len) };
+    let highs = unsafe { slice::from_raw_parts(highs_ptr, len) };
+    let lows = unsafe { slice::from_raw_parts(lows_ptr, len) };
+    let closes = unsafe { slice::from_raw_parts(closes_ptr, len) };
+
+    let out_indices = unsafe { slice::from_raw_parts_mut(out_indices_ptr, len) };
+    let out_directions = unsafe { slice::from_raw_parts_mut(out_directions_ptr, len) };
+    let out_price_high = unsafe { slice::from_raw_parts_mut(out_price_high_ptr, len) };
+    let out_price_low = unsafe { slice::from_raw_parts_mut(out_price_low_ptr, len) };
+    let out_confirmed = unsafe { slice::from_raw_parts_mut(out_confirmed_ptr, len) };
+    let out_mitigated = unsafe { slice::from_raw_parts_mut(out_mitigated_ptr, len) };
+
+    let mut count = 0usize;
+
+    for i in 2..(len.saturating_sub(5)) {
+        let c_open = opens[i];
+        let c_close = closes[i];
+        let c_high = highs[i];
+        let c_low = lows[i];
+        let impulse_end = (i + 5).min(len - 1);
+
+        // Bullish OB: bearish candle followed by impulse bullish move
+        if c_close < c_open {
+            let body_size = c_open - c_close;
+            let mut impulse_high = highs[i + 1];
+            for k in (i + 2)..=impulse_end {
+                if highs[k] > impulse_high {
+                    impulse_high = highs[k];
+                }
+            }
+            let impulse_move = impulse_high - c_high;
+
+            if impulse_move > (body_size * 2.0).max(atr * 1.5) {
+                let confirm_idx = (i + 10).min(len - 1);
+                let mut post_impulse_low = lows[i + 1];
+                for k in (i + 2)..=confirm_idx {
+                    if lows[k] < post_impulse_low {
+                        post_impulse_low = lows[k];
+                    }
+                }
+                if post_impulse_low > c_low {
+                    let ob_mid = (c_high + c_low) / 2.0;
+                    let mut mitigated: isize = -1;
+                    for k in (i + 1)..len {
+                        if lows[k] <= ob_mid {
+                            mitigated = k as isize;
+                            break;
+                        }
+                    }
+
+                    out_indices[count] = i;
+                    out_directions[count] = 1; // 1 = bullish
+                    out_price_high[count] = c_high;
+                    out_price_low[count] = c_low;
+                    out_confirmed[count] = confirm_idx;
+                    out_mitigated[count] = mitigated;
+                    count += 1;
+                }
+            }
+        } else if c_close > c_open {
+            // Bearish OB: bullish candle followed by impulse bearish move
+            let body_size = c_close - c_open;
+            let mut impulse_low = lows[i + 1];
+            for k in (i + 2)..=impulse_end {
+                if lows[k] < impulse_low {
+                    impulse_low = lows[k];
+                }
+            }
+            let impulse_move = c_low - impulse_low;
+
+            if impulse_move > (body_size * 2.0).max(atr * 1.5) {
+                let confirm_idx = (i + 10).min(len - 1);
+                let mut post_impulse_high = highs[i + 1];
+                for k in (i + 2)..=confirm_idx {
+                    if highs[k] > post_impulse_high {
+                        post_impulse_high = highs[k];
+                    }
+                }
+                if post_impulse_high < c_high {
+                    let ob_mid = (c_high + c_low) / 2.0;
+                    let mut mitigated: isize = -1;
+                    for k in (i + 1)..len {
+                        if highs[k] >= ob_mid {
+                            mitigated = k as isize;
+                            break;
+                        }
+                    }
+
+                    out_indices[count] = i;
+                    out_directions[count] = 2; // 2 = bearish
+                    out_price_high[count] = c_high;
+                    out_price_low[count] = c_low;
+                    out_confirmed[count] = confirm_idx;
+                    out_mitigated[count] = mitigated;
+                    count += 1;
+                }
+            }
+        }
+    }
+
+    count as isize
+}
+
+#[no_mangle]
+pub extern "C" fn monika_find_sr_zones_f64(
+    prices_ptr: *const f64,
+    timestamps_ptr: *const f64,
+    len: usize,
+    tolerance: f64,
+    min_touches: usize,
+    out_price_high_ptr: *mut f64,
+    out_price_low_ptr: *mut f64,
+    out_touches_ptr: *mut usize,
+    out_last_touched_ptr: *mut f64,
+) -> isize {
+    if prices_ptr.is_null()
+        || timestamps_ptr.is_null()
+        || out_price_high_ptr.is_null()
+        || out_price_low_ptr.is_null()
+        || out_touches_ptr.is_null()
+        || out_last_touched_ptr.is_null()
+        || len == 0
+    {
+        return -1;
+    }
+
+    let prices = unsafe { slice::from_raw_parts(prices_ptr, len) };
+    let timestamps = unsafe { slice::from_raw_parts(timestamps_ptr, len) };
+
+    let out_price_high = unsafe { slice::from_raw_parts_mut(out_price_high_ptr, len) };
+    let out_price_low = unsafe { slice::from_raw_parts_mut(out_price_low_ptr, len) };
+    let out_touches = unsafe { slice::from_raw_parts_mut(out_touches_ptr, len) };
+    let out_last_touched = unsafe { slice::from_raw_parts_mut(out_last_touched_ptr, len) };
+
+    // Pair (price, timestamp) and sort by price ascending
+    let mut points: Vec<(f64, f64)> = Vec::with_capacity(len);
+    for i in 0..len {
+        points.push((prices[i], timestamps[i]));
+    }
+    points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    let mut used = vec![false; len];
+    let mut zone_count = 0usize;
+
+    for i in 0..len {
+        if used[i] {
+            continue;
+        }
+
+        let price_i = points[i].0;
+        let ts_i = points[i].1;
+        used[i] = true;
+
+        let mut cluster_p_min = price_i;
+        let mut cluster_p_max = price_i;
+        let mut cluster_touches = 1usize;
+        let mut cluster_last_ts = ts_i;
+
+        for j in (i + 1)..len {
+            if used[j] {
+                continue;
+            }
+            let price_j = points[j].0;
+            let ts_j = points[j].1;
+
+            let denom = if price_i.abs() > 1e-8 { price_i.abs() } else { 1e-8 };
+            if (price_j - price_i).abs() / denom <= tolerance {
+                used[j] = true;
+                cluster_touches += 1;
+                if price_j < cluster_p_min { cluster_p_min = price_j; }
+                if price_j > cluster_p_max { cluster_p_max = price_j; }
+                if ts_j > cluster_last_ts { cluster_last_ts = ts_j; }
+            } else {
+                break;
+            }
+        }
+
+        if cluster_touches >= min_touches {
+            out_price_high[zone_count] = cluster_p_max;
+            out_price_low[zone_count] = cluster_p_min;
+            out_touches[zone_count] = cluster_touches;
+            out_last_touched[zone_count] = cluster_last_ts;
+            zone_count += 1;
+        }
+    }
+
+    zone_count as isize
+}
+
+#[no_mangle]
+pub extern "C" fn monika_detect_structure_breaks_f64(
+    closes_ptr: *const f64,
+    len: usize,
+    swing_indices_ptr: *const usize,
+    swing_prices_ptr: *const f64,
+    swing_types_ptr: *const u8,
+    n_swings: usize,
+    out_break_indices_ptr: *mut usize,
+    out_break_types_ptr: *mut u8,
+    out_directions_ptr: *mut u8,
+    out_prices_ptr: *mut f64,
+) -> isize {
+    if closes_ptr.is_null()
+        || swing_indices_ptr.is_null()
+        || swing_prices_ptr.is_null()
+        || swing_types_ptr.is_null()
+        || out_break_indices_ptr.is_null()
+        || out_break_types_ptr.is_null()
+        || out_directions_ptr.is_null()
+        || out_prices_ptr.is_null()
+        || len == 0
+        || n_swings == 0
+    {
+        return -1;
+    }
+
+    let closes = unsafe { slice::from_raw_parts(closes_ptr, len) };
+    let swing_indices = unsafe { slice::from_raw_parts(swing_indices_ptr, n_swings) };
+    let swing_prices = unsafe { slice::from_raw_parts(swing_prices_ptr, n_swings) };
+    let swing_types = unsafe { slice::from_raw_parts(swing_types_ptr, n_swings) };
+
+    let out_break_indices = unsafe { slice::from_raw_parts_mut(out_break_indices_ptr, n_swings) };
+    let out_break_types = unsafe { slice::from_raw_parts_mut(out_break_types_ptr, n_swings) };
+    let out_directions = unsafe { slice::from_raw_parts_mut(out_directions_ptr, n_swings) };
+    let out_prices = unsafe { slice::from_raw_parts_mut(out_prices_ptr, n_swings) };
+
+    // 0 = ranging, 1 = bullish, 2 = bearish
+    let mut current_trend = 0u8;
+    let mut last_high: Option<f64> = None;
+    let mut last_high_idx: usize = 0;
+    let mut last_low: Option<f64> = None;
+    let mut last_low_idx: usize = 0;
+
+    let mut break_count = 0usize;
+
+    for s in 0..n_swings {
+        let s_idx = swing_indices[s];
+        let price = swing_prices[s];
+        let typ = swing_types[s]; // 1 = high, 2 = low
+
+        if typ == 1 {
+            if let Some(lh) = last_high {
+                if price > lh {
+                    let start_i = last_high_idx;
+                    let end_i = s_idx.min(len);
+                    let mut break_idx: Option<usize> = None;
+
+                    for c in start_i..end_i {
+                        if closes[c] > lh {
+                            break_idx = Some(c);
+                            break;
+                        }
+                    }
+                    if break_idx.is_none() {
+                        for c in start_i..len {
+                            if closes[c] > lh {
+                                break_idx = Some(c);
+                                break;
+                            }
+                        }
+                    }
+
+                    if let Some(b_idx) = break_idx {
+                        let b_type = if current_trend == 2 { 2u8 } else { 1u8 }; // 2 = CHoCH, 1 = BOS
+                        out_break_indices[break_count] = b_idx;
+                        out_break_types[break_count] = b_type;
+                        out_directions[break_count] = 1; // 1 = bullish
+                        out_prices[break_count] = lh;
+                        break_count += 1;
+                        current_trend = 1;
+                    }
+                } else if price < lh {
+                    current_trend = 2;
+                }
+            }
+            last_high = Some(price);
+            last_high_idx = s_idx;
+        } else {
+            if let Some(ll) = last_low {
+                if price < ll {
+                    let start_i = last_low_idx;
+                    let end_i = s_idx.min(len);
+                    let mut break_idx: Option<usize> = None;
+
+                    for c in start_i..end_i {
+                        if closes[c] < ll {
+                            break_idx = Some(c);
+                            break;
+                        }
+                    }
+                    if break_idx.is_none() {
+                        for c in start_i..len {
+                            if closes[c] < ll {
+                                break_idx = Some(c);
+                                break;
+                            }
+                        }
+                    }
+
+                    if let Some(b_idx) = break_idx {
+                        let b_type = if current_trend == 1 { 2u8 } else { 1u8 }; // 2 = CHoCH, 1 = BOS
+                        out_break_indices[break_count] = b_idx;
+                        out_break_types[break_count] = b_type;
+                        out_directions[break_count] = 2; // 2 = bearish
+                        out_prices[break_count] = ll;
+                        break_count += 1;
+                        current_trend = 2;
+                    }
+                } else if price > ll {
+                    current_trend = 1;
+                }
+            }
+            last_low = Some(price);
+            last_low_idx = s_idx;
+        }
+    }
+
+    break_count as isize
+}

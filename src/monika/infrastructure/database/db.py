@@ -7,8 +7,9 @@ import logging
 import os
 import threading
 from contextlib import asynccontextmanager
+import weakref
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Union
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Optional, Union
 
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -380,27 +381,27 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-_SQLITE_WRITE_LOCKS: dict[Any, asyncio.Lock] = {}
+_SQLITE_WRITE_LOCKS: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = weakref.WeakKeyDictionary()
+_FALLBACK_SQLITE_WRITE_LOCK: Optional[asyncio.Lock] = None
 
 
 def _get_write_lock() -> asyncio.Lock:
+    global _FALLBACK_SQLITE_WRITE_LOCK
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         loop = None
-    if loop not in _SQLITE_WRITE_LOCKS:
-        if len(_SQLITE_WRITE_LOCKS) > 32:
-            dead_loops = [
-                lp for lp in _SQLITE_WRITE_LOCKS if lp is not None and getattr(lp, "is_closed", lambda: False)()
-            ]
-            for dl in dead_loops:
-                _SQLITE_WRITE_LOCKS.pop(dl, None)
-            if len(_SQLITE_WRITE_LOCKS) > 32:
-                unlocked = [lp for lp, lk in _SQLITE_WRITE_LOCKS.items() if not lk.locked()]
-                for ul in unlocked[:16]:
-                    _SQLITE_WRITE_LOCKS.pop(ul, None)
-        _SQLITE_WRITE_LOCKS[loop] = asyncio.Lock()
-    return _SQLITE_WRITE_LOCKS[loop]
+
+    if loop is None:
+        if _FALLBACK_SQLITE_WRITE_LOCK is None:
+            _FALLBACK_SQLITE_WRITE_LOCK = asyncio.Lock()
+        return _FALLBACK_SQLITE_WRITE_LOCK
+
+    lock = _SQLITE_WRITE_LOCKS.get(loop)
+    if lock is None:
+        lock = asyncio.Lock()
+        _SQLITE_WRITE_LOCKS[loop] = lock
+    return lock
 
 
 @asynccontextmanager
@@ -636,8 +637,9 @@ async def transactional_advisory_lock(
 
 async def close_db() -> None:
     """Tutup koneksi database dengan aman."""
-    global engine, _engine_loop, _async_session_factory
+    global engine, _engine_loop, _async_session_factory, _FALLBACK_SQLITE_WRITE_LOCK
     _SQLITE_WRITE_LOCKS.clear()
+    _FALLBACK_SQLITE_WRITE_LOCK = None
     _IN_MEMORY_EXECUTION_LOCKS.clear()
     with _engine_lock:
         eng = engine

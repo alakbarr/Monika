@@ -5,6 +5,7 @@
 """
 Pure Mathematical and Statistical Indicator Functions.
 Includes moving averages, oscillators, volatility, and divergence detectors.
+Modernized with Polars vectorization and native Rust C-ABI acceleration (monika_core_rs).
 """
 
 from __future__ import annotations
@@ -14,11 +15,7 @@ from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
-import ta
-import ta.momentum
-import ta.trend
-import ta.volatility
-import ta.volume
+import polars as pl
 
 from monika.core.native.rust_bridge import (
     atr_f64,
@@ -29,6 +26,17 @@ from monika.core.native.rust_bridge import (
     sma_f64,
     stochastic_f64,
     yang_zhang_f64,
+)
+from monika.domain.indicators.polars_indicators import (
+    compute_adx_polars,
+    compute_atr_polars,
+    compute_bollinger_bands_polars,
+    compute_ema_polars,
+    compute_macd_polars,
+    compute_rsi_polars,
+    compute_sma_polars,
+    compute_stochastic_polars,
+    compute_yang_zhang_polars,
 )
 
 logger = logging.getLogger("TradingAgent.Indicators")
@@ -50,7 +58,7 @@ def compute_yang_zhang_volatility(df: pd.DataFrame, window: int = 20) -> pd.Seri
     open_p = df["open"].astype(float).clip(lower=1e-6)
     high_p = df["high"].astype(float).clip(lower=open_p)
     low_p = df["low"].astype(float).clip(lower=1e-6)
-    close_p = df["close"].astype(float).clip(lower=1e-6)
+    close_p = df["close"].astype(float)
 
     # Fast-path via native Rust C-ABI kernel (monika_core_rs)
     yz_arr = yang_zhang_f64(
@@ -64,7 +72,22 @@ def compute_yang_zhang_volatility(df: pd.DataFrame, window: int = 20) -> pd.Seri
         # Fill warmup with 0.0 to match legacy interface contract
         return pd.Series(np.nan_to_num(yz_arr, nan=0.0), index=df.index, dtype=float)
 
-    # Log components
+    # Vectorized Polars fallback
+    try:
+        pl_df = pl.DataFrame(
+            {
+                "open": open_p.to_numpy(dtype=np.float64),
+                "high": high_p.to_numpy(dtype=np.float64),
+                "low": low_p.to_numpy(dtype=np.float64),
+                "close": close_p.to_numpy(dtype=np.float64),
+            }
+        )
+        yz_pl = compute_yang_zhang_polars(pl_df, window=n)
+        return pd.Series(np.nan_to_num(yz_pl.to_numpy(), nan=0.0), index=df.index, dtype=float)
+    except Exception:
+        pass
+
+    # Log components pure numpy fallback
     log_oc = pd.Series(np.log(close_p / (open_p + 1e-12)), index=df.index)
     log_co_prev = pd.Series(np.log(open_p / (close_p.shift(1) + 1e-12)), index=df.index)
     log_ho = pd.Series(np.log(high_p / (open_p + 1e-12)), index=df.index)
@@ -72,10 +95,7 @@ def compute_yang_zhang_volatility(df: pd.DataFrame, window: int = 20) -> pd.Seri
     log_hc = pd.Series(np.log(high_p / (close_p + 1e-12)), index=df.index)
     log_lc = pd.Series(np.log(low_p / (close_p + 1e-12)), index=df.index)
 
-    # Rogers-Satchell component
     rs = pd.Series((log_ho * log_hc + log_lo * log_lc).rolling(n).mean(), index=df.index)
-
-    # Overnight & open-to-close variances
     overnight_var = pd.Series(log_co_prev.rolling(n).var(), index=df.index)
     oc_var = pd.Series(log_oc.rolling(n).var(), index=df.index)
 
@@ -109,35 +129,42 @@ def compute_moving_averages(
     sma_periods: tuple[int, ...] = (20, 50, 200),
     ema_periods: tuple[int, ...] = (9, 21, 50, 200),
 ) -> dict[str, pd.Series]:
-    """Computes SMAs and EMAs for specified periods with native Rust acceleration."""
+    """Computes SMAs and EMAs for specified periods with native Rust acceleration and Polars fallback."""
     result: dict[str, pd.Series] = {}
     close_vals = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
     idx = close.index if isinstance(close, pd.Series) else None
+    pl_series = pl.Series("close", close_vals)
 
     for p in sma_periods:
         s_arr = sma_f64(close_vals, p)
         if s_arr is not None:
             result[f"SMA_{p}"] = pd.Series(s_arr, index=idx)
         else:
-            result[f"SMA_{p}"] = pd.Series(ta.trend.sma_indicator(close, window=p, fillna=False))
+            s_pl = compute_sma_polars(pl_series, period=p)
+            result[f"SMA_{p}"] = pd.Series(s_pl.to_numpy(), index=idx)
 
     for p in ema_periods:
         e_arr = ema_f64(close_vals, p)
         if e_arr is not None:
             result[f"EMA_{p}"] = pd.Series(e_arr, index=idx)
         else:
-            result[f"EMA_{p}"] = pd.Series(ta.trend.ema_indicator(close, window=p, fillna=False))
+            e_pl = compute_ema_polars(pl_series, period=p)
+            result[f"EMA_{p}"] = pd.Series(e_pl.to_numpy(), index=idx)
 
     return result
 
 
 def compute_rsi(close: pd.Series, period: int = 14) -> pd.Series:
-    """Computes RSI (Relative Strength Index) with native Rust acceleration."""
+    """Computes RSI (Relative Strength Index) with native Rust acceleration and Polars fallback."""
     close_vals = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
+    idx = close.index if isinstance(close, pd.Series) else None
+
     r_arr = rsi_f64(close_vals, period)
     if r_arr is not None:
-        return pd.Series(r_arr, index=close.index if isinstance(close, pd.Series) else None)
-    return pd.Series(ta.momentum.rsi(close, window=period, fillna=False))
+        return pd.Series(r_arr, index=idx)
+
+    r_pl = compute_rsi_polars(pl.Series("close", close_vals), period=period)
+    return pd.Series(r_pl.to_numpy(), index=idx)
 
 
 def compute_stochastic(
@@ -147,21 +174,26 @@ def compute_stochastic(
     k_period: int = 14,
     d_period: int = 3,
 ) -> tuple[pd.Series, pd.Series]:
-    """Computes Stochastic %K and %D with native Rust acceleration."""
+    """Computes Stochastic %K and %D with native Rust acceleration and Polars fallback."""
     high_vals = high.to_numpy(dtype=float) if isinstance(high, pd.Series) else np.asarray(high, dtype=float)
     low_vals = low.to_numpy(dtype=float) if isinstance(low, pd.Series) else np.asarray(low, dtype=float)
     close_vals = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
+    idx = close.index if isinstance(close, pd.Series) else None
 
     stoch_res = stochastic_f64(high_vals, low_vals, close_vals, k_period, d_period)
     if stoch_res is not None:
-        idx = close.index if isinstance(close, pd.Series) else None
         out_k, out_d = stoch_res
         return pd.Series(out_k, index=idx), pd.Series(out_d, index=idx)
 
-    stoch = ta.momentum.StochasticOscillator(
-        high=high, low=low, close=close, window=k_period, smooth_window=d_period, fillna=False
+    pl_df = pl.DataFrame(
+        {
+            "high": high_vals,
+            "low": low_vals,
+            "close": close_vals,
+        }
     )
-    return pd.Series(stoch.stoch()), pd.Series(stoch.stoch_signal())
+    stoch_df = compute_stochastic_polars(pl_df, k_period=k_period, d_period=d_period)
+    return pd.Series(stoch_df["stoch_k"].to_numpy(), index=idx), pd.Series(stoch_df["stoch_d"].to_numpy(), index=idx)
 
 
 def compute_macd(
@@ -170,16 +202,21 @@ def compute_macd(
     slow: int = 26,
     signal: int = 9,
 ) -> tuple[pd.Series, pd.Series, pd.Series]:
-    """Computes MACD line, signal line, and histogram with native Rust acceleration."""
+    """Computes MACD line, signal line, and histogram with native Rust acceleration and Polars fallback."""
     close_vals = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
+    idx = close.index if isinstance(close, pd.Series) else None
+
     macd_res = macd_f64(close_vals, fast, slow, signal)
     if macd_res is not None:
-        idx = close.index if isinstance(close, pd.Series) else None
         m_line, s_line, h_diff = macd_res
         return pd.Series(m_line, index=idx), pd.Series(s_line, index=idx), pd.Series(h_diff, index=idx)
 
-    macd_obj = ta.trend.MACD(close, window_fast=fast, window_slow=slow, window_sign=signal, fillna=False)
-    return pd.Series(macd_obj.macd()), pd.Series(macd_obj.macd_signal()), pd.Series(macd_obj.macd_diff())
+    m_df = compute_macd_polars(pl.Series("close", close_vals), fast=fast, slow=slow, signal=signal)
+    return (
+        pd.Series(m_df["macd"].to_numpy(), index=idx),
+        pd.Series(m_df["macd_signal"].to_numpy(), index=idx),
+        pd.Series(m_df["macd_diff"].to_numpy(), index=idx),
+    )
 
 
 def compute_bollinger_bands(
@@ -187,11 +224,12 @@ def compute_bollinger_bands(
     period: int = 20,
     std_dev: float = 2.0,
 ) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series, pd.Series]:
-    """Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth with native Rust acceleration."""
+    """Computes Bollinger Bands: upper, middle, lower, pct_b, bandwidth with native Rust acceleration and Polars fallback."""
     close_vals = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
+    idx = close.index if isinstance(close, pd.Series) else None
+
     bb_arrs = bollinger_bands_f64(close_vals, period, std_dev)
     if bb_arrs is not None:
-        idx = close.index if isinstance(close, pd.Series) else None
         mavg, upper, lower = bb_arrs
         diff = upper - lower
         safe_diff = np.where(diff != 0.0, diff, 1.0)
@@ -205,13 +243,14 @@ def compute_bollinger_bands(
             pd.Series(pct_b, index=idx),
             pd.Series(wband, index=idx),
         )
-    bb = ta.volatility.BollingerBands(close=close, window=period, window_dev=int(std_dev), fillna=False)
+
+    bb_df = compute_bollinger_bands_polars(pl.Series("close", close_vals), period=period, num_std=std_dev)
     return (
-        pd.Series(bb.bollinger_hband()),
-        pd.Series(bb.bollinger_mavg()),
-        pd.Series(bb.bollinger_lband()),
-        pd.Series(bb.bollinger_pband()),
-        pd.Series(bb.bollinger_wband()),
+        pd.Series(bb_df["upper"].to_numpy(), index=idx),
+        pd.Series(bb_df["middle"].to_numpy(), index=idx),
+        pd.Series(bb_df["lower"].to_numpy(), index=idx),
+        pd.Series(bb_df["pct_b"].to_numpy(), index=idx),
+        pd.Series(bb_df["bandwidth"].to_numpy(), index=idx),
     )
 
 
@@ -221,14 +260,25 @@ def compute_atr(
     close: pd.Series,
     period: int = 14,
 ) -> pd.Series:
-    """Computes Average True Range with native Rust acceleration."""
+    """Computes Average True Range with native Rust acceleration and Polars fallback."""
     h_arr = high.to_numpy(dtype=float) if isinstance(high, pd.Series) else np.asarray(high, dtype=float)
     l_arr = low.to_numpy(dtype=float) if isinstance(low, pd.Series) else np.asarray(low, dtype=float)
     c_arr = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
+    idx = close.index if isinstance(close, pd.Series) else None
+
     a_arr = atr_f64(h_arr, l_arr, c_arr, period)
     if a_arr is not None:
-        return pd.Series(a_arr, index=close.index if isinstance(close, pd.Series) else None)
-    return pd.Series(ta.volatility.average_true_range(high=high, low=low, close=close, window=period, fillna=False))
+        return pd.Series(a_arr, index=idx)
+
+    pl_df = pl.DataFrame(
+        {
+            "high": h_arr,
+            "low": l_arr,
+            "close": c_arr,
+        }
+    )
+    atr_pl = compute_atr_polars(pl_df, period=period)
+    return pd.Series(atr_pl.to_numpy(), index=idx)
 
 
 def compute_adx(
@@ -237,9 +287,25 @@ def compute_adx(
     close: pd.Series,
     period: int = 14,
 ) -> tuple[pd.Series, pd.Series, pd.Series]:
-    """Computes ADX, +DI, and -DI."""
-    adx_obj = ta.trend.ADXIndicator(high=high, low=low, close=close, window=period, fillna=False)
-    return pd.Series(adx_obj.adx()), pd.Series(adx_obj.adx_pos()), pd.Series(adx_obj.adx_neg())
+    """Computes ADX, +DI, and -DI using vectorized Polars engine."""
+    h_arr = high.to_numpy(dtype=float) if isinstance(high, pd.Series) else np.asarray(high, dtype=float)
+    l_arr = low.to_numpy(dtype=float) if isinstance(low, pd.Series) else np.asarray(low, dtype=float)
+    c_arr = close.to_numpy(dtype=float) if isinstance(close, pd.Series) else np.asarray(close, dtype=float)
+    idx = close.index if isinstance(close, pd.Series) else None
+
+    pl_df = pl.DataFrame(
+        {
+            "high": h_arr,
+            "low": l_arr,
+            "close": c_arr,
+        }
+    )
+    adx_pl, pdi_pl, ndi_pl = compute_adx_polars(pl_df, period=period)
+    return (
+        pd.Series(adx_pl.to_numpy(), index=idx),
+        pd.Series(pdi_pl.to_numpy(), index=idx),
+        pd.Series(ndi_pl.to_numpy(), index=idx),
+    )
 
 
 def compute_pivot_points(high: float, low: float, close: float, method: str = "classic") -> dict[str, Any]:
@@ -340,7 +406,6 @@ def compute_ichimoku(
     ).shift(kijun_period)
     chikou = close.shift(-kijun_period)
 
-    last_ts = df.index[-1]
     last_close = float(close.iloc[-1])
     tk_val = float(tenkan.iloc[-1]) if pd.notna(tenkan.iloc[-1]) else None
     kj_val = float(kijun.iloc[-1]) if pd.notna(kijun.iloc[-1]) else None
@@ -388,7 +453,7 @@ def detect_rsi_divergence(
     """
     if rsi is None:
         try:
-            rsi = ta.momentum.rsi(close=close, window=14)
+            rsi = compute_rsi(close=close, period=14)
         except Exception:
             return {"divergence": "none", "strength": 0.0, "details": "RSI computation failed"}
 
@@ -464,10 +529,10 @@ def detect_macd_divergence(
     """
     if macd_line is None:
         try:
-            m_calc = ta.trend.MACD(close=close)
-            macd_line = m_calc.macd()
+            m_line, _, m_diff = compute_macd(close=close)
+            macd_line = m_line
             if macd_hist is None:
-                macd_hist = m_calc.macd_diff()
+                macd_hist = m_diff
         except Exception:
             return {"divergence": "none", "type": "none", "strength": 0.0, "details": "MACD computation failed"}
 

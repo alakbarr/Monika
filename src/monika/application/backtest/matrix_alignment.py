@@ -22,7 +22,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -74,7 +74,7 @@ class MatrixAlignmentEngine:
     @classmethod
     def align_dataframes(
         cls,
-        df_dict: Dict[str, Union[pd.DataFrame, pl.DataFrame]],
+        df_dict: Mapping[str, Union[pd.DataFrame, pl.DataFrame]],
         method: str = "outer",
     ) -> AlignedMarketMatrix:
         """

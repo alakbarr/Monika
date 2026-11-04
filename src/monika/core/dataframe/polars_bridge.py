@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import polars as pl
 
-CANONICAL_OHLCV_SCHEMA: dict[str, pl.DataType] = {
+CANONICAL_OHLCV_SCHEMA: dict[str, type[pl.DataType] | pl.DataType] = {
     "timestamp": pl.Datetime("us", "UTC"),
     "open": pl.Float64,
     "high": pl.Float64,

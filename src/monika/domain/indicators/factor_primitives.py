@@ -301,10 +301,10 @@ def delta(df: Any, d: int) -> Any:
     """
     if d < 1:
         raise ValueError(f"delta lag must be >= 1 (lookahead violation forbidden), got {d}")
-    if isinstance(df, pl.Expr):
+    if isinstance(df, (pl.Expr, pl.Series)):
         return df.diff(d)
-    if isinstance(df, (pl.DataFrame, pl.Series)):
-        return df.diff(d)
+    if isinstance(df, pl.DataFrame):
+        return df.select(pl.all().diff(d))
     if hasattr(df, "shift"):
         return df - df.shift(d)
     arr = np.asarray(df)
@@ -488,8 +488,10 @@ def ts_mean(df: Any, n: int) -> Any:
     """Rolling arithmetic mean with strict warmup -> NaN."""
     if n < 1:
         raise ValueError(f"ts_mean window must be >= 1, got {n}")
-    if isinstance(df, (pl.Expr, pl.Series, pl.DataFrame)):
+    if isinstance(df, (pl.Expr, pl.Series)):
         return df.rolling_mean(window_size=n, min_samples=n)
+    if isinstance(df, pl.DataFrame):
+        return df.select(pl.all().rolling_mean(window_size=n, min_samples=n))
     if hasattr(df, "rolling"):
         return df.rolling(window=n, min_periods=n).mean()
     s = pd.Series(df)
@@ -506,8 +508,10 @@ def ts_sum(df: Any, n: int) -> Any:
     """Rolling sum with strict warmup -> NaN."""
     if n < 1:
         raise ValueError(f"ts_sum window must be >= 1, got {n}")
-    if isinstance(df, (pl.Expr, pl.Series, pl.DataFrame)):
+    if isinstance(df, (pl.Expr, pl.Series)):
         return df.rolling_sum(window_size=n, min_samples=n)
+    if isinstance(df, pl.DataFrame):
+        return df.select(pl.all().rolling_sum(window_size=n, min_samples=n))
     if hasattr(df, "rolling"):
         return df.rolling(window=n, min_periods=n).sum()
     s = pd.Series(df)
@@ -524,8 +528,10 @@ def ts_std(df: Any, n: int) -> Any:
     """Rolling sample standard deviation (ddof=1) with warmup -> NaN."""
     if n < 2:
         raise ValueError(f"ts_std window must be >= 2, got {n}")
-    if isinstance(df, (pl.Expr, pl.Series, pl.DataFrame)):
+    if isinstance(df, (pl.Expr, pl.Series)):
         return df.rolling_std(window_size=n, min_samples=n, ddof=1)
+    if isinstance(df, pl.DataFrame):
+        return df.select(pl.all().rolling_std(window_size=n, min_samples=n, ddof=1))
     if hasattr(df, "rolling"):
         return df.rolling(window=n, min_periods=n).std(ddof=1)
     s = pd.Series(df)
@@ -542,8 +548,10 @@ def ts_max(df: Any, n: int) -> Any:
     """Rolling maximum with warmup -> NaN."""
     if n < 1:
         raise ValueError(f"ts_max window must be >= 1, got {n}")
-    if isinstance(df, (pl.Expr, pl.Series, pl.DataFrame)):
+    if isinstance(df, (pl.Expr, pl.Series)):
         return df.rolling_max(window_size=n, min_samples=n)
+    if isinstance(df, pl.DataFrame):
+        return df.select(pl.all().rolling_max(window_size=n, min_samples=n))
     if hasattr(df, "rolling"):
         return df.rolling(window=n, min_periods=n).max()
     s = pd.Series(df)
@@ -560,8 +568,10 @@ def ts_min(df: Any, n: int) -> Any:
     """Rolling minimum with warmup -> NaN."""
     if n < 1:
         raise ValueError(f"ts_min window must be >= 1, got {n}")
-    if isinstance(df, (pl.Expr, pl.Series, pl.DataFrame)):
+    if isinstance(df, (pl.Expr, pl.Series)):
         return df.rolling_min(window_size=n, min_samples=n)
+    if isinstance(df, pl.DataFrame):
+        return df.select(pl.all().rolling_min(window_size=n, min_samples=n))
     if hasattr(df, "rolling"):
         return df.rolling(window=n, min_periods=n).min()
     s = pd.Series(df)

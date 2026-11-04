@@ -886,6 +886,9 @@ Monika/
 │       │   ├── contracts/
 │       │   │   ├── __init__.py
 │       │   │   └── plugin.py
+│       │   ├── dataframe/
+│       │   │   ├── __init__.py
+│       │   │   └── polars_bridge.py
 │       │   ├── native/
 │       │   │   ├── monika_core_rs/
 │       │   │   │   ├── src/
@@ -1500,6 +1503,7 @@ Monika/
 │       │   │   ├── micro_alpha_zoo.py
 │       │   │   ├── microstructure.py
 │       │   │   ├── order_flow.py
+│       │   │   ├── polars_indicators.py
 │       │   │   ├── regime_detector.py
 │       │   │   ├── smc_advanced.py
 │       │   │   ├── structure.py
@@ -1816,6 +1820,9 @@ Monika/
 │       │   ├── ml/
 │       │   │   ├── __init__.py
 │       │   │   └── timesfm_engine.py
+│       │   ├── network/
+│       │   │   ├── __init__.py
+│       │   │   └── http_client_factory.py
 │       │   ├── notifications/
 │       │   │   ├── __init__.py
 │       │   │   ├── discord_notifier.py
@@ -2420,6 +2427,7 @@ Monika/
 │   │   ├── services/
 │   │   │   └── test_general_harness_integration.py
 │   │   ├── test_empirical_promoted_strategies.py
+│   │   ├── test_matrix_alignment_polars.py
 │   │   ├── test_profitability_structural_fixes.py
 │   │   └── test_signal_arbitrator_refinement.py
 │   ├── architecture/
@@ -2497,6 +2505,7 @@ Monika/
 │   │   ├── test_bounded_lru_cache.py
 │   │   ├── test_fast_json.py
 │   │   ├── test_market_snapshot_and_telemetry.py
+│   │   ├── test_polars_bridge.py
 │   │   ├── test_rust_kernels_parity.py
 │   │   └── test_rust_native_bridge.py
 │   ├── data_sources/
@@ -2631,11 +2640,13 @@ Monika/
 │   │   ├── __init__.py
 │   │   ├── test_advanced_volatility.py
 │   │   ├── test_factor_primitives.py
+│   │   ├── test_factor_primitives_polars.py
 │   │   ├── test_micro_alpha_zoo.py
 │   │   ├── test_microstructure.py
 │   │   ├── test_pattern_similarity.py
 │   │   ├── test_phase10_regression.py
 │   │   ├── test_phase3_performance_and_vectorization.py
+│   │   ├── test_polars_indicators.py
 │   │   ├── test_qlib_and_wq_factors.py
 │   │   ├── test_regime_detector.py
 │   │   ├── test_structure.py
@@ -2801,6 +2812,7 @@ Monika/
 │   │   │   └── test_twitter_watch.py
 │   │   ├── __init__.py
 │   │   ├── test_base_scraper.py
+│   │   ├── test_http_client_factory.py
 │   │   ├── test_profile_lock_concurrency.py
 │   │   ├── test_profile_reaper.py
 │   │   ├── test_scraper_language_isolation.py
@@ -3242,4 +3254,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 278 | **Total Tracked Files**: 2934
+**Total Tracked Directories**: 280 | **Total Tracked Files**: 2944

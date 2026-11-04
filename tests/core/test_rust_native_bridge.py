@@ -433,6 +433,84 @@ class TestRustNumericalParity:
         np.testing.assert_allclose(st_rust.dropna().values, st_fb.dropna().values, rtol=1e-10)
         np.testing.assert_array_equal(dir_rust.values, dir_fb.values)
 
+    def test_order_blocks_parity(self, monkeypatch):
+        """Verify order blocks parity between Rust accelerator and fallback."""
+        from monika.domain.indicators.structure import find_order_blocks
+
+        base_open = [10.0] * 12
+        base_high = [11.0] * 12
+        base_low = [9.0] * 12
+        base_close = [10.0] * 12
+
+        o = base_open + [10.0, 10.0, 11.0, 14.0, 15.0, 15.0, 15.0, 15.0]
+        h = base_high + [12.0, 11.0, 15.0, 25.0, 20.0, 20.0, 20.0, 20.0]
+        l = base_low + [8.0, 9.0, 11.0, 14.0, 14.0, 14.0, 14.0, 14.0]
+        c = base_close + [9.0, 11.0, 14.0, 19.0, 19.0, 19.0, 19.0, 19.0]
+
+        df = pd.DataFrame(
+            {"open": o, "high": h, "low": l, "close": c},
+            index=pd.date_range("2024-01-01", periods=20, freq="1h"),
+        )
+
+        # 1. Rust mode
+        monkeypatch.delenv("MONIKA_DISABLE_RUST_ACCEL", raising=False)
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        obs_rust = find_order_blocks(df, "XAUUSD", "H1")
+
+        # 2. Fallback mode
+        monkeypatch.setenv("MONIKA_DISABLE_RUST_ACCEL", "1")
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        obs_fb = find_order_blocks(df, "XAUUSD", "H1")
+
+        assert len(obs_rust) == len(obs_fb)
+        for r, f in zip(obs_rust, obs_fb):
+            assert r.formed_at == f.formed_at
+            assert r.confirmed_at == f.confirmed_at
+            assert r.mitigated_at == f.mitigated_at
+            assert r.direction == f.direction
+            assert math.isclose(r.price_high, f.price_high, rel_tol=1e-9)
+            assert math.isclose(r.price_low, f.price_low, rel_tol=1e-9)
+
+    def test_sr_zones_parity(self, monkeypatch):
+        """Verify S/R zones clustering parity between Rust accelerator and fallback."""
+        from monika.domain.indicators.structure import find_sr_zones
+
+        highs = pd.DataFrame(
+            [
+                {"price": 100.0, "timestamp": pd.Timestamp("2024-01-01 10:00")},
+                {"price": 100.1, "timestamp": pd.Timestamp("2024-01-01 11:00")},
+                {"price": 150.0, "timestamp": pd.Timestamp("2024-01-01 12:00")},
+            ]
+        )
+        lows = pd.DataFrame(
+            [
+                {"price": 100.05, "timestamp": pd.Timestamp("2024-01-01 13:00")},
+                {"price": 80.0, "timestamp": pd.Timestamp("2024-01-01 14:00")},
+            ]
+        )
+        df = pd.DataFrame()
+
+        # 1. Rust mode
+        monkeypatch.delenv("MONIKA_DISABLE_RUST_ACCEL", raising=False)
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        sr_rust = find_sr_zones(highs, lows, df, tolerance=0.002, min_touches=2)
+
+        # 2. Fallback mode
+        monkeypatch.setenv("MONIKA_DISABLE_RUST_ACCEL", "1")
+        rb._LIB_INITIALIZED = False
+        rb._LIB_INSTANCE = None
+        sr_fb = find_sr_zones(highs, lows, df, tolerance=0.002, min_touches=2)
+
+        assert len(sr_rust) == len(sr_fb)
+        for r, f in zip(sr_rust, sr_fb):
+            assert math.isclose(r["price_high"], f["price_high"], rel_tol=1e-9)
+            assert math.isclose(r["price_low"], f["price_low"], rel_tol=1e-9)
+            assert r["touches"] == f["touches"]
+            assert r["strength"] == f["strength"]
+
 
 class TestRustEdgeCasesAndFailClosed:
     def test_empty_and_short_inputs(self):

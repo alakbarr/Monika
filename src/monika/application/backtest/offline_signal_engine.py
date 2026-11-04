@@ -71,17 +71,16 @@ class OfflineSignalEngine:
         Accepts either Pandas or Polars DataFrames seamlessly.
         """
         input_is_polars = is_polars(df)
-        if input_is_polars:
-            df = to_pandas(df)
+        pdf: pd.DataFrame = to_pandas(df) if isinstance(df, pl.DataFrame) else df
 
-        if df.empty or len(df) < 200:
+        if pdf.empty or len(pdf) < 200:
             logger.warning("DataFrame is too small for accurate signal generation")
-            df = df.copy()
-            df["Signal"] = 0
-            df["ConfluenceScore"] = 0
-            return df
+            df_out = pdf.copy()
+            df_out["Signal"] = 0
+            df_out["ConfluenceScore"] = 0
+            return to_polars(df_out) if input_is_polars else df_out
 
-        df = self._normalize_df(df)
+        df = self._normalize_df(pdf)
 
         # Calculate indicators
         df["ATR"] = self._calculate_atr(df)

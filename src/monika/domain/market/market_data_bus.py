@@ -12,6 +12,7 @@ import threading
 from typing import Any, Optional, Sequence
 
 import pandas as pd
+import polars as pl
 
 from monika.domain.market.candle_ring_buffer import RingBufferHub
 
@@ -53,6 +54,22 @@ class MarketDataBus:
         Zero DB roundtrips, sub-millisecond retrieval.
         """
         return self._hub.get_latest_dataframe(symbol, timeframe, count=count)
+
+    def get_candles_polars(
+        self,
+        symbol: str,
+        timeframe: str,
+        count: Optional[int] = None,
+    ) -> Optional[pl.DataFrame]:
+        """
+        Retrieve recent candles as a high-throughput Polars DataFrame directly from in-memory ring buffers.
+        Zero intermediate Python object allocations.
+        """
+        return self._hub.get_latest_polars(symbol, timeframe, count=count)
+
+    def get_latest_timestamp(self, symbol: str, timeframe: str) -> Optional[int]:
+        """Returns the UTC epoch timestamp of the latest candle in memory, or None."""
+        return self._hub.get_latest_timestamp(symbol, timeframe)
 
     def get_latest_candles(
         self,

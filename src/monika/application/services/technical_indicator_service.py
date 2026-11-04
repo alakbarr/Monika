@@ -70,6 +70,7 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
         self.bb_std: float = float(cfg.get("bollinger_std", 2.0))
         self.atr_period: int = cfg.get("atr_period", 14)
         self.adx_period: int = cfg.get("adx_period", 14)
+        self._last_computed_epochs: dict[str, int] = {}
 
     # ------------------------------------------------------------------
     # Public API
@@ -165,10 +166,23 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
         bar OHLCV kanonikal terbaru, komputasi ulang yang memakan resource di-bypass.
         """
         results = {}
+        from monika.domain.market.market_data_bus import MarketDataBus
+
+        bus = MarketDataBus.get_instance()
+
         for symbol in symbols:
             for tf in timeframes:
                 key = f"{symbol}/{tf}"
                 try:
+                    bus_ts = bus.get_latest_timestamp(symbol, tf)
+                    if not force and bus_ts is not None and key in self._last_computed_epochs:
+                        if bus_ts == self._last_computed_epochs[key]:
+                            logger.debug(
+                                f"Indicators for {key} up-to-date in memory epoch ({bus_ts}), bypassing recompute"
+                            )
+                            results[key] = 0
+                            continue
+
                     if not force and self.session:
                         from sqlalchemy import func, select
                         from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
@@ -206,10 +220,13 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
                                 )
                             if p_ts == i_ts:
                                 logger.debug(f"Indicators for {key} up-to-date ({latest_ind_ts}), bypassing recompute")
+                                self._last_computed_epochs[key] = bus_ts or int(latest_price_ts.timestamp())
                                 results[key] = 0
                                 continue
 
                     n = await self.compute_and_save(symbol, tf)
+                    if bus_ts is not None:
+                        self._last_computed_epochs[key] = bus_ts
                     results[key] = n
                 except Exception as e:
                     logger.error(f"Indicator computation failed for {key}: {e}")

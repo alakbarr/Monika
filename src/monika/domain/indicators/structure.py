@@ -241,12 +241,43 @@ def find_sr_zones(
     if not all_points:
         return []
 
+    now_utc = datetime.now(timezone.utc)
+
+    # Fast-path via native Rust C-ABI kernel (monika_core_rs)
+    from monika.core.native.rust_bridge import find_sr_zones_f64
+
+    prices = [p for p, _ in all_points]
+    epoch_ts = [
+        (t.replace(tzinfo=timezone.utc).timestamp() if getattr(t, "tzinfo", None) is None else t.timestamp())
+        for _, t in all_points
+    ]
+    rust_sr = find_sr_zones_f64(prices, epoch_ts, tolerance=tolerance, min_touches=min_touches)
+    if rust_sr is not None:
+        p_high, p_low, touches, last_ts = rust_sr
+        zones = []
+        for k in range(len(p_high)):
+            t_sec = float(last_ts[k])
+            last_touch_ts = datetime.fromtimestamp(t_sec, tz=timezone.utc)
+            recency_hours = (now_utc - last_touch_ts).total_seconds() / 3600
+            recency_factor = max(0.3, min(1.0, 1.0 - (recency_hours / (30 * 24))))
+            weighted_strength = round(int(touches[k]) * recency_factor, 2)
+            zones.append(
+                {
+                    "price_high": float(p_high[k]),
+                    "price_low": float(p_low[k]),
+                    "strength": weighted_strength,
+                    "touches": int(touches[k]),
+                    "last_touched": last_touch_ts,
+                }
+            )
+        logger.debug(f"Found {len(zones)} S/R zones")
+        return zones
+
     # Sort by price
     all_points.sort(key=lambda x: x[0])
 
     zones: list[dict[str, Any]] = []
     used = [False] * len(all_points)
-    now_utc = datetime.now(timezone.utc)
 
     for i in range(len(all_points)):
         if used[i]:
@@ -626,60 +657,91 @@ def find_order_blocks(
     new_bullish: list[OrderBlockData] = []
     new_bearish: list[OrderBlockData] = []
 
-    for i in range(2, n - 5):
-        c_open = opens[i]
-        c_close = closes[i]
-        c_high = highs[i]
-        c_low = lows[i]
-        impulse_end = min(i + 5, n - 1)
+    # Fast-path via native Rust C-ABI kernel (monika_core_rs)
+    from monika.core.native.rust_bridge import find_order_blocks_f64
 
-        # Bullish OB: bearish candle followed by impulse bullish move
-        if c_close < c_open:
-            body_size = c_open - c_close
-            impulse_high = highs[i + 1 : impulse_end + 1].max()
-            impulse_move = impulse_high - c_high
+    rust_ob = find_order_blocks_f64(opens, highs, lows, closes, atr)
+    if rust_ob is not None:
+        ob_indices, ob_directions, ob_p_high, ob_p_low, ob_confirmed, ob_mitigated = rust_ob
+        for k in range(len(ob_indices)):
+            form_idx = int(ob_indices[k])
+            dir_str = "bullish" if ob_directions[k] == 1 else "bearish"
+            conf_idx = int(ob_confirmed[k])
+            mit_idx = int(ob_mitigated[k])
 
-            if impulse_move > max(body_size * 2, atr * 1.5):
-                confirm_idx = min(i + 10, n - 1)
-                post_impulse_low = lows[i + 1 : confirm_idx + 1].min()
-                if post_impulse_low > c_low:
-                    formed_dt = timestamps[i]
-                    confirmed_dt = timestamps[confirm_idx]
-                    new_bullish.append(
-                        OrderBlockData(
-                            symbol=symbol,
-                            timeframe=timeframe,
-                            direction="bullish",
-                            price_high=float(c_high),
-                            price_low=float(c_low),
-                            formed_at=formed_dt,
-                            confirmed_at=confirmed_dt,
+            formed_dt = timestamps[form_idx]
+            confirmed_dt = timestamps[conf_idx]
+            mitigated_dt = timestamps[mit_idx] if mit_idx >= 0 else None
+
+            ob_item = OrderBlockData(
+                symbol=symbol,
+                timeframe=timeframe,
+                direction=dir_str,
+                price_high=float(ob_p_high[k]),
+                price_low=float(ob_p_low[k]),
+                formed_at=formed_dt,
+                confirmed_at=confirmed_dt,
+                mitigated_at=mitigated_dt,
+            )
+            if dir_str == "bullish":
+                new_bullish.append(ob_item)
+            else:
+                new_bearish.append(ob_item)
+    else:
+        for i in range(2, n - 5):
+            c_open = opens[i]
+            c_close = closes[i]
+            c_high = highs[i]
+            c_low = lows[i]
+            impulse_end = min(i + 5, n - 1)
+
+            # Bullish OB: bearish candle followed by impulse bullish move
+            if c_close < c_open:
+                body_size = c_open - c_close
+                impulse_high = highs[i + 1 : impulse_end + 1].max()
+                impulse_move = impulse_high - c_high
+
+                if impulse_move > max(body_size * 2, atr * 1.5):
+                    confirm_idx = min(i + 10, n - 1)
+                    post_impulse_low = lows[i + 1 : confirm_idx + 1].min()
+                    if post_impulse_low > c_low:
+                        formed_dt = timestamps[i]
+                        confirmed_dt = timestamps[confirm_idx]
+                        new_bullish.append(
+                            OrderBlockData(
+                                symbol=symbol,
+                                timeframe=timeframe,
+                                direction="bullish",
+                                price_high=float(c_high),
+                                price_low=float(c_low),
+                                formed_at=formed_dt,
+                                confirmed_at=confirmed_dt,
+                            )
                         )
-                    )
 
-        # Bearish OB: bullish candle followed by impulse bearish move
-        if c_close > c_open:
-            body_size = c_close - c_open
-            impulse_low = lows[i + 1 : impulse_end + 1].min()
-            impulse_move = c_low - impulse_low
+            # Bearish OB: bullish candle followed by impulse bearish move
+            if c_close > c_open:
+                body_size = c_close - c_open
+                impulse_low = lows[i + 1 : impulse_end + 1].min()
+                impulse_move = c_low - impulse_low
 
-            if impulse_move > max(body_size * 2, atr * 1.5):
-                confirm_idx = min(i + 10, n - 1)
-                post_impulse_high = highs[i + 1 : confirm_idx + 1].max()
-                if post_impulse_high < c_high:
-                    formed_dt = timestamps[i]
-                    confirmed_dt = timestamps[confirm_idx]
-                    new_bearish.append(
-                        OrderBlockData(
-                            symbol=symbol,
-                            timeframe=timeframe,
-                            direction="bearish",
-                            price_high=float(c_high),
-                            price_low=float(c_low),
-                            formed_at=formed_dt,
-                            confirmed_at=confirmed_dt,
+                if impulse_move > max(body_size * 2, atr * 1.5):
+                    confirm_idx = min(i + 10, n - 1)
+                    post_impulse_high = highs[i + 1 : confirm_idx + 1].max()
+                    if post_impulse_high < c_high:
+                        formed_dt = timestamps[i]
+                        confirmed_dt = timestamps[confirm_idx]
+                        new_bearish.append(
+                            OrderBlockData(
+                                symbol=symbol,
+                                timeframe=timeframe,
+                                direction="bearish",
+                                price_high=float(c_high),
+                                price_low=float(c_low),
+                                formed_at=formed_dt,
+                                confirmed_at=confirmed_dt,
+                            )
                         )
-                    )
 
     # Mitigation check (penetration into 50% of the OB zone)
     bullish_obs += new_bullish
@@ -742,15 +804,41 @@ def detect_structure_breaks(
         return []
 
     swings.sort(key=lambda x: x[0])
+    closes = np.asarray(df["close"], dtype=float)
+    ts_array = np.asarray(df.index)
+    timestamps = [t.to_pydatetime() if hasattr(t, "to_pydatetime") else t for t in df.index]
+
+    # Fast-path via native Rust C-ABI kernel (monika_core_rs)
+    from monika.core.native.rust_bridge import detect_structure_breaks_f64
+
+    s_indices = [_search_ts(timestamps, t, side="left") for t, _, _ in swings]
+    s_prices = [p for _, p, _ in swings]
+    s_types = [1 if typ == "high" else 2 for _, _, typ in swings]
+
+    rust_breaks = detect_structure_breaks_f64(closes, s_indices, s_prices, s_types)
+    if rust_breaks is not None:
+        b_indices, b_types, b_dirs, b_prices = rust_breaks
+        for k in range(len(b_indices)):
+            b_idx = int(b_indices[k])
+            b_type = "ChoCH" if b_types[k] == 2 else "BOS"
+            b_dir = "bullish" if b_dirs[k] == 1 else "bearish"
+            breaks.append(
+                StructureBreakData(
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    type=b_type,
+                    direction=b_dir,
+                    price=float(b_prices[k]),
+                    formed_at=timestamps[b_idx],
+                )
+            )
+        return breaks
+
     current_trend = "ranging"
     last_high: Optional[float] = None
     last_high_ts: Any = None
     last_low: Optional[float] = None
     last_low_ts: Any = None
-
-    closes = np.asarray(df["close"], dtype=float)
-    ts_array = np.asarray(df.index)
-    timestamps = [t.to_pydatetime() if hasattr(t, "to_pydatetime") else t for t in df.index]
 
     for ts, price, typ in swings:
         if typ == "high":

@@ -14,7 +14,7 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 import numpy as np
 
@@ -370,6 +370,52 @@ def _load_library() -> Optional[ctypes.CDLL]:
             ctypes.POINTER(ctypes.c_int32),
         ]
         lib.monika_supertrend_f64.restype = ctypes.c_int32
+
+        # 25. monika_find_order_blocks_f64
+        lib.monika_find_order_blocks_f64.argtypes = [
+            f64_p,
+            f64_p,
+            f64_p,
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_double,
+            usize_p,
+            u8_p,
+            f64_p,
+            f64_p,
+            usize_p,
+            ctypes.POINTER(ctypes.c_ssize_t),
+        ]
+        lib.monika_find_order_blocks_f64.restype = ctypes.c_ssize_t
+
+        # 26. monika_find_sr_zones_f64
+        lib.monika_find_sr_zones_f64.argtypes = [
+            f64_p,
+            f64_p,
+            ctypes.c_size_t,
+            ctypes.c_double,
+            ctypes.c_size_t,
+            f64_p,
+            f64_p,
+            usize_p,
+            f64_p,
+        ]
+        lib.monika_find_sr_zones_f64.restype = ctypes.c_ssize_t
+
+        # 27. monika_detect_structure_breaks_f64
+        lib.monika_detect_structure_breaks_f64.argtypes = [
+            f64_p,
+            ctypes.c_size_t,
+            usize_p,
+            f64_p,
+            u8_p,
+            ctypes.c_size_t,
+            usize_p,
+            u8_p,
+            u8_p,
+            f64_p,
+        ]
+        lib.monika_detect_structure_breaks_f64.restype = ctypes.c_ssize_t
 
         _LIB_INSTANCE = lib
         logger.info(f"[RustBridge] Successfully loaded native Rust accelerator from {load_path}")
@@ -1223,3 +1269,340 @@ def supertrend_f64(
     if code != 0:
         return None
     return out_st, out_dir
+
+
+def find_order_blocks_f64(
+    opens: np.ndarray | Sequence[float],
+    highs: np.ndarray | Sequence[float],
+    lows: np.ndarray | Sequence[float],
+    closes: np.ndarray | Sequence[float],
+    atr: float,
+) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    """
+    Detects Order Blocks via native Rust C-ABI (monika_core_rs) with 100% NumPy fallback.
+    Returns: (indices, directions, price_high, price_low, confirmed_indices, mitigated_indices)
+    where directions: 1 = bullish, 2 = bearish.
+    """
+    n = len(closes)
+    if n < 10 or len(opens) != n or len(highs) != n or len(lows) != n or atr <= 0.0:
+        return None
+
+    o_arr = np.ascontiguousarray(opens, dtype=np.float64)
+    h_arr = np.ascontiguousarray(highs, dtype=np.float64)
+    l_arr = np.ascontiguousarray(lows, dtype=np.float64)
+    c_arr = np.ascontiguousarray(closes, dtype=np.float64)
+
+    lib = _load_library()
+    if lib is not None:
+        out_indices = np.empty(n, dtype=np.uintp)
+        out_directions = np.empty(n, dtype=np.uint8)
+        out_p_high = np.empty(n, dtype=np.float64)
+        out_p_low = np.empty(n, dtype=np.float64)
+        out_confirmed = np.empty(n, dtype=np.uintp)
+        out_mitigated = np.empty(n, dtype=np.intp)
+
+        count = lib.monika_find_order_blocks_f64(
+            o_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            h_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            l_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            c_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.c_size_t(n),
+            ctypes.c_double(atr),
+            out_indices.ctypes.data_as(ctypes.POINTER(ctypes.c_size_t)),
+            out_directions.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)),
+            out_p_high.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            out_p_low.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            out_confirmed.ctypes.data_as(ctypes.POINTER(ctypes.c_size_t)),
+            out_mitigated.ctypes.data_as(ctypes.POINTER(ctypes.c_ssize_t)),
+        )
+        if count >= 0:
+            c = int(count)
+            return (
+                out_indices[:c],
+                out_directions[:c],
+                out_p_high[:c],
+                out_p_low[:c],
+                out_confirmed[:c],
+                out_mitigated[:c],
+            )
+
+    # Pure NumPy fallback
+    indices_list = []
+    directions_list = []
+    p_high_list = []
+    p_low_list = []
+    confirmed_list = []
+    mitigated_list = []
+
+    for i in range(2, n - 5):
+        c_open = o_arr[i]
+        c_close = c_arr[i]
+        c_high = h_arr[i]
+        c_low = l_arr[i]
+        impulse_end = min(i + 5, n - 1)
+
+        if c_close < c_open:
+            body_size = c_open - c_close
+            impulse_high = np.max(h_arr[i + 1 : impulse_end + 1])
+            impulse_move = impulse_high - c_high
+
+            if impulse_move > max(body_size * 2.0, atr * 1.5):
+                confirm_idx = min(i + 10, n - 1)
+                post_impulse_low = np.min(l_arr[i + 1 : confirm_idx + 1])
+                if post_impulse_low > c_low:
+                    ob_mid = (c_high + c_low) / 2.0
+                    sub_lows = l_arr[i + 1 :]
+                    hits = np.flatnonzero(sub_lows <= ob_mid)
+                    mitigated = (i + 1 + int(hits[0])) if len(hits) > 0 else -1
+
+                    indices_list.append(i)
+                    directions_list.append(1)
+                    p_high_list.append(c_high)
+                    p_low_list.append(c_low)
+                    confirmed_list.append(confirm_idx)
+                    mitigated_list.append(mitigated)
+        elif c_close > c_open:
+            body_size = c_close - c_open
+            impulse_low = np.min(l_arr[i + 1 : impulse_end + 1])
+            impulse_move = c_low - impulse_low
+
+            if impulse_move > max(body_size * 2.0, atr * 1.5):
+                confirm_idx = min(i + 10, n - 1)
+                post_impulse_high = np.max(h_arr[i + 1 : confirm_idx + 1])
+                if post_impulse_high < c_high:
+                    ob_mid = (c_high + c_low) / 2.0
+                    sub_highs = h_arr[i + 1 :]
+                    hits = np.flatnonzero(sub_highs >= ob_mid)
+                    mitigated = (i + 1 + int(hits[0])) if len(hits) > 0 else -1
+
+                    indices_list.append(i)
+                    directions_list.append(2)
+                    p_high_list.append(c_high)
+                    p_low_list.append(c_low)
+                    confirmed_list.append(confirm_idx)
+                    mitigated_list.append(mitigated)
+
+    return (
+        np.array(indices_list, dtype=np.uintp),
+        np.array(directions_list, dtype=np.uint8),
+        np.array(p_high_list, dtype=np.float64),
+        np.array(p_low_list, dtype=np.float64),
+        np.array(confirmed_list, dtype=np.uintp),
+        np.array(mitigated_list, dtype=np.intp),
+    )
+
+
+def find_sr_zones_f64(
+    prices: np.ndarray | Sequence[float],
+    timestamps: np.ndarray | Sequence[float],
+    tolerance: float = 0.002,
+    min_touches: int = 2,
+) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    """
+    Finds S/R zones from swing points via native Rust C-ABI with 100% NumPy fallback.
+    Returns: (price_high, price_low, touches, last_touched_timestamps)
+    """
+    n = len(prices)
+    if n == 0 or len(timestamps) != n:
+        return None
+
+    p_arr = np.ascontiguousarray(prices, dtype=np.float64)
+    t_arr = np.ascontiguousarray(timestamps, dtype=np.float64)
+
+    lib = _load_library()
+    if lib is not None:
+        out_p_high = np.empty(n, dtype=np.float64)
+        out_p_low = np.empty(n, dtype=np.float64)
+        out_touches = np.empty(n, dtype=np.uintp)
+        out_last_ts = np.empty(n, dtype=np.float64)
+
+        count = lib.monika_find_sr_zones_f64(
+            p_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            t_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.c_size_t(n),
+            ctypes.c_double(tolerance),
+            ctypes.c_size_t(min_touches),
+            out_p_high.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            out_p_low.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            out_touches.ctypes.data_as(ctypes.POINTER(ctypes.c_size_t)),
+            out_last_ts.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        )
+        if count >= 0:
+            c = int(count)
+            return (
+                out_p_high[:c],
+                out_p_low[:c],
+                out_touches[:c],
+                out_last_ts[:c],
+            )
+
+    # Pure NumPy fallback
+    order = np.argsort(p_arr)
+    sorted_p = p_arr[order]
+    sorted_t = t_arr[order]
+
+    used = np.zeros(n, dtype=bool)
+    res_high = []
+    res_low = []
+    res_touches = []
+    res_last_ts = []
+
+    for i in range(n):
+        if used[i]:
+            continue
+        p_i = sorted_p[i]
+        t_i = sorted_t[i]
+        used[i] = True
+
+        cluster_p = [p_i]
+        cluster_t = [t_i]
+
+        for j in range(i + 1, n):
+            if used[j]:
+                continue
+            p_j = sorted_p[j]
+            t_j = sorted_t[j]
+            denom = max(1e-8, abs(p_i))
+            if abs(p_j - p_i) / denom <= tolerance:
+                used[j] = True
+                cluster_p.append(p_j)
+                cluster_t.append(t_j)
+            else:
+                break
+
+        if len(cluster_p) >= min_touches:
+            res_high.append(max(cluster_p))
+            res_low.append(min(cluster_p))
+            res_touches.append(len(cluster_p))
+            res_last_ts.append(max(cluster_t))
+
+    return (
+        np.array(res_high, dtype=np.float64),
+        np.array(res_low, dtype=np.float64),
+        np.array(res_touches, dtype=np.uintp),
+        np.array(res_last_ts, dtype=np.float64),
+    )
+
+
+def detect_structure_breaks_f64(
+    closes: np.ndarray | Sequence[float],
+    swing_indices: np.ndarray | Sequence[int],
+    swing_prices: np.ndarray | Sequence[float],
+    swing_types: np.ndarray | Sequence[int],
+) -> Optional[tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    """
+    Detects BOS and CHoCH breaks via native Rust C-ABI with 100% NumPy fallback.
+    swing_types: 1 = high, 2 = low.
+    Returns: (break_indices, break_types, directions, prices)
+    where break_types: 1 = BOS, 2 = CHoCH; directions: 1 = bullish, 2 = bearish.
+    """
+    n_closes = len(closes)
+    n_swings = len(swing_indices)
+    if n_closes == 0 or n_swings == 0 or len(swing_prices) != n_swings or len(swing_types) != n_swings:
+        return None
+
+    c_arr = np.ascontiguousarray(closes, dtype=np.float64)
+    s_idx = np.ascontiguousarray(swing_indices, dtype=np.uintp)
+    s_p = np.ascontiguousarray(swing_prices, dtype=np.float64)
+    s_t = np.ascontiguousarray(swing_types, dtype=np.uint8)
+
+    lib = _load_library()
+    if lib is not None:
+        out_b_idx = np.empty(n_swings, dtype=np.uintp)
+        out_b_type = np.empty(n_swings, dtype=np.uint8)
+        out_dir = np.empty(n_swings, dtype=np.uint8)
+        out_prices = np.empty(n_swings, dtype=np.float64)
+
+        count = lib.monika_detect_structure_breaks_f64(
+            c_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            ctypes.c_size_t(n_closes),
+            s_idx.ctypes.data_as(ctypes.POINTER(ctypes.c_size_t)),
+            s_p.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+            s_t.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)),
+            ctypes.c_size_t(n_swings),
+            out_b_idx.ctypes.data_as(ctypes.POINTER(ctypes.c_size_t)),
+            out_b_type.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)),
+            out_dir.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)),
+            out_prices.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+        )
+        if count >= 0:
+            c = int(count)
+            return (
+                out_b_idx[:c],
+                out_b_type[:c],
+                out_dir[:c],
+                out_prices[:c],
+            )
+
+    # Pure NumPy fallback
+    current_trend = 0  # 0 = ranging, 1 = bullish, 2 = bearish
+    last_high = None
+    last_high_idx = 0
+    last_low = None
+    last_low_idx = 0
+
+    res_b_idx = []
+    res_b_type = []
+    res_dir = []
+    res_prices = []
+
+    for s in range(n_swings):
+        idx = s_idx[s]
+        price = s_p[s]
+        typ = s_t[s]
+
+        if typ == 1:
+            if last_high is not None and price > last_high:
+                start_i = last_high_idx
+                end_i = min(idx, n_closes)
+                hits = np.flatnonzero(c_arr[start_i:end_i] > last_high)
+                break_idx = None
+                if len(hits) > 0:
+                    break_idx = start_i + int(hits[0])
+                else:
+                    hits_fallback = np.flatnonzero(c_arr[start_i:] > last_high)
+                    if len(hits_fallback) > 0:
+                        break_idx = start_i + int(hits_fallback[0])
+
+                if break_idx is not None and break_idx < n_closes:
+                    b_type = 2 if current_trend == 2 else 1
+                    res_b_idx.append(break_idx)
+                    res_b_type.append(b_type)
+                    res_dir.append(1)
+                    res_prices.append(last_high)
+                    current_trend = 1
+            elif last_high is not None and price < last_high:
+                current_trend = 2
+            last_high = price
+            last_high_idx = idx
+        else:
+            if last_low is not None and price < last_low:
+                start_i = last_low_idx
+                end_i = min(idx, n_closes)
+                hits = np.flatnonzero(c_arr[start_i:end_i] < last_low)
+                break_idx = None
+                if len(hits) > 0:
+                    break_idx = start_i + int(hits[0])
+                else:
+                    hits_fallback = np.flatnonzero(c_arr[start_i:] < last_low)
+                    if len(hits_fallback) > 0:
+                        break_idx = start_i + int(hits_fallback[0])
+
+                if break_idx is not None and break_idx < n_closes:
+                    b_type = 2 if current_trend == 1 else 1
+                    res_b_idx.append(break_idx)
+                    res_b_type.append(b_type)
+                    res_dir.append(2)
+                    res_prices.append(last_low)
+                    current_trend = 2
+            elif last_low is not None and price > last_low:
+                current_trend = 1
+            last_low = price
+            last_low_idx = idx
+
+    return (
+        np.array(res_b_idx, dtype=np.uintp),
+        np.array(res_b_type, dtype=np.uint8),
+        np.array(res_dir, dtype=np.uint8),
+        np.array(res_prices, dtype=np.float64),
+    )
