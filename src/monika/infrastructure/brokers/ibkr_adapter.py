@@ -12,6 +12,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from monika.core.primitives.bounded_lru_cache import BoundedLRUCache
 
 import monika.core.primitives.clock as clock
 from monika.domain.execution.broker_plugin import OrderRequest, normalize_order_request
@@ -50,7 +51,7 @@ class IBKRBrokerAdapter(BrokerAdapter):
         self.timeout_seconds = timeout_seconds
         self.ib: Any = None
         self._connected = False
-        self._contract_cache: Dict[str, Any] = {}
+        self._contract_cache: BoundedLRUCache[str, Any] = BoundedLRUCache(maxsize=500, default_ttl_seconds=86400.0)
 
     def _ensure_ib(self) -> Any:
         if not HAS_IB_INSYNC or ib_insync is None:
@@ -96,8 +97,9 @@ class IBKRBrokerAdapter(BrokerAdapter):
     def _resolve_contract(self, symbol: str) -> Any:
         """Map standard symbol (EURUSD, XAUUSD) to IB Contract object."""
         sym = symbol.upper().replace("/", "").replace(".", "")
-        if sym in self._contract_cache:
-            return self._contract_cache[sym]
+        cached = self._contract_cache.get(sym)
+        if cached is not None:
+            return cached
 
         if not HAS_IB_INSYNC or ib_insync is None:
             return None
@@ -114,7 +116,7 @@ class IBKRBrokerAdapter(BrokerAdapter):
         else:
             contract = ib_insync.Stock(sym, "SMART", "USD")
 
-        self._contract_cache[sym] = contract
+        self._contract_cache.put(sym, contract)
         return contract
 
     async def get_tick(self, symbol: str) -> dict:

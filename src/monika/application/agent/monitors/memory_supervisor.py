@@ -7,10 +7,8 @@
 from __future__ import annotations
 
 import asyncio
-import ctypes
 import gc
 import logging
-import sys
 from typing import Any, Optional
 
 import psutil
@@ -29,7 +27,9 @@ class MemorySupervisor:
     """
     24/7 Process Health & RSS Memory Supervisor.
     Monitors process memory footprint, prevents OOM risks, and executes
-    progressive compaction (GC gen 2, EventBus task purge, OS working set trim).
+    progressive compaction (progressive multi-generational GC and EventBus task purge).
+    OS-level working set paging (EmptyWorkingSet) is deliberately omitted to prevent
+    hard page faults and execution jitter on Windows.
     """
 
     def __init__(
@@ -58,16 +58,17 @@ class MemorySupervisor:
     def compact_memory(self, reason: str = "manual") -> dict[str, Any]:
         """
         Executes progressive memory compaction:
-        1. Full Python garbage collection across all 3 generations.
+        1. Full Python progressive garbage collection across all 3 generations.
         2. EventBus finished task cleanup.
-        3. OS-level physical working set trim (on Windows via EmptyWorkingSet).
+        3. Generational defragmentation without paging working set to disk.
         """
         rss_before = self.get_rss_mb()
 
         # 1. Python GC (progressive multi-generational collection)
+        c0 = gc.collect(0)
         c1 = gc.collect(1)
         c2 = gc.collect(2)
-        collected = c1 + c2
+        collected = c0 + c1 + c2
 
         # 2. EventBus task prune
         pruned_tasks = 0
@@ -76,17 +77,8 @@ class MemorySupervisor:
         except Exception:
             pass
 
-        # 3. OS Kernel Working Set Trim (Windows)
+        # 3. Memory sanitation without anti-pattern OS paging
         os_trimmed = False
-        if sys.platform.startswith("win"):
-            try:
-                windll = getattr(ctypes, "windll", None)
-                if windll is not None:
-                    handle = windll.kernel32.GetCurrentProcess()
-                    windll.psapi.EmptyWorkingSet(handle)
-                    os_trimmed = True
-            except Exception as e:
-                logger.debug(f"[MemorySupervisor] EmptyWorkingSet trim error: {e}")
 
         rss_after = self.get_rss_mb()
         delta = rss_before - rss_after

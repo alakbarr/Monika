@@ -62,11 +62,19 @@ class BoundedLRUCache(Generic[K, V]):
             if key in self._cache:
                 del self._cache[key]
             elif len(self._cache) >= self.maxsize:
-                # Proactively evict oldest expired entry first if one exists
-                oldest_k, (_, created_at, item_ttl) = next(iter(self._cache.items()))
-                if now > created_at + item_ttl:
-                    del self._cache[oldest_k]
-                else:
+                # Proactively scan oldest entries for expiration before dropping active LRU items
+                expired_candidates = []
+                for idx, (cand_k, (_, created_at, item_ttl)) in enumerate(self._cache.items()):
+                    if now > created_at + item_ttl:
+                        expired_candidates.append(cand_k)
+                        if len(expired_candidates) >= 10:
+                            break
+                    elif idx >= 20:
+                        break
+                if expired_candidates:
+                    for exp_k in expired_candidates:
+                        del self._cache[exp_k]
+                elif len(self._cache) >= self.maxsize:
                     self._cache.popitem(last=False)
             self._cache[key] = (value, now, ttl)
 

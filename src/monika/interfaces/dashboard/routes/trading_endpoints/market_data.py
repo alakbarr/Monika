@@ -13,6 +13,7 @@ import time
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any, AsyncGenerator, Dict, List, Literal, Optional
 
+import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
@@ -332,17 +333,25 @@ async def get_market_candles(
         try:
             df = await mt5_client.get_ohlcv(sym, timeframe=timeframe.upper(), count=count)
             if df is not None and not df.empty:
-                for _, row in df.iterrows():
-                    raw_time = row.get("time")
+                t_arr = df["time"]
+                o_arr = df["open"].to_numpy(dtype=float)
+                h_arr = df["high"].to_numpy(dtype=float)
+                l_arr = df["low"].to_numpy(dtype=float)
+                c_arr = df["close"].to_numpy(dtype=float)
+                vol_col = (
+                    "tick_volume" if "tick_volume" in df.columns else ("volume" if "volume" in df.columns else None)
+                )
+                v_arr = df[vol_col].to_numpy(dtype=float) if vol_col else np.zeros(len(df), dtype=float)
+                for raw_time, o, h, l, c, v in zip(t_arr, o_arr, h_arr, l_arr, c_arr, v_arr):
                     t_val = int(raw_time.timestamp()) if hasattr(raw_time, "timestamp") else int(raw_time)
                     candles.append(
                         {
                             "time": t_val,
-                            "open": float(row.get("open", 0.0)),
-                            "high": float(row.get("high", 0.0)),
-                            "low": float(row.get("low", 0.0)),
-                            "close": float(row.get("close", 0.0)),
-                            "volume": float(row.get("tick_volume", row.get("volume", 0.0))),
+                            "open": float(o),
+                            "high": float(h),
+                            "low": float(l),
+                            "close": float(c),
+                            "volume": float(v),
                         }
                     )
         except Exception as e:
@@ -467,17 +476,27 @@ async def get_chart_workspace(
         try:
             df_broker = await mt5_client.get_ohlcv(sym, timeframe=tf, count=fetch_count)
             if df_broker is not None and not df_broker.empty:
-                for _, row in df_broker.iterrows():
-                    raw_time = row.get("time")
+                t_arr = df_broker["time"]
+                o_arr = df_broker["open"].to_numpy(dtype=float)
+                h_arr = df_broker["high"].to_numpy(dtype=float)
+                l_arr = df_broker["low"].to_numpy(dtype=float)
+                c_arr = df_broker["close"].to_numpy(dtype=float)
+                vol_col = (
+                    "tick_volume"
+                    if "tick_volume" in df_broker.columns
+                    else ("volume" if "volume" in df_broker.columns else None)
+                )
+                v_arr = df_broker[vol_col].to_numpy(dtype=float) if vol_col else np.zeros(len(df_broker), dtype=float)
+                for raw_time, o, h, l, c, v in zip(t_arr, o_arr, h_arr, l_arr, c_arr, v_arr):
                     t_val = int(raw_time.timestamp()) if hasattr(raw_time, "timestamp") else int(raw_time)
                     candles.append(
                         {
                             "time": t_val,
-                            "open": float(row.get("open", 0.0)),
-                            "high": float(row.get("high", 0.0)),
-                            "low": float(row.get("low", 0.0)),
-                            "close": float(row.get("close", 0.0)),
-                            "volume": float(row.get("tick_volume", row.get("volume", 0.0))),
+                            "open": float(o),
+                            "high": float(h),
+                            "low": float(l),
+                            "close": float(c),
+                            "volume": float(v),
                         }
                     )
         except Exception as e:

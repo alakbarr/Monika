@@ -13,6 +13,7 @@ import math
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from monika.core.primitives.bounded_lru_cache import BoundedLRUCache
 
 from monika.domain.market.playbook_screener import PlaybookRegistry, PlaybookSpec
 
@@ -24,7 +25,9 @@ class PlaybookCatalogRepository:
 
     def __init__(self, playbooks_dir: Optional[Path] = None) -> None:
         self._playbooks_dir: Optional[Path] = playbooks_dir
-        self._cached_specs: Dict[str, List[PlaybookSpec]] = {}
+        self._cached_specs: BoundedLRUCache[str, List[PlaybookSpec]] = BoundedLRUCache(
+            maxsize=200, default_ttl_seconds=3600.0
+        )
 
     def get_playbooks_dir(self) -> Path:
         """Resolve the playbooks directory path."""
@@ -51,8 +54,9 @@ class PlaybookCatalogRepository:
     def load_playbooks_for_symbol(self, symbol: str) -> List[PlaybookSpec]:
         """Load and cache all playbook specifications for a given symbol."""
         sym_clean = symbol.strip().upper()
-        if sym_clean in self._cached_specs:
-            return self._cached_specs[sym_clean]
+        cached = self._cached_specs.get(sym_clean)
+        if cached is not None:
+            return cached
 
         pb_dir = self.get_playbooks_dir()
         if not pb_dir.exists():
@@ -87,7 +91,7 @@ class PlaybookCatalogRepository:
 
         # Sort by Profit Factor descending to prioritize highest-edge playbooks
         specs.sort(key=lambda s: s.profit_factor, reverse=True)
-        self._cached_specs[sym_clean] = specs
+        self._cached_specs.put(sym_clean, specs)
         return specs
 
     def load_reserve_playbooks(self, symbol: Optional[str] = None) -> List[Dict[str, Any]]:

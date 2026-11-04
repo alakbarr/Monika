@@ -13,8 +13,10 @@ data, producing regime-aware z-score signals and composite alpha scores.
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -110,6 +112,7 @@ class VectorFactorEngine:
             self.catalog_path = Path(catalog_path)
 
         self._catalog: Dict[str, Any] = {}
+        self._executor: Optional[concurrent.futures.ThreadPoolExecutor] = None
         self._load_catalog()
 
     @classmethod
@@ -121,6 +124,8 @@ class VectorFactorEngine:
 
     @classmethod
     def reset(cls) -> None:
+        if cls._instance is not None and cls._instance._executor is not None:
+            cls._instance._executor.shutdown(wait=False)
         cls._instance = None
 
     def _load_catalog(self) -> None:
@@ -206,20 +211,15 @@ class VectorFactorEngine:
         if len(candidate_metas) < top_k:
             candidate_metas = registered_metas
 
-        factor_signals: List[FactorSignal] = []
-
-        for meta in candidate_metas:
-            # Check required columns
+        def _eval_single(meta) -> Optional[FactorSignal]:
             if not all(col in df_eval.columns for col in meta.columns_required):
-                continue
-
+                return None
             try:
                 series = FactorRegistry.compute(meta.name, df_eval, strict_masking=False)
                 clean_series = series.dropna()
                 if len(clean_series) < 3:
-                    continue
+                    return None
 
-                # Compute rolling z-score of the latest value
                 latest_val = float(np.asarray(clean_series.iloc[-1]).item())
                 recent_window = clean_series.tail(lookback_window)
                 mean_val = float(np.asarray(recent_window.mean()).item())
@@ -230,7 +230,6 @@ class VectorFactorEngine:
                 else:
                     z_score = 0.0
 
-                # Direction adjustment
                 if meta.direction == "positive_bearish":
                     signal = float(-np.tanh(z_score / 1.5))
                 elif meta.direction == "neutral_volatility":
@@ -238,22 +237,34 @@ class VectorFactorEngine:
                 else:
                     signal = float(np.tanh(z_score / 1.5))
 
-                factor_signals.append(
-                    FactorSignal(
-                        factor_id=meta.name,
-                        name=meta.name,
-                        category=meta.category,
-                        raw_value=latest_val,
-                        z_score=z_score,
-                        signal=signal,
-                        direction=meta.direction,
-                        formula_latex=meta.formula_latex,
-                        description=meta.description,
-                    )
+                return FactorSignal(
+                    factor_id=meta.name,
+                    name=meta.name,
+                    category=meta.category,
+                    raw_value=latest_val,
+                    z_score=z_score,
+                    signal=signal,
+                    direction=meta.direction,
+                    formula_latex=meta.formula_latex,
+                    description=meta.description,
                 )
             except Exception as e:
                 logger.debug("Factor %s evaluation failed: %s", meta.name, e)
-                continue
+                return None
+
+        max_workers = min(os.cpu_count() or 4, 8)
+        if len(candidate_metas) > 4:
+            if self._executor is None:
+                self._executor = concurrent.futures.ThreadPoolExecutor(
+                    max_workers=max_workers,
+                    thread_name_prefix="AlphaZooWorker",
+                )
+            chunksize = max(1, len(candidate_metas) // (max_workers * 2))
+            factor_signals = [
+                sig for sig in self._executor.map(_eval_single, candidate_metas, chunksize=chunksize) if sig is not None
+            ]
+        else:
+            factor_signals = [sig for sig in (_eval_single(m) for m in candidate_metas) if sig is not None]
 
         # Sort factors by absolute conviction |signal|
         factor_signals.sort(key=lambda s: abs(s.signal), reverse=True)

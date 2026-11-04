@@ -51,9 +51,9 @@ class GraphCycleScheduler(CycleScheduler):
             self._checkpointer_ready = True
         else:
             self.graph = build_trading_graph(db_url=db_url)
+            self._checkpointer_ready = False
         # IMP-8: Protect against concurrent graph state mutations
         self._cycle_lock = asyncio.Lock()
-        self._checkpointer_ready = False
         # Recovery synchronization event received from TradingAgent orchestrator.
         # If omitted (standalone mode), defaults to ready immediately.
         self._recovery_complete_event = recovery_event or asyncio.Event()

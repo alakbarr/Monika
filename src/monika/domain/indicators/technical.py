@@ -225,6 +225,9 @@ def _append_adx(
             )
 
 
+_SERVICE_CLS: Optional[type] = None
+
+
 class TechnicalIndicatorCalculator:
     """
     Pure Domain Technical Indicator Calculator.

@@ -174,10 +174,11 @@ class BondYieldFetcher:
             existing_date_strs = {d.strftime("%Y-%m-%d") for d in existing_res.scalars().all() if d is not None}
 
             saved = 0
-            for _, row in df.iterrows():
+            time_series = df["TIME_PERIOD"].to_numpy()
+            obs_series = df["OBS_VALUE"].to_numpy()
+            for date_raw, val_raw in zip(time_series, obs_series):
                 try:
-                    date_str = str(row["TIME_PERIOD"]).strip()
-                    val_raw = row["OBS_VALUE"]
+                    date_str = str(date_raw).strip()
                     if bool(pd.isna(val_raw)) or str(val_raw).strip() == ".":
                         continue
                     val = float(str(val_raw))

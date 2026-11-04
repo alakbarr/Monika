@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import pandas as pd
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.infrastructure.database.models import (
@@ -208,80 +208,100 @@ async def calculate_confluence(
     h4_cutoff = (as_of - timedelta(hours=4)) if as_of else None
     d1_cutoff = (as_of - timedelta(days=1)) if as_of else None
 
-    # ATR (H4)
-    atr_stmt = select(TechnicalIndicator).where(
-        TechnicalIndicator.symbol == symbol,
-        TechnicalIndicator.timeframe == "H4",
-        TechnicalIndicator.indicator_name == "ATR_14",
-    )
-    if h4_cutoff:
-        atr_stmt = atr_stmt.where(TechnicalIndicator.timestamp <= h4_cutoff)
-    atr_stmt = atr_stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1)
-    atr_row = (await session.execute(atr_stmt)).scalar_one_or_none()
+    # 0. Check in-memory ground-truth MarketSnapshotService first (Zero-DB path)
+    snap = None
+    if not h4_cutoff:
+        try:
+            from monika.application.services.market_snapshot_service import MarketSnapshotService
 
+            snap = MarketSnapshotService.get_instance().get_snapshot(symbol, "H4")
+        except Exception:
+            snap = None
+
+    # ATR (H4)
     atr_val = 0
-    if atr_row:
-        atr_data = json.loads(atr_row.value_json)
-        if isinstance(atr_data, dict):
-            atr_val = float(atr_data.get("atr", 0) or atr_data.get("value", 0))
-        else:
-            atr_val = float(atr_data or 0)
+    if snap and snap.indicators and "atr_14" in snap.indicators:
+        atr_val = float(snap.indicators["atr_14"])
+    else:
+        atr_stmt = select(TechnicalIndicator).where(
+            TechnicalIndicator.symbol == symbol,
+            TechnicalIndicator.timeframe == "H4",
+            TechnicalIndicator.indicator_name == "ATR_14",
+        )
+        if h4_cutoff:
+            atr_stmt = atr_stmt.where(TechnicalIndicator.timestamp <= h4_cutoff)
+        atr_stmt = atr_stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1)
+        atr_row = (await session.execute(atr_stmt)).scalar_one_or_none()
+        if atr_row:
+            atr_data = json.loads(atr_row.value_json)
+            if isinstance(atr_data, dict):
+                atr_val = float(atr_data.get("atr", 0) or atr_data.get("value", 0))
+            else:
+                atr_val = float(atr_data or 0)
 
     # RSI (H4)
-    rsi_stmt = select(TechnicalIndicator).where(
-        TechnicalIndicator.symbol == symbol,
-        TechnicalIndicator.timeframe == "H4",
-        TechnicalIndicator.indicator_name == "RSI_14",
-    )
-    if h4_cutoff:
-        rsi_stmt = rsi_stmt.where(TechnicalIndicator.timestamp <= h4_cutoff)
-    rsi_stmt = rsi_stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1)
-    rsi_row = (await session.execute(rsi_stmt)).scalar_one_or_none()
-
     rsi_val = None
-    if rsi_row:
-        try:
-            rsi_data = json.loads(rsi_row.value_json)
-            rsi_val = float(rsi_data.get("rsi", 50))
-        except Exception as e:
-            logger.debug(f"Confluence RSI sub-calculation skipped: {e}")
+    if snap and snap.indicators and "rsi_14" in snap.indicators:
+        rsi_val = float(snap.indicators["rsi_14"])
+    else:
+        rsi_stmt = select(TechnicalIndicator).where(
+            TechnicalIndicator.symbol == symbol,
+            TechnicalIndicator.timeframe == "H4",
+            TechnicalIndicator.indicator_name == "RSI_14",
+        )
+        if h4_cutoff:
+            rsi_stmt = rsi_stmt.where(TechnicalIndicator.timestamp <= h4_cutoff)
+        rsi_stmt = rsi_stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1)
+        rsi_row = (await session.execute(rsi_stmt)).scalar_one_or_none()
+        if rsi_row:
+            try:
+                rsi_data = json.loads(rsi_row.value_json)
+                rsi_val = float(rsi_data.get("rsi", 50))
+            except Exception as e:
+                logger.debug(f"Confluence RSI sub-calculation skipped: {e}")
 
     # EMA 20 & EMA 50 (H4/H1) for trend continuation
-    ema20_stmt = select(TechnicalIndicator).where(
-        TechnicalIndicator.symbol == symbol,
-        TechnicalIndicator.timeframe.in_(["H4", "H1"]),
-        TechnicalIndicator.indicator_name == "EMA_20",
-    )
-    if h4_cutoff:
-        ema20_stmt = ema20_stmt.where(TechnicalIndicator.timestamp <= h4_cutoff)
-    ema20_row = (
-        await session.execute(ema20_stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1))
-    ).scalar_one_or_none()
     ema20_val = None
-    if ema20_row and ema20_row.value_json:
-        try:
-            d = json.loads(ema20_row.value_json)
-            ema20_val = float(d.get("value", d.get("ema", 0.0)))
-        except Exception as e:
-            logger.debug(f"Confluence EMA20 sub-calculation skipped: {e}")
+    if snap and snap.indicators and "ema_20" in snap.indicators:
+        ema20_val = float(snap.indicators["ema_20"])
+    else:
+        ema20_stmt = select(TechnicalIndicator).where(
+            TechnicalIndicator.symbol == symbol,
+            TechnicalIndicator.timeframe.in_(["H4", "H1"]),
+            TechnicalIndicator.indicator_name == "EMA_20",
+        )
+        if h4_cutoff:
+            ema20_stmt = ema20_stmt.where(TechnicalIndicator.timestamp <= h4_cutoff)
+        ema20_row = (
+            await session.execute(ema20_stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1))
+        ).scalar_one_or_none()
+        if ema20_row and ema20_row.value_json:
+            try:
+                d = json.loads(ema20_row.value_json)
+                ema20_val = float(d.get("value", d.get("ema", 0.0)))
+            except Exception as e:
+                logger.debug(f"Confluence EMA20 sub-calculation skipped: {e}")
 
-    ema50_stmt = select(TechnicalIndicator).where(
-        TechnicalIndicator.symbol == symbol,
-        TechnicalIndicator.timeframe.in_(["H4", "H1"]),
-        TechnicalIndicator.indicator_name == "EMA_50",
-    )
-    if h4_cutoff:
-        ema50_stmt = ema50_stmt.where(TechnicalIndicator.timestamp <= h4_cutoff)
-    ema50_row = (
-        await session.execute(ema50_stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1))
-    ).scalar_one_or_none()
     ema50_val = None
-    if ema50_row and ema50_row.value_json:
-        try:
-            d = json.loads(ema50_row.value_json)
-            ema50_val = float(d.get("value", d.get("ema", 0.0)))
-        except Exception as e:
-            logger.debug(f"Confluence EMA50 sub-calculation skipped: {e}")
+    if snap and snap.indicators and "ema_50" in snap.indicators:
+        ema50_val = float(snap.indicators["ema_50"])
+    else:
+        ema50_stmt = select(TechnicalIndicator).where(
+            TechnicalIndicator.symbol == symbol,
+            TechnicalIndicator.timeframe.in_(["H4", "H1"]),
+            TechnicalIndicator.indicator_name == "EMA_50",
+        )
+        if h4_cutoff:
+            ema50_stmt = ema50_stmt.where(TechnicalIndicator.timestamp <= h4_cutoff)
+        ema50_row = (
+            await session.execute(ema50_stmt.order_by(TechnicalIndicator.timestamp.desc()).limit(1))
+        ).scalar_one_or_none()
+        if ema50_row and ema50_row.value_json:
+            try:
+                d = json.loads(ema50_row.value_json)
+                ema50_val = float(d.get("value", d.get("ema", 0.0)))
+            except Exception as e:
+                logger.debug(f"Confluence EMA50 sub-calculation skipped: {e}")
 
     # Recent H4 bars for volume expansion & breakout levels
     recent_h4_stmt = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == "H4")

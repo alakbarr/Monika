@@ -6,6 +6,8 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.core.primitives.bounded_lru_cache import BoundedLRUCache
+
 from monika.application.analysis.schemas import SubmitAssetAnalysisSchema, SubmitFundamentalBriefSchema
 from monika.application.analysis.tools.tool_executor import ToolExecutor
 from monika.infrastructure.database.models import (
@@ -464,19 +466,20 @@ def _handle_institutional_data(bundle: dict[str, Any], inp: dict[str, Any]) -> d
     }
 
 
-_scratchpad_cache: dict[str, Any] = {}
+_scratchpad_cache: BoundedLRUCache[str, Any] = BoundedLRUCache(maxsize=1000, default_ttl_seconds=86400.0)
 
 
 def _handle_update_scratchpad(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
     sym = str(inp.get("symbol", "EURUSD")).upper()
     data = inp.get("data") or inp.get("notes") or inp
-    _scratchpad_cache[sym] = data
+    _scratchpad_cache.put(sym, data)
     return {"status": "success", "symbol": sym, "saved": True}
 
 
 def _handle_read_scratchpad(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:
     sym = str(inp.get("symbol", "EURUSD")).upper()
-    return {"status": "success", "symbol": sym, "data": _scratchpad_cache.get(sym, {})}
+    data = _scratchpad_cache.get(sym, {})
+    return {"status": "success", "symbol": sym, "data": data}
 
 
 def _handle_scan_pattern_similarity(bundle: dict[str, Any], inp: dict[str, Any]) -> dict[str, Any]:

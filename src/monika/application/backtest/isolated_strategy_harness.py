@@ -46,6 +46,41 @@ _RE_LT = _re.compile(r"timestamp\s*<\s*'([^']+)'", _re.IGNORECASE)
 _RE_LTE = _re.compile(r"timestamp\s*<=\s*'([^']+)'", _re.IGNORECASE)
 _RE_GT = _re.compile(r"timestamp\s*>\s*'([^']+)'", _re.IGNORECASE)
 
+_PARSED_INDICATOR_CACHE: dict[str, tuple[str, int]] = {}
+_PARSED_FROM_CACHE: dict[str, str] = {}
+
+
+def _get_parsed_indicator(stmt_str: str) -> tuple[str, int]:
+    cached = _PARSED_INDICATOR_CACHE.get(stmt_str)
+    if cached is not None:
+        return cached
+    if "EMA" in stmt_str:
+        m = _RE_EMA.search(stmt_str)
+        res = ("EMA", int(m.group(1)) if m else 20)
+    elif "SMA" in stmt_str:
+        m = _RE_SMA.search(stmt_str)
+        res = ("SMA", int(m.group(1)) if m else 20)
+    elif "RSI" in stmt_str:
+        m = _RE_RSI.search(stmt_str)
+        res = ("RSI", int(m.group(1)) if m else 14)
+    else:
+        res = ("UNKNOWN", 0)
+    if len(_PARSED_INDICATOR_CACHE) < 500:
+        _PARSED_INDICATOR_CACHE[stmt_str] = res
+    return res
+
+
+def _get_parsed_from(comp_str: str) -> str:
+    cached = _PARSED_FROM_CACHE.get(comp_str)
+    if cached is not None:
+        return cached
+    m_from = _RE_FROM.search(comp_str)
+    table = (m_from.group(1) if m_from else "").lower()
+    if len(_PARSED_FROM_CACHE) < 500:
+        _PARSED_FROM_CACHE[comp_str] = table
+    return table
+
+
 logger = logging.getLogger("TradingAgent.IsolatedStrategyHarness")
 
 
@@ -316,8 +351,7 @@ class ZeroLookaheadSliceSession(AsyncSession):
                 return _SliceScalarResult([mock_row])
 
             elif "EMA" in stmt_str:
-                m = _RE_EMA.search(stmt_str)
-                period = int(m.group(1)) if m else 20
+                kind, period = _get_parsed_indicator(stmt_str)
                 if len(h1_candles) >= period:
                     closes = [float(c.close) for c in h1_candles]
                     alpha = 2.0 / (period + 1.0)
@@ -334,8 +368,7 @@ class ZeroLookaheadSliceSession(AsyncSession):
                 return _SliceScalarResult([mock_row])
 
             elif "SMA" in stmt_str:
-                m = _RE_SMA.search(stmt_str)
-                period = int(m.group(1)) if m else 20
+                kind, period = _get_parsed_indicator(stmt_str)
                 if len(h1_candles) >= period:
                     sma_val = round(float(np.mean([float(c.close) for c in h1_candles[-period:]])), 5)
                 else:
@@ -347,8 +380,7 @@ class ZeroLookaheadSliceSession(AsyncSession):
                 return _SliceScalarResult([mock_row])
 
             elif "RSI" in stmt_str:
-                m = _RE_RSI.search(stmt_str)
-                period = int(m.group(1)) if m else 14
+                kind, period = _get_parsed_indicator(stmt_str)
                 if len(h1_candles) >= period + 1:
                     closes = [float(c.close) for c in h1_candles]
                     diffs = [closes[k] - closes[k - 1] for k in range(1, len(closes))]
@@ -426,8 +458,7 @@ class ZeroLookaheadSliceSession(AsyncSession):
         #    exactly like a database without those rows. Falling through to the
         #    candle branch would hand the strategy candle rows where it expects
         #    zone rows, which fails with an unrelated AttributeError.
-        m_from = _RE_FROM.search(comp_str)
-        source_table = (m_from.group(1) if m_from else "").lower()
+        source_table = _get_parsed_from(comp_str)
         if source_table and source_table != "price_ohlcv":
             return _SliceScalarResult([])
 

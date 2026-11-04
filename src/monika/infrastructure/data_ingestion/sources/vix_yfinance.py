@@ -322,24 +322,20 @@ class VIXFetcher:
             df.columns = df.columns.get_level_values(0)
 
         candidates = []
-        for idx, row in df.iterrows():
-            if isinstance(idx, (pd.Timestamp, datetime)):
-                record_dt = datetime(idx.year, idx.month, idx.day, tzinfo=timezone.utc)
-            else:
-                ts = pd.Timestamp(str(idx))
-                record_dt = datetime(int(ts.year), int(ts.month), int(ts.day), tzinfo=timezone.utc)
-
-            close_val: Optional[float] = None
-            for col in ["Close", "Adj Close", "close"]:
-                if col in row:
-                    close_val = _extract_float(row[col])
-                    if close_val is not None:
-                        break
-
-            if close_val is None:
-                logger.debug(f"VIX: no close value for {record_dt}, skipping")
-                continue
-            candidates.append((record_dt, close_val))
+        close_col = next((c for c in ["Close", "Adj Close", "close"] if c in df.columns), None)
+        if close_col is not None:
+            close_vals = df[close_col].to_numpy()
+            indices = df.index
+            for idx, raw_val in zip(indices, close_vals):
+                close_val = _extract_float(raw_val)
+                if close_val is None:
+                    continue
+                if isinstance(idx, (pd.Timestamp, datetime)):
+                    record_dt = datetime(idx.year, idx.month, idx.day, tzinfo=timezone.utc)
+                else:
+                    ts = pd.Timestamp(str(idx))
+                    record_dt = datetime(int(ts.year), int(ts.month), int(ts.day), tzinfo=timezone.utc)
+                candidates.append((record_dt, close_val))
 
         if candidates:
             all_dates = [c[0] for c in candidates]

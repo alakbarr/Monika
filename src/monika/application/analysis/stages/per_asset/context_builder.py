@@ -934,30 +934,41 @@ class ContextBuilderMixin:
             import pandas as pd
 
             from monika.domain.indicators.alpha_zoo.vector_factor_engine import VectorFactorEngine
+            from monika.domain.market.market_data_bus import MarketDataBus
             from monika.infrastructure.database.models import PriceOHLCV
 
             factor_tf = "H1"
-            p_stmt = (
-                select(PriceOHLCV)
-                .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == factor_tf)
-                .order_by(PriceOHLCV.timestamp.desc())
-                .limit(150)
-            )
-            price_rows = (await session.execute(p_stmt)).scalars().all()
-            if len(price_rows) >= 15:
-                sorted_rows = sorted(price_rows, key=lambda r: r.timestamp)
-                df_bars = pd.DataFrame(
-                    [
-                        {
-                            "open": float(r.open),
-                            "high": float(r.high),
-                            "low": float(r.low),
-                            "close": float(r.close),
-                            "volume": float(r.volume or 1.0),
-                        }
-                        for r in sorted_rows
-                    ]
+            df_bars: Optional[pd.DataFrame] = None
+            try:
+                bus = MarketDataBus.get_instance()
+                df_bars = bus.get_candles_df(symbol, factor_tf, count=150)
+            except Exception:
+                df_bars = None
+
+            if df_bars is None or len(df_bars) < 15:
+                p_stmt = (
+                    select(PriceOHLCV)
+                    .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == factor_tf)
+                    .order_by(PriceOHLCV.timestamp.desc())
+                    .limit(150)
                 )
+                price_rows = (await session.execute(p_stmt)).scalars().all()
+                if len(price_rows) >= 15:
+                    sorted_rows = sorted(price_rows, key=lambda r: r.timestamp)
+                    df_bars = pd.DataFrame(
+                        [
+                            {
+                                "open": float(r.open),
+                                "high": float(r.high),
+                                "low": float(r.low),
+                                "close": float(r.close),
+                                "volume": float(r.volume or 1.0),
+                            }
+                            for r in sorted_rows
+                        ]
+                    )
+
+            if df_bars is not None and len(df_bars) >= 15:
                 vfe = VectorFactorEngine.get_instance()
                 vf_res = vfe.evaluate(df_bars, symbol=symbol, regime=quant_regime or "trending", top_k=5)
                 if vf_res.factor_count > 0:

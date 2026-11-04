@@ -24,6 +24,7 @@ if "six" not in sys.modules:
 
 import monika
 import monika.infrastructure.database.models
+import monika.application.services.technical_indicator_service
 from monika.domain.risk.ports import (
     register_evidence_store_factory,
     register_notifier,

@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import aiohttp
+from monika.core.primitives.bounded_lru_cache import BoundedLRUCache
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -111,7 +112,7 @@ class FREDDataFetcher:
         self.series_map: dict[str, str] = config.get("series", {})  # {label: series_id}
         self.timeout = aiohttp.ClientTimeout(total=30)
         self._active_http_session: Optional[aiohttp.ClientSession] = None
-        self._obs_cache: dict[str, list[dict]] = {}
+        self._obs_cache: BoundedLRUCache[str, list[dict]] = BoundedLRUCache(maxsize=200, default_ttl_seconds=3600.0)
 
     # ------------------------------------------------------------------
     # Public API
@@ -156,7 +157,7 @@ class FREDDataFetcher:
                     results = await asyncio.gather(*tasks, return_exceptions=True)
                     for res in results:
                         if isinstance(res, tuple):
-                            self._obs_cache[res[0]] = res[1]
+                            self._obs_cache.put(res[0], res[1])
                         elif isinstance(res, Exception):
                             logger.warning(f"FRED concurrent prefetch note: {res}")
 
@@ -386,8 +387,10 @@ class FREDDataFetcher:
         limit: int = 10,
     ) -> list[dict]:
         """Memanggil endpoint observasi FRED. Mengembalikan daftar dictionary observasi."""
-        if series_id in self._obs_cache:
-            return self._obs_cache.pop(series_id)
+        cached_obs = self._obs_cache.get(series_id)
+        if cached_obs is not None:
+            self._obs_cache.invalidate(series_id)
+            return cached_obs
 
         params = {
             "series_id": series_id,

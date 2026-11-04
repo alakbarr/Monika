@@ -148,10 +148,9 @@ class DecisionQualityEvaluator:
 
         risk_dist = abs(base_entry - sl) or (atr * 1.5)
 
-        for _, row in horizon_df.iterrows():
-            h = float(str(row["high"]))
-            l = float(str(row["low"]))
-
+        highs = horizon_df["high"].to_numpy(dtype=float)
+        lows = horizon_df["low"].to_numpy(dtype=float)
+        for h, l in zip(highs, lows):
             if decision == "buy":
                 # Check SL hit first (conservative intra-bar execution)
                 if l <= sl:

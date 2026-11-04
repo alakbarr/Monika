@@ -82,6 +82,7 @@ class ActivityLog(Base):
     """Log semua aktivitas sistem untuk audit."""
 
     __tablename__ = "activity_log"
+    __table_args__ = (Index("ix_activity_log_category_timestamp", "category", "timestamp"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)

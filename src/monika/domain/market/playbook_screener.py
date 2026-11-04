@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple
+from monika.core.primitives.bounded_lru_cache import BoundedLRUCache
 
 logger = logging.getLogger("TradingAgent.Market.PlaybookScreener")
 
@@ -161,7 +162,7 @@ _DEFAULT_PLAYBOOK_REPO_FACTORY: Optional[Callable[[], PlaybookRepositoryProtocol
 class PlaybookRegistry:
     """In-memory registry and resolver for empirical playbook specifications."""
 
-    _cached_specs: Dict[str, List[PlaybookSpec]] = {}
+    _cached_specs: BoundedLRUCache[str, List[PlaybookSpec]] = BoundedLRUCache(maxsize=200, default_ttl_seconds=3600.0)
     _repository: Optional[PlaybookRepositoryProtocol] = None
 
     @classmethod
@@ -187,7 +188,7 @@ class PlaybookRegistry:
     @classmethod
     def register_specs(cls, symbol: str, specs: List[PlaybookSpec]) -> None:
         """Explicitly register in-memory specs for a symbol (testing/mocking)."""
-        cls._cached_specs[symbol.strip().upper()] = list(specs)
+        cls._cached_specs.put(symbol.strip().upper(), list(specs))
 
     @classmethod
     def clear_cache(cls) -> None:
@@ -214,13 +215,14 @@ class PlaybookRegistry:
     def load_playbooks_for_symbol(cls, symbol: str) -> List[PlaybookSpec]:
         """Load and cache all playbook specifications for a given symbol."""
         sym_clean = symbol.strip().upper()
-        if sym_clean in cls._cached_specs:
-            return cls._cached_specs[sym_clean]
+        cached = cls._cached_specs.get(sym_clean)
+        if cached is not None:
+            return cached
 
         repo = cls.get_repository()
         if repo is not None:
             specs = repo.load_playbooks_for_symbol(sym_clean)
-            cls._cached_specs[sym_clean] = specs
+            cls._cached_specs.put(sym_clean, specs)
             return specs
 
         logger.warning(f"No PlaybookRepository configured; cannot load playbooks for {sym_clean}.")
