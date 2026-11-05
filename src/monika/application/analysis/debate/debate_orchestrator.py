@@ -138,6 +138,15 @@ class DebateOrchestrator:
             claim_dict=bear_dissent,
         )
 
+        executor = None
+        if session is not None:
+            try:
+                from monika.application.analysis.tools.tool_executor import ToolExecutor
+
+                executor = ToolExecutor(session, self.settings)
+            except Exception:
+                executor = None
+
         judge_verdict = await evaluate_debate(
             client=judge_client,
             symbol=clean_symbol,
@@ -145,6 +154,7 @@ class DebateOrchestrator:
             bull_claim=bull_claim,
             bear_dissent=bear_dissent,
             fact_sheet=fact_sheet,
+            tool_executor=executor,
         )
 
         decision = str(judge_verdict.get("final_decision") or judge_verdict.get("verdict") or "WAIT").upper()

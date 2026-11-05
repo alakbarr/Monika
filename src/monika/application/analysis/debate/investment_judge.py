@@ -101,6 +101,7 @@ async def evaluate_debate(
     bear_dissent: dict,
     bull_rebuttal: Optional[dict] = None,
     fact_sheet: Optional[Any] = None,
+    tool_executor: Optional[Any] = None,
 ) -> dict:
     if not bull_claim or not bear_dissent or not original_context:
         missing_name = "bull_claim" if not bull_claim else ("bear_dissent" if not bear_dissent else "original_context")
@@ -341,39 +342,107 @@ Proceed with evaluation based strictly on the data above. Respond in valid JSON 
             min_answer_headroom=1536,
         )
 
-        # Resilience: 2 attempts with exponential backoff on transient upstream socket/rate errors
-        for attempt in range(2):
-            try:
-                if hasattr(client, "classify_json"):
-                    parsed = await client.classify_json(
-                        user_prompt, system_prompt=system_prompt, schema=schema, max_tokens=judge_max_tokens
-                    )
-                elif hasattr(client, "generate_content"):
-                    resp = await client.generate_content(
-                        system_prompt=system_prompt,
-                        user_message=user_prompt,
-                        response_schema=schema,
-                        max_tokens=judge_max_tokens,
-                    )
-                    if resp:
-                        import re
+        cfg = getattr(client, "settings", None) or original_context.get("settings") or {}
+        is_agentic = bool(cfg.get("analysis", {}).get("agentic", {}).get("enabled", True))
 
-                        cleaned = resp.strip()
-                        if "```" in cleaned:
-                            match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
-                            if match:
-                                cleaned = match.group(1)
-                        parsed = json.loads(cleaned)
-                if parsed and isinstance(parsed, dict):
-                    break
-            except Exception as retry_err:
-                if attempt == 0:
-                    logger.warning(
-                        f"[{symbol}] Investment Judge call failed (attempt 1/2: {retry_err}). Retrying in 0.5s..."
-                    )
-                    await asyncio.sleep(0.5)
-                else:
-                    logger.error(f"[{symbol}] Investment Judge retry failed (attempt 2/2: {retry_err})")
+        if is_agentic and hasattr(client, "run_chat_loop") and tool_executor is not None:
+            try:
+                from monika.application.analysis.tools.tools_definitions import (
+                    PER_ASSET_ANALYSIS_TOOLS,
+                    minify_tool_definitions,
+                )
+
+                asset_verification_names = {
+                    "get_market_quote",
+                    "get_spread_snapshot",
+                    "get_technical_indicators",
+                    "get_smc_zones",
+                    "get_structure_breaks",
+                    "get_swing_points",
+                    "get_optimal_intraday_levels",
+                    "get_atr",
+                    "web_search",
+                }
+                judge_tools = minify_tool_definitions(
+                    [
+                        t
+                        for t in PER_ASSET_ANALYSIS_TOOLS
+                        if (t.get("name") or t.get("function", {}).get("name")) in asset_verification_names
+                    ]
+                )
+                agentic_prompt = (
+                    f"{user_prompt}\n\n"
+                    "================================================================================\n"
+                    "ADJUDICATION MANDATE & VERIFICATION CONTRACT:\n"
+                    "1. EMPIRICAL FACT-CHECK: Scan for factual disputes between Bull and Bear on technical levels, "
+                    "SMC zones, dealing range discount/premium, and spread viability.\n"
+                    "2. VERIFICATION TURN: If a dispute exists, call verification tools (`get_technical_indicators`, "
+                    "`get_smc_zones`, `get_market_quote`, etc.) to obtain ground truth.\n"
+                    "3. FINAL RULING: Conclude by providing your final verdict in valid JSON conforming to the schema.\n"
+                    "================================================================================"
+                )
+                chat_res = await client.run_chat_loop(
+                    system_prompt=system_prompt,
+                    conversation_history=[],
+                    new_user_message=agentic_prompt,
+                    tools=judge_tools,
+                    tool_executor=tool_executor,
+                )
+                content = (
+                    chat_res.get("reply") or chat_res.get("content") or (chat_res if isinstance(chat_res, str) else "")
+                )
+                if content:
+                    import re
+
+                    cleaned = str(content).strip()
+                    if "```" in cleaned:
+                        match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
+                        if match:
+                            cleaned = match.group(1).strip()
+                    if "{" in cleaned and "}" in cleaned:
+                        start = cleaned.find("{")
+                        end = cleaned.rfind("}") + 1
+                        cleaned = cleaned[start:end]
+                    cand = json.loads(cleaned)
+                    if isinstance(cand, dict) and "final_decision" in cand and "risk_multiplier" in cand:
+                        parsed = cand
+            except Exception as ag_err:
+                logger.debug(f"[{symbol}] Agentic fact-checking turn fallback: {ag_err}")
+
+        # Resilience: 2 attempts with exponential backoff on transient upstream socket/rate errors
+        if not parsed:
+            for attempt in range(2):
+                try:
+                    if hasattr(client, "classify_json"):
+                        parsed = await client.classify_json(
+                            user_prompt, system_prompt=system_prompt, schema=schema, max_tokens=judge_max_tokens
+                        )
+                    elif hasattr(client, "generate_content"):
+                        resp = await client.generate_content(
+                            system_prompt=system_prompt,
+                            user_message=user_prompt,
+                            response_schema=schema,
+                            max_tokens=judge_max_tokens,
+                        )
+                        if resp:
+                            import re
+
+                            cleaned = resp.strip()
+                            if "```" in cleaned:
+                                match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
+                                if match:
+                                    cleaned = match.group(1)
+                            parsed = json.loads(cleaned)
+                    if parsed and isinstance(parsed, dict):
+                        break
+                except Exception as retry_err:
+                    if attempt == 0:
+                        logger.warning(
+                            f"[{symbol}] Investment Judge call failed (attempt 1/2: {retry_err}). Retrying in 0.5s..."
+                        )
+                        await asyncio.sleep(0.5)
+                    else:
+                        logger.error(f"[{symbol}] Investment Judge retry failed (attempt 2/2: {retry_err})")
 
         if not parsed or not isinstance(parsed, dict):
             # Fallback: if debate inputs were clean (no parse error), check if evidence strongly favors the trade

@@ -62,6 +62,27 @@ async def _build_stage2_case(session: Any, settings: dict[str, Any], symbol: str
             threshold, _ = await compute_unified_confluence_threshold(session, symbol, settings)
         except Exception:
             threshold = 8
+    if settings.get("analysis", {}).get("agentic", {}).get("enabled", False):
+        from monika.application.analysis.prompt.prompt_assembler import build_stage2_agentic_prompt
+
+        sysp, user_msg = build_stage2_agentic_prompt(
+            settings, symbol=symbol, cot_code=cot_code, effective_threshold=threshold
+        )
+        return BenchmarkCase(
+            symbol,
+            "trade_decision",
+            sysp,
+            user_msg,
+            tools=PER_ASSET_ANALYSIS_TOOLS,
+            stage_name=f"benchmark_{stage_tag}_{symbol}",
+            role_kwargs=dict(
+                max_tokens=12000,
+                max_tool_turns=settings.get("analysis", {}).get("agentic", {}).get("max_turns", 25),
+                thinking="high",
+            ),
+            context_summary="Agentic Sequential Discovery (Zero Pre-Fetch Dump)",
+        )
+
     sysp = _stage2_system_prompt(settings, symbol, cot_code, threshold)
     bundle_text = None
     if not use_fixtures and session:

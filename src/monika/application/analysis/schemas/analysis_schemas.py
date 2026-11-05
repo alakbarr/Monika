@@ -407,6 +407,67 @@ class SubmitAssetAnalysisSchema(BaseModel):
             if not data.get("invalidation_direction"):
                 data["invalidation_direction"] = "below" if decision == "buy" else "above"
 
+        # 5b. SmartGuard Boundary Normalization: Auto-populate missing numeric fields from text
+        if data.get("confluence_score") is None:
+            rationale_txt = str(data.get("rationale") or "")
+            m_conf = re.search(
+                r"(?:confluence_score|confluence|score)[:\s=]+([0-9]+(?:\.[0-9]+)?)", rationale_txt, re.IGNORECASE
+            )
+            if m_conf:
+                try:
+                    data["confluence_score"] = int(round(float(m_conf.group(1))))
+                except ValueError, TypeError:
+                    pass
+            elif isinstance(data.get("confluence_factors"), list) and len(data["confluence_factors"]) > 0:
+                data["confluence_score"] = len(data["confluence_factors"])
+
+        if data.get("invalidation_price") is None:
+            search_sources = [str(data.get("invalidation") or ""), str(data.get("rationale") or "")]
+            for src in search_sources:
+                if not src:
+                    continue
+                m_inv = re.search(
+                    r"(?:invalidation(?:_price)?|invalidated above|invalidated below|invalidation level|thesis invalid if.*?(?:above|below|at))[:\s=]+([0-9]+(?:\.[0-9]+)?)",
+                    src,
+                    re.IGNORECASE,
+                )
+                if not m_inv:
+                    m_inv = re.search(
+                        r"(?:above|below|break(?:s)?|cross(?:es)?)\s+([0-9]+\.[0-9]+|[0-9]{3,6})", src, re.IGNORECASE
+                    )
+                if m_inv:
+                    try:
+                        p_val = float(m_inv.group(1))
+                        if p_val > 0:
+                            data["invalidation_price"] = p_val
+                            break
+                    except ValueError, TypeError:
+                        pass
+
+        if data.get("invalidation_direction") is None:
+            inv_text = (str(data.get("invalidation") or "") + " " + str(data.get("rationale") or "")).lower()
+            if "above" in inv_text:
+                data["invalidation_direction"] = "above"
+            elif "below" in inv_text:
+                data["invalidation_direction"] = "below"
+            elif decision == "buy":
+                data["invalidation_direction"] = "below"
+            elif decision == "sell":
+                data["invalidation_direction"] = "above"
+
+        if data.get("priced_in_score") is None and decision in ("buy", "sell"):
+            rationale_txt = str(data.get("rationale") or "")
+            m_pi = re.search(
+                r"(?:priced_in_score|priced in score|priced_in)[:\s=]+([0-9]+)", rationale_txt, re.IGNORECASE
+            )
+            if m_pi:
+                try:
+                    data["priced_in_score"] = max(1, min(10, int(m_pi.group(1))))
+                except ValueError, TypeError:
+                    data["priced_in_score"] = 3
+            else:
+                data["priced_in_score"] = 3
+
         # 6. Clean priced_in_override_justification for non-directional decisions if non-substantive
         if decision in ("wait", "avoid"):
             pi_val = data.get("priced_in_override_justification")

@@ -297,6 +297,7 @@ def compose_system_prompt(
     separator: str = "\n\n---\n\n",
     max_tokens: Optional[int] = None,
     progressive: bool = False,
+    sandwich_bottom_anchor: Optional[str] = None,
     **template_vars,
 ) -> str:
     """Rangkai beberapa skill menjadi satu system prompt dan isi template variables."""
@@ -305,6 +306,8 @@ def compose_system_prompt(
         max_tokens = template_vars.pop("max_tokens")
     if not progressive and "progressive" in template_vars:
         progressive = bool(template_vars.pop("progressive"))
+    if sandwich_bottom_anchor is None and "sandwich_bottom_anchor" in template_vars:
+        sandwich_bottom_anchor = template_vars.pop("sandwich_bottom_anchor")
 
     runtime_context = template_vars.pop("context", None) or template_vars.pop("active_context", None) or {}
 
@@ -361,6 +364,9 @@ def compose_system_prompt(
         except FileNotFoundError:
             pass  # No performance notes yet, that's fine
 
+    if sandwich_bottom_anchor:
+        composed = composed + separator + sandwich_bottom_anchor.strip()
+
     if template_vars:
         import re
 
@@ -397,7 +403,14 @@ def compose_system_prompt(
                 if current > max_tokens:
                     from monika.infrastructure.llm.prompt_compressor import truncate_to_budget
 
-                    composed = truncate_to_budget(composed, max_tokens)
+                    if sandwich_bottom_anchor:
+                        anchor_tokens = estimate_tokens(sandwich_bottom_anchor)
+                        body_budget = max(500, max_tokens - anchor_tokens - 50)
+                        composed = (
+                            truncate_to_budget(composed, body_budget) + separator + sandwich_bottom_anchor.strip()
+                        )
+                    else:
+                        composed = truncate_to_budget(composed, max_tokens)
         except Exception as e:
             logger.debug(f"Max tokens enforcement non-fatal: {e}")
 

@@ -5919,7 +5919,7 @@
     - `__init__(settings: Optional[dict], max_concurrency: int, default_timeout: float, ...)`
     - `async spawn_worker(spec: SubagentSpec, client: Optional[Any], progress_callback: Optional[Callable[[str], Any]]) -> SubagentResult` - *Runs a single worker within semaphore throttling and depth control.*
     - `async run_parallel(specs: List[SubagentSpec], client: Optional[Any], progress_callback: Optional[Callable[[str], Any]]) -> List[SubagentResult]` - *Executes a roster of SubagentWorkers in parallel with semaphore concurrency guarding.*
-    - `decompose_research_query(query: str, base_system_prompt: str, available_tools: List[Dict[str, Any]], ...) -> List[SubagentSpec]` - *Dynamically analyzes user research query and decomposes it into a tailored roster*
+    - `decompose_research_query(query: str, base_system_prompt: str, available_tools: Optional[List[Dict[str, Any]]], ...) -> List[SubagentSpec]` - *Dynamically analyzes user research query and decomposes it into a tailored roster*
 
 ### Folder: `src/monika/application/analysis/arbitration` <a id="folder-srcmonikaapplicationanalysisarbitration"></a>
 
@@ -6978,10 +6978,14 @@
     - `build_target_user_message(symbol: str, cot_code: str, effective_threshold: int, ...) -> str` - *Asset-specific context as initial user message (preserves system prompt cache).*
     - `assemble_stage2_system_tuple(symbol: str, cot_code: str, effective_threshold: Optional[int], ...) -> Tuple[str, str]` - *Returns (static_system_prompt, dynamic_target_note) for Stage 2.*
     - `assemble_stage2(symbol: str, data_bundle: str, cot_code: str, ...) -> Tuple[str, str]` - *Returns (system_prompt, user_message) for Stage 2 Per-Asset Analysis.*
+    - `assemble_stage1_agentic(core_memory: str, behavioral_alert: str) -> Tuple[str, str]` - *Assembles Agentic prompt pair for Stage 1.*
+    - `assemble_stage2_agentic(symbol: str, cot_code: str, effective_threshold: Optional[int], ...) -> Tuple[str, str]` - *Assembles Agentic prompt pair for Stage 2.*
     - `assemble_3zone_prompt(zone_a_anchor: str, zone_b_context: str, zone_c_volatile_tail: str) -> Dict[str, str]` - *Structured 3-Zone prompt pack:*
 - **Top-Level Functions**:
   - `compare_sections(a: PromptSection, b: PromptSection) -> int`: Sparse numeric order comparison with code-unit name tie-breaking.
   - `compose_ordered_prompt(sections: List[PromptSection], separator: str) -> str`: Sort prompt sections deterministically by order then code-unit name.
+  - `build_stage1_agentic_prompt(settings: Optional[Dict[str, Any]], core_memory: str, behavioral_alert: str) -> Tuple[str, str]`: Builds the complete Agentic prompt pair (system_prompt, user_message) for Stage 1.
+  - `build_stage2_agentic_prompt(settings: Optional[Dict[str, Any]], symbol: str, cot_code: str, ...) -> Tuple[str, str]`: Builds the complete Agentic prompt pair (system_prompt, user_message) for Stage 2.
 
 #### `risk_contract.py` - *Unified Risk Contract: Canonical single-source-of-truth for trade level boundaries.*
 - **Path**: [`src/monika/application/analysis/prompt/risk_contract.py`](src/monika/application/analysis/prompt/risk_contract.py)

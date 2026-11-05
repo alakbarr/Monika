@@ -650,6 +650,34 @@ class PromptAssembler:
         user = "\n\n".join(user_parts)
         return system, user
 
+    def assemble_stage1_agentic(self, core_memory: str = "", behavioral_alert: str = "") -> Tuple[str, str]:
+        """Assembles Agentic prompt pair for Stage 1."""
+        return build_stage1_agentic_prompt(
+            settings=self.settings, core_memory=core_memory, behavioral_alert=behavioral_alert
+        )
+
+    def assemble_stage2_agentic(
+        self,
+        symbol: str,
+        cot_code: str = "",
+        effective_threshold: Optional[int] = None,
+        min_rr_ratio: Optional[float] = None,
+        detected_regime: Optional[str] = None,
+        active_playbook: Optional[str] = None,
+        core_memory: str = "",
+    ) -> Tuple[str, str]:
+        """Assembles Agentic prompt pair for Stage 2."""
+        return build_stage2_agentic_prompt(
+            settings=self.settings,
+            symbol=symbol,
+            cot_code=cot_code,
+            effective_threshold=effective_threshold,
+            min_rr_ratio=min_rr_ratio,
+            detected_regime=detected_regime,
+            active_playbook=active_playbook,
+            core_memory=core_memory,
+        )
+
     @staticmethod
     def assemble_3zone_prompt(zone_a_anchor: str, zone_b_context: str, zone_c_volatile_tail: str) -> Dict[str, str]:
         """
@@ -664,3 +692,286 @@ class PromptAssembler:
             "zone_c_volatile_tail": zone_c_volatile_tail.strip(),
             "assembled_user_message": f"{zone_b_context.strip()}\n\n[VOLATILE TAIL]\n{zone_c_volatile_tail.strip()}".strip(),
         }
+
+
+# ==============================================================================
+# AGENTIC PROMPT BUILDERS (5-PHASE SEQUENTIAL INVESTIGATION + SANDWICH)
+# ==============================================================================
+
+STAGE1_PHASED_DIRECTIVE = """# ROLE: MONIKA'S AUTONOMOUS LEAD GLOBAL MACRO STRATEGIST
+
+## CRITICAL OPERATING DIRECTIVE — SEQUENTIAL PHASED INVESTIGATION (THINKING STEP-BY-STEP)
+You start with ZERO pre-fetched data. No giant market dump has been injected.
+You must gather your live market telemetry step-by-step through a rigorous 5-phase workflow before submitting your brief.
+Do NOT skip phases or jump to conclusions prematurely. Reason about each layer before proceeding:
+
+### PHASE 1: Sovereign Yields, Curve Health & Dollar Dominance
+- Mandatory Queries: Call `get_treasury_yields`, `get_bond_yield_spreads`, and `get_dxy` (in parallel).
+- Reasoning Checkpoint:
+  * Determine the US 10Y-2Y yield curve status (un-inverting, flat, or inverted).
+  * Calculate cross-border yield differentials: US-DE, US-JP, and US-UK spreads.
+  * Evaluate DXY momentum against key support and resistance levels.
+
+### PHASE 2: Central Bank Policy & Market Rate Pricing (Apply Central Banks Framework)
+- Mandatory Queries: Call `get_interest_rates`, `get_fedwatch_probabilities`, and `get_central_bank_expectations`.
+- Reasoning Checkpoint:
+  * Apply the Central Banks Framework: evaluate policy cycle divergence (Fed vs ECB vs BoE vs BoJ vs RBA).
+  * Assess Priced-In score (1-10) using FedWatch probability buckets.
+
+### PHASE 3: Macro Stress, Volatility & Institutional Positioning (Apply COT Playbook)
+- Mandatory Queries: Call `get_vix`, `get_economic_calendar`, and `get_precomputed_cot_signals` (or `get_cot_report`).
+- Reasoning Checkpoint:
+  * Gauge macro risk appetite via VIX regime.
+  * Check for Tier-1 economic calendar events within 24-48 hours.
+  * Inspect CFTC COT positioning percentiles to identify institutional crowdedness or extreme unwinds.
+
+### PHASE 4: Web Research Escalation Gate (Contradiction & Ambiguity Resolution)
+- Trigger Conditions:
+  * If you observe market divergences or contradictions (e.g., yields dropping but DXY rising, or data showing surprising strength/weakness).
+  * If a critical tool returns a `[DATA QUALITY WARNING]` or missing fields.
+  * If you need real-time consensus, whisper numbers, or geopolitical context (e.g. Middle East tensions, oil supply, trade tariffs).
+- Mandatory Action: Call `web_search` with targeted queries (e.g., 'US NFP consensus surprise', 'Middle East oil geopolitical risk', 'ECB rate decision Lagarde').
+- Reasoning Checkpoint: Reconcile anomalies and explain the fundamental transmission mechanism.
+
+### PHASE 5: Synthesis & Decision Submission
+- Only after completing the preceding phases, synthesize your final brief.
+- Conclude by calling `submit_fundamental_brief` satisfying all parameters in the Bottom Anchor Contract.
+
+---
+## OFFICIAL MONIKA TRADING SKILLS & PLAYBOOKS (CANONICAL SOP)
+"""
+
+STAGE1_BOTTOM_ANCHOR = """---
+## ⚡ FINAL MANDATORY SUBMISSION CONTRACT & SCHEMA ANCHOR (READ LAST BEFORE SUBMITTING)
+When you complete Phase 5 and call `submit_fundamental_brief`, you MUST satisfy these strict parameter invariants:
+1. `macro_narrative`: Dense 5-section narrative in institutional prose. You MUST explicitly cite and analyze all core drivers with specific numbers and names:
+   - DXY trend & level
+   - US Treasury yields & curve (10Y/2Y spread, direction)
+   - VIX volatility regime
+   - CME FedWatch rate probabilities & target range
+   - Energy/Oil & geopolitical friction (WTI, Spot Gold)
+   - US labor market & economic surprise transmission
+2. `currency_bias`: Decisive directional bias ('bullish', 'bearish', or 'neutral') for each major asset (USD, EUR, GBP, JPY, AUD, XAU, OIL, BTC).
+3. `currency_confidence`: Explicit float 0.0 to 1.0 for each currency in currency_bias.
+4. `invalidation_conditions`: Strict numerical falsification levels (>=40 chars with price/yield numbers) for every non-neutral currency.
+5. `key_drivers`: 2 to 4 concrete fundamental drivers.
+6. `strongest_counter_thesis`: Falsifiable counter-argument (>= 50 chars with concrete numbers/data).
+7. `per_asset_macro_matrix`: Context for EURUSD, GBPUSD, USDJPY, AUDUSD, XAUUSD, BTCUSD, XTIUSD with distinct structural_driver and tactical_catalyst.
+8. `asset_priced_in_scores`: Specific 1-10 priced-in scores per asset.
+9. `yield_curve_regime`: 'bull_steepener', 'bear_steepener', 'bull_flattener', 'bear_flattener', or 'neutral'.
+10. `systemic_liquidity_trend`: 'expanding', 'contracting', or 'neutral'.
+"""
+
+
+def build_stage1_agentic_prompt(
+    settings: Optional[Dict[str, Any]] = None,
+    core_memory: str = "",
+    behavioral_alert: str = "",
+) -> Tuple[str, str]:
+    """
+    Builds the complete Agentic prompt pair (system_prompt, user_message) for Stage 1.
+    Eliminates 76 KB pre-fetched dump; wires 100% full trading skills + Phased SOP + Bottom Anchor.
+    """
+    settings = settings or {}
+    skill_names = [
+        "macro_analysis_framework",
+        "central_banks_framework",
+        "macro_yield_curve_regimes",
+        "systemic_liquidity_and_treasury_plumbing",
+        "macro_intermarket_decoupling_and_adversarial_reconciliation",
+        "economic_indicator_nowcasting_and_transmission",
+        "macro_asset_transmission_matrix",
+        "cross_asset_regime_model",
+        "cot_positioning_playbook",
+        "commodity_analysis",
+        "crypto_analysis",
+        "carry_trade_playbook",
+        "market_dynamics_framework",
+        "post_event_orderflow_absorption",
+        "risk_management_principles",
+        "session_timing_rules",
+    ]
+    if settings.get("trading", {}).get("caveman_mode", False):
+        skill_names.append("caveman_mode")
+
+    skills = compose_system_prompt(
+        *skill_names,
+        sandwich_bottom_anchor=STAGE1_BOTTOM_ANCHOR,
+    )
+
+    soul_prefix = ""
+    try:
+        from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+
+        soul_id = LayeredMemoryManager(settings).get_identity()
+        if soul_id:
+            soul_prefix = f"{soul_id}\n\n---\n\n"
+    except Exception:
+        pass
+
+    behavioral_part = f"\n\n[BEHAVIORAL ALERT]\n{behavioral_alert}" if behavioral_alert else ""
+    memory_part = f"\n\n[AGENT MEMORY]\n{core_memory}" if core_memory else ""
+
+    system_prompt = f"{soul_prefix}{STAGE1_PHASED_DIRECTIVE}\n\n{skills}{behavioral_part}{memory_part}".strip()
+    user_message = (
+        "Please perform a complete fundamental macro analysis for the current market session using your sequential 5-phase investigation workflow and full trading skills.\n"
+        "Gather your live market telemetry step-by-step, verify data integrity, escalate to web_search if any anomalies or contradictions arise, and submit the complete fundamental brief via submit_fundamental_brief."
+    )
+    return system_prompt, user_message
+
+
+def build_stage2_agentic_prompt(
+    settings: Optional[Dict[str, Any]] = None,
+    symbol: str = "EURUSD",
+    cot_code: str = "099741",
+    effective_threshold: Optional[int] = None,
+    min_rr_ratio: Optional[float] = None,
+    detected_regime: Optional[str] = None,
+    active_playbook: Optional[str] = None,
+    core_memory: str = "",
+) -> Tuple[str, str]:
+    """
+    Builds the complete Agentic prompt pair (system_prompt, user_message) for Stage 2.
+    Eliminates 40 KB pre-fetched dump; wires 100% full trading skills + Phased SOP + Bottom Anchor.
+    """
+    settings = settings or {}
+    eff_thresh = effective_threshold or DEFAULT_AUTO_EXECUTE_MIN_CONFLUENCE
+    min_rr = min_rr_ratio or DEFAULT_MIN_RR_RATIO
+
+    sym = symbol.strip().upper().replace("/", "")
+    is_commodity = sym in ("XAUUSD", "XTIUSD", "XBRUSD", "BRENT", "XAGUSD") or "commodity" in sym.lower()
+    is_crypto = sym in ("BTCUSD", "ETHUSD", "SOLUSD") or "crypto" in sym.lower()
+
+    stage2_skills = [
+        "adjudication_framework",
+        "central_banks_framework",
+        "macro_analysis_framework",
+        "cot_positioning_playbook",
+        "smc_ict_playbook",
+        "market_dynamics_framework",
+        "liquidity_and_macro_edge",
+        "post_event_orderflow_absorption",
+        "risk_management_principles",
+        "session_timing_rules",
+    ]
+    if is_commodity and "commodity_analysis" not in stage2_skills:
+        stage2_skills.append("commodity_analysis")
+    if is_crypto and "crypto_analysis" not in stage2_skills:
+        stage2_skills.append("crypto_analysis")
+    if settings.get("trading", {}).get("caveman_mode", False):
+        stage2_skills.append("caveman_mode")
+
+    phased_directive = f"""# ROLE: MONIKA'S QUANTITATIVE & SMART MONEY CONCEPTS (SMC) SPECIALIST FOR {symbol}
+
+## CRITICAL OPERATING DIRECTIVE — SEQUENTIAL PHASED INVESTIGATION (THINKING STEP-BY-STEP)
+You start with ZERO pre-fetched data. No indicator or price bundle has been injected.
+You must gather your live market telemetry step-by-step through a rigorous 5-phase workflow before submitting your analysis.
+Do NOT skip phases or jump to conclusions prematurely. Reason about each layer before proceeding:
+
+### PHASE 1: Macro Alignment & Core Trend Baseline
+- Mandatory Queries: Call `get_market_quote` (or `get_verified_market_snapshot`), `get_technical_analysis` (or `get_technical_indicators` for H4 and D1 in parallel).
+- Reasoning Checkpoint:
+  * Check live bid/ask quote and spread.
+  * Determine multi-timeframe trend alignment (D1 macro trend vs H4 swing trend).
+  * Inspect ADX (trend strength) and EMA stack (20/50/200).
+
+### PHASE 2: Market Structure & Smart Money Concepts (SMC)
+- Mandatory Queries: Call `get_optimal_intraday_levels` and `get_price_data` (across M15, H1, H4, D1) or `get_smc_zones`/`get_order_blocks`/`get_liquidity_zones`.
+- Reasoning Checkpoint:
+  * Calculate Dealing Range Position: pos = (Close - Low_20) / (High_20 - Low_20).
+  * Classify Regime:
+    - DISCOUNT (pos <= 0.38): Institutional accumulation zone.
+    - PREMIUM (pos >= 0.65): Institutional distribution zone.
+    - EQUILIBRIUM CHOP (0.40 <= pos <= 0.60 with low displacement): Default to WAIT / AVOID to preserve capital.
+  * Locate unmitigated order blocks, fair value gaps (FVG), and resting buy-side/sell-side liquidity pools.
+
+### PHASE 3: Volatility Environment, Intraday Geometry & Institutional / Retail Positioning
+- Mandatory Queries: Call `get_spread_snapshot`, `get_institutional_data` (or `get_cot_report`), `get_economic_calendar`, and `get_news_items` (or `get_retail_sentiment`).
+- Reasoning Checkpoint:
+  * Measure H4 ATR to establish the minimum structural Stop Loss floor (>= 1.0x ATR).
+  * Inspect ADR boundaries for Take Profit ceiling (TP = min(1.50x ATR, 0.68x ADR), net R:R >= {min_rr:.2f}).
+  * Check institutional and retail positioning to identify crowded trades or contrarian squeezes.
+
+### PHASE 4: Web Research Escalation Gate (Contradiction & Ambiguity Resolution)
+- Trigger Conditions:
+  * If technical indicators and sentiment conflict with macro direction.
+  * If any data tool raises a `[DATA QUALITY WARNING]` or missing fields.
+  * If price action displays an unexplained spike or sudden range compression ahead of an unlisted event.
+- Mandatory Action: Call `web_search` with targeted queries (e.g., '{symbol} market analysis', 'central bank policy stance', 'breaking economic news').
+- Reasoning Checkpoint: Confirm whether fundamental institutional flow justifies the technical structure or demands standing aside.
+
+### PHASE 5: Confluence Scorecard, Sizing & Submission
+- Evaluate Confluence Scorecard (0-14/20) from the SMC/ICT Playbook below.
+- Sizing Protocol:
+  * If setup is actionable (BUY at Discount, SELL at Premium, or confirmed breakout with score >= {eff_thresh}):
+    You MUST call `calculate_position_size` first with `entry_price`, `stop_loss`, and `direction` to register deterministic risk evidence.
+  * If regime is `EQUILIBRIUM_DEAD_ZONE_CHOP` or data quality is compromised:
+    Decide `WAIT` or `AVOID` to uphold capital preservation (Zero Risk of Ruin).
+- Submission:
+  * Call `submit_asset_analysis` satisfying all parameters in the Bottom Anchor Contract.
+
+---
+## OFFICIAL MONIKA TRADING SKILLS & SMC PLAYBOOKS (CANONICAL SOP)
+"""
+
+    bottom_anchor = f"""---
+## ⚡ FINAL MANDATORY SUBMISSION CONTRACT & SCHEMA ANCHOR (READ LAST BEFORE SUBMITTING)
+When you complete Phase 5 and call `submit_asset_analysis`, your Confluence Scorecard and dealing range analysis MUST be mapped directly into the tool call parameters as dedicated root fields (do NOT omit them or leave them only in the rationale text!):
+1. `symbol`: "{symbol}"
+2. `decision`: 'wait', 'buy', 'sell', or 'avoid'
+3. `confidence`: float between 0.0 and 1.0 (e.g. 0.85)
+4. `rationale`: Dense 5-phase rationale citing structure, dealing range pos, liquidity, ATR, and web verification findings.
+5. `confluence_score`: REQUIRED numeric integer (e.g. 4 or 5) directly reflecting your calculated Confluence Scorecard score.
+6. `confluence_factors`: List of active factor strings scoring points.
+7. `stop_loss`: numeric float price level (REQUIRED for buy/sell).
+8. `take_profit`: numeric float price level (REQUIRED for buy/sell).
+9. `invalidation`: Plain text condition stating exact price level and direction.
+10. `invalidation_price`: REQUIRED numeric float price level (e.g. anchor boundary level).
+11. `invalidation_direction`: REQUIRED 'above' or 'below'.
+12. `priced_in_score`: REQUIRED numeric integer 1 to 10.
+13. `reevaluation_trigger`: REQUIRED object with {{'type': 'price_level'|'time', 'detail': '...', 'price': float, 'direction': 'above'|'below'}}.
+"""
+
+    tool_guidance = "Execute your sequential 5-phase investigation SOP step-by-step via your available tools."
+    skills = compose_system_prompt(
+        *stage2_skills,
+        symbol=symbol,
+        SYMBOL=symbol,
+        cot_code=cot_code or "N/A",
+        effective_threshold=str(eff_thresh),
+        min_rr_ratio=f"{min_rr:.2f}",
+        tool_order_guidance=tool_guidance,
+        sandwich_bottom_anchor=bottom_anchor,
+    )
+
+    soul_prefix = ""
+    try:
+        from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+
+        soul_id = LayeredMemoryManager(settings).get_identity()
+        if soul_id:
+            soul_prefix = f"{soul_id}\n\n---\n\n"
+    except Exception:
+        pass
+
+    target_info = (
+        f"=== CURRENT ANALYSIS TARGET ===\n"
+        f"Symbol: {symbol}\n"
+        f"COT Code: {cot_code or 'N/A'}\n"
+        f"Effective Confluence Threshold: {eff_thresh}/14\n"
+        f"Minimum R:R Ratio: {min_rr}\n"
+        f"=== END TARGET INFO ==="
+    )
+    memory_part = f"\n\n[AGENT MEMORY]\n{core_memory}" if core_memory else ""
+
+    system_prompt = f"{soul_prefix}{phased_directive}\n\n{target_info}\n\n{skills}{memory_part}".strip()
+    user_message = (
+        f"[ANALYSIS TARGET]\n"
+        f"Symbol: {symbol} | COT Code: {cot_code or 'N/A'}\n"
+        f"Effective Confluence Threshold: {eff_thresh}/14\n"
+        f"Minimum R:R Ratio: {min_rr}\n"
+        f"================================\n"
+        f"Please execute full per-asset analysis for {symbol} using your sequential 5-phase investigation workflow and full SMC/macro trading skills.\n"
+        f"Gather live quotes and structure step-by-step, evaluate the confluence scorecard, and submit your final trade decision via submit_asset_analysis."
+    )
+    return system_prompt, user_message

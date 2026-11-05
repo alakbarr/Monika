@@ -212,19 +212,46 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
             except Exception as e:
                 logger.debug(f"[{symbol}] Regime classification fallback non-fatal: {e}")
 
-        # Compose system prompt
-        system_prompt, abort_prompt_res = self._compose_stage2_system_prompt(
-            symbol,
-            cot_code,
-            effective_threshold,
-            tool_order_guidance,
-            detected_regime=detected_regime,
-            active_playbook=active_playbook,
-        )
-        if abort_prompt_res:
-            return abort_prompt_res
+        system_prompt: str | tuple[str, str] = ""
+        core_instructions: str = ""
+        is_agentic = bool(self.settings.get("analysis", {}).get("agentic", {}).get("enabled", True))
 
-        core_instructions = self._build_user_message(symbol)
+        abort_prompt_res = None
+        if is_agentic:
+            try:
+                from monika.application.analysis.prompt.prompt_assembler import PromptAssembler
+                from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
+
+                core_memory = await LayeredMemoryManager(self.settings).get_core_memory(session)
+                assembler = PromptAssembler(self.settings)
+                agentic_sys, agentic_user = assembler.assemble_stage2_agentic(
+                    symbol=symbol,
+                    cot_code=cot_code or "N/A",
+                    effective_threshold=effective_threshold,
+                    detected_regime=detected_regime,
+                    active_playbook=active_playbook,
+                    core_memory=core_memory,
+                )
+                system_prompt = agentic_sys
+                core_instructions = agentic_user
+            except Exception as pa_err:
+                logger.warning(f"[{symbol}] Agentic Stage 2 prompt fallback: {pa_err}")
+                is_agentic = False
+
+        if not is_agentic:
+            # Compose system prompt
+            system_prompt, abort_prompt_res = self._compose_stage2_system_prompt(
+                symbol,
+                cot_code,
+                effective_threshold,
+                tool_order_guidance,
+                detected_regime=detected_regime,
+                active_playbook=active_playbook,
+            )
+            if abort_prompt_res:
+                return abort_prompt_res
+
+            core_instructions = self._build_user_message(symbol)
 
         # Build context blocks
         context_blocks = initial_context_blocks + await self._build_stage2_context_blocks(
@@ -340,7 +367,7 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         user_message = "\n".join(message_parts)
 
         # Bundling data teknikal untuk mengurangi panggilan tool
-        if bundle_success:
+        if bundle_success and not is_agentic:
             trimmed_msg = self._build_trimmed_user_message(symbol)
             parts = [trimmed_msg]
             if context_blocks:
@@ -352,6 +379,10 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
             logger.info(
                 f"[{symbol}] Data bundle injected ({len(data_bundle or '')} chars), verbose instructions removed"
             )
+        elif is_agentic:
+            # Lean user message without 40 KB pre-fetched dump
+            user_message = core_instructions
+            logger.info(f"[{symbol}] Agentic active — 40 KB pre-fetch dump eliminated")
         else:
             logger.warning(f"[{symbol}] Data bundle empty — AI will call all tools manually")
 
@@ -556,6 +587,9 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
                     elif k.startswith("technical_indicators_"):
                         prefetch_satisfied_tools.add("get_technical_indicators")
 
+        if is_agentic:
+            prefetch_satisfied_tools = set()
+
         # Rate limiting
         try:
             from monika.infrastructure.llm.rate_limiting.claude_rate_limiter import ClaudeRateLimiter
@@ -630,6 +664,12 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
             except Exception as e:
                 logger.warning(f"[{symbol}] Volatility regime gate pre-check failed (non-fatal): {e}")
 
+        stage2_max_turns = (
+            self.settings.get("analysis", {}).get("agentic", {}).get("max_turns", 25)
+            if is_agentic
+            else getattr(active_client, "max_tool_turns", 10)
+        )
+
         result = await active_client.run_agent(
             session=session,
             system_prompt=system_prompt,
@@ -639,6 +679,7 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
             extra_context=extra_context_str if extra_context_str else None,
             prefetch_satisfied_tools=prefetch_satisfied_tools,
             multimodal_images=multimodal_images,
+            max_tool_turns=stage2_max_turns,
         )
         elapsed = (_get_clock().now() - start_time).total_seconds()
 

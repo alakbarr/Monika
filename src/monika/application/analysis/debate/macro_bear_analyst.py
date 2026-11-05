@@ -58,7 +58,11 @@ async def run_bear_analyst(context: str, settings: dict) -> dict:
         "- 9-10: Dominant risk-off alignment (rising/elevated yields, hawkish repricing, high VIX > 22, strengthening DXY, safe-haven dollar demand).\n"
         "- 6-8: Solid risk-off / dollar-bull bias with 1-2 minor caveats (e.g. softening labor data but sticky services inflation).\n"
         "- 3-5: Weak risk-off case; data indicates robust liquidity and disinflation trend.\n"
-        "- 1-2: Risk-off thesis invalid; clear monetary easing, collapsing dollar, risk-on euphoria across markets."
+        "- 1-2: Risk-off thesis invalid; clear monetary easing, collapsing dollar, risk-on euphoria across markets.\n\n"
+        "CRITICAL EMPIRICAL GROUNDING DISCIPLINE:\n"
+        "- The Chief Macro Judge has active live market verification tools.\n"
+        "- All numbers, yield rates, spread values, and FedWatch probabilities you cite MUST strictly derive from the provided DATA CONTEXT.\n"
+        "- Any fabricated, assumed, or exaggerated figures will be actively checked by the Judge, resulting in an immediate penalty and loss of the debate."
     )
 
     prompt = f"""DATA CONTEXT:

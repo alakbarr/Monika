@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Any, Optional
 
 from monika.infrastructure.providers.llm_factory import get_client_for_task
 
@@ -56,9 +57,17 @@ JUDGE_SCHEMA = {
 }
 
 
-async def run_macro_judge(bull_thesis: dict | str, bear_thesis: dict | str, context: str, settings: dict) -> dict:
+async def run_macro_judge(
+    bull_thesis: dict | str,
+    bear_thesis: dict | str,
+    context: str,
+    settings: dict,
+    tool_executor: Optional[Any] = None,
+) -> dict:
     """
     Executes Chief Macro Judge to evaluate Risk-On/Dollar-Bear vs Risk-Off/Dollar-Bull debate.
+    When agentic mode is enabled and client supports run_chat_loop, Judge performs an active
+    fact-checking turn using macro verification tools to resolve factual disputes between analysts.
     """
     try:
         client = get_client_for_task("debate_judge", settings)
@@ -71,8 +80,19 @@ async def run_macro_judge(bull_thesis: dict | str, bear_thesis: dict | str, cont
     from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 
     anchor = CacheBreakpointManager.CANONICAL_TIER0_ANCHOR.strip()
+
+    adj_skill_text = ""
+    try:
+        from monika.application.skills.loader import load_skill
+
+        adj_skill = load_skill("adjudication-framework")
+        if adj_skill:
+            adj_skill_text = f"\n\n[AUTHORITATIVE ADJUDICATION SKILL]\n{adj_skill[:3500]}\n"
+    except Exception:
+        pass
+
     system_prompt = (
-        f"{anchor}\n\n---\n\n"
+        f"{anchor}{adj_skill_text}\n\n---\n\n"
         "You are the CHIEF MACRO JUDGE.\n"
         "Your responsibility is to objectively adjudicate a macroeconomic debate between two opposing analysts:\n"
         "1. Analyst 1: Risk-On / Dollar-Bear Thesis (Bullish Risk Assets, Bearish USD)\n"
@@ -86,7 +106,8 @@ async def run_macro_judge(bull_thesis: dict | str, bear_thesis: dict | str, cont
         "MANDATORY FACT-CHECKING CHECKLIST:\n"
         "1. Score higher ONLY the thesis that cites concrete, grounded macro data (Yield curve slope, FedWatch probabilities, COT net positioning, recent CPI/NFP figures).\n"
         "2. Rhetorical or speculative arguments unsupported by the provided DATA CONTEXT must be awarded <= 4 points.\n"
-        "3. If both analysts rely primarily on speculation and HTF data is flat, declare 'TIE' and set escalation_required=True.\n"
+        "3. Active Fact-Checking: If Analyst 1 and Analyst 2 present contradictory assertions regarding yields, rate cut odds, or spreads, call verification tools to obtain ground truth.\n"
+        "4. Penalize Fabrication: Any analyst claiming fabricated, inverted, or hallucinated figures must be awarded <= 2 points.\n"
     )
 
     prompt = f"""DATA CONTEXT:
@@ -104,10 +125,83 @@ BEAR ANALYST (Risk-Off / Dollar-Bull):
 
 Evaluate the merits, assign scores (1-10), declare the winner ('RISK_ON_USD_BEAR', 'RISK_OFF_USD_BULL', 'US_EXCEPTIONALISM', 'STAGFLATION', or 'TIE'), set dxy_bias and risk_asset_bias according to the mapping rules, and set escalation_required to true if score difference <= 1 or arguments are closely contested."""
 
+    is_agentic = bool(settings.get("analysis", {}).get("agentic", {}).get("enabled", True))
+
     try:
-        res = await client.classify_json(prompt=prompt, schema=JUDGE_SCHEMA, system_prompt=system_prompt)
+        res: Optional[dict] = None
+        if is_agentic and hasattr(client, "run_chat_loop") and tool_executor is not None:
+            from monika.application.analysis.tools.tools_definitions import (
+                MACRO_ANALYSIS_TOOLS,
+                minify_tool_definitions,
+            )
+
+            macro_verification_names = {
+                "get_bond_yield_spreads",
+                "get_treasury_yields",
+                "get_interest_rates",
+                "get_central_bank_expectations",
+                "get_fedwatch_probabilities",
+                "get_vix",
+                "get_dxy",
+                "web_search",
+            }
+            judge_tools = minify_tool_definitions(
+                [
+                    t
+                    for t in MACRO_ANALYSIS_TOOLS
+                    if (t.get("name") or t.get("function", {}).get("name")) in macro_verification_names
+                ]
+            )
+            agentic_user_prompt = (
+                f"================================================================================\n"
+                f"DIALECTICAL DEBATE ADJUDICATION CONTRACT\n"
+                f"================================================================================\n"
+                f"DATA CONTEXT:\n{context}\n\n"
+                f"ANALYST 1 (BULL THESIS - RISK-ON / USD WEAKNESS):\n{bull_str}\n\n"
+                f"ANALYST 2 (BEAR THESIS - RISK-OFF / USD STRENGTH):\n{bear_str}\n\n"
+                f"ADJUDICATION MANDATE:\n"
+                f"1. SCAN FOR FACTUAL DISPUTES: Check if Bull and Bear make conflicting claims regarding US Treasury yields, CME FedWatch rate probabilities, DXY levels, or sovereign yield spreads.\n"
+                f"2. VERIFICATION TURN: If a dispute exists, call the relevant tool (e.g., `get_fedwatch_probabilities`, `get_treasury_yields`, `get_bond_yield_spreads`, `web_search`) to verify market reality.\n"
+                f"3. FINAL RULING: Formulate your definitive verdict in valid JSON matching this schema:\n"
+                f"```json\n"
+                f'{{\n  "bull_arguments_score": <1-10>,\n  "bear_arguments_score": <1-10>,\n  "rationale": "<Detailed factual explanation citing verified numbers>",\n  "winner": "<RISK_ON_USD_BEAR | RISK_OFF_USD_BULL | US_EXCEPTIONALISM | STAGFLATION | TIE>",\n  "dxy_bias": "<BULLISH | BEARISH | NEUTRAL>",\n  "risk_asset_bias": "<BULLISH | BEARISH | NEUTRAL>",\n  "escalation_required": <true | false>\n}}\n'
+                f"```\n"
+                f"================================================================================\n"
+                f"Begin by identifying disputes and calling verification tools."
+            )
+            chat_res = await client.run_chat_loop(
+                system_prompt=system_prompt,
+                conversation_history=[],
+                new_user_message=agentic_user_prompt,
+                tools=judge_tools,
+                tool_executor=tool_executor,
+            )
+            content = (
+                chat_res.get("reply") or chat_res.get("content") or (chat_res if isinstance(chat_res, str) else "")
+            )
+            if content:
+                import re
+
+                cleaned = str(content).strip()
+                if "```" in cleaned:
+                    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
+                    if match:
+                        cleaned = match.group(1).strip()
+                if "{" in cleaned and "}" in cleaned:
+                    start = cleaned.find("{")
+                    end = cleaned.rfind("}") + 1
+                    cleaned = cleaned[start:end]
+                try:
+                    parsed = json.loads(cleaned)
+                    if isinstance(parsed, dict) and "winner" in parsed and "bull_arguments_score" in parsed:
+                        res = parsed
+                except Exception:
+                    pass
+
+        if not res:
+            res = await client.classify_json(prompt=prompt, schema=JUDGE_SCHEMA, system_prompt=system_prompt)
         if not res or not isinstance(res, dict):
-            raise ValueError("classify_json returned empty/None result")
+            raise ValueError("Judge evaluation returned empty/None result")
         # Fail-closed escalation if either upstream analyst returned degraded fallback
         bull_degraded = isinstance(bull_thesis, dict) and (
             bull_thesis.get("degraded_fallback") or bull_thesis.get("is_fallback")

@@ -2899,6 +2899,7 @@ Monika/
 │   │   │   │   │   └── test_tool_scheduler_and_guards.py
 │   │   │   │   └── test_replay_envelope_and_recovery.py
 │   │   │   └── analysis/
+│   │   │       ├── test_agentic_architecture.py
 │   │   │       ├── test_debate_prefix_cache_sharing.py
 │   │   │       ├── test_forked_subagent_cache.py
 │   │   │       ├── test_spill_and_ptc_parallel.py
@@ -3266,4 +3267,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 281 | **Total Tracked Files**: 2955
+**Total Tracked Directories**: 281 | **Total Tracked Files**: 2956

@@ -637,6 +637,10 @@ backtest:
 analysis:
   stage2_max_bundle_chars: 50000
   stage2_recovery_max_tool_turns: 4
+  agentic:
+    enabled: true
+    max_turns: 25
+    allow_web_search_escalation: true
 agent_architecture:
   specialist_decomposition: true
   enable_debate: true

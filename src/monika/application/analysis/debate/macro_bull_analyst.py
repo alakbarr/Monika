@@ -58,7 +58,11 @@ async def run_bull_analyst(context: str, settings: dict) -> dict:
         "- 9-10: Dominant risk-on alignment (falling yields, high rate cut probabilities, low VIX < 16, weakening DXY, broad risk asset momentum).\n"
         "- 6-8: Solid risk-on bias supported by macro data, with 1-2 minor caveats (e.g. sticky core inflation component or mixed COT).\n"
         "- 3-5: Weak risk-on case; macro indicators are mixed or largely support USD strength.\n"
-        "- 1-2: Risk-on thesis invalid; aggressive hawkish regime, soaring yields, high VIX > 25, dominant dollar rally."
+        "- 1-2: Risk-on thesis invalid; aggressive hawkish regime, soaring yields, high VIX > 25, dominant dollar rally.\n\n"
+        "CRITICAL EMPIRICAL GROUNDING DISCIPLINE:\n"
+        "- The Chief Macro Judge has active live market verification tools.\n"
+        "- All numbers, yield rates, spread values, and FedWatch probabilities you cite MUST strictly derive from the provided DATA CONTEXT.\n"
+        "- Any fabricated, assumed, or exaggerated figures will be actively checked by the Judge, resulting in an immediate penalty and loss of the debate."
     )
 
     prompt = f"""DATA CONTEXT:

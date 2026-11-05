@@ -116,6 +116,10 @@ async def generate_bull_advocacy(
         f"[TARGET ASSET]: {symbol} | [DIRECTION]: {decision.upper()}\n"
         f"{role_desc}\n\n"
         f"{score_desc}\n\n"
+        "CRITICAL EMPIRICAL GROUNDING DISCIPLINE:\n"
+        "- The Chief Investment Judge possesses live market telemetry tools.\n"
+        "- Any technical levels, SMC zones, or indicator readings you cite MUST be grounded strictly in the provided Fact Sheet.\n"
+        "- Fabricated numbers or uncorroborated assertions will be penalized with an immediate strength score reduction and thesis rejection.\n\n"
         "Generate bull analysis based strictly on the setup and Fact Sheet above. "
         "Return valid JSON strictly matching the schema."
     )

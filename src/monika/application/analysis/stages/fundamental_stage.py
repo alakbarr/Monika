@@ -244,6 +244,7 @@ class FundamentalStage:
         except Exception as e:
             logger.debug(f"Failed to load behavioral streak alerts: {e}")
 
+        actual_user_message: str = USER_MESSAGE
         # SOTA Cache-Optimized 4-Tier Prompt Assembly with Canonical Tier-0 Anchor (>= 4,150 tokens)
         try:
             from monika.application.analysis.memory.layered_memory import LayeredMemoryManager
@@ -251,12 +252,23 @@ class FundamentalStage:
 
             core_memory = await LayeredMemoryManager(self.settings).get_core_memory(session)
             assembler = PromptAssembler(self.settings)
-            static_sys, dynamic_notes = assembler.assemble_stage1_system_tuple(
-                core_memory=core_memory, behavioral_alert=dynamic_system_notes, pad_for_gemini=True
-            )
-            system_prompt = static_sys
-            effective_system_prompt = (static_sys, dynamic_notes) if dynamic_notes else static_sys
+            is_agentic = bool(self.settings.get("analysis", {}).get("agentic", {}).get("enabled", True))
+            if is_agentic:
+                agentic_sys, agentic_user = assembler.assemble_stage1_agentic(
+                    core_memory=core_memory, behavioral_alert=dynamic_system_notes
+                )
+                system_prompt = agentic_sys
+                effective_system_prompt = agentic_sys
+                actual_user_message = agentic_user
+            else:
+                static_sys, dynamic_notes = assembler.assemble_stage1_system_tuple(
+                    core_memory=core_memory, behavioral_alert=dynamic_system_notes, pad_for_gemini=True
+                )
+                system_prompt = static_sys
+                effective_system_prompt = (static_sys, dynamic_notes) if dynamic_notes else static_sys
+                actual_user_message = USER_MESSAGE
         except Exception as pa_err:
+            is_agentic = False
             logger.warning(f"PromptAssembler fallback due to: {pa_err}")
             # Fallback jika skill loader atau PromptAssembler mengalami kendala
             if _compose is not None:
@@ -296,7 +308,8 @@ class FundamentalStage:
         await self._log(session, "Starting Stage 1: Fundamental Brief generation")
 
         current_utc_str = clock.now().strftime("%Y-%m-%d %H:%M UTC (%A)")
-        actual_user_message = USER_MESSAGE
+        if not is_agentic or not actual_user_message:
+            actual_user_message = USER_MESSAGE
         # Fetch factor effectiveness as extra context for Stage 1
         extra_context = None
         ctx_lines = []
@@ -500,7 +513,8 @@ class FundamentalStage:
         except Exception:
             compressed_json = prefetched_json
 
-        actual_user_message += f"\n\n[PRE-FETCHED DATA]\nThe following data has already been fetched for you to analyze. Do not re-fetch it unless you need different parameters:\n{compressed_json}"
+        if not is_agentic:
+            actual_user_message += f"\n\n[PRE-FETCHED DATA]\nThe following data has already been fetched for you to analyze. Do not re-fetch it unless you need different parameters:\n{compressed_json}"
 
         if weekend_btc_only_mode:
             weekend_context = (
@@ -573,14 +587,20 @@ class FundamentalStage:
             "4. Classify `yield_curve_regime` ('bull_steepener', 'bear_steepener', 'bull_flattener', 'bear_flattener', or 'neutral') and `systemic_liquidity_trend` ('expanding', 'contracting', or 'neutral')."
         )
 
-        # Health-Aware Conditional Tool Pruning:
-        # When prefetch is 100% healthy, prune redundant read tools to force direct synthesis and eliminate turn exhaustion.
-        # If any core tool failed during prefetch, preserve it in the schema as an operational fallback.
-        pruned_tools = prune_stage1_tools(base_tools, prefetch_satisfied_tools)
-        tools_to_use = minify_tool_definitions(pruned_tools)
+        if is_agentic:
+            tools_to_use = minify_tool_definitions(base_tools)
+            agentic_max_turns = self.settings.get("analysis", {}).get("agentic", {}).get("max_turns", 25)
+            stage1_max_turns = agentic_max_turns
+            prefetch_satisfied_tools = set()
+        else:
+            # Health-Aware Conditional Tool Pruning:
+            # When prefetch is 100% healthy, prune redundant read tools to force direct synthesis and eliminate turn exhaustion.
+            # If any core tool failed during prefetch, preserve it in the schema as an operational fallback.
+            pruned_tools = prune_stage1_tools(base_tools, prefetch_satisfied_tools)
+            tools_to_use = minify_tool_definitions(pruned_tools)
 
-        # Turn budget: 4 turns when prefetch is complete (synthesis + validation handling), 6 turns if fallback tools required.
-        stage1_max_turns = 4 if is_prefetch_healthy else 6
+            # Turn budget: 4 turns when prefetch is complete (synthesis + validation handling), 6 turns if fallback tools required.
+            stage1_max_turns = 4 if is_prefetch_healthy else 6
 
         for attempt in range(max_retries):
             try:

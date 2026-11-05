@@ -344,8 +344,8 @@ class DynamicSubagentPool:
     def decompose_research_query(
         self,
         query: str,
-        base_system_prompt: str,
-        available_tools: List[Dict[str, Any]],
+        base_system_prompt: str = "",
+        available_tools: Optional[List[Dict[str, Any]]] = None,
         tool_executor: Optional[Any] = None,
     ) -> List[SubagentSpec]:
         """
@@ -361,7 +361,7 @@ class DynamicSubagentPool:
             base_system_prompt = f"{anchor}\n\n=== SPECIALIST RESEARCH DIRECTIVE ===\n\n{base_system_prompt}"
 
         q_lower = query.lower()
-        tools_by_name = {t.get("name"): t for t in available_tools if t.get("name")}
+        tools_by_name = {t.get("name"): t for t in (available_tools or []) if t.get("name")}
 
         # 1. Macro & Rates toolset
         macro_names = {
@@ -446,23 +446,80 @@ class DynamicSubagentPool:
 
         specs: List[SubagentSpec] = []
 
-        # --- Base Specialist 1: Macro & Rates ---
+        is_agentic = bool(self.settings.get("analysis", {}).get("agentic", {}).get("enabled", True))
+
+        def _format_worker_contract(
+            role: str,
+            target_query: str,
+            phase1_tools: List[str],
+            phase2_desc: str,
+            phase4_fields: str,
+        ) -> str:
+            if not is_agentic:
+                return target_query
+            tools_str = "\n".join(f"  {idx + 1}. `{t}`" for idx, t in enumerate(phase1_tools))
+            return (
+                f"================================================================================\n"
+                f"AUTONOMOUS INVESTIGATION CONTRACT: {role.upper()}\n"
+                f"TARGET QUERY: {target_query}\n"
+                f"================================================================================\n"
+                f"MANDATORY SEQUENTIAL EXECUTION PROTOCOL (AGENTIC WORKER):\n"
+                f"Phase 1 (Domain Data Extraction):\n"
+                f"  You MUST execute the following domain tools sequentially:\n"
+                f"{tools_str}\n"
+                f"Phase 2 (Empirical Synthesis & Reasoning):\n"
+                f"  {phase2_desc}\n"
+                f"Phase 3 (Escalation Gate):\n"
+                f"  If contradictory, stale (>7 days), or missing data is encountered, call `web_search`.\n"
+                f"Phase 4 (Distillation Brief):\n"
+                f"  Deliver a dense, structured briefing containing:\n"
+                f"{phase4_fields}\n"
+                f"================================================================================\n"
+                f"Initiate Phase 1 now by executing your tools."
+            )
+
+        # --- Load Authoritative Domain Skills for Subagents ---
         cb_framework_text = ""
+        yc_skill_text = ""
+        smc_skill_text = ""
+        ob_skill_text = ""
+        cot_skill_text = ""
+        ca_skill_text = ""
+        news_skill_text = ""
         try:
             from monika.application.skills.loader import load_skill
 
-            cb_skill = load_skill("central_banks_framework")
+            cb_skill = load_skill("central-banks-framework")
             if cb_skill:
                 cb_framework_text = f"\n\n[AUTHORITATIVE CENTRAL BANK KNOWLEDGE]\n{cb_skill}\n"
+            yc_skill = load_skill("macro-yield-curve-regimes")
+            if yc_skill:
+                yc_skill_text = f"\n\n[AUTHORITATIVE YIELD CURVE REGIMES]\n{yc_skill}\n"
+            smc_skill = load_skill("smc-ict-playbook")
+            if smc_skill:
+                smc_skill_text = f"\n\n[AUTHORITATIVE SMC PLAYBOOK]\n{smc_skill}\n"
+            ob_skill = load_skill("orderbook-liquidity-microstructure")
+            if ob_skill:
+                ob_skill_text = f"\n\n[AUTHORITATIVE ORDERBOOK & LIQUIDITY KNOWLEDGE]\n{ob_skill}\n"
+            cot_skill = load_skill("cot-positioning-playbook")
+            if cot_skill:
+                cot_skill_text = f"\n\n[AUTHORITATIVE COT POSITIONING PLAYBOOK]\n{cot_skill}\n"
+            ca_skill = load_skill("cross-asset-regime-model")
+            if ca_skill:
+                ca_skill_text = f"\n\n[AUTHORITATIVE CROSS-ASSET REGIME MODEL]\n{ca_skill}\n"
+            news_skill = load_skill("macro-intermarket-decoupling-and-adversarial-reconciliation")
+            if news_skill:
+                news_skill_text = f"\n\n[AUTHORITATIVE INTERMARKET RECONCILIATION]\n{news_skill}\n"
         except Exception:
             pass
 
+        # --- Base Specialist 1: Macro & Rates ---
         specs.append(
             SubagentSpec(
                 worker_id="worker_macro",
                 role="Macro & Central Bank Specialist",
                 system_prompt=(
-                    f"{base_system_prompt}{cb_framework_text}\n\n"
+                    f"{base_system_prompt}{cb_framework_text}{yc_skill_text}\n\n"
                     "[SPECIALIST ROLE]: You are the Macro & Rates Specialist. "
                     "Conduct an exhaustive deep dive on macroeconomic fundamentals, yield curves, "
                     "central bank interest rate trajectory, inflation, and growth dynamics. "
@@ -474,7 +531,26 @@ class DynamicSubagentPool:
                     "4. [ ] Energy / Inventory: Call `get_eia_oil_inventory` if investigating crude oil or energy inflation.\n"
                     "5. [ ] Calendar & Volatility: Call `get_economic_calendar`, `get_news_digest`, and `get_vix` / `get_dxy`."
                 ),
-                query=f"Conduct a comprehensive macroeconomic, interest rate trajectory, yield spread, DXY/VIX volatility, and economic catalyst investigation for: {query}",
+                query=_format_worker_contract(
+                    role="Macro & Central Bank Specialist",
+                    target_query=f"Conduct a comprehensive macroeconomic, interest rate trajectory, yield spread, DXY/VIX volatility, and economic catalyst investigation for: {query}",
+                    phase1_tools=[
+                        "get_bond_yield_spreads",
+                        "get_treasury_yields",
+                        "get_central_bank_expectations",
+                        "get_interest_rates",
+                        "get_fedwatch_probabilities",
+                        "get_vix",
+                        "get_dxy",
+                    ],
+                    phase2_desc="Cross-reference sovereign yield spreads (US-DE, US-UK, US-JP) against forward central bank rate expectations and real yield slopes.",
+                    phase4_fields=(
+                        "  - Dominant Macro Regime (Rate Divergence, Easing, Tightening, Stagflation)\n"
+                        "  - Key Sovereign Yield Spreads (numerical bps)\n"
+                        "  - CME FedWatch Probability Distribution (%)\n"
+                        "  - Directional Bias & Numeric Invalidation Levels"
+                    ),
+                ),
                 tools=_filter_tools(macro_names),
                 timeout_seconds=self.default_timeout,
                 tool_executor=tool_executor,
@@ -487,13 +563,31 @@ class DynamicSubagentPool:
                 worker_id="worker_tech",
                 role="Technical & SMC Liquidity Specialist",
                 system_prompt=(
-                    f"{base_system_prompt}\n\n"
+                    f"{base_system_prompt}{smc_skill_text}{ob_skill_text}\n\n"
                     "[SPECIALIST ROLE]: You are the Technical & SMC Liquidity Specialist. "
                     "Analyze market structure (BOS/CHoCH), Order Blocks, Fair Value Gaps (FVG), "
                     "liquidity sweeps, Fibonacci retracements, and TimesFM quantile forecasts. "
                     "Highlight exact invalidation and key reaction levels."
                 ),
-                query=f"Conduct a high-precision market structure, SMC zone, liquidity sweep, and TimesFM quantile forecast analysis for: {query}",
+                query=_format_worker_contract(
+                    role="Technical & SMC Liquidity Specialist",
+                    target_query=f"Conduct a high-precision market structure, SMC zone, liquidity sweep, and TimesFM quantile forecast analysis for: {query}",
+                    phase1_tools=[
+                        "get_technical_indicators",
+                        "get_smc_zones",
+                        "get_structure_breaks",
+                        "get_swing_points",
+                        "get_daily_range_context",
+                        "get_atr",
+                    ],
+                    phase2_desc="Assess dealing range discount vs premium pricing (<0.50 discount for longs, >0.50 premium for shorts), multi-timeframe alignment, and liquidity sweep confirmation.",
+                    phase4_fields=(
+                        "  - Structural Market Regime (BOS, CHoCH, Range Equilibrium)\n"
+                        "  - Key SMC Order Blocks & Unmitigated FVGs\n"
+                        "  - Dealing Range Location (Premium/Discount ratio)\n"
+                        "  - Exact Numerical Invalidation Price & Confluence Score"
+                    ),
+                ),
                 tools=_filter_tools(tech_names),
                 timeout_seconds=self.default_timeout,
                 tool_executor=tool_executor,
@@ -506,13 +600,29 @@ class DynamicSubagentPool:
                 worker_id="worker_sent",
                 role="Institutional & Retail Sentiment Specialist",
                 system_prompt=(
-                    f"{base_system_prompt}\n\n"
+                    f"{base_system_prompt}{cot_skill_text}\n\n"
                     "[SPECIALIST ROLE]: You are the Institutional & Sentiment Specialist. "
                     "Analyze CFTC COT institutional positioning, retail positioning bias (long/short skew), "
                     "funding rates, and market sentiment extremes (Fear & Greed). "
                     "Identify asymmetric crowded trade risks."
                 ),
-                query=f"Investigate institutional COT positioning, retail sentiment skew, funding rates, and market positioning extremes for: {query}",
+                query=_format_worker_contract(
+                    role="Institutional & Retail Sentiment Specialist",
+                    target_query=f"Investigate institutional COT positioning, retail sentiment skew, funding rates, and market positioning extremes for: {query}",
+                    phase1_tools=[
+                        "get_cot_report",
+                        "get_retail_sentiment",
+                        "get_funding_rate",
+                        "get_fear_greed",
+                    ],
+                    phase2_desc="Analyze institutional positioning (commercial vs non-commercial net skew) against retail crowd sentiment for contrarian divergence.",
+                    phase4_fields=(
+                        "  - Institutional Positioning Bias (CFTC COT net contracts)\n"
+                        "  - Retail Skew (Long/Short ratio %)\n"
+                        "  - Crowded Trade Warning (Yes/No & Risk level)\n"
+                        "  - Sentiment Confluence Score (1-10)"
+                    ),
+                ),
                 tools=_filter_tools(sent_names),
                 timeout_seconds=self.default_timeout,
                 tool_executor=tool_executor,
@@ -577,12 +687,27 @@ class DynamicSubagentPool:
                     worker_id="worker_orderflow",
                     role="Order Flow & Liquidity Sweep Specialist",
                     system_prompt=(
-                        f"{base_system_prompt}\n\n"
+                        f"{base_system_prompt}{ob_skill_text}{smc_skill_text}\n\n"
                         "[SPECIALIST ROLE]: You are the Order Flow & Liquidity Sweep Specialist. "
                         "Investigate institutional liquidity pools, buy-side/sell-side liquidity sweeps, "
                         "tick volume delta absorptions, and hidden stop hunts around critical highs/lows."
                     ),
-                    query=f"Investigate institutional order flow dynamics, liquidity absorption, and critical sweep levels for: {query}",
+                    query=_format_worker_contract(
+                        role="Order Flow & Liquidity Sweep Specialist",
+                        target_query=f"Investigate institutional order flow dynamics, liquidity absorption, and critical sweep levels for: {query}",
+                        phase1_tools=[
+                            "get_smc_zones",
+                            "get_structure_breaks",
+                            "get_swing_points",
+                            "get_price_momentum",
+                        ],
+                        phase2_desc="Detect volume delta absorption, false breakouts, and institutional liquidity sweeps around swing highs/lows.",
+                        phase4_fields=(
+                            "  - Order Flow Bias (Accumulation / Distribution / Absorption)\n"
+                            "  - Key Liquidity Sweep Levels\n"
+                            "  - Immediate Reaction Zone & Target Pool"
+                        ),
+                    ),
                     tools=_filter_tools(order_flow_names),
                     timeout_seconds=self.default_timeout,
                     tool_executor=tool_executor,
@@ -594,12 +719,27 @@ class DynamicSubagentPool:
                     worker_id="worker_cross_asset",
                     role="Cross-Asset Macro Correlation Specialist",
                     system_prompt=(
-                        f"{base_system_prompt}\n\n"
+                        f"{base_system_prompt}{ca_skill_text}\n\n"
                         "[SPECIALIST ROLE]: You are the Cross-Asset & Macro Correlation Specialist. "
                         "Investigate intermarket spillover effects, US Treasury yield spreads vs DXY, "
                         "commodity terms of trade, and cross-asset beta."
                     ),
-                    query=f"Investigate cross-asset macro correlations, sovereign yield spreads, and intermarket transmission channels for: {query}",
+                    query=_format_worker_contract(
+                        role="Cross-Asset Macro Correlation Specialist",
+                        target_query=f"Investigate cross-asset macro correlations, sovereign yield spreads, and intermarket transmission channels for: {query}",
+                        phase1_tools=[
+                            "get_dxy",
+                            "get_vix",
+                            "get_bond_yield_spreads",
+                            "get_treasury_yields",
+                        ],
+                        phase2_desc="Evaluate intermarket transmission (DXY vs Yields vs Commodities) and cross-asset beta.",
+                        phase4_fields=(
+                            "  - Cross-Asset Regime (Risk-On / Risk-Off / Decoupled)\n"
+                            "  - Intermarket Transmission Finding\n"
+                            "  - Correlation Warning & Spillover Risk"
+                        ),
+                    ),
                     tools=_filter_tools(cross_asset_names),
                     timeout_seconds=self.default_timeout,
                     tool_executor=tool_executor,
@@ -611,12 +751,27 @@ class DynamicSubagentPool:
                     worker_id="worker_news_drift",
                     role="Geopolitical & News Drift Specialist",
                     system_prompt=(
-                        f"{base_system_prompt}\n\n"
+                        f"{base_system_prompt}{news_skill_text}\n\n"
                         "[SPECIALIST ROLE]: You are the Geopolitical & News Drift Specialist. "
                         "Investigate breaking headline risks, geopolitical escalation/de-escalation, "
                         "consensus whisper deviations, and post-news price narrative drift."
                     ),
-                    query=f"Investigate breaking news dynamics, geopolitical escalation risks, consensus whisper deviations, and post-release narrative drift for: {query}",
+                    query=_format_worker_contract(
+                        role="Geopolitical & News Drift Specialist",
+                        target_query=f"Investigate breaking news dynamics, geopolitical escalation risks, consensus whisper deviations, and post-release narrative drift for: {query}",
+                        phase1_tools=[
+                            "get_news_digest",
+                            "get_economic_calendar",
+                            "get_vix",
+                            "web_search",
+                        ],
+                        phase2_desc="Assess headline risk vs priced-in consensus and whisper deviations for major data releases.",
+                        phase4_fields=(
+                            "  - Event Risk Level (Low / Moderate / Extreme)\n"
+                            "  - Key Catalyst & Consensus Deviation\n"
+                            "  - Post-Event Narrative Drift Expectation"
+                        ),
+                    ),
                     tools=_filter_tools(news_drift_names),
                     timeout_seconds=self.default_timeout,
                     tool_executor=tool_executor,

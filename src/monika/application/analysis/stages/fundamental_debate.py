@@ -97,7 +97,16 @@ async def run_macro_debate(stage_instance, session: AsyncSession, brief, prefetc
         else:
             bear = bear_res
 
-        judge_raw = await run_macro_judge(bull, bear, context, stage_instance.settings)
+        executor = getattr(stage_instance, "tool_executor", None)
+        if executor is None and session is not None:
+            try:
+                from monika.application.analysis.tools.tool_executor import ToolExecutor
+
+                executor = ToolExecutor(session, stage_instance.settings)
+            except Exception:
+                executor = None
+
+        judge_raw = await run_macro_judge(bull, bear, context, stage_instance.settings, tool_executor=executor)
         judge = validate_macro_judge_output(judge_raw, bull, bear)
 
         bull_str = json.dumps(bull, indent=2) if isinstance(bull, dict) else str(bull)
