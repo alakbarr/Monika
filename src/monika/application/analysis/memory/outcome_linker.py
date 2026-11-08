@@ -229,18 +229,31 @@ class OutcomeLinker:
                         pip_size = spec.pip_size if spec and spec.pip_size > 0 else 0.0001
 
                         diff = price_now - entry_price
-                        direction = 1 if reflection.decision.lower() == "buy" else -1
-
-                        reflection.whatif_price_24h = price_now
-                        diff_pips = (diff / pip_size) * direction
-                        reflection.whatif_hypothetical_pnl_pips = round(diff_pips, 2)
-
-                        reflection.whatif_direction_correct = diff_pips > 0
-
-                        # Evaluate path-dependent price action using proposed SL/TP from AssetAnalysis
+                        dec_lower = str(reflection.decision or "").lower().strip()
                         proposed_sl = analysis.stop_loss
                         proposed_tp = analysis.take_profit
 
+                        if dec_lower == "buy":
+                            direction = 1
+                        elif dec_lower == "sell":
+                            direction = -1
+                        else:
+                            # For WAIT / AVOID / HOLD, determine hypothetical setup direction from proposed bracket
+                            if proposed_tp is not None and proposed_tp > entry_price:
+                                direction = 1
+                            elif proposed_tp is not None and proposed_tp < entry_price:
+                                direction = -1
+                            elif proposed_sl is not None and proposed_sl < entry_price:
+                                direction = 1
+                            elif proposed_sl is not None and proposed_sl > entry_price:
+                                direction = -1
+                            else:
+                                direction = 1
+
+                        reflection.whatif_price_24h = price_now
+                        diff_pips = (diff / pip_size) * direction
+
+                        # Evaluate path-dependent price action using proposed SL/TP from AssetAnalysis
                         sl_hit, tp_hit = await self._check_path_dependent_outcome(
                             session=session,
                             symbol=reflection.symbol,
@@ -254,16 +267,49 @@ class OutcomeLinker:
                         )
                         reflection.whatif_sl_would_hit = sl_hit
                         reflection.whatif_tp_would_hit = tp_hit
-                        reflection.was_profitable = bool(tp_hit or (not sl_hit and diff_pips > 0))
 
-                        asset_return_pct = (
-                            ((price_now - entry_price) / entry_price) * 100.0 * direction if entry_price > 0 else 0.0
-                        )
+                        if tp_hit:
+                            reflection.exit_reason = "tp_hit"
+                            reflection.was_profitable = True
+                            reflection.whatif_direction_correct = True
+                            if proposed_tp is not None:
+                                tp_pips = round(abs(proposed_tp - entry_price) / pip_size, 2)
+                                reflection.whatif_hypothetical_pnl_pips = tp_pips
+                                asset_return_pct = (abs(proposed_tp - entry_price) / entry_price) * 100.0
+                            else:
+                                reflection.whatif_hypothetical_pnl_pips = max(0.0, round(diff_pips, 2))
+                                asset_return_pct = max(
+                                    0.0, ((price_now - entry_price) / entry_price) * 100.0 * direction
+                                )
+                        elif sl_hit:
+                            reflection.exit_reason = "sl_hit"
+                            reflection.was_profitable = False
+                            reflection.whatif_direction_correct = False
+                            if proposed_sl is not None:
+                                sl_pips = -round(abs(entry_price - proposed_sl) / pip_size, 2)
+                                reflection.whatif_hypothetical_pnl_pips = sl_pips
+                                asset_return_pct = -(abs(entry_price - proposed_sl) / entry_price) * 100.0
+                            else:
+                                reflection.whatif_hypothetical_pnl_pips = min(0.0, round(diff_pips, 2))
+                                asset_return_pct = min(
+                                    0.0, ((price_now - entry_price) / entry_price) * 100.0 * direction
+                                )
+                        else:
+                            reflection.exit_reason = "24h_time_limit"
+                            reflection.whatif_hypothetical_pnl_pips = round(diff_pips, 2)
+                            reflection.whatif_direction_correct = diff_pips > 0
+                            reflection.was_profitable = diff_pips > 0
+                            asset_return_pct = (
+                                ((price_now - entry_price) / entry_price) * 100.0 * direction
+                                if entry_price > 0
+                                else 0.0
+                            )
 
+                        direction_label = "BUY" if direction == 1 else "SELL"
                         calculator = AlphaCalculator(session)
                         alpha_data = await calculator.calculate_alpha(
                             symbol=reflection.symbol,
-                            direction=reflection.decision,
+                            direction=direction_label,
                             entry_time=analysis.generated_at,
                             exit_time=now,
                             asset_return_pct=asset_return_pct,

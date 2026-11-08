@@ -289,3 +289,65 @@ async def test_process_paper_whatifs_timeframe_h1_filter():
     compiled_bar_stmt = str(bar_stmt)
     assert "price_ohlcv.timeframe =" in compiled_bar_stmt
     assert "price_ohlcv.symbol =" in compiled_bar_stmt
+
+    # Verify that TP hit locked exit_reason, was_profitable, and pnl pips accurately
+    assert reflection.exit_reason == "tp_hit"
+    assert reflection.was_profitable is True
+    assert reflection.whatif_direction_correct is True
+    assert reflection.whatif_hypothetical_pnl_pips == 100.0
+
+
+@pytest.mark.asyncio
+async def test_process_paper_whatifs_wait_decision_infers_sell_bracket():
+    """Verify that a WAIT decision correctly infers SELL direction when SL > entry > TP."""
+    from monika.infrastructure.database.models import DecisionReflection, AssetAnalysis
+    from unittest.mock import patch
+
+    linker = OutcomeLinker()
+    now = datetime.now(timezone.utc)
+    symbol = "BTCUSD"
+
+    reflection = MagicMock(spec=DecisionReflection)
+    reflection.id = 585
+    reflection.symbol = symbol
+    reflection.decision = "WAIT"
+    reflection.whatif_entry_price = 77437.7
+    reflection.status = "pending_whatif"
+
+    analysis = MagicMock(spec=AssetAnalysis)
+    analysis.id = 2603
+    analysis.generated_at = now - timedelta(hours=25)
+    analysis.price_24h_after = 78445.4  # Price rebounded higher at 24h
+    analysis.stop_loss = 78379.8  # Higher than entry (SELL stop loss)
+    analysis.take_profit = 75741.9  # Lower than entry (SELL take profit)
+
+    mock_session = create_mock_async_session()
+    mock_res_main = MagicMock()
+    mock_res_main.all.return_value = [(reflection, analysis)]
+    mock_session.execute.side_effect = [mock_res_main]
+
+    # Path-dependent evaluation: hit TP first at 75741.9, then later reversed
+    with (
+        patch.object(
+            linker, "_check_path_dependent_outcome", new_callable=AsyncMock, return_value=(False, True)
+        ) as mock_pdep,
+        patch("monika.application.analysis.memory.outcome_linker.AlphaCalculator") as mock_calc_cls,
+        patch.object(linker.reflector, "reflect_on_trade", new_callable=AsyncMock),
+    ):
+        mock_calc = MagicMock()
+        mock_calc.calculate_alpha = AsyncMock(
+            return_value={"benchmark_name": "FLAT", "benchmark_return": 0.0, "alpha_return": 2.19}
+        )
+        mock_calc_cls.return_value = mock_calc
+
+        await linker.process_paper_whatifs(session=mock_session)
+
+        # Direction passed to path-dependent check must be -1 (SELL) inferred from bracket
+        call_direction = mock_pdep.call_args.kwargs["direction"]
+        assert call_direction == -1
+
+    assert reflection.exit_reason == "tp_hit"
+    assert reflection.was_profitable is True
+    assert reflection.whatif_direction_correct is True
+    # PnL pips must be TP distance (77437.7 - 75741.9 = 1695.8), NOT 24h reversed snapshot (-1007.7)
+    assert reflection.whatif_hypothetical_pnl_pips == 1695.8

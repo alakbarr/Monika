@@ -16,7 +16,12 @@ TRADE_REFLECTION_BASE_SYSTEM_PROMPT = (
     "1. TAXONOMY DISCIPLINE: Use ONLY tags from the provided enum `LESSON_TAG_TAXONOMY`.\n"
     "2. ANTI-PLATITUDE CONSTRAINT: Generic platitudes ('be more careful', 'stick to the plan', 'market was choppy') are strictly prohibited. Every lesson must isolate a specific structural, timing, or macro cause (e.g. 'Entered before H4 FVG mitigation', 'Ignored DXY bullish impulse into resistance').\n"
     "3. FORENSIC ADJUDICATION: If `adversarial_check_verdict` is present in enrichment data, evaluate whether its adversarial warning was accurate or false alarm, and document this inside `alpha_lesson`.\n"
-    "4. SEPARATION OF PROCESS VS OUTCOME: A losing trade can have a sound process, and a winning trade can be bad process (lucky). Classify `outcome_process_classification` honestly."
+    "4. SEPARATION OF PROCESS VS OUTCOME: A losing trade can have a sound process, and a winning trade can be bad process (lucky).\n"
+    "   - For EXECUTED trades: 'good_outcome' means the trade was profitable; 'bad_outcome' means the trade was a loss.\n"
+    "   - For PAPER WHAT-IFs and BLOCKED/WAIT proposals: 'good_outcome' means the hypothetical trade setup hit TP or was profitable; 'bad_outcome' means the hypothetical setup hit SL or was a loss. (Evaluate the technical validity of the setup itself for 'outcome', and evaluate the decision to enter vs filter/block it for 'process'.)\n"
+    "   - Classify `outcome_process_classification` strictly aligned with trade profitability:\n"
+    "     * If profitable -> 'good_process_good_outcome' or 'bad_process_good_outcome_lucky'.\n"
+    "     * If loss -> 'good_process_bad_outcome' or 'bad_process_bad_outcome'."
 )
 
 TRADE_REFLECTION_SYSTEM_PROMPT = CacheBreakpointManager.pad_system_prompt_to_threshold(
@@ -68,6 +73,12 @@ REFLECTION_SCHEMA = {
                 "bad_process_good_outcome_lucky",
                 "bad_process_bad_outcome",
             ],
+            "description": (
+                "Matrix of process quality vs factual trade outcome. "
+                "Must strictly match the factual outcome: if trade/what-if was profitable, outcome MUST be '*_good_outcome' "
+                "('good_process_good_outcome' or 'bad_process_good_outcome_lucky'). If trade/what-if was a loss, "
+                "outcome MUST be '*_bad_outcome' ('good_process_bad_outcome' or 'bad_process_bad_outcome')."
+            ),
         },
         "macro_thesis_correct": {
             "type": "boolean",
@@ -226,9 +237,17 @@ class TradeReflector:
 
         outcome_cls = data.get("outcome_process_classification")
         if was_profitable is True and outcome_cls in ("good_process_bad_outcome", "bad_process_bad_outcome"):
-            return False, f"Outcome conflict: trade was profitable but classified as '{outcome_cls}'."
-        if was_profitable is False and outcome_cls == "good_process_good_outcome":
-            return False, "Outcome conflict: trade was a loss but classified as 'good_process_good_outcome'."
+            return (
+                False,
+                f"Outcome conflict: trade was profitable but classified as '{outcome_cls}'. "
+                "Must be 'good_process_good_outcome' or 'bad_process_good_outcome_lucky'.",
+            )
+        if was_profitable is False and outcome_cls in ("good_process_good_outcome", "bad_process_good_outcome_lucky"):
+            return (
+                False,
+                f"Outcome conflict: trade was a loss but classified as '{outcome_cls}'. "
+                "Must be 'good_process_bad_outcome' or 'bad_process_bad_outcome'.",
+            )
 
         return True, ""
 
@@ -258,25 +277,59 @@ class TradeReflector:
         hours = float(getattr(reflection, "holding_hours", 0.0) or 0.0)
         alpha = getattr(reflection, "alpha_return", None)
         bench = getattr(reflection, "benchmark_name", None)
+        is_whatif = bool(getattr(reflection, "is_paper_whatif", False))
+        whatif_pips = getattr(reflection, "whatif_hypothetical_pnl_pips", None)
+        whatif_reason = getattr(reflection, "whatif_reason", "") or "filter_blocked"
 
         alpha_str = f" Alpha vs {bench}: {alpha:.2f}%." if bench and alpha is not None else ""
 
-        if was_profit:
-            reflection_text = f"Trade {decision} on {symbol} closed with profit (${pnl:.2f}) via {reason} after {hours:.1f}h.{alpha_str}"
-            specific_lesson = f"Trade {decision} on {symbol} achieved profitable target via {reason}; entry setup respected market structure."
-            lesson_tags = ["well_executed_setup"]
-            next_adjustment = "Maintain disciplined confluence verification and take profit targets."
-            process_was_sound = True
-            outcome_cls = "good_process_good_outcome"
+        if is_whatif:
+            pips_str = f" ({whatif_pips} pips)" if whatif_pips is not None else ""
+            if was_profit:
+                reflection_text = (
+                    f"Paper what-if proposal {decision} on {symbol} was not executed ({whatif_reason}). "
+                    f"Hypothetical setup proved profitable{pips_str} via {reason}.{alpha_str}"
+                )
+                specific_lesson = (
+                    f"Hypothetical {decision} setup on {symbol} achieved profitable target via {reason}; "
+                    "entry setup respected market structure."
+                )
+                lesson_tags = ["well_executed_setup"]
+                next_adjustment = "Maintain disciplined confluence verification and take profit targets."
+                process_was_sound = True
+                outcome_cls = "good_process_good_outcome"
+            else:
+                reflection_text = (
+                    f"Paper what-if proposal {decision} on {symbol} was not executed ({whatif_reason}). "
+                    f"Hypothetical setup hit loss{pips_str} via {reason}.{alpha_str}"
+                )
+                specific_lesson = (
+                    f"Hypothetical {decision} setup on {symbol} stopped out via {reason}; "
+                    "re-evaluate invalidation level and entry timing."
+                )
+                lesson_tags = ["sl_too_tight"]
+                next_adjustment = (
+                    "Verify support/resistance buffer and avoid entering without clear structural confirmation."
+                )
+                process_was_sound = True
+                outcome_cls = "good_process_bad_outcome"
         else:
-            reflection_text = f"Trade {decision} on {symbol} closed with loss (${pnl:.2f}) via {reason} after {hours:.1f}h.{alpha_str}"
-            specific_lesson = f"Trade {decision} on {symbol} stopped out via {reason}; re-evaluate invalidation level and entry timing."
-            lesson_tags = ["sl_too_tight"]
-            next_adjustment = (
-                "Verify support/resistance buffer and avoid entering without clear structural confirmation."
-            )
-            process_was_sound = False
-            outcome_cls = "bad_process_bad_outcome"
+            if was_profit:
+                reflection_text = f"Trade {decision} on {symbol} closed with profit (${pnl:.2f}) via {reason} after {hours:.1f}h.{alpha_str}"
+                specific_lesson = f"Trade {decision} on {symbol} achieved profitable target via {reason}; entry setup respected market structure."
+                lesson_tags = ["well_executed_setup"]
+                next_adjustment = "Maintain disciplined confluence verification and take profit targets."
+                process_was_sound = True
+                outcome_cls = "good_process_good_outcome"
+            else:
+                reflection_text = f"Trade {decision} on {symbol} closed with loss (${pnl:.2f}) via {reason} after {hours:.1f}h.{alpha_str}"
+                specific_lesson = f"Trade {decision} on {symbol} stopped out via {reason}; re-evaluate invalidation level and entry timing."
+                lesson_tags = ["sl_too_tight"]
+                next_adjustment = (
+                    "Verify support/resistance buffer and avoid entering without clear structural confirmation."
+                )
+                process_was_sound = False
+                outcome_cls = "bad_process_bad_outcome"
 
         return {
             "reflection_text": reflection_text,
@@ -377,9 +430,15 @@ class TradeReflector:
 
         is_whatif = getattr(reflection, "is_paper_whatif", False)
         if is_whatif:
-            outcome_str = f"Hypothetical Outcome: {'Profitable' if reflection.whatif_direction_correct else 'Loss'} ({reflection.whatif_hypothetical_pnl_pips} pips)"
-            exit_str = "Exit Reason: 24h Time Limit (Paper What-If)"
-            holding_str = "Holding: 24h"
+            outcome_label = "Profitable" if reflection.was_profitable else "Loss"
+            pips_val = getattr(reflection, "whatif_hypothetical_pnl_pips", None)
+            pips_str = f" ({pips_val} pips)" if pips_val is not None else ""
+            outcome_str = f"Hypothetical Outcome: {outcome_label}{pips_str}"
+            exit_reason = getattr(reflection, "exit_reason", None) or (
+                "take_profit" if reflection.was_profitable else "stop_loss"
+            )
+            exit_str = f"Exit Reason: {exit_reason} (Paper What-If)"
+            holding_str = "Holding: <=24h (Paper What-If)"
         else:
             outcome_str = (
                 f"Outcome: {'Profitable' if reflection.was_profitable else 'Loss'} (${reflection.outcome_pnl_usd})"
@@ -467,6 +526,8 @@ class TradeReflector:
             fallback = self._generate_deterministic_fallback(reflection, enrichment)
             data["specific_lesson"] = fallback["specific_lesson"]
             data["lesson_tags"] = fallback["lesson_tags"]
+            data["outcome_process_classification"] = fallback["outcome_process_classification"]
+            data["process_was_sound"] = fallback["process_was_sound"]
             for k, v in fallback.items():
                 if not data.get(k):
                     data[k] = v

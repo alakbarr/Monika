@@ -204,3 +204,141 @@ async def test_reflector_handles_markdown_and_thoughts():
         assert mock_reflection.status == "resolved"
         assert "Valid technical breakout on H4 timeframe" in mock_reflection.specific_lesson
         assert mock_reflection.process_was_sound is True
+
+
+@pytest.mark.asyncio
+async def test_reflector_paper_whatif_tp_hit_no_outcome_conflict():
+    """Verify that a paper what-if with TP hit sends consistent prompt and resolves cleanly."""
+    settings = {}
+    with (
+        patch("monika.application.analysis.memory.reflector.get_client_for_task") as mock_get_client,
+        patch("monika.application.analysis.memory.skill_crystallizer.SkillCrystallizer") as mock_cryst,
+    ):
+        mock_cryst.return_value.evaluate_and_crystallize = AsyncMock()
+        mock_client = AsyncMock()
+        mock_client.generate_content.return_value = json.dumps(
+            {
+                "reflection_text": "Proposal reached TP in paper simulation.",
+                "lesson_tags": ["well_executed_setup"],
+                "specific_lesson": "Valid H4 expansion setup reached target cleanly.",
+                "next_trade_adjustment": "Maintain execution parameters.",
+                "alpha_lesson": "Outperformed benchmark.",
+                "process_was_sound": True,
+                "outcome_process_classification": "good_process_good_outcome",
+                "macro_thesis_correct": True,
+                "synthesis_adjudication_sound": True,
+            }
+        )
+        mock_get_client.return_value = mock_client
+
+        reflector = TradeReflector(settings=settings)
+        session = create_mock_async_session()
+        mock_reflection = DecisionReflection(
+            id=585,
+            symbol="BTCUSD",
+            decision="SELL",
+            confidence=0.85,
+            is_paper_whatif=True,
+            was_profitable=True,
+            whatif_direction_correct=True,
+            whatif_hypothetical_pnl_pips=1695.8,
+            whatif_sl_would_hit=False,
+            whatif_tp_would_hit=True,
+            exit_reason="tp_hit",
+            status="pending",
+            rationale_summary="Sell proposal blocked by risk gate.",
+            benchmark_name="FLAT",
+            alpha_return=2.1,
+        )
+        session.get.return_value = mock_reflection
+
+        await reflector.reflect_on_trade(session, 585)
+
+        # Prompt must be consistent with profitability
+        prompt = mock_client.generate_content.call_args.kwargs["user_message"]
+        assert "Hypothetical Outcome: Profitable (1695.8 pips)" in prompt
+        assert "Exit Reason: tp_hit (Paper What-If)" in prompt
+
+        assert mock_reflection.status == "resolved"
+        assert mock_reflection.outcome_process_classification == "good_process_good_outcome"
+        assert mock_reflection.process_was_sound is True
+
+
+@pytest.mark.asyncio
+async def test_reflector_paper_whatif_sl_hit_avoid_classification():
+    """Verify that a blocked/avoid trade where hypothetical trade hit SL passes audit gate with good_process_bad_outcome."""
+    settings = {}
+    with (
+        patch("monika.application.analysis.memory.reflector.get_client_for_task") as mock_get_client,
+        patch("monika.application.analysis.memory.skill_crystallizer.SkillCrystallizer") as mock_cryst,
+    ):
+        mock_cryst.return_value.evaluate_and_crystallize = AsyncMock()
+        mock_client = AsyncMock()
+        mock_client.generate_content.return_value = json.dumps(
+            {
+                "reflection_text": "Decision was WAIT; trade hit hypothetical SL avoiding loss.",
+                "lesson_tags": ["premature_entry", "chased_price"],
+                "specific_lesson": "Market was at premium ceiling and broke downward as anticipated by filter.",
+                "next_trade_adjustment": "Continue filtering out premium ceiling chases.",
+                "alpha_lesson": "Dodged negative alpha.",
+                "process_was_sound": True,
+                "outcome_process_classification": "good_process_bad_outcome",
+                "macro_thesis_correct": False,
+                "synthesis_adjudication_sound": True,
+            }
+        )
+        mock_get_client.return_value = mock_client
+
+        reflector = TradeReflector(settings=settings)
+        session = create_mock_async_session()
+        mock_reflection = DecisionReflection(
+            id=575,
+            symbol="GBPUSD",
+            decision="WAIT",
+            confidence=0.78,
+            is_paper_whatif=True,
+            was_profitable=False,
+            whatif_direction_correct=False,
+            whatif_hypothetical_pnl_pips=-37.9,
+            whatif_sl_would_hit=True,
+            whatif_tp_would_hit=False,
+            exit_reason="sl_hit",
+            status="pending",
+            rationale_summary="Debate avoid verdict.",
+            benchmark_name="DXY",
+            alpha_return=-0.5,
+        )
+        session.get.return_value = mock_reflection
+
+        await reflector.reflect_on_trade(session, 575)
+
+        prompt = mock_client.generate_content.call_args.kwargs["user_message"]
+        assert "Hypothetical Outcome: Loss (-37.9 pips)" in prompt
+        assert "Exit Reason: sl_hit (Paper What-If)" in prompt
+
+        assert mock_reflection.status == "resolved"
+        assert mock_reflection.outcome_process_classification == "good_process_bad_outcome"
+        assert mock_reflection.process_was_sound is True
+
+
+def test_reflector_critique_rejects_both_good_outcomes_on_loss():
+    """Verify audit gate rejects both good_process_good_outcome and bad_process_good_outcome_lucky on loss."""
+    reflector = TradeReflector()
+    data1 = {
+        "specific_lesson": "Valid technical breakout on H4 timeframe occurred with clear momentum.",
+        "lesson_tags": ["well_executed_setup"],
+        "outcome_process_classification": "good_process_good_outcome",
+    }
+    is_valid1, critique1 = reflector._verify_reflection_quality(data1, was_profitable=False)
+    assert not is_valid1
+    assert "Outcome conflict" in critique1
+    assert "good_process_bad_outcome" in critique1
+
+    data2 = {
+        "specific_lesson": "Valid technical breakout on H4 timeframe occurred with clear momentum.",
+        "lesson_tags": ["well_executed_setup"],
+        "outcome_process_classification": "bad_process_good_outcome_lucky",
+    }
+    is_valid2, critique2 = reflector._verify_reflection_quality(data2, was_profitable=False)
+    assert not is_valid2
+    assert "Outcome conflict" in critique2
