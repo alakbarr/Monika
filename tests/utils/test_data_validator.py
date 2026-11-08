@@ -290,3 +290,33 @@ class TestDataValidator:
             res = await validate_data_freshness(mock_session, ["XAUUSD"], ["W1"])
             assert res["ready"] is True
             assert len(res["errors"]) == 0
+
+    @pytest.mark.asyncio
+    async def test_validate_reopen_window_sunday_night_freshness(self):
+        """Verify Friday close H4 (52.6h) and D1 (70.6h) are valid during Sunday market reopen window (22:35 UTC)."""
+        mock_session = create_mock_async_session()
+        # Sunday 22:35 UTC
+        sunday_reopen = datetime(2026, 11, 8, 22, 35, 30, tzinfo=timezone.utc)
+        # Friday 18:00 UTC (H4 bar) and Friday 00:00 UTC (D1 bar)
+        friday_h4_close = datetime(2026, 11, 6, 18, 0, 0, tzinfo=timezone.utc)
+        friday_d1_close = datetime(2026, 11, 6, 0, 0, 0, tzinfo=timezone.utc)
+
+        execute_side_effects = [
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_h4_close)),  # AUDUSD H4 OHLCV (52.6h old)
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_d1_close)),  # AUDUSD D1 OHLCV (70.6h old)
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_h4_close)),  # AUDUSD H4 Indicator (52.6h old)
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_d1_close)),  # AUDUSD D1 Indicator (70.6h old)
+            MagicMock(scalar_one_or_none=MagicMock(return_value=sunday_reopen - timedelta(hours=1))),  # News
+            MagicMock(scalar_one_or_none=MagicMock(return_value=sunday_reopen + timedelta(days=2))),  # Calendar
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_d1_close.date())),  # VIX
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_d1_close.date())),  # Yield
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_d1_close.date())),  # DXY
+            MagicMock(scalar_one_or_none=MagicMock(return_value=friday_d1_close.date())),  # COT
+            MagicMock(scalar_one_or_none=MagicMock(return_value=sunday_reopen - timedelta(hours=2))),  # FedWatch
+        ]
+        mock_session.execute.side_effect = execute_side_effects
+
+        with patch("monika.core.primitives.clock.now", return_value=sunday_reopen):
+            res = await validate_data_freshness(mock_session, ["AUDUSD"], ["H4", "D1"])
+            assert res["ready"] is True
+            assert len(res["errors"]) == 0

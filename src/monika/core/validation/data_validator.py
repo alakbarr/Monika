@@ -133,8 +133,10 @@ async def validate_data_freshness(
                     continue
 
                 # Toleransi saat pembukaan pasar Senin / jeda akhir pekan
-                is_friday_close = (latest.weekday() == 4 and latest.hour >= 20) or (latest.weekday() == 5)
-                weekend_d1_allowance = 72.0 if (not is_crypto and is_monday and tf == "D1") else 0.0
+                is_friday_close = (
+                    latest.weekday() in (4, 5) and (tf == "D1" or latest.hour >= 16)
+                ) or latest.weekday() == 5
+                weekend_d1_allowance = 72.0 if (not is_crypto and (reopen_window or is_monday) and tf == "D1") else 0.0
                 weekend_htf_allowance = (
                     48.0 if (not is_crypto and (reopen_window or is_monday) and is_friday_close) else 0.0
                 )
@@ -173,10 +175,12 @@ async def validate_data_freshness(
                 if not is_crypto and forex_closed:
                     continue
 
-                is_friday_close_ind = (latest_ind.weekday() == 4 and latest_ind.hour >= 20) or (
-                    latest_ind.weekday() == 5
+                is_friday_close_ind = (
+                    latest_ind.weekday() in (4, 5) and (tf == "D1" or latest_ind.hour >= 16)
+                ) or latest_ind.weekday() == 5
+                weekend_d1_ind_allowance = (
+                    72.0 if (not is_crypto and (reopen_window or is_monday) and tf == "D1") else 0.0
                 )
-                weekend_d1_ind_allowance = 72.0 if (not is_crypto and is_monday and tf == "D1") else 0.0
                 weekend_htf_ind_allowance = (
                     48.0 if (not is_crypto and (reopen_window or is_monday) and is_friday_close_ind) else 0.0
                 )
@@ -454,7 +458,7 @@ async def check_data_coherence(
             tf_ohlcv_max = ohlcv_thresholds.get(tf, DEFAULT_OHLCV_AGE.get(tf, 8.0))
             tf_ind_max = ind_thresholds.get(tf, DEFAULT_IND_AGE.get(tf, 8.0))
 
-        weekend_d1_allowance = 72.0 if (not is_crypto and is_monday and tf == "D1") else 0.0
+        weekend_d1_allowance = 72.0 if (not is_crypto and (reopen_window or is_monday) and tf == "D1") else 0.0
         weekend_htf_allowance = 48.0 if (not is_crypto and (forex_closed or reopen_window or is_monday)) else 0.0
         effective_ohlcv_max = tf_ohlcv_max + max(weekend_d1_allowance, weekend_htf_allowance)
         effective_ind_max = tf_ind_max + max(weekend_d1_allowance, weekend_htf_allowance)
