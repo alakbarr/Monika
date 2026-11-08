@@ -84,7 +84,11 @@ flowchart TD
   - Replace 128 sequential SQLite queries in `compute_all_symbols` with 2 batched grouped queries:
     ```python
     stmt_price = (
-        select(PriceOHLCV.symbol, PriceOHLCV.timeframe, func.max(func.coalesce(PriceOHLCV.canonical_timestamp, PriceOHLCV.timestamp)))
+        select(
+            PriceOHLCV.symbol,
+            PriceOHLCV.timeframe,
+            func.max(func.coalesce(PriceOHLCV.canonical_timestamp, PriceOHLCV.timestamp)),
+        )
         .where(PriceOHLCV.symbol.in_(symbols), PriceOHLCV.timeframe.in_(timeframes))
         .group_by(PriceOHLCV.symbol, PriceOHLCV.timeframe)
     )

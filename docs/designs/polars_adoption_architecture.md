@@ -94,6 +94,7 @@ flowchart TD
 """
 Zero-Copy Dataframe Interoperability Bridge (Pandas <-> Polars <-> Arrow).
 """
+
 from __future__ import annotations
 
 from typing import Any, Union
@@ -115,7 +116,9 @@ class PolarsBridge:
     """Robust, fail-closed bridge for converting tabular structures between Pandas, Polars, and NumPy."""
 
     @staticmethod
-    def to_polars(df: Union[pd.DataFrame, pd.Series, pl.DataFrame, pl.Series, pl.LazyFrame, np.ndarray, dict]) -> pl.DataFrame:
+    def to_polars(
+        df: Union[pd.DataFrame, pd.Series, pl.DataFrame, pl.Series, pl.LazyFrame, np.ndarray, dict],
+    ) -> pl.DataFrame:
         """Converts arbitrary tabular input to a canonical Polars DataFrame."""
         if isinstance(df, pl.DataFrame):
             return df
@@ -210,11 +213,7 @@ This eliminates the $O(N \times T)$ nested dictionary iteration and `pd.Datetime
    def pl_safe_div(a: pl.Expr, b: pl.Expr, eps: float = 1e-12) -> pl.Expr:
        sign = pl.when(b >= 0.0).then(1.0).otherwise(-1.0)
        denom = b + eps * sign
-       return (
-           pl.when((b == 0.0) | b.is_null() | b.is_nan())
-           .then(None)
-           .otherwise(a / denom)
-       )
+       return pl.when((b == 0.0) | b.is_null() | b.is_nan()).then(None).otherwise(a / denom)
    ```
 2. `decay_linear` vectorized Polars expression:
    ```python
