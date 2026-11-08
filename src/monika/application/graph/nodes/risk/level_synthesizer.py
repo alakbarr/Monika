@@ -49,6 +49,7 @@ async def resolve_and_repair_levels(
     """
     from sqlalchemy import select
 
+    import monika.core.primitives.clock as clock
     from monika.infrastructure.database.models import PriceOHLCV
 
     dec_u = str(r.get("decision", "")).upper()
@@ -85,6 +86,8 @@ async def resolve_and_repair_levels(
                 await session.execute(
                     select(PriceOHLCV.close)
                     .where(PriceOHLCV.symbol == symbol)
+                    .where(PriceOHLCV.timeframe == "M15")
+                    .where(PriceOHLCV.timestamp <= clock.now())
                     .order_by(PriceOHLCV.timestamp.desc())
                     .limit(1)
                 )

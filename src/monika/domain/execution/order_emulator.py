@@ -254,11 +254,21 @@ class ClientOrderEmulator:
                 pair_group_id=pair_group_id,
                 metadata=metadata or {},
             )
+            is_new = existing is None
+            sl_changed = existing is not None and abs(existing.current_sl - current_sl) > 1e-6
             self._positions[ticket] = pos
-            logger.info(
-                f"[ClientOrderEmulator] Registered position #{ticket} ({sym_clean} {dir_clean.upper()} "
-                f"@ {entry_price}, SL={current_sl}, ATR={eff_atr:.5f})"
-            )
+            if is_new:
+                logger.info(
+                    f"[ClientOrderEmulator] Registered position #{ticket} ({sym_clean} {dir_clean.upper()} "
+                    f"@ {entry_price}, SL={current_sl}, ATR={eff_atr:.5f})"
+                )
+            elif sl_changed:
+                logger.info(
+                    f"[ClientOrderEmulator] Updated position #{ticket} ({sym_clean} {dir_clean.upper()} "
+                    f"SL: {existing.current_sl} -> {current_sl})"
+                )
+            else:
+                logger.debug(f"[ClientOrderEmulator] Synced position #{ticket} ({sym_clean})")
             return pos
 
     async def unregister_position(self, ticket: int) -> Optional[TrackedPosition]:

@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import delete, desc, select
+from sqlalchemy import delete, desc, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.domain.indicators.structure import (
@@ -746,16 +746,21 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             await self.session.commit()
         return len(breaks)
 
-    async def get_structure_snapshot(self, symbol: str, timeframe: str) -> dict:
+    async def get_structure_snapshot(self, symbol: str, timeframe: str, as_of: Optional[datetime] = None) -> dict:
         """Snapshot ringkas struktur pasar (Swings, S/R, FVG, dll)."""
         if not self.session:
             return {}
+
+        from monika.core.primitives import clock
+
+        now = as_of or clock.get_simulated_now() or clock.now()
 
         highs_q = await self.session.execute(
             select(SwingPoint)
             .where(SwingPoint.symbol == symbol)
             .where(SwingPoint.timeframe == timeframe)
             .where(SwingPoint.type == "high")
+            .where(SwingPoint.timestamp <= now)
             .order_by(SwingPoint.timestamp.desc())
             .limit(10)
         )
@@ -764,6 +769,7 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             .where(SwingPoint.symbol == symbol)
             .where(SwingPoint.timeframe == timeframe)
             .where(SwingPoint.type == "low")
+            .where(SwingPoint.timestamp <= now)
             .order_by(SwingPoint.timestamp.desc())
             .limit(10)
         )
@@ -771,6 +777,7 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             select(SRZone)
             .where(SRZone.symbol == symbol)
             .where(SRZone.timeframe == timeframe)
+            .where(or_(SRZone.last_touched.is_(None), SRZone.last_touched <= now))
             .order_by(SRZone.strength.desc())
             .limit(5)
         )
@@ -778,6 +785,7 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             select(LiquidityZone)
             .where(LiquidityZone.symbol == symbol)
             .where(LiquidityZone.timeframe == timeframe)
+            .where(LiquidityZone.identified_at <= now)
             .order_by(LiquidityZone.identified_at.desc())
             .limit(10)
         )
@@ -785,7 +793,8 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             select(FVGZone)
             .where(FVGZone.symbol == symbol)
             .where(FVGZone.timeframe == timeframe)
-            .where(FVGZone.filled_at.is_(None))
+            .where(FVGZone.formed_at <= now)
+            .where(or_(FVGZone.filled_at.is_(None), FVGZone.filled_at > now))
             .order_by(FVGZone.formed_at.desc())
             .limit(10)
         )
@@ -793,7 +802,8 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             select(OrderBlock)
             .where(OrderBlock.symbol == symbol)
             .where(OrderBlock.timeframe == timeframe)
-            .where(OrderBlock.mitigated_at.is_(None))
+            .where(OrderBlock.formed_at <= now)
+            .where(or_(OrderBlock.mitigated_at.is_(None), OrderBlock.mitigated_at > now))
             .order_by(OrderBlock.formed_at.desc())
             .limit(5)
         )
@@ -801,6 +811,7 @@ class MarketStructureService(DomainMarketStructureAnalyzer):
             select(StructureBreak)
             .where(StructureBreak.symbol == symbol)
             .where(StructureBreak.timeframe == timeframe)
+            .where(StructureBreak.formed_at <= now)
             .order_by(StructureBreak.formed_at.desc())
             .limit(5)
         )

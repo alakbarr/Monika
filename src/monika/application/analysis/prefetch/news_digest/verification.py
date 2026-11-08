@@ -14,6 +14,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import monika.core.primitives.clock as clock
 from monika.core.primitives.clock import ensure_utc
 from monika.domain.market.news_impact_keywords import SHOCK_KEYWORDS
 from monika.infrastructure.database.models import NewsItem
@@ -862,7 +863,7 @@ Respond JSON array of objects:
 
         from monika.infrastructure.database.models import SystemConfig
 
-        hour_key = f"news_cls_dist_{datetime.now(timezone.utc).strftime('%Y%m%d_%H')}"
+        hour_key = f"news_cls_dist_{clock.now().strftime('%Y%m%d_%H')}"
         existing = (
             await session.execute(select(SystemConfig).where(SystemConfig.key == hour_key))
         ).scalar_one_or_none()

@@ -463,27 +463,29 @@ class TechnicalIndicatorService(DomainTechnicalIndicatorCalculator):
     # Data loading
     # ------------------------------------------------------------------
 
-    async def _load_ohlcv(self, symbol: str, timeframe: str) -> Optional[pd.DataFrame]:
+    async def _load_ohlcv(
+        self, symbol: str, timeframe: str, as_of: Optional[datetime] = None
+    ) -> Optional[pd.DataFrame]:
         """Memuat OHLCV secara descending, lalu dibalik menjadi kronologis untuk kalkulasi."""
         fetch_limit = 1000 if timeframe.upper() in ("D1", "H4") else 500
 
+        from monika.core.primitives import clock
         from monika.domain.market.market_data_bus import MarketDataBus
 
+        cutoff = as_of or clock.now()
         bus = MarketDataBus.get_instance()
-        cached_df = bus.get_candles_df(symbol, timeframe, count=fetch_limit)
+        cached_df = bus.get_candles_df(symbol, timeframe, count=fetch_limit) if not clock.is_simulated() else None
         if cached_df is not None and len(cached_df) >= min(fetch_limit, 50):
             df = cached_df.copy()
         else:
             if not self.session:
                 return None
 
-            from monika.core.primitives import clock
-
             result = await self.session.execute(
                 select(PriceOHLCV)
                 .where(PriceOHLCV.symbol == symbol)
                 .where(PriceOHLCV.timeframe == timeframe)
-                .where(PriceOHLCV.timestamp <= clock.now())
+                .where(PriceOHLCV.timestamp <= cutoff)
                 .order_by(PriceOHLCV.timestamp.desc())
                 .limit(fetch_limit)
             )

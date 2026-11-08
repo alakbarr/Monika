@@ -32,6 +32,7 @@ from monika.core.analytics.paper_analytics import (
 logger = logging.getLogger("TradingAgent.PaperTracker")
 
 _PAPER_TRACKER_LOCK = asyncio.Lock()
+_SL_UPDATED_AT: dict[int, datetime] = {}
 
 
 class PaperTracker:
@@ -76,7 +77,11 @@ class PaperTracker:
 
         if trade:
             trade.stop_loss = float(new_sl)
-            logger.debug(f"[PAPER] Updated SL for analysis_id {analysis_id} to {new_sl}")
+            now_time = clock.now()
+            setattr(trade, "sl_updated_at", now_time)
+            _SL_UPDATED_AT[trade.id] = now_time
+            _SL_UPDATED_AT[analysis_id] = now_time
+            logger.debug(f"[PAPER] Updated SL for analysis_id {analysis_id} to {new_sl} at {now_time}")
 
     async def _resolve_initial_stop_loss(self, session: AsyncSession, trade: PaperTradeRecord) -> float | None:
         """Return the immutable entry stop, resolving it deterministically when legacy rows lack it.
@@ -134,6 +139,28 @@ class PaperTracker:
                 pos.pnl = None
             pos.sl = trade.stop_loss
             logger.debug(f"[PAPER] Linked Position id={pos.id} closed with PaperTradeRecord {trade.id}")
+
+        try:
+            from monika.infrastructure.database.models import TradePlan, TradePlanLeg
+
+            plans = (
+                (await session.execute(select(TradePlan).where(TradePlan.analysis_id == trade.analysis_id)))
+                .scalars()
+                .all()
+            )
+            for p in plans:
+                if p.status != "CLOSED":
+                    p.status = "CLOSED"
+                    legs = (
+                        (await session.execute(select(TradePlanLeg).where(TradePlanLeg.plan_id == p.id)))
+                        .scalars()
+                        .all()
+                    )
+                    for leg in legs:
+                        if leg.status in ("pending", "filled"):
+                            leg.status = "closed"
+        except Exception as tp_err:
+            logger.debug(f"[PAPER] TradePlan close sync non-fatal: {tp_err}")
 
     # -------------------------------------------------------------------------
     # Core Operations
@@ -286,7 +313,16 @@ class PaperTracker:
 
     async def _get_bars_since_open(self, session: AsyncSession, trade: PaperTradeRecord, timeframe: str):
         """Ambil bars sejak posisi dibuka, termasuk bar yang sedang aktif."""
-        start_time = trade.filled_at or trade.opened_at
+        sl_time = getattr(trade, "sl_updated_at", None)
+        if not sl_time and trade.id in _SL_UPDATED_AT:
+            candidate = _SL_UPDATED_AT[trade.id]
+            if not trade.opened_at or candidate >= trade.opened_at:
+                sl_time = candidate
+        if not sl_time and trade.analysis_id and trade.analysis_id in _SL_UPDATED_AT:
+            candidate = _SL_UPDATED_AT[trade.analysis_id]
+            if not trade.opened_at or candidate >= trade.opened_at:
+                sl_time = candidate
+        start_time = sl_time or trade.filled_at or trade.opened_at
         age_hours = (clock.now() - start_time).total_seconds() / 3600
 
         # Dynamic limit based on timeframe and age
@@ -576,16 +612,105 @@ class PaperTracker:
                 result = None
                 current_closed_item = None
                 try:
-                    # NEW: Force close sangat tua trades yang mungkin stuck karena data issue
+                    # Step 1: Handle pending limit orders - check if price reached entry level
+                    if getattr(trade, "is_pending_fill", False):
+                        if trade.stated_entry_price:
+                            was_filled = await self._try_fill_pending_order(session, trade)
+                            if not was_filled:
+                                # Check if order has expired (pending for more than 48h)
+                                age_hours = (clock.now() - trade.opened_at).total_seconds() / 3600
+                                if age_hours > 48:
+                                    trade.status = "closed"
+                                    trade.closed_at = clock.now()
+                                    trade.exit_reason = "expired_limit"
+                                    trade.pnl_pct = 0.0
+                                    trade.exit_price = trade.entry_price
+                                    # No capital was ever at risk: zero PnL is a fact,
+                                    # not an unverified estimate.
+                                    trade.accounting_status = "not_filled"
+                                    await self._close_linked_position(session, trade)
+                                    logger.info(
+                                        f"[PAPER] EXPIRED limit order {trade.symbol} {trade.direction} (never filled after 48h)"
+                                    )
+                                    try:
+                                        await self._record_factor_outcomes(session, trade)
+                                    except Exception as e:
+                                        logger.debug(f"Factor outcome recording failed (non-fatal): {e}")
+                                continue  # Skip SL/TP check if still pending
+                        else:
+                            continue
+
+                    # Step 2: Try to detect SL/TP - adaptive TF based on trade age
+                    result = None
+                    trade_age_h = (clock.now() - trade.opened_at).total_seconds() / 3600
+                    tfs_to_check = ["M15", "H1"] if trade_age_h < 24 else ["H1", "H4"]
+
+                    for timeframe in tfs_to_check:
+                        bars = await self._get_bars_since_open(session, trade, timeframe)
+                        if bars:
+                            result = await self._check_sl_tp(session, trade, bars, timeframe)
+                            if result:
+                                break
+
+                    if result:
+                        current_closed_item = result
+                        closed.append(result)
+                        _SL_UPDATED_AT.pop(trade.id, None)
+                        if trade.analysis_id:
+                            _SL_UPDATED_AT.pop(trade.analysis_id, None)
+                        await self._close_linked_position(session, trade)
+                        pnl_text = f"{result['pnl_pct']:.2f}%" if result["pnl_pct"] is not None else "UNVERIFIED"
+                        logger.info(
+                            f"[PAPER] Closed {trade.symbol} {trade.direction}: "
+                            f"{result['exit_reason']}, P&L={pnl_text}, "
+                            f"accounting={result.get('accounting_status', 'unknown')}, "
+                            f"detected_on={result.get('detection_tf', 'unknown')}"
+                        )
+
+                        # IMP-11: Record individual factor outcomes for attribution analysis
+                        try:
+                            await self._record_factor_outcomes(session, trade)
+                        except Exception as e:
+                            logger.debug(f"Factor outcome recording failed (non-fatal): {e}")
+
+                        try:
+                            from monika.core.analytics.trade_autopsy import run_trade_autopsy
+
+                            await run_trade_autopsy(session, trade)
+                        except Exception as e:
+                            logger.debug(f"Trade autopsy failed (non-fatal): {e}")
+
+                        try:
+                            await self._record_decay_outcome(session, trade)
+                        except Exception as e:
+                            logger.debug(f"Decay outcome recording failed (non-fatal): {e}")
+
+                        if trade.analysis_id and trade.pnl_pct is not None:
+                            try:
+                                from monika.application.analysis.memory.outcome_linker import OutcomeLinker
+
+                                await OutcomeLinker(self.settings).process_closed_position(
+                                    session,
+                                    analysis_id=trade.analysis_id,
+                                    pnl=trade.pnl_pct,
+                                    holding_hours=trade.holding_hours or 0.0,
+                                    exit_reason=trade.exit_reason or "unknown",
+                                )
+                            except Exception as e:
+                                logger.debug(f"OutcomeLinker failed (non-fatal): {e}")
+                        continue
+
+                    # Step 3: Force close very old trades exceeding MAX_TRADE_AGE_HOURS (point-in-time <= now)
                     if trade.opened_at:
                         age_hours = (now - trade.opened_at).total_seconds() / 3600
                         if age_hours > MAX_TRADE_AGE_HOURS:
-                            # Coba dapatkan current price untuk estimate P&L
+                            # Coba dapatkan current price untuk estimate P&L (point-in-time <= now)
                             last_bar = (
                                 await session.execute(
                                     select(PriceOHLCV)
                                     .where(PriceOHLCV.symbol == trade.symbol)
                                     .where(PriceOHLCV.timeframe == "H4")
+                                    .where(PriceOHLCV.timestamp <= now)
                                     .order_by(PriceOHLCV.timestamp.desc())
                                     .limit(1)
                                 )
@@ -656,6 +781,9 @@ class PaperTracker:
                             trade.exit_reason = "max_holding_time"
                             trade.pnl_pct = round(pnl_pct, 4) if pnl_pct is not None else None
                             trade.holding_hours = age_hours
+                            _SL_UPDATED_AT.pop(trade.id, None)
+                            if trade.analysis_id:
+                                _SL_UPDATED_AT.pop(trade.analysis_id, None)
                             await self._close_linked_position(session, trade)
                             logger.warning(
                                 f"[PAPER] Force-closed {trade.symbol} after {age_hours:.0f}h (max holding time), "
@@ -677,87 +805,6 @@ class PaperTracker:
                             except Exception as e:
                                 logger.debug(f"Decay outcome recording failed (non-fatal): {e}")
                             continue
-
-                    # Step 1: Handle pending limit orders - check if price reached entry level
-                    if getattr(trade, "is_pending_fill", False) and trade.stated_entry_price:
-                        was_filled = await self._try_fill_pending_order(session, trade)
-                        if not was_filled:
-                            # Check if order has expired (pending for more than 48h)
-                            age_hours = (clock.now() - trade.opened_at).total_seconds() / 3600
-                            if age_hours > 48:
-                                trade.status = "closed"
-                                trade.closed_at = clock.now()
-                                trade.exit_reason = "expired_limit"
-                                trade.pnl_pct = 0.0
-                                trade.exit_price = trade.entry_price
-                                # No capital was ever at risk: zero PnL is a fact,
-                                # not an unverified estimate.
-                                trade.accounting_status = "not_filled"
-                                await self._close_linked_position(session, trade)
-                                logger.info(
-                                    f"[PAPER] EXPIRED limit order {trade.symbol} {trade.direction} (never filled after 48h)"
-                                )
-                                try:
-                                    await self._record_factor_outcomes(session, trade)
-                                except Exception as e:
-                                    logger.debug(f"Factor outcome recording failed (non-fatal): {e}")
-                            continue  # Skip SL/TP check if still pending
-
-                    # Step 2: Try to detect SL/TP - adaptive TF based on trade age
-                    result = None
-                    trade_age_h = (clock.now() - trade.opened_at).total_seconds() / 3600
-                    tfs_to_check = ["M15", "H1"] if trade_age_h < 24 else ["H1", "H4"]
-
-                    for timeframe in tfs_to_check:
-                        bars = await self._get_bars_since_open(session, trade, timeframe)
-                        if bars:
-                            result = await self._check_sl_tp(session, trade, bars, timeframe)
-                            if result:
-                                break
-
-                    if result:
-                        current_closed_item = result
-                        closed.append(result)
-                        await self._close_linked_position(session, trade)
-                        pnl_text = f"{result['pnl_pct']:.2f}%" if result["pnl_pct"] is not None else "UNVERIFIED"
-                        logger.info(
-                            f"[PAPER] Closed {trade.symbol} {trade.direction}: "
-                            f"{result['exit_reason']}, P&L={pnl_text}, "
-                            f"accounting={result.get('accounting_status', 'unknown')}, "
-                            f"detected_on={result.get('detection_tf', 'unknown')}"
-                        )
-
-                        # IMP-11: Record individual factor outcomes for attribution analysis
-                        try:
-                            await self._record_factor_outcomes(session, trade)
-                        except Exception as e:
-                            logger.debug(f"Factor outcome recording failed (non-fatal): {e}")
-
-                        try:
-                            from monika.core.analytics.trade_autopsy import run_trade_autopsy
-
-                            await run_trade_autopsy(session, trade)
-                        except Exception as e:
-                            logger.debug(f"Trade autopsy failed (non-fatal): {e}")
-
-                        try:
-                            await self._record_decay_outcome(session, trade)
-                        except Exception as e:
-                            logger.debug(f"Decay outcome recording failed (non-fatal): {e}")
-
-                        if trade.analysis_id and trade.pnl_pct is not None:
-                            try:
-                                from monika.application.analysis.memory.outcome_linker import OutcomeLinker
-
-                                await OutcomeLinker(self.settings).process_closed_position(
-                                    session,
-                                    analysis_id=trade.analysis_id,
-                                    pnl=trade.pnl_pct,
-                                    holding_hours=trade.holding_hours or 0.0,
-                                    exit_reason=trade.exit_reason or "unknown",
-                                )
-                            except Exception as e:
-                                logger.debug(f"OutcomeLinker failed (non-fatal): {e}")
                 except Exception as e:
                     logger.error(f"[PAPER] Trade {trade.id} ({trade.symbol}) check failed, skipping this cycle: {e}")
                     try:
@@ -866,6 +913,83 @@ class PaperTracker:
         except Exception as d_err:
             logger.debug(f"[PAPER] StrategyDecayMonitor record error: {d_err}")
 
+    async def _sync_pending_fill(
+        self, session: AsyncSession, trade: PaperTradeRecord, fill_time: datetime, fill_price: float
+    ) -> None:
+        """Sync Order, Position, and TradePlan on pending order fill."""
+        if not trade.analysis_id:
+            return
+        try:
+            from monika.infrastructure.database.models import Order, OrderStatus, Position, TradePlan, TradePlanLeg
+
+            # 1. Sync Order to FILLED
+            orders = (
+                (
+                    await session.execute(
+                        select(Order)
+                        .where(Order.analysis_id == trade.analysis_id)
+                        .where(Order.status.in_([OrderStatus.ACCEPTED, OrderStatus.SUBMITTED]))
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for o in orders:
+                o.status = OrderStatus.FILLED
+                o.executed_price = fill_price
+                o.updated_at = fill_time
+                o.filled_volume = float(trade.requested_lot or 0.01)
+
+            # 2. Sync / create Position
+            pos = (
+                (
+                    await session.execute(
+                        select(Position)
+                        .where(Position.analysis_id == trade.analysis_id)
+                        .where(Position.status == "open")
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            if not pos:
+                pos = Position(
+                    order_id=orders[0].id if orders else None,
+                    analysis_id=trade.analysis_id,
+                    mt5_ticket=orders[0].mt5_ticket if orders else None,
+                    symbol=trade.symbol,
+                    direction=trade.direction,
+                    volume=float(trade.requested_lot or 0.01),
+                    initial_volume=float(trade.requested_lot or 0.01),
+                    requested_volume=float(trade.requested_lot or 0.01),
+                    entry_price=fill_price,
+                    sl=trade.stop_loss,
+                    tp=trade.take_profit,
+                    slippage_pips=0.0,
+                    partially_filled=False,
+                    opened_at=fill_time,
+                    status="open",
+                    is_paper=True,
+                )
+                session.add(pos)
+
+            # 3. Sync TradePlan & TradePlanLeg
+            plans = (
+                (await session.execute(select(TradePlan).where(TradePlan.analysis_id == trade.analysis_id)))
+                .scalars()
+                .all()
+            )
+            for p in plans:
+                p.status = "CONFIRMED_SCALE_IN"
+                legs = (await session.execute(select(TradePlanLeg).where(TradePlanLeg.plan_id == p.id))).scalars().all()
+                for leg in legs:
+                    if leg.leg_type == "probe" and leg.status == "pending":
+                        leg.status = "filled"
+                        leg.actual_entry = fill_price
+                        leg.filled_at = fill_time
+        except Exception as e:
+            logger.debug(f"[PAPER] Pending fill sync non-fatal: {e}")
+
     async def _try_fill_pending_order(self, session: AsyncSession, trade: PaperTradeRecord) -> bool:
         """Check if a pending limit order has been filled. Returns True if filled."""
         bars = await self._get_bars_since_open(session, trade, "M15")
@@ -888,6 +1012,7 @@ class PaperTracker:
                 trade.is_pending_fill = False
                 trade.filled_at = bar.timestamp
                 logger.info(f"[PAPER] BUY LIMIT FILLED {trade.symbol} @ {stated_entry:.5f}")
+                await self._sync_pending_fill(session, trade, bar.timestamp, stated_entry)
                 await session.commit()
                 return True
 
@@ -897,6 +1022,7 @@ class PaperTracker:
                 trade.is_pending_fill = False
                 trade.filled_at = bar.timestamp
                 logger.info(f"[PAPER] SELL LIMIT FILLED {trade.symbol} @ {stated_entry:.5f}")
+                await self._sync_pending_fill(session, trade, bar.timestamp, stated_entry)
                 await session.commit()
                 return True
 
@@ -937,14 +1063,17 @@ class PaperTracker:
 
         from sqlalchemy import select
 
+        now = clock.now()
         query = (
             select(PaperTradeRecord, AssetAnalysis)
             .outerjoin(AssetAnalysis, PaperTradeRecord.analysis_id == AssetAnalysis.id)
             .where(PaperTradeRecord.status == "closed")
             .where(PaperTradeRecord.accounting_status == "ok")
+            .where(PaperTradeRecord.opened_at <= now)
+            .where(PaperTradeRecord.closed_at <= now)
         )
         if days_back is not None:
-            since = clock.now() - timedelta(days=days_back)
+            since = now - timedelta(days=days_back)
             query = query.where(PaperTradeRecord.closed_at >= since)
         if symbol is not None:
             query = query.where(PaperTradeRecord.symbol == symbol)

@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import monika.core.primitives.clock as clock
 from monika.infrastructure.database.models import NewsDigest, NewsItem
 from monika.application.analysis.prefetch.news_digest.base import (
     _NewsDigestMixinBase,
@@ -52,11 +53,13 @@ class NewsDigestGenerationMixin(_NewsDigestMixinBase):
         """Determine if existing digest is still valid."""
         from monika.infrastructure.database.models import NewsDigest
 
-        since = datetime.now(timezone.utc) - timedelta(hours=cache_hours)
+        now = clock.now()
+        since = now - timedelta(hours=cache_hours)
         digest = (
             await session.execute(
                 select(NewsDigest)
                 .where(NewsDigest.generated_at >= since)
+                .where(NewsDigest.generated_at <= now)
                 .order_by(NewsDigest.generated_at.desc())
                 .limit(1)
             )
@@ -143,13 +146,18 @@ class NewsDigestGenerationMixin(_NewsDigestMixinBase):
             if getattr(i, "key_data_point", None)
         ]
 
-        since_window = datetime.now(timezone.utc) - timedelta(hours=12)
+        now = clock.now()
+        since_window = now - timedelta(hours=12)
         total_in_window = (
-            await session.execute(select(func.count(NewsItem.id)).where(NewsItem.fetched_at >= since_window))
+            await session.execute(
+                select(func.count(NewsItem.id))
+                .where(NewsItem.fetched_at >= since_window)
+                .where(NewsItem.fetched_at <= now)
+            )
         ).scalar_one_or_none() or len(all_significant)
 
         return {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": now.isoformat(),
             "items_in_window_total": total_in_window,
             "items_classified_high_medium": len(all_significant),
             "items_excluded_low_none": max(0, total_in_window - len(all_significant)),
@@ -263,7 +271,8 @@ class NewsDigestGenerationMixin(_NewsDigestMixinBase):
             logger.info("Using cached news digest, skipping LLM API call")
             return existing_digest
 
-        since = datetime.now(timezone.utc) - timedelta(hours=hours_back)
+        now = clock.now()
+        since = now - timedelta(hours=hours_back)
 
         # Fetch all significant news
         high_impact_news = (
@@ -271,6 +280,7 @@ class NewsDigestGenerationMixin(_NewsDigestMixinBase):
                 await session.execute(
                     select(NewsItem)
                     .where(NewsItem.fetched_at >= since)
+                    .where(NewsItem.fetched_at <= now)
                     .where(NewsItem.impact.in_(["BREAKING", "HIGH"]))
                     .order_by(NewsItem.fetched_at.desc())
                 )
@@ -398,7 +408,7 @@ MARKET DATA CONTEXT (use to enrich your analysis, not to replace news):
             depth_guidance = "Hari relatif tenang. Ringkas tapi tetap tuntas — jangan menambah panjang artifisial."
 
         currency_signals = await self._build_currency_signals_summary(grouped_news, target_currencies)
-        macro_5d_context = await self._build_5day_macro_context(session, datetime.now(timezone.utc))
+        macro_5d_context = await self._build_5day_macro_context(session, clock.now())
 
         macro_synth_client = getattr(self, "_macro_synth", None)
         prov_name = (
@@ -726,7 +736,7 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
             from monika.infrastructure.database.models import NewsDigest
 
             entry = NewsDigest(
-                generated_at=datetime.now(timezone.utc),
+                generated_at=clock.now(),
                 period_hours=hours_back,
                 digest_text=digest,
                 items_processed=len(all_significant),
@@ -825,7 +835,17 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
             "summarizing what was changed."
         )
         try:
-            return await self._macro_synth.generate(prompt)
+            res = await self._macro_synth.generate(prompt)
+            if res and isinstance(res, str):
+                if "[RECONCILED:" in res and len(res) >= 0.85 * len(digest_text):
+                    return res
+                else:
+                    logger.warning(
+                        f"[NewsDigest] Reconciliation output truncated or missing marker "
+                        f"(len={len(res)} vs original={len(digest_text)}), keeping original digest."
+                    )
+                    return None
+            return None
         except Exception as e:
             logger.warning(f"Digest reconciliation failed (non-fatal, fallback to passive note): {e}")
             return None
@@ -836,7 +856,8 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
 
         from monika.infrastructure.database.models import NewsItem
 
-        since = datetime.now(timezone.utc) - timedelta(hours=12)
+        now = clock.now()
+        since = now - timedelta(hours=12)
         major_assets = ["USD", "EUR", "GBP", "JPY", "AUD", "XAU", "XTI", "BTC"]
         missing = []
         for cur in major_assets:
@@ -844,6 +865,7 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
                 await session.execute(
                     select(func.count(NewsItem.id))
                     .where(NewsItem.fetched_at >= since)
+                    .where(NewsItem.fetched_at <= now)
                     .where(NewsItem.impact.in_(["HIGH", "BREAKING"]))
                     .where(NewsItem.currency_tags.contains(cur))
                 )
@@ -861,12 +883,14 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
 
     async def _cleanup_old_digests(self, session: AsyncSession) -> None:
         """Hapus digests lama lebih dari 24 jam untuk menghemat storage."""
+        if clock.is_simulated():
+            return
         try:
             from sqlalchemy import delete
 
             from monika.infrastructure.database.models import NewsDigest
 
-            cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+            cutoff = clock.now() - timedelta(hours=24)
             await session.execute(delete(NewsDigest).where(NewsDigest.generated_at < cutoff))
             await session.commit()
         except Exception as e:
@@ -876,12 +900,14 @@ New trade priced-in risk: LOW/MEDIUM/HIGH
         """Mengambil rangkuman berita (digest) terbaru dari DB (cache read)."""
         from monika.infrastructure.database.models import NewsDigest
 
-        since = datetime.now(timezone.utc) - timedelta(hours=hours_back + 2)
+        now = clock.now()
+        since = now - timedelta(hours=hours_back + 2)
 
         digest = (
             await session.execute(
                 select(NewsDigest)
                 .where(NewsDigest.generated_at >= since)
+                .where(NewsDigest.generated_at <= now)
                 .order_by(NewsDigest.generated_at.desc())
                 .limit(1)
             )

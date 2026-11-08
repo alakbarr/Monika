@@ -8,7 +8,7 @@ Market quotes, price history, synthetic cross rates, spreads, and symbol specifi
 
 import csv
 import os
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -16,6 +16,51 @@ from sqlalchemy import select
 import monika.core.primitives.clock as clock
 from monika.application.analysis.tools.handlers.market_data_handlers.base import _get_session_and_symbol, logger
 from monika.infrastructure.database.models import PriceOHLCV
+
+
+async def _reconstruct_in_progress_candle(
+    session, symbol: str, timeframe: str, row: PriceOHLCV, eff_as_of: datetime
+) -> dict:
+    tf_durations = {
+        "H1": timedelta(hours=1),
+        "H4": timedelta(hours=4),
+        "D1": timedelta(days=1),
+        "W1": timedelta(days=7),
+    }
+    dur = tf_durations.get(timeframe.upper())
+    r_ts = row.timestamp.replace(tzinfo=timezone.utc) if row.timestamp.tzinfo is None else row.timestamp
+    if dur and (r_ts + dur > eff_as_of):
+        m15_rows = (
+            (
+                await session.execute(
+                    select(PriceOHLCV)
+                    .where(PriceOHLCV.symbol == symbol)
+                    .where(PriceOHLCV.timeframe == "M15")
+                    .where(PriceOHLCV.timestamp >= r_ts)
+                    .where(PriceOHLCV.timestamp <= eff_as_of)
+                    .order_by(PriceOHLCV.timestamp.asc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if m15_rows:
+            return {
+                "time": r_ts.isoformat(),
+                "open": float(m15_rows[0].open),
+                "high": float(max(b.high for b in m15_rows)),
+                "low": float(min(b.low for b in m15_rows)),
+                "close": float(m15_rows[-1].close),
+                "volume": float(sum(b.volume or 0 for b in m15_rows)),
+            }
+    return {
+        "time": r_ts.isoformat(),
+        "open": float(row.open),
+        "high": float(row.high),
+        "low": float(row.low),
+        "close": float(row.close),
+        "volume": float(row.volume or 0),
+    }
 
 
 async def handle_get_price_history(args: dict, **ctx) -> Any:
@@ -40,7 +85,7 @@ async def handle_get_price_history(args: dict, **ctx) -> Any:
             as_of_dt = None
 
     rates = None
-    if not as_of_dt:
+    if not as_of_dt and not clock.is_simulated():
         try:
             from monika.application.services.market_data_service import MarketDataService
 
@@ -62,30 +107,26 @@ async def handle_get_price_history(args: dict, **ctx) -> Any:
         return "\n".join(lines)
 
     if session:
-        query = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == timeframe)
-        if as_of_dt:
-            query = query.where(PriceOHLCV.timestamp <= as_of_dt)
+        eff_as_of = as_of_dt or clock.now()
+        query = (
+            select(PriceOHLCV)
+            .where(PriceOHLCV.symbol == symbol, PriceOHLCV.timeframe == timeframe)
+            .where(PriceOHLCV.timestamp <= eff_as_of)
+        )
         rows = (await session.execute(query.order_by(PriceOHLCV.timestamp.desc()).limit(count))).scalars().all()
         if rows:
+            reconstructed_bars = []
+            for r in reversed(rows):
+                b_dict = await _reconstruct_in_progress_candle(session, symbol, timeframe, r, eff_as_of)
+                reconstructed_bars.append(b_dict)
             if as_csv:
                 lines = ["time,O,H,L,C,V"]
-                for r in reversed(rows):
-                    t_str = (
-                        r.timestamp.strftime("%m-%d %H:%M") if hasattr(r.timestamp, "strftime") else str(r.timestamp)
+                for b in reconstructed_bars:
+                    lines.append(
+                        f"{b['time']},{b['open']:.5f},{b['high']:.5f},{b['low']:.5f},{b['close']:.5f},{b['volume']}"
                     )
-                    lines.append(f"{t_str},{r.open:.5f},{r.high:.5f},{r.low:.5f},{r.close:.5f},{r.volume}")
                 return "\n".join(lines)
-            return [
-                {
-                    "time": r.timestamp.isoformat() if hasattr(r.timestamp, "isoformat") else str(r.timestamp),
-                    "open": r.open,
-                    "high": r.high,
-                    "low": r.low,
-                    "close": r.close,
-                    "volume": r.volume,
-                }
-                for r in reversed(rows)
-            ]
+            return reconstructed_bars
     return {"symbol": symbol, "timeframe": timeframe, "bars": [], "status": "no_data"}
 
 
@@ -318,6 +359,7 @@ async def handle_get_spread_snapshot(args: dict, **ctx) -> dict:
             "XAUUSD": 2.5,
             "BTCUSD": 15.0,
             "XTIUSD": 3.0,
+            "XBRUSD": 3.0,
         }.get(clean_sym, 2.0)
 
         current_spread_pips = typical_spread_pips
@@ -336,16 +378,17 @@ async def handle_get_spread_snapshot(args: dict, **ctx) -> dict:
                     bid = float(tick["bid"])
                     ask = float(tick["ask"])
                     diff = ask - bid
-                    if pip_size > 0:
-                        current_spread_pips = round(diff / pip_size, 1)
+                    eff_pip = 0.10 if clean_sym == "XAUUSD" else (1.0 if clean_sym == "BTCUSD" else pip_size)
+                    if eff_pip > 0:
+                        current_spread_pips = round(diff / eff_pip, 1)
                     else:
                         current_spread_pips = round(diff, 1)
                     last_price = round((bid + ask) / 2, 5)
                     last_updated = clock.now().isoformat()
-                    if current_spread_pips > typical_spread_pips * 2.0:
-                        status = "elevated"
-                    elif current_spread_pips > typical_spread_pips * 3.5:
+                    if current_spread_pips > typical_spread_pips * 3.5:
                         status = "extreme"
+                    elif current_spread_pips > typical_spread_pips * 2.0:
+                        status = "elevated"
             except Exception as tick_err:
                 logger.debug(f"[{clean_sym}] Failed to fetch live tick spread: {tick_err}")
 
@@ -395,7 +438,8 @@ async def handle_get_market_quote(args: dict, **ctx) -> dict:
         if bid is not None and ask is not None:
             price = round((bid + ask) / 2, 5)
             spread = round(ask - bid, 5)
-            spread_pips = round(spread / pip_size, 1) if pip_size > 0 else round(spread, 1)
+            eff_pip = 0.10 if clean_sym == "XAUUSD" else (1.0 if clean_sym == "BTCUSD" else pip_size)
+            spread_pips = round(spread / eff_pip, 1) if eff_pip > 0 else round(spread, 1)
         elif last is not None:
             price = last
             spread = 0.0
@@ -434,6 +478,7 @@ async def handle_get_market_quote(args: dict, **ctx) -> dict:
                 res = await session.execute(
                     select(PriceOHLCV)
                     .where(PriceOHLCV.symbol == clean_sym, PriceOHLCV.timeframe == tf)
+                    .where(PriceOHLCV.timestamp <= clock.now())
                     .order_by(PriceOHLCV.timestamp.desc())
                     .limit(1)
                 )
@@ -453,6 +498,7 @@ async def handle_get_market_quote(args: dict, **ctx) -> dict:
             "XAUUSD": 2.5,
             "BTCUSD": 15.0,
             "XTIUSD": 3.0,
+            "XBRUSD": 3.0,
         }.get(clean_sym, 2.0)
         spread_amt = typical_spread_pips * pip_size
         bid = round(close_price - (spread_amt / 2), 5)

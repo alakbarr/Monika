@@ -684,6 +684,21 @@ class AnalysisSubmissionMixin(_ExecutionServiceMixinBase):
                         except Exception as e:
                             logger.debug(f"Paper trade open failed (non-fatal): {e}")
                     else:
+                        # Buka record paper trade pending untuk pelacakan (berlaku untuk dry-run & live)
+                        try:
+                            paper_tracker = PaperTracker(self.settings)
+                            eff_risk_pct = sizing.risk_percent
+                            pending_type = "limit" if "LIMIT" in (order.order_type or "").upper() else "trigger"
+                            await paper_tracker.open_paper_trade(
+                                session,
+                                analysis,
+                                risk_pct=eff_risk_pct,
+                                entry_price=float(entry_price),
+                                entry_type=pending_type,
+                                requested_lot=float(sizing.recommended_lots),
+                            )
+                        except Exception as e:
+                            logger.debug(f"Paper trade open (pending) failed (non-fatal): {e}")
                         await session.commit()
             finally:
                 _EXECUTION_LOCK.release()

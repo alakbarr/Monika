@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 
 from langchain_core.runnables.config import RunnableConfig
 
+import monika.core.primitives.clock as clock
 from monika.application.graph.state import TradingState
 from monika.infrastructure.database.db import get_session
 
@@ -200,16 +201,24 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
 
             from monika.infrastructure.database.models import FundamentalBrief, Position
 
+            now_dt = clock.now()
             async with get_session() as session:
                 new_brief = (
                     await session.execute(
-                        select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                        select(FundamentalBrief)
+                        .where(FundamentalBrief.generated_at <= now_dt)
+                        .order_by(FundamentalBrief.generated_at.desc())
+                        .limit(1)
                     )
                 ).scalar_one_or_none()
 
                 prev_brief = (
                     await session.execute(
-                        select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).offset(1).limit(1)
+                        select(FundamentalBrief)
+                        .where(FundamentalBrief.generated_at <= now_dt)
+                        .order_by(FundamentalBrief.generated_at.desc())
+                        .offset(1)
+                        .limit(1)
                     )
                 ).scalar_one_or_none()
 
@@ -315,7 +324,10 @@ async def fundamental_analysis_node(state: TradingState, config: Optional[Runnab
             # Hitung per-symbol context dan ekstrak regime/vix/confidence untuk downstream nodes
             brief = (
                 await ssvp_session.execute(
-                    select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                    select(FundamentalBrief)
+                    .where(FundamentalBrief.generated_at <= clock.now())
+                    .order_by(FundamentalBrief.generated_at.desc())
+                    .limit(1)
                 )
             ).scalar_one_or_none()
 

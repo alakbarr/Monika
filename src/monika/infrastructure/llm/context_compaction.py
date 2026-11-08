@@ -899,6 +899,13 @@ class ContextCompactionEngine:
             "propose_action",
             "update_scratchpad",
             "read_scratchpad",
+            "get_central_bank_expectations",
+            "get_economic_calendar",
+            "get_economic_surprise",
+            "get_fedwatch_probabilities",
+            "get_cot_report",
+            "get_treasury_yields",
+            "get_bond_yield_spreads",
         }
 
         # Build tool_id -> tool_name map across conversation history

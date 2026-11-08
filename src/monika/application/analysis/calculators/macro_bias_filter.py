@@ -23,7 +23,7 @@ _NEUTRAL_RATE_ESTIMATES = {
 
 
 async def _yield_momentum_score(session: AsyncSession, lookback_days: int, as_of: Optional[datetime] = None) -> float:
-    ref_date = as_of.date() if isinstance(as_of, datetime) else (as_of or clock.now().date())
+    ref_date = as_of.date() if isinstance(as_of, datetime) else (as_of or clock.get_eod_cutoff(clock.now()))
     since = ref_date - timedelta(days=lookback_days + 3)
     stmt = (
         select(TreasuryYield)
@@ -44,8 +44,8 @@ async def _rate_score(session: AsyncSession, currency: str, as_of: Optional[date
     if not bank:
         return 0.0
     stmt = select(InterestRate).where(InterestRate.bank == bank)
-    if as_of:
-        stmt = stmt.where(InterestRate.effective_date <= as_of)
+    eff_as_of = as_of or clock.now()
+    stmt = stmt.where(InterestRate.effective_date <= eff_as_of)
     row = (await session.execute(stmt.order_by(InterestRate.effective_date.desc()).limit(1))).scalar_one_or_none()
     if not row:
         return 0.0
@@ -121,6 +121,10 @@ async def _eval_regime_direction(
     dxy_val: float,
     yield_val: Optional[float],
     as_of: Optional[datetime] = None,
+    dealing_range_pos: Optional[float] = None,
+    technical_bias: Optional[str] = None,
+    confluence_score: Optional[int] = None,
+    macro_catalyst_override: bool = False,
 ) -> tuple[bool, list[str]]:
     import inspect
 
@@ -138,12 +142,24 @@ async def _eval_regime_direction(
         direction=dir_str,
         dxy=dxy_val,
         us10y_yield=yield_val,
+        dealing_range_pos=dealing_range_pos,
+        technical_bias=technical_bias,
+        confluence_score=confluence_score,
+        macro_catalyst_override=macro_catalyst_override,
     )
     return allowed, [f"RegimeClassifier: {reason}"]
 
 
 async def evaluate_macro_alignment(
-    session: AsyncSession, symbol: str, direction: str | None, settings: dict, as_of: Optional[datetime] = None
+    session: AsyncSession,
+    symbol: str,
+    direction: str | None,
+    settings: dict,
+    as_of: Optional[datetime] = None,
+    dealing_range_pos: Optional[float] = None,
+    technical_bias: Optional[str] = None,
+    confluence_score: Optional[int] = None,
+    macro_catalyst_override: bool = False,
 ) -> dict:
     """
     CAVEAT: True 'real yield' = nominal yield - inflation expectations (TIPS
@@ -165,50 +181,62 @@ async def evaluate_macro_alignment(
     is_commodity = any(k in sym_upper for k in ("XAU", "XTI", "XBR", "GOLD", "OIL"))
     is_crypto = any(k in sym_upper for k in ("BTC", "ETH", "SOL"))
 
+    eff_as_of = as_of or clock.now()
+    eod_cutoff = clock.get_eod_cutoff(eff_as_of)
+
     if is_commodity or is_crypto:
         from monika.infrastructure.database.models import DXYData
 
-        dxy_stmt = select(DXYData)
-        if as_of is not None:
-            dxy_stmt = dxy_stmt.where(DXYData.date <= as_of)
-        dxy_stmt = dxy_stmt.order_by(DXYData.date.desc()).limit(1)
+        dxy_stmt = select(DXYData).where(DXYData.date <= eff_as_of).order_by(DXYData.date.desc()).limit(1)
         dxy_row = (await session.execute(dxy_stmt)).scalar_one_or_none()
         dxy_val = float(dxy_row.close) if (dxy_row and dxy_row.close is not None) else 100.0
 
         yield_val: Optional[float] = None
         for tenor in ("10Y_REAL", "10Y"):
-            yield_stmt = select(TreasuryYield).where(TreasuryYield.tenor == tenor)
-            if as_of is not None:
-                yield_stmt = yield_stmt.where(TreasuryYield.date <= as_of)
-            yield_stmt = yield_stmt.order_by(TreasuryYield.date.desc()).limit(1)
+            yield_stmt = (
+                select(TreasuryYield)
+                .where(TreasuryYield.tenor == tenor)
+                .where(TreasuryYield.date <= eff_as_of)
+                .order_by(TreasuryYield.date.desc())
+                .limit(1)
+            )
             yield_row = (await session.execute(yield_stmt)).scalar_one_or_none()
             if yield_row and yield_row.yield_percent is not None:
                 yield_val = float(yield_row.yield_percent)
                 break
 
         if direction is None:
-            buy_allowed, buy_reasons = await _eval_regime_direction(
-                session, symbol, "buy", dxy_val, yield_val, as_of=as_of
+            # Bug #74: During prefetch when direction is None, do not call _eval_regime_direction
+            # to avoid false trade rejection logs. Determine macro implied direction directly.
+            if dxy_val > 100.0 or (yield_val is not None and yield_val > 1.5):
+                score = -0.5
+                implied_dir = "sell"
+            elif dxy_val < 100.0 and (yield_val is None or yield_val <= 1.5):
+                score = 0.5
+                implied_dir = "buy"
+            else:
+                score = 0.0
+                implied_dir = None
+            result.update(
+                aligned=True,
+                strong_conflict=False,
+                pair_macro_score=score,
+                implied_direction=implied_dir,
             )
-            sell_allowed, sell_reasons = await _eval_regime_direction(
-                session, symbol, "sell", dxy_val, yield_val, as_of=as_of
-            )
-            if buy_allowed and not sell_allowed:
-                result.update(aligned=True, strong_conflict=False, pair_macro_score=0.5, implied_direction="buy")
-                result["reasons"].extend(buy_reasons)
-                return result
-            elif sell_allowed and not buy_allowed:
-                result.update(aligned=True, strong_conflict=False, pair_macro_score=-0.5, implied_direction="sell")
-                result["reasons"].extend(sell_reasons)
-                return result
-            elif symbol != "XAUUSD":
-                result.update(aligned=True, strong_conflict=False, pair_macro_score=0.0, implied_direction="neutral")
-                result["reasons"].extend(buy_reasons)
-                return result
+            return result
         else:
             dir_norm = str(direction).strip().lower()
             allowed, dir_reasons = await _eval_regime_direction(
-                session, symbol, dir_norm, dxy_val, yield_val, as_of=as_of
+                session,
+                symbol,
+                dir_norm,
+                dxy_val,
+                yield_val,
+                as_of=as_of,
+                dealing_range_pos=dealing_range_pos,
+                technical_bias=technical_bias,
+                confluence_score=confluence_score,
+                macro_catalyst_override=macro_catalyst_override,
             )
             if not allowed:
                 score = -1.0 if dir_norm == "buy" else 1.0

@@ -424,7 +424,7 @@ async def handle_get_fedwatch_probabilities(args: dict, **ctx) -> dict:
         except ValueError, TypeError:
             limit = 4
 
-    # Determine reference comparison time if requested
+    # Determine reference comparison time (default to 24h ago for continuous shift analysis)
     ref_time = None
     if compare_hours_ago is not None:
         try:
@@ -433,6 +433,8 @@ async def handle_get_fedwatch_probabilities(args: dict, **ctx) -> dict:
             pass
     elif event_time_arg:
         ref_time = _parse_iso_or_str_dt(event_time_arg)
+    else:
+        ref_time = clock.now() - timedelta(hours=24.0)
 
     base_query = select(FedWatchProbability).where(FedWatchProbability.fetched_at <= clock.now())
     if meeting_filter:
@@ -503,10 +505,9 @@ async def handle_get_fedwatch_probabilities(args: dict, **ctx) -> dict:
     # Compute comparison if ref_time is provided
     if ref_time:
         comparisons = []
+        sorted_m_dates = [m["meeting_date"] for m in meetings if m.get("meeting_date") in history_by_date]
         target_dates = (
-            [meeting_filter]
-            if meeting_filter and meeting_filter in history_by_date
-            else list(history_by_date.keys())[:limit]
+            [meeting_filter] if meeting_filter and meeting_filter in history_by_date else sorted_m_dates[:limit]
         )
         for m_date in target_dates:
             snapshots = history_by_date.get(m_date, [])

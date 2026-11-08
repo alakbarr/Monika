@@ -558,6 +558,7 @@ class TurnToolPipeline:
                                         symbol=target_sym,
                                         entry_price=recalc_entry,
                                         stop_loss=float(prop_sl),
+                                        take_profit=float(prop_tp) if prop_tp is not None else None,
                                         direction=decision,
                                         session=recalc_session,
                                         settings=harness.settings,
@@ -677,7 +678,7 @@ class TurnToolPipeline:
             )
             if not is_tool_err:
                 harness.guardrail_controller.record_success()
-            harness.stall_guard.record_call(c_name, res_obj, turn_idx=turns)
+            harness.stall_guard.record_call(c_name, res_obj, turn_idx=turns, tool_args=c_input)
             harness.verification_ledger.record_tool_execution(c_name, c_input, res_obj)
 
             if is_tool_err and isinstance(res_obj, dict) and "_turn_failure_diagnostic" not in res_obj:

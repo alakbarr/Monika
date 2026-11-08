@@ -314,6 +314,23 @@ class FallbackClientWrapper(BaseLLMClient):
             cfg_pm_timeout = (self.role_config or {}).get("per_model_timeout_seconds")
             per_model_timeout = float(cfg_pm_timeout) if cfg_pm_timeout is not None else 360.0
 
+        # Check if all candidate models are in active cooldown
+        now_ts = time.time()
+        active_candidates = [
+            (s, m) for s, m in models_to_try if not (s in self._slot_cooldowns and self._slot_cooldowns[s] > now_ts)
+        ]
+        if not active_candidates and models_to_try:
+            earliest_slot, earliest_model = min(
+                models_to_try,
+                key=lambda sm: self._slot_cooldowns.get(sm[0], float("inf")),
+            )
+            min_diff = self._slot_cooldowns.get(earliest_slot, float("inf")) - now_ts
+            if min_diff <= 60.0:
+                logger.info(
+                    f"[{self.task_role}] All models in cooldown — reviving near-expiry slot {earliest_slot} '{earliest_model}'"
+                )
+                self._slot_cooldowns.pop(earliest_slot, None)
+
         for slot_name, model in models_to_try:
             # If budget is paused, bypass paid models and execute only free tier models
             if is_budget_paused and self.factory.is_model_paid(
@@ -634,8 +651,12 @@ class FallbackClientWrapper(BaseLLMClient):
                                 self._primary_cooldown_until = self._slot_cooldowns[slot_name]
                             break
 
-                    if result is None and method_name in ["generate", "classify_json", "generate_content"]:
-                        logger.warning(f"Model {model} ({slot_name}) returned None in {method_name}")
+                    is_empty_res = (result is None) or (
+                        method_name in ["generate", "generate_content"] and not str(result).strip()
+                    )
+                    if is_empty_res and method_name in ["generate", "classify_json", "generate_content"]:
+                        logger.warning(f"Model {model} ({slot_name}) returned empty/None in {method_name}")
+                        last_error = f"Model {model} ({slot_name}) returned empty/None response"
                         cnt = self._slot_backoff_count.get(slot_name, 0)
                         cd_duration = min(60.0 * (2**cnt), 1800.0)
                         self._slot_cooldowns[slot_name] = time.time() + cd_duration

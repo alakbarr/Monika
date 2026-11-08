@@ -151,6 +151,7 @@ async def handle_get_bond_yield_spreads(args: dict, **ctx) -> dict:
                     session,
                     select(BondYieldData)
                     .where(BondYieldData.country_tenor == code)
+                    .where(BondYieldData.date <= clock.now())
                     .order_by(BondYieldData.date.desc())
                     .limit(5),
                 )

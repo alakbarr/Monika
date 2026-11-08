@@ -120,8 +120,10 @@ class SSVPCoordinator:
         budget_remaining_pct = 100.0
         if budget_cfg and budget_cfg.value:
             try:
+                from monika.core.primitives import clock
+
                 history = json.loads(budget_cfg.value)
-                now = datetime.now(timezone.utc)
+                now = clock.now()
                 current_day = now.strftime("%Y-%m-%d")
                 daily_tokens = sum(
                     e.get("stage1_tokens", 0) + e.get("stage2_tokens", 0)

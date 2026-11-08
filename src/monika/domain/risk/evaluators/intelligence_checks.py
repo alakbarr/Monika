@@ -314,9 +314,18 @@ class RiskIntelligenceChecksMixin(_RiskGateMixinBase):
         try:
             from monika.domain.risk.ports import get_default_evidence_store
 
+            dec_source = getattr(analysis, "decision_source", None)
             strat_id = getattr(analysis, "source_strategy_id", None) or getattr(analysis, "strategy_id", None)
-            if not strat_id or strat_id in ("general", "default"):
-                return True, "Evidence gate: discretionary analysis permitted without quant backtest"
+
+            # Bug #38: Discretionary SMC playbook IDs (e.g. ENGINE_1_POI_RETEST) are exempt from quant evidence store backtests
+            if not is_quantitative_source(dec_source):
+                if (
+                    not strat_id
+                    or strat_id in ("general", "default")
+                    or str(strat_id).startswith("ENGINE_")
+                    or "POI_" in str(strat_id)
+                ):
+                    return True, "Evidence gate: discretionary analysis permitted without quant backtest"
 
             regime = (
                 getattr(analysis, "market_regime_at_analysis", None)

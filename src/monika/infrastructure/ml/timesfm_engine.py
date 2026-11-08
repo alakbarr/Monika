@@ -328,13 +328,17 @@ class TimesFMEngine:
 
         return quantiles
 
-    async def _get_baseline_atr(self, session: AsyncSession, symbol: str, as_of: Optional[datetime] = None) -> float:
+    async def _get_baseline_atr(
+        self, session: AsyncSession, symbol: str, timeframe: str = "H1", as_of: Optional[datetime] = None
+    ) -> float:
         """Mengambil ATR_14 terbaru untuk normalisasi ekspansi volatilitas."""
+        eff_as_of = as_of or clock.get_simulated_now() or clock.now()
         stmt = select(TechnicalIndicator).where(
-            TechnicalIndicator.symbol == symbol, TechnicalIndicator.indicator_name == "ATR_14"
+            TechnicalIndicator.symbol == symbol,
+            TechnicalIndicator.timeframe == timeframe,
+            TechnicalIndicator.indicator_name == "ATR_14",
+            TechnicalIndicator.timestamp <= eff_as_of,
         )
-        if as_of:
-            stmt = stmt.where(TechnicalIndicator.timestamp <= as_of)
         stmt = stmt.order_by(desc(TechnicalIndicator.timestamp)).limit(1)
         row = (await session.execute(stmt)).scalar_one_or_none()
         if row and row.value_json:
@@ -371,7 +375,7 @@ class TimesFMEngine:
             return None
 
         current_price: float = float(target_df["close"].iloc[-1])
-        baseline_atr: float = await self._get_baseline_atr(session, symbol, as_of=as_of)
+        baseline_atr: float = await self._get_baseline_atr(session, symbol, timeframe=timeframe, as_of=as_of)
         if baseline_atr <= 0:
             high_s = target_df["high"].astype(float)
             low_s = target_df["low"].astype(float)

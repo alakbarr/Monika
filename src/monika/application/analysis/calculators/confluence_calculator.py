@@ -67,6 +67,7 @@ async def calculate_priced_in_subscores(session: AsyncSession, symbol: str, as_o
     Hitung otomatis Method 1 (FedWatch), Method 2 (COT extreme), Method 3 (price momentum vs ATR).
     Mengembalikan sub-skor.
     """
+    as_of = as_of or clock.get_simulated_now() or clock.now()
     scores = {"fedwatch": 0, "cot": 0, "momentum": 0, "total_auto": 0}
 
     # 1. FedWatch (0-3)
@@ -1029,14 +1030,18 @@ async def calculate_confluence(
         # Pre-hoc context, we don't know the exact entry. Use last close price if entry is not provided
         price_to_test = entry_price
         if not price_to_test:
-            price_stmt = select(PriceOHLCV).where(PriceOHLCV.symbol == symbol)
-            if as_of:
-                price_stmt = price_stmt.where(PriceOHLCV.timestamp <= as_of)
+            eff_as_of = as_of or clock.get_simulated_now() or clock.now()
+            price_stmt = (
+                select(PriceOHLCV)
+                .where(PriceOHLCV.symbol == symbol)
+                .where(PriceOHLCV.timeframe.in_(["M15", "H1", "H4", "D1"]))
+                .where(PriceOHLCV.timestamp <= eff_as_of)
+            )
             last_price_row = (
                 await session.execute(price_stmt.order_by(PriceOHLCV.timestamp.desc()).limit(1))
             ).scalar_one_or_none()
             if last_price_row:
-                price_to_test = last_price_row.close
+                price_to_test = float(last_price_row.close)
 
         buy_s, _, buy_f = _compute_for_direction("buy", price_to_test, None, None)
         sell_s, _, sell_f = _compute_for_direction("sell", price_to_test, None, None)

@@ -148,10 +148,10 @@ async def compute_temporal_cds(
 
     Returns: 0.0 (all data synchronized) to 1.0 (maximum temporal spread)
     """
-    from monika.core.primitives.clock import now as get_clock_now
+    from monika.core.primitives import clock
     from monika.infrastructure.database.models import FundamentalBrief, PriceOHLCV, TechnicalIndicator, VIXData
 
-    now = get_clock_now()
+    now = clock.now()
     weekday = now.weekday()  # 0=Monday, 5=Saturday, 6=Sunday
     if is_weekend is None:
         is_weekend = weekday >= 5
@@ -165,6 +165,7 @@ async def compute_temporal_cds(
             select(PriceOHLCV.timestamp)
             .where(PriceOHLCV.symbol == symbol)
             .where(PriceOHLCV.timeframe == "H4")
+            .where(PriceOHLCV.timestamp <= now)
             .order_by(PriceOHLCV.timestamp.desc())
             .limit(1)
         )
@@ -179,6 +180,7 @@ async def compute_temporal_cds(
             select(TechnicalIndicator.timestamp)
             .where(TechnicalIndicator.symbol == symbol)
             .where(TechnicalIndicator.timeframe == "H4")
+            .where(TechnicalIndicator.timestamp <= now)
             .order_by(TechnicalIndicator.timestamp.desc())
             .limit(1)
         )
@@ -190,7 +192,10 @@ async def compute_temporal_cds(
     # Fundamental Brief
     brief_ts = (
         await session.execute(
-            select(FundamentalBrief.generated_at).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+            select(FundamentalBrief.generated_at)
+            .where(FundamentalBrief.generated_at <= now)
+            .order_by(FundamentalBrief.generated_at.desc())
+            .limit(1)
         )
     ).scalar_one_or_none()
     if brief_ts:
@@ -200,14 +205,20 @@ async def compute_temporal_cds(
     # VIX: SKIP di weekend dan Senin pagi (normal tidak ada update)
     if not (is_weekend or is_monday_open):
         vix_ts = (
-            await session.execute(select(VIXData.date).order_by(VIXData.date.desc()).limit(1))
+            await session.execute(
+                select(VIXData.date)
+                .where(VIXData.date <= clock.get_eod_cutoff(now))
+                .order_by(VIXData.date.desc())
+                .limit(1)
+            )
         ).scalar_one_or_none()
         if vix_ts:
             if hasattr(vix_ts, "hour"):
                 vix_dt = vix_ts.replace(tzinfo=timezone.utc) if vix_ts.tzinfo is None else vix_ts
             else:
                 vix_dt = datetime(vix_ts.year, vix_ts.month, vix_ts.day, tzinfo=timezone.utc)
-            timestamps["vix"] = (now - vix_dt).total_seconds() / 3600
+            raw_vix_age_h = max(0.0, (now - vix_dt).total_seconds() / 3600.0)
+            timestamps["vix"] = max(0.0, raw_vix_age_h - 24.0)
 
     if len(timestamps) < 2:
         return 0.0

@@ -106,7 +106,13 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
     order_event_days = int(retention_cfg.get("order_events", 90))
     state_log_days = int(retention_cfg.get("trading_state_logs", 30))
 
-    now = datetime.now(timezone.utc)
+    from monika.core.primitives import clock
+
+    if clock.is_simulated():
+        logger.info("[DBCleanup] Skipping database cleanup during simulation/replay run.")
+        return
+
+    now = clock.now()
     total_deleted = 0
 
     try:
@@ -356,7 +362,9 @@ async def drop_expired_partitions(session: AsyncSession, older_than_days: int = 
               AND c.relname != 'price_ohlcv_part_default';
         """)
         rows = (await session.execute(query)).fetchall()
-        now = datetime.now(timezone.utc)
+        from monika.core.primitives import clock
+
+        now = clock.now()
         cutoff_year = (now - timedelta(days=older_than_days)).year
         cutoff_month = (now - timedelta(days=older_than_days)).month
 

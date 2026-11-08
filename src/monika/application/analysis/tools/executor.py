@@ -762,8 +762,9 @@ class ToolExecutor(
             self._resolve_symbol(tool_input)
 
         cacheable_tools = ["get_treasury_yields", "get_bond_yield_spreads", "get_interest_rates"]
+        is_force_refresh = isinstance(tool_input, dict) and bool(tool_input.get("force_refresh"))
 
-        if normalized_name in cacheable_tools:
+        if normalized_name in cacheable_tools and not is_force_refresh:
             try:
                 cached_result = await self._get_cached_tool_result(normalized_name, tool_input)
                 if cached_result is not None:
@@ -918,7 +919,7 @@ class ToolExecutor(
                 except Exception as cond_err:
                     logger.debug(f"Tool observation condenser non-fatal error: {cond_err}")
 
-            if self.deduplicator and result is not None:
+            if self.deduplicator and result is not None and not is_force_refresh:
                 try:
                     res_text = json.dumps(result, default=str) if isinstance(result, (dict, list)) else str(result)
                     dedup_notice = self.deduplicator.check_and_record(

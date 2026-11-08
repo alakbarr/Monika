@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import monika.core.primitives.clock as clock
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import Position, PriceOHLCV, TechnicalIndicator
 
@@ -401,13 +402,17 @@ class TrailingStopManager:
 
                 from monika.infrastructure.database.models import TradePlan, TradePlanLeg
 
+                tp_filters = [
+                    TradePlan.symbol == pos.symbol,
+                    TradePlan.status.in_(["PENDING_PROBE", "PROBE_FILLED", "CONFIRMED_SCALE_IN"]),
+                ]
+                if pos.analysis_id is not None:
+                    tp_filters.append(TradePlan.analysis_id == pos.analysis_id)
+
                 tp_stmt = (
                     select(TradePlan)
                     .options(selectinload(TradePlan.legs))
-                    .where(
-                        TradePlan.symbol == pos.symbol,
-                        TradePlan.status.in_(["PENDING_PROBE", "PROBE_FILLED", "CONFIRMED_SCALE_IN"]),
-                    )
+                    .where(*tp_filters)
                     .order_by(TradePlan.created_at.desc())
                     .limit(1)
                 )
@@ -422,8 +427,15 @@ class TrailingStopManager:
                             probe_lots_to_close += float(probe_vol or (pos.volume * 0.3 if pos.volume else 0.0))
 
                     # Execute actual partial close via ExecutionService with proper ticket mutex
+                    # Only execute partial close if position has remaining volume for runner leg (> probe_lots + 1e-4)
                     close_success = False
-                    if probe_lots_to_close > 0 and pos.mt5_ticket and self.execution_service:
+                    if (
+                        probe_lots_to_close > 0
+                        and pos.volume
+                        and pos.volume > (probe_lots_to_close + 1e-4)
+                        and pos.mt5_ticket
+                        and self.execution_service
+                    ):
                         try:
                             close_res = await self.execution_service.close_position_by_ticket(
                                 pos.mt5_ticket,
@@ -443,6 +455,13 @@ class TrailingStopManager:
                             )
                         except Exception as close_err:
                             logger.error(f"[{pos.symbol}] Failed MT5 partial close on TP1: {close_err}")
+                    elif probe_lots_to_close > 0 and pos.volume and pos.volume <= (probe_lots_to_close + 1e-4):
+                        # Min lot (0.01) cannot be partially scaled out without closing whole position.
+                        # Preserve position runner integrity and protect via BE / trailing stop.
+                        close_success = True
+                        logger.info(
+                            f"[{pos.symbol}] TP1 milestone reached on minimum lot {pos.volume:.2f} — skipping partial scale-out to preserve runner."
+                        )
 
                     # Only advance TradePlan status if close succeeded or paper trading
                     if close_success or getattr(pos, "is_paper", False):
@@ -507,7 +526,7 @@ class TrailingStopManager:
                     if result.get("success"):
                         if tracked:
                             tracked.current_sl = new_sl
-                            tracked.last_sl_update = datetime.now(timezone.utc).timestamp()
+                            tracked.last_sl_update = clock.now().timestamp()
                         if pos.analysis_id:
                             try:
                                 from monika.core.analytics.paper_tracker import PaperTracker

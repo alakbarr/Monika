@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.core.primitives import clock
 from monika.infrastructure.llm.rate_limiting.http_retry import fetch_with_retry
 from monika.infrastructure.database.models import SystemConfig
 
@@ -33,6 +34,48 @@ class BinanceSentimentFetcher:
 
     async def fetch(self) -> dict:
         """Mengambil sentimen ritel (rasio long/short) dari Binance."""
+        if clock.is_simulated():
+            now_dt = clock.now()
+            from monika.infrastructure.database.domain_models.market import PriceOHLCV
+
+            bars = (
+                await self.session.execute(
+                    select(PriceOHLCV.close, PriceOHLCV.open)
+                    .where(PriceOHLCV.symbol.in_(["BTCUSD", "BTCUSDT"]))
+                    .where(PriceOHLCV.timeframe == "H4")
+                    .where(PriceOHLCV.timestamp <= now_dt)
+                    .order_by(PriceOHLCV.timestamp.desc())
+                    .limit(6)
+                )
+            ).all()
+            if bars:
+                bull_count = sum(1 for c, o in bars if float(c) >= float(o))
+                long_pct = round(bull_count / len(bars) * 100.0, 1)
+                short_pct = round(100.0 - long_pct, 1)
+                ls_ratio = round(long_pct / max(1.0, short_pct), 2)
+            else:
+                long_pct = 50.0
+                short_pct = 50.0
+                ls_ratio = 1.0
+
+            ratios = {
+                "BTCUSDT": {
+                    "long_percent": long_pct,
+                    "short_percent": short_pct,
+                    "long_short_ratio": ls_ratio,
+                },
+                "ETHUSDT": {
+                    "long_percent": long_pct,
+                    "short_percent": short_pct,
+                    "long_short_ratio": ls_ratio,
+                },
+            }
+            return {
+                "source": "binance_futures",
+                "ratios": ratios,
+                "fetched_at": now_dt.isoformat(),
+            }
+
         result = {"error": "API request failed or data unavailable"}
         ratios = {}
 
@@ -66,7 +109,7 @@ class BinanceSentimentFetcher:
                 result = {
                     "source": "binance_futures",
                     "ratios": ratios,
-                    "fetched_at": datetime.now(timezone.utc).isoformat(),
+                    "fetched_at": clock.now().isoformat(),
                 }
 
         except Exception as e:

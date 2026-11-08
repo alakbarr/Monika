@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import monika.core.primitives.clock as clock
 from monika.infrastructure.database.models import NewsItem
 from monika.application.analysis.prefetch.news_digest.helpers import (
     _format_news_item_for_prompt,
@@ -124,19 +125,25 @@ async def get_classification_health_report(session) -> dict:
     Compute classification health metrics untuk monitoring.
     Dipanggil dari dashboard atau daily report.
     """
-    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    now = clock.now()
+    since = now - timedelta(hours=24)
 
     from sqlalchemy import func, select
 
     from monika.infrastructure.database.models import NewsItem
 
     total = (
-        await session.execute(select(func.count(NewsItem.id)).where(NewsItem.fetched_at >= since))
+        await session.execute(
+            select(func.count(NewsItem.id)).where(NewsItem.fetched_at >= since).where(NewsItem.fetched_at <= now)
+        )
     ).scalar_one_or_none() or 0
 
     classified = (
         await session.execute(
-            select(func.count(NewsItem.id)).where(NewsItem.fetched_at >= since).where(NewsItem.impact.is_not(None))
+            select(func.count(NewsItem.id))
+            .where(NewsItem.fetched_at >= since)
+            .where(NewsItem.fetched_at <= now)
+            .where(NewsItem.impact.is_not(None))
         )
     ).scalar_one_or_none() or 0
 

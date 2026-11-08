@@ -39,6 +39,8 @@ def _extract_sentiment_from_cached_json(
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         age_seconds = (clock.now() - dt).total_seconds()
+        if age_seconds < 0:
+            return None
         if age_seconds >= 14400:  # > 4h
             is_stale = True
         if age_seconds >= 86400 * 7:  # > 7 days dead

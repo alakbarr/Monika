@@ -716,9 +716,11 @@
 - **Path**: [`src/monika/core/primitives/clock.py`](src/monika/core/primitives/clock.py)
 - **Top-Level Functions**:
   - `now() -> datetime`: Returns the current simulated datetime if set, or real datetime.now(timezone.utc).
-  - `set_simulated_now(dt: datetime | None) -> None`: Sets the simulated datetime globally in the current context.
+  - `set_simulated_now(dt: datetime | None) -> None`: Sets the simulated datetime globally in the current context and process fallback.
   - `get_simulated_now() -> datetime | None`: Returns the currently active simulated datetime, or None if live.
   - `is_simulated() -> bool`: Returns True if a simulated clock is currently active.
+  - `reset_to_system_time() -> None`: Resets the simulated clock back to the live system clock.
+  - `get_eod_cutoff(as_of: datetime | None) -> datetime`: Calculates the point-in-time EOD cutoff for daily US market data (DXY, VIX, US Yields).
   - `utc_now_iso() -> str`: Returns current UTC timestamp in ISO 8601 string format.
   - `ensure_utc(dt: datetime | None) -> datetime | None`: Ensures datetime is timezone-aware in UTC.
   - `frozen_time(dt: datetime | None)`: Synchronous context manager to freeze simulated time deterministically per task/thread.
@@ -5015,6 +5017,7 @@
   - `race_dual_stack_socket(addr_info: List[Tuple[Any, ...]], effective_timeout: float, source_address: Optional[Tuple[str, int]]) -> socket.socket`: True non-blocking RFC 8305 Happy Eyeballs socket connection racer.
   - `bootstrap_runtime() -> None`: One-shot idempotent runtime bootstrapper.
   - `build_application_container(settings: Optional[dict[str, Any]], overrides: Optional[dict[str, Any]]) -> Any`: Build and configure the canonical ServiceContainer for Monika.
+  - `ensure_risk_ports_registered(settings: dict | None) -> None`: Wire domain risk ports with application and infrastructure providers idempotently.
   - `bootstrap_application(settings: Optional[dict[str, Any]], overrides: Optional[dict[str, Any]]) -> Any`: Unified one-shot application composition root.
   - `async preseed_market_state(container: Any) -> None`: Pre-seeds OHLCV bars and technical indicators on startup for all universe symbols.
 
@@ -5651,7 +5654,7 @@
   - `class StallGuard`: State-Aware Stall Guard (H-8).
     - `__init__(warning_threshold: int, force_terminate_threshold: int)`
     - `is_read_only(tool_name: str) -> bool`
-    - `record_call(tool_name: str, tool_result: Any, turn_idx: Optional[int]) -> None` - *Record execution of a tool and update stall counters per reasoning turn.*
+    - `record_call(tool_name: str, tool_result: Any, turn_idx: Optional[int], ...) -> None` - *Record execution of a tool and update stall counters per reasoning turn.*
     - `check_stall() -> Tuple[bool, bool, Optional[str]]` - *Evaluate current execution state for stall conditions.*
     - `reset() -> None` - *Reset stall counters upon state-advancing actions.*
 
@@ -7331,6 +7334,7 @@
   - `async handle_billing_fallback(runner: Any, session: AsyncSession, symbol: str, ...) -> dict`: Handle LLM billing error with fallback model switch if approved.
   - `extract_entry_price_from_analysis(analysis: Optional[Any]) -> Optional[float]`: Extract entry price float safely from entry_zone or fallbacks.
   - `async evaluate_debate_candidate_and_levels(analysis: Any, session: Optional[AsyncSession], symbol: str, ...) -> tuple[bool, Optional[float], Optional[float], Optional[int], Any, Optional[float]]`: Evaluate candidate_for_debate flag and auto-recover structural SL/TP if missing.
+  - `async finalize_single_asset_result(session: AsyncSession, symbol: str, analysis: Any, ...) -> dict`
 
 ### Folder: `src/monika/application/analysis/strategies` <a id="folder-srcmonikaapplicationanalysisstrategies"></a>
 
@@ -11066,7 +11070,7 @@
     - `__init__(session: Any, settings: Optional[dict])` - *Args:*
     - `async analyze(symbol: str, timeframe: str, force: bool) -> dict[str, int]` - *Menjalankan analisis struktur pasar (Swing, S/R, Liq, FVG, OB, BOS).*
     - `async analyze_all(symbols: list[str], timeframes: list[str]) -> dict[str, dict[str, int]]` - *Menjalankan analisis untuk kumpulan symbol dan timeframe.*
-    - `async get_structure_snapshot(symbol: str, timeframe: str) -> dict` - *Snapshot ringkas struktur pasar (Swings, S/R, FVG, dll).*
+    - `async get_structure_snapshot(symbol: str, timeframe: str, as_of: Optional[datetime]) -> dict` - *Snapshot ringkas struktur pasar (Swings, S/R, FVG, dll).*
 
 #### `order_flow_service.py` - *Order Flow Application Service.*
 - **Path**: [`src/monika/application/services/order_flow_service.py`](src/monika/application/services/order_flow_service.py)
@@ -12054,7 +12058,7 @@
 #### `brent_yfinance.py`
 - **Path**: [`src/monika/infrastructure/data_ingestion/sources/brent_yfinance.py`](src/monika/infrastructure/data_ingestion/sources/brent_yfinance.py)
 - **Top-Level Functions**:
-  - `async get_brent_price() -> float | None`: Fetch Brent Crude (BZ=F) latest close price from yfinance in non-blocking worker thread.
+  - `async get_brent_price() -> float | None`: Fetch Brent Crude (BZ=F) latest close price, prioritizing local XBRUSD OHLCV first, then yfinance (period='5d').
 
 #### `central_bank_watch.py` - *Fetcher Ekspektasi Keputusan Suku Bunga & Kurva Yield Bank Sentral Global (Async).*
 - **Path**: [`src/monika/infrastructure/data_ingestion/sources/central_bank_watch.py`](src/monika/infrastructure/data_ingestion/sources/central_bank_watch.py)
@@ -12714,9 +12718,9 @@
     - `__init__(session: Optional[AsyncSession], settings: Optional[Dict[str, Any]]) -> None`
     - `async get_open_positions(is_paper: bool, session: Optional[Any]) -> List[Dict[str, Any]]` - *Return list of active open positions as standardized dictionaries.*
     - `async get_account_equity_and_balance(is_paper: bool, session: Optional[Any]) -> Tuple[float, float]` - *Return (equity, balance) in USD.*
-    - `async get_daily_trades_count(symbol: Optional[str], is_paper: bool, session: Optional[Any]) -> int` - *Return count of trades created today.*
+    - `async get_daily_trades_count(symbol: Optional[str], is_paper: bool, session: Optional[Any], ...) -> int` - *Return count of trades created today.*
     - `async get_recent_drawdown(is_paper: bool, session: Optional[Any]) -> float` - *Calculate intraday drawdown percentage relative to peak equity.*
-    - `async get_recent_vix(session: Optional[Any]) -> Optional[float]` - *Retrieve most recent VIX index value.*
+    - `async get_recent_vix(session: Optional[Any], as_of: Optional[datetime]) -> Optional[float]` - *Retrieve most recent VIX index value.*
     - `async get_system_config_value(key: str, default: Any, session: Optional[Any]) -> Any` - *Retrieve configuration parameter from SystemConfig.*
     - `async get_user_preference(key: str, default: Any, session: Optional[Any]) -> Any` - *Retrieve user preference from UserPreference table.*
     - `async get_recent_price_bars(symbol: str, timeframe: str, limit: int, ...) -> List[Dict[str, Any]]` - *Retrieve price history OHLCV bars.*

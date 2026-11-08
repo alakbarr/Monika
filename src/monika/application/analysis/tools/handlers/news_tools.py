@@ -43,11 +43,16 @@ async def handle_get_news_items(args: dict, **ctx) -> dict:
     if not session:
         return {"items": [], "status": "no_session"}
 
-    cutoff = clock.now() - timedelta(hours=hours_back)
+    now = clock.now()
+    cutoff = now - timedelta(hours=hours_back)
     from sqlalchemy import or_
 
-    query = select(NewsItem).where(
-        or_(NewsItem.fetched_at >= cutoff, and_(NewsItem.published_at.isnot(None), NewsItem.published_at >= cutoff))
+    query = (
+        select(NewsItem)
+        .where(
+            or_(NewsItem.fetched_at >= cutoff, and_(NewsItem.published_at.isnot(None), NewsItem.published_at >= cutoff))
+        )
+        .where(or_(NewsItem.fetched_at <= now, and_(NewsItem.published_at.isnot(None), NewsItem.published_at <= now)))
     )
     if query_str:
         query = query.where(
@@ -100,8 +105,9 @@ async def handle_get_news_digest(args: dict, **ctx) -> dict:
     if not session:
         return {"status": "no_session", "digest": None, "error": "Database session unavailable"}
 
+    now = clock.now()
     hours_back = int(args.get("hours_back", 12))
-    cutoff = clock.now() - timedelta(hours=hours_back)
+    cutoff = now - timedelta(hours=hours_back)
     assembled_digest = None
 
     # 1. Priority 1: Check for existing verified NewsDigest table row within cutoff (Fix 5.3)
@@ -109,6 +115,7 @@ async def handle_get_news_digest(args: dict, **ctx) -> dict:
         await session.execute(
             select(NewsDigest)
             .where(NewsDigest.generated_at >= cutoff)
+            .where(NewsDigest.generated_at <= now)
             .order_by(NewsDigest.generated_at.desc())
             .limit(1)
         )
@@ -124,10 +131,15 @@ async def handle_get_news_digest(args: dict, **ctx) -> dict:
         except Exception as e:
             logger.debug(f"[NewsTools] Slice assembly failed (falling back to legacy digest): {e}")
 
-    # 3. Priority 3: Fall back to latest available NewsDigest regardless of age
+    # 3. Priority 3: Fall back to latest available NewsDigest regardless of age (up to now)
     if not assembled_digest and not digest_row:
         digest_row = (
-            await session.execute(select(NewsDigest).order_by(NewsDigest.generated_at.desc()).limit(1))
+            await session.execute(
+                select(NewsDigest)
+                .where(NewsDigest.generated_at <= now)
+                .order_by(NewsDigest.generated_at.desc())
+                .limit(1)
+            )
         ).scalar_one_or_none()
 
     if not assembled_digest and not digest_row:

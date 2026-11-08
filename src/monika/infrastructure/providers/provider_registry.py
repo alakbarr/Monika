@@ -385,9 +385,9 @@ def _register_builtins():
         temperature = float(role_config.get("temperature", 0.0))
         thinking_level = kwargs.get("thinking_level", "none")
 
-        # 1. Custom base_url or healthy local proxy -> use OpenAIProvider
-        custom_base = provider_config.get("base_url") or kwargs.get("base_url")
-        if custom_base or check_antigravity_bridge_health(base_url).get("healthy"):
+        # 1. Healthy proxy (local or remote) -> use OpenAIProvider directly
+        is_local_bridge = "127.0.0.1" in base_url or "localhost" in base_url
+        if check_antigravity_bridge_health(base_url).get("healthy"):
             return OpenAIProvider(
                 model=model_name,
                 max_tokens=max_tokens,
@@ -404,7 +404,23 @@ def _register_builtins():
         # 2. Try auto-spawning local Antigravity Bridge proxy in a separate terminal if offline
         from monika.infrastructure.auth.antigravity_bridge import ensure_antigravity_bridge_running
 
-        if not custom_base and ensure_antigravity_bridge_running(base_url):
+        if is_local_bridge and ensure_antigravity_bridge_running(base_url):
+            return OpenAIProvider(
+                model=model_name,
+                max_tokens=max_tokens,
+                max_tool_turns=max_tool_turns,
+                thinking_level=thinking_level,
+                settings=settings,
+                temperature=temperature,
+                role=task_role,
+                api_key="antigravity_local_token",
+                provider_name="antigravity",
+                base_url=base_url,
+            )
+
+        # If remote custom_base was explicitly supplied and not local, return OpenAIProvider
+        custom_base = provider_config.get("base_url") or kwargs.get("base_url")
+        if custom_base and not is_local_bridge:
             return OpenAIProvider(
                 model=model_name,
                 max_tokens=max_tokens,

@@ -154,7 +154,7 @@ async def compute_daily_range_context(
         return {"error": f"Computed ADR <= 0 for {symbol}"}
 
     baseline_days = int(risk_cfg.get("adr_baseline_lookback_days", DEFAULT_LOOKBACK_BASELINE))
-    adr_baseline = await _compute_baseline_adr(session, symbol, baseline_days, as_of=as_of)
+    adr_baseline = await _compute_baseline_adr(session, symbol, baseline_days, as_of=effective_as_of)
     vol_regime, expansion_ratio = _classify_volatility_regime(adr, adr_baseline)
     scale = _band_scale_factor(vol_regime)
 
@@ -169,7 +169,9 @@ async def compute_daily_range_context(
         from monika.infrastructure.ml.timesfm_engine import TimesFMEngine
 
         engine = TimesFMEngine(settings)
-        timesfm_data = await engine.get_latest_forecast(session, symbol, timeframe="H1", max_age_hours=8.0, as_of=as_of)
+        timesfm_data = await engine.get_latest_forecast(
+            session, symbol, timeframe="H1", max_age_hours=8.0, as_of=effective_as_of
+        )
     except Exception as tfm_err:
         logger.debug(f"[{symbol}] TimesFM forecast lookup failed (non-fatal): {tfm_err}")
 
@@ -190,24 +192,6 @@ async def compute_daily_range_context(
         tfm_range = None
         tfm_ratio = None
 
-    tp_min_pct = float(risk_cfg.get("intraday_tp_min_adr_pct", 0.5)) * scale["tp_min"]
-    tp_max_pct = float(risk_cfg.get("intraday_tp_max_adr_pct", 0.8)) * scale["tp_max"]
-    sl_min_pct = float(risk_cfg.get("intraday_min_sl_adr_pct", 0.10)) * scale.get("sl_min", 1.0)
-    sl_max_pct = float(risk_cfg.get("intraday_max_sl_adr_pct", 0.35)) * scale["sl_max"]
-    tolerance = float(risk_cfg.get("intraday_adr_band_tolerance_pct", 0.1))
-
-    room_remaining_pct = max(0.0, 1.0 - today_range_pct_of_adr)
-
-    # Time-decay: shrink the upper TP bound as the day's typical range gets used up
-    if room_remaining_pct < 0.5:
-        decay_factor = max(0.55, room_remaining_pct / 0.5)
-        tp_max_pct = tp_min_pct + (tp_max_pct - tp_min_pct) * decay_factor
-
-    target_tp_min = effective_range * tp_min_pct
-    target_tp_max = max(target_tp_min * 1.05, effective_range * tp_max_pct)
-    target_sl_min = effective_range * sl_min_pct
-    target_sl_max = effective_range * sl_max_pct
-
     resolved_atr_h4: Optional[float] = None
     if atr_h4 is not None:
         try:
@@ -219,6 +203,48 @@ async def compute_daily_range_context(
 
     if resolved_atr_h4 is None:
         resolved_atr_h4 = await _auto_fetch_h4_atr(session, symbol, effective_as_of, rows)
+
+    ref_adr = max(adr_raw_avg, effective_range, (resolved_atr_h4 or 0.0) * 2.5)
+
+    tp_min_pct = float(risk_cfg.get("intraday_tp_min_adr_pct", 0.5)) * scale["tp_min"]
+    tp_max_pct = float(risk_cfg.get("intraday_tp_max_adr_pct", 0.8)) * scale["tp_max"]
+    sl_min_pct = float(risk_cfg.get("intraday_min_sl_adr_pct", 0.10)) * scale.get("sl_min", 1.0)
+    sl_max_pct = float(risk_cfg.get("intraday_max_sl_adr_pct", 0.35)) * scale["sl_max"]
+    tolerance = float(risk_cfg.get("intraday_adr_band_tolerance_pct", 0.1))
+
+    room_remaining_pct = max(0.0, 1.0 - today_range_pct_of_adr)
+
+    # Forward-looking ADR consumption: check net displacement and late NY horizon
+    today_close = float(today_bar.close) if today_bar.close is not None else today_open
+    net_displacement = abs(today_close - today_open)
+    is_late_ny_session = (effective_as_of.hour >= 18) if effective_as_of else False
+
+    if is_late_ny_session:
+        # Next trading session horizon blend: room remaining reflects fresh session capacity
+        room_remaining_pct = max(0.50, 1.0 - (net_displacement / ref_adr if ref_adr > 0 else 0.0))
+        entry_allowed = True
+        session_recommendation = "late_session_fresh_horizon"
+    elif today_range_pct_of_adr >= 0.70 and net_displacement < (today_range_so_far * 0.50):
+        # Pullback underway: net displacement is significantly less than extreme range
+        room_remaining_pct = max(0.35, 1.0 - (net_displacement / ref_adr if ref_adr > 0 else 0.0))
+        entry_allowed = True
+        session_recommendation = "pullback_entry_allowed"
+    elif room_remaining_pct < 0.15:
+        session_recommendation, entry_allowed = "avoid_new_entry_low_room", False
+    elif room_remaining_pct < 0.30:
+        session_recommendation, entry_allowed = "reduced_target", True
+    else:
+        session_recommendation, entry_allowed = "full_target", True
+
+    # Time-decay: shrink the upper TP bound as the day's typical range gets used up
+    if room_remaining_pct < 0.5 and not is_late_ny_session:
+        decay_factor = max(0.55, room_remaining_pct / 0.5)
+        tp_max_pct = tp_min_pct + (tp_max_pct - tp_min_pct) * decay_factor
+
+    target_tp_min = ref_adr * tp_min_pct
+    target_tp_max = max(target_tp_min * 1.05, ref_adr * tp_max_pct)
+    target_sl_min = ref_adr * sl_min_pct
+    target_sl_max = ref_adr * sl_max_pct
 
     atr_harmonized = False
     precision = 6
@@ -233,13 +259,6 @@ async def compute_daily_range_context(
         if round(target_tp_max, precision) < min_tp_ceiling:
             target_tp_max = min_tp_ceiling
             atr_harmonized = True
-
-    if room_remaining_pct < 0.15:
-        session_recommendation, entry_allowed = "avoid_new_entry_low_room", False
-    elif room_remaining_pct < 0.30:
-        session_recommendation, entry_allowed = "reduced_target", True
-    else:
-        session_recommendation, entry_allowed = "full_target", True
 
     res_dict = {
         "symbol": symbol,

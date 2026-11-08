@@ -568,12 +568,15 @@ class Stage2DataBundler:
             fetch_errors.append(self._format_fetch_error("market_regime", e))
 
         # Always fetch both D1 structure breaks and SMC zones for macro structural context
-        try:
-            r_sb = await self.executor.execute("get_structure_breaks", {"symbol": symbol, "timeframe": "D1"})
-            if "error" not in r_sb:
-                data["structure_breaks_D1"] = r_sb
-        except Exception as e:
-            logger.debug(f"[{symbol}] Failed to fetch structure_breaks_D1: {e}")
+        if "get_structure_breaks_D1" in data:
+            data["structure_breaks_D1"] = data["get_structure_breaks_D1"]
+        else:
+            try:
+                r_sb = await self.executor.execute("get_structure_breaks", {"symbol": symbol, "timeframe": "D1"})
+                if "error" not in r_sb:
+                    data["structure_breaks_D1"] = r_sb
+            except Exception as e:
+                logger.debug(f"[{symbol}] Failed to fetch structure_breaks_D1: {e}")
 
         try:
             r_smc = await self.executor.execute("get_smc_zones", {"symbol": symbol, "timeframe": "D1"})

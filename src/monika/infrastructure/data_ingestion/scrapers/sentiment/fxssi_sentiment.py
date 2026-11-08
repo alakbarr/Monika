@@ -18,6 +18,7 @@ from bs4 import BeautifulSoup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.core.primitives import clock
 from monika.infrastructure.data_ingestion.scrapers.base_scraper import BaseScraper
 from monika.infrastructure.database.models import SystemConfig
 
@@ -147,7 +148,7 @@ class FXSSISentimentFetcher:
                 return {
                     "source": "fxssi",
                     "ratios": ratios,
-                    "fetched_at": datetime.now(timezone.utc).isoformat(),
+                    "fetched_at": clock.now().isoformat(),
                 }
         except Exception as http_err:
             logger.debug(f"Direct HTTP fetch for FXSSI unviable ({http_err}); falling back to browser.")
@@ -178,7 +179,7 @@ class FXSSISentimentFetcher:
                 return {
                     "source": "fxssi",
                     "ratios": ratios,
-                    "fetched_at": datetime.now(timezone.utc).isoformat(),
+                    "fetched_at": clock.now().isoformat(),
                 }
             else:
                 logger.warning("FXSSI Sentiment returned empty or failed to parse.")
@@ -192,6 +193,44 @@ class FXSSISentimentFetcher:
                 scraper.close()
 
     async def fetch(self) -> dict:
+        if clock.is_simulated():
+            now_dt = clock.now()
+            from monika.infrastructure.database.domain_models.market import PriceOHLCV
+
+            ratios = {}
+            for sym in self.symbols:
+                bars = (
+                    await self.session.execute(
+                        select(PriceOHLCV.close, PriceOHLCV.open)
+                        .where(PriceOHLCV.symbol == sym)
+                        .where(PriceOHLCV.timeframe == "H4")
+                        .where(PriceOHLCV.timestamp <= now_dt)
+                        .order_by(PriceOHLCV.timestamp.desc())
+                        .limit(6)
+                    )
+                ).all()
+                if bars:
+                    bull_count = sum(1 for c, o in bars if float(c) >= float(o))
+                    retail_long_pct = round(max(20.0, min(80.0, 50.0 - (bull_count - 3) * 6.0)), 1)
+                    retail_short_pct = round(100.0 - retail_long_pct, 1)
+                    ls_ratio = round(retail_long_pct / max(0.1, retail_short_pct), 4)
+                else:
+                    retail_long_pct = 50.0
+                    retail_short_pct = 50.0
+                    ls_ratio = 1.0
+
+                ratios[sym] = {
+                    "long_percent": retail_long_pct,
+                    "short_percent": retail_short_pct,
+                    "long_short_ratio": ls_ratio,
+                }
+
+            return {
+                "source": "fxssi",
+                "ratios": ratios,
+                "fetched_at": now_dt.isoformat(),
+            }
+
         # Jalankan proses scraping DrissionPage di thread terpisah
         result = await asyncio.to_thread(self.fetch_sync)
 

@@ -98,7 +98,7 @@ async def handle_get_economic_calendar(args: dict, **ctx) -> dict:
                 "event_time": r.event_time.isoformat() if r.event_time is not None else None,
                 "event_time_wib": _fmt_wib(r.event_time),
                 "affected_pairs": CURRENCY_TO_SYMBOLS.get((r.currency or "").upper(), []),
-                "surprise_score": getattr(r, "surprise_score", None),
+                "surprise_score": getattr(r, "surprise_score", None) if _is_past_event(r.event_time, now) else None,
             }
             for r in rows
         ],
@@ -112,12 +112,14 @@ async def handle_get_economic_surprise(args: dict, **ctx) -> dict:
 
     currency = args.get("currency", "USD")
     days_back = args.get("days_back", 14)
-    since = clock.now() - timedelta(days=days_back)
+    now = clock.now()
+    since = now - timedelta(days=days_back)
 
     query = (
         select(EconomicCalendar)
         .where(EconomicCalendar.currency == currency.upper())
         .where(EconomicCalendar.event_time >= since)
+        .where(EconomicCalendar.event_time <= now)
         .where(EconomicCalendar.surprise_score.is_not(None))
         .order_by(EconomicCalendar.event_time.desc())
     )

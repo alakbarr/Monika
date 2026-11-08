@@ -960,10 +960,11 @@ class OpenAIProvider(OpenAIChatMixin):
                 "temperature": eff_temp,
             }
 
-            if is_openrouter:
-                # OpenRouter with reasoning: Avoid sending response_format if reasoning is active,
-                # as upstream inference engines often reject/strip it. Prompt-enforced JSON is 100% reliable.
-                if self.thinking_level == "none" and not is_array_schema:
+            is_antigravity = self._get_provider_name() == "antigravity"
+            if is_openrouter or is_antigravity:
+                # OpenRouter / Antigravity: Avoid sending strict response_format if reasoning is active or unsupported.
+                # Prompt-enforced JSON schema is 100% reliable across bridge proxies and reasoning models.
+                if self.thinking_level == "none" and not is_array_schema and not is_antigravity:
                     kwargs["response_format"] = {"type": "json_object"}
                 json_hint = (
                     f"\n\nYou MUST return valid JSON conforming to this schema without commentary, preamble, or markdown wrapper. "
@@ -1023,7 +1024,7 @@ class OpenAIProvider(OpenAIChatMixin):
             try:
                 response = await self._create_chat_completion(kwargs)
                 if not response:
-                    return ""
+                    return None if response_schema else ""
                 self.last_served_model = getattr(response, "model", None)
                 if hasattr(response, "usage") and response.usage:
                     inp, outp, cached, thinking_tokens, exact_cost, cache_creation = self._extract_usage(response.usage)
@@ -1048,14 +1049,33 @@ class OpenAIProvider(OpenAIChatMixin):
                         kw["prefix_hash"] = call_prefix_hash
                     await self._save_token_usage(self.model, call_task_name or "generate_content", inp, outp, **kw)
                 if not response.choices:
-                    return ""
+                    return None if response_schema else ""
                 choice = response.choices[0]
                 finish_reason = getattr(choice, "finish_reason", None)
                 if finish_reason == "length":
                     logger.warning(
                         f"[{self.model}] generate_content: response truncated by token limit (finish_reason='length', max_tokens={kwargs.get('max_tokens') or kwargs.get('max_completion_tokens')})"
                     )
-                return _extract_message_text(choice)
+                content = _extract_message_text(choice)
+                if response_schema:
+                    if not content or not content.strip():
+                        return None
+                    try:
+                        cleaned = content.strip()
+                        if cleaned.startswith("```"):
+                            lines = cleaned.split("\n")
+                            if lines[0].startswith("```"):
+                                lines = lines[1:]
+                            if lines and lines[-1].startswith("```"):
+                                lines = lines[:-1]
+                            cleaned = "\n".join(lines).strip()
+                        json.loads(cleaned)
+                    except Exception as je:
+                        logger.warning(
+                            f"[{self.model}] generate_content schema JSON parse failed ({je}): {content[:100]}"
+                        )
+                        return None
+                return content
             except (StreamTimeoutError, StreamSafetyTimeoutError) as e:
                 logger.warning(f"[{self.model}] generate_content streaming timeout: {e}")
                 raise
@@ -1176,8 +1196,27 @@ class OpenAIProvider(OpenAIChatMixin):
                                 self.model, call_task_name or "generate_content", inp, outp, **kw
                             )
                         if not response.choices:
-                            return ""
-                        return _extract_message_text(response.choices[0])
+                            return None if response_schema else ""
+                        content = _extract_message_text(response.choices[0])
+                        if response_schema:
+                            if not content or not content.strip():
+                                return None
+                            try:
+                                cleaned = content.strip()
+                                if cleaned.startswith("```"):
+                                    lines = cleaned.split("\n")
+                                    if lines[0].startswith("```"):
+                                        lines = lines[1:]
+                                    if lines and lines[-1].startswith("```"):
+                                        lines = lines[:-1]
+                                    cleaned = "\n".join(lines).strip()
+                                json.loads(cleaned)
+                            except Exception as je:
+                                logger.warning(
+                                    f"[{self.model}] generate_content fallback schema JSON parse failed ({je}): {content[:100]}"
+                                )
+                                return None
+                        return content
                     except (StreamTimeoutError, StreamSafetyTimeoutError) as fb_to:
                         logger.warning(f"[{self.model}] generate_content fallback streaming timeout: {fb_to}")
                         raise
@@ -1185,11 +1224,11 @@ class OpenAIProvider(OpenAIChatMixin):
                         if is_subclass_provider:
                             raise
                         logger.warning(f"Structured JSON fallback failed for {self.model}: {fallback_err}")
-                        return ""
+                        return None if response_schema else ""
                 if is_subclass_provider:
                     raise
                 logger.warning(f"OpenAI generate_content failed for {self.model}: {e}")
-                return ""
+                return None if response_schema else ""
 
         else:
             return await self.generate(

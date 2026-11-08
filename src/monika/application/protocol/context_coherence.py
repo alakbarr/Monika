@@ -24,15 +24,13 @@ logger = logging.getLogger("TradingAgent.ContextCoherence")
 # ============================================================
 
 # Implied USD direction from each symbol's decision
+# Excludes commodities and crypto whose moves are often driven by idiosyncratic supply/demand
 USD_DIRECTION_IMPLICATIONS: dict[str, dict[str, str]] = {
     "EURUSD": {"buy": "USD_WEAK", "sell": "USD_STRONG"},
     "GBPUSD": {"buy": "USD_WEAK", "sell": "USD_STRONG"},
     "AUDUSD": {"buy": "USD_WEAK", "sell": "USD_STRONG"},
     "USDJPY": {"buy": "USD_STRONG", "sell": "USD_WEAK"},
     "XAUUSD": {"buy": "USD_WEAK", "sell": "USD_STRONG"},
-    "XTIUSD": {"buy": "USD_WEAK", "sell": "USD_STRONG"},
-    "XBRUSD": {"buy": "USD_WEAK", "sell": "USD_STRONG"},
-    "BTCUSD": {"buy": "USD_WEAK", "sell": "USD_STRONG"},
 }
 
 # Currency-to-pair mapping for bias checking

@@ -143,6 +143,13 @@ async def classify_market_regime(
         threshold_modifier, size_multiplier = 2, 0.4
 
     volatility_chop = await compute_bollinger_donchian_chop(session, symbol, "H4", settings or {}, as_of=as_of)
+    # Bug #29: Never activate chop_block when instrument is in strong trend with ADX >= 25.0
+    if volatility_chop.get("chop_block"):
+        if final_regime in ("STRONG_TREND", "TREND") or (adx_val is not None and adx_val >= 25.0):
+            volatility_chop["chop_block"] = False
+            volatility_chop["reason"] = (
+                f"Override chop_block: strong directional trend confirmed ({final_regime}, ADX={adx_val})"
+            )
 
     # Continuous probabilistic distribution across market regimes
     p_trend = 0.5

@@ -28,10 +28,12 @@ async def handle_get_swing_points(args: dict, **ctx) -> dict:
     if not session:
         return {"symbol": symbol, "timeframe": timeframe, "swing_points": []}
 
-    as_of = clock.get_simulated_now()
-    stmt = select(SwingPoint).where(SwingPoint.symbol == symbol, SwingPoint.timeframe == timeframe)
-    if as_of is not None:
-        stmt = stmt.where(SwingPoint.timestamp <= as_of)
+    as_of = clock.get_simulated_now() or clock.now()
+    stmt = (
+        select(SwingPoint)
+        .where(SwingPoint.symbol == symbol, SwingPoint.timeframe == timeframe)
+        .where(SwingPoint.timestamp <= as_of)
+    )
     rows = (await session.execute(stmt.order_by(SwingPoint.timestamp.desc()).limit(10))).scalars().all()
     return {
         "symbol": symbol,
@@ -55,10 +57,12 @@ async def handle_get_structure_breaks(args: dict, **ctx) -> dict:
     if not session:
         return {"symbol": symbol, "timeframe": timeframe, "breaks": []}
 
-    as_of = clock.get_simulated_now()
-    stmt = select(StructureBreak).where(StructureBreak.symbol == symbol, StructureBreak.timeframe == timeframe)
-    if as_of is not None:
-        stmt = stmt.where(StructureBreak.formed_at <= as_of)
+    as_of = clock.get_simulated_now() or clock.now()
+    stmt = (
+        select(StructureBreak)
+        .where(StructureBreak.symbol == symbol, StructureBreak.timeframe == timeframe)
+        .where(StructureBreak.formed_at <= as_of)
+    )
     breaks = (await session.execute(stmt.order_by(StructureBreak.formed_at.desc()).limit(5))).scalars().all()
     return {
         "symbol": symbol,
@@ -85,10 +89,12 @@ async def handle_get_sr_zones(args: dict, **ctx) -> dict:
     if not session:
         return {"symbol": symbol, "timeframe": timeframe, "zones": []}
 
-    as_of = clock.get_simulated_now()
-    stmt = select(SRZone).where(SRZone.symbol == symbol, SRZone.timeframe == timeframe)
-    if as_of is not None:
-        stmt = stmt.where(or_(SRZone.last_touched.is_(None), SRZone.last_touched <= as_of))
+    as_of = clock.get_simulated_now() or clock.now()
+    stmt = (
+        select(SRZone)
+        .where(SRZone.symbol == symbol, SRZone.timeframe == timeframe)
+        .where(or_(SRZone.last_touched.is_(None), SRZone.last_touched <= as_of))
+    )
     rows = (await session.execute(stmt.order_by(desc(SRZone.strength)).limit(10))).scalars().all()
     return {
         "symbol": symbol,

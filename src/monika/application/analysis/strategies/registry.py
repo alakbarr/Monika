@@ -215,8 +215,16 @@ class StrategyRegistry:
                         return rows if isinstance(rows, (list, tuple)) else []
                 return []
 
+            from monika.core.primitives import clock
+
+            now_clk = clock.now()
+
             # 1. Load direct strategy parameter overrides (key: strategy_params_<strat_id> or strategy_params_<strat_id>_<sym>)
-            stmt_params = select(SystemConfig).where(SystemConfig.key.like("strategy_params_%"))
+            stmt_params = (
+                select(SystemConfig)
+                .where(SystemConfig.key.like("strategy_params_%"))
+                .where(SystemConfig.updated_at <= now_clk)
+            )
             rows_params = await _safe_scalars(stmt_params)
             for r in rows_params:
                 if not r or not getattr(r, "key", None) or not getattr(r, "value", None):
@@ -237,7 +245,11 @@ class StrategyRegistry:
                     logger.debug(f"[StrategyRegistry] Failed parsing params for {raw_key}: {parse_err}")
 
             # 2. Load promoted candidate alpha proposals with PAPER_ACTIVE or ACCEPTED status
-            stmt_alphas = select(SystemConfig).where(SystemConfig.key.like("candidate_alpha_%"))
+            stmt_alphas = (
+                select(SystemConfig)
+                .where(SystemConfig.key.like("candidate_alpha_%"))
+                .where(SystemConfig.updated_at <= now_clk)
+            )
             rows_alphas = await _safe_scalars(stmt_alphas)
             for r in rows_alphas:
                 if not r or not getattr(r, "value", None):
@@ -266,7 +278,11 @@ class StrategyRegistry:
                 logger.debug(f"[StrategyRegistry] Early decay monitor load non-fatal: {decay_err}")
 
             # 4. Load registered synthesized strategies with per-instrument dynamic health quota limit
-            stmt_synths = select(SystemConfig).where(SystemConfig.key.like("synthesized_strategy_%"))
+            stmt_synths = (
+                select(SystemConfig)
+                .where(SystemConfig.key.like("synthesized_strategy_%"))
+                .where(SystemConfig.updated_at <= now_clk)
+            )
             rows_synths = await _safe_scalars(stmt_synths)
             loaded_synths_count = 0
             symbol_active_synths: dict[str, int] = {}
@@ -413,14 +429,6 @@ class StrategyRegistry:
                                 )
                 except Exception as synth_err:
                     logger.debug(f"[StrategyRegistry] Failed restoring synthesized strategy: {synth_err}")
-
-            # 4. Load persisted strategy decay monitor state
-            try:
-                from monika.application.analysis.strategies.decay_monitor import get_strategy_decay_monitor
-
-                await get_strategy_decay_monitor().load_from_db(session)
-            except Exception as decay_err:
-                logger.debug(f"[StrategyRegistry] Failed loading decay state: {decay_err}")
 
             if loaded_synths_count > 0:
                 cls.log_summary()

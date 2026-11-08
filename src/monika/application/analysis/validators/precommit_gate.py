@@ -42,7 +42,7 @@ class TradePreCommitGate:
         failures: List[str] = []
         sym = (symbol or decision_data.get("symbol") or "").strip().upper().replace("/", "")
         decision = str(decision_data.get("decision", "")).lower()
-        eval_time = decision_data.get("timestamp") or decision_data.get("now")
+        eval_time = decision_data.get("timestamp") or decision_data.get("now") or clock.now()
 
         # Only evaluate actionable buy/sell setups
         if decision not in ("buy", "sell"):
@@ -114,10 +114,13 @@ class TradePreCommitGate:
 
         if entry > 0.0 and order_type in ("MARKET", ""):
             try:
-                eval_time = decision_data.get("timestamp") or decision_data.get("now")
-                query = select(PriceOHLCV).where(PriceOHLCV.symbol == sym)
-                if eval_time:
-                    query = query.where(PriceOHLCV.timestamp <= eval_time)
+                eval_time = decision_data.get("timestamp") or decision_data.get("now") or clock.now()
+                query = (
+                    select(PriceOHLCV)
+                    .where(PriceOHLCV.symbol == sym)
+                    .where(PriceOHLCV.timeframe == "M15")
+                    .where(PriceOHLCV.timestamp <= eval_time)
+                )
                 latest_bar = (
                     await session.execute(query.order_by(desc(PriceOHLCV.timestamp)).limit(1))
                 ).scalar_one_or_none()
@@ -169,10 +172,8 @@ class TradePreCommitGate:
         # 3. Crisis Regime Coherence Assertion
         # -------------------------------------------------------------
         try:
-            vix_stmt = select(VIXData)
-            if eval_time:
-                vix_date = eval_time.date() if hasattr(eval_time, "date") else eval_time
-                vix_stmt = vix_stmt.where(VIXData.date <= vix_date)
+            eod_cutoff = clock.get_eod_cutoff(eval_time)
+            vix_stmt = select(VIXData).where(VIXData.date <= eod_cutoff)
             latest_vix = (await session.execute(vix_stmt.order_by(desc(VIXData.date)).limit(1))).scalar_one_or_none()
 
             if latest_vix and latest_vix.close:

@@ -12,6 +12,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.core.primitives import clock
 from monika.infrastructure.database.models import DXYData, VIXData
 
 logger = logging.getLogger("TradingAgent.BriefContaminationGuard")
@@ -162,10 +163,22 @@ class BriefContaminationGuard:
 
         # Check 3: Cross-validate with DXY (most reliable real-time signal)
         try:
-            dxy_rows = (await session.execute(select(DXYData).order_by(DXYData.date.desc()).limit(5))).scalars().all()
+            eod_cutoff = clock.get_eod_cutoff(clock.now())
+            dxy_rows = (
+                (
+                    await session.execute(
+                        select(DXYData).where(DXYData.date <= eod_cutoff).order_by(DXYData.date.desc()).limit(5)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
             if len(dxy_rows) >= 3:
                 dxy_trend = "strengthening" if dxy_rows[0].close > dxy_rows[-1].close else "weakening"
+                dxy_1d_change = dxy_rows[0].close - dxy_rows[1].close
+                dxy_1d_up = dxy_1d_change > 0
+
                 # Check if brief contains explicit forward-looking catalyst or macro narrative justifying reversal
                 narrative_l = (brief_data.get("macro_narrative") or "").lower()
                 has_reversal_catalyst = any(
@@ -185,24 +198,32 @@ class BriefContaminationGuard:
                 ) or bool(brief_data.get("macro_catalysts"))
 
                 penalty = 0.15 if has_reversal_catalyst else 0.25
+                # If DXY 1-day short-term inflection aligns with USD bias, do not treat as conflict
                 if dxy_trend == "strengthening" and usd_bias == "bearish":
-                    issues.append(
-                        f"DXY CONFLICT: DXY 5-day trend='{dxy_trend}' but brief says USD='{usd_bias}'. "
-                        f"DXY is price-based. {'Reversal catalyst noted in brief.' if has_reversal_catalyst else 'Verify USD thesis against fresh macro releases.'}"
-                    )
-                    risk_score += penalty
+                    if not (not dxy_1d_up and has_reversal_catalyst):
+                        issues.append(
+                            f"DXY CONFLICT: DXY 5-day trend='{dxy_trend}' but brief says USD='{usd_bias}'. "
+                            f"DXY is price-based. {'Reversal catalyst noted in brief.' if has_reversal_catalyst else 'Verify USD thesis against fresh macro releases.'}"
+                        )
+                        risk_score += penalty
                 elif dxy_trend == "weakening" and usd_bias == "bullish":
-                    issues.append(
-                        f"DXY CONFLICT: DXY 5-day trend='{dxy_trend}' but brief says USD='{usd_bias}'. "
-                        f"DXY is price-based. {'Reversal catalyst noted in brief.' if has_reversal_catalyst else 'Verify USD thesis against fresh macro releases.'}"
-                    )
-                    risk_score += penalty
+                    if not (dxy_1d_up and has_reversal_catalyst):
+                        issues.append(
+                            f"DXY CONFLICT: DXY 5-day trend='{dxy_trend}' but brief says USD='{usd_bias}'. "
+                            f"DXY is price-based. {'Reversal catalyst noted in brief.' if has_reversal_catalyst else 'Verify USD thesis against fresh macro releases.'}"
+                        )
+                        risk_score += penalty
         except Exception as e:
             logger.debug(f"BriefContaminationGuard: DXY check failed (non-fatal): {e}")
 
         # Check 4: VIX consistency
         try:
-            vix = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
+            eod_cutoff = clock.get_eod_cutoff(clock.now())
+            vix = (
+                await session.execute(
+                    select(VIXData).where(VIXData.date <= eod_cutoff).order_by(VIXData.date.desc()).limit(1)
+                )
+            ).scalar_one_or_none()
 
             if vix:
                 if vix.close > 30 and risk_sentiment == "risk-on":

@@ -539,52 +539,62 @@ class TradeReflector:
             else:
                 # Branch B: Loss -> Negative Constraint Generation & Storage
                 try:
-                    import time
-
                     from monika.infrastructure.database.models import SystemConfig
 
                     lesson_str = getattr(reflection, "specific_lesson", "") or ""
+                    pnl_r_val = getattr(reflection, "pnl_r", None)
+                    pnl_pct_val = getattr(reflection, "pnl_pct", None)
+                    is_breakeven_or_flat = (pnl_r_val is not None and pnl_r_val >= -0.05) or (
+                        pnl_pct_val is not None and pnl_pct_val >= 0.0
+                    )
+
                     if lesson_str and lesson_str != "unspecified execution failure":
                         tags = json.loads(getattr(reflection, "lesson_tags", "[]") or "[]")
                         primary_tag = tags[0] if tags else "execution_flaw"
 
-                        constraint_text = (
-                            f"[NEGATIVE_CONSTRAINT]: For {reflection.symbol} ({reflection.decision}), avoid setup when: "
-                            f"'{lesson_str}' (Primary Tag: {primary_tag})."
-                        )
-
-                        now_ts = int(time.time())
-                        constraint_key = f"negative_constraint_{reflection.symbol}_{now_ts}"
-                        constraint_payload = {
-                            "symbol": reflection.symbol,
-                            "direction": reflection.decision,
-                            "lesson": lesson_str,
-                            "tags": tags,
-                            "constraint_text": constraint_text,
-                            "reflection_id": reflection_id,
-                            "created_at": now_ts,
-                        }
-
-                        session.add(SystemConfig(key=constraint_key, value=json.dumps(constraint_payload)))
-                        from monika.infrastructure.database.safe_ops import safe_commit
-
-                        await safe_commit(session, label="negative_constraint_save")
-
-                        try:
-                            from monika.infrastructure.database.event_store import TradingEventStore
-
-                            await TradingEventStore.emit(
-                                session=session,
-                                event_type="learning.negative_constraint",
-                                payload=constraint_payload,
-                                correlation_id=f"neg_constraint_{reflection.symbol}_{now_ts}",
-                                actor="trade_reflector",
+                        if is_breakeven_or_flat or primary_tag == "well_executed_setup":
+                            logger.info(
+                                f"[TradeReflector] Skipping negative constraint for {reflection.symbol} "
+                                f"due to neutral/breakeven outcome (pnl_r={pnl_r_val}, primary_tag={primary_tag})"
                             )
-                        except Exception:
-                            pass
+                        else:
+                            constraint_text = (
+                                f"[NEGATIVE_CONSTRAINT]: For {reflection.symbol} ({reflection.decision}), avoid setup when: "
+                                f"'{lesson_str}' (Primary Tag: {primary_tag})."
+                            )
 
-                        logger.info(
-                            f"[TradeReflector] Generated and stored Negative Constraint for {reflection.symbol}: {constraint_text}"
-                        )
+                            now_ts = int(clock.now().timestamp())
+                            constraint_key = f"negative_constraint_{reflection.symbol}_{now_ts}"
+                            constraint_payload = {
+                                "symbol": reflection.symbol,
+                                "direction": reflection.decision,
+                                "lesson": lesson_str,
+                                "tags": tags,
+                                "constraint_text": constraint_text,
+                                "reflection_id": reflection_id,
+                                "created_at": now_ts,
+                            }
+
+                            session.add(SystemConfig(key=constraint_key, value=json.dumps(constraint_payload)))
+                            from monika.infrastructure.database.safe_ops import safe_commit
+
+                            await safe_commit(session, label="negative_constraint_save")
+
+                            try:
+                                from monika.infrastructure.database.event_store import TradingEventStore
+
+                                await TradingEventStore.emit(
+                                    session=session,
+                                    event_type="learning.negative_constraint",
+                                    payload=constraint_payload,
+                                    correlation_id=f"neg_constraint_{reflection.symbol}_{now_ts}",
+                                    actor="trade_reflector",
+                                )
+                            except Exception:
+                                pass
+
+                            logger.info(
+                                f"[TradeReflector] Generated and stored Negative Constraint for {reflection.symbol}: {constraint_text}"
+                            )
                 except Exception as neg_err:
                     logger.debug(f"Negative constraint generation non-fatal error: {neg_err}")

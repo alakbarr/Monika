@@ -156,8 +156,8 @@ class AgentHarness:
         from monika.application.agent.harness.stall_guard import StallGuard
 
         self.stall_guard = StallGuard(
-            warning_threshold=self.settings.get("stall_warning_threshold", 4),
-            force_terminate_threshold=self.settings.get("stall_terminate_threshold", 7),
+            warning_threshold=self.settings.get("stall_warning_threshold", 10),
+            force_terminate_threshold=self.settings.get("stall_terminate_threshold", 16),
         )
         from monika.infrastructure.llm.data_dedup import DataFetchDeduplicator
 

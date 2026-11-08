@@ -206,7 +206,14 @@ class PositionGuardian:
             # Fast-path Jev Threat Assessment for active positions (sub-100ms)
             for pos in open_positions:
                 try:
-                    threat = await self.evaluate_position_threat_with_jev(pos)
+                    cur_px = None
+                    mt5_cli = getattr(self, "mt5", None)
+                    if mt5_cli is not None and hasattr(mt5_cli, "get_current_price"):
+                        tick = await mt5_cli.get_current_price(pos.symbol)
+                        if tick:
+                            cur_px = tick.get("bid") if pos.direction == "buy" else tick.get("ask")
+
+                    threat = await self.evaluate_position_threat_with_jev(pos, current_price=cur_px)
                     if threat and (threat.get("sl_threat_level", 0) >= 3 or threat.get("adverse_momentum") is True):
                         logger.warning(
                             f"[PositionGuardian] Jev flagged elevated adverse threat on {pos.symbol} (ticket={pos.mt5_ticket}, threat_level={threat.get('sl_threat_level')})"

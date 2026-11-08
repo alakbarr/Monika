@@ -97,10 +97,14 @@ class GeminiProvider(BaseLLMClient):
                 paid_key = resolve_antigravity_access_token()
             except Exception:
                 pass
+
+        raw_key = kwargs.get("api_key") or cfg_api_key or None
+        if raw_key and raw_key.startswith("ya29."):
+            paid_key = raw_key
+            self.api_key = None
+        else:
+            self.api_key = raw_key
         self.paid_api_key = paid_key
-        self.api_key: Optional[str] = kwargs.get("api_key") or cfg_api_key or None
-        if self.api_key and self.api_key.startswith("ya29."):
-            self.paid_api_key = self.api_key
 
         if not self.free_api_keys and not self.paid_api_key and not self.api_key:
             logger.warning("No Gemini API keys set — Gemini tasks will be skipped")
@@ -118,10 +122,11 @@ class GeminiProvider(BaseLLMClient):
 
     def set_api_key(self, api_key: str) -> None:
         """Update active API key on this GeminiProvider instance."""
+        if api_key and api_key.startswith("ya29."):
+            self.paid_api_key = api_key
+            return
         super().set_api_key(api_key)
         self.api_key = api_key
-        if api_key.startswith("ya29."):
-            self.paid_api_key = api_key
 
     @classmethod
     def clear_cooldowns(cls) -> None:
@@ -639,6 +644,8 @@ class GeminiProvider(BaseLLMClient):
                         logger.warning(
                             f"Gemini {self.model} output truncated by token limit (finishReason=MAX_TOKENS, maxOutputTokens={eff_max_tokens}, outp={outp}, think={thoughts})"
                         )
+                        GeminiProvider.rotate_api_key()
+                        self._sticky_session_key = None
                         if self.resolved_thinking_level != "MINIMAL":
                             is_v25 = "2.5" in str(self.model).lower()
                             rec_thinking = {"thinkingBudget": 0} if is_v25 else {"thinkingLevel": "MINIMAL"}
@@ -739,6 +746,8 @@ class GeminiProvider(BaseLLMClient):
                                 logger.warning(
                                     f"Gemini {self.model} output truncated by token limit (finishReason=MAX_TOKENS, maxOutputTokens={eff_max_tokens}, outp={outp}, think={thoughts})"
                                 )
+                                GeminiProvider.rotate_api_key()
+                                self._sticky_session_key = None
                                 if self.resolved_thinking_level != "MINIMAL":
                                     is_v25 = "2.5" in str(self.model).lower()
                                     rec_thinking = {"thinkingBudget": 0} if is_v25 else {"thinkingLevel": "MINIMAL"}
@@ -776,6 +785,7 @@ class GeminiProvider(BaseLLMClient):
                                     return part["text"]
 
             except RateLimitError as e:
+                self._sticky_session_key = None
                 self._handle_rate_limit_error(api_key, e, "generate", model_name=self.model)
                 continue
             except (StreamTimeoutError, StreamSafetyTimeoutError) as e:
@@ -1238,6 +1248,8 @@ class GeminiProvider(BaseLLMClient):
                 logger.warning(
                     f"Gemini {self.model} run_tool_agent output truncated by token limit (finishReason=MAX_TOKENS, maxOutputTokens={eff_max_tokens})"
                 )
+                GeminiProvider.rotate_api_key()
+                self._sticky_session_key = None
                 stop_reason = "max_tokens"
 
             if stream_res.thinking_text:
@@ -1297,6 +1309,8 @@ class GeminiProvider(BaseLLMClient):
                 logger.warning(
                     f"Gemini {self.model} run_tool_agent output truncated by token limit (finishReason=MAX_TOKENS, maxOutputTokens={eff_max_tokens})"
                 )
+                GeminiProvider.rotate_api_key()
+                self._sticky_session_key = None
                 stop_reason = "max_tokens"
 
             for part in parts:

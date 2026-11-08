@@ -16,6 +16,7 @@ import weakref
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import monika.core.primitives.clock as clock
 from monika.core.primitives.clock import ensure_utc
 from monika.domain.market.news_impact_keywords import (
     HIGH_IMPACT_KEYWORDS,
@@ -483,8 +484,12 @@ class MacroContextMixin(_NewsDigestMixinBase):
     async def _get_recent_classified_titles(self, session: AsyncSession, hours: int = 12) -> list[str]:
         from sqlalchemy import select
 
-        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        now = clock.now()
+        since = now - timedelta(hours=hours)
         res = await session.execute(
-            select(NewsItem.title).where(NewsItem.fetched_at >= since).where(NewsItem.impact.in_(["BREAKING", "HIGH"]))
+            select(NewsItem.title)
+            .where(NewsItem.fetched_at >= since)
+            .where(NewsItem.fetched_at <= now)
+            .where(NewsItem.impact.in_(["BREAKING", "HIGH"]))
         )
         return [r for r in res.scalars() if r]

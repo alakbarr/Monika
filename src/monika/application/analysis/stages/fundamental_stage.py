@@ -399,18 +399,24 @@ class FundamentalStage:
         if str_lines:
             extra_context = "\n".join(str_lines)
 
-        # PREFETCH ALL STAGE 1 DATA TO SAVE TOKENS AND LATENCY
-        await self._log(session, "Prefetching Stage 1 context data...")
-        bundler = Stage1DataBundler(session, self.settings)
-        prefetch_res = await bundler.prefetch_all_data()
-        bundled_raw_data = None
-        if isinstance(prefetch_res, tuple) and len(prefetch_res) >= 2:
-            prefetched_json, prefetch_satisfied_tools = prefetch_res[0], prefetch_res[1]
-            if len(prefetch_res) >= 3:
-                bundled_raw_data = prefetch_res[2]
-        else:
-            prefetched_json = prefetch_res
+        # PREFETCH STAGE 1 DATA WHEN NEEDED (BYPASS FOR PURE AGENTIC WITHOUT DEBATE)
+        macro_debate_enabled = bool(self.settings.get("agent_architecture", {}).get("enable_debate", False))
+        if is_agentic and not macro_debate_enabled:
+            prefetched_json = ""
             prefetch_satisfied_tools = set()
+            bundled_raw_data = None
+        else:
+            await self._log(session, "Prefetching Stage 1 context data...")
+            bundler = Stage1DataBundler(session, self.settings)
+            prefetch_res = await bundler.prefetch_all_data()
+            bundled_raw_data = None
+            if isinstance(prefetch_res, tuple) and len(prefetch_res) >= 2:
+                prefetched_json, prefetch_satisfied_tools = prefetch_res[0], prefetch_res[1]
+                if len(prefetch_res) >= 3:
+                    bundled_raw_data = prefetch_res[2]
+            else:
+                prefetched_json = prefetch_res
+                prefetch_satisfied_tools = set()
 
         # Check DataFeedCircuitBreaker status and inject warning if tripped
         try:

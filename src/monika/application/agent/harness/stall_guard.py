@@ -76,13 +76,15 @@ class StallGuard:
     if agent fails to advance state after warnings.
     """
 
-    def __init__(self, warning_threshold: int = 4, force_terminate_threshold: int = 7):
+    def __init__(self, warning_threshold: int = 10, force_terminate_threshold: int = 16):
         self.warning_threshold = warning_threshold
         self.force_terminate_threshold = force_terminate_threshold
         self.consecutive_read_count = 0
+        self.redundant_read_count = 0
         self.warning_issued = False
         self.warning_turns_count = 0
-        self.seen_content_hashes: deque[str] = deque(maxlen=10)
+        self.seen_content_hashes: deque[str] = deque(maxlen=20)
+        self.seen_tool_signatures: deque[str] = deque(maxlen=20)
         self._last_turn_idx: Optional[int] = None
 
     def is_read_only(self, tool_name: str) -> bool:
@@ -106,12 +108,24 @@ class StallGuard:
             )
         )
 
-    def record_call(self, tool_name: str, tool_result: Any = None, turn_idx: Optional[int] = None) -> None:
+    def record_call(
+        self,
+        tool_name: str,
+        tool_result: Any = None,
+        turn_idx: Optional[int] = None,
+        tool_args: Any = None,
+    ) -> None:
         """Record execution of a tool and update stall counters per reasoning turn."""
         if not self.is_read_only(tool_name):
             # Mutating / state-advancing tool breaks the stall
             self.reset()
             return
+
+        sig = f"{tool_name}:{json.dumps(tool_args, sort_keys=True, default=str)}" if tool_args else tool_name
+        is_redundant = sig in self.seen_tool_signatures
+        self.seen_tool_signatures.append(sig)
+        if is_redundant:
+            self.redundant_read_count += 1
 
         if turn_idx is not None:
             if turn_idx != self._last_turn_idx:
@@ -139,7 +153,7 @@ class StallGuard:
         Returns:
             (is_stall_warning, is_force_terminate, message)
         """
-        # 1. Check for identical result looping (>= 3 times exact same result)
+        # 1. Check for identical result looping (>= 4 times exact same result)
         content_repeat_count = 0
         if self.seen_content_hashes:
             latest = self.seen_content_hashes[-1]
@@ -148,8 +162,9 @@ class StallGuard:
         # 2. Check for force termination condition
         if (
             self.consecutive_read_count >= self.force_terminate_threshold
-            or (self.warning_issued and self.warning_turns_count >= 2)
-            or content_repeat_count >= 4
+            or self.redundant_read_count >= 6
+            or (self.warning_issued and self.warning_turns_count >= 4)
+            or content_repeat_count >= 5
         ):
             msg = (
                 f"[STALL GUARD CRITICAL]: Execution stalled across {self.consecutive_read_count} "
@@ -160,7 +175,11 @@ class StallGuard:
             return (False, True, msg)
 
         # 3. Check for warning condition
-        if self.consecutive_read_count >= self.warning_threshold or content_repeat_count >= 3:
+        if (
+            self.consecutive_read_count >= self.warning_threshold
+            or self.redundant_read_count >= 3
+            or content_repeat_count >= 3
+        ):
             self.warning_issued = True
             msg = (
                 f"[STALL GUARD WARNING]: You have executed {self.consecutive_read_count} consecutive "
@@ -175,7 +194,9 @@ class StallGuard:
     def reset(self) -> None:
         """Reset stall counters upon state-advancing actions."""
         self.consecutive_read_count = 0
+        self.redundant_read_count = 0
         self.warning_issued = False
         self.warning_turns_count = 0
+        self.seen_tool_signatures.clear()
         self._last_turn_idx = None
         self.seen_content_hashes.clear()

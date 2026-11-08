@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 
 from langchain_core.runnables.config import RunnableConfig
 
+import monika.core.primitives.clock as clock
 from monika.application.graph.state import TradingState
 
 logger = logging.getLogger("TradingAgent.Graph.ReflectionNode")
@@ -24,7 +25,113 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
     if not actionable:
         return {"summary": summary}
 
-    # === CHECK 1: Correlation conflict detection ===
+    now_dt = clock.now()
+
+    # --- STEP 1: MACRO NARRATIVE CROSS-VALIDATION FIRST ---
+    # Filter trades that contradict Stage 1 Fundamental Brief before evaluating cross-pair contradictions
+    SYMBOL_CURRENCY_MAP = {
+        "EURUSD": ("EUR", "USD"),
+        "GBPUSD": ("GBP", "USD"),
+        "USDJPY": ("USD", "JPY"),
+        "AUDUSD": ("AUD", "USD"),
+        "USDCAD": ("USD", "CAD"),
+        "USDCHF": ("USD", "CHF"),
+        "NZDUSD": ("NZD", "USD"),
+        "EURJPY": ("EUR", "JPY"),
+        "GBPJPY": ("GBP", "JPY"),
+        "EURGBP": ("EUR", "GBP"),
+        "XAUUSD": ("XAU", "USD"),
+        "XTIUSD": ("OIL", "USD"),
+        "XBRUSD": ("OIL", "USD"),
+        "BTCUSD": ("BTC", "USD"),
+        "ETHUSD": ("ETH", "USD"),
+    }
+    try:
+        from sqlalchemy import select
+
+        from monika.infrastructure.database.db import get_session
+        from monika.infrastructure.database.models import FundamentalBrief
+
+        async with get_session() as session:
+            brief_row = (
+                await session.execute(
+                    select(FundamentalBrief)
+                    .where(FundamentalBrief.generated_at <= now_dt)
+                    .order_by(FundamentalBrief.generated_at.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+
+        if brief_row and brief_row.structured_json:
+            import json
+
+            brief_data = json.loads(brief_row.structured_json)
+            currency_bias = brief_data.get("currency_bias", {})
+
+            if currency_bias:
+                inconsistent_trades = []
+                consistent_trades = []
+
+                for sym, r in actionable:
+                    direction = r.get("decision", "wait")
+                    import re
+
+                    clean_sym = re.sub(r"[^A-Z]", "", sym.upper())[:6]
+                    base, quote = SYMBOL_CURRENCY_MAP.get(sym, SYMBOL_CURRENCY_MAP.get(clean_sym, (None, None)))
+                    if base is None and len(clean_sym) == 6:
+                        base, quote = clean_sym[:3], clean_sym[3:]
+
+                    if base is None or quote is None:
+                        consistent_trades.append((sym, r))
+                        continue
+
+                    from monika.domain.market.bias_utils import normalize_bias
+
+                    base_bias = normalize_bias(currency_bias.get(base, "neutral"))
+                    quote_bias = normalize_bias(currency_bias.get(quote, "neutral"))
+
+                    if direction == "buy":
+                        is_consistent = base_bias == "bullish" or quote_bias == "bearish"
+                        is_consistent = is_consistent or (base_bias == "neutral" and quote_bias == "neutral")
+                    elif direction == "sell":
+                        is_consistent = base_bias == "bearish" or quote_bias == "bullish"
+                        is_consistent = is_consistent or (base_bias == "neutral" and quote_bias == "neutral")
+                    else:
+                        is_consistent = True
+
+                    if not is_consistent:
+                        logger.warning(
+                            f"[Reflection] MACRO INCONSISTENCY: {sym} {direction.upper()} "
+                            f"contradicts brief bias ({base}={base_bias}, {quote}={quote_bias}). "
+                            f"Filtering macro-inconsistent trade first."
+                        )
+                        r_copy = dict(r)
+                        r_copy["macro_inconsistent"] = True
+                        r_copy["macro_inconsistency_detail"] = (
+                            f"{sym} {direction.upper()} contradicts brief: {base}={base_bias}, {quote}={quote_bias}"
+                        )
+                        inconsistent_trades.append((sym, r_copy))
+                    else:
+                        consistent_trades.append((sym, r))
+
+                if inconsistent_trades and consistent_trades:
+                    logger.warning(
+                        f"[Reflection] Filtering {len(inconsistent_trades)} macro-inconsistent trades in favor of {len(consistent_trades)} consistent ones."
+                    )
+                    summary["reflection_macro_inconsistent_filtered"] = [
+                        f"{sym} {r.get('decision', '?').upper()}" for sym, r in inconsistent_trades
+                    ]
+                    actionable = consistent_trades
+                elif inconsistent_trades and not consistent_trades:
+                    logger.warning(
+                        "[Reflection] ALL actionable trades are macro-inconsistent. Proceeding but flagging all."
+                    )
+                    summary["reflection_all_macro_inconsistent"] = True
+                    actionable = inconsistent_trades
+    except Exception as e:
+        logger.warning(f"[Reflection] Macro consistency check failed (non-fatal): {e}")
+
+    # === STEP 2: Correlation conflict detection ===
     try:
         from monika.application.protocol.context_coherence import compute_cross_pair_contradictions
 
@@ -32,7 +139,6 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
         contradictions = compute_cross_pair_contradictions(analyses_dict)
         for c in contradictions:
             logger.warning(f"[Reflection] Cross-pair contradictions detected: {c['description']}")
-            # Keep only the recommended direction if there is a conflict
             recommended = c.get("recommended_filter")
             if recommended in ("USD_STRONG", "KEEP_STRONG_USD"):
                 kept_symbols = set(c.get("strong_usd_symbols", []))
@@ -114,9 +220,13 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
         from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.models import VIXData
 
+        now_dt = clock.now()
+        eod_cutoff = clock.get_eod_cutoff(now_dt)
         async with get_session() as session:
             vix_row = (
-                await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))
+                await session.execute(
+                    select(VIXData).where(VIXData.date <= eod_cutoff).order_by(VIXData.date.desc()).limit(1)
+                )
             ).scalar_one_or_none()
 
         if vix_row and vix_row.close is not None:
@@ -145,103 +255,23 @@ async def reflection_node(state: TradingState, config: Optional[RunnableConfig] 
             summary["reflection_vix_filtered"] = f"VIX={vix_value:.1f} >= 25: limited to top 2 trades"
             logger.info(f"[Reflection] VIX={vix_value:.1f}: filtered to top 2 trades (elevated volatility)")
 
-    # --- MACRO NARRATIVE CROSS-VALIDATION ---
-    SYMBOL_CURRENCY_MAP = {
-        "EURUSD": ("EUR", "USD"),
-        "GBPUSD": ("GBP", "USD"),
-        "USDJPY": ("USD", "JPY"),
-        "AUDUSD": ("AUD", "USD"),
-        "USDCAD": ("USD", "CAD"),
-        "USDCHF": ("USD", "CHF"),
-        "NZDUSD": ("NZD", "USD"),
-        "EURJPY": ("EUR", "JPY"),
-        "GBPJPY": ("GBP", "JPY"),
-        "EURGBP": ("EUR", "GBP"),
-        "XAUUSD": ("XAU", "USD"),
-        "XTIUSD": ("OIL", "USD"),
-        "XBRUSD": ("OIL", "USD"),
-        "BTCUSD": ("BTC", "USD"),
-        "ETHUSD": ("ETH", "USD"),
-    }
-    try:
-        from sqlalchemy import select
-
-        from monika.infrastructure.database.db import get_session
-        from monika.infrastructure.database.models import FundamentalBrief
-
-        async with get_session() as session:
-            brief_row = (
-                await session.execute(select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1))
-            ).scalar_one_or_none()
-
-        if brief_row and brief_row.structured_json:
-            import json
-
-            brief_data = json.loads(brief_row.structured_json)
-            currency_bias = brief_data.get("currency_bias", {})
-
-            if currency_bias:
-                inconsistent_trades = []
-                consistent_trades = []
-
-                for sym, r in actionable:
-                    direction = r.get("decision", "wait")
-                    import re
-
-                    clean_sym = re.sub(r"[^A-Z]", "", sym.upper())[:6]
-                    base, quote = SYMBOL_CURRENCY_MAP.get(sym, SYMBOL_CURRENCY_MAP.get(clean_sym, (None, None)))
-                    if base is None and len(clean_sym) == 6:
-                        base, quote = clean_sym[:3], clean_sym[3:]
-
-                    if base is None or quote is None:
-                        consistent_trades.append((sym, r))
-                        continue
-
-                    from monika.domain.market.bias_utils import normalize_bias
-
-                    base_bias = normalize_bias(currency_bias.get(base, "neutral"))
-                    quote_bias = normalize_bias(currency_bias.get(quote, "neutral"))
-
-                    if direction == "buy":
-                        is_consistent = base_bias == "bullish" or quote_bias == "bearish"
-                        is_consistent = is_consistent or (base_bias == "neutral" and quote_bias == "neutral")
-                    elif direction == "sell":
-                        is_consistent = base_bias == "bearish" or quote_bias == "bullish"
-                        is_consistent = is_consistent or (base_bias == "neutral" and quote_bias == "neutral")
-                    else:
-                        is_consistent = True
-
-                    if not is_consistent:
-                        logger.warning(
-                            f"[Reflection] MACRO INCONSISTENCY: {sym} {direction.upper()} "
-                            f"contradicts brief bias ({base}={base_bias}, {quote}={quote_bias}). "
-                            f"Requiring higher confluence or filtering."
-                        )
-                        r_copy = dict(r)
-                        r_copy["macro_inconsistent"] = True
-                        r_copy["macro_inconsistency_detail"] = (
-                            f"{sym} {direction.upper()} contradicts brief: {base}={base_bias}, {quote}={quote_bias}"
-                        )
-                        inconsistent_trades.append((sym, r_copy))
-                    else:
-                        consistent_trades.append((sym, r))
-
-                if inconsistent_trades and consistent_trades:
-                    logger.warning(
-                        f"[Reflection] Filtering {len(inconsistent_trades)} macro-inconsistent trades in favor of {len(consistent_trades)} consistent ones."
+    # Sinkronkan state["asset_analyses"] agar trade yang difilter reflection berstatus "wait"
+    actionable_syms = {s for s, _ in actionable}
+    asset_analyses = state.get("asset_analyses", {})
+    if isinstance(asset_analyses, dict):
+        for sym, a_dict in asset_analyses.items():
+            if isinstance(a_dict, dict) and sym not in actionable_syms:
+                if str(a_dict.get("decision", "")).lower() in ("buy", "sell"):
+                    logger.info(
+                        f"[Reflection] Marking filtered asset {sym} as decision='wait' in state['asset_analyses']"
                     )
-                    summary["reflection_macro_inconsistent_filtered"] = [
-                        f"{sym} {r.get('decision', '?').upper()}" for sym, r in inconsistent_trades
-                    ]
-                    actionable = consistent_trades
-                elif inconsistent_trades and not consistent_trades:
-                    logger.warning(
-                        "[Reflection] ALL actionable trades are macro-inconsistent. Proceeding but flagging all."
-                    )
-                    summary["reflection_all_macro_inconsistent"] = True
-                    actionable = inconsistent_trades
-    except Exception as e:
-        logger.warning(f"[Reflection] Macro consistency check failed (non-fatal): {e}")
+                    a_dict["decision"] = "wait"
+                    a_dict["reflection_filtered"] = True
 
     logger.info(f"[Reflection] Final actionable after reflection: {[s for s, _ in actionable]}")
-    return {"summary": summary, "actionable_trades": actionable, "reflection_applied": True}
+    return {
+        "summary": summary,
+        "actionable_trades": actionable,
+        "asset_analyses": asset_analyses,
+        "reflection_applied": True,
+    }

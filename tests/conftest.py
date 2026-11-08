@@ -565,6 +565,12 @@ def reset_executed_analysis_ids():
         _EXECUTED_ANALYSIS_IDS.clear()
     except Exception:
         pass
+    try:
+        from monika.core.analytics.paper_tracker import _SL_UPDATED_AT
+
+        _SL_UPDATED_AT.clear()
+    except Exception:
+        pass
 
 
 @pytest.fixture(autouse=True)

@@ -34,6 +34,13 @@ class ToolObservationCondenser:
         "submit_fundamental_brief",
         "calculate_position_size",
         "propose_action",
+        "get_central_bank_expectations",
+        "get_economic_calendar",
+        "get_economic_surprise",
+        "get_fedwatch_probabilities",
+        "get_cot_report",
+        "get_treasury_yields",
+        "get_bond_yield_spreads",
     }
 
     def __init__(self, settings: Optional[dict] = None):

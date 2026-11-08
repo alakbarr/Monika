@@ -76,17 +76,23 @@ class CoreDataValidator:
         return (True, core_data, issues)
 
     async def _validate_brief(self) -> Tuple[bool, dict, str]:
+        from monika.core.primitives import clock
         from monika.infrastructure.database.models import FundamentalBrief
 
+        now = clock.now()
         brief = (
-            await self.session.execute(select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1))
+            await self.session.execute(
+                select(FundamentalBrief)
+                .where(FundamentalBrief.generated_at <= now)
+                .order_by(FundamentalBrief.generated_at.desc())
+                .limit(1)
+            )
         ).scalar_one_or_none()
 
         if not brief:
             return (False, {}, "No fundamental brief in database")
 
         max_age = self.settings.get("data_quality", {}).get("max_brief_age_analysis_hours", 12.0)
-        now = datetime.now(timezone.utc)
         age_hours = (
             now
             - (
@@ -148,14 +154,20 @@ class CoreDataValidator:
         )
 
     async def _validate_vix(self) -> Tuple[bool, dict, str]:
+        from monika.core.primitives import clock
         from monika.infrastructure.database.models import VIXData
 
-        vix = (await self.session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
+        now = clock.now()
+        eod_cutoff = clock.get_eod_cutoff(now)
+        vix = (
+            await self.session.execute(
+                select(VIXData).where(VIXData.date <= eod_cutoff).order_by(VIXData.date.desc()).limit(1)
+            )
+        ).scalar_one_or_none()
 
         if not vix:
             return (False, {}, "No VIX data")
 
-        now = datetime.now(timezone.utc)
         vix_date = vix.date
 
         # Ensure vix_date is datetime for subtraction
@@ -182,9 +194,20 @@ class CoreDataValidator:
         return (True, {"close": vix.close, "date": vix.date.strftime("%Y-%m-%d"), "age_days": age_days}, "")
 
     async def _validate_dxy(self) -> Tuple[bool, dict, str]:
+        from monika.core.primitives import clock
         from monika.infrastructure.database.models import DXYData
 
-        rows = (await self.session.execute(select(DXYData).order_by(DXYData.date.desc()).limit(5))).scalars().all()
+        now = clock.now()
+        eod_cutoff = clock.get_eod_cutoff(now)
+        rows = (
+            (
+                await self.session.execute(
+                    select(DXYData).where(DXYData.date <= eod_cutoff).order_by(DXYData.date.desc()).limit(5)
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         if not rows:
             return (False, {}, "No DXY data")

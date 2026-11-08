@@ -17,6 +17,9 @@ from datetime import datetime, timezone
 from typing import Any, List, Optional, Sequence
 
 import pandas as pd
+from sqlalchemy import select
+
+from monika.infrastructure.database.models import PriceOHLCV
 
 logger = logging.getLogger("TradingAgent.Grounding")
 
@@ -85,9 +88,52 @@ class MarketGroundingEngine:
         if not closes or not highs or not lows:
             return ""
 
+        decimals = 3 if "JPY" in norm_sym else (2 if any(c in norm_sym for c in ("BTC", "XAU", "XTI", "XBR")) else 4)
         last_close = closes[-1]
         period_high = max(highs)
         period_low = min(lows)
+
+        if sess is not None:
+            try:
+                latest_m15 = (
+                    await sess.execute(
+                        select(PriceOHLCV)
+                        .where(PriceOHLCV.symbol == norm_sym)
+                        .where(PriceOHLCV.timeframe == "M15")
+                        .where(PriceOHLCV.timestamp <= effective_as_of)
+                        .order_by(PriceOHLCV.timestamp.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
+                if latest_m15:
+                    last_close = float(latest_m15.close)
+                    closes[-1] = last_close
+                    today_start = datetime(
+                        effective_as_of.year, effective_as_of.month, effective_as_of.day, tzinfo=timezone.utc
+                    )
+                    today_m15 = (
+                        (
+                            await sess.execute(
+                                select(PriceOHLCV)
+                                .where(PriceOHLCV.symbol == norm_sym)
+                                .where(PriceOHLCV.timeframe == "M15")
+                                .where(PriceOHLCV.timestamp >= today_start)
+                                .where(PriceOHLCV.timestamp <= effective_as_of)
+                            )
+                        )
+                        .scalars()
+                        .all()
+                    )
+                    if today_m15:
+                        t_high = float(max(b.high for b in today_m15))
+                        t_low = float(min(b.low for b in today_m15))
+                        highs[-1] = t_high
+                        lows[-1] = t_low
+                        period_high = max(highs)
+                        period_low = min(lows)
+            except Exception as m15_err:
+                logger.debug(f"[MarketGroundingEngine] M15 intraday adjustment skip: {m15_err}")
+
         total_range = period_high - period_low
         range_pos_pct = round(((last_close - period_low) / max(total_range, 1e-9)) * 100.0, 1)
 
@@ -112,8 +158,8 @@ class MarketGroundingEngine:
             f"*Generated at: {gen_at_str}*",
             "You MUST treat the prices below as absolute ground truth. Do not invent or assume historical prices.\n",
             f"### {norm_sym} (Recent {days_back}-Day Context)",
-            f"- **Current Reference Price**: `{last_close:,.4f}`",
-            f"- **Observed Range**: `{period_low:,.4f}` — `{period_high:,.4f}` (Span: `{total_range:,.4f}`)",
+            f"- **Current Reference Price**: `{last_close:,.{decimals}f}`",
+            f"- **Observed Range**: `{period_low:,.{decimals}f}` — `{period_high:,.{decimals}f}` (Span: `{total_range:,.{decimals}f}`)",
             f"- **Position in Range**: `{range_pos_pct}%` from range low",
             f"- **Period Net Return**: `{trend_str}`\n",
             "| Date | Open | High | Low | Close | Volume |",
@@ -121,7 +167,7 @@ class MarketGroundingEngine:
         ]
 
         recent_rows = list(rows)[-5:]
-        for r in recent_rows:
+        for idx, r in enumerate(recent_rows):
             ts = getattr(r, "timestamp", None)
             d_str = ts.strftime("%Y-%m-%d") if isinstance(ts, datetime) else "N/A"
             o_val = float(getattr(r, "open", 0.0) or 0.0)
@@ -129,7 +175,13 @@ class MarketGroundingEngine:
             l_val = float(getattr(r, "low", 0.0) or 0.0)
             c_val = float(getattr(r, "close", 0.0) or 0.0)
             v_val = float(getattr(r, "volume", 0.0) or 0.0)
-            sections.append(f"| {d_str} | {o_val:.4f} | {h_val:.4f} | {l_val:.4f} | {c_val:.4f} | {v_val:,.0f} |")
+            if idx == len(recent_rows) - 1 and closes[-1] == last_close:
+                c_val = last_close
+                h_val = highs[-1]
+                l_val = lows[-1]
+            sections.append(
+                f"| {d_str} | {o_val:.{decimals}f} | {h_val:.{decimals}f} | {l_val:.{decimals}f} | {c_val:.{decimals}f} | {v_val:,.0f} |"
+            )
 
         return "\n".join(sections) + "\n"
 

@@ -67,17 +67,23 @@ async def filter_correlated_proposals(
     open_positions: list[Any] = []
     if session is not None:
         try:
-            from monika.domain.risk.ports import get_default_risk_data_provider
+            from sqlalchemy import select
+            from monika.domain.models_resolver import resolve_model
 
-            repo = get_default_risk_data_provider(session=session)
-            if repo is not None:
-                open_positions = await repo.get_open_positions(is_paper=False, session=session)
-            elif hasattr(session, "execute"):
-                res = await session.execute(None)
-                if hasattr(res, "scalars"):
-                    open_positions = list(res.scalars().all())
-        except Exception as e:
-            logger.warning(f"Correlation Gate: Failed to query open positions from repository: {e}")
+            Position = resolve_model("Position")
+            if Position is not None:
+                stmt = select(Position).where(Position.status == "open")
+                res = await session.execute(stmt)
+                open_positions = list(res.scalars().all())
+        except Exception:
+            try:
+                from monika.domain.risk.ports import get_default_risk_data_provider
+
+                repo = get_default_risk_data_provider(session=session)
+                if repo is not None:
+                    open_positions = await repo.get_open_positions(is_paper=False, session=session)
+            except Exception as e:
+                logger.warning(f"Correlation Gate: Failed to query open positions from repository: {e}")
 
     # Calculate starting net USD exposure and sector counts from existing open positions
     from monika.domain.risk.portfolio_optimizer import DEFAULT_GROUP_MAP

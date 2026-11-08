@@ -174,6 +174,9 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
 
             # Validasi confluence_factors (Fase 6 Task 3)
             factors = inp.get("confluence_factors", [])
+            if isinstance(factors, list):
+                factors = ["uncrowded_institutional_synergy" if f == "uncrowded_synergy_bonus" else f for f in factors]
+                inp["confluence_factors"] = factors
             valid_factors = {
                 "fundamental_bias",
                 "dxy_confirms",
@@ -200,6 +203,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 "rr_ratio_bonus",
                 "adr_target_bonus",
                 "uncrowded_institutional_synergy",
+                "institutional_contrarian_synergy",
             }
             invalid_factors = [f for f in factors if f not in valid_factors]
             if invalid_factors:
@@ -225,6 +229,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                     "rr_ratio_bonus": 1,
                     "adr_target_bonus": 1,
                     "uncrowded_institutional_synergy": 2,
+                    "institutional_contrarian_synergy": 2,
                 }
                 effective_tolerance += sum(v for f, v in BONUS_FACTORS_BEYOND_CORE_14.items() if f in declared_factors)
                 if overclaim_gap > effective_tolerance:
@@ -370,10 +375,21 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
 
                 sweep_check = await detect_liquidity_sweep(self.session, symbol, self.settings)
                 if not (sweep_check.get("structure_confirmed") and sweep_check.get("valid_for_direction") == decision):
-                    errors.append(
-                        "LIQUIDITY_SWEEP_UNCONFIRMED: factor claimed (+2) but deterministic check "
-                        "does not confirm a validated sweep+structure-shift for this direction."
-                    )
+                    current_cs = int(inp.get("confluence_score") or 0)
+                    threshold = int(inp.get("effective_threshold") or 8)
+                    if (current_cs - 2) >= threshold:
+                        logger.info(
+                            f"[{symbol}] Auto-pruning unconfirmed liquidity_sweep_confirmed: "
+                            f"score {current_cs} - 2 = {current_cs - 2} still meets threshold {threshold}."
+                        )
+                        factors.remove("liquidity_sweep_confirmed")
+                        inp["confluence_factors"] = factors
+                        inp["confluence_score"] = current_cs - 2
+                    else:
+                        errors.append(
+                            "LIQUIDITY_SWEEP_UNCONFIRMED: factor claimed (+2) but deterministic check "
+                            "does not confirm a validated sweep+structure-shift for this direction."
+                        )
             except Exception as e:
                 logger.warning(f"Liquidity sweep check failed (fail-open): {e}")
 
@@ -501,6 +517,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                         await self.session.execute(
                             select(PriceOHLCV)
                             .where(PriceOHLCV.symbol == symbol)
+                            .where(PriceOHLCV.timeframe == "M15")
                             .where(PriceOHLCV.timestamp <= clock.now())
                             .order_by(PriceOHLCV.timestamp.desc())
                             .limit(1)
@@ -781,6 +798,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                             await self.session.execute(
                                 select(PriceOHLCV)
                                 .where(PriceOHLCV.symbol == symbol)
+                                .where(PriceOHLCV.timeframe == "M15")
                                 .where(PriceOHLCV.timestamp <= clock.now())
                                 .order_by(PriceOHLCV.timestamp.desc())
                                 .limit(1)
@@ -1006,11 +1024,14 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 inp["rationale"] = rationale
         if errors:
             attempts = self.submit_attempts + 1
-            # Use SystemConfig for persistent cycle retry counter
+            # Use SystemConfig for persistent cycle retry counter scoped per cycle
             try:
-                now_str = clock.now().strftime("%Y%m%d_%H")
-                # Use date_hour as cycle proxy
-                cfg_key = f"submit_attempt_{symbol}_{now_str}"
+                cycle_id = (
+                    getattr(self, "cycle_id", None)
+                    or self.settings.get("current_cycle_id")
+                    or clock.now().strftime("%Y%m%d_%H")
+                )
+                cfg_key = f"submit_attempt_{cycle_id}_{symbol}"
                 cfg = (
                     await self.session.execute(select(SystemConfig).where(SystemConfig.key == cfg_key))
                 ).scalar_one_or_none()
@@ -1316,6 +1337,7 @@ class AssetAnalysisSubmissionMixin(_ToolExecutorMixinBase):
                 await self.session.execute(
                     select(PriceOHLCV)
                     .where(PriceOHLCV.symbol == symbol)
+                    .where(PriceOHLCV.timeframe == "M15")
                     .where(PriceOHLCV.timestamp <= clock.now())
                     .order_by(PriceOHLCV.timestamp.desc())
                     .limit(1)

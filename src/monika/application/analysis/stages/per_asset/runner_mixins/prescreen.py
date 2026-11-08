@@ -43,10 +43,13 @@ class PrescreenMixin(_RunnerMixinBase):
 
             last_analysis_time = self._last_analysis_time.get(symbol)
             if last_analysis_time:
+                now_clk = _get_clock().now()
                 price_now = (
                     await session.execute(
                         select(PriceOHLCV.close)
                         .where(PriceOHLCV.symbol == symbol)
+                        .where(PriceOHLCV.timeframe == "M15")
+                        .where(PriceOHLCV.timestamp <= now_clk)
                         .order_by(PriceOHLCV.timestamp.desc())
                         .limit(1)
                     )
@@ -55,6 +58,7 @@ class PrescreenMixin(_RunnerMixinBase):
                     await session.execute(
                         select(PriceOHLCV.close)
                         .where(PriceOHLCV.symbol == symbol)
+                        .where(PriceOHLCV.timeframe == "M15")
                         .where(PriceOHLCV.timestamp <= last_analysis_time)
                         .order_by(PriceOHLCV.timestamp.desc())
                         .limit(1)
@@ -131,6 +135,8 @@ class PrescreenMixin(_RunnerMixinBase):
                                 await session.execute(
                                     select(PriceOHLCV.close)
                                     .where(PriceOHLCV.symbol == symbol)
+                                    .where(PriceOHLCV.timeframe == "M15")
+                                    .where(PriceOHLCV.timestamp <= now_u)
                                     .order_by(PriceOHLCV.timestamp.desc())
                                     .limit(1)
                                 )
@@ -313,10 +319,13 @@ class PrescreenMixin(_RunnerMixinBase):
 
             from monika.infrastructure.database.models import PriceOHLCV, SRZone, SwingPoint
 
+            now_clk = _get_clock().now()
             last_close = (
                 await session.execute(
                     select(PriceOHLCV.close)
                     .where(PriceOHLCV.symbol == symbol)
+                    .where(PriceOHLCV.timeframe == "M15")
+                    .where(PriceOHLCV.timestamp <= now_clk)
                     .order_by(PriceOHLCV.timestamp.desc())
                     .limit(1)
                 )
@@ -429,16 +438,25 @@ Rule:
 
                     pair_info = SYMBOL_CURRENCY_MAP.get(symbol, {})
                     base_c, quote_c = pair_info.get("base"), pair_info.get("quote")
+                    now_clk = _get_clock().now()
                     if base_c and quote_c:
+                        is_commodity_or_crypto = any(
+                            k in symbol.upper() for k in ("XAU", "XTI", "XBR", "BTC", "ETH", "SOL", "GOLD", "OIL")
+                        )
+                        c_match = (
+                            NewsItem.currency_tags.like(f"%{base_c}%")
+                            if is_commodity_or_crypto
+                            else (
+                                NewsItem.currency_tags.like(f"%{base_c}%") | NewsItem.currency_tags.like(f"%{quote_c}%")
+                            )
+                        )
                         recent_breaking = (
                             await session.execute(
                                 select(NewsItem)
-                                .where(NewsItem.fetched_at >= _get_clock().now() - timedelta(minutes=60))
-                                .where(NewsItem.impact.in_(["BREAKING", "HIGH"]))
-                                .where(
-                                    NewsItem.currency_tags.like(f"%{base_c}%")
-                                    | NewsItem.currency_tags.like(f"%{quote_c}%")
-                                )
+                                .where(NewsItem.fetched_at >= now_clk - timedelta(minutes=60))
+                                .where(NewsItem.fetched_at <= now_clk)
+                                .where(NewsItem.impact == "BREAKING")
+                                .where(c_match)
                                 .limit(1)
                             )
                         ).scalar_one_or_none()
@@ -450,7 +468,10 @@ Rule:
 
                     brief = (
                         await session.execute(
-                            select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1)
+                            select(FundamentalBrief)
+                            .where(FundamentalBrief.generated_at <= now_clk)
+                            .order_by(FundamentalBrief.generated_at.desc())
+                            .limit(1)
                         )
                     ).scalar_one_or_none()
                     if brief and brief.confidence and brief.confidence >= 0.85:

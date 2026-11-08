@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import monika.core.primitives.clock as clock
 from monika.application.analysis.calculators.confluence_calculator import calculate_confluence
 from monika.infrastructure.database.models import AssetAnalysis
 
@@ -33,7 +34,7 @@ async def verify_confluence(session: AsyncSession, analysis: AssetAnalysis, sett
     sl = analysis.stop_loss
     tp = analysis.take_profit
 
-    raw_factors = getattr(analysis, "confluence_factors", None)
+    raw_factors = getattr(analysis, "confluence_factors_json", None) or getattr(analysis, "confluence_factors", None)
     factors = []
     if raw_factors:
         try:
@@ -41,8 +42,27 @@ async def verify_confluence(session: AsyncSession, analysis: AssetAnalysis, sett
         except Exception:
             factors = []
 
+    spec_biases = None
+    raw_spec = getattr(analysis, "specialist_biases_json", None) or getattr(analysis, "specialist_biases", None)
+    if raw_spec:
+        try:
+            spec_biases = json.loads(raw_spec) if isinstance(raw_spec, str) else dict(raw_spec)
+        except Exception:
+            spec_biases = None
+
+    as_of = getattr(analysis, "generated_at", None) or getattr(analysis, "created_at", None) or clock.now()
+
     calc_res = await calculate_confluence(
-        session, symbol, direction, entry_price, sl, tp, settings=settings, confluence_factors=factors
+        session,
+        symbol,
+        direction,
+        entry_price,
+        sl,
+        tp,
+        settings=settings,
+        confluence_factors=factors,
+        specialist_biases=spec_biases,
+        as_of=as_of,
     )
     computed_score = calc_res.get("computed_score", 0)
     blocking_issues = calc_res.get("blocking_issues", [])

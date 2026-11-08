@@ -2,9 +2,10 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import monika.core.primitives.clock as clock
 from monika.infrastructure.database.models import (
     AssetAnalysis,
     DXYData,
@@ -32,6 +33,9 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
     if not analysis:
         raise ValueError(f"Analysis {analysis_id} not found for fact sheet")
 
+    as_of_fact = getattr(analysis, "generated_at", None) or clock.get_simulated_now() or clock.now()
+    eod_cutoff = clock.get_eod_cutoff(as_of_fact)
+
     entry_zone = {}
     if analysis.entry_zone:
         try:
@@ -53,6 +57,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
             .where(TechnicalIndicator.symbol == analysis.symbol)
             .where(TechnicalIndicator.timeframe == "H4")
             .where(TechnicalIndicator.indicator_name == "ATR_14")
+            .where(TechnicalIndicator.timestamp <= as_of_fact)
             .order_by(TechnicalIndicator.timestamp.desc())
             .limit(1)
         )
@@ -76,7 +81,8 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
                     select(FVGZone)
                     .where(FVGZone.symbol == analysis.symbol)
                     .where(FVGZone.timeframe == "H4")
-                    .where(FVGZone.filled_at.is_(None))
+                    .where(FVGZone.formed_at <= as_of_fact)
+                    .where(or_(FVGZone.filled_at.is_(None), FVGZone.filled_at > as_of_fact))
                     .order_by(FVGZone.formed_at.desc())
                     .limit(5)
                 )
@@ -102,7 +108,8 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
                     select(OrderBlock)
                     .where(OrderBlock.symbol == analysis.symbol)
                     .where(OrderBlock.timeframe == "H4")
-                    .where(OrderBlock.mitigated_at.is_(None))
+                    .where(OrderBlock.formed_at <= as_of_fact)
+                    .where(or_(OrderBlock.mitigated_at.is_(None), OrderBlock.mitigated_at > as_of_fact))
                     .order_by(OrderBlock.formed_at.desc())
                     .limit(5)
                 )
@@ -120,7 +127,12 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
 
     # Fetch currency bias and DXY
     brief = (
-        await session.execute(select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(1))
+        await session.execute(
+            select(FundamentalBrief)
+            .where(FundamentalBrief.generated_at <= as_of_fact)
+            .order_by(FundamentalBrief.generated_at.desc())
+            .limit(1)
+        )
     ).scalar_one_or_none()
 
     currency_bias_str = "N/A"
@@ -131,7 +143,15 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
         except Exception:
             pass
 
-    dxy_rows = (await session.execute(select(DXYData).order_by(DXYData.date.desc()).limit(5))).scalars().all()
+    dxy_rows = (
+        (
+            await session.execute(
+                select(DXYData).where(DXYData.date <= eod_cutoff).order_by(DXYData.date.desc()).limit(5)
+            )
+        )
+        .scalars()
+        .all()
+    )
     dxy_trend = "unknown"
     if len(dxy_rows) >= 3:
         dxy_trend = "strengthening" if dxy_rows[0].close > dxy_rows[-1].close else "weakening"
@@ -149,7 +169,10 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
     historical_positions = (
         (
             await session.execute(
-                select(Position).where(Position.symbol == analysis.symbol).where(Position.status == "closed")
+                select(Position)
+                .where(Position.symbol == analysis.symbol)
+                .where(Position.status == "closed")
+                .where(Position.opened_at <= as_of_fact)
             )
         )
         .scalars()
@@ -169,6 +192,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
                         select(PaperTradeRecord)
                         .where(PaperTradeRecord.symbol == analysis.symbol)
                         .where(PaperTradeRecord.status == "closed")
+                        .where(PaperTradeRecord.opened_at <= as_of_fact)
                     )
                 )
                 .scalars()
@@ -200,7 +224,11 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
     try:
         from monika.infrastructure.database.models import VIXData
 
-        vix_row = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
+        vix_row = (
+            await session.execute(
+                select(VIXData).where(VIXData.date <= eod_cutoff).order_by(VIXData.date.desc()).limit(1)
+            )
+        ).scalar_one_or_none()
         if vix_row:
             vix_val = round(vix_row.close, 1)
     except Exception:
@@ -252,6 +280,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
             select(PriceOHLCV)
             .where(PriceOHLCV.symbol == analysis.symbol)
             .where(PriceOHLCV.timeframe == "H4")
+            .where(PriceOHLCV.timestamp <= as_of_fact)
             .order_by(PriceOHLCV.timestamp.desc())
             .limit(20)
         )
@@ -419,9 +448,7 @@ async def build_fact_sheet(session: AsyncSession, analysis_id: Any) -> Dict[str,
     # Inject empirical OHLCV market grounding table to strictly anchor debate agents
     try:
         from monika.application.analysis.grounding.market_grounding import MarketGroundingEngine
-        from monika.core.primitives import clock
 
-        as_of_fact = getattr(analysis, "generated_at", None) or clock.get_simulated_now() or clock.now()
         fact_sheet["empirical_market_grounding"] = await MarketGroundingEngine.build_grounding_table(
             symbol=analysis.symbol, session=session, days_back=30, as_of=as_of_fact
         )

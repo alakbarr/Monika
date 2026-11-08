@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.core.primitives import clock
 from monika.infrastructure.database.models import AssetAnalysis, SystemConfig
 from monika.infrastructure.llm.cache_breakpoint_manager import CacheBreakpointManager
 from monika.infrastructure.providers.llm_factory import get_client_for_task
@@ -44,6 +45,7 @@ ADVERSARIAL_SCHEMA = {
         },
         "block_reason": {"type": "string"},
         "overall_quality": {"type": "string", "enum": ["high", "medium", "low"]},
+        "quality": {"type": "string", "enum": ["high", "medium", "low"]},
         "approve": {"type": "boolean"},
     },
     "required": ["strongest_counter_argument", "hard_block", "recommend_block", "overall_quality", "approve"],
@@ -74,6 +76,7 @@ async def run_adversarial_check(session: AsyncSession, analysis: AssetAnalysis, 
         "recommend_block": False,
         "block_reason": "",
         "overall_quality": "medium",
+        "quality": "medium",
         "approve": True,
     }
     prompt = ""
@@ -262,6 +265,23 @@ RAW FACT SHEET (ground truth from database — use to verify rationale claims):
             ):
                 result["block_reason"] = f"Recommended block: {primary_risk}"
 
+        # Synchronize quality, overall_quality, block_reason, hard_block_reason
+        if "quality" in result and "overall_quality" not in result:
+            result["overall_quality"] = result["quality"]
+        elif "overall_quality" in result and "quality" not in result:
+            result["quality"] = result["overall_quality"]
+
+        if result.get("hard_block"):
+            if not result.get("hard_block_reason"):
+                result["hard_block_reason"] = result.get("block_reason") or "Fatal flaw detected"
+            if not result.get("block_reason"):
+                result["block_reason"] = result["hard_block_reason"]
+        elif result.get("recommend_block"):
+            if not result.get("block_reason"):
+                result["block_reason"] = result.get("hard_block_reason") or "Recommended block"
+            if not result.get("hard_block_reason"):
+                result["hard_block_reason"] = result["block_reason"]
+
         merged = {**default_result, **result}
 
         # Save to cache
@@ -279,7 +299,7 @@ RAW FACT SHEET (ground truth from database — use to verify rationale claims):
                     "hard_block": merged.get("hard_block", False),
                     "recommend_block": merged.get("recommend_block", False),
                     "quality": merged.get("overall_quality", "medium"),
-                    "checked_at": datetime.now(timezone.utc).isoformat(),
+                    "checked_at": clock.now().isoformat(),
                 }
             ),
         )
@@ -345,6 +365,23 @@ RAW FACT SHEET (ground truth from database — use to verify rationale claims):
                         not result.get("block_reason") or result.get("block_reason") in ("YES", "NO")
                     ):
                         result["block_reason"] = f"Recommended block: {primary_risk}"
+
+                if "quality" in result and "overall_quality" not in result:
+                    result["overall_quality"] = result["quality"]
+                elif "overall_quality" in result and "quality" not in result:
+                    result["quality"] = result["overall_quality"]
+
+                if result.get("hard_block"):
+                    if not result.get("hard_block_reason"):
+                        result["hard_block_reason"] = result.get("block_reason") or "Fatal flaw detected"
+                    if not result.get("block_reason"):
+                        result["block_reason"] = result["hard_block_reason"]
+                elif result.get("recommend_block"):
+                    if not result.get("block_reason"):
+                        result["block_reason"] = result.get("hard_block_reason") or "Recommended block"
+                    if not result.get("hard_block_reason"):
+                        result["hard_block_reason"] = result["block_reason"]
+
                 return {**default_result, **result}
         except Exception as retry_err:
             logger.error(f"[AdversarialCheck] {analysis.symbol}: retry also failed: {retry_err}")

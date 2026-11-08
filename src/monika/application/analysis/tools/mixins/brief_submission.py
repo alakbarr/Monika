@@ -650,18 +650,45 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                     "get_fedwatch_probabilities", {"compare_hours_ago": 24, "force_refresh": True}
                 )
                 comparisons = real_fw_comp.get("comparisons", [])
-                if comparisons:
-                    all_deltas = []
-                    for c in comparisons:
-                        for d_val in (c.get("deltas_pct") or {}).values():
+                all_deltas = []
+                for c in comparisons:
+                    for d_val in (c.get("deltas_pct") or {}).values():
+                        try:
                             all_deltas.append(float(d_val))
-                    if all_deltas:
-                        claimed_delta = float(kdp.get("fedwatch_repricing_delta_pct"))
-                        min_diff = min(abs(claimed_delta - d) for d in all_deltas)
-                        if min_diff > 8.0:
-                            errors.append(
-                                f"DATA_MISMATCH: Claimed fedwatch_repricing_delta_pct={claimed_delta}%, but nearest empirical delta={min(all_deltas, key=lambda d: abs(claimed_delta - d))}%. Re-verify output from fedwatch.comparisons."
-                            )
+                        except Exception:
+                            pass
+                    for k in ("deltas", "deltas_pct", "prior_1d", "prior_1w", "prior_1m"):
+                        val_dict = c.get(k)
+                        if isinstance(val_dict, dict):
+                            for v in val_dict.values():
+                                try:
+                                    all_deltas.append(float(v))
+                                except Exception:
+                                    pass
+                        elif isinstance(val_dict, (int, float)):
+                            all_deltas.append(float(val_dict))
+
+                for m in real_fw_comp.get("meetings", []):
+                    for k in ("deltas", "deltas_pct", "prior_1d", "prior_1w", "prior_1m"):
+                        val_dict = m.get(k) or (
+                            m.get("probabilities", {}) if isinstance(m.get("probabilities"), dict) else {}
+                        ).get(k)
+                        if isinstance(val_dict, dict):
+                            for v in val_dict.values():
+                                try:
+                                    all_deltas.append(float(v))
+                                except Exception:
+                                    pass
+                        elif isinstance(val_dict, (int, float)):
+                            all_deltas.append(float(val_dict))
+
+                if all_deltas:
+                    claimed_delta = float(kdp.get("fedwatch_repricing_delta_pct"))
+                    min_diff = min(abs(claimed_delta - d) for d in all_deltas)
+                    if min_diff > 8.0:
+                        errors.append(
+                            f"DATA_MISMATCH: Claimed fedwatch_repricing_delta_pct={claimed_delta}%, but nearest empirical delta={min(all_deltas, key=lambda d: abs(claimed_delta - d))}%. Re-verify output from fedwatch.comparisons."
+                        )
         except Exception:
             pass
         try:

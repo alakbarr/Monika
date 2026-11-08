@@ -20,8 +20,7 @@ from monika.application.analysis.stages.per_asset.runner_mixins.base import (
 )
 from monika.application.analysis.stages.per_asset.runner_mixins.single_asset_helpers import (
     compute_prompt_invariants,
-    evaluate_debate_candidate_and_levels,
-    extract_entry_price_from_analysis,
+    finalize_single_asset_result,
     handle_billing_fallback,
 )
 from monika.application.analysis.stages.preflight_gate import PreFlightTurnGate
@@ -306,6 +305,8 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
                 await session.execute(
                     _psel(PriceOHLCV.close)
                     .where(PriceOHLCV.symbol == symbol)
+                    .where(PriceOHLCV.timeframe == "M15")
+                    .where(PriceOHLCV.timestamp <= _get_clock().now())
                     .order_by(PriceOHLCV.timestamp.desc())
                     .limit(1)
                 )
@@ -367,8 +368,8 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         user_message = "\n".join(message_parts)
 
         # Bundling data teknikal untuk mengurangi panggilan tool
-        if bundle_success and not is_agentic:
-            trimmed_msg = self._build_trimmed_user_message(symbol)
+        if bundle_success and data_bundle:
+            trimmed_msg = self._build_trimmed_user_message(symbol) if not is_agentic else core_instructions
             parts = [trimmed_msg]
             if context_blocks:
                 parts.append("\n".join(f"[{label}]\n{content}" for label, content in context_blocks))
@@ -381,7 +382,10 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
             )
         elif is_agentic:
             # Lean user message without 40 KB pre-fetched dump
-            user_message = core_instructions
+            parts = [core_instructions]
+            if context_blocks:
+                parts.append("\n".join(f"[{label}]\n{content}" for label, content in context_blocks))
+            user_message = "\n\n".join(parts)
             logger.info(f"[{symbol}] Agentic active — 40 KB pre-fetch dump eliminated")
         else:
             logger.warning(f"[{symbol}] Data bundle empty — AI will call all tools manually")
@@ -766,74 +770,16 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
         logger.info(msg)
         await self._log(session, msg)
 
-        try:
-            from monika.infrastructure.database.event_store import TradingEventStore
-
-            await TradingEventStore.emit(
-                session=session,
-                event_type="analysis.stage2.completed",
-                payload={
-                    "symbol": symbol,
-                    "analysis_id": analysis_id,
-                    "decision": decision,
-                    "confidence": confidence,
-                    "elapsed_seconds": elapsed,
-                    "tool_calls_made": result.get("tool_calls_made", 0),
-                    "turns": result.get("turns", 0),
-                },
-                correlation_id=f"cycle_stage2_{symbol}_{analysis_id or clock.now().strftime('%Y%m%d%H%M%S')}",
-                actor="per_asset_stage",
-            )
-        except Exception as es_err:
-            logger.debug(f"Event store emit analysis.stage2.completed error: {es_err}")
-
-        # Clean up temporary pending specialist biases
-        try:
-            from monika.infrastructure.database.models import SystemConfig
-
-            _biases_key = f"pending_specialist_biases_{symbol}"
-            _cfg = (
-                await session.execute(select(SystemConfig).where(SystemConfig.key == _biases_key))
-            ).scalar_one_or_none()
-            if _cfg:
-                await session.delete(_cfg)
-                await session.commit()
-        except Exception:
-            pass
-
-        entry_price_val = extract_entry_price_from_analysis(analysis)
-
-        (
-            is_candidate_for_debate,
-            sl_val,
-            tp_val,
-            cs_val,
-            decision,
-            entry_price_val,
-        ) = await evaluate_debate_candidate_and_levels(
-            analysis=analysis,
+        return await finalize_single_asset_result(
             session=session,
             symbol=symbol,
-            entry_price_val=entry_price_val,
+            analysis=analysis,
+            analysis_id=analysis_id,
+            decision=decision,
+            confidence=confidence,
+            elapsed=elapsed,
+            result=result,
+            active_client=active_client,
             specialist_biases=specialist_biases,
-            precomputed_brackets=precomputed_bracket_options,
-            result_dict=result,
+            precomputed_bracket_options=precomputed_bracket_options,
         )
-        if precomputed_bracket_options and "bracket_options" not in result:
-            result["bracket_options"] = precomputed_bracket_options
-
-        result.update(
-            {
-                "symbol": symbol,
-                "analysis_id": analysis_id,
-                "decision": decision,
-                "confidence": confidence,
-                "entry_price": entry_price_val,
-                "stop_loss": sl_val,
-                "take_profit": tp_val,
-                "confluence_score": cs_val,
-                "elapsed_seconds": elapsed,
-                "candidate_for_debate": is_candidate_for_debate,
-            }
-        )
-        return result

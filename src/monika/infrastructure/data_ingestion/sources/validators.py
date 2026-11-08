@@ -12,6 +12,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Union
 
+from monika.core.primitives import clock
+
 logger = logging.getLogger("TradingAgent.DataSources.Validators")
 
 MAX_OHLCV_STALE_DAYS = 5
@@ -76,7 +78,7 @@ def validate_ohlcv_freshness(
     if not data:
         raise NoMarketDataError(f"No OHLCV data available for symbol '{symbol}'")
 
-    ref_dt = reference_date if reference_date is not None else datetime.now(timezone.utc)
+    ref_dt = reference_date if reference_date is not None else clock.now()
     if ref_dt.tzinfo is None:
         ref_dt = ref_dt.replace(tzinfo=timezone.utc)
 
@@ -132,6 +134,8 @@ def is_intraday_cache_expired(
     except Exception:
         return True
 
-    curr = _parse_timestamp(now) if now is not None else datetime.now(timezone.utc)
+    curr = _parse_timestamp(now) if now is not None else clock.now()
     age_seconds = (curr - dt).total_seconds()
+    if age_seconds < 0:
+        return True  # Future cache is invalid/expired
     return age_seconds >= ttl_seconds

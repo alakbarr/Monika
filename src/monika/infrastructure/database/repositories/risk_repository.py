@@ -18,6 +18,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import monika.core.primitives.clock as clock
+
 from monika.domain.risk.ports import RiskDataProviderProtocol
 from monika.infrastructure.database.db import get_session
 from monika.infrastructure.database.models import (
@@ -125,7 +127,13 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
         is_paper: bool,
     ) -> Tuple[float, float]:
         if is_paper:
-            paper_initial = float(self.settings.get("paper_trading", {}).get("initial_balance", 10000.0))
+            trading_cfg = self.settings.get("trading", {}) if isinstance(self.settings, dict) else {}
+            paper_cfg = (
+                trading_cfg.get("paper_trading", {})
+                or (self.settings.get("paper_trading", {}) if isinstance(self.settings, dict) else {})
+                or {}
+            )
+            paper_initial = float(paper_cfg.get("initial_balance", 10000.0))
             stmt = select(func.sum(PaperTradeRecord.pnl_pct)).where(PaperTradeRecord.status == "closed")
             res = await session.execute(stmt)
             total_pnl_pct = float(res.scalar() or 0.0)
@@ -147,22 +155,24 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
         symbol: Optional[str] = None,
         is_paper: bool = False,
         session: Optional[Any] = None,
+        as_of: Optional[datetime] = None,
     ) -> int:
         """Return count of trades created today."""
         sess: Optional[AsyncSession] = session or self.session
         if sess is not None:
-            return await self._query_daily_trades_count(sess, symbol, is_paper)
+            return await self._query_daily_trades_count(sess, symbol, is_paper, as_of=as_of)
 
         async with get_session() as new_session:
-            return await self._query_daily_trades_count(new_session, symbol, is_paper)
+            return await self._query_daily_trades_count(new_session, symbol, is_paper, as_of=as_of)
 
     async def _query_daily_trades_count(
         self,
         session: AsyncSession,
         symbol: Optional[str],
         is_paper: bool,
+        as_of: Optional[datetime] = None,
     ) -> int:
-        now = datetime.now(timezone.utc)
+        now = as_of or clock.now()
         today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
 
         if is_paper:
@@ -193,17 +203,19 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
     async def get_recent_vix(
         self,
         session: Optional[Any] = None,
+        as_of: Optional[datetime] = None,
     ) -> Optional[float]:
         """Retrieve most recent VIX index value."""
         sess: Optional[AsyncSession] = session or self.session
         if sess is not None:
-            return await self._query_vix(sess)
+            return await self._query_vix(sess, as_of=as_of)
 
         async with get_session() as new_session:
-            return await self._query_vix(new_session)
+            return await self._query_vix(new_session, as_of=as_of)
 
-    async def _query_vix(self, session: AsyncSession) -> Optional[float]:
-        stmt = select(VIXData).order_by(desc(VIXData.date)).limit(1)
+    async def _query_vix(self, session: AsyncSession, as_of: Optional[datetime] = None) -> Optional[float]:
+        eod_cutoff = clock.get_eod_cutoff(as_of or clock.now())
+        stmt = select(VIXData).where(VIXData.date <= eod_cutoff).order_by(desc(VIXData.date)).limit(1)
         res = await session.execute(stmt)
         vix_row = res.scalar_one_or_none()
         if vix_row and vix_row.close is not None:
@@ -408,7 +420,7 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
         import json
         from datetime import timedelta
 
-        cutoff_base = as_of if as_of is not None else datetime.now(timezone.utc)
+        cutoff_base = as_of if as_of is not None else clock.now()
         cutoff = cutoff_base - timedelta(hours=max_age_hours)
         stmt = (
             select(TimesFMForecast)
@@ -471,7 +483,7 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
         session: AsyncSession,
         payload: Dict[str, Any],
     ) -> None:
-        now_date = payload.get("date") or datetime.now(timezone.utc)
+        now_date = payload.get("date") or clock.now()
         stmt = select(RiskState).order_by(desc(RiskState.date)).limit(1)
         res = await session.execute(stmt)
         existing = res.scalar_one_or_none()
@@ -506,9 +518,9 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
         cfg = res.scalar_one_or_none()
         if cfg:
             cfg.value = value
-            cfg.updated_at = datetime.now(timezone.utc)
+            cfg.updated_at = clock.now()
         else:
-            cfg = SystemConfig(key=key, value=value, updated_at=datetime.now(timezone.utc))
+            cfg = SystemConfig(key=key, value=value, updated_at=clock.now())
             session.add(cfg)
         await session.flush()
 
@@ -557,7 +569,7 @@ class SqlAlchemyRiskRepository(RiskDataProviderProtocol):
     async def _query_recent_stop_losses(self, session: AsyncSession, symbol: str, window_minutes: int) -> int:
         from datetime import timedelta
 
-        cutoff = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
+        cutoff = clock.now() - timedelta(minutes=window_minutes)
         stmt = (
             select(func.count(TradeOutcome.id))
             .where(TradeOutcome.symbol == symbol.upper().strip())

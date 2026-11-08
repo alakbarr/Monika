@@ -164,14 +164,14 @@ class RiskEvaluatorMixin(_ExecutionServiceMixinBase):
                 dir_clean = (direction or "").lower().strip()
                 price = tick["ask"] if dir_clean == "buy" else tick["bid"]
 
+                now = clock.now()
                 fetched_at = tick.get("fetched_at")
-                if fetched_at is not None:
+                if fetched_at is not None and not clock.is_simulated():
                     age_seconds = abs(time.time() - fetched_at)
                     if age_seconds > 120:
                         return price, True, age_seconds
                     return price, False, 0.0
 
-                now = clock.now()
                 tick_time = tick.get("time")
                 if tick_time:
                     if tick_time.tzinfo is None:
@@ -197,15 +197,20 @@ class RiskEvaluatorMixin(_ExecutionServiceMixinBase):
 
             bar = (
                 await session.execute(
-                    select(PriceOHLCV).where(PriceOHLCV.symbol == symbol).order_by(PriceOHLCV.timestamp.desc()).limit(1)
+                    select(PriceOHLCV)
+                    .where(PriceOHLCV.symbol == symbol)
+                    .where(PriceOHLCV.timeframe == "M15")
+                    .where(PriceOHLCV.timestamp <= clock.now())
+                    .order_by(PriceOHLCV.timestamp.desc())
+                    .limit(1)
                 )
             ).scalar_one_or_none()
             if bar:
-                now = datetime.now(timezone.utc)
+                now = clock.now()
                 bar_ts = bar.timestamp
                 if bar_ts.tzinfo is None:
                     bar_ts = bar_ts.replace(tzinfo=timezone.utc)
-                age_seconds = (now - bar_ts).total_seconds()
+                age_seconds = abs((now - bar_ts).total_seconds())
                 return bar.close, True, age_seconds
 
         return 0.0, True, float("inf")

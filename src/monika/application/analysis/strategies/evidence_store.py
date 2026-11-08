@@ -24,6 +24,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import monika.core.primitives.clock as clock
+
 logger = logging.getLogger("TradingAgent.Strategies.EvidenceStore")
 
 DEFAULT_EVIDENCE_FILE = Path("data/strategy_evidence_store.json")
@@ -185,7 +187,7 @@ class StrategyEvidenceStore:
             ev.status = EvidenceStatus.STALE
             return ev
 
-        age_days = max(0, (datetime.now(timezone.utc) - window_end).days)
+        age_days = max(0, (clock.now() - window_end).days)
         ev.evidence_age_days = age_days
         if age_days >= 180:
             ev.status = EvidenceStatus.STALE
@@ -266,7 +268,7 @@ class StrategyEvidenceStore:
                 )
 
         now = time.time()
-        now_dt = datetime.now(timezone.utc)
+        now_dt = clock.now()
         age_days = max(0, (now_dt - window_end_dt).days)
 
         status = EvidenceStatus.FRESH

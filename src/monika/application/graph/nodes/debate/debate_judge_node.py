@@ -203,6 +203,58 @@ async def debate_judge_node(state: TradingState, config: Optional[RunnableConfig
                             pass
 
                         final_dec = str(verdict.get("final_decision", "")).strip().lower()
+                        orig_decision = (
+                            str(original_context.get("decision", getattr(ana, "decision", "wait"))).strip().lower()
+                        )
+
+                        # Bug #64 & #68: When Judge overrides WAIT -> BUY/SELL or flips direction
+                        if final_dec in ("buy", "sell") and (orig_decision == "wait" or orig_decision != final_dec):
+                            from monika.application.analysis.validators.confluence_verifier import verify_confluence
+
+                            ana.decision = final_dec
+                            computed_score = getattr(ana, "confluence_score", 0) or 0
+                            if hasattr(session, "execute"):
+                                try:
+                                    conf_verif = await verify_confluence(session, ana, settings)
+                                    computed_score = int(conf_verif.get("computed_score", 0))
+                                except Exception as c_err:
+                                    logger.debug(f"[{sym}] verify_confluence failed in debate_judge_node: {c_err}")
+                            else:
+                                pre_map = dict(state).get("precomputed_confluence")
+                                if isinstance(pre_map, dict) and sym in pre_map:
+                                    pre_c = pre_map[sym]
+                                    if isinstance(pre_c, dict):
+                                        computed_score = int(pre_c.get(f"{final_dec}_score", computed_score))
+
+                            raw_spec_consensus = (
+                                fact_sheet.get("specialist_consensus") if isinstance(fact_sheet, dict) else None
+                            )
+                            spec_consensus = raw_spec_consensus if isinstance(raw_spec_consensus, dict) else {}
+                            unanimous = spec_consensus.get("unanimous_agreement", False)
+                            cons_dir = str(spec_consensus.get("consensus_direction") or "").lower()
+
+                            if computed_score < 5 or (unanimous and cons_dir and cons_dir != final_dec):
+                                logger.warning(
+                                    f"[{sym}] Judge override from '{orig_decision}' to '{final_dec}' canceled: "
+                                    f"factual computed_score={computed_score} < 5 or opposes unanimous specialist consensus ({cons_dir}). Reverting to 'wait'."
+                                )
+                                final_dec = "wait"
+                                verdict["final_decision"] = "wait"
+                                verdict["risk_multiplier"] = 0.0
+                                ana.decision = "wait"
+                            else:
+                                ana.confluence_score = computed_score
+                                if isinstance(r, dict):
+                                    r["confluence_score"] = computed_score
+                                verdict["confluence_score"] = computed_score
+
+                                # Calibrate confidence from risk multiplier so it does not inherit WAIT confidence
+                                rm = float(verdict.get("risk_multiplier") or 1.0)
+                                calibrated_conf = min(ana.confidence or 0.80, max(0.50, round(rm * 0.85, 2)))
+                                ana.confidence = calibrated_conf
+                                if isinstance(r, dict):
+                                    r["confidence"] = calibrated_conf
+
                         curr_conf_score = getattr(ana, "confluence_score", None)
                         if final_dec in ("buy", "sell") and (
                             not isinstance(curr_conf_score, (int, float)) or curr_conf_score < 5

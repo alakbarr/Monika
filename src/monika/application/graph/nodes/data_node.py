@@ -576,9 +576,12 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
 
         from monika.infrastructure.database.models import VIXData
 
+        eod_cutoff = clock.get_eod_cutoff(clock.now())
         async with get_session() as vix_check_session:
             vix_latest = (
-                await vix_check_session.execute(_sel2(VIXData).order_by(VIXData.date.desc()).limit(1))
+                await vix_check_session.execute(
+                    _sel2(VIXData).where(VIXData.date <= eod_cutoff).order_by(VIXData.date.desc()).limit(1)
+                )
             ).scalar_one_or_none()
 
             if vix_latest:
@@ -616,9 +619,12 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
 
         from monika.infrastructure.database.models import DXYData, VIXData
 
+        eod_cutoff = clock.get_eod_cutoff(clock.now())
         async with get_session() as session:
             vix_row = (
-                await session.execute(_sel3(VIXData).order_by(VIXData.date.desc()).limit(1))
+                await session.execute(
+                    _sel3(VIXData).where(VIXData.date <= eod_cutoff).order_by(VIXData.date.desc()).limit(1)
+                )
             ).scalar_one_or_none()
 
             if vix_row:
@@ -634,7 +640,15 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
                     macro_regime_reason = f"VIX={vix_row.close:.1f} <= 12 (extreme complacency, reversal risk)"
 
             # DXY extreme movement check
-            dxy_rows = (await session.execute(_sel3(DXYData).order_by(DXYData.date.desc()).limit(5))).scalars().all()
+            dxy_rows = (
+                (
+                    await session.execute(
+                        _sel3(DXYData).where(DXYData.date <= eod_cutoff).order_by(DXYData.date.desc()).limit(5)
+                    )
+                )
+                .scalars()
+                .all()
+            )
 
             if len(dxy_rows) >= 5:
                 dxy_5d_change = (dxy_rows[0].close - dxy_rows[4].close) / dxy_rows[4].close * 100
@@ -651,6 +665,7 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
     # Fetch Active User Market Intelligence & Directives
     active_user_intel = []
     try:
+        from sqlalchemy import and_ as _and_intel
         from sqlalchemy import or_ as _or_intel
         from sqlalchemy import select as _sel_intel
 
@@ -658,11 +673,16 @@ async def fetch_data_node(state: TradingState, config: Optional[RunnableConfig] 
 
         async with get_session() as session:
             now_intel = clock.now()
+            max_age_cutoff = now_intel - timedelta(days=7)
             stmt = (
                 _sel_intel(UserMarketIntel)
                 .where(
                     UserMarketIntel.is_active == True,
-                    _or_intel(UserMarketIntel.expires_at.is_(None), UserMarketIntel.expires_at > now_intel),
+                    UserMarketIntel.created_at <= now_intel,
+                    _or_intel(
+                        UserMarketIntel.expires_at > now_intel,
+                        _and_intel(UserMarketIntel.expires_at.is_(None), UserMarketIntel.created_at >= max_age_cutoff),
+                    ),
                 )
                 .order_by(UserMarketIntel.created_at.desc())
             )

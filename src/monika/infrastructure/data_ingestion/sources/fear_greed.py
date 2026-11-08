@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.core.primitives import clock
 from monika.infrastructure.llm.rate_limiting.http_retry import fetch_with_retry
 from monika.infrastructure.database.models import SystemConfig
 
@@ -30,6 +31,45 @@ class FearGreedFetcher:
         self.session = session
 
     async def fetch(self) -> dict:
+        if clock.is_simulated():
+            now_dt = clock.now()
+            eod_cutoff = clock.get_eod_cutoff(now_dt)
+            from monika.infrastructure.database.domain_models.market import VIXData
+
+            vix_row = (
+                await self.session.execute(
+                    select(VIXData).where(VIXData.date <= eod_cutoff).order_by(VIXData.date.desc()).limit(1)
+                )
+            ).scalar_one_or_none()
+            if vix_row and vix_row.close:
+                vix_val = float(vix_row.close)
+                val = int(max(10, min(90, 100 - (vix_val * 2.5))))
+            else:
+                val = 50
+
+            if val <= 25:
+                classification = "Extreme Fear"
+            elif val <= 45:
+                classification = "Fear"
+            elif val <= 55:
+                classification = "Neutral"
+            elif val <= 75:
+                classification = "Greed"
+            else:
+                classification = "Extreme Greed"
+
+            result = {
+                "current_value": val,
+                "classification": classification,
+                "wow_change": 0,
+                "history_7d": [
+                    {"value": val, "classification": classification, "timestamp": str(int(now_dt.timestamp()))}
+                ],
+                "interpretation": self._interpret(val),
+                "fetched_at": now_dt.isoformat(),
+            }
+            return result
+
         data = await fetch_with_retry(FEAR_GREED_URL, timeout=10)
         if not data or not isinstance(data, dict) or "data" not in data:
             logger.warning("Fear & Greed API returned no data")
@@ -64,7 +104,7 @@ class FearGreedFetcher:
             "wow_change": wow_change,
             "history_7d": history,
             "interpretation": self._interpret(latest["value"]),
-            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "fetched_at": clock.now().isoformat(),
         }
 
         cfg_key = "fear_greed_latest"

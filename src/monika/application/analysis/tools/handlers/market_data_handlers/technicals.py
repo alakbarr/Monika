@@ -107,6 +107,7 @@ async def handle_get_atr(args: dict, **ctx) -> dict:
                     .where(TechnicalIndicator.symbol == symbol)
                     .where(TechnicalIndicator.timeframe == timeframe)
                     .where(TechnicalIndicator.indicator_name == "ATR_14")
+                    .where(TechnicalIndicator.timestamp <= clock.now())
                     .order_by(TechnicalIndicator.timestamp.desc())
                     .limit(1)
                 )

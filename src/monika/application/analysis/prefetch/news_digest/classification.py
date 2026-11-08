@@ -17,6 +17,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import monika.core.primitives.clock as clock
 from monika.core.primitives.clock import ensure_utc
 from monika.infrastructure.database.models import NewsItem
 from monika.application.analysis.prefetch.news_digest.base import (
@@ -66,7 +67,8 @@ class NewsClassificationMixin(_NewsDigestMixinBase):
     async def _classify_unscored_news_locked(self, session: AsyncSession, hours_back: int = 6) -> int:
         pass_start = time.monotonic()
         max_pass_secs = float(self.settings.get("news_classification", {}).get("max_pass_seconds", 75.0))
-        since = datetime.now(timezone.utc) - timedelta(hours=hours_back)
+        now_dt = clock.now()
+        since = now_dt - timedelta(hours=hours_back)
         try:
             from monika.application.analysis.calculators.economic_surprise import compute_surprise_scores
 
@@ -79,6 +81,7 @@ class NewsClassificationMixin(_NewsDigestMixinBase):
                 await session.execute(
                     select(NewsItem)
                     .where(NewsItem.fetched_at >= since)
+                    .where(NewsItem.fetched_at <= now_dt)
                     .where(NewsItem.impact.is_(None))
                     .order_by(NewsItem.fetched_at.desc())
                     .limit(max_classify)
@@ -122,7 +125,7 @@ class NewsClassificationMixin(_NewsDigestMixinBase):
             try:
                 from monika.infrastructure.database.models import SystemConfig
 
-                key = f"prefilter_audit_sample_{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+                key = f"prefilter_audit_sample_{now_dt.strftime('%Y%m%d')}"
                 existing = (
                     await session.execute(select(SystemConfig).where(SystemConfig.key == key))
                 ).scalar_one_or_none()
@@ -141,7 +144,7 @@ class NewsClassificationMixin(_NewsDigestMixinBase):
             logger.info(f"[NewsClassification] Pre-filtered {len(irrelevant_items)} items (skipped LLM)")
         news_items = relevant_items
 
-        now_utc = datetime.now(timezone.utc)
+        now_utc = clock.now()
         now_str = now_utc.strftime("%Y-%m-%d %H:%M UTC")
         classified = 0
         batch_size = max(1, min(int(self.settings.get("news_classification", {}).get("batch_size", 6)), 8))
@@ -651,7 +654,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
 
             from monika.infrastructure.database.models import SystemConfig
 
-            stats_key = f"news_classification_stats_{datetime.now(timezone.utc).strftime('%Y%m%d_%H')}"
+            stats_key = f"news_classification_stats_{clock.now().strftime('%Y%m%d_%H')}"
             existing = (
                 await session.execute(_sel(SystemConfig).where(SystemConfig.key == stats_key))
             ).scalar_one_or_none()
@@ -665,7 +668,7 @@ Respond JSON: [{{"index":1,"verdict":"CONFIRM"}}, ...]"""
                             {
                                 "classified": classified,
                                 "total_candidates": len(news_items),
-                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                                "timestamp": clock.now().isoformat(),
                             }
                         ),
                     )

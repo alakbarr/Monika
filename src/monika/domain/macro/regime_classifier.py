@@ -115,6 +115,7 @@ class RegimeClassifier:
         dealing_range_pos: Optional[float] = None,
         technical_bias: Optional[str] = None,
         confluence_score: Optional[int] = None,
+        macro_catalyst_override: bool = False,
     ) -> Tuple[bool, str]:
         """
         Validates whether a proposed trade direction is permitted under current macro regime.
@@ -140,11 +141,18 @@ class RegimeClassifier:
             )
         )
 
+        has_exception = has_structural_discount or macro_catalyst_override
+
         if is_commodity and not env.allowed_commodity_longs:
-            if has_structural_discount:
+            if has_exception:
+                reason = (
+                    "macro catalyst override"
+                    if macro_catalyst_override
+                    else f"structural Deep Discount (pos={dealing_range_pos:.2f})"
+                )
                 msg = (
                     f"Macro Regime Exception: BUY permitted on commodity {symbol} despite strong DXY ({dxy:.2f}) "
-                    f"due to structural Deep Discount (pos={dealing_range_pos:.2f}) and confirmed H4 technical alignment. "
+                    f"due to {reason} and confirmed H4 technical alignment. "
                     f"Risk sizing restricted to 0.50x."
                 )
                 logger.info(f"[{symbol}] {msg}")
@@ -154,10 +162,15 @@ class RegimeClassifier:
             return False, msg
 
         if is_crypto and not env.allowed_crypto_longs:
-            if has_structural_discount:
+            if has_exception:
+                reason = (
+                    "macro catalyst override"
+                    if macro_catalyst_override
+                    else f"structural Deep Discount (pos={dealing_range_pos:.2f})"
+                )
                 msg = (
                     f"Macro Regime Exception: BUY permitted on crypto {symbol} despite strong DXY ({dxy:.2f}) "
-                    f"due to structural Deep Discount (pos={dealing_range_pos:.2f}) and confirmed H4 technical alignment. "
+                    f"due to {reason} and confirmed H4 technical alignment. "
                     f"Risk sizing restricted to 0.50x."
                 )
                 logger.info(f"[{symbol}] {msg}")

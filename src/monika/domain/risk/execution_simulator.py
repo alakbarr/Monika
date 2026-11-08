@@ -20,6 +20,8 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
+import monika.core.primitives.clock as clock
+
 logger = logging.getLogger("TradingAgent.Risk.ExecutionSimulator")
 
 
@@ -68,9 +70,10 @@ class ExecutionSimulator:
         Queries MT5 COM API if available and as_of is None; otherwise derives micro-ticks from recent OHLCV bars.
         """
         ticks: list[dict[str, float]] = []
+        effective_as_of = as_of or (clock.now() if clock.is_simulated() else None)
 
         # 1. Try MT5 COM API (only for real-time live execution, never backtest as_of)
-        if as_of is None and self.mt5_client is not None:
+        if effective_as_of is None and self.mt5_client is not None:
             try:
                 # MT5 client get_ticks / copy_ticks
                 if hasattr(self.mt5_client, "get_ticks"):
@@ -93,7 +96,7 @@ class ExecutionSimulator:
 
                 repo = get_default_risk_data_provider(session=session)
                 bars = await repo.get_recent_price_bars(
-                    symbol=symbol, timeframe="M15", limit=20, session=session, as_of=as_of
+                    symbol=symbol, timeframe="M15", limit=20, session=session, as_of=effective_as_of
                 )
                 if bars:
                     close_p = float(bars[-1]["close"])
@@ -178,7 +181,8 @@ class ExecutionSimulator:
 
         # 1. Fetch ticks
         if ticks is None:
-            ticks = await self.fetch_recent_ticks(symbol, count=100, session=session, as_of=as_of)
+            effective_as_of = as_of or (clock.now() if clock.is_simulated() else None)
+            ticks = await self.fetch_recent_ticks(symbol, count=100, session=session, as_of=effective_as_of)
 
         spreads = [max(1e-6, float(t["spread"])) for t in ticks] if ticks else [entry_price * 0.00015]
         median_spread = float(np.median(spreads))

@@ -21,6 +21,7 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from monika.core.primitives import clock
 from monika.infrastructure.llm.rate_limiting.http_retry import fetch_with_retry
 from monika.infrastructure.database.models import SystemConfig
 
@@ -56,6 +57,63 @@ class PredictionMarketClient:
         """
         Queries Polymarket Gamma API for active macro events.
         """
+        if clock.is_simulated():
+            now_dt = clock.now()
+            from monika.infrastructure.database.db import get_session
+            from monika.infrastructure.database.domain_models.market import FedWatchProbability
+
+            async def _load_sim(s):
+                rows = (
+                    (
+                        await s.execute(
+                            select(FedWatchProbability)
+                            .where(FedWatchProbability.fetched_at <= now_dt)
+                            .order_by(FedWatchProbability.fetched_at.desc())
+                            .limit(3)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                events = []
+                for r in rows:
+                    probs = {}
+                    try:
+                        probs = json.loads(r.probabilities_json) if r.probabilities_json else {}
+                    except Exception:
+                        pass
+                    mkts = []
+                    for outcome, p in probs.items():
+                        prob_val = round(float(p) / 100.0, 4) if float(p) > 1.0 else round(float(p), 4)
+                        mkts.append(
+                            {
+                                "id": f"sim_{outcome}",
+                                "question": f"Fed {outcome} on {r.meeting_date}",
+                                "yes_probability": prob_val,
+                                "no_probability": round(1.0 - prob_val, 4),
+                                "token_id": "",
+                                "volume_24h": 50000.0,
+                                "clob_active": True,
+                            }
+                        )
+                    events.append(
+                        {
+                            "id": f"sim_fed_{r.meeting_date}",
+                            "title": f"Fed Interest Rate Decision - {r.meeting_date}",
+                            "category": "Macro",
+                            "volume": 250000.0,
+                            "liquidity": 100000.0,
+                            "end_date": r.meeting_date,
+                            "markets": mkts,
+                        }
+                    )
+                return events
+
+            if self.session:
+                return await _load_sim(self.session)
+            async with get_session() as s:
+                return await _load_sim(s)
+
         params = f"?limit={limit}&active=true&closed=false&order=volume24hr&ascending=false"
         url = f"{GAMMA_API_URL}{params}"
         data = await fetch_with_retry(url, timeout=self.timeout)
@@ -218,7 +276,7 @@ class PredictionMarketClient:
             "inflation_odds": inflation_data,
             "geopolitics_odds": geopolitics,
             "sentiment_bias": sentiment_bias,
-            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "fetched_at": clock.now().isoformat(),
         }
 
         if self.session is not None:

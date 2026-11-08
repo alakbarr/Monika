@@ -106,7 +106,10 @@ async def run_macro_debate(stage_instance, session: AsyncSession, brief, prefetc
             except Exception:
                 executor = None
 
-        judge_raw = await run_macro_judge(bull, bear, context, stage_instance.settings, tool_executor=executor)
+        try:
+            judge_raw = await run_macro_judge(bull, bear, context, stage_instance.settings, tool_executor=executor)
+        except TypeError:
+            judge_raw = await run_macro_judge(bull, bear, context, stage_instance.settings)
         judge = validate_macro_judge_output(judge_raw, bull, bear)
 
         bull_str = json.dumps(bull, indent=2) if isinstance(bull, dict) else str(bull)

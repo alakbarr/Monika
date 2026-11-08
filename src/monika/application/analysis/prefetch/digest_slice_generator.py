@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import monika.core.primitives.clock as clock
 from monika.application.analysis.prefetch.news_digest import _format_news_item_for_prompt, _jaccard_title_similarity
 from monika.infrastructure.database.models import DXYData, NewsDigest, NewsDigestSlice, NewsItem, VIXData
 from monika.infrastructure.providers.llm_factory import get_client_for_task
@@ -167,7 +168,7 @@ Max 250 words. Be terse, factual, and strictly grounded in provided data."""
         slice_entry = NewsDigestSlice(
             period_start=period_start,
             period_end=period_end,
-            generated_at=datetime.now(timezone.utc),
+            generated_at=clock.now(),
             trigger=trigger,
             period_hours=period_hours,
             items_processed=len(all_items),
@@ -188,18 +189,19 @@ Max 250 words. Be terse, factual, and strictly grounded in provided data."""
         """
         Menggabungkan slices dalam window hours_back (default 12 jam) menjadi satu digest komprehensif.
         """
-        since = datetime.now(timezone.utc) - timedelta(hours=hours_back)
+        now_utc = clock.now()
+        since = now_utc - timedelta(hours=hours_back)
 
         slices_query = (
             select(NewsDigestSlice)
             .where(NewsDigestSlice.period_end >= since)
+            .where(NewsDigestSlice.period_end <= now_utc)
             .order_by(NewsDigestSlice.period_start.asc())
         )
         slices = (await session.execute(slices_query)).scalars().all()
 
         if not slices:
             logger.info("[DigestSlice] No recent slices found. Triggering immediate slice generation...")
-            now_utc = datetime.now(timezone.utc)
             start_utc = now_utc - timedelta(hours=2)
             try:
                 fresh_slice = await self.generate_slice(session, start_utc, now_utc, trigger="on_demand")
@@ -229,13 +231,26 @@ Max 250 words. Be terse, factual, and strictly grounded in provided data."""
                     pass
 
         # Fetch market snapshot
-        vix = (await session.execute(select(VIXData).order_by(VIXData.date.desc()).limit(1))).scalar_one_or_none()
-        dxy_rows = (await session.execute(select(DXYData).order_by(DXYData.date.desc()).limit(5))).scalars().all()
+        eod_cutoff = clock.get_eod_cutoff(now_utc)
+        vix = (
+            await session.execute(
+                select(VIXData).where(VIXData.date <= eod_cutoff).order_by(VIXData.date.desc()).limit(1)
+            )
+        ).scalar_one_or_none()
+        dxy_rows = (
+            (
+                await session.execute(
+                    select(DXYData).where(DXYData.date <= eod_cutoff).order_by(DXYData.date.desc()).limit(5)
+                )
+            )
+            .scalars()
+            .all()
+        )
         top_themes = sorted(agg_themes.items(), key=lambda x: x[1], reverse=True)[:5]
 
         # 1. Structured Metadata Block
         metadata_block = {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": now_utc.isoformat(),
             "period_hours": hours_back,
             "slices_count": len(slices),
             "items_in_window_total": total_items,
@@ -382,7 +397,7 @@ Strictly ground all numeric claims. Max 700 words."""
         # Save assembled digest to news_digest table for legacy tools & caching
         try:
             entry = NewsDigest(
-                generated_at=datetime.now(timezone.utc),
+                generated_at=clock.now(),
                 period_hours=hours_back,
                 digest_text=full_digest,
                 items_processed=total_items,
@@ -396,13 +411,15 @@ Strictly ground all numeric claims. Max 700 words."""
 
     async def _compute_coverage_gaps(self, session: AsyncSession) -> str:
         """Cek aset utama yang absen dari data 12 jam terakhir."""
-        since = datetime.now(timezone.utc) - timedelta(hours=12)
+        now_dt = clock.now()
+        since = now_dt - timedelta(hours=12)
         missing = []
         for cur in TARGET_CURRENCIES:
             cnt = (
                 await session.execute(
                     select(func.count(NewsItem.id))
                     .where(NewsItem.fetched_at >= since)
+                    .where(NewsItem.fetched_at <= now_dt)
                     .where(
                         NewsItem.impact.in_(
                             ["BREAKING", "HIGH", "MEDIUM", "breaking", "high", "medium", "Breaking", "High", "Medium"]

@@ -472,125 +472,153 @@ class RiskGate(
                 rejections.append(f"[{name}] Check error: {e}")
                 logger.error(f"RiskGate check '{name}' raised exception: {e}")
 
-        checks = [
-            (
-                "daily_trade_count",
-                self._check_daily_trade_count(session, is_backtest=is_backtest, is_paper=effective_is_paper),
-            ),
-            ("trading_not_paused", self._check_not_paused(session, is_backtest=is_backtest)),
-            ("edge_status_not_paused", self._check_edge_status_not_paused(session, is_backtest=is_backtest)),
-            ("vix_threshold", self._check_vix_threshold(session, as_of=as_of, is_backtest=is_backtest)),
-            ("flash_crash_cooldown", self._check_flash_crash_cooldown(symbol)),
-            ("sizing_valid", self._check_sizing_valid(sizing)),
-            ("lot_size", self._check_lot_size(sizing)),
-            (
-                "daily_drawdown",
-                self._check_daily_drawdown(
-                    session,
-                    equity,
-                    simulated_daily_pnl=simulated_daily_pnl,
-                    is_backtest=is_backtest,
-                    is_paper=effective_is_paper,
-                ),
-            ),
-            (
-                "weekly_drawdown",
-                self._check_weekly_drawdown(session, equity, is_backtest=is_backtest, is_paper=effective_is_paper),
-            ),
-            (
-                "max_concurrent_positions",
-                self._check_max_positions(
-                    session, simulated_positions=simulated_positions, is_paper=effective_is_paper
-                ),
-            ),
-            (
-                "no_duplicate_symbol",
-                self._check_no_duplicate(
-                    session,
-                    symbol,
-                    simulated_positions=simulated_positions,
-                    pair_group_id=effective_pair_group,
-                    is_paper=effective_is_paper,
-                ),
-            ),
-            (
-                "portfolio_heat",
-                self._check_total_portfolio_heat(session, sizing, equity, simulated_positions=simulated_positions),
-            ),
-            ("weekend_proximity", self.assess_weekend_gap_risk(session, symbol, as_of=as_of)),
-            ("rollover_window", self._check_rollover_window(symbol, as_of=as_of)),
-            ("post_sl_cooldown", self._check_post_loss_cooldown(session, symbol, as_of=as_of, is_backtest=is_backtest)),
-            (
-                "news_window",
-                self._check_news_window(
-                    session, symbol, as_of=as_of, is_backtest=is_backtest, is_paper=effective_is_paper
-                ),
-            ),
-            (
-                "correlation_exposure",
-                self._check_correlation(
-                    session,
-                    symbol,
-                    direction,
-                    simulated_positions=simulated_positions,
-                    as_of=as_of,
-                    volume=getattr(sizing, "recommended_lots", getattr(sizing, "lot_size", None)) if sizing else None,
-                ),
-            ),
-            ("consecutive_losses", self._check_consecutive_losses(session, symbol, is_backtest=is_backtest)),
-            ("data_freshness", self._check_data_freshness(session, symbol, as_of=as_of, is_backtest=is_backtest)),
-            (
-                "timesfm_expectancy",
-                self._check_timesfm_expectancy(
-                    session, symbol, direction, sizing, is_backtest=is_backtest, proposal=analysis
-                ),
-            ),
-            (
-                "schmitt_regime",
-                self._check_schmitt_regime(
-                    session, symbol, simulated_positions=simulated_positions, is_backtest=is_backtest
-                ),
-            ),
-            (
-                "macro_regime",
-                self._check_macro_regime(session, symbol, direction, as_of=as_of, is_backtest=is_backtest),
-            ),
-            ("vpin_toxicity", self._check_vpin_toxicity(session, symbol, as_of=as_of, is_backtest=is_backtest)),
-            (
-                "adv_liquidity_floor",
-                self._check_adv_liquidity(session, symbol, sizing, as_of=as_of, is_backtest=is_backtest),
-            ),
-            (
-                "copula_tail_risk",
-                self._check_copula_tail_risk(
-                    session, symbol, simulated_positions=simulated_positions, as_of=as_of, is_backtest=is_backtest
-                ),
-            ),
-            ("evidence_gate", self._check_evidence_gate(session, symbol, analysis=analysis, is_backtest=is_backtest)),
-            (
-                "bounded_mandate",
-                self._check_bounded_mandate(
-                    session, symbol, sizing, as_of=as_of, simulated_positions=simulated_positions
-                ),
-            ),
-            ("min_rr_ratio", self._check_min_rr_ratio(sizing)),
-            (
-                "max_spread",
-                self._check_max_spread(session, symbol, is_backtest=is_backtest, is_paper=effective_is_paper),
-            ),
-        ]
+        import inspect
 
-        if analysis is not None:
-            checks.append(("analysis_quality_scores", self._check_analysis_quality_scores(analysis, session=session)))
-            checks.append(
+        checks = []
+        try:
+            checks = [
                 (
-                    "strategy_factor_exposure",
-                    self._check_strategy_factor_exposure(session, analysis, simulated_positions=simulated_positions),
-                )
-            )
+                    "daily_trade_count",
+                    self._check_daily_trade_count(session, is_backtest=is_backtest, is_paper=effective_is_paper),
+                ),
+                ("trading_not_paused", self._check_not_paused(session, is_backtest=is_backtest)),
+                ("edge_status_not_paused", self._check_edge_status_not_paused(session, is_backtest=is_backtest)),
+                ("vix_threshold", self._check_vix_threshold(session, as_of=as_of, is_backtest=is_backtest)),
+                ("flash_crash_cooldown", self._check_flash_crash_cooldown(symbol)),
+                ("sizing_valid", self._check_sizing_valid(sizing)),
+                ("lot_size", self._check_lot_size(sizing)),
+                (
+                    "daily_drawdown",
+                    self._check_daily_drawdown(
+                        session,
+                        equity,
+                        simulated_daily_pnl=simulated_daily_pnl,
+                        is_backtest=is_backtest,
+                        is_paper=effective_is_paper,
+                    ),
+                ),
+                (
+                    "weekly_drawdown",
+                    self._check_weekly_drawdown(session, equity, is_backtest=is_backtest, is_paper=effective_is_paper),
+                ),
+                (
+                    "max_concurrent_positions",
+                    self._check_max_positions(
+                        session, simulated_positions=simulated_positions, is_paper=effective_is_paper
+                    ),
+                ),
+                (
+                    "no_duplicate_symbol",
+                    self._check_no_duplicate(
+                        session,
+                        symbol,
+                        simulated_positions=simulated_positions,
+                        pair_group_id=effective_pair_group,
+                        is_paper=effective_is_paper,
+                    ),
+                ),
+                (
+                    "portfolio_heat",
+                    self._check_total_portfolio_heat(session, sizing, equity, simulated_positions=simulated_positions),
+                ),
+                ("weekend_proximity", self.assess_weekend_gap_risk(session, symbol, as_of=as_of)),
+                ("rollover_window", self._check_rollover_window(symbol, as_of=as_of)),
+                (
+                    "post_sl_cooldown",
+                    self._check_post_loss_cooldown(session, symbol, as_of=as_of, is_backtest=is_backtest),
+                ),
+                (
+                    "news_window",
+                    self._check_news_window(
+                        session, symbol, as_of=as_of, is_backtest=is_backtest, is_paper=effective_is_paper
+                    ),
+                ),
+                (
+                    "correlation_exposure",
+                    self._check_correlation(
+                        session,
+                        symbol,
+                        direction,
+                        simulated_positions=simulated_positions,
+                        as_of=as_of,
+                        volume=getattr(sizing, "recommended_lots", getattr(sizing, "lot_size", None))
+                        if sizing
+                        else None,
+                    ),
+                ),
+                ("consecutive_losses", self._check_consecutive_losses(session, symbol, is_backtest=is_backtest)),
+                ("data_freshness", self._check_data_freshness(session, symbol, as_of=as_of, is_backtest=is_backtest)),
+                (
+                    "timesfm_expectancy",
+                    self._check_timesfm_expectancy(
+                        session, symbol, direction, sizing, is_backtest=is_backtest, proposal=analysis
+                    ),
+                ),
+                (
+                    "schmitt_regime",
+                    self._check_schmitt_regime(
+                        session, symbol, simulated_positions=simulated_positions, is_backtest=is_backtest
+                    ),
+                ),
+                (
+                    "macro_regime",
+                    self._check_macro_regime(
+                        session, symbol, direction, as_of=as_of, is_backtest=is_backtest, proposal=analysis
+                    ),
+                ),
+                ("vpin_toxicity", self._check_vpin_toxicity(session, symbol, as_of=as_of, is_backtest=is_backtest)),
+                (
+                    "adv_liquidity_floor",
+                    self._check_adv_liquidity(session, symbol, sizing, as_of=as_of, is_backtest=is_backtest),
+                ),
+                (
+                    "copula_tail_risk",
+                    self._check_copula_tail_risk(
+                        session, symbol, simulated_positions=simulated_positions, as_of=as_of, is_backtest=is_backtest
+                    ),
+                ),
+                (
+                    "evidence_gate",
+                    self._check_evidence_gate(session, symbol, analysis=analysis, is_backtest=is_backtest),
+                ),
+                (
+                    "bounded_mandate",
+                    self._check_bounded_mandate(
+                        session, symbol, sizing, as_of=as_of, simulated_positions=simulated_positions
+                    ),
+                ),
+                ("min_rr_ratio", self._check_min_rr_ratio(sizing)),
+                (
+                    "max_spread",
+                    self._check_max_spread(session, symbol, is_backtest=is_backtest, is_paper=effective_is_paper),
+                ),
+            ]
 
-        for name, coro in checks:
-            await run_check(name, coro)
+            if analysis is not None:
+                checks.append(
+                    ("analysis_quality_scores", self._check_analysis_quality_scores(analysis, session=session))
+                )
+                checks.append(
+                    (
+                        "strategy_factor_exposure",
+                        self._check_strategy_factor_exposure(
+                            session, analysis, simulated_positions=simulated_positions
+                        ),
+                    )
+                )
+
+            for name, coro in checks:
+                await run_check(name, coro)
+        finally:
+            # Bug #76: Close unawaited coroutines to prevent RuntimeWarning leaks
+            for _, coro in checks:
+                if inspect.iscoroutine(coro):
+                    try:
+                        coro.close()
+                    except RuntimeError:
+                        pass
+                    except Exception:
+                        pass
 
         if hasattr(self, "modular_risk_registry") and self.modular_risk_registry:
             try:

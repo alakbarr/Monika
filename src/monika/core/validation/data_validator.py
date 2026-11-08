@@ -88,11 +88,12 @@ async def validate_data_freshness(
     """
     warnings = []
     errors = []
-    from monika.core.primitives.clock import now as get_clock_now
+    from monika.core.primitives import clock
 
-    now = get_clock_now()
+    now = clock.now()
     if now.tzinfo is None:
         now = now.replace(tzinfo=UTC)
+    eod_cutoff = clock.get_eod_cutoff(now)
 
     ohlcv_thresholds = max_ohlcv_age_hours or DEFAULT_OHLCV_AGE
     ind_thresholds = max_indicator_age_hours or DEFAULT_IND_AGE
@@ -114,6 +115,7 @@ async def validate_data_freshness(
                     select(ts_col)
                     .where(PriceOHLCV.symbol == symbol)
                     .where(PriceOHLCV.timeframe == tf)
+                    .where(PriceOHLCV.timestamp <= now)
                     .order_by(ts_col.desc())
                     .limit(1)
                 )
@@ -155,6 +157,7 @@ async def validate_data_freshness(
                     select(TechnicalIndicator.timestamp)
                     .where(TechnicalIndicator.symbol == symbol)
                     .where(TechnicalIndicator.timeframe == tf)
+                    .where(TechnicalIndicator.timestamp <= now)
                     .order_by(TechnicalIndicator.timestamp.desc())
                     .limit(1)
                 )
@@ -182,7 +185,9 @@ async def validate_data_freshness(
                     errors.append(f"{symbol}/{tf} Indicator is {ind_age_hours:.1f}h old (stale)")
 
     # Check news freshness
-    latest_news = (await session.execute(select(func.max(NewsItem.fetched_at)))).scalar_one_or_none()
+    latest_news = (
+        await session.execute(select(func.max(NewsItem.fetched_at)).where(NewsItem.fetched_at <= now))
+    ).scalar_one_or_none()
 
     if latest_news is None:
         errors.append("No news items in database")
@@ -207,7 +212,9 @@ async def validate_data_freshness(
     )
 
     cal_max_days = 2.0 if require_macro_data else (max_calendar_age_hours / 24.0)
-    latest_cal = (await session.execute(select(func.max(EconomicCalendar.event_time)))).scalar_one_or_none()
+    latest_cal = (
+        await session.execute(select(func.max(EconomicCalendar.event_time)).where(EconomicCalendar.event_time <= now))
+    ).scalar_one_or_none()
     if latest_cal is not None:
         if latest_cal.tzinfo is None:
             latest_cal = latest_cal.replace(tzinfo=UTC)
@@ -228,7 +235,9 @@ async def validate_data_freshness(
     # 1. VIX Data
     vix_cfg_limit = float(macro_thresholds.get("vix", 4.5))
     eff_vix_max_days = vix_cfg_limit if is_weekend_or_monday else min(vix_cfg_limit, 3.0)
-    latest_vix = (await session.execute(select(func.max(VIXData.date)))).scalar_one_or_none()
+    latest_vix = (
+        await session.execute(select(func.max(VIXData.date)).where(VIXData.date <= eod_cutoff))
+    ).scalar_one_or_none()
     if latest_vix is not None:
         vix_dt = (
             datetime.combine(latest_vix, datetime.min.time(), tzinfo=UTC)
@@ -250,7 +259,9 @@ async def validate_data_freshness(
     # 2. Treasury Yields
     yield_cfg_limit = float(macro_thresholds.get("treasury_yield", 4.5))
     eff_yield_max = yield_cfg_limit if is_weekend_or_monday else min(yield_cfg_limit, 3.0)
-    latest_yield = (await session.execute(select(func.max(TreasuryYield.date)))).scalar_one_or_none()
+    latest_yield = (
+        await session.execute(select(func.max(TreasuryYield.date)).where(TreasuryYield.date <= eod_cutoff))
+    ).scalar_one_or_none()
     if latest_yield is not None:
         y_dt = (
             datetime.combine(latest_yield, datetime.min.time(), tzinfo=UTC)
@@ -272,7 +283,9 @@ async def validate_data_freshness(
     # 3. DXY
     dxy_cfg_limit = float(macro_thresholds.get("dxy", 4.5))
     eff_dxy_max = dxy_cfg_limit if is_weekend_or_monday else min(dxy_cfg_limit, 3.0)
-    latest_dxy = (await session.execute(select(func.max(DXYData.date)))).scalar_one_or_none()
+    latest_dxy = (
+        await session.execute(select(func.max(DXYData.date)).where(DXYData.date <= eod_cutoff))
+    ).scalar_one_or_none()
     if latest_dxy is not None:
         d_dt = (
             datetime.combine(latest_dxy, datetime.min.time(), tzinfo=UTC)
@@ -293,7 +306,9 @@ async def validate_data_freshness(
 
     # 4. COT Report (Weekly CFTC)
     cot_max_days = float(macro_thresholds.get("cot", 11.0))
-    latest_cot = (await session.execute(select(func.max(COTReport.report_date)))).scalar_one_or_none()
+    latest_cot = (
+        await session.execute(select(func.max(COTReport.report_date)).where(COTReport.report_date <= now.date()))
+    ).scalar_one_or_none()
     if latest_cot is not None:
         cot_dt = (
             datetime.combine(latest_cot, datetime.min.time(), tzinfo=UTC)
@@ -310,7 +325,11 @@ async def validate_data_freshness(
 
     # 5. FedWatch Probabilities
     fedwatch_max_days = float(macro_thresholds.get("fedwatch", 7.0))
-    latest_fedwatch = (await session.execute(select(func.max(FedWatchProbability.fetched_at)))).scalar_one_or_none()
+    latest_fedwatch = (
+        await session.execute(
+            select(func.max(FedWatchProbability.fetched_at)).where(FedWatchProbability.fetched_at <= now)
+        )
+    ).scalar_one_or_none()
     if latest_fedwatch is not None:
         if latest_fedwatch.tzinfo is None:
             latest_fedwatch = latest_fedwatch.replace(tzinfo=UTC)
@@ -446,6 +465,7 @@ async def check_data_coherence(
                 select(PriceOHLCV.timestamp)
                 .where(PriceOHLCV.symbol == symbol)
                 .where(PriceOHLCV.timeframe == tf)
+                .where(PriceOHLCV.timestamp <= now)
                 .order_by(PriceOHLCV.timestamp.desc())
                 .limit(1)
             )
@@ -457,6 +477,7 @@ async def check_data_coherence(
                 select(TechnicalIndicator.timestamp)
                 .where(TechnicalIndicator.symbol == symbol)
                 .where(TechnicalIndicator.timeframe == tf)
+                .where(TechnicalIndicator.timestamp <= now)
                 .order_by(TechnicalIndicator.timestamp.desc())
                 .limit(1)
             )

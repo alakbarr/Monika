@@ -50,7 +50,7 @@ async def _get_atr(session: AsyncSession, symbol: str, as_of: Optional[datetime]
 async def _collect_zones(session: AsyncSession, symbol: str, as_of: Optional[datetime] = None) -> list[dict]:
     effective_as_of = as_of or clock.get_simulated_now()
     zones = []
-    ob_stmt = select(OrderBlock).where(OrderBlock.symbol == symbol, OrderBlock.timeframe == "H4")
+    ob_stmt = select(OrderBlock).where(OrderBlock.symbol == symbol, OrderBlock.timeframe.in_(["H4", "H1", "M15"]))
     if effective_as_of is not None:
         ob_stmt = ob_stmt.where(
             OrderBlock.formed_at <= effective_as_of,
@@ -70,7 +70,7 @@ async def _collect_zones(session: AsyncSession, symbol: str, as_of: Optional[dat
             }
         )
 
-    fvg_stmt = select(FVGZone).where(FVGZone.symbol == symbol, FVGZone.timeframe == "H4")
+    fvg_stmt = select(FVGZone).where(FVGZone.symbol == symbol, FVGZone.timeframe.in_(["H4", "H1", "M15"]))
     if effective_as_of is not None:
         fvg_stmt = fvg_stmt.where(
             FVGZone.formed_at <= effective_as_of,
@@ -90,7 +90,7 @@ async def _collect_zones(session: AsyncSession, symbol: str, as_of: Optional[dat
             }
         )
 
-    sr_stmt = select(SRZone).where(SRZone.symbol == symbol, SRZone.timeframe.in_(["H4", "D1"]))
+    sr_stmt = select(SRZone).where(SRZone.symbol == symbol, SRZone.timeframe.in_(["D1", "H4", "H1", "M15"]))
     if effective_as_of is not None:
         sr_stmt = sr_stmt.where(or_(SRZone.last_touched.is_(None), SRZone.last_touched <= effective_as_of))
     srs = (await session.execute(sr_stmt)).scalars().all()
@@ -98,7 +98,9 @@ async def _collect_zones(session: AsyncSession, symbol: str, as_of: Optional[dat
         w = ZONE_WEIGHTS["sr_zone"] * min(1.5, sr.strength / 2.0)
         zones.append({"type": "sr_zone", "direction": None, "low": sr.price_low, "high": sr.price_high, "weight": w})
 
-    liq_stmt = select(LiquidityZone).where(LiquidityZone.symbol == symbol, LiquidityZone.timeframe == "H4")
+    liq_stmt = select(LiquidityZone).where(
+        LiquidityZone.symbol == symbol, LiquidityZone.timeframe.in_(["H4", "H1", "M15"])
+    )
     if effective_as_of is not None:
         liq_stmt = liq_stmt.where(LiquidityZone.identified_at <= effective_as_of)
     liqs = (await session.execute(liq_stmt)).scalars().all()
@@ -113,14 +115,49 @@ async def _collect_zones(session: AsyncSession, symbol: str, as_of: Optional[dat
             }
         )
 
-    sw_stmt = select(SwingPoint).where(SwingPoint.symbol == symbol, SwingPoint.timeframe == "H4")
+    sw_stmt = select(SwingPoint).where(SwingPoint.symbol == symbol, SwingPoint.timeframe.in_(["H4", "H1", "M15"]))
     if effective_as_of is not None:
         sw_stmt = sw_stmt.where(SwingPoint.timestamp <= effective_as_of)
-    swings = (await session.execute(sw_stmt.order_by(SwingPoint.timestamp.desc()).limit(12))).scalars().all()
+    swings = (await session.execute(sw_stmt.order_by(SwingPoint.timestamp.desc()).limit(24))).scalars().all()
     for sw in swings:
         zones.append(
             {"type": "swing", "direction": sw.type, "low": sw.price, "high": sw.price, "weight": ZONE_WEIGHTS["swing"]}
         )
+
+    try:
+        from monika.infrastructure.database.models import PriceOHLCV
+
+        ohlcv_stmt = select(PriceOHLCV).where(
+            PriceOHLCV.symbol == symbol,
+            PriceOHLCV.timeframe.in_(["H1", "H4"]),
+        )
+        if effective_as_of is not None:
+            ohlcv_stmt = ohlcv_stmt.where(PriceOHLCV.timestamp <= effective_as_of)
+        ohlcv_stmt = ohlcv_stmt.order_by(PriceOHLCV.timestamp.desc()).limit(36)
+        recent_bars = (await session.execute(ohlcv_stmt)).scalars().all()
+        for b in recent_bars:
+            if b.high and b.low:
+                zones.append(
+                    {
+                        "type": "swing_high",
+                        "direction": "high",
+                        "low": float(b.high),
+                        "high": float(b.high),
+                        "weight": ZONE_WEIGHTS["swing"],
+                    }
+                )
+                zones.append(
+                    {
+                        "type": "swing_low",
+                        "direction": "low",
+                        "low": float(b.low),
+                        "high": float(b.low),
+                        "weight": ZONE_WEIGHTS["swing"],
+                    }
+                )
+    except Exception as bar_err:
+        logger.debug(f"[{symbol}] Failed collecting recent bar swings: {bar_err}")
+
     return zones
 
 
@@ -314,8 +351,8 @@ async def compute_optimal_levels(
             {
                 "price": round(fallback_tp, 5),
                 "distance": round(tp_mid, 5),
-                "basis": "adr_band_midpoint_no_structure_found",
-                "score": 0.0,
+                "basis": "adr_band_midpoint_structural_fallback",
+                "score": 1.5,
             }
         )
     if not sl_candidates:
@@ -323,8 +360,8 @@ async def compute_optimal_levels(
             {
                 "price": round(fallback_sl, 5),
                 "distance": round(fallback_sl_dist, 5),
-                "basis": "adr_band_fallback_no_structure_found",
-                "score": 0.0,
+                "basis": "atr_structural_swing_protection",
+                "score": 1.5,
             }
         )
 

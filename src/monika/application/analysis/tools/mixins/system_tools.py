@@ -314,6 +314,7 @@ class SystemToolsMixin(_ToolExecutorMixinBase):
                 await self.session.execute(
                     select(PriceOHLCV)
                     .where(PriceOHLCV.symbol == analysis.symbol)
+                    .where(PriceOHLCV.timeframe == "M15")
                     .where(PriceOHLCV.timestamp <= clock.now())
                     .order_by(PriceOHLCV.timestamp.desc())
                     .limit(1)
@@ -445,6 +446,7 @@ class SystemToolsMixin(_ToolExecutorMixinBase):
                     await self.session.execute(
                         select(PriceOHLCV)
                         .where(PriceOHLCV.symbol == r.symbol)
+                        .where(PriceOHLCV.timeframe == "M15")
                         .where(PriceOHLCV.timestamp <= clock.now())
                         .order_by(PriceOHLCV.timestamp.desc())
                         .limit(1)

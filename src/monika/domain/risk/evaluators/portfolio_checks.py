@@ -255,7 +255,14 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
 
             unrealized_pnl = 0.0
             open_papers = (
-                (await session.execute(select(PaperTradeRecord).where(PaperTradeRecord.status == "open")))
+                (
+                    await session.execute(
+                        select(PaperTradeRecord)
+                        .where(PaperTradeRecord.status == "open")
+                        .where(PaperTradeRecord.is_pending_fill == False)
+                        .where(PaperTradeRecord.opened_at <= clock.now())
+                    )
+                )
                 .scalars()
                 .all()
             )
@@ -264,6 +271,8 @@ class RiskPortfolioChecksMixin(_RiskGateMixinBase):
                     await session.execute(
                         select(PriceOHLCV.close)
                         .where(PriceOHLCV.symbol == paper.symbol)
+                        .where(PriceOHLCV.timeframe == "M15")
+                        .where(PriceOHLCV.timestamp <= clock.now())
                         .order_by(PriceOHLCV.timestamp.desc())
                         .limit(1)
                     )

@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
+from monika.core.primitives import clock
 from monika.infrastructure.llm.rate_limiting.http_retry import fetch_with_retry
 
 logger = logging.getLogger("TradingAgent.SovereignYieldSpreads")
@@ -111,7 +112,7 @@ class SovereignYieldSpreads:
 
     @classmethod
     async def _fetch_db_fallback(
-        cls, country_tenor: str, session: Optional[Any] = None
+        cls, country_tenor: str, session: Optional[Any] = None, as_of: Optional[datetime] = None
     ) -> Optional[Tuple[float, float]]:
         """Fetch latest (current_yield, previous_close_yield) from BondYieldData in database."""
         try:
@@ -128,6 +129,7 @@ class SovereignYieldSpreads:
                 "US_10Y": ["US_10Y", "US10Y"],
             }
             db_candidates = list(dict.fromkeys([country_tenor] + alias_map.get(country_tenor, [])))
+            cutoff_date = as_of or clock.get_simulated_now() or clock.now()
 
             async def _query(s):
                 res = (
@@ -135,6 +137,7 @@ class SovereignYieldSpreads:
                         await s.execute(
                             select(BondYieldData.yield_percent)
                             .where(BondYieldData.country_tenor.in_(db_candidates))
+                            .where(BondYieldData.date <= cutoff_date)
                             .order_by(BondYieldData.date.desc())
                             .limit(2)
                         )
@@ -147,8 +150,8 @@ class SovereignYieldSpreads:
                     prev = float(res[1]) if len(res) > 1 else curr
                     return curr, prev
 
-                # On-demand populate if DB is empty for foreign bond yields
-                if not res and country_tenor != "US_10Y":
+                # On-demand populate if DB is empty for foreign bond yields (skip during simulation)
+                if not res and country_tenor != "US_10Y" and not clock.is_simulated():
                     try:
                         from monika.infrastructure.data_ingestion.sources.bond_yields_fetcher import BondYieldFetcher
 
@@ -159,6 +162,7 @@ class SovereignYieldSpreads:
                                 await s.execute(
                                     select(BondYieldData.yield_percent)
                                     .where(BondYieldData.country_tenor.in_(db_candidates))
+                                    .where(BondYieldData.date <= cutoff_date)
                                     .order_by(BondYieldData.date.desc())
                                     .limit(2)
                                 )
@@ -179,6 +183,7 @@ class SovereignYieldSpreads:
                             await s.execute(
                                 select(TreasuryYield.yield_percent)
                                 .where(TreasuryYield.tenor == "10Y")
+                                .where(TreasuryYield.date <= cutoff_date)
                                 .order_by(TreasuryYield.date.desc())
                                 .limit(2)
                             )
@@ -223,7 +228,7 @@ class SovereignYieldSpreads:
         us_data = cls._fetch_yahoo_chart_sync(us_ticker) if us_ticker else None
         if not us_data:
             return {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": clock.now().isoformat(),
                 "us_10y_yield": None,
                 "spreads": {},
                 "status": "error",
@@ -324,7 +329,7 @@ class SovereignYieldSpreads:
             }
 
         return {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": clock.now().isoformat(),
             "us_10y_yield": round(us_yield, 3),
             "spreads": spreads,
         }
@@ -338,6 +343,8 @@ class SovereignYieldSpreads:
         """
 
         async def _get_yield_pair(ticker_key: str, country_tenor: str) -> Optional[Tuple[float, float]]:
+            if clock.is_simulated():
+                return await cls._fetch_db_fallback(country_tenor, session)
             ticker = cls.YIELD_TICKERS.get(ticker_key)
             if ticker:
                 res = await cls._fetch_yahoo_chart_async(ticker)
@@ -350,7 +357,7 @@ class SovereignYieldSpreads:
         if not us_data:
             logger.warning("SovereignYieldSpreads: US 10Y yield unavailable (fail-closed)")
             return {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": clock.now().isoformat(),
                 "us_10y_yield": None,
                 "spreads": {},
                 "status": "error",
@@ -449,7 +456,7 @@ class SovereignYieldSpreads:
             }
 
         return {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": clock.now().isoformat(),
             "us_10y_yield": round(us_yield, 3),
             "spreads": spreads,
         }

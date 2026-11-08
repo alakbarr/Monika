@@ -372,6 +372,7 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                             sl_p = float(ana.stop_loss or r.get("stop_loss") or 0.0)
                             tp_p = float(ana.take_profit or r.get("take_profit") or 0.0)
                             direction_str = str(ana.decision or r.get("decision") or "buy")
+                            volume_val = float(getattr(ana, "lot_size", None) or r.get("lot_size", 0.01) or 0.01)
 
                             if entry_p > 0 and sl_p > 0 and tp_p > 0:
                                 sim_result = await simulator.simulate_execution(
@@ -380,7 +381,9 @@ async def execution_node(state: TradingState, config: Optional[RunnableConfig] =
                                     entry_price=entry_p,
                                     stop_loss=sl_p,
                                     take_profit=tp_p,
+                                    volume=volume_val,
                                     session=session,
+                                    as_of=clock.now(),
                                 )
 
                                 if not sim_result.resilient:

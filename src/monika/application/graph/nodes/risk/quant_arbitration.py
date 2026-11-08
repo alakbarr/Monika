@@ -78,7 +78,12 @@ async def run_quant_arbitration(
         if dec == "skip":
             logger.debug(f"[QuantArbitration] Skipping {sym} as Stage 2 analysis was skipped (decision='skip').")
             continue
-        candidate_map[sym] = (dict(r), False)
+        # Bug #63: If symbol was not actionable originally (e.g. filtered by ReflectionNode/PortfolioJudge),
+        # force decision to 'wait' in candidate map so it cannot resurrect an un-promoted LLM trade.
+        r_copy = dict(r)
+        if dec in ("buy", "sell") or r.get("reflection_filtered"):
+            r_copy["decision"] = "wait"
+        candidate_map[sym] = (r_copy, False)
 
     async with get_session() as session:
         vix_val = 15.0
@@ -298,7 +303,14 @@ async def run_quant_arbitration(
                     )
 
                 # Ensure promoted or existing actionable trades have valid analysis_id
-                if r.get("analysis_id") is not None and str(r.get("decision", "")).lower() in ("buy", "sell"):
+                is_promoted_quant = not is_actionable_originally and str(r.get("decision_source", "")).startswith(
+                    "quant_"
+                )
+                if (
+                    (is_actionable_originally or is_promoted_quant)
+                    and r.get("analysis_id") is not None
+                    and str(r.get("decision", "")).lower() in ("buy", "sell")
+                ):
                     filtered_actionable.append((sym, r))
                     if isinstance(actionable, list):
                         has_tuple = any(isinstance(item, tuple) and item[0] == sym for item in actionable)

@@ -494,7 +494,7 @@ class PostProcessVerificationMixin(_RunnerMixinBase):
                         if flagged_at:
                             if flagged_at.tzinfo is None:
                                 flagged_at = flagged_at.replace(tzinfo=timezone.utc)
-                            if (datetime.now(timezone.utc) - flagged_at).total_seconds() < 900:
+                            if (_get_clock().now() - flagged_at).total_seconds() < 900:
                                 significant_disagreement_flag = True
                             else:
                                 await session.delete(cfg)

@@ -11,6 +11,7 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import monika.core.primitives.clock as clock
 from monika.application.analysis.stages.per_asset.context_builder import _flatten_system_prompt
 from monika.infrastructure.database.models import PriceOHLCV, TechnicalIndicator
 from monika.infrastructure.providers.llm_factory import create_client
@@ -266,11 +267,14 @@ async def evaluate_debate_candidate_and_levels(
     latest_atr: Optional[float] = None
     if session and (entry_price_val is None or sl_val is None or tp_val is None or not precomputed_brackets):
         try:
+            now_dt = clock.now()
             if entry_price_val is None:
                 p_row = (
                     await session.execute(
                         select(PriceOHLCV.close)
                         .where(PriceOHLCV.symbol == symbol)
+                        .where(PriceOHLCV.timeframe == "M15")
+                        .where(PriceOHLCV.timestamp <= now_dt)
                         .order_by(PriceOHLCV.timestamp.desc())
                         .limit(1)
                     )
@@ -286,6 +290,7 @@ async def evaluate_debate_candidate_and_levels(
                         TechnicalIndicator.timeframe.in_(["H4", "H1"]),
                         TechnicalIndicator.indicator_name == "ATR_14",
                     )
+                    .where(TechnicalIndicator.timestamp <= now_dt)
                     .order_by(TechnicalIndicator.timestamp.desc())
                     .limit(1)
                 )
@@ -341,104 +346,217 @@ async def evaluate_debate_candidate_and_levels(
         if str(decision).strip().lower() in ("buy", "sell"):
             is_candidate_for_debate = True
         elif str(decision).strip().lower() == "wait" and cs_val is not None and cs_val >= 6:
-            rat = str(getattr(analysis, "rationale", "") or "").lower()
-            conflict_keywords = (
-                "conflict",
-                "diverg",
-                "macro",
-                "opposing",
-                "brief",
-                "ssvp",
-                "headwind",
-                "bias",
-                "discount",
-                "premium",
-                "order block",
-                "fvg",
-                "pullback",
-                "retest",
-            )
-            has_structural_setup = any(kw in rat for kw in conflict_keywords)
+            p_in = _safe_float(getattr(analysis, "priced_in_score", None)) or 0.0
+            exh = _safe_float(getattr(analysis, "exhaustion_risk", None)) or 0.0
+            # Bug #64: Never promote WAIT to debate candidate if market is already priced in or exhausted
+            if p_in >= 8.0 or exh >= 9.0:
+                is_candidate_for_debate = False
+            else:
+                rat = str(getattr(analysis, "rationale", "") or "").lower()
+                conflict_keywords = (
+                    "conflict",
+                    "diverg",
+                    "macro",
+                    "opposing",
+                    "brief",
+                    "ssvp",
+                    "headwind",
+                    "bias",
+                    "discount",
+                    "premium",
+                    "order block",
+                    "fvg",
+                    "pullback",
+                    "retest",
+                )
+                has_structural_setup = any(kw in rat for kw in conflict_keywords)
 
-            # Auto-recover structural SL/TP if model omitted them on WAIT decision
-            if (sl_val is None or tp_val is None) and has_structural_setup:
-                inval_price = _safe_float(getattr(analysis, "invalidation_price", None))
-                ref_px = entry_price_val
-                ref_atr = latest_atr
+                # Auto-recover structural SL/TP if model omitted them on WAIT decision
+                if (sl_val is None or tp_val is None) and has_structural_setup:
+                    inval_price = _safe_float(getattr(analysis, "invalidation_price", None))
+                    ref_px = entry_price_val
+                    ref_atr = latest_atr
 
-                if inval_price is not None and ref_px is not None:
-                    inval_dir = str(getattr(analysis, "invalidation_direction", "") or "").lower()
-                    if "below" in inval_dir or inval_price < ref_px:
-                        if sl_val is None:
-                            sl_val = inval_price
-                        if tp_val is None:
-                            risk_d = abs(ref_px - sl_val)
-                            tp_val = round(ref_px + (1.6 * risk_d), 5)
-                    elif "above" in inval_dir or inval_price > ref_px:
-                        if sl_val is None:
-                            sl_val = inval_price
-                        if tp_val is None:
-                            risk_d = abs(sl_val - ref_px)
-                            tp_val = round(ref_px - (1.6 * risk_d), 5)
-                elif b_opts is not None or (ref_px is not None and ref_atr is not None and ref_atr > 0):
-                    if b_opts is None and ref_px is not None and ref_atr is not None:
-                        from monika.application.analysis.calculators.invariant_calculator import (
-                            generate_concrete_bracket_options,
-                        )
+                    inval_valid = False
+                    if inval_price is not None and ref_px is not None and ref_atr is not None and ref_atr > 0:
+                        dist_to_inval = abs(ref_px - inval_price)
+                        # Bug #68: Only use invalidation_price as SL if distance is between 1.0x and 2.5x ATR
+                        if 1.0 * ref_atr <= dist_to_inval <= 2.5 * ref_atr:
+                            inval_valid = True
+                            inval_dir = str(getattr(analysis, "invalidation_direction", "") or "").lower()
+                            if "below" in inval_dir or inval_price < ref_px:
+                                if sl_val is None:
+                                    sl_val = inval_price
+                                if tp_val is None:
+                                    risk_d = abs(ref_px - sl_val)
+                                    tp_val = round(ref_px + (1.6 * risk_d), 5)
+                            elif "above" in inval_dir or inval_price > ref_px:
+                                if sl_val is None:
+                                    sl_val = inval_price
+                                if tp_val is None:
+                                    risk_d = abs(sl_val - ref_px)
+                                    tp_val = round(ref_px - (1.6 * risk_d), 5)
 
-                        b_opts = generate_concrete_bracket_options(
-                            symbol=symbol,
-                            current_price=ref_px,
-                            atr=ref_atr,
-                            adr_5d=ref_atr * 2.2,
-                            target_rr=1.60,
-                            regime_classification=str(fallback_regime) if fallback_regime else None,
-                            h4_impulse_atr=float(fallback_impulse) if fallback_impulse is not None else None,
-                        )
-                        if isinstance(result_dict, dict):
-                            result_dict["bracket_options"] = b_opts
+                    if not inval_valid and (
+                        b_opts is not None or (ref_px is not None and ref_atr is not None and ref_atr > 0)
+                    ):
+                        if b_opts is None and ref_px is not None and ref_atr is not None:
+                            from monika.application.analysis.calculators.invariant_calculator import (
+                                generate_concrete_bracket_options,
+                            )
 
-                    if b_opts is not None:
-                        is_bull = any(w in rat for w in ("bull", "long", "discount", "buy"))
-                        is_bear = any(w in rat for w in ("bear", "short", "premium", "sell"))
+                            b_opts = generate_concrete_bracket_options(
+                                symbol=symbol,
+                                current_price=ref_px,
+                                atr=ref_atr,
+                                adr_5d=ref_atr * 2.2,
+                                target_rr=1.60,
+                                regime_classification=str(fallback_regime) if fallback_regime else None,
+                                h4_impulse_atr=float(fallback_impulse) if fallback_impulse is not None else None,
+                            )
+                            if isinstance(result_dict, dict):
+                                result_dict["bracket_options"] = b_opts
 
-                        spec_bull = 0
-                        spec_bear = 0
-                        if isinstance(specialist_biases, dict):
-                            for role_k, bias_v in specialist_biases.items():
-                                b_str = str(bias_v or "").lower()
-                                weight = 2 if role_k in ("technical", "macro") else 1
-                                if "bull" in b_str or "buy" in b_str:
-                                    spec_bull += weight
-                                elif "bear" in b_str or "sell" in b_str:
-                                    spec_bear += weight
+                        if b_opts is not None:
+                            is_bull = any(w in rat for w in ("bull", "long", "discount", "buy"))
+                            is_bear = any(w in rat for w in ("bear", "short", "premium", "sell"))
 
-                        inval_dir = str(getattr(analysis, "invalidation_direction", "") or "").lower()
-                        bull_kw_count = sum(rat.count(w) for w in ("bullish", "long", "discount", "buy"))
-                        bear_kw_count = sum(rat.count(w) for w in ("bearish", "short", "premium", "sell"))
+                            spec_bull = 0
+                            spec_bear = 0
+                            if isinstance(specialist_biases, dict):
+                                for role_k, bias_v in specialist_biases.items():
+                                    b_str = str(bias_v or "").lower()
+                                    weight = 2 if role_k in ("technical", "macro") else 1
+                                    if "bull" in b_str or "buy" in b_str:
+                                        spec_bull += weight
+                                    elif "bear" in b_str or "sell" in b_str:
+                                        spec_bear += weight
 
-                        prefer_bear = (
-                            (is_bear and not is_bull)
-                            or (spec_bear > spec_bull)
-                            or (spec_bear == spec_bull and "above" in inval_dir)
-                            or (spec_bear == spec_bull and "below" not in inval_dir and bear_kw_count > bull_kw_count)
-                        )
-                        chosen_opt = b_opts["short_option_b"] if prefer_bear else b_opts["long_option_a"]
-                        if sl_val is None:
-                            sl_val = float(chosen_opt["stop_loss"])
-                        if tp_val is None:
-                            tp_val = float(chosen_opt["take_profit"])
+                            inval_dir = str(getattr(analysis, "invalidation_direction", "") or "").lower()
+                            bull_kw_count = sum(rat.count(w) for w in ("bullish", "long", "discount", "buy"))
+                            bear_kw_count = sum(rat.count(w) for w in ("bearish", "short", "premium", "sell"))
 
-            if sl_val is not None and tp_val is not None and has_structural_setup:
-                is_candidate_for_debate = True
-                try:
-                    if analysis.stop_loss is None:
-                        analysis.stop_loss = sl_val
-                    if analysis.take_profit is None:
-                        analysis.take_profit = tp_val
-                    if session:
-                        await session.commit()
-                except Exception as sync_err:
-                    logger.debug(f"[{symbol}] Non-fatal error syncing recovered debate levels: {sync_err}")
+                            prefer_bear = (
+                                (is_bear and not is_bull)
+                                or (spec_bear > spec_bull)
+                                or (spec_bear == spec_bull and "above" in inval_dir)
+                                or (
+                                    spec_bear == spec_bull
+                                    and "below" not in inval_dir
+                                    and bear_kw_count > bull_kw_count
+                                )
+                            )
+                            chosen_opt = b_opts["short_option_b"] if prefer_bear else b_opts["long_option_a"]
+                            if sl_val is None:
+                                sl_val = float(chosen_opt["stop_loss"])
+                            if tp_val is None:
+                                tp_val = float(chosen_opt["take_profit"])
+
+                if sl_val is not None and tp_val is not None and has_structural_setup:
+                    is_candidate_for_debate = True
+                    try:
+                        if analysis.stop_loss is None:
+                            analysis.stop_loss = sl_val
+                        if analysis.take_profit is None:
+                            analysis.take_profit = tp_val
+                        if session:
+                            await session.commit()
+                    except Exception as sync_err:
+                        logger.debug(f"[{symbol}] Non-fatal error syncing recovered debate levels: {sync_err}")
 
     return is_candidate_for_debate, sl_val, tp_val, cs_val, decision, entry_price_val
+
+
+async def finalize_single_asset_result(
+    session: AsyncSession,
+    symbol: str,
+    analysis: Any,
+    analysis_id: Any,
+    decision: str,
+    confidence: float,
+    elapsed: float,
+    result: dict,
+    active_client: Any,
+    specialist_biases: dict,
+    precomputed_bracket_options: Any,
+) -> dict:
+    try:
+        from monika.infrastructure.database.event_store import TradingEventStore
+
+        await TradingEventStore.emit(
+            session=session,
+            event_type="analysis.stage2.completed",
+            payload={
+                "symbol": symbol,
+                "analysis_id": analysis_id,
+                "decision": decision,
+                "confidence": confidence,
+                "elapsed_seconds": elapsed,
+                "tool_calls_made": result.get("tool_calls_made", 0),
+                "turns": result.get("turns", 0),
+            },
+            correlation_id=f"cycle_stage2_{symbol}_{analysis_id or clock.now().strftime('%Y%m%d%H%M%S')}",
+            actor="per_asset_stage",
+        )
+    except Exception as es_err:
+        logger.debug(f"Event store emit analysis.stage2.completed error: {es_err}")
+
+    # Clean up temporary pending specialist biases
+    try:
+        from monika.infrastructure.database.models import SystemConfig
+
+        _biases_key = f"pending_specialist_biases_{symbol}"
+        _cfg = (await session.execute(select(SystemConfig).where(SystemConfig.key == _biases_key))).scalar_one_or_none()
+        if _cfg:
+            await session.delete(_cfg)
+            await session.commit()
+    except Exception:
+        pass
+
+    entry_price_val = extract_entry_price_from_analysis(analysis)
+
+    (
+        is_candidate_for_debate,
+        sl_val,
+        tp_val,
+        cs_val,
+        decision,
+        entry_price_val,
+    ) = await evaluate_debate_candidate_and_levels(
+        analysis=analysis,
+        session=session,
+        symbol=symbol,
+        entry_price_val=entry_price_val,
+        specialist_biases=specialist_biases,
+        precomputed_brackets=precomputed_bracket_options,
+        result_dict=result,
+    )
+    if precomputed_bracket_options and "bracket_options" not in result:
+        result["bracket_options"] = precomputed_bracket_options
+
+    # Bug #72: Propagate verified lot_size into result for downstream RiskGate
+    verified_lots = None
+    if isinstance(result, dict) and result.get("lot_size"):
+        verified_lots = result.get("lot_size")
+    elif hasattr(active_client, "verification_ledger"):
+        sz_record = active_client.verification_ledger.get_last_execution("calculate_position_size")
+        if sz_record and sz_record.get("result", {}).get("recommended_lots"):
+            verified_lots = sz_record["result"]["recommended_lots"]
+    if verified_lots is not None:
+        result["lot_size"] = float(verified_lots)
+
+    result.update(
+        {
+            "symbol": symbol,
+            "analysis_id": analysis_id,
+            "decision": decision,
+            "confidence": confidence,
+            "entry_price": entry_price_val,
+            "stop_loss": sl_val,
+            "take_profit": tp_val,
+            "confluence_score": cs_val,
+            "elapsed_seconds": elapsed,
+            "candidate_for_debate": is_candidate_for_debate,
+        }
+    )
+    return result

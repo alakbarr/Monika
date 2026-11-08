@@ -1072,6 +1072,7 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
                     await self.session.execute(
                         select(PriceOHLCV)
                         .where(PriceOHLCV.symbol == sym_c)
+                        .where(PriceOHLCV.timeframe == "M15")
                         .where(PriceOHLCV.timestamp <= clock.now())
                         .order_by(PriceOHLCV.timestamp.desc())
                         .limit(1)
@@ -1200,6 +1201,7 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
                     await self.session.execute(
                         select(PriceOHLCV)
                         .where(PriceOHLCV.symbol == symbol)
+                        .where(PriceOHLCV.timeframe == "M15")
                         .where(PriceOHLCV.timestamp <= clock.now())
                         .order_by(PriceOHLCV.timestamp.desc())
                         .limit(1)
@@ -1213,6 +1215,7 @@ class AssetAnalysisValidationMixin(_ToolExecutorMixinBase):
                     symbol=symbol,
                     entry_price=entry_val,
                     stop_loss=float(raw_sl),
+                    take_profit=float(raw_tp) if raw_tp is not None else None,
                     direction=decision,
                     session=self.session,
                     settings=self.settings,

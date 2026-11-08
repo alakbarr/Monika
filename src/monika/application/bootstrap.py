@@ -367,7 +367,17 @@ def build_application_container(
         ),
     )
 
-    # Wire domain risk ports with application and infrastructure providers
+    ensure_risk_ports_registered(cfg)
+
+    if overrides:
+        for k, v in overrides.items():
+            container.register(k, v)
+
+    return container
+
+
+def ensure_risk_ports_registered(settings: dict | None = None) -> None:
+    """Wire domain risk ports with application and infrastructure providers idempotently."""
     try:
         from monika.domain.risk.ports import (
             register_adaptive_risk_policy_factory,
@@ -425,8 +435,8 @@ def build_application_container(
             lambda s: get_broker(s.get("broker", {}).get("active_broker", "mt5") if isinstance(s, dict) else "mt5")
         )
 
-        from monika.domain.risk.ports import register_suspended_symbols_provider
         from monika.core.analytics.paper_tracker import PaperTracker
+        from monika.domain.risk.ports import register_suspended_symbols_provider
 
         register_suspended_symbols_provider(lambda settings=None: PaperTracker(settings))
 
@@ -444,9 +454,9 @@ def build_application_container(
             register_notifier,
             register_session_factory,
         )
+        from monika.infrastructure.database.db import get_session
         from monika.infrastructure.database.event_store import TradingEventStore
         from monika.infrastructure.notifications.telegram_notifier import AgentNotifier
-        from monika.infrastructure.database.db import get_session
 
         register_event_publisher(TradingEventStore)
 
@@ -458,18 +468,12 @@ def build_application_container(
         register_notifier(_notifier_factory)
         register_session_factory(get_session)
 
-        from monika.domain.risk.ports import register_data_freshness_validator
         from monika.core.validation.data_validator import validate_data_freshness
+        from monika.domain.risk.ports import register_data_freshness_validator
 
         register_data_freshness_validator(validate_data_freshness)
     except Exception as e:
         logger.warning(f"Error wiring domain risk ports at bootstrap: {e}")
-
-    if overrides:
-        for k, v in overrides.items():
-            container.register(k, v)
-
-    return container
 
 
 def bootstrap_application(

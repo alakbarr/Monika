@@ -213,7 +213,12 @@ class MacroPreprocessor:
 
         from sqlalchemy import desc, select
 
-        q = select(COTReport).order_by(COTReport.market_code, desc(COTReport.report_date))
+        now_date = clock.now().date()
+        q = (
+            select(COTReport)
+            .where(COTReport.report_date <= now_date)
+            .order_by(COTReport.market_code, desc(COTReport.report_date))
+        )
         reports = (await session.execute(q)).scalars().all()
 
         if not reports:
@@ -470,7 +475,7 @@ class MacroPreprocessor:
             "cot_signals": cot,
             "surprise_summary": surprises,
             "cot_narrative": cot_narrative,
-            "computed_at": datetime.now(timezone.utc).isoformat(),
+            "computed_at": clock.now().isoformat(),
         }
 
         payload_str = json.dumps(combined)
@@ -485,7 +490,10 @@ class MacroPreprocessor:
 
     async def _should_recompute_cot(self, session: AsyncSession) -> bool:
         """Cek apakah data COT ter-update sejak pre-komputasi terakhir."""
-        latest_cot_date = (await session.execute(select(func.max(COTReport.report_date)))).scalar_one_or_none()
+        now_date = clock.now().date()
+        latest_cot_date = (
+            await session.execute(select(func.max(COTReport.report_date)).where(COTReport.report_date <= now_date))
+        ).scalar_one_or_none()
 
         if not latest_cot_date:
             return True
@@ -525,10 +533,12 @@ class MacroPreprocessor:
         if last_time.tzinfo is None:
             last_time = last_time.replace(tzinfo=timezone.utc)
 
+        now_dt = clock.now()
         new_surprises = (
             await session.execute(
                 select(func.count(EconomicCalendar.id))
                 .where(EconomicCalendar.fetched_at > last_time)
+                .where(EconomicCalendar.event_time <= now_dt)
                 .where(EconomicCalendar.surprise_score.is_not(None))
             )
         ).scalar_one_or_none() or 0

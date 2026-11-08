@@ -191,7 +191,7 @@ def truncate_to_budget(text: str, max_tokens: int) -> str:
                     ]
                     candidates = unmitigated if unmitigated else data
                     while len(candidates) > 2 and len(json.dumps(candidates, default=str)) > target_char_budget:
-                        candidates = candidates[1:]
+                        candidates = candidates[:-1]
                     return candidates
 
                 # B. OHLCV Candles (open, high, low, close)
@@ -246,12 +246,12 @@ def truncate_to_budget(text: str, max_tokens: int) -> str:
                     ]
                     candidates = high_med if high_med else data
                     while len(candidates) > 2 and len(json.dumps(candidates, default=str)) > target_char_budget:
-                        candidates = candidates[1:]
+                        candidates = candidates[:-1]
                     return candidates
 
                 candidates = list(data)
                 while len(candidates) > 2 and len(json.dumps(candidates, default=str)) > target_char_budget:
-                    candidates = candidates[1:]
+                    candidates = candidates[:-1]
                 return candidates
             return data[-6:] if len(data) > 6 else data
         return data

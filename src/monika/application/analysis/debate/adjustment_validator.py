@@ -89,12 +89,17 @@ async def validate_and_apply_judge_adjustments(
     sl_dist = float(abs(d_entry - d_sl))
     tp_dist = float(abs(d_entry - d_tp))
 
+    from monika.core.primitives import clock
+
+    as_of = getattr(ana, "generated_at", None) or getattr(ana, "created_at", None) or clock.now()
+
     atr_row = (
         await session.execute(
             select(TechnicalIndicator)
             .where(TechnicalIndicator.symbol == ana.symbol)
             .where(TechnicalIndicator.timeframe == "H4")
             .where(TechnicalIndicator.indicator_name == "ATR_14")
+            .where(TechnicalIndicator.timestamp <= as_of)
             .order_by(TechnicalIndicator.timestamp.desc())
             .limit(1)
         )
@@ -118,7 +123,10 @@ async def validate_and_apply_judge_adjustments(
     try:
         from monika.application.analysis.calculators.daily_range_calculator import compute_daily_range_context
 
-        adr_ctx = await compute_daily_range_context(session, ana.symbol, settings, atr_h4=atr_val)
+        try:
+            adr_ctx = await compute_daily_range_context(session, ana.symbol, settings, as_of=as_of, atr_h4=atr_val)
+        except TypeError:
+            adr_ctx = await compute_daily_range_context(session, ana.symbol, settings, atr_h4=atr_val)
         if "error" not in adr_ctx:
             tol = adr_ctx.get("band_tolerance_pct", 0.10)
             adr_val = float(adr_ctx.get("adr", 0.0) or 0.0)

@@ -254,14 +254,20 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
 
         # Fallback to MAX(EconomicCalendar.fetched_at)
         if latest_calendar_fetch is None:
-            max_fetched = (await session.execute(select(func.max(EconomicCalendar.fetched_at)))).scalar_one_or_none()
+            max_fetched = (
+                await session.execute(
+                    select(func.max(EconomicCalendar.fetched_at)).where(EconomicCalendar.fetched_at <= now)
+                )
+            ).scalar_one_or_none()
             if max_fetched is not None:
                 if max_fetched.tzinfo is None:
                     max_fetched = max_fetched.replace(tzinfo=UTC)
                 latest_calendar_fetch = max_fetched
 
         # Check if any calendar rows exist in DB at all
-        total_events = (await session.execute(select(func.count(EconomicCalendar.id)))).scalar_one_or_none() or 0
+        total_events = (
+            await session.execute(select(func.count(EconomicCalendar.id)).where(EconomicCalendar.fetched_at <= now))
+        ).scalar_one_or_none() or 0
 
         if total_events == 0 and latest_calendar_fetch is None:
             if is_paper:
@@ -299,7 +305,7 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
         stale_limit = 60.0 if is_crypto_weekend else 8.0
 
         if calendar_age_hours > stale_limit:
-            if not is_paper:
+            if not is_paper and future_coverage is None:
                 return (
                     False,
                     f"Economic calendar data is {calendar_age_hours:.1f}h stale (>{stale_limit:.1f}h limit). Live trade blocked.",
@@ -427,6 +433,7 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
         direction: str,
         as_of: datetime | None = None,
         is_backtest: bool = False,
+        proposal: Any = None,
     ) -> tuple[bool, str]:
         """
         Deterministic Macro Regime & Sovereign Flow admissibility (RegimeClassifier).
@@ -439,12 +446,12 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
             dxy_cls = DXYData or resolve_model("DXYData")
             yield_cls = TreasuryYield or resolve_model("TreasuryYield")
 
+            eff_now = as_of or clock.now()
+            eod_cutoff = clock.get_eod_cutoff(eff_now)
+
             dxy_val = 100.0
             if dxy_cls is not None:
-                dxy_stmt = select(dxy_cls)
-                if as_of is not None:
-                    dxy_stmt = dxy_stmt.where(dxy_cls.date <= as_of.date())
-                dxy_stmt = dxy_stmt.order_by(dxy_cls.date.desc()).limit(1)
+                dxy_stmt = select(dxy_cls).where(dxy_cls.date <= eod_cutoff).order_by(dxy_cls.date.desc()).limit(1)
                 dxy_row = (await session.execute(dxy_stmt)).scalar_one_or_none()
                 if dxy_row and getattr(dxy_row, "close", None) is not None:
                     dxy_val = float(dxy_row.close)
@@ -452,20 +459,41 @@ class RiskMarketChecksMixin(_RiskGateMixinBase):
             yield_val: Optional[float] = None
             if yield_cls is not None:
                 for tenor in ("10Y_REAL", "10Y"):
-                    yield_stmt = select(yield_cls).where(yield_cls.tenor == tenor)
-                    if as_of is not None:
-                        yield_stmt = yield_stmt.where(yield_cls.date <= as_of.date())
-                    yield_stmt = yield_stmt.order_by(yield_cls.date.desc()).limit(1)
+                    yield_stmt = (
+                        select(yield_cls)
+                        .where(yield_cls.tenor == tenor)
+                        .where(yield_cls.date <= eod_cutoff)
+                        .order_by(yield_cls.date.desc())
+                        .limit(1)
+                    )
                     yield_row = (await session.execute(yield_stmt)).scalar_one_or_none()
                     if yield_row and getattr(yield_row, "yield_percent", None) is not None:
                         yield_val = float(yield_row.yield_percent)
                         break
+
+            dr_pos = getattr(proposal, "dealing_range_pos", None) or (
+                proposal.get("dealing_range_pos") if isinstance(proposal, dict) else None
+            )
+            tech_bias = getattr(proposal, "technical_bias", None) or (
+                proposal.get("technical_bias") if isinstance(proposal, dict) else None
+            )
+            conf_score = getattr(proposal, "confluence_score", None) or (
+                proposal.get("confluence_score") if isinstance(proposal, dict) else None
+            )
+            macro_override = bool(
+                getattr(proposal, "macro_catalyst_override", False)
+                or (proposal.get("macro_catalyst_override") if isinstance(proposal, dict) else False)
+            )
 
             return RegimeClassifier.is_trade_allowed(
                 symbol=symbol,
                 direction=direction,
                 dxy=dxy_val,
                 us10y_yield=yield_val,
+                dealing_range_pos=dr_pos,
+                technical_bias=tech_bias,
+                confluence_score=conf_score,
+                macro_catalyst_override=macro_override,
             )
         except Exception as e:
             logger.warning(f"Macro regime check error: {e}")

@@ -11,7 +11,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from sqlalchemy import desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -68,6 +68,37 @@ from monika.application.execution.service.base import _ExecutionServiceMixinBase
 logger = logging.getLogger("TradingAgent.ExecutionService.EmergencyManager")
 
 
+class _ReentrantAsyncLock(asyncio.Lock):
+    """An asyncio Lock that allows re-entrant acquisition by the same asyncio.Task."""
+
+    def __init__(self):
+        super().__init__()
+        self._owner: Optional[asyncio.Task] = None
+        self._count: int = 0
+
+    async def acquire(self) -> Literal[True]:
+        current = asyncio.current_task()
+        if self._owner is current:
+            self._count += 1
+            return True
+        await super().acquire()
+        self._owner = current
+        self._count = 1
+        return True
+
+    def release(self) -> None:
+        current = asyncio.current_task()
+        if self._owner is not current:
+            raise RuntimeError("Cannot release an un-acquired lock or lock owned by another task")
+        self._count -= 1
+        if self._count == 0:
+            self._owner = None
+            super().release()
+
+    def locked(self) -> bool:
+        return super().locked()
+
+
 class EmergencyManagerMixin(_ExecutionServiceMixinBase):
     """Mixin untuk penutupan posisi darurat dan kill-switch proteksi modal."""
 
@@ -79,7 +110,7 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
             unlocked = [t for t, lk in self._ticket_locks.items() if not lk.locked()]
             for t in unlocked[:250]:
                 self._ticket_locks.pop(t, None)
-        return self._ticket_locks.setdefault(ticket, asyncio.Lock())
+        return self._ticket_locks.setdefault(ticket, _ReentrantAsyncLock())
 
     async def close_position_by_ticket(
         self,
@@ -278,6 +309,8 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                 await session.execute(
                     select(PriceOHLCV)
                     .where(PriceOHLCV.symbol == db_pos.symbol)
+                    .where(PriceOHLCV.timeframe == "M15")
+                    .where(PriceOHLCV.timestamp <= clock.now())
                     .order_by(PriceOHLCV.timestamp.desc())
                     .limit(1)
                 )
@@ -304,11 +337,14 @@ class EmergencyManagerMixin(_ExecutionServiceMixinBase):
                 move = (exit_price - paper.entry_price) if paper.entry_price else 0
                 if paper.direction == "sell":
                     move = -move
-                sl_dist = abs(paper.entry_price - paper.stop_loss) if (paper.entry_price and paper.stop_loss) else None
-                paper.pnl_pct = round(move / sl_dist * (paper.risk_pct or 0.75), 4) if sl_dist else 0.0
+                init_sl = paper.initial_stop_loss or paper.stop_loss
+                eff_risk_pct = paper.initial_risk_pct or paper.risk_pct or 0.75
+                sl_dist = abs(paper.entry_price - init_sl) if (paper.entry_price and init_sl) else None
+                paper.pnl_pct = round(move / sl_dist * eff_risk_pct, 4) if sl_dist else 0.0
                 paper.status = "closed"
                 paper.closed_at = now
                 paper.exit_price = exit_price
+                paper.accounting_status = "ok" if sl_dist else "invalid_initial_stop"
                 paper.exit_reason = f"manual_{requested_by}"[:100]
                 paper.holding_hours = (now - paper.opened_at).total_seconds() / 3600 if paper.opened_at else 0.0
                 try:
