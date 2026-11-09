@@ -367,22 +367,25 @@ class TestFedWatchProbabilitiesStress:
     async def test_fedwatch_valid_database_rows_and_limit(self):
         """Verify valid database rows are parsed, sorted, and limited properly."""
         now_utc = datetime.now(timezone.utc)
+        m1 = (now_utc + timedelta(days=10)).strftime("%Y-%m-%d")
+        m2 = (now_utc + timedelta(days=40)).strftime("%Y-%m-%d")
+        m3 = (now_utc + timedelta(days=70)).strftime("%Y-%m-%d")
         mock_records = [
             MockDbRecord(
                 id_=1,
-                meeting_date="2026-09-17",
+                meeting_date=m1,
                 probabilities_json=json.dumps({"cut_25": 0.85, "cut_50": 0.15, "hold": 0.0}),
                 fetched_at=now_utc - timedelta(hours=2),
             ),
             MockDbRecord(
                 id_=2,
-                meeting_date="2026-11-05",
+                meeting_date=m2,
                 probabilities_json=json.dumps({"cut_25": 0.60, "cut_50": 0.10, "hold": 0.30}),
                 fetched_at=now_utc - timedelta(hours=2),
             ),
             MockDbRecord(
                 id_=3,
-                meeting_date="2026-12-16",
+                meeting_date=m3,
                 probabilities_json=json.dumps({"cut_25": 0.40, "cut_50": 0.35, "hold": 0.25}),
                 fetched_at=now_utc - timedelta(hours=2),
             ),
@@ -401,10 +404,10 @@ class TestFedWatchProbabilitiesStress:
         assert res.get("count") == 2
         meetings = res.get("meetings", [])
         assert len(meetings) == 2
-        assert meetings[0]["meeting_date"] == "2026-09-17"
+        assert meetings[0]["meeting_date"] == m1
         assert meetings[0]["probabilities"]["cut_25"] == 0.85
         assert meetings[0]["data_age_hours"] == 2.0
-        assert meetings[1]["meeting_date"] == "2026-11-05"
+        assert meetings[1]["meeting_date"] == m2
         # Since meetings is non-empty, fallback_tool should not be present
         assert "fallback_tool" not in res
 

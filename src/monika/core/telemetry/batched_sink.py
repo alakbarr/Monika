@@ -51,8 +51,14 @@ class BatchedTelemetrySink:
     def start(self) -> None:
         """Start the background batch flusher task."""
         if not self._running:
-            self._running = True
-            self._flusher_task = asyncio.create_task(self._flusher_loop(), name="BatchedTelemetryFlusher")
+            try:
+                loop = asyncio.get_running_loop()
+                if loop and loop.is_running():
+                    self._running = True
+                    self._flusher_task = asyncio.create_task(self._flusher_loop(), name="BatchedTelemetryFlusher")
+            except RuntimeError:
+                # No active event loop in current thread
+                self._running = False
 
     async def stop(self) -> None:
         """Gracefully stop and flush all queued telemetry."""

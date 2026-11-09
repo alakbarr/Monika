@@ -14,6 +14,7 @@ from monika.application.analysis.strategies.decay_monitor import StrategyDecayMo
 from monika.core.calibration.confidence_calibrator import fit_platt_scaling
 from monika.core.calibration.cot_thresholds import get_cot_extreme_thresholds, cot_extreme_score
 from monika.infrastructure.graph.checkpointers.sqlite_checkpointer import SqliteCheckpointSaver
+from tests.conftest import create_mock_async_session
 import tempfile
 import os
 
@@ -29,7 +30,7 @@ def _reset_decay():
 async def test_arbitrator_incubating_conflict_suppression():
     """FR-3.5: If quant strategy is still incubating and conflicts with LLM, force avoid."""
     arb = SignalArbitrator()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     sig = EdgeSignal(
         strategy_id="incubating_test_strat",
         symbol="EURUSD",
@@ -59,7 +60,7 @@ async def test_arbitrator_incubating_conflict_suppression():
 async def test_arbitrator_missing_or_zero_sl_fails_closed():
     """Zero or negative stop loss must fail closed to avoid."""
     arb = SignalArbitrator()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     res = await arb.arbitrate(
         mock_session,
         symbol="EURUSD",
@@ -77,7 +78,7 @@ async def test_arbitrator_missing_or_zero_sl_fails_closed():
 async def test_arbitrator_nan_confidence_fails_closed():
     """NaN confidence input must be sanitized and rejected fail-closed."""
     arb = SignalArbitrator()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     res = await arb.arbitrate(
         mock_session,
         symbol="EURUSD",
@@ -94,7 +95,7 @@ async def test_arbitrator_nan_confidence_fails_closed():
 async def test_arbitrator_global_exception_fails_closed():
     """Any unexpected exception in arbitrator must fail closed with avoid."""
     arb = SignalArbitrator()
-    mock_session = AsyncMock()
+    mock_session = create_mock_async_session()
     with patch.object(arb, "_do_arbitrate", side_effect=RuntimeError("Simulated arbitrator crash")):
         res = await arb.arbitrate(
             mock_session,

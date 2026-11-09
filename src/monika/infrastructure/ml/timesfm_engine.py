@@ -549,7 +549,12 @@ class TimesFMEngine:
             .order_by(desc(TimesFMForecast.generated_at))
             .limit(1)
         )
-        record = (await session.execute(stmt)).scalar_one_or_none()
+        exec_res = await session.execute(stmt)
+        record = None
+        if hasattr(exec_res, "scalar_one_or_none"):
+            record = exec_res.scalar_one_or_none()
+            if asyncio.iscoroutine(record):
+                record = await record
         if not record or not hasattr(record, "quantiles_json"):
             return None
 

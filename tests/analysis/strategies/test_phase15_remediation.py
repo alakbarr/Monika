@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from tests.conftest import create_mock_async_session
 
 from monika.application.analysis.strategies.base_strategy import (
     QUARANTINED_STRATEGY_IDS,
@@ -262,7 +263,7 @@ async def test_alpha_usdjpy_13a603_brackets_connected():
 @pytest.mark.asyncio
 async def test_pretrade_gate_rollover_deadzone():
     """Verify rollover deadzone blocks non-crypto symbols during 21:55-22:15 UTC."""
-    session = AsyncMock()
+    session = create_mock_async_session()
     rollover_time = datetime(2026, 10, 24, 22, 5, tzinfo=UTC)
 
     # EURUSD should be blocked
@@ -300,7 +301,7 @@ async def test_pretrade_gate_rollover_deadzone():
 @pytest.mark.asyncio
 async def test_pretrade_gate_fail_closed_on_missing_adx():
     """Verify PreTradeGate rejects trend signals when ADX is unavailable (fail-closed)."""
-    session = AsyncMock()
+    session = create_mock_async_session()
     normal_time = datetime(2026, 10, 24, 14, 0, tzinfo=UTC)
 
     with patch(

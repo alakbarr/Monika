@@ -205,10 +205,30 @@ class Tier3DockerEnvironment(BaseExecutionEnvironment):
             )
             elapsed_ms = (time.perf_counter() - start_time) * 1000.0
 
+            stderr_str = stderr_b.decode("utf-8", errors="replace")
+            if proc.returncode != 0 and self.allow_fallback:
+                docker_daemon_errors = (
+                    "failed to connect to the docker api",
+                    "cannot connect to the docker daemon",
+                    "is the docker daemon running",
+                    "error during connect",
+                    "open //./pipe/docker",
+                    "dial npipe",
+                    "dial unix",
+                    "the system cannot find the file specified",
+                )
+                stderr_lower = stderr_str.lower()
+                if any(err in stderr_lower for err in docker_daemon_errors):
+                    logger.warning(
+                        f"[Tier3Docker] Docker daemon communication failure: {stderr_str.strip()}. "
+                        "Falling back to Tier 2 Host Kernel."
+                    )
+                    return await self.fallback_tier.run_command(command, cwd, timeout_seconds, env_vars)
+
             return ExecutionOutcome(
                 exit_code=proc.returncode if proc.returncode is not None else 0,
                 stdout=stdout_b.decode("utf-8", errors="replace"),
-                stderr=stderr_b.decode("utf-8", errors="replace"),
+                stderr=stderr_str,
                 execution_time_ms=elapsed_ms,
             )
         except asyncio.TimeoutError:

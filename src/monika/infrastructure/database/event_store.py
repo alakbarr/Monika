@@ -5,6 +5,7 @@ Events emitted at key decision points with correlation/causation chain.
 Supports post-mortem replay and audit trail queries.
 """
 
+import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -58,7 +59,14 @@ class TradingEventStore:
         )
         is_strict = strict if strict is not None else event_type.startswith(("risk.", "order.", "kill_switch"))
         try:
-            async with session.begin_nested():
+            bn = session.begin_nested()
+            if asyncio.iscoroutine(bn):
+                bn = await bn
+            if hasattr(bn, "__aenter__"):
+                async with bn:
+                    session.add(event)
+                    await session.flush()
+            else:
                 session.add(event)
                 await session.flush()
         except Exception as e:

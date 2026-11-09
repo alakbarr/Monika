@@ -379,12 +379,34 @@ def reset_service_container():
     except Exception:
         pass
 
+    try:
+        from monika.core.telemetry import batched_sink
+
+        if batched_sink._GLOBAL_BATCHED_SINK is not None:
+            sink = batched_sink._GLOBAL_BATCHED_SINK
+            if sink._flusher_task and not sink._flusher_task.done():
+                sink._flusher_task.cancel()
+            batched_sink._GLOBAL_BATCHED_SINK = None
+    except Exception:
+        pass
+
     yield
 
     try:
         from monika.core.container import ServiceContainer
 
         ServiceContainer.reset()
+    except Exception:
+        pass
+
+    try:
+        from monika.core.telemetry import batched_sink
+
+        if batched_sink._GLOBAL_BATCHED_SINK is not None:
+            sink = batched_sink._GLOBAL_BATCHED_SINK
+            if sink._flusher_task and not sink._flusher_task.done():
+                sink._flusher_task.cancel()
+            batched_sink._GLOBAL_BATCHED_SINK = None
     except Exception:
         pass
 
@@ -490,6 +512,7 @@ def create_mock_async_session():
     mock_session.add_all = MagicMock()
     mock_session.delete = MagicMock()
     mock_session.expunge = MagicMock()
+    mock_session.expunge_all = MagicMock()
     mock_session.refresh = AsyncMock()
     mock_session.commit = AsyncMock()
     mock_session.rollback = AsyncMock()

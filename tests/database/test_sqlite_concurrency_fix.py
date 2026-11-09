@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 
 from monika.infrastructure.database.models import Base, SystemConfig, PriceOHLCV
 from monika.infrastructure.database.safe_ops import safe_commit, safe_db_op
+from tests.conftest import create_mock_async_session
 
 
 @pytest.mark.asyncio
@@ -95,9 +96,7 @@ async def test_safe_commit_cleans_session_on_failure():
 @pytest.mark.asyncio
 async def test_safe_db_op_cleans_session_on_failure():
     """Verify that safe_db_op calls rollback and expunge_all on failure."""
-    mock_session = AsyncMock(spec=AsyncSession)
-    mock_session.rollback = AsyncMock()
-    mock_session.expunge_all = MagicMock()
+    mock_session = create_mock_async_session()
 
     async def broken_op(session):
         raise RuntimeError("Operation error")
@@ -118,9 +117,7 @@ async def test_fetch_and_save_all_resilient_to_pair_failure():
     import pandas as pd
 
     client = MT5Client({})
-    mock_session = AsyncMock(spec=AsyncSession)
-    mock_session.rollback = AsyncMock()
-    mock_session.expunge_all = MagicMock()
+    mock_session = create_mock_async_session()
 
     sample_df = pd.DataFrame([{"time": 1700000000, "open": 1.0, "high": 1.1, "low": 0.9, "close": 1.05, "volume": 100}])
 
@@ -161,9 +158,7 @@ async def test_technical_indicators_resilient_to_pair_failure():
     """
     from monika.domain.indicators.technical import TechnicalIndicatorCalculator
 
-    mock_session = AsyncMock(spec=AsyncSession)
-    mock_session.rollback = AsyncMock()
-    mock_session.expunge_all = MagicMock()
+    mock_session = create_mock_async_session()
 
     calc = TechnicalIndicatorCalculator(mock_session, {})
 

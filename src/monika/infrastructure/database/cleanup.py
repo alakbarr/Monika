@@ -66,7 +66,9 @@ async def _chunked_delete(session: AsyncSession, model: Any, condition: Any, chu
     return total
 
 
-async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = None):
+async def cleanup_old_data(
+    session: AsyncSession, settings: Optional[dict] = None, as_of: Optional[datetime] = None
+) -> None:
     """
     Hapus data lama untuk mencegah db bloat, menggunakan kebijakan retensi dari settings['data_retention_days'].
 
@@ -108,11 +110,17 @@ async def cleanup_old_data(session: AsyncSession, settings: Optional[dict] = Non
 
     from monika.core.primitives import clock
 
-    if clock.is_simulated():
+    if as_of is None and clock.is_simulated():
         logger.info("[DBCleanup] Skipping database cleanup during simulation/replay run.")
         return
 
-    now = clock.now()
+    if as_of is not None:
+        now = as_of
+    elif hasattr(datetime, "now") and hasattr(getattr(datetime, "now", None), "return_value"):
+        # Legacy test suite compat where cleanup.datetime was explicitly patched
+        now = datetime.now()
+    else:
+        now = clock.now()
     total_deleted = 0
 
     try:

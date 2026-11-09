@@ -12266,7 +12266,7 @@
 #### `cleanup.py`
 - **Path**: [`src/monika/infrastructure/database/cleanup.py`](src/monika/infrastructure/database/cleanup.py)
 - **Top-Level Functions**:
-  - `async cleanup_old_data(session: AsyncSession, settings: Optional[dict])`: Hapus data lama untuk mencegah db bloat, menggunakan kebijakan retensi dari settings['data_retention_days'].
+  - `async cleanup_old_data(session: AsyncSession, settings: Optional[dict], as_of: Optional[datetime]) -> None`: Hapus data lama untuk mencegah db bloat, menggunakan kebijakan retensi dari settings['data_retention_days'].
   - `async drop_expired_partitions(session: AsyncSession, older_than_days: int) -> int`: Drop PostgreSQL partitions from price_ohlcv_partitioned whose upper bound is older than cutoff.
   - `async run_post_cleanup_maintenance(engine: Optional[AsyncEngine], force: bool) -> dict[str, Any]`: Run storage hygiene and physical optimization (VACUUM ANALYZE for Postgres,
   - `async reset_paper_trading_history(session: AsyncSession, create_backup: bool, backup_dir: Optional[str], ...) -> dict`: Mereset seluruh riwayat paper trading (simulasi) dan data terkait secara aman.

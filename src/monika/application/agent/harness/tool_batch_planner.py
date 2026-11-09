@@ -2,6 +2,8 @@
 # File: analysis/harness/tool_batch_planner.py
 # ==============================================================================
 
+import asyncio
+import inspect
 import logging
 from typing import Any, Dict, List, Tuple
 
@@ -43,9 +45,12 @@ class ToolBatchPlanner:
 
         try:
             if hasattr(reg, "resolve_name") and callable(reg.resolve_name):
-                resolved = reg.resolve_name(tool_name)
-                if isinstance(resolved, str):
-                    canonical = resolved
+                if not inspect.iscoroutinefunction(reg.resolve_name):
+                    resolved = reg.resolve_name(tool_name)
+                    if isinstance(resolved, str):
+                        canonical = resolved
+                    elif asyncio.iscoroutine(resolved):
+                        resolved.close()
         except Exception:
             pass
 
@@ -54,9 +59,12 @@ class ToolBatchPlanner:
 
         try:
             if hasattr(reg, "is_parallel_safe") and callable(reg.is_parallel_safe):
-                safe = reg.is_parallel_safe(canonical)
-                if isinstance(safe, bool):
-                    return safe
+                if not inspect.iscoroutinefunction(reg.is_parallel_safe):
+                    safe = reg.is_parallel_safe(canonical)
+                    if isinstance(safe, bool):
+                        return safe
+                    elif asyncio.iscoroutine(safe):
+                        safe.close()
         except Exception:
             pass
         return True

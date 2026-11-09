@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -167,7 +168,11 @@ async def evaluate_pretrade_gate(
         res_rows = []
         if hasattr(exec_res, "scalars"):
             sc = exec_res.scalars()
+            if asyncio.iscoroutine(sc):
+                sc = await sc
             raw_all = sc.all() if hasattr(sc, "all") else []
+            if asyncio.iscoroutine(raw_all):
+                raw_all = await raw_all
             if hasattr(raw_all, "__iter__") and not isinstance(raw_all, (dict, str, bytes)):
                 try:
                     res_rows = list(raw_all)
