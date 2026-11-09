@@ -26,6 +26,7 @@ from monika.application.analysis.tools.handlers.news_tools import handle_get_new
 from monika.application.analysis.tools.handlers.market_data_tools import handle_get_price_history
 from monika.interfaces.telegram.chat_tool_router import ChatToolRouter
 from monika.application.analysis.tools.tools_definitions import OPERATOR_INTERACTIVE_TOOLS
+from monika.infrastructure.llm.caveman_compressor import compress_tool_payload
 
 
 class MockFedRow:
@@ -274,6 +275,12 @@ async def test_central_bank_expectations_comparison():
     fed_data = res["expectations"]["FED"]
     assert "comparison" in fed_data
     assert fed_data["comparison"]["deltas_pct"]["HIKE"] == -10.0
+    assert fed_data["comparison"]["post_event"] is not fed_data
+    # Verify JSON serializability and caveman compression without circular reference recursion
+    serialized = json.dumps(res)
+    assert len(serialized) > 0
+    compressed = compress_tool_payload(res)
+    assert "comparison" in compressed["expectations"]["FED"]
 
 
 # ==============================================================================

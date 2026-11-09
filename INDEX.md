@@ -12902,7 +12902,7 @@
 #### `caveman_compressor.py`
 - **Path**: [`src/monika/infrastructure/llm/caveman_compressor.py`](src/monika/infrastructure/llm/caveman_compressor.py)
 - **Top-Level Functions**:
-  - `compress_tool_payload(data, strip_empty_collections: bool, preserve_keys: tuple)`: Mengompresi payload JSON secara rekursif untuk mengurangi penggunaan token LLM:
+  - `compress_tool_payload(data, strip_empty_collections: bool, preserve_keys: tuple, ...)`: Mengompresi payload JSON secara rekursif untuk mengurangi penggunaan token LLM:
 
 #### `constrained_sampling.py` - *Constrained Sampling Support — grammar-based structured output for local & remote providers.*
 - **Path**: [`src/monika/infrastructure/llm/constrained_sampling.py`](src/monika/infrastructure/llm/constrained_sampling.py)

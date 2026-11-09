@@ -1,4 +1,5 @@
 import math
+from typing import Optional, Set
 
 
 def compress_tool_payload(
@@ -30,61 +31,91 @@ def compress_tool_payload(
         "run_up_vs_atr",
         "staleness_note",
     ),
+    seen: Optional[Set[int]] = None,
+    depth: int = 0,
+    max_depth: int = 30,
 ):
     """
     Mengompresi payload JSON secara rekursif untuk mengurangi penggunaan token LLM:
     1. Menghapus key dengan value None atau string kosong "".
     2. Menghapus empty collections ([], {}) kecuali jika key berada dalam preserve_keys.
     3. Membulatkan nilai float berlebih menjadi maksimal 5 desimal.
+    4. Melindungi proses dari referensi sirkular dan infinite recursion (cycle detection & depth ceiling).
     """
-    if isinstance(data, dict):
-        compressed_dict = {}
-        for k, v in data.items():
-            if (v is None or (isinstance(v, str) and v == "")) and k not in preserve_keys:
-                continue
-            if strip_empty_collections and (isinstance(v, (list, dict)) and len(v) == 0) and k not in preserve_keys:
-                continue
+    if depth > max_depth:
+        return data
 
-            compressed_val = compress_tool_payload(
-                v, strip_empty_collections=strip_empty_collections, preserve_keys=preserve_keys
-            )
-            if compressed_val is not None and not (isinstance(compressed_val, str) and compressed_val == ""):
-                if (
-                    not strip_empty_collections
-                    or not (isinstance(compressed_val, (list, dict)) and len(compressed_val) == 0)
-                    or k in preserve_keys
-                ):
-                    compressed_dict[k] = compressed_val
-            elif k in preserve_keys:
-                compressed_dict[k] = v
+    obj_id: Optional[int] = None
+    if isinstance(data, (dict, list)):
+        if seen is None:
+            seen = set()
+        obj_id = id(data)
+        if obj_id in seen:
+            return None
+        seen.add(obj_id)
 
-        return compressed_dict
+    try:
+        if isinstance(data, dict):
+            compressed_dict = {}
+            for k, v in data.items():
+                if (v is None or (isinstance(v, str) and v == "")) and k not in preserve_keys:
+                    continue
+                if strip_empty_collections and (isinstance(v, (list, dict)) and len(v) == 0) and k not in preserve_keys:
+                    continue
 
-    elif isinstance(data, list):
-        compressed_list = []
-        for item in data:
-            compressed_val = compress_tool_payload(
-                item, strip_empty_collections=strip_empty_collections, preserve_keys=preserve_keys
-            )
-            if compressed_val is not None and not (isinstance(compressed_val, str) and compressed_val == ""):
-                if not strip_empty_collections or not (
-                    isinstance(compressed_val, (list, dict)) and len(compressed_val) == 0
-                ):
-                    compressed_list.append(compressed_val)
-        return compressed_list
+                compressed_val = compress_tool_payload(
+                    v,
+                    strip_empty_collections=strip_empty_collections,
+                    preserve_keys=preserve_keys,
+                    seen=seen,
+                    depth=depth + 1,
+                    max_depth=max_depth,
+                )
+                if compressed_val is not None and not (isinstance(compressed_val, str) and compressed_val == ""):
+                    if (
+                        not strip_empty_collections
+                        or not (isinstance(compressed_val, (list, dict)) and len(compressed_val) == 0)
+                        or k in preserve_keys
+                    ):
+                        compressed_dict[k] = compressed_val
+                elif k in preserve_keys:
+                    compressed_dict[k] = v
 
-    elif isinstance(data, float):
-        # Jika nilai float sangat dekat dengan 0 (<= 1e-9), kembalikan 0
-        if math.isclose(data, 0.0, abs_tol=1e-9) or abs(data) <= 1e-9:
-            return 0.0
-        # Presisi adaptif: untuk angka sangat kecil (< 0.001), pertahankan hingga 6 significant figures
-        if abs(data) < 0.001:
-            rounded = float(f"{data:.6g}")
-        else:
-            rounded = round(data, 5)
-        # Jika setelah dibulatkan hasilnya integer, jadikan int
-        if isinstance(rounded, float) and rounded.is_integer():
-            return int(rounded)
-        return rounded
+            return compressed_dict
 
-    return data
+        elif isinstance(data, list):
+            compressed_list = []
+            for item in data:
+                compressed_val = compress_tool_payload(
+                    item,
+                    strip_empty_collections=strip_empty_collections,
+                    preserve_keys=preserve_keys,
+                    seen=seen,
+                    depth=depth + 1,
+                    max_depth=max_depth,
+                )
+                if compressed_val is not None and not (isinstance(compressed_val, str) and compressed_val == ""):
+                    if not strip_empty_collections or not (
+                        isinstance(compressed_val, (list, dict)) and len(compressed_val) == 0
+                    ):
+                        compressed_list.append(compressed_val)
+            return compressed_list
+
+        elif isinstance(data, float):
+            # Jika nilai float sangat dekat dengan 0 (<= 1e-9), kembalikan 0
+            if math.isclose(data, 0.0, abs_tol=1e-9) or abs(data) <= 1e-9:
+                return 0.0
+            # Presisi adaptif: untuk angka sangat kecil (< 0.001), pertahankan hingga 6 significant figures
+            if abs(data) < 0.001:
+                rounded = float(f"{data:.6g}")
+            else:
+                rounded = round(data, 5)
+            # Jika setelah dibulatkan hasilnya integer, jadikan int
+            if isinstance(rounded, float) and rounded.is_integer():
+                return int(rounded)
+            return rounded
+
+        return data
+    finally:
+        if obj_id is not None and seen is not None:
+            seen.remove(obj_id)

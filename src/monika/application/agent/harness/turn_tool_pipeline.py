@@ -852,8 +852,16 @@ class TurnToolPipeline:
                         if not isinstance(sanitized_result, str)
                         else sanitized_result
                     )
-            except Exception:
-                tool_res_content = json.dumps(res_obj, default=str) if not isinstance(res_obj, str) else res_obj
+            except Exception as ser_err:
+                try:
+                    tool_res_content = json.dumps(res_obj, default=str) if not isinstance(res_obj, str) else res_obj
+                except Exception as fallback_err:
+                    logger.error(
+                        f"[{stage_name}][AgentHarness] Failed to serialize tool result for '{c_name}': {fallback_err}"
+                    )
+                    tool_res_content = json.dumps(
+                        {"status": "serialization_error", "error": f"Tool response serialization error: {fallback_err}"}
+                    )
 
             tool_res_content = harness.compactor.micro_prune(tool_res_content, tool_name=c_name)
 

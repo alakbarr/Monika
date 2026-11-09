@@ -244,6 +244,49 @@ async def test_handle_get_central_bank_expectations_empty_fallback():
 
 
 @pytest.mark.asyncio
+async def test_handle_get_central_bank_expectations_with_comparison_no_circular_ref():
+    """Verify handle_get_central_bank_expectations with temporal comparison returns serializable non-circular result."""
+    import json
+    from monika.infrastructure.llm.caveman_compressor import compress_tool_payload
+
+    mock_session = create_mock_async_session()
+
+    def make_exp(id_, bank, cur_rate, hike, hold, cut, fetched_dt):
+        r = MagicMock(spec=CentralBankRateExpectation)
+        r.id = id_
+        r.bank = bank
+        r.current_rate = cur_rate
+        r.prob_hike = hike
+        r.prob_hold = hold
+        r.prob_cut = cut
+        r.meeting_date = "2026-10-15"
+        r.source = "centralbank.watch"
+        r.fetched_at = fetched_dt
+        return r
+
+    now_utc = datetime(2026, 9, 30, 15, 0, 0, tzinfo=timezone.utc)
+    rows = [
+        make_exp(2, "FED", 5.25, 0.37, 0.63, 0.0, datetime(2026, 9, 30, 14, 0, 0, tzinfo=timezone.utc)),
+        make_exp(1, "FED", 5.25, 0.47, 0.53, 0.0, datetime(2026, 9, 30, 12, 0, 0, tzinfo=timezone.utc)),
+    ]
+    mock_res = MagicMock()
+    mock_res.scalars.return_value.all.return_value = rows
+    mock_session.execute.return_value = mock_res
+
+    args = {"bank": "FED", "compare_hours_ago": 2, "include_history": True}
+    ctx = {"session": mock_session}
+    with patch("monika.core.primitives.clock.now", return_value=now_utc):
+        res = await handle_get_central_bank_expectations(args, **ctx)
+
+    fed_exp = res["expectations"]["FED"]
+    assert "comparison" in fed_exp
+    assert fed_exp["comparison"]["post_event"] is not fed_exp
+    assert json.dumps(res) is not None
+    compressed = compress_tool_payload(res)
+    assert "comparison" in compressed["expectations"]["FED"]
+
+
+@pytest.mark.asyncio
 async def test_handle_get_bond_yield_spreads_with_2y_and_10y(db_session):
     """Verify handle_get_bond_yield_spreads calculates both 10Y and 2Y yield spreads."""
     d = (clock.now() - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
