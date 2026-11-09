@@ -580,6 +580,7 @@
   - `class DatabaseConfig(SubscriptableConfig)`
   - `class TelegramConfig(SubscriptableConfig)`
   - `class GuardianConfig(SubscriptableConfig)`
+  - `class MemorySupervisorConfig(SubscriptableConfig)`
   - `class TradingAgentConfig(SubscriptableConfig)`
     - `validate_all_sections() -> TradingAgentConfig`
 
@@ -5166,6 +5167,7 @@
     - `reap_expired() -> int` - *Active reaper: purges all expired entries to prevent 24/7 memory accumulation.*
     - `invalidate(tool_name: Optional[str]) -> int` - *Invalidates all cached entries, or all entries for a specific tool.*
     - `clear() -> int` - *Alias for invalidate() to clear entire cache.*
+    - `compact(tier: int) -> int` - *Implements CompactionTarget protocol for Progressive Memory Compaction (Pillar 5):*
     - `stats() -> Dict[str, Any]` - *Returns cache telemetry.*
 
 #### `repetition_guard.py` - *Repetition Guard & Degenerative Loop Immunizer.*
@@ -10592,6 +10594,7 @@
 - **Path**: [`src/monika/application/protocol/brief_contamination_guard.py`](src/monika/application/protocol/brief_contamination_guard.py)
 - **Classes**:
   - `class BriefContaminationGuard`: Protects against contamination spreading from Stage 1 to all Stage 2 agents.
+    - `async get_sticky_currencies(session: AsyncSession, min_consecutive_cycles: int, cycle_gap_seconds: int, ...) -> dict[str, str]` - *Detect currencies whose non-neutral directional bias has persisted across >= min_consecutive_cycles distinct cycles.*
     - `async validate_brief_integrity(session: AsyncSession, brief_data: dict, settings: Optional[dict]) -> tuple[bool, list[str], float]` - *Multi-layer validation of Stage 1 brief.*
     - `async compute_per_symbol_safety(session: AsyncSession, brief_data: dict, symbols: list[str], ...) -> dict[str, dict]` - *Compute per-symbol safety assessment using per-symbol CDS.*
     - `async check_magnitude_based_staleness(session: AsyncSession, symbol: str, brief_generated_at: datetime, ...) -> tuple[bool, str]` - *Check if brief is stale based on PRICE MOVEMENT MAGNITUDE,*

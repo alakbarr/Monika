@@ -1,6 +1,7 @@
 from tests.conftest import create_mock_async_session
 import pytest
 import json
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 from monika.application.analysis.prefetch.macro_preprocessor import (
     MacroPreprocessor,
@@ -153,6 +154,7 @@ class TestMacroPreprocessor:
         added_config = session.add.call_args[0][0]
         assert isinstance(added_config, SystemConfig)
         assert added_config.key == "llm_preprocessed_latest"
+        assert added_config.value is not None
 
         saved_val = json.loads(added_config.value)
         assert saved_val["cot_signals"] == {"cot": 1}
@@ -161,6 +163,151 @@ class TestMacroPreprocessor:
         assert saved_val["computed_at"] == "2023-01-01T00:00:00Z"
 
         session.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_validate_cot_signals_no_duplicate_processing(self, preprocessor, caplog):
+        from monika.infrastructure.database.models import PriceOHLCV
+
+        session = create_mock_async_session()
+        # Mock 5 D1 bars with -6.0% move (from 100.0 down to 94.0)
+        bars = [
+            PriceOHLCV(symbol="XTIUSD", timeframe="D1", close=94.0),
+            PriceOHLCV(symbol="XTIUSD", timeframe="D1", close=95.0),
+            PriceOHLCV(symbol="XTIUSD", timeframe="D1", close=97.0),
+            PriceOHLCV(symbol="XTIUSD", timeframe="D1", close=99.0),
+            PriceOHLCV(symbol="XTIUSD", timeframe="D1", close=100.0),
+        ]
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = bars
+        session.execute = AsyncMock(return_value=mock_result)
+
+        cot_signals = {
+            "067651": {
+                "signal": "bullish",
+                "symbol": "XTIUSD",
+                "market_code": "067651",
+            },
+            "XTIUSD": {
+                "signal": "bullish",
+                "symbol": "XTIUSD",
+                "market_code": "067651",
+            },
+        }
+
+        with caplog.at_level(logging.INFO):
+            validated = await preprocessor._validate_cot_signals_against_price(session, cot_signals)
+
+        # Ensure single DB execute for XTIUSD
+        assert session.execute.call_count == 1
+
+        # Both keys must have identical low-confidence metadata
+        assert validated["067651"]["_confidence"] == "low"
+        assert validated["XTIUSD"]["_confidence"] == "low"
+        assert validated["067651"]["_conflict"] is True
+        assert validated["XTIUSD"]["_conflict"] is True
+        assert validated["067651"]["_price_change_5d"] == -0.06
+        assert validated["XTIUSD"]["_price_change_5d"] == -0.06
+
+        # Zero WARNING logs
+        warnings = [r for r in caplog.records if r.levelno >= logging.WARNING]
+        assert len(warnings) == 0
+
+        # Divergence logged exactly once at INFO
+        divergence_logs = [r for r in caplog.records if "COT divergence for XTIUSD" in r.message]
+        assert len(divergence_logs) == 1
+        assert divergence_logs[0].levelno == logging.INFO
+
+    @pytest.mark.asyncio
+    async def test_validate_cot_signals_inverted_pairs_consistency(self, preprocessor):
+        from monika.infrastructure.database.models import PriceOHLCV
+
+        session = create_mock_async_session()
+        # USDJPY price rises +1.5% (from 150.0 to 152.25)
+        bullish_bars = [
+            PriceOHLCV(symbol="USDJPY", timeframe="D1", close=152.25),
+            PriceOHLCV(symbol="USDJPY", timeframe="D1", close=151.5),
+            PriceOHLCV(symbol="USDJPY", timeframe="D1", close=151.0),
+            PriceOHLCV(symbol="USDJPY", timeframe="D1", close=150.5),
+            PriceOHLCV(symbol="USDJPY", timeframe="D1", close=150.0),
+        ]
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = bullish_bars
+        session.execute = AsyncMock(return_value=mock_result)
+
+        cot_signals = {
+            "097741": {
+                "signal": "bullish",
+                "symbol": "USDJPY",
+                "market_code": "097741",
+                "pair_signal": "bearish",
+            },
+            "USDJPY": {
+                "signal": "bearish",
+                "symbol": "USDJPY",
+                "market_code": "097741",
+                "pair_signal": "bearish",
+            },
+        }
+
+        # Pair bias is bearish, but price rose +1.5% -> conflict
+        val = await preprocessor._validate_cot_signals_against_price(session, cot_signals)
+        assert val["097741"]["_confidence"] == "low"
+        assert val["USDJPY"]["_confidence"] == "low"
+        assert val["097741"]["_conflict"] is True
+        assert val["USDJPY"]["_conflict"] is True
+        assert "bearish" in val["097741"]["_conflict_detail"]
+
+        # Now test aligned case: USDJPY price falls -1.5% (from 150.0 to 147.75)
+        bearish_bars = [
+            PriceOHLCV(symbol="USDJPY", timeframe="D1", close=147.75),
+            PriceOHLCV(symbol="USDJPY", timeframe="D1", close=148.5),
+            PriceOHLCV(symbol="USDJPY", timeframe="D1", close=149.0),
+            PriceOHLCV(symbol="USDJPY", timeframe="D1", close=149.5),
+            PriceOHLCV(symbol="USDJPY", timeframe="D1", close=150.0),
+        ]
+        mock_result.scalars.return_value.all.return_value = bearish_bars
+        val2 = await preprocessor._validate_cot_signals_against_price(session, cot_signals)
+        assert val2["097741"]["_confidence"] == "high"
+        assert val2["USDJPY"]["_confidence"] == "high"
+        assert val2["097741"]["_conflict"] is False
+        assert val2["USDJPY"]["_conflict"] is False
+
+    @pytest.mark.asyncio
+    async def test_validate_cot_signals_adaptive_thresholds(self, preprocessor):
+        from monika.infrastructure.database.models import PriceOHLCV
+
+        session = create_mock_async_session()
+        # BTC moves -2.0% (from 80,000 to 78,400) -> within crypto 3.5% threshold
+        bars_small = [
+            PriceOHLCV(symbol="BTCUSD", timeframe="D1", close=78400.0),
+            PriceOHLCV(symbol="BTCUSD", timeframe="D1", close=79000.0),
+            PriceOHLCV(symbol="BTCUSD", timeframe="D1", close=79500.0),
+            PriceOHLCV(symbol="BTCUSD", timeframe="D1", close=80000.0),
+            PriceOHLCV(symbol="BTCUSD", timeframe="D1", close=80000.0),
+        ]
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = bars_small
+        session.execute = AsyncMock(return_value=mock_result)
+
+        cot_signals = {
+            "BTCUSD": {"signal": "bullish", "symbol": "BTCUSD", "market_code": "133741"},
+        }
+        val = await preprocessor._validate_cot_signals_against_price(session, cot_signals)
+        assert val["BTCUSD"]["_confidence"] == "high"
+        assert val["BTCUSD"]["_conflict"] is False
+
+        # BTC moves -5.0% (from 80,000 to 76,000) -> exceeds crypto 3.5% threshold
+        bars_large = [
+            PriceOHLCV(symbol="BTCUSD", timeframe="D1", close=76000.0),
+            PriceOHLCV(symbol="BTCUSD", timeframe="D1", close=77000.0),
+            PriceOHLCV(symbol="BTCUSD", timeframe="D1", close=78000.0),
+            PriceOHLCV(symbol="BTCUSD", timeframe="D1", close=79000.0),
+            PriceOHLCV(symbol="BTCUSD", timeframe="D1", close=80000.0),
+        ]
+        mock_result.scalars.return_value.all.return_value = bars_large
+        val2 = await preprocessor._validate_cot_signals_against_price(session, cot_signals)
+        assert val2["BTCUSD"]["_confidence"] == "low"
+        assert val2["BTCUSD"]["_conflict"] is True
 
 
 class TestMacroPreprocessorCache:

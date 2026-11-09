@@ -95,28 +95,60 @@ class MacroPreprocessor:
         """
         Cross-validate COT interpretation against actual price momentum.
 
-        If COT says 'bullish' but 5-day price change is strongly bearish,
-        mark the signal as LOW CONFIDENCE rather than blocking it entirely.
+        If COT positioning contradicts 5-day price momentum beyond asset-specific volatility thresholds,
+        mark the signal as LOW CONFIDENCE and record divergence details without blocking downstream pipelines.
         """
         from sqlalchemy import select
 
         from monika.infrastructure.database.models import PriceOHLCV
 
-        validated = {}
-        SIGNIFICANT_MOVE_PCT = 0.005  # 0.5% move over 5 days = significant
-
+        validated = dict(cot_signals)
         now_dt = clock.now()
-        for market_code, signal in cot_signals.items():
-            if not isinstance(signal, dict):
-                validated[market_code] = signal
-                continue
 
-            symbol = MARKET_CODE_TO_SYMBOL.get(market_code)
-            if not symbol and market_code in SYMBOL_USD_DIRECTION:
-                symbol = market_code
-            if not symbol:
-                validated[market_code] = signal
+        # Asset-specific 5-day move thresholds (Forex ~0.8%, Commodities ~2.0%, Crypto ~3.5%)
+        cfg_thresholds = self.settings.get("ssvp", {}).get("cot_divergence_thresholds", {}) if self.settings else {}
+        asset_thresholds = {
+            "EURUSD": 0.008,
+            "GBPUSD": 0.008,
+            "USDJPY": 0.008,
+            "AUDUSD": 0.008,
+            "USDCAD": 0.008,
+            "USDCHF": 0.008,
+            "XAUUSD": 0.020,
+            "XTIUSD": 0.020,
+            "XBRUSD": 0.020,
+            "BTCUSD": 0.035,
+            "ETHUSD": 0.035,
+        }
+        if isinstance(cfg_thresholds, dict):
+            asset_thresholds.update(cfg_thresholds)
+        default_threshold = 0.010
+
+        # Group cot_signals keys by canonical symbol to eliminate duplicate queries and duplicate logs
+        symbol_to_keys: dict[str, list[str]] = collections.defaultdict(list)
+        for key, signal in cot_signals.items():
+            if not isinstance(signal, dict):
                 continue
+            sym = (
+                signal.get("symbol") or MARKET_CODE_TO_SYMBOL.get(key) or (key if key in SYMBOL_USD_DIRECTION else None)
+            )
+            if sym:
+                symbol_to_keys[sym].append(key)
+
+        for symbol, keys in symbol_to_keys.items():
+            # Determine canonical pair direction
+            pair_direction: Optional[str] = None
+            for k in keys:
+                sig_obj = cot_signals[k]
+                if isinstance(sig_obj, dict) and "pair_signal" in sig_obj:
+                    pair_direction = sig_obj["pair_signal"]
+                    break
+            if not pair_direction and keys:
+                first_sig = cot_signals[keys[0]]
+                if isinstance(first_sig, dict):
+                    pair_direction = first_sig.get("signal", "neutral")
+            if not pair_direction:
+                pair_direction = "neutral"
 
             # Get 5-day price direction (anchored to avoid look-ahead)
             bars = (
@@ -135,38 +167,68 @@ class MacroPreprocessor:
             )
 
             if len(bars) < 3:
-                validated[market_code] = {**signal, "_confidence": "unverified"}
+                for k in keys:
+                    if isinstance(validated.get(k), dict):
+                        validated[k] = {**validated[k], "_confidence": "unverified"}
                 continue
 
             bars = list(reversed(bars))
             price_change_pct = (bars[-1].close - bars[0].close) / bars[0].close
+            move_threshold = float(asset_thresholds.get(symbol, default_threshold))
 
-            if abs(price_change_pct) < SIGNIFICANT_MOVE_PCT:
-                validated[market_code] = {**signal, "_confidence": "high"}
+            if abs(price_change_pct) < move_threshold:
+                for k in keys:
+                    if isinstance(validated.get(k), dict):
+                        validated[k] = {
+                            **validated[k],
+                            "_confidence": "high",
+                            "_conflict": False,
+                            "_price_change_5d": round(price_change_pct, 4),
+                        }
                 continue
 
             price_direction = "bullish" if price_change_pct > 0 else "bearish"
-            signal_direction = signal.get("signal", "neutral")
 
-            cot_usd = SYMBOL_USD_DIRECTION.get(symbol, {}).get(signal_direction, "unknown")
-            price_usd = SYMBOL_USD_DIRECTION.get(symbol, {}).get(price_direction, "unknown")
+            # Check directional conflict against pair bias
+            has_conflict = pair_direction in ("bullish", "bearish") and pair_direction != price_direction
 
-            if cot_usd != "unknown" and price_usd != "unknown" and cot_usd != price_usd:
-                logger.warning(
-                    f"[MacroPreprocessor] COT signal for {symbol} ({market_code}) "
-                    f"implies {cot_usd} but price action ({price_change_pct:+.2%}) implies {price_usd}. "
+            if has_conflict:
+                cot_usd = SYMBOL_USD_DIRECTION.get(symbol, {}).get(pair_direction, "unknown")
+                price_usd = SYMBOL_USD_DIRECTION.get(symbol, {}).get(price_direction, "unknown")
+                usd_clause = (
+                    f" (implies {cot_usd} vs price {price_usd})"
+                    if cot_usd != "unknown" and price_usd != "unknown"
+                    else ""
+                )
+                conflict_detail = (
+                    f"COT positioning is {pair_direction} but {symbol} 5-day price action "
+                    f"is {price_direction} ({price_change_pct:+.2%}){usd_clause}"
+                )
+
+                logger.info(
+                    f"[MacroPreprocessor] COT divergence for {symbol}: "
+                    f"positioning is {pair_direction} but 5-day price change is {price_change_pct:+.2%} ({price_direction}). "
                     f"Marking signal as LOW CONFIDENCE."
                 )
-                validated[market_code] = {
-                    **signal,
-                    "_confidence": "low",
-                    "_conflict": True,
-                    "_conflict_detail": (
-                        f"COT implies {cot_usd} but {symbol} 5-day price implies {price_usd} ({price_change_pct:+.2%})"
-                    ),
-                }
+
+                for k in keys:
+                    if isinstance(validated.get(k), dict):
+                        validated[k] = {
+                            **validated[k],
+                            "_confidence": "low",
+                            "_conflict": True,
+                            "_conflict_detail": conflict_detail,
+                            "_price_change_5d": round(price_change_pct, 4),
+                        }
             else:
-                validated[market_code] = {**signal, "_confidence": "high"}
+                for k in keys:
+                    if isinstance(validated.get(k), dict):
+                        validated[k] = {
+                            **validated[k],
+                            "_confidence": "high",
+                            "_conflict": False,
+                            "_price_change_5d": round(price_change_pct, 4),
+                        }
 
         return validated
 
@@ -313,21 +375,24 @@ class MacroPreprocessor:
                 "market_code": m_code,
                 "symbol": symbol,
             }
+            if symbol in ("USDJPY", "USDCAD", "USDCHF"):
+                cot_entry["pair_signal"] = (
+                    "bearish" if signal == "bullish" else ("bullish" if signal == "bearish" else "neutral")
+                )
+            else:
+                cot_entry["pair_signal"] = signal
+
             result[m_code] = cot_entry
             if symbol:
                 sym_entry = dict(cot_entry)
                 # Invert for USD-base pairs since foreign currency CME futures (JPY 097741, CAD 090741, CHF 092741)
                 # quote Foreign/USD. Long foreign currency = USD pair falls (Bearish pair).
                 if symbol in ("USDJPY", "USDCAD", "USDCHF"):
-                    if signal == "bullish":
-                        sym_entry["signal"] = "bearish"
-                    elif signal == "bearish":
-                        sym_entry["signal"] = "bullish"
+                    sym_entry["signal"] = cot_entry["pair_signal"]
                     if flag == "extreme_long":
                         sym_entry["flag"] = "extreme_short"
                     elif flag == "extreme_short":
                         sym_entry["flag"] = "extreme_long"
-                    sym_entry["pair_signal"] = sym_entry["signal"]
                 result[symbol] = sym_entry
 
         return result
