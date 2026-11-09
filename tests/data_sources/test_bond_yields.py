@@ -206,3 +206,64 @@ async def test_bond_yield_ecb_budget_protection(db_session):
             assert results.get("DE_10Y") == 1
             assert results.get("DE_2Y") == 1
             assert results.get("UK_10Y") == 1
+
+
+@pytest.mark.asyncio
+async def test_bond_yield_ecb_combined_multi_key_fetch(db_session):
+    """Memastikan single request SDMX gabungan (SR_10Y + SR_2Y) mempopulasi DE_10Y dan DE_2Y sekaligus."""
+    fetcher = BondYieldFetcher(db_session)
+    BondYieldFetcher._last_ecb_fetch_ts = 0.0
+
+    dummy_combined_csv = (
+        "KEY,FREQ,REF_AREA,CURRENCY,PROVIDER_FM,INSTRUMENT_FM,PROVIDER_FM_ID,DATA_TYPE_FM,TIME_PERIOD,OBS_VALUE\n"
+        "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y,B,U2,EUR,4F,G_N_A,SV_C_YM,SR_10Y,2026-11-04,3.34\n"
+        "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y,B,U2,EUR,4F,G_N_A,SV_C_YM,SR_10Y,2026-11-05,3.29\n"
+        "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.SR_2Y,B,U2,EUR,4F,G_N_A,SV_C_YM,SR_2Y,2026-11-04,3.00\n"
+        "YC.B.U2.EUR.4F.G_N_A.SV_C_YM.SR_2Y,B,U2,EUR,4F,G_N_A,SV_C_YM,SR_2Y,2026-11-05,2.96\n"
+    )
+
+    with patch(
+        "monika.infrastructure.data_ingestion.sources.bond_yields_fetcher.fetch_with_retry", new_callable=AsyncMock
+    ) as mock_http:
+        mock_http.return_value = dummy_combined_csv
+        with patch(
+            "monika.infrastructure.data_ingestion.sources.central_bank_watch.CentralBankWatchFetcher.fetch_sovereign_yields",
+            new_callable=AsyncMock,
+            return_value={},
+        ):
+            results = await fetcher.fetch()
+            assert results.get("DE_10Y") == 2
+            assert results.get("DE_2Y") == 2
+
+    # Verifikasi kedua tenor tersimpan di DB
+    de10_rows = (
+        (await db_session.execute(select(BondYieldData).where(BondYieldData.country_tenor == "DE_10Y"))).scalars().all()
+    )
+    de2_rows = (
+        (await db_session.execute(select(BondYieldData).where(BondYieldData.country_tenor == "DE_2Y"))).scalars().all()
+    )
+    assert len(de10_rows) == 2
+    assert len(de2_rows) == 2
+
+
+@pytest.mark.asyncio
+async def test_bond_yield_cache_skipping(db_session):
+    """Memastikan fetcher melewati remote call ke ECB jika data masih fresh dalam cache TTL."""
+    import time
+
+    fetcher = BondYieldFetcher(db_session)
+    BondYieldFetcher._last_ecb_fetch_ts = time.time()
+
+    with patch.object(fetcher, "_fetch_ecb_yield", new_callable=AsyncMock) as mock_ecb:
+        with patch(
+            "monika.infrastructure.data_ingestion.sources.central_bank_watch.CentralBankWatchFetcher.fetch_sovereign_yields",
+            new_callable=AsyncMock,
+            return_value={},
+        ):
+            results = await fetcher.fetch(cache_ttl_sec=3600.0)
+            # Remote ECB fetch dilewati
+            mock_ecb.assert_not_called()
+            assert results.get("DE_10Y") == 1
+            assert results.get("DE_2Y") == 1
+
+    BondYieldFetcher._last_ecb_fetch_ts = 0.0

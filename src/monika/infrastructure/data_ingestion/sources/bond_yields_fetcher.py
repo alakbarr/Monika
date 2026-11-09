@@ -19,6 +19,7 @@ import asyncio
 import io
 import logging
 import os
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -33,6 +34,7 @@ logger = logging.getLogger("TradingAgent.BondYields")
 
 ECB_AAA_YIELD_URL = "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y"
 ECB_AAA_2Y_URL = "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_2Y"
+ECB_AAA_COMBINED_YIELD_URL = "https://data-api.ecb.europa.eu/service/data/YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_10Y+SR_2Y"
 FRED_BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
 # FRED Benchmark 10Y Series per Country
@@ -52,14 +54,18 @@ class BondYieldFetcher:
     dan FRED API sebagai fallback benchmark OECD.
     """
 
+    _last_ecb_fetch_ts: float = 0.0
+
     def __init__(self, session: AsyncSession, fred_api_key: Optional[str] = None):
         self.session = session
         self.fred_api_key = fred_api_key or os.getenv("FRED_API_KEY", "")
         self._session_lock = asyncio.Lock()
+        self._last_ecb_counts: dict[str, int] = {}
 
-    async def fetch(self, period: str = "15d") -> dict[str, int]:
+    async def fetch(self, period: str = "15d", cache_ttl_sec: float = 0.0) -> dict[str, int]:
         """
         Mengambil yield obligasi untuk semua negara yang didukung (DE, UK, JP, AU, US) baik 2Y maupun 10Y.
+        Jika cache_ttl_sec > 0 dan fetch ECB berhasil dalam rentang TTL, pemanggilan remote ECB dilewati.
         """
         results: dict[str, int] = {
             "DE_10Y": 0,
@@ -74,30 +80,36 @@ class BondYieldFetcher:
 
         try:
             async with asyncio.timeout(35.0):
-                # 1. Fetch DE_10Y & DE_2Y via ECB Data Portal API concurrently with local timeout budget
-                try:
-                    async with asyncio.timeout(12.0):
-                        t10 = self._fetch_ecb_yield(ECB_AAA_YIELD_URL, "DE_10Y")
-                        t2 = self._fetch_ecb_yield(ECB_AAA_2Y_URL, "DE_2Y")
-                        ecb_10y_res, ecb_2y_res = await asyncio.gather(t10, t2, return_exceptions=True)
-
-                        if isinstance(ecb_10y_res, int) and ecb_10y_res >= 0:
-                            results["DE_10Y"] = max(1, ecb_10y_res)
-                            if ecb_10y_res > 0:
-                                logger.info(f"Saved {ecb_10y_res} DE_10Y records from ECB Data Portal API")
-                        elif isinstance(ecb_10y_res, Exception):
-                            logger.warning(f"ECB Data Portal 10Y fetch failed: {ecb_10y_res}")
-
-                        if isinstance(ecb_2y_res, int) and ecb_2y_res >= 0:
-                            results["DE_2Y"] = max(1, ecb_2y_res)
-                            if ecb_2y_res > 0:
-                                logger.info(f"Saved {ecb_2y_res} DE_2Y records from ECB Data Portal API")
-                        elif isinstance(ecb_2y_res, Exception):
-                            logger.warning(f"ECB Data Portal 2Y fetch failed: {ecb_2y_res}")
-                except TimeoutError, asyncio.TimeoutError:
-                    logger.warning("ECB Data Portal fetch timed out (12s budget reached); falling back to CBW")
-                except Exception as e:
-                    logger.warning(f"ECB Data Portal fetch error: {e}")
+                # 1. Fetch DE_10Y & DE_2Y via ECB Data Portal API (Unified single SDMX query)
+                now_ts = time.time()
+                ecb_cached = (
+                    cache_ttl_sec > 0.0
+                    and BondYieldFetcher._last_ecb_fetch_ts > 0.0
+                    and (now_ts - BondYieldFetcher._last_ecb_fetch_ts) < cache_ttl_sec
+                )
+                if ecb_cached:
+                    logger.debug(
+                        f"BondYieldFetcher: Menggunakan data yield ECB dari cache recente (< {cache_ttl_sec:.0f}s)"
+                    )
+                    results["DE_10Y"] = 1
+                    results["DE_2Y"] = 1
+                else:
+                    try:
+                        async with asyncio.timeout(15.0):
+                            ecb_res = await self._fetch_ecb_yield(ECB_AAA_COMBINED_YIELD_URL, "DE_COMBINED")
+                            if isinstance(ecb_res, int) and ecb_res >= 0:
+                                counts = getattr(self, "_last_ecb_counts", {})
+                                results["DE_10Y"] = counts.get("DE_10Y", max(1, ecb_res))
+                                results["DE_2Y"] = counts.get("DE_2Y", max(1, ecb_res))
+                                BondYieldFetcher._last_ecb_fetch_ts = now_ts
+                                if ecb_res > 0:
+                                    logger.info(f"Saved {ecb_res} Euro Area AAA yield records from ECB Data Portal API")
+                            else:
+                                logger.info("ECB Data Portal returned non-zero error; falling back to CentralBankWatch")
+                    except TimeoutError, asyncio.TimeoutError:
+                        logger.info("ECB Data Portal fetch timed out (15s budget reached); falling back to CBW")
+                    except Exception as e:
+                        logger.info(f"ECB Data Portal fetch error: {e}; falling back to CBW")
 
                 # 2. Fetch sovereign curves via CentralBankWatch (DE, UK, JP, AU 2Y & 10Y daily snapshots)
                 try:
@@ -132,10 +144,14 @@ class BondYieldFetcher:
 
         return results
 
-    async def _fetch_ecb_yield(self, url: str = ECB_AAA_YIELD_URL, label: str = "DE_10Y") -> int:
+    async def _fetch_ecb_yield(
+        self,
+        url: str = ECB_AAA_COMBINED_YIELD_URL,
+        label: str = "DE_COMBINED",
+    ) -> int:
         """
-        Mengambil data harian Euro Area AAA Yield (10Y atau 2Y) dari ECB Data Portal API.
-        Endpoint REST/SDMX gratis tanpa auth.
+        Mengambil data harian Euro Area AAA Yield (10Y dan/atau 2Y) dari ECB Data Portal API.
+        Mendukung query SDMX multi-key single-request (SR_10Y+SR_2Y) maupun URL single-series legacy.
         Returns: >= 0 (jumlah baris baru disimpan jika sukses), -1 jika gagal.
         """
         start_period = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%d")
@@ -144,11 +160,12 @@ class BondYieldFetcher:
             url=url,
             method="GET",
             params=params,
-            timeout_seconds=8,
-            max_retries=1,
-            base_delay=0.5,
+            timeout_seconds=12,
+            max_retries=2,
+            base_delay=1.0,
             headers={"Accept": "text/csv"},
             response_type="text",
+            error_log_level=logging.WARNING,
         )
         if not response or not isinstance(response, str):
             return -1
@@ -163,35 +180,62 @@ class BondYieldFetcher:
         if df.empty or "TIME_PERIOD" not in df.columns or "OBS_VALUE" not in df.columns:
             return -1
 
-        if len(df) > 60:
+        has_dt_fm = "DATA_TYPE_FM" in df.columns
+        if has_dt_fm:
+            df = df.groupby("DATA_TYPE_FM").tail(60).reset_index(drop=True)
+        elif len(df) > 60:
             df = df.tail(60)
 
-        # Batch query existing dates and persist within session lock
+        # Batch query existing dates for target tenors and persist within session lock
+        target_tenors = ["DE_10Y", "DE_2Y"] if label == "DE_COMBINED" else [label]
         async with self._session_lock:
             existing_res = await self.session.execute(
-                select(BondYieldData.date).where(BondYieldData.country_tenor == label)
+                select(BondYieldData.country_tenor, BondYieldData.date).where(
+                    BondYieldData.country_tenor.in_(target_tenors)
+                )
             )
-            existing_date_strs = {d.strftime("%Y-%m-%d") for d in existing_res.scalars().all() if d is not None}
+            existing_pairs = {(ct, d.strftime("%Y-%m-%d")) for ct, d in existing_res.all() if d is not None}
 
             saved = 0
+            counts: dict[str, int] = {"DE_10Y": 0, "DE_2Y": 0}
             time_series = df["TIME_PERIOD"].to_numpy()
             obs_series = df["OBS_VALUE"].to_numpy()
-            for date_raw, val_raw in zip(time_series, obs_series):
+            dt_series = df["DATA_TYPE_FM"].to_numpy() if has_dt_fm else None
+
+            for i in range(len(df)):
+                date_raw = time_series[i]
+                val_raw = obs_series[i]
                 try:
                     date_str = str(date_raw).strip()
                     if bool(pd.isna(val_raw)) or str(val_raw).strip() == ".":
                         continue
                     val = float(str(val_raw))
-                    if date_str in existing_date_strs:
+
+                    if dt_series is not None:
+                        dt_fm = str(dt_series[i]).strip()
+                        if dt_fm == "SR_2Y":
+                            tenor = "DE_2Y"
+                        elif dt_fm == "SR_10Y":
+                            tenor = "DE_10Y"
+                        elif label != "DE_COMBINED":
+                            tenor = label
+                        else:
+                            tenor = "DE_10Y"
+                    else:
+                        tenor = label if label != "DE_COMBINED" else "DE_10Y"
+
+                    if (tenor, date_str) in existing_pairs:
                         continue
 
                     dt = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-                    self.session.add(BondYieldData(country_tenor=label, date=dt, yield_percent=val))
-                    existing_date_strs.add(date_str)
+                    self.session.add(BondYieldData(country_tenor=tenor, date=dt, yield_percent=val))
+                    existing_pairs.add((tenor, date_str))
                     saved += 1
+                    counts[tenor] = counts.get(tenor, 0) + 1
                 except Exception:
                     continue
 
+            self._last_ecb_counts = counts
             if saved:
                 from monika.infrastructure.database.safe_ops import safe_commit
 

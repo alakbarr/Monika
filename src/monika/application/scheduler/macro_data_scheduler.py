@@ -213,7 +213,7 @@ class MacroDataScheduler:
                 async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         fetcher = BondYieldFetcher(session)
-                        r = await fetcher.fetch(period="15d")
+                        r = await fetcher.fetch(period="15d", cache_ttl_sec=7200.0)
                         results["bond_yields"] = r
                         logger.info(f"MacroDataScheduler: Bond yields refreshed: {r}")
             except Exception as e:

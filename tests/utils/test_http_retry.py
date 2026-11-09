@@ -297,3 +297,32 @@ class TestHTTPRetry:
         _, kwargs = custom_session.request.call_args
         assert kwargs["timeout"].total == 30
         assert kwargs["timeout"].connect == 15.0
+
+    @pytest.mark.asyncio
+    @patch("monika.infrastructure.api.http_retry.aiohttp.ClientSession")
+    @patch("monika.infrastructure.llm.rate_limiting.http_retry.logger.log")
+    async def test_fetch_with_custom_error_log_level(self, mock_logger_log, mock_session_cls):
+        """Verifies fetch_with_retry logs failure at custom error_log_level."""
+        import logging
+
+        mock_resp = MagicMock()
+        mock_resp.status = 500
+        mock_resp.text = AsyncMock(return_value="server error")
+
+        mock_req_ctx = AsyncMock()
+        mock_req_ctx.__aenter__.return_value = mock_resp
+
+        mock_session = MagicMock()
+        mock_session.request.return_value = mock_req_ctx
+        mock_session_cls.return_value.__aenter__.return_value = mock_session
+
+        res = await fetch_with_retry(
+            "http://test-error-level.com/api",
+            max_retries=1,
+            error_log_level=logging.WARNING,
+            use_circuit_breaker=False,
+        )
+        assert res is None
+        mock_logger_log.assert_called_with(
+            logging.WARNING, "Failed to fetch http://test-error-level.com/api after 1 attempts"
+        )

@@ -177,6 +177,7 @@ async def fetch_with_retry(
     timeout_seconds: Optional[int] = None,
     ssl: Any = None,
     session: Optional[aiohttp.ClientSession] = None,
+    error_log_level: int = logging.ERROR,
     **kwargs,
 ) -> Any:
     """
@@ -270,7 +271,7 @@ async def fetch_with_retry(
                 if resp.status != 200:
                     body = await resp.text()
                     err_summary = format_api_error_summary(resp.status, body, safe_url)
-                    logger.error(f"{err_summary} [url: {safe_url}]")
+                    logger.log(error_log_level, f"{err_summary} [url: {safe_url}]")
                     if return_error_info:
                         return {"_error": True, "_status": resp.status, "_body": body, "_url": safe_url}
                     return None
@@ -298,7 +299,7 @@ async def fetch_with_retry(
                 logger.warning(f"Request failed (attempt {attempt + 1}/{max_retries}): {err_msg}")
             await asyncio.sleep(wait)
 
-    logger.error(f"Failed to fetch {safe_url} after {max_retries} attempts")
+    logger.log(error_log_level, f"Failed to fetch {safe_url} after {max_retries} attempts")
     if use_circuit_breaker:
         _CIRCUIT_BREAKER_FAILURES[domain] = _CIRCUIT_BREAKER_FAILURES.get(domain, 0) + 1
         if _CIRCUIT_BREAKER_FAILURES[domain] >= CIRCUIT_BREAKER_THRESHOLD:
