@@ -76,6 +76,7 @@ class PerSymbolAdaptiveThinkingAllocator:
         "jev_confluence_gate",
         "jev_session_timing_gate",
         "jev_debate_evaluator",
+        "jev_thinking_router",
         "pattern_context_verifier",
         "summarizer",
         "context_compaction",
@@ -146,6 +147,7 @@ class PerSymbolAdaptiveThinkingAllocator:
         "chat_interactive_balanced": 1024,
         "chat_interactive_reasoning": 4096,
         "chat_interactive_pro": 4096,
+        "jev_thinking_router": 0,
     }
 
     @classmethod

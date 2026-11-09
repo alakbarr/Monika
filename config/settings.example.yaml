@@ -1917,6 +1917,13 @@ llm:
       rate_limits:
         rpm: 15
         rpd: 500
+    gemini-3.8-flash-antigravity:
+      provider: antigravity
+      model_name: gemini-3.8-flash
+      context_window: 1048576
+      supports_tool_calling: true
+      supports_caching: true
+      cost_tier: free
     gemini-3.7-flash:
       provider: gemini
       context_window: 1000000
@@ -2387,7 +2394,7 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
-      fallback_4: gemini-2.5-flash-lite
+      fallback_4: gemini-3.5-flash-lite
       fallback_5: gemini-3.1-flash-lite
       fallback_6: openrouter/free
     jev_trigger_validator:
@@ -2397,7 +2404,7 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
-      fallback_4: gemini-2.5-flash-lite
+      fallback_4: gemini-3.5-flash-lite
       fallback_5: gemini-3.1-flash-lite
       fallback_6: openrouter/free
     jev_position_guard:
@@ -2407,7 +2414,7 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
-      fallback_4: gemini-2.5-flash-lite
+      fallback_4: gemini-3.5-flash-lite
       fallback_5: gemini-3.1-flash-lite
       fallback_6: openrouter/free
     jev_telegram_intent:
@@ -2417,7 +2424,7 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
-      fallback_4: gemini-2.5-flash-lite
+      fallback_4: gemini-3.5-flash-lite
       fallback_5: gemini-3.1-flash-lite
       fallback_6: openrouter/free
     jev_exit_prescreen:
@@ -2427,7 +2434,17 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
-      fallback_4: gemini-2.5-flash-lite
+      fallback_4: gemini-3.5-flash-lite
+      fallback_5: gemini-3.1-flash-lite
+      fallback_6: openrouter/free
+    jev_thinking_router:
+      primary: jev-latest
+      max_tokens: 65536
+      temperature: 0.0
+      fallback_1: liquid-d1
+      fallback_2: luna-decision
+      fallback_3: mercury-decide
+      fallback_4: gemini-3.5-flash-lite
       fallback_5: gemini-3.1-flash-lite
       fallback_6: openrouter/free
     news_classification_escalation:
@@ -2922,7 +2939,7 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
-      fallback_4: gemini-2.5-flash-lite
+      fallback_4: gemini-3.5-flash-lite
       fallback_5: openrouter/free
     jev_session_timing_gate:
       primary: jev-latest
@@ -2931,7 +2948,7 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
-      fallback_4: gemini-2.5-flash-lite
+      fallback_4: gemini-3.5-flash-lite
       fallback_5: openrouter/free
     jev_debate_evaluator:
       primary: jev-latest
@@ -2949,7 +2966,7 @@ llm:
       fallback_1: liquid-d1
       fallback_2: luna-decision
       fallback_3: mercury-decide
-      fallback_4: gemini-2.5-flash-lite
+      fallback_4: gemini-3.5-flash-lite
       fallback_5: openrouter/free
     voice_transcription:
       primary: openai/whisper-large-v3
@@ -3252,6 +3269,7 @@ benchmark:
         - "jev_trigger_validator"
         - "jev_position_guard"
         - "jev_exit_prescreen"
+        - "jev_thinking_router"
         - "stage2_prescreen"
         - "stage1_shadow_check"
       models:
