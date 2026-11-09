@@ -81,6 +81,7 @@ from .reflex_cases import (
     _case_jev_news_realtime,
     _case_jev_position_guard,
     _case_jev_session_timing_gate,
+    _case_jev_thinking_router,
     _case_jev_trigger_validator,
     _case_trade_reflection,
 )
@@ -188,6 +189,7 @@ __all__ = [
     "_case_jev_exit_prescreen",
     "_case_jev_confluence_gate",
     "_case_jev_session_timing_gate",
+    "_case_jev_thinking_router",
     "_case_jev_telegram_intent",
     "_case_harness_hallucination_detect",
     "_case_harness_context_efficiency",

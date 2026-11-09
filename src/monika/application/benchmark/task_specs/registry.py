@@ -59,6 +59,7 @@ from .reflex_cases import (
     _case_jev_news_realtime,
     _case_jev_position_guard,
     _case_jev_session_timing_gate,
+    _case_jev_thinking_router,
     _case_jev_trigger_validator,
     _case_trade_reflection,
 )
@@ -156,6 +157,7 @@ TASKS: dict[str, TaskSpec] = {
     "jev_exit_prescreen": TaskSpec("jev_exit_prescreen", "risk", "system_one", _case_jev_exit_prescreen),
     "jev_confluence_gate": TaskSpec("jev_confluence_gate", "trade_decision", "system_one", _case_jev_confluence_gate),
     "jev_session_timing_gate": TaskSpec("jev_session_timing_gate", "risk", "system_one", _case_jev_session_timing_gate),
+    "jev_thinking_router": TaskSpec("jev_thinking_router", "trade_decision", "system_one", _case_jev_thinking_router),
     "jev_telegram_intent": TaskSpec("jev_telegram_intent", "chat", "json", _case_jev_telegram_intent),
     # 8. Interactive Assistants & Omnichannel
     "chat_telegram": TaskSpec("chat_telegram", "chat", "chat", _case_chat_telegram),

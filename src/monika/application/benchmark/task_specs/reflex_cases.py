@@ -453,3 +453,37 @@ async def _case_jev_session_timing_gate(session: Any, settings: dict[str, Any], 
         latency_target_ms=100.0,
         role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0),
     )
+
+
+async def _case_jev_thinking_router(session: Any, settings: dict[str, Any], ex: Any) -> BenchmarkCase:
+    state = {
+        "symbol": "EURUSD",
+        "market_regime": "HIGH_VOLATILITY",
+        "spread_pips": 1.8,
+        "is_major_event_pending": True,
+        "candidate_tasks": ["stage2_per_asset_primary", "debate_judge", "risk_gate"],
+    }
+    questions = [
+        {
+            "name": "enable_deep_thinking",
+            "type": "Noul",
+            "description": "Should extended reasoning/thinking budget be allocated for subsequent analysis stages?",
+        },
+        {
+            "name": "urgency_tier",
+            "type": "Score",
+            "range": [1, 5],
+            "description": "1: Low background routine, 3: Standard cyclical, 5: Critical high-volatility event",
+        },
+    ]
+    expected = {"enable_deep_thinking": True, "enable_deep_thinking_confidence_min": 0.90, "urgency_tier": 5}
+    return BenchmarkCase(
+        "jev_thinking_router",
+        "trade_decision",
+        user_prompt="Determine adaptive reasoning budget and route thinking mode for current market regime.",
+        state=state,
+        questions=questions,
+        expected_answers=expected,
+        latency_target_ms=100.0,
+        role_kwargs=dict(max_tokens=512, thinking="none", temperature=0.0),
+    )
