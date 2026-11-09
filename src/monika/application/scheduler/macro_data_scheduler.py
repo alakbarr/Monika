@@ -29,7 +29,7 @@ class MacroDataScheduler:
     """
 
     _global_sync_locks: dict[Any, asyncio.Lock] = {}
-    FETCH_TIMEOUT_SECS: float = 90.0
+    FETCH_TIMEOUT_SECS: float = 120.0
 
     def _fmt_err(self, e: Exception) -> str:
         msg = str(e).strip()
@@ -81,7 +81,7 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.coinglass_funding import CoinglasFundingFetcher
 
-                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         fetcher = CoinglasFundingFetcher(session)
                         fg = await fetcher.fetch()
@@ -98,7 +98,7 @@ class MacroDataScheduler:
                     BinanceSentimentFetcher,
                 )
 
-                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         fetcher = BinanceSentimentFetcher(session)
                         sentiment = await fetcher.fetch()
@@ -115,7 +115,7 @@ class MacroDataScheduler:
                     MyFxBookSentimentFetcher,
                 )
 
-                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         fetcher = MyFxBookSentimentFetcher(session)
                         sentiment = await fetcher.fetch()
@@ -132,7 +132,7 @@ class MacroDataScheduler:
                     FXSSISentimentFetcher,
                 )
 
-                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         fetcher = FXSSISentimentFetcher(session)
                         sentiment = await fetcher.fetch()
@@ -148,7 +148,7 @@ class MacroDataScheduler:
                 from monika.infrastructure.data_ingestion.sources.vix_yfinance import VIXFetcher
 
                 fred_key = self.settings.get("data_sources", {}).get("fred", {}).get("api_key")
-                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         fetcher = VIXFetcher(session, fred_api_key=fred_key)
                         n = await fetcher.fetch(period="5d")
@@ -163,12 +163,14 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.fred_treasury_yield import FREDDataFetcher
 
-                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                t_fred0 = asyncio.get_running_loop().time()
+                async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         fetcher = FREDDataFetcher(session, self.settings.get("data_sources", {}).get("fred", {}))
                         r = await fetcher.fetch_all()
                         results["fred"] = r
-                        logger.info(f"MacroDataScheduler: FRED refreshed: {r}")
+                        elapsed_s = asyncio.get_running_loop().time() - t_fred0
+                        logger.info(f"MacroDataScheduler: FRED refreshed: {r} (in {elapsed_s:.2f}s)")
             except Exception as e:
                 err_msg = self._fmt_err(e)
                 logger.warning(f"MacroDataScheduler: FRED refresh failed: {err_msg}")
@@ -178,7 +180,7 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.cftc_cot import CFTCCOTFetcher
 
-                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         fetcher = CFTCCOTFetcher(session, self.settings.get("data_sources", {}).get("cftc_cot", {}))
                         n = await fetcher.fetch_all()
@@ -193,7 +195,7 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.dxy_yfinance import DXYFetcher
 
-                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         fetcher = DXYFetcher(session)
                         n = await fetcher.fetch(period="15d")
@@ -208,7 +210,7 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.bond_yields_fetcher import BondYieldFetcher
 
-                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         fetcher = BondYieldFetcher(session)
                         r = await fetcher.fetch(period="15d")
@@ -223,7 +225,7 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.fear_greed import FearGreedFetcher
 
-                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         fetcher = FearGreedFetcher(session)
                         fg = await fetcher.fetch()
@@ -243,7 +245,7 @@ class MacroDataScheduler:
 
                 is_wednesday = datetime.now(timezone.utc).weekday() == 2
                 if is_wednesday:
-                    async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                    async with asyncio.timeout(self.fetch_timeout_secs):
                         async with get_session() as session:
                             fetcher = EIAInventoryFetcher(session)
                             eia = await fetcher.fetch()
@@ -260,7 +262,7 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.sources.central_bank_watch import CentralBankWatchFetcher
 
-                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         fetcher = CentralBankWatchFetcher(session)
                         cbw = await fetcher.fetch_all()
@@ -286,7 +288,7 @@ class MacroDataScheduler:
                 )
 
                 fred_key = self.settings.get("data_sources", {}).get("fred", {}).get("api_key")
-                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         fed_fetcher = FedLiquidityH41Fetcher(session, api_key=fred_key)
                         stress_fetcher = MarketStressAuctionFetcher(session, api_key=fred_key)
@@ -315,7 +317,7 @@ class MacroDataScheduler:
             try:
                 from monika.infrastructure.data_ingestion.scrapers.macro.macro_trigger_router import MacroTriggerRouter
 
-                async with asyncio.timeout(self.FETCH_TIMEOUT_SECS):
+                async with asyncio.timeout(self.fetch_timeout_secs):
                     async with get_session() as session:
                         router = MacroTriggerRouter(session)
                         await router.ensure_cb_document_available(bank="FED", doc_type="MINUTES")

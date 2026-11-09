@@ -231,8 +231,13 @@ class FXSSISentimentFetcher:
                 "fetched_at": now_dt.isoformat(),
             }
 
-        # Jalankan proses scraping DrissionPage di thread terpisah
-        result = await asyncio.to_thread(self.fetch_sync)
+        # Jalankan proses scraping DrissionPage di thread terpisah dengan budget timeout lokal 30s
+        try:
+            async with asyncio.timeout(30.0):
+                result = await asyncio.to_thread(self.fetch_sync)
+        except TimeoutError, asyncio.TimeoutError:
+            logger.warning("FXSSI sentiment scrape timed out (30s budget exceeded)")
+            result = {"error": "Scrape timed out after 30s"}
 
         # Simpan snapshot terbaru dan time-series history ke DB jika ratios valid
         if self.session and "ratios" in result and result.get("ratios"):
@@ -280,5 +285,20 @@ class FXSSISentimentFetcher:
                 self.session.add(SystemConfig(key=hist_key, value=json.dumps(history_list)))
 
             await self.session.commit()
+        elif self.session and ("error" in result or not result.get("ratios")):
+            # Fallback ke cache DB jika scraping gagal/timeout
+            try:
+                cfg_key = "fxssi_sentiment_latest"
+                cached = (
+                    await self.session.execute(select(SystemConfig).where(SystemConfig.key == cfg_key))
+                ).scalar_one_or_none()
+                if cached and cached.value:
+                    cached_data = json.loads(cached.value)
+                    if isinstance(cached_data, dict) and cached_data.get("ratios"):
+                        cached_data["fallback"] = True
+                        logger.info("FXSSI scrape failed/timed out, serving last known valid sentiment from DB cache.")
+                        return cached_data
+            except Exception as cache_err:
+                logger.debug(f"FXSSI cache fallback check failed: {cache_err}")
 
         return result

@@ -171,3 +171,23 @@ class TestFREDDataFetcher:
         assert args[0].value == 7500000.0
         assert args[0].unit == "USD_MILLIONS"
         mock_session.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_fetch_all_filters_discontinued_series(self):
+        """Verify discontinued BOERUKM and IRSTCB01JPM156N are skipped during fetch_all."""
+        config = {
+            "series": {
+                "boe_base_rate": "BOERUKM",
+                "boj_policy_rate": "IRSTCB01JPM156N",
+                "treasury_2y": "DGS2",
+            }
+        }
+        mock_session = create_mock_async_session()
+        fetcher = FREDDataFetcher(mock_session, config, api_key="test")
+        fetcher._fetch_treasury_series = AsyncMock(return_value=1)
+        fetcher._fetch_interest_rate = AsyncMock(return_value=0)
+
+        res = await fetcher.fetch_all()
+        assert res["treasury"] == 1
+        fetcher._fetch_treasury_series.assert_awaited_once_with("DGS2", "2Y")
+        fetcher._fetch_interest_rate.assert_not_called()

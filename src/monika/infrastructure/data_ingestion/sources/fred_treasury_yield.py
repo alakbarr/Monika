@@ -90,6 +90,9 @@ SERIES_TO_BANK = {
     "ECBDFR": "ECB",
 }
 
+# Series yang telah dihentikan oleh FRED/OECD (digantikan oleh CentralBankWatch)
+DISCONTINUED_SERIES = {"BOERUKM", "IRSTCB01JPM156N"}
+
 
 class FREDDataFetcher:
     """
@@ -110,7 +113,7 @@ class FREDDataFetcher:
         self.api_key = api_key if api_key is not None else os.getenv("FRED_API_KEY", "")
         self.api_url = config.get("api_url", FRED_BASE_URL)
         self.series_map: dict[str, str] = config.get("series", {})  # {label: series_id}
-        self.timeout = aiohttp.ClientTimeout(total=30)
+        self.timeout = aiohttp.ClientTimeout(total=12, connect=6, sock_connect=6)
         self._active_http_session: Optional[aiohttp.ClientSession] = None
         self._obs_cache: BoundedLRUCache[str, list[dict]] = BoundedLRUCache(maxsize=200, default_ttl_seconds=3600.0)
 
@@ -144,7 +147,12 @@ class FREDDataFetcher:
                 )
 
                 if not is_mocked:
-                    sem = asyncio.Semaphore(5)
+                    # Filter out known discontinued series to prevent wasted calls
+                    active_series = {
+                        lbl: s_id for lbl, s_id in self.series_map.items() if s_id not in ("BOERUKM", "IRSTCB01JPM156N")
+                    }
+
+                    sem = asyncio.Semaphore(6)
 
                     async def _preload(s_id: str, lim: int) -> tuple[str, list[dict]]:
                         async with sem:
@@ -152,9 +160,15 @@ class FREDDataFetcher:
 
                     tasks = [
                         _preload(s_id, 1 if (s_id in INTEREST_RATE_SERIES or lbl.endswith("_rate")) else 10)
-                        for lbl, s_id in self.series_map.items()
+                        for lbl, s_id in active_series.items()
                     ]
-                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    try:
+                        async with asyncio.timeout(25.0):
+                            results = await asyncio.gather(*tasks, return_exceptions=True)
+                    except TimeoutError, asyncio.TimeoutError:
+                        logger.warning("FRED prefetch timed out (25s budget); proceeding with available series.")
+                        results = []
+
                     for res in results:
                         if isinstance(res, tuple):
                             self._obs_cache.put(res[0], res[1])
@@ -162,6 +176,8 @@ class FREDDataFetcher:
                             logger.warning(f"FRED concurrent prefetch note: {res}")
 
                 for label, series_id in self.series_map.items():
+                    if series_id in DISCONTINUED_SERIES:
+                        continue
                     try:
                         if (
                             series_id in MACRO_METRIC_SERIES
@@ -403,7 +419,9 @@ class FREDDataFetcher:
         data = await fetch_with_retry(
             self.api_url,
             params=params,
-            timeout=30,
+            timeout=10,
+            max_retries=2,
+            base_delay=0.5,
             session=self._active_http_session,
         )
         if not data or not isinstance(data, dict):

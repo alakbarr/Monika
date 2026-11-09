@@ -236,4 +236,4 @@ class TestCFTCCOTFetcher:
         sched = MacroDataScheduler(settings={})
         err_msg = sched._fmt_err(TimeoutError())
         assert "TimeoutError" in err_msg
-        assert "90s" in err_msg
+        assert f"{sched.fetch_timeout_secs:.0f}s" in err_msg
