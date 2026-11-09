@@ -1,8 +1,11 @@
-from tests.conftest import create_mock_async_session
-import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+import asyncio
 import os
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from monika.interfaces.telegram.bot import TelegramBot
+from tests.conftest import create_mock_async_session
 
 
 class TestTelegramBot:
@@ -48,6 +51,8 @@ class TestTelegramBot:
         builder_inst.get_updates_read_timeout.return_value = builder_inst
         builder_inst.get_updates_write_timeout.return_value = builder_inst
         builder_inst.connection_pool_size.return_value = builder_inst
+        builder_inst.socket_options.return_value = builder_inst
+        builder_inst.get_updates_socket_options.return_value = builder_inst
         builder_inst.proxy.return_value = builder_inst
         builder_inst.get_updates_proxy.return_value = builder_inst
         builder_inst.build.return_value = mock_app
@@ -358,6 +363,8 @@ class TestTelegramBot:
         builder_inst.get_updates_read_timeout.return_value = builder_inst
         builder_inst.get_updates_write_timeout.return_value = builder_inst
         builder_inst.connection_pool_size.return_value = builder_inst
+        builder_inst.socket_options.return_value = builder_inst
+        builder_inst.get_updates_socket_options.return_value = builder_inst
         builder_inst.proxy.return_value = builder_inst
         builder_inst.get_updates_proxy.return_value = builder_inst
         builder_inst.build.return_value = mock_app
@@ -433,6 +440,8 @@ class TestTelegramBot:
         b_inst.get_updates_read_timeout.return_value = b_inst
         b_inst.get_updates_write_timeout.return_value = b_inst
         b_inst.connection_pool_size.return_value = b_inst
+        b_inst.socket_options.return_value = b_inst
+        b_inst.get_updates_socket_options.return_value = b_inst
         b_inst.proxy.return_value = b_inst
         b_inst.get_updates_proxy.return_value = b_inst
         b_inst.build.return_value = MagicMock()
@@ -508,3 +517,118 @@ class TestTelegramBot:
             await bot._on_any_update(update, context)
             assert bot._consecutive_network_errors == 0
             mock_logger.info.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "123:test", "TELEGRAM_ADMIN_CHAT_ID": "123"})
+    @patch("monika.interfaces.telegram.bot.ApplicationBuilder")
+    async def test_start_resilient_startup_retry(self, mock_builder):
+        """Verify startup retries on transient NetworkError/httpx.ReadError and succeeds without crashing."""
+        from telegram.error import NetworkError
+
+        mock_app = AsyncMock()
+        mock_app.add_handler = MagicMock()
+        mock_app.add_error_handler = MagicMock()
+        mock_app.start = AsyncMock()
+        mock_app.stop = AsyncMock()
+        mock_app.shutdown = AsyncMock()
+        mock_app.updater.start_polling = AsyncMock()
+        mock_app.updater.stop = AsyncMock()
+
+        call_count = 0
+
+        async def failing_initialize():
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 2:
+                raise NetworkError("httpx.ReadError: ")
+            return None
+
+        mock_app.initialize = failing_initialize
+
+        builder_inst = mock_builder.return_value
+        builder_inst.token.return_value = builder_inst
+        builder_inst.connect_timeout.return_value = builder_inst
+        builder_inst.read_timeout.return_value = builder_inst
+        builder_inst.write_timeout.return_value = builder_inst
+        builder_inst.pool_timeout.return_value = builder_inst
+        builder_inst.get_updates_connect_timeout.return_value = builder_inst
+        builder_inst.get_updates_read_timeout.return_value = builder_inst
+        builder_inst.get_updates_write_timeout.return_value = builder_inst
+        builder_inst.connection_pool_size.return_value = builder_inst
+        builder_inst.socket_options.return_value = builder_inst
+        builder_inst.get_updates_socket_options.return_value = builder_inst
+        builder_inst.proxy.return_value = builder_inst
+        builder_inst.get_updates_proxy.return_value = builder_inst
+        builder_inst.build.return_value = mock_app
+
+        bot = TelegramBot({})
+
+        # Mock wait_for so backoff doesn't delay test execution
+        async def fast_wait_for(fut, timeout=None):
+            if asyncio.iscoroutine(fut):
+                fut.close()
+            if bot._stop_event.is_set():
+                return True
+            raise asyncio.TimeoutError()
+
+        with patch("asyncio.wait_for", side_effect=fast_wait_for):
+            start_task = asyncio.create_task(bot.start())
+
+            # Give it time to execute retries
+            for _ in range(10):
+                if bot.is_running:
+                    break
+                await asyncio.sleep(0.01)
+
+            assert bot.is_running is True
+            assert call_count == 3
+            mock_app.start.assert_called_once()
+            mock_app.updater.start_polling.assert_called_once()
+
+            await bot.stop()
+            await start_task
+            assert bot.is_running is False
+
+    @pytest.mark.asyncio
+    @patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "123:test", "TELEGRAM_ADMIN_CHAT_ID": "123"})
+    @patch("monika.interfaces.telegram.bot.ApplicationBuilder")
+    async def test_start_fails_fast_on_invalid_token(self, mock_builder):
+        """Verify startup raises InvalidToken immediately without entering an infinite retry loop."""
+        from telegram.error import InvalidToken
+
+        mock_app = AsyncMock()
+        mock_app.add_handler = MagicMock()
+        mock_app.add_error_handler = MagicMock()
+        mock_app.initialize = AsyncMock(side_effect=InvalidToken("Token was rejected"))
+
+        builder_inst = mock_builder.return_value
+        builder_inst.token.return_value = builder_inst
+        builder_inst.connect_timeout.return_value = builder_inst
+        builder_inst.read_timeout.return_value = builder_inst
+        builder_inst.write_timeout.return_value = builder_inst
+        builder_inst.pool_timeout.return_value = builder_inst
+        builder_inst.get_updates_connect_timeout.return_value = builder_inst
+        builder_inst.get_updates_read_timeout.return_value = builder_inst
+        builder_inst.get_updates_write_timeout.return_value = builder_inst
+        builder_inst.connection_pool_size.return_value = builder_inst
+        builder_inst.socket_options.return_value = builder_inst
+        builder_inst.get_updates_socket_options.return_value = builder_inst
+        builder_inst.proxy.return_value = builder_inst
+        builder_inst.get_updates_proxy.return_value = builder_inst
+        builder_inst.build.return_value = mock_app
+
+        bot = TelegramBot({})
+
+        with pytest.raises(InvalidToken):
+            await bot.start()
+
+    @pytest.mark.asyncio
+    async def test_stop_event_clean_shutdown(self):
+        """Verify calling stop() sets _stop_event and marks running as False."""
+        bot = TelegramBot({})
+        bot._is_running = True
+        assert bot._stop_event.is_set() is False
+
+        await bot.stop()
+        assert bot._is_running is False
+        assert bot._stop_event.is_set() is True

@@ -16,12 +16,14 @@ import json
 import logging
 import os
 import re
+import socket
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
+from telegram.error import Conflict, InvalidToken, NetworkError, TimedOut
 from telegram.ext import (
     Application,
     ApplicationBuilder,
@@ -134,6 +136,7 @@ class TelegramBot(
         )
 
         self._is_running: bool = False
+        self._stop_event: asyncio.Event = asyncio.Event()
         self._outbound_queue: asyncio.Queue = asyncio.Queue(maxsize=1000)
         self._outbound_worker_task: Optional[asyncio.Task] = None
         self._last_send_global: float = 0.0
@@ -154,6 +157,15 @@ class TelegramBot(
             pool_timeout = float(tg_cfg.get("pool_timeout", 5.0))
             get_updates_read_timeout = float(tg_cfg.get("get_updates_read_timeout", 25.0))
 
+            # Configure TCP socket keep-alive to prevent silent NAT/firewall drops during idle long-polling
+            sock_opts: list[Any] = [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
+            if hasattr(socket, "TCP_KEEPIDLE"):
+                sock_opts.append((socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 15))
+            if hasattr(socket, "TCP_KEEPINTVL"):
+                sock_opts.append((socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 5))
+            if hasattr(socket, "TCP_KEEPCNT"):
+                sock_opts.append((socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3))
+
             builder = (
                 ApplicationBuilder()
                 .token(self.token)
@@ -165,6 +177,8 @@ class TelegramBot(
                 .get_updates_read_timeout(get_updates_read_timeout)
                 .get_updates_write_timeout(write_timeout)
                 .connection_pool_size(100)
+                .socket_options(sock_opts)
+                .get_updates_socket_options(sock_opts)
             )
             if proxy_url:
                 builder = builder.proxy(proxy_url).get_updates_proxy(proxy_url)
@@ -336,51 +350,116 @@ class TelegramBot(
         logger.error(f"[TelegramBot] Unhandled error: {error}", exc_info=error)
 
     async def start(self) -> None:
-        """Memulai polling Telegram (blocking)."""
+        """Memulai polling Telegram dengan connection retry loop yang tangguh (blocking)."""
         if not self._app:
             logger.warning("Telegram bot not started — token missing.")
-            while True:
-                await asyncio.sleep(3600)
+            if not hasattr(self, "_stop_event"):
+                self._stop_event = asyncio.Event()
+            await self._stop_event.wait()
+            return
+
+        if not hasattr(self, "_stop_event"):
+            self._stop_event = asyncio.Event()
+        else:
+            self._stop_event.clear()
+
+        consecutive_connect_errors = 0
+        backoff = 2.0
+        max_backoff = 30.0
 
         try:
-            logger.info("Starting Telegram Bot (polling)...")
-            await self._app.initialize()
-            await self._app.start()
-            if self._app.updater:
+            while not self._stop_event.is_set():
+                try:
+                    logger.info("Connecting to Telegram Bot (polling)...")
+                    if getattr(self._app, "_initialized", False) is not True:
+                        await self._app.initialize()
 
-                def _error_cb(exc: Any) -> None:
-                    if self._app:
-                        self._app.create_task(self._app.process_error(error=exc, update=None))
+                    if getattr(self._app, "running", False) is not True:
+                        await self._app.start()
 
-                await self._app.updater.start_polling(
-                    allowed_updates=["message", "callback_query"],
-                    drop_pending_updates=False,
-                    error_callback=_error_cb,
-                )
-            try:
-                from telegram import BotCommand
+                    updater = getattr(self._app, "updater", None)
+                    if updater is not None and getattr(updater, "running", False) is not True:
 
-                commands = [
-                    BotCommand("status", "Show agent and portfolio status"),
-                    BotCommand("positions", "List open trading positions"),
-                    BotCommand("brief", "Latest market intelligence macro brief"),
-                    BotCommand("edge", "Statistical edge and win rate assessment"),
-                    BotCommand("risk", "Current risk state and limits"),
-                    BotCommand("vix", "CBOE VIX volatility gauge"),
-                    BotCommand("history", "Recent trade history"),
-                    BotCommand("help", "Help and command manual"),
-                ]
-                await self._app.bot.set_my_commands(commands)
-            except Exception as e:
-                logger.debug(f"Failed to set bot commands: {e}")
+                        def _error_cb(exc: Any) -> None:
+                            if self._app:
+                                self._app.create_task(self._app.process_error(error=exc, update=None))
 
-            self._is_running = True
-            self._outbound_worker_task = asyncio.create_task(self._process_outbound_queue())
-            await self._flush_offline_queue()
-            logger.info(f"Telegram Bot online. Admin: {self.admin_chat_id}")
+                        await updater.start_polling(
+                            allowed_updates=["message", "callback_query"],
+                            drop_pending_updates=False,
+                            error_callback=_error_cb,
+                            bootstrap_retries=5,
+                        )
 
-            # Block until cancelled
-            await asyncio.get_running_loop().create_future()
+                    try:
+                        from telegram import BotCommand
+
+                        commands = [
+                            BotCommand("status", "Show agent and portfolio status"),
+                            BotCommand("positions", "List open trading positions"),
+                            BotCommand("brief", "Latest market intelligence macro brief"),
+                            BotCommand("edge", "Statistical edge and win rate assessment"),
+                            BotCommand("risk", "Current risk state and limits"),
+                            BotCommand("vix", "CBOE VIX volatility gauge"),
+                            BotCommand("history", "Recent trade history"),
+                            BotCommand("help", "Help and command manual"),
+                        ]
+                        await self._app.bot.set_my_commands(commands)
+                    except Exception as e:
+                        logger.debug(f"Failed to set bot commands: {e}")
+
+                    self._is_running = True
+                    if consecutive_connect_errors > 0:
+                        logger.info(
+                            f"[TelegramBot] Telegram API connection established successfully after {consecutive_connect_errors} retry attempts."
+                        )
+                        consecutive_connect_errors = 0
+                        backoff = 2.0
+
+                    self._outbound_worker_task = asyncio.create_task(self._process_outbound_queue())
+                    await self._flush_offline_queue()
+                    logger.info(f"Telegram Bot online. Admin: {self.admin_chat_id}")
+
+                    # Block cleanly on stop event until stopped or cancelled
+                    await self._stop_event.wait()
+                    break
+
+                except InvalidToken as it:
+                    logger.critical(f"[TelegramBot] Permanent token rejection: {it}. Aborting startup.")
+                    raise
+                except (NetworkError, TimedOut) as ne:
+                    consecutive_connect_errors += 1
+                    if self._stop_event.is_set():
+                        break
+
+                    if consecutive_connect_errors in (1, 2):
+                        logger.warning(
+                            f"[TelegramBot] Transient network error during startup: {ne}. Retrying in {backoff:.1f}s..."
+                        )
+                    else:
+                        logger.warning(
+                            f"[TelegramBot] Telegram API unreachable ({consecutive_connect_errors} attempts: {ne}). "
+                            f"Retrying in {backoff:.1f}s..."
+                        )
+
+                    # Clean up partially initialized resources before next connection attempt
+                    try:
+                        if self._app:
+                            updater = getattr(self._app, "updater", None)
+                            if updater and getattr(updater, "running", False):
+                                await updater.stop()
+                            if getattr(self._app, "running", False):
+                                await self._app.stop()
+                            await self._app.shutdown()
+                    except Exception as cleanup_err:
+                        logger.debug(f"Intermediate cleanup note: {cleanup_err}")
+
+                    try:
+                        await asyncio.wait_for(self._stop_event.wait(), timeout=backoff)
+                    except asyncio.TimeoutError:
+                        pass
+                    backoff = min(backoff * 1.5, max_backoff)
+
         except asyncio.CancelledError:
             logger.info("Stopping Telegram Bot...")
         finally:
@@ -405,6 +484,8 @@ class TelegramBot(
     async def stop(self) -> None:
         """Stop the telegram bot application cleanly."""
         self._is_running = False
+        if hasattr(self, "_stop_event") and self._stop_event:
+            self._stop_event.set()
         if self._outbound_worker_task and not self._outbound_worker_task.done():
             self._outbound_worker_task.cancel()
             try:

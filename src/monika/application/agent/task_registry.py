@@ -143,6 +143,9 @@ LONG_RETRY_ERRORS = [
     "529",
     "503",
     "rate_limit",
+    "ReadError",
+    "NetworkError",
+    "RemoteDisconnected",
 ]
 
 

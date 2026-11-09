@@ -12045,7 +12045,7 @@
 - **Classes**:
   - `class BondYieldFetcher`: Fetcher yield obligasi pemerintah internasional.
     - `__init__(session: AsyncSession, fred_api_key: Optional[str])`
-    - `async fetch(period: str) -> dict[str, int]` - *Mengambil yield obligasi untuk semua negara yang didukung (DE, UK, JP, AU, US) baik 2Y maupun 10Y.*
+    - `async fetch(period: str, cache_ttl_sec: float) -> dict[str, int]` - *Mengambil yield obligasi untuk semua negara yang didukung (DE, UK, JP, AU, US) baik 2Y maupun 10Y.*
 
 #### `bond_yields_yfinance.py` - *Backward-compatible shim for data_sources.bond_yields_fetcher.*
 - **Path**: [`src/monika/infrastructure/data_ingestion/sources/bond_yields_yfinance.py`](src/monika/infrastructure/data_ingestion/sources/bond_yields_yfinance.py)
@@ -15004,7 +15004,7 @@
   - `class TelegramBot(TelegramFormatterMixin, TelegramCallbackHandlerMixin, TelegramMediaHandlerMixin, TelegramTradingCommandsMixin, TelegramMarketCommandsMixin, TelegramSystemCommandsMixin, TelegramAdminCommandsMixin)`: Main Telegram Bot Controller.
     - `__init__(settings: dict, execution_service, cycle_scheduler)`
     - `is_running() -> bool` - *Returns True if TelegramBot polling loop is active.*
-    - `async start() -> None` - *Memulai polling Telegram (blocking).*
+    - `async start() -> None` - *Memulai polling Telegram dengan connection retry loop yang tangguh (blocking).*
     - `async stop() -> None` - *Stop the telegram bot application cleanly.*
     - `async send_notification(text: str, parse_mode: str, message_thread_id: Optional[int], ...) -> None` - *Mengirim pesan notifikasi ke admin atau chat spesifik melalui outbound queue.*
     - `async request_fallback_consent(prompt_text: str, tg_event: asyncio.Event, tg_result: dict) -> None` - *Mengirim notifikasi inline keyboard untuk fallback consent ke admin.*
