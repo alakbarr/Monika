@@ -192,6 +192,7 @@ def validate_telemetry(
     now_utc_str: Optional[str] = None,
     event_time_utc_str: Optional[str] = None,
     event_impact: str = "HIGH",
+    symbol: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Validates data freshness (TTL), session killzones, and event/rollover blackouts.
@@ -283,8 +284,18 @@ def validate_telemetry(
     ttl_multiplier = 0.50 if stale_found else 1.00
     execution_permitted = not rollover_blackout and not event_blackout
 
+    cot_code = None
+    if symbol:
+        try:
+            asset_info = get_asset_spec(symbol)
+            cot_code = asset_info.get("cot_code")
+        except Exception:
+            pass
+
     return {
         "timestamp_checked": now.isoformat(),
+        "symbol": symbol.upper() if symbol else None,
+        "cot_contract_code": cot_code,
         "stale_data_detected": stale_found,
         "ttl_multiplier": ttl_multiplier,
         "active_killzones": killzones,
@@ -539,11 +550,11 @@ def event_calc(
 
 
 def cot_synergy(
-    cot_net_pct: float,
-    cot_52w_pct: float,
-    tech_dir: str,
-    macro_dir: str,
-    sent_dir: str,
+    cot_net_pct: float = 50.0,
+    cot_52w_pct: float = 50.0,
+    tech_dir: str = "buy",
+    macro_dir: str = "buy",
+    sent_dir: str = "buy",
     tech_conf: float = 75.0,
     macro_conf: float = 75.0,
     sent_conf: float = 75.0,
@@ -1315,11 +1326,12 @@ def main() -> int:
     p_tel.add_argument("--now-utc", type=str, default=None)
     p_tel.add_argument("--event-time-utc", type=str, default=None)
     p_tel.add_argument("--event-impact", type=str, default="HIGH")
+    p_tel.add_argument("--symbol", type=str, default=None)
 
     # 2. cb-differential
-    p_cb = subparsers.add_parser("cb-differential")
-    p_cb.add_argument("--base-currency", type=str, required=True)
-    p_cb.add_argument("--quote-currency", type=str, required=True)
+    p_cb = subparsers.add_parser("cb-differential", aliases=["cb-diff"])
+    p_cb.add_argument("--base-currency", "--base-ccy", type=str, required=True)
+    p_cb.add_argument("--quote-currency", "--quote-ccy", type=str, required=True)
     p_cb.add_argument("--base-rate", type=float, required=True)
     p_cb.add_argument("--quote-rate", type=float, required=True)
     p_cb.add_argument("--base-r-star", type=float, default=None)
@@ -1377,7 +1389,7 @@ def main() -> int:
     p_smc.add_argument("--has-active-impulse", action="store_true")
 
     # 7. session-microstructure
-    p_mic = subparsers.add_parser("session-microstructure")
+    p_mic = subparsers.add_parser("session-microstructure", aliases=["session-calc"])
     p_mic.add_argument("--spread-current", type=float, required=True)
     p_mic.add_argument("--spread-typical", type=float, required=True)
     p_mic.add_argument("--bid-vol", type=float, default=100.0)
@@ -1473,8 +1485,9 @@ def main() -> int:
             now_utc_str=args.now_utc,
             event_time_utc_str=args.event_time_utc,
             event_impact=args.event_impact,
+            symbol=args.symbol,
         )
-    elif args.subcommand == "cb-differential":
+    elif args.subcommand in ("cb-differential", "cb-diff"):
         out = cb_differential(
             base_currency=args.base_currency,
             quote_currency=args.quote_currency,
@@ -1534,7 +1547,7 @@ def main() -> int:
             confluence_score=args.confluence_score,
             has_active_impulse=args.has_active_impulse,
         )
-    elif args.subcommand == "session-microstructure":
+    elif args.subcommand in ("session-microstructure", "session-calc"):
         out = session_microstructure(
             spread_current=args.spread_current,
             spread_typical=args.spread_typical,

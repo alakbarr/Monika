@@ -349,6 +349,7 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
             cmd.extend(["--effort", "max"])
         elif resolved_effort:
             cmd.extend(["--effort", resolved_effort])
+        cmd.extend(["--print", full_prompt])
 
         start_t = time.time()
         output_text = ""
@@ -389,88 +390,18 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
             else:
                 proc = subprocess.Popen(
                     cmd,
-                    stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
                     encoding="utf-8",
                     cwd=str(sandbox_dir),
                 )
-
-                def _write_stdin():
-                    try:
-                        proc.stdin.write(full_prompt)
-                        proc.stdin.flush()
-                        proc.stdin.close()
-                    except Exception:
-                        pass
-
-                w_thread = threading.Thread(target=_write_stdin, daemon=True)
-                w_thread.start()
-
-                stderr_chunks = []
-
-                def _read_stderr():
-                    try:
-                        for err_line in proc.stderr:
-                            stderr_chunks.append(err_line)
-                    except Exception:
-                        pass
-
-                e_thread = threading.Thread(target=_read_stderr, daemon=True)
-                e_thread.start()
-
-                raw_out = ""
-                stdout_lines = []
-                start_wait = time.time()
-                while time.time() - start_wait < agy_timeout:
-                    line = proc.stdout.readline()
-                    if not line:
-                        if proc.poll() is not None:
-                            break
-                        time.sleep(0.05)
-                        continue
-                    stdout_lines.append(line)
-                    line_str = line.strip()
-                    if line_str.startswith("{") and line_str.endswith("}"):
-                        try:
-                            json.loads(line_str)
-                            raw_out = line_str
-                            break
-                        except Exception:
-                            pass
-
-                # If not single-line JSON, assemble multi-line stdout
-                if not raw_out and stdout_lines:
-                    full_stdout = "".join(stdout_lines).strip()
-                    try:
-                        json.loads(full_stdout)
-                        raw_out = full_stdout
-                    except Exception:
-                        m = re.search(r"(\{[\s\S]*\})", full_stdout)
-                        if m:
-                            candidate = m.group(1).strip()
-                            try:
-                                json.loads(candidate)
-                                raw_out = candidate
-                            except Exception:
-                                pass
-
+                stdout_text, stderr_text = proc.communicate(timeout=agy_timeout)
+                raw_out = (stdout_text or "").strip()
+                stderr_chunks = [stderr_text] if stderr_text else []
                 elapsed = time.time() - start_t
-                if proc.poll() is None:
-                    try:
-                        proc.terminate()
-                        proc.wait(timeout=1.0)
-                    except Exception:
-                        proc.kill()
-
                 if not raw_out:
-                    stdout_dump = "".join(stdout_lines).strip()
-                    err_msg = "".join(stderr_chunks).strip() or (
-                        f"Stdout: {stdout_dump[:300]}"
-                        if stdout_dump
-                        else "Process exited without producing JSON output"
-                    )
+                    err_msg = "".join(stderr_chunks).strip() or "Process exited without producing JSON output"
                     logger.error("agy execution failed in %.2fs: %s", elapsed, err_msg)
                     self._send_json(
                         502,
