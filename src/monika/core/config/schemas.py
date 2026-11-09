@@ -238,6 +238,15 @@ class GuardianConfig(SubscriptableConfig):
     port: int | None = Field(default=8001, ge=1024, le=65535)
 
 
+class MemorySupervisorConfig(SubscriptableConfig):
+    enabled: bool | None = True
+    interval_seconds: float | None = Field(default=30.0, ge=1.0)
+    warn_mb: float | None = Field(default=800.0, ge=50.0)
+    compact_mb: float | None = Field(default=1000.0, ge=100.0)
+    hard_limit_mb: float | None = Field(default=1400.0, ge=200.0)
+    cooldown_seconds: float | None = Field(default=300.0, ge=10.0)
+
+
 class TradingAgentConfig(SubscriptableConfig):
     installation_tier: str | None = Field(default="trial", pattern="^(trial|full|unconfigured)$")
     app_name: str | None = None
@@ -257,6 +266,7 @@ class TradingAgentConfig(SubscriptableConfig):
     database: DatabaseConfig | None = None
     telegram: TelegramConfig | None = None
     guardian: GuardianConfig | None = None
+    memory_supervisor: MemorySupervisorConfig | None = None
     system: dict[str, Any] | None = Field(default_factory=dict)
     plugins: dict[str, Any] | None = Field(default_factory=dict)
     learning: dict[str, Any] | None = Field(default_factory=dict)
@@ -316,4 +326,8 @@ class TradingAgentConfig(SubscriptableConfig):
             DatabaseConfig.model_validate(self.database)
         if self.telegram:
             TelegramConfig.model_validate(self.telegram)
+        if self.guardian:
+            GuardianConfig.model_validate(self.guardian)
+        if self.memory_supervisor:
+            MemorySupervisorConfig.model_validate(self.memory_supervisor)
         return self

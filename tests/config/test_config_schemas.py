@@ -7,7 +7,14 @@ import tempfile
 import os
 import yaml
 from pydantic import ValidationError
-from monika.core.config.schemas import RiskConfig, TradingAgentConfig, HarnessConfig, EvalsConfig, BenchmarkConfig
+from monika.core.config.schemas import (
+    BenchmarkConfig,
+    EvalsConfig,
+    HarnessConfig,
+    MemorySupervisorConfig,
+    RiskConfig,
+    TradingAgentConfig,
+)
 from monika.core.config.settings import _deep_merge, load_settings, validate_config
 
 
@@ -198,3 +205,45 @@ def test_harness_evals_benchmark_schemas():
 
     with pytest.raises(ValidationError):
         BenchmarkConfig.model_validate({"max_drift_pct": -5.0})  # < 0.0
+
+
+def test_memory_supervisor_config_schema():
+    """Verify MemorySupervisorConfig valid and invalid bounds and integration in TradingAgentConfig."""
+    cfg = MemorySupervisorConfig.model_validate(
+        {
+            "enabled": True,
+            "warn_mb": 900.0,
+            "compact_mb": 1100.0,
+            "hard_limit_mb": 1500.0,
+            "interval_seconds": 45.0,
+            "cooldown_seconds": 180.0,
+        }
+    )
+    assert cfg.enabled is True
+    assert cfg.warn_mb == 900.0
+    assert cfg.compact_mb == 1100.0
+    assert cfg.hard_limit_mb == 1500.0
+    assert cfg.interval_seconds == 45.0
+    assert cfg.cooldown_seconds == 180.0
+
+    # Integration in TradingAgentConfig
+    raw = {
+        "app_name": "TestMemoryApp",
+        "memory_supervisor": {
+            "warn_mb": 750.0,
+            "compact_mb": 950.0,
+            "hard_limit_mb": 1350.0,
+        },
+    }
+    validated = validate_config(raw)
+    assert validated.memory_supervisor is not None
+    assert validated.memory_supervisor.warn_mb == 750.0
+    assert validated.memory_supervisor.compact_mb == 950.0
+    assert validated.memory_supervisor.hard_limit_mb == 1350.0
+
+    # Test invalid constraints
+    with pytest.raises(ValidationError):
+        MemorySupervisorConfig.model_validate({"warn_mb": 10.0})  # < 50.0
+
+    with pytest.raises(ValidationError):
+        MemorySupervisorConfig.model_validate({"interval_seconds": 0.5})  # < 1.0

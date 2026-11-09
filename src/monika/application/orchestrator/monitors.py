@@ -435,9 +435,42 @@ class AgentMonitorsMixin:
 
     async def _run_memory_supervisor(self) -> None:
         """24/7 Process RSS Memory Supervisor & Progressive Compactor."""
-        from monika.application.agent.monitors.memory_supervisor import run_memory_supervisor
+        from monika.application.agent.monitors.memory_supervisor import (
+            DEFAULT_COMPACT_MB,
+            DEFAULT_COOLDOWN_SECONDS,
+            DEFAULT_HARD_LIMIT_MB,
+            DEFAULT_WARN_MB,
+            run_memory_supervisor,
+        )
 
-        await run_memory_supervisor(stop_event=self.shutdown_event)
+        mem_cfg = getattr(self, "settings", {}).get("memory_supervisor", {})
+        if isinstance(mem_cfg, dict) and mem_cfg.get("enabled") is False:
+            logger.info("[MemorySupervisor] Disabled by configuration.")
+            return
+
+        # Adaptive threshold detection: when TimesFM / PyTorch foundation models are active,
+        # baseline RAM requires the ML-aware profile (~650-800 MB). If disabled, use standard profile.
+        tfm_cfg = getattr(self, "settings", {}).get("timesfm", {})
+        ml_active = bool(tfm_cfg.get("enabled", True)) if isinstance(tfm_cfg, dict) else True
+
+        default_warn = DEFAULT_WARN_MB if ml_active else 400.0
+        default_compact = DEFAULT_COMPACT_MB if ml_active else 600.0
+        default_hard = DEFAULT_HARD_LIMIT_MB if ml_active else 800.0
+
+        warn_mb = float(mem_cfg.get("warn_mb") or default_warn)
+        compact_mb = float(mem_cfg.get("compact_mb") or default_compact)
+        hard_limit_mb = float(mem_cfg.get("hard_limit_mb") or default_hard)
+        interval_seconds = float(mem_cfg.get("interval_seconds") or 30.0)
+        cooldown_seconds = float(mem_cfg.get("cooldown_seconds") or DEFAULT_COOLDOWN_SECONDS)
+
+        await run_memory_supervisor(
+            stop_event=self.shutdown_event,
+            interval_seconds=interval_seconds,
+            warn_mb=warn_mb,
+            compact_mb=compact_mb,
+            hard_limit_mb=hard_limit_mb,
+            cooldown_seconds=cooldown_seconds,
+        )
 
 
 __all__ = ["AgentMonitorsMixin"]

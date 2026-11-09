@@ -62,6 +62,12 @@ class ReadOnlyReplayCache:
         with cls._lock:
             if cls._instance is None:
                 cls._instance = cls()
+                try:
+                    from monika.core.primitives.compaction import get_compaction_registry
+
+                    get_compaction_registry().register(cls._instance)
+                except Exception:
+                    pass
             return cls._instance
 
     @classmethod
@@ -69,6 +75,12 @@ class ReadOnlyReplayCache:
         """Reset singleton instance (useful for test isolation)."""
         with cls._lock:
             if cls._instance is not None:
+                try:
+                    from monika.core.primitives.compaction import get_compaction_registry
+
+                    get_compaction_registry().unregister(cls._instance)
+                except Exception:
+                    pass
                 cls._instance.clear()
             cls._instance = None
 
@@ -118,6 +130,20 @@ class ReadOnlyReplayCache:
     def clear(self) -> int:
         """Alias for invalidate() to clear entire cache."""
         return self.invalidate()
+
+    def compact(self, tier: int = 1) -> int:
+        """
+        Implements CompactionTarget protocol for Progressive Memory Compaction (Pillar 5):
+        - Tier 1: Soft prune (reap expired TTL entries).
+        - Tier 2: Medium prune (reap expired, and clear cache if exceeding half capacity).
+        - Tier 3: Aggressive prune (emergency full clear).
+        """
+        if tier >= 3:
+            return self.clear()
+        reaped = self.reap_expired()
+        if tier >= 2 and len(self._bounded_cache) > (self.maxsize // 2):
+            reaped += self.clear()
+        return reaped
 
     @property
     def stats(self) -> Dict[str, Any]:

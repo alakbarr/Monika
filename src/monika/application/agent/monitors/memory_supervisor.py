@@ -9,6 +9,8 @@ from __future__ import annotations
 import asyncio
 import gc
 import logging
+import sys
+import time
 from typing import Any, Optional
 
 import psutil
@@ -17,10 +19,11 @@ from monika.core.primitives.event_bus import get_event_bus
 
 logger = logging.getLogger("TradingAgent.MemorySupervisor")
 
-# Thresholds in Megabytes
-DEFAULT_WARN_MB: float = 250.0
-DEFAULT_COMPACT_MB: float = 350.0
-DEFAULT_HARD_LIMIT_MB: float = 500.0
+# Thresholds in Megabytes (adapted for PyTorch + TimesFM Foundation Model footprint)
+DEFAULT_WARN_MB: float = 800.0
+DEFAULT_COMPACT_MB: float = 1000.0
+DEFAULT_HARD_LIMIT_MB: float = 1400.0
+DEFAULT_COOLDOWN_SECONDS: float = 300.0
 
 
 class MemorySupervisor:
@@ -38,15 +41,21 @@ class MemorySupervisor:
         warn_mb: float = DEFAULT_WARN_MB,
         compact_mb: float = DEFAULT_COMPACT_MB,
         hard_limit_mb: float = DEFAULT_HARD_LIMIT_MB,
+        cooldown_seconds: float = DEFAULT_COOLDOWN_SECONDS,
     ):
         self.interval_seconds = interval_seconds
         self.warn_mb = warn_mb
         self.compact_mb = compact_mb
         self.hard_limit_mb = hard_limit_mb
+        self.cooldown_seconds = cooldown_seconds
         self._running: bool = False
         self._task: Optional[asyncio.Task] = None
         self._process = psutil.Process()
         self._cycle_count: int = 0
+        self._last_critical_log_time: float = 0.0
+        self._last_critical_rss: float = 0.0
+        self._last_warn_log_time: float = 0.0
+        self._last_compact_log_time: float = 0.0
 
     def get_rss_mb(self) -> float:
         """Get current process Resident Set Size (RSS) in Megabytes."""
@@ -60,7 +69,8 @@ class MemorySupervisor:
         Executes progressive memory compaction:
         1. CompactionRegistry target execution across registered targets for tier.
         2. Python progressive garbage collection based on tier.
-        3. EventBus finished task cleanup.
+        3. PyTorch tensor cache release if torch is loaded.
+        4. EventBus finished task cleanup.
         """
         rss_before = self.get_rss_mb()
 
@@ -79,14 +89,24 @@ class MemorySupervisor:
         c2 = gc.collect(2) if tier >= 3 else 0
         collected = c0 + c1 + c2
 
-        # 2. EventBus task prune
+        # 2. PyTorch tensor memory sanitation if loaded
+        if "torch" in sys.modules:
+            try:
+                import torch
+
+                if hasattr(torch, "cuda") and torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:
+                pass
+
+        # 3. EventBus task prune
         pruned_tasks = 0
         try:
             pruned_tasks = get_event_bus().clean_finished_tasks()
         except Exception:
             pass
 
-        # 3. Memory sanitation without anti-pattern OS paging
+        # 4. Memory sanitation without anti-pattern OS paging
         os_trimmed = False
 
         rss_after = self.get_rss_mb()
@@ -113,7 +133,7 @@ class MemorySupervisor:
         self._running = True
         logger.info(
             f"[MemorySupervisor] Started 24/7 Memory Supervisor "
-            f"(interval={self.interval_seconds}s, warn={self.warn_mb}MB, compact={self.compact_mb}MB)"
+            f"(interval={self.interval_seconds}s, warn={self.warn_mb}MB, compact={self.compact_mb}MB, hard_limit={self.hard_limit_mb}MB)"
         )
         while self._running:
             try:
@@ -133,20 +153,42 @@ class MemorySupervisor:
                     gc.collect(1)
 
                 rss = self.get_rss_mb()
+                now = time.monotonic()
+
                 if rss >= self.hard_limit_mb:
-                    logger.critical(
-                        f"[MemorySupervisor] CRITICAL MEMORY USAGE: {rss:.1f} MB exceeds hard limit {self.hard_limit_mb} MB!"
+                    should_log = (
+                        (self._last_critical_log_time == 0.0)
+                        or (now - self._last_critical_log_time >= self.cooldown_seconds)
+                        or (rss - self._last_critical_rss >= 100.0)
                     )
-                    self.compact_memory(reason=f"hard_limit_exceeded_{rss:.1f}mb")
+                    if should_log:
+                        logger.critical(
+                            f"[MemorySupervisor] CRITICAL MEMORY USAGE: {rss:.1f} MB exceeds hard limit {self.hard_limit_mb} MB!"
+                        )
+                        self._last_critical_log_time = now
+                        self._last_critical_rss = rss
+
+                    self.compact_memory(reason=f"hard_limit_exceeded_{rss:.1f}mb", tier=3)
                 elif rss >= self.compact_mb:
-                    logger.warning(
-                        f"[MemorySupervisor] Elevated memory usage: {rss:.1f} MB exceeds compact threshold {self.compact_mb} MB. Initiating compaction."
+                    should_log = (self._last_compact_log_time == 0.0) or (
+                        now - self._last_compact_log_time >= self.cooldown_seconds
                     )
-                    self.compact_memory(reason=f"compact_threshold_{rss:.1f}mb")
+                    if should_log:
+                        logger.warning(
+                            f"[MemorySupervisor] Elevated memory usage: {rss:.1f} MB exceeds compact threshold {self.compact_mb} MB. Initiating compaction."
+                        )
+                        self._last_compact_log_time = now
+
+                    self.compact_memory(reason=f"compact_threshold_{rss:.1f}mb", tier=2)
                 elif rss >= self.warn_mb:
-                    logger.warning(
-                        f"[MemorySupervisor] Memory warning: {rss:.1f} MB exceeds warning threshold {self.warn_mb} MB."
+                    should_log = (self._last_warn_log_time == 0.0) or (
+                        now - self._last_warn_log_time >= self.cooldown_seconds
                     )
+                    if should_log:
+                        logger.warning(
+                            f"[MemorySupervisor] Memory warning: {rss:.1f} MB exceeds warning threshold {self.warn_mb} MB."
+                        )
+                        self._last_warn_log_time = now
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -175,6 +217,7 @@ async def run_memory_supervisor(
     warn_mb: float = DEFAULT_WARN_MB,
     compact_mb: float = DEFAULT_COMPACT_MB,
     hard_limit_mb: float = DEFAULT_HARD_LIMIT_MB,
+    cooldown_seconds: float = DEFAULT_COOLDOWN_SECONDS,
 ) -> None:
     """Coroutine entrypoint for running the memory supervisor."""
     supervisor = MemorySupervisor(
@@ -182,6 +225,7 @@ async def run_memory_supervisor(
         warn_mb=warn_mb,
         compact_mb=compact_mb,
         hard_limit_mb=hard_limit_mb,
+        cooldown_seconds=cooldown_seconds,
     )
     await supervisor.run_loop(stop_event=stop_event)
 
@@ -192,4 +236,5 @@ __all__ = [
     "DEFAULT_WARN_MB",
     "DEFAULT_COMPACT_MB",
     "DEFAULT_HARD_LIMIT_MB",
+    "DEFAULT_COOLDOWN_SECONDS",
 ]

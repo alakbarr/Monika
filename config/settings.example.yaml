@@ -3344,3 +3344,14 @@ harness:
 guardian:
   heartbeat_stale_threshold_seconds: 240.0
   port: 8001
+
+# ==============================================================================
+# 24/7 Process Health & RSS Memory Supervisor (Pillar 5)
+# ==============================================================================
+memory_supervisor:
+  enabled: true
+  interval_seconds: 30.0
+  warn_mb: 800.0
+  compact_mb: 1000.0
+  hard_limit_mb: 1400.0
+  cooldown_seconds: 300.0

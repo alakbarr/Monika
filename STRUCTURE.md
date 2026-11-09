@@ -2908,6 +2908,7 @@ Monika/
 │   │   └── infrastructure/
 │   │       ├── llm/
 │   │       │   ├── test_cache_threshold_and_capabilities.py
+│   │       │   ├── test_caveman_compressor.py
 │   │       │   └── test_kv_cache_invariance.py
 │   │       └── providers/
 │   │           ├── test_provider_telemetry_invariants.py
@@ -3268,4 +3269,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 281 | **Total Tracked Files**: 2957
+**Total Tracked Directories**: 281 | **Total Tracked Files**: 2958
