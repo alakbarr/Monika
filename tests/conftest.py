@@ -381,12 +381,14 @@ def reset_service_container():
 
     try:
         from monika.core.telemetry import batched_sink
+        from monika.core.telemetry.sinks import set_telemetry_sink
 
         if batched_sink._GLOBAL_BATCHED_SINK is not None:
             sink = batched_sink._GLOBAL_BATCHED_SINK
             if sink._flusher_task and not sink._flusher_task.done():
                 sink._flusher_task.cancel()
             batched_sink._GLOBAL_BATCHED_SINK = None
+        set_telemetry_sink(None)
     except Exception:
         pass
 
@@ -401,12 +403,14 @@ def reset_service_container():
 
     try:
         from monika.core.telemetry import batched_sink
+        from monika.core.telemetry.sinks import set_telemetry_sink
 
         if batched_sink._GLOBAL_BATCHED_SINK is not None:
             sink = batched_sink._GLOBAL_BATCHED_SINK
             if sink._flusher_task and not sink._flusher_task.done():
                 sink._flusher_task.cancel()
             batched_sink._GLOBAL_BATCHED_SINK = None
+        set_telemetry_sink(None)
     except Exception:
         pass
 

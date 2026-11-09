@@ -286,6 +286,9 @@ def test_patch_proactor_connection_lost_handles_winerror_10054():
     import asyncio
     from unittest.mock import MagicMock
 
+    if not IS_WINDOWS:
+        pytest.skip("Proactor transport WinError 10054 patching is Windows-specific")
+
     patch_proactor_connection_lost()
 
     try:

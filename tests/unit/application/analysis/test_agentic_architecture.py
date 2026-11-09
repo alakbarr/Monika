@@ -35,9 +35,9 @@ def test_stage1_agentic_prompt_structure_and_skills():
     assert "sequential 5-phase investigation workflow" in user_msg
 
     # 2. 5-Phase Sequential Investigation Directive
-    assert "PHASE 1: Sovereign Yields, Curve Health & Dollar Dominance" in sys_prompt
-    assert "PHASE 2: Central Bank Policy & Market Rate Pricing" in sys_prompt
-    assert "PHASE 3: Macro Stress, Volatility & Institutional Positioning" in sys_prompt
+    assert "PHASE 1: Sovereign Yields, Curve Health & Rate Policy Suite" in sys_prompt
+    assert "PHASE 2: Macro Stress, Volatility & Institutional Positioning" in sys_prompt
+    assert "PHASE 3: Economic Calendar, Breaking News Catalysts & Crypto Context" in sys_prompt
     assert "PHASE 4: Web Research Escalation Gate" in sys_prompt
     assert "PHASE 5: Synthesis & Decision Submission" in sys_prompt
 
@@ -64,9 +64,9 @@ def test_stage2_agentic_prompt_structure_and_skills():
     assert "Threshold: 9/14" in user_msg
 
     # 2. 5-Phase Sequential Investigation Directive
-    assert "PHASE 1: Macro Alignment & Core Trend Baseline" in sys_prompt
-    assert "PHASE 2: Market Structure & Smart Money Concepts (SMC)" in sys_prompt
-    assert "PHASE 3: Volatility Environment, Intraday Geometry & Institutional / Retail Positioning" in sys_prompt
+    assert "PHASE 1: Macro Alignment & Core Market Context" in sys_prompt
+    assert "PHASE 2: Market Structure, SMC & Price Geometry" in sys_prompt
+    assert "PHASE 3: Institutional Positioning & Catalysts" in sys_prompt
     assert "PHASE 4: Web Research Escalation Gate" in sys_prompt
     assert "PHASE 5: Confluence Scorecard, Sizing & Submission" in sys_prompt
 

@@ -353,7 +353,10 @@ def set_thread_execution_state(prevent_sleep: bool = True) -> bool:
         flags = 0x80000000  # ES_CONTINUOUS
         if prevent_sleep:
             flags |= 0x00000001  # ES_SYSTEM_REQUIRED
-        prev = ctypes.windll.kernel32.SetThreadExecutionState(flags)
+        windll = getattr(ctypes, "windll", None)
+        if not windll:
+            return False
+        prev = windll.kernel32.SetThreadExecutionState(flags)
         return prev != 0
     except Exception:
         return False

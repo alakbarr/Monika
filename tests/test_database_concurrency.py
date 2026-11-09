@@ -40,10 +40,16 @@ async def setup_sqlite_concurrency_db(tmp_path: Path, monkeypatch: pytest.Monkey
     db_mod._async_session_factory = None
     db_mod._SQLITE_WRITE_LOCKS.clear()
 
+    from monika.core.telemetry.sinks import set_telemetry_sink
+
+    set_telemetry_sink(None)
+
     # Initialize schema
     await init_db()
 
     yield db_file
+
+    set_telemetry_sink(None)
 
     # Teardown and clean locks
     await close_db()
