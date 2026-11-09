@@ -46,13 +46,21 @@ def validate_telemetry_bundle(
     event_impact: str = "HIGH",
     symbol: Optional[str] = None,
 ) -> Dict[str, Any]:
-    now = datetime.fromisoformat(now_utc_str.replace("Z", "+00:00")) if now_utc_str else datetime.now(UTC)
-    if now.tzinfo is None:
-        now = now.replace(tzinfo=UTC)
-
     freshness_results: Dict[str, Any] = {}
     stale_found = False
     reasons: List[str] = []
+
+    if now_utc_str:
+        try:
+            now = datetime.fromisoformat(now_utc_str.replace("Z", "+00:00"))
+        except Exception:
+            reasons.append(f"Invalid now-utc format '{now_utc_str}', defaulted to current UTC time")
+            now = datetime.now(UTC)
+    else:
+        now = datetime.now(UTC)
+
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
 
     if timestamps_json:
         try:

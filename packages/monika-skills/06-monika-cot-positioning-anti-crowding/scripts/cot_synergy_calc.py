@@ -25,6 +25,11 @@ def evaluate_cot_and_synergy(
     macro_conf: float = 75.0,
     sent_conf: float = 75.0,
 ) -> Dict[str, Any]:
+    pct_val = max(0.0, min(100.0, float(cot_52w_pct)))
+    t_conf = max(0.0, min(100.0, float(tech_conf)))
+    m_conf = max(0.0, min(100.0, float(macro_conf)))
+    s_conf = max(0.0, min(100.0, float(sent_conf)))
+
     t_d = (
         1.0
         if tech_dir.lower() in ("buy", "bull", "long")
@@ -42,17 +47,13 @@ def evaluate_cot_and_synergy(
     )
 
     # 3-Specialist Weighted Composite
-    composite = (
-        (t_d * (tech_conf / 100.0) * 0.45) + (m_d * (macro_conf / 100.0) * 0.35) + (s_d * (sent_conf / 100.0) * 0.20)
-    )
+    composite = (t_d * (t_conf / 100.0) * 0.45) + (m_d * (m_conf / 100.0) * 0.35) + (s_d * (s_conf / 100.0) * 0.20)
     composite_score = round(composite * 100.0, 1)
 
     # Crowding Alert
-    is_crowded = cot_52w_pct >= 85.0 or cot_52w_pct <= 15.0
+    is_crowded = pct_val >= 85.0 or pct_val <= 15.0
     crowd_label = (
-        "EXTREME_LONG_CROWD"
-        if cot_52w_pct >= 85.0
-        else ("EXTREME_SHORT_CROWD" if cot_52w_pct <= 15.0 else "NORMAL_UNSTRESSED")
+        "EXTREME_LONG_CROWD" if pct_val >= 85.0 else ("EXTREME_SHORT_CROWD" if pct_val <= 15.0 else "NORMAL_UNSTRESSED")
     )
 
     # 5 Synergy States Classification

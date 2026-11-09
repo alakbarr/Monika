@@ -124,7 +124,9 @@ def evaluate_asset_special(
 
         return {
             "asset_class": "FX_CARRY_TRADE",
-            "rate_differential_pct": (long_rate - short_rate) if (long_rate and short_rate) else None,
+            "rate_differential_pct": (
+                round(long_rate - short_rate, 3) if (long_rate is not None and short_rate is not None) else None
+            ),
             "implied_volatility_pct": implied_vol_pct,
             "carry_to_risk_ratio_cr": cr_ratio,
             "carry_attractiveness": carry_stance,
@@ -154,7 +156,12 @@ def evaluate_asset_special(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Monika Specialized Asset & Carry Calculator")
-    parser.add_argument("--asset", type=str, required=True, choices=["OIL", "BTC", "CARRY", "GOLD"])
+    parser.add_argument(
+        "--asset",
+        type=str,
+        required=True,
+        help="Asset type or symbol: OIL/CRUDE/XTIUSD, BTC/BTCUSD, CARRY/FX_CARRY, GOLD/XAUUSD",
+    )
     parser.add_argument("--brent-price", type=float, default=None)
     parser.add_argument("--wti-price", type=float, default=None)
     parser.add_argument("--mean-spread", type=float, default=4.50)

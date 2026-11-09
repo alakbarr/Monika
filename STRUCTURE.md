@@ -2905,14 +2905,16 @@ Monika/
 │   │   │       ├── test_forked_subagent_cache.py
 │   │   │       ├── test_spill_and_ptc_parallel.py
 │   │   │       └── test_stage2_session_concurrency.py
-│   │   └── infrastructure/
-│   │       ├── llm/
-│   │       │   ├── test_cache_threshold_and_capabilities.py
-│   │       │   ├── test_caveman_compressor.py
-│   │       │   └── test_kv_cache_invariance.py
-│   │       └── providers/
-│   │           ├── test_provider_telemetry_invariants.py
-│   │           └── test_provider_thinking_replay_and_immutability.py
+│   │   ├── infrastructure/
+│   │   │   ├── llm/
+│   │   │   │   ├── test_cache_threshold_and_capabilities.py
+│   │   │   │   ├── test_caveman_compressor.py
+│   │   │   │   └── test_kv_cache_invariance.py
+│   │   │   └── providers/
+│   │   │       ├── test_provider_telemetry_invariants.py
+│   │   │       └── test_provider_thinking_replay_and_immutability.py
+│   │   └── skills/
+│   │       └── test_monika_standalone_skills.py
 │   ├── utils/
 │   │   ├── __init__.py
 │   │   ├── test_analysis_tracker.py
@@ -3269,4 +3271,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 281 | **Total Tracked Files**: 2958
+**Total Tracked Directories**: 282 | **Total Tracked Files**: 2959

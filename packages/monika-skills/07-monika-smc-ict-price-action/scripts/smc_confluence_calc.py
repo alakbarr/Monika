@@ -25,12 +25,15 @@ def evaluate_smc_setup(
     has_active_impulse: bool = False,
     regime_type: str = "regime_a_trend",
 ) -> Dict[str, Any]:
-    rng = high20 - low20
-    pos = 0.50 if rng <= 0.0 else (close - low20) / rng
+    hi = max(float(high20), float(low20))
+    lo = min(float(high20), float(low20))
+    rng = hi - lo
+    pos = 0.50 if rng <= 0.0 else (close - lo) / rng
     pos = round(max(0.0, min(1.0, pos)), 4)
+    safe_atr = max(1e-7, float(atr14))
 
-    is_discount = pos <= 0.35 or (pdl is not None and (close - pdl) <= 0.50 * atr14 and pos <= 0.40)
-    is_premium = pos >= 0.65 or (pdh is not None and (pdh - close) <= 0.50 * atr14 and pos >= 0.60)
+    is_discount = pos <= 0.35 or (pdl is not None and (close - pdl) <= 0.50 * safe_atr and pos <= 0.40)
+    is_premium = pos >= 0.65 or (pdh is not None and (pdh - close) <= 0.50 * safe_atr and pos >= 0.60)
     is_equilibrium = not is_discount and not is_premium
 
     anti_chasing_buy = pos > 0.85

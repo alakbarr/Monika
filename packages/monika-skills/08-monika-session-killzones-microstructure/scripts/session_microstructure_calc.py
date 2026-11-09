@@ -23,7 +23,16 @@ def evaluate_microstructure(
     now_utc_str: Optional[str] = None,
     symbol: Optional[str] = None,
 ) -> Dict[str, Any]:
-    now = datetime.fromisoformat(now_utc_str.replace("Z", "+00:00")) if now_utc_str else datetime.now(UTC)
+    reasons: List[str] = []
+    if now_utc_str:
+        try:
+            now = datetime.fromisoformat(now_utc_str.replace("Z", "+00:00"))
+        except Exception:
+            reasons.append(f"Invalid timestamp format '{now_utc_str}', fell back to current UTC time")
+            now = datetime.now(UTC)
+    else:
+        now = datetime.now(UTC)
+
     if now.tzinfo is None:
         now = now.replace(tzinfo=UTC)
 
@@ -31,6 +40,9 @@ def evaluate_microstructure(
     minute = now.minute
     minute_of_day = hour * 60 + minute
     weekday = now.weekday()  # 0=Monday, 4=Friday, 5=Saturday, 6=Sunday
+
+    sym_upper = (symbol or "").strip().upper()
+    is_crypto = any(k in sym_upper for k in ("BTC", "ETH", "SOL", "CRYPTO"))
 
     # Session Killzones
     active_sessions: List[str] = []
@@ -48,19 +60,20 @@ def evaluate_microstructure(
     # Rollover Blackout: 21:55 - 22:15 UTC (1315 - 1335 minute of day)
     rollover_blackout = 1315 <= minute_of_day <= 1335
 
-    # Weekend / Friday Cutoff: Friday after 18:00 UTC
-    friday_cutoff = weekday == 4 and hour >= 18
-    weekend_closed = weekday in (5, 6)
+    # Weekend / Friday Cutoff: Friday after 18:00 UTC (Crypto 24/7 exempt)
+    friday_cutoff = (weekday == 4 and hour >= 18) and not is_crypto
+    weekend_closed = (weekday in (5, 6)) and not is_crypto
 
     # Orderbook Imbalance (OBI)
-    tot_vol = bid_vol + ask_vol
-    obi = round((bid_vol - ask_vol) / tot_vol, 3) if tot_vol > 0 else 0.0
+    b_vol = max(0.0, float(bid_vol))
+    a_vol = max(0.0, float(ask_vol))
+    tot_vol = b_vol + a_vol
+    obi = round((b_vol - a_vol) / tot_vol, 3) if tot_vol > 0 else 0.0
 
     # Spread Spike Gate
     spread_ratio = round(spread_current / max(1e-7, spread_typical), 2)
     spread_breached = spread_ratio > 2.0
 
-    reasons: List[str] = []
     if rollover_blackout:
         reasons.append(f"Rollover Blackout active ({now.strftime('%H:%M UTC')}). Spread widening danger.")
     if friday_cutoff:
@@ -78,8 +91,10 @@ def evaluate_microstructure(
         "active_killzones": active_sessions,
         "is_judas_swing_window": "JUDAS_SWING_ALERT" in active_sessions,
         "is_overlap_session": "LONDON_NY_OVERLAP" in active_sessions,
+        "is_crypto_24_7": is_crypto,
         "rollover_blackout_active": rollover_blackout,
         "friday_cutoff_active": friday_cutoff,
+        "weekend_closed": weekend_closed,
         "orderbook_microstructure": {
             "bid_volume": bid_vol,
             "ask_volume": ask_vol,

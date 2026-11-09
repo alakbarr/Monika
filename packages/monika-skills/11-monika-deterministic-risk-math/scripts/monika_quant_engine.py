@@ -381,10 +381,14 @@ def audit_risk_gate(
     dir_clean = direction.strip().lower()
     sym_clean = symbol.strip().upper()
 
-    vals = [entry, sl, tp, atr14, adr5d, pos, equity]
-    if any(not math.isfinite(v) or v <= 0.0 for v in vals if v is not pos):
+    strictly_positive_vals = [entry, sl, tp, atr14, adr5d, equity]
+    if (
+        any(not math.isfinite(v) or v <= 0.0 for v in strictly_positive_vals)
+        or not math.isfinite(pos)
+        or not (0.0 <= pos <= 1.0)
+    ):
         checks_failed.append("valid_finite_inputs")
-        reasons.append("Inputs contain NaN, infinite, or non-positive values")
+        reasons.append("Inputs contain NaN, infinite, or out-of-bounds values (pos must be finite in [0.0, 1.0])")
     else:
         checks_passed.append("valid_finite_inputs")
 
@@ -450,7 +454,15 @@ def audit_risk_gate(
     else:
         checks_passed.append("spread_spike_gate")
 
-    now = datetime.fromisoformat(now_utc_str.replace("Z", "+00:00")) if now_utc_str else datetime.now(UTC)
+    if now_utc_str:
+        try:
+            now = datetime.fromisoformat(now_utc_str.replace("Z", "+00:00"))
+        except Exception:
+            reasons.append(f"Invalid now-utc format '{now_utc_str}', defaulted to current UTC time")
+            now = datetime.now(UTC)
+    else:
+        now = datetime.now(UTC)
+
     if now.tzinfo is None:
         now = now.replace(tzinfo=UTC)
     minute_of_day = now.hour * 60 + now.minute

@@ -46,16 +46,18 @@ def evaluate_macro_plumbing(
 
     if us10y is not None and us2y is not None:
         slope_2s10s = round(us10y - us2y, 3)
-        if slope_2s10s > 0:
+        if slope_2s10s > 0.05:
             curve_regime = "STEEPENER_NORMAL"
-        else:
+        elif slope_2s10s < -0.05:
             curve_regime = "INVERTED_FLATTENER"
+        else:
+            curve_regime = "FLAT_TRANSITION"
 
     if us10y is not None and tips10y is not None:
         breakeven_10y = round(us10y - tips10y, 3)
 
     # 3. VIX Volatility Regime & Multiplier
-    vix_val = float(vix)
+    vix_val = max(0.0, float(vix))
     if vix_val < 15.0:
         vix_regime = "RISK_ON"
         vix_mult = 1.00

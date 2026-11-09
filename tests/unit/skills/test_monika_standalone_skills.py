@@ -124,6 +124,15 @@ def test_zero_unresolved_placeholders(pkg_name: str):
 # -----------------------------------------------------------------------------
 
 
+def load_module_from_path(rel_path: str, module_name: str):
+    full_path = REPO_ROOT / rel_path
+    spec = importlib.util.spec_from_file_location(module_name, full_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 @pytest.fixture(scope="module")
 def quant_engine():
     engine_path = PACKAGES_DIR / "01-monika-full-trading-cycle" / "scripts" / "monika_quant_engine.py"
@@ -436,3 +445,98 @@ def test_property_decimal_lot_sizing_never_exceeds_risk_budget(
         actual = Decimal(str(res["actual_dollar_risk"]))
         budget = Decimal(str(res["dollar_risk_budget"]))
         assert actual <= budget + Decimal("0.01"), f"Actual risk ${actual} exceeded budget ${budget}"
+
+
+# -----------------------------------------------------------------------------
+# 4. Critical Edge-Case & Hardening Tests
+# -----------------------------------------------------------------------------
+
+
+def test_edge_case_nan_pos_in_riskgate(quant_engine):
+    """Verifies that non-finite or out-of-bounds pos is strictly rejected (Fail-Closed)."""
+    for bad_pos in [float("nan"), -0.1, 1.1]:
+        res = quant_engine.audit_risk_gate(
+            symbol="EURUSD",
+            direction="buy",
+            entry=1.08500,
+            sl=1.08000,
+            tp=1.09500,
+            atr14=0.00350,
+            adr5d=0.00700,
+            pos=bad_pos,
+            equity=10000.0,
+        )
+        assert res["approved"] is False
+        assert "valid_finite_inputs" in res["checks_failed"]
+
+
+def test_edge_case_carry_rate_zero():
+    """Verifies that short_rate=0.0 (ZIRP) is not falsely treated as None/falsy."""
+    mod = load_module_from_path(
+        "packages/monika-skills/09-monika-commodities-crypto-carry-playbooks/scripts/asset_special_calc.py",
+        "asset_calc_edge",
+    )
+    res = mod.evaluate_asset_special("CARRY", long_rate=5.25, short_rate=0.0, implied_vol_pct=8.0)
+    assert res["rate_differential_pct"] == 5.25
+    assert res["carry_to_risk_ratio_cr"] > 0.50
+    assert res["carry_attractiveness"] == "ATTRACTIVE"
+
+
+def test_edge_case_crypto_weekend_execution():
+    """Verifies that 24/7 crypto assets (BTC, ETH) are not blocked by weekend or Friday cutoff."""
+    mod = load_module_from_path(
+        "packages/monika-skills/08-monika-session-killzones-microstructure/scripts/session_microstructure_calc.py",
+        "session_calc_edge",
+    )
+    # Saturday 2026-10-24 14:00 UTC
+    res_sat = mod.evaluate_microstructure(
+        spread_current=12.0,
+        spread_typical=12.0,
+        now_utc_str="2026-10-24T14:00:00Z",
+        symbol="BTCUSD",
+    )
+    assert res_sat["execution_permitted"] is True
+    assert res_sat["weekend_closed"] is False
+    assert res_sat["is_crypto_24_7"] is True
+
+    # But Forex EURUSD on Saturday MUST be blocked
+    res_fx = mod.evaluate_microstructure(
+        spread_current=1.0,
+        spread_typical=1.0,
+        now_utc_str="2026-10-24T14:00:00Z",
+        symbol="EURUSD",
+    )
+    assert res_fx["execution_permitted"] is False
+    assert res_fx["weekend_closed"] is True
+
+
+def test_edge_case_event_anchor_inverted_range():
+    """Verifies that event_nowcast_calc produces positive range even if event_high < event_low."""
+    mod = load_module_from_path(
+        "packages/monika-skills/05-monika-economic-nowcasting-event-absorption/scripts/event_nowcast_calc.py",
+        "event_nowcast_edge",
+    )
+    res = mod.evaluate_event_nowcast(event_high=1.0800, event_low=1.0850)
+    rng = res["event_anchor_range"]
+    assert rng["event_high"] == 1.085
+    assert rng["event_low"] == 1.080
+    assert rng["range_size"] == 0.005
+    assert rng["event_midpoint"] == 1.0825
+
+
+def test_edge_case_cb_differential_optional_defaults():
+    """Verifies that cb_differential runs without explicit r* or inflation by using CB profiles."""
+    mod = load_module_from_path(
+        "packages/monika-skills/03-monika-central-banks-monetary-policy/scripts/cb_differential_calc.py",
+        "cb_diff_edge",
+    )
+    res = mod.compute_cb_differential(
+        base_currency="USD",
+        quote_currency="JPY",
+        base_rate=5.25,
+        quote_rate=0.25,
+    )
+    assert res["nominal_rate_differential_bps"] == 500.0
+    assert res["base"]["neutral_r_star"] == 2.875
+    assert res["quote"]["neutral_r_star"] == 0.875
+    assert res["structural_macro_bias"] == "BULLISH"

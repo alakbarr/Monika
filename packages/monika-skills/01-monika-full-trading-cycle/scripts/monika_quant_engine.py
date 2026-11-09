@@ -304,15 +304,26 @@ def validate_telemetry(
 # ==============================================================================
 
 
+CB_PROFILES: Dict[str, Dict[str, Any]] = {
+    "USD": {"name": "Federal Reserve", "target_inflation": 2.0, "default_r_star": 2.875},
+    "EUR": {"name": "European Central Bank", "target_inflation": 2.0, "default_r_star": 2.125},
+    "GBP": {"name": "Bank of England", "target_inflation": 2.0, "default_r_star": 3.375},
+    "JPY": {"name": "Bank of Japan", "target_inflation": 2.0, "default_r_star": 0.875},
+    "AUD": {"name": "Reserve Bank of Australia", "target_inflation": 2.5, "default_r_star": 3.625},
+    "CAD": {"name": "Bank of Canada", "target_inflation": 2.0, "default_r_star": 2.75},
+    "CHF": {"name": "Swiss National Bank", "target_inflation": 1.0, "default_r_star": 1.00},
+}
+
+
 def cb_differential(
     base_currency: str,
     quote_currency: str,
     base_rate: float,
     quote_rate: float,
-    base_r_star: float,
-    quote_r_star: float,
-    base_inflation: float,
-    quote_inflation: float,
+    base_r_star: Optional[float] = None,
+    quote_r_star: Optional[float] = None,
+    base_inflation: Optional[float] = None,
+    quote_inflation: Optional[float] = None,
     base_unemployment_chg: float = 0.0,
     quote_unemployment_chg: float = 0.0,
 ) -> Dict[str, Any]:
@@ -320,13 +331,25 @@ def cb_differential(
     Computes Taylor/Neutral stance divergence, net pair bias, and FX Algebraic Sign Invariant.
     Bias(BASE/QUOTE) = Bias(BASE) - Bias(QUOTE)
     """
+    b_curr = base_currency.strip().upper()
+    q_curr = quote_currency.strip().upper()
+
+    b_prof = CB_PROFILES.get(b_curr, {"name": f"CB_{b_curr}", "target_inflation": 2.0, "default_r_star": 2.5})
+    q_prof = CB_PROFILES.get(q_curr, {"name": f"CB_{q_curr}", "target_inflation": 2.0, "default_r_star": 2.5})
+
+    r_star_b = base_r_star if base_r_star is not None else b_prof["default_r_star"]
+    r_star_q = quote_r_star if quote_r_star is not None else q_prof["default_r_star"]
+
+    inf_b = base_inflation if base_inflation is not None else b_prof["target_inflation"]
+    inf_q = quote_inflation if quote_inflation is not None else q_prof["target_inflation"]
+
     # Policy stance = Policy Rate - Neutral Rate (r*)
-    base_stance = base_rate - base_r_star
-    quote_stance = quote_rate - quote_r_star
+    base_stance = base_rate - r_star_b
+    quote_stance = quote_rate - r_star_q
 
     # Inflation pressure
-    base_inf_gap = base_inflation - 2.0  # Assumes 2% symmetric target
-    quote_inf_gap = quote_inflation - 2.0
+    base_inf_gap = inf_b - b_prof["target_inflation"]
+    quote_inf_gap = inf_q - q_prof["target_inflation"]
 
     # Macro score (-10 to +10)
     # Higher stance + higher inflation = hawkish (+); rising unemployment = dovish (-)
@@ -464,9 +487,12 @@ def event_calc(
     priced_in_cot: float = 5.0,
     priced_in_exhaustion: float = 5.0,
     priced_in_historical: float = 5.0,
+    event_high: Optional[float] = None,
+    event_low: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
-    Computes Net Surprise with revision and Canonical 4-Method Priced-In Score (1-10).
+    Computes Net Surprise with revision, Canonical 4-Method Priced-In Score (1-10),
+    and normalized Event Anchor Range.
     """
     net_surprise: Optional[float] = None
     if actual is not None and consensus is not None:
@@ -477,13 +503,28 @@ def event_calc(
     priced_in_avg = round(sum(scores) / len(scores), 2)
     exhaustion_warning = priced_in_avg >= 8.0
 
+    # Event Anchor Range
+    anchor_range: Optional[Dict[str, float]] = None
+    if event_high is not None and event_low is not None:
+        hi = max(float(event_high), float(event_low))
+        lo = min(float(event_high), float(event_low))
+        rng = hi - lo
+        anchor_range = {
+            "event_high": hi,
+            "event_low": lo,
+            "event_midpoint": round(lo + (rng * 0.5), 5),
+            "range_size": round(rng, 5),
+        }
+
     return {
         "actual": actual,
         "consensus": consensus,
+        "previous": previous,
         "prior_revision": prior_revision,
         "net_surprise": net_surprise,
         "priced_in_score": priced_in_avg,
         "exhaustion_warning": exhaustion_warning,
+        "event_anchor_range": anchor_range,
         "execution_guidance": (
             "EXHAUSTION WARNING: Market has pre-priced the outcome (Score >= 8.0). High risk of 'Sell-the-Fact' reversal."
             if exhaustion_warning
@@ -511,18 +552,33 @@ def cot_synergy(
     Evaluates 3-Specialist Triangulation (Tech 45%, Macro 35%, Contrarian Sent 20%)
     and classifies into 5 Institutional Synergy States.
     """
-    t_d = 1.0 if tech_dir.lower() in ("buy", "bull") else (-1.0 if tech_dir.lower() in ("sell", "bear") else 0.0)
-    m_d = 1.0 if macro_dir.lower() in ("buy", "bull") else (-1.0 if macro_dir.lower() in ("sell", "bear") else 0.0)
-    s_d = 1.0 if sent_dir.lower() in ("buy", "bull") else (-1.0 if sent_dir.lower() in ("sell", "bear") else 0.0)
+    t_conf = max(0.0, min(100.0, float(tech_conf)))
+    m_conf = max(0.0, min(100.0, float(macro_conf)))
+    s_conf = max(0.0, min(100.0, float(sent_conf)))
+    pct_val = max(0.0, min(100.0, float(cot_52w_pct)))
+
+    t_d = (
+        1.0
+        if tech_dir.lower() in ("buy", "bull", "long")
+        else (-1.0 if tech_dir.lower() in ("sell", "bear", "short") else 0.0)
+    )
+    m_d = (
+        1.0
+        if macro_dir.lower() in ("buy", "bull", "long")
+        else (-1.0 if macro_dir.lower() in ("sell", "bear", "short") else 0.0)
+    )
+    s_d = (
+        1.0
+        if sent_dir.lower() in ("buy", "bull", "long")
+        else (-1.0 if sent_dir.lower() in ("sell", "bear", "short") else 0.0)
+    )
 
     # Weighted Composite Score: Tech 45%, Macro 35%, Sent 20%
-    composite = (
-        (t_d * (tech_conf / 100.0) * 0.45) + (m_d * (macro_conf / 100.0) * 0.35) + (s_d * (sent_conf / 100.0) * 0.20)
-    )
+    composite = (t_d * (t_conf / 100.0) * 0.45) + (m_d * (m_conf / 100.0) * 0.35) + (s_d * (s_conf / 100.0) * 0.20)
     composite_score = round(composite * 100.0, 1)
 
     # Extreme COT Crowd Alert
-    is_cot_crowded = cot_52w_pct >= 85.0 or cot_52w_pct <= 15.0
+    is_cot_crowded = pct_val >= 85.0 or pct_val <= 15.0
 
     # Synergy State Classification
     if t_d == m_d and t_d != 0.0:
@@ -577,16 +633,16 @@ def smc_confluence(
     and 20-Point Confluence scorecard threshold tiers.
     pos = (Close - Low20) / (High20 - Low20)
     """
-    rng = high20 - low20
-    if rng <= 0.0:
-        pos = 0.50
-    else:
-        pos = (close - low20) / rng
+    hi = max(float(high20), float(low20))
+    lo = min(float(high20), float(low20))
+    rng = hi - lo
+    pos = 0.50 if rng <= 0.0 else (close - lo) / rng
     pos = round(max(0.0, min(1.0, pos)), 4)
+    safe_atr = max(1e-7, float(atr14))
 
     # Zone Determination
-    is_discount = pos <= 0.35 or (pdl is not None and (close - pdl) <= 0.50 * atr14 and pos <= 0.40)
-    is_premium = pos >= 0.65 or (pdh is not None and (pdh - close) <= 0.50 * atr14 and pos >= 0.60)
+    is_discount = pos <= 0.35 or (pdl is not None and (close - pdl) <= 0.50 * safe_atr and pos <= 0.40)
+    is_premium = pos >= 0.65 or (pdh is not None and (pdh - close) <= 0.50 * safe_atr and pos >= 0.60)
     is_equilibrium = not is_discount and not is_premium
 
     # Dealing Range Restrictions
@@ -706,7 +762,7 @@ def debate_judge(
     inv_bull = 1.0 / max(0.01, bull_brier)
     inv_bear = 1.0 / max(0.01, bear_brier)
     sum_inv = inv_bull + inv_bear
-    w_bull = round(max(0.15, min(0.65, inv_bull / sum_inv)), 3)
+    w_bull = round(max(0.20, min(0.80, inv_bull / sum_inv)), 3)
     w_bear = round(1.0 - w_bull, 3)
 
     score_diff = att_bull - att_bear
@@ -756,7 +812,141 @@ def debate_judge(
 
 
 # ==============================================================================
-# 10. SUBCOMMAND: PRE-COMPUTED DETERMINISTIC BRACKET GENERATOR
+# 10. SUBCOMMAND: SPECIALIZED ASSET & CARRY TRADE PLAYBOOKS
+# ==============================================================================
+
+
+def asset_special(
+    asset_type: str,
+    brent_price: Optional[float] = None,
+    wti_price: Optional[float] = None,
+    mean_spread: float = 4.50,
+    std_spread: float = 0.85,
+    gasoline_price: Optional[float] = None,
+    distillate_price: Optional[float] = None,
+    crude_price: Optional[float] = None,
+    etf_net_inflow_m: Optional[float] = None,
+    funding_rate_8h_pct: Optional[float] = None,
+    open_interest_chg_pct: Optional[float] = None,
+    long_rate: Optional[float] = None,
+    short_rate: Optional[float] = None,
+    implied_vol_pct: Optional[float] = None,
+    vix: float = 16.0,
+    tips10y: Optional[float] = None,
+    dxy: Optional[float] = None,
+    shanghai_premium_usd: Optional[float] = None,
+) -> Dict[str, Any]:
+    """
+    Evaluates asset-specific playbooks: Brent-WTI Stat-Arb & 3:2:1 Crack, BTC ETF/Funding,
+    FX Carry-to-Risk ratio, and Gold TIPS non-linearity.
+    """
+    asset = asset_type.upper().strip()
+
+    if asset in ("OIL", "CRUDE", "XTIUSD", "XBRUSD"):
+        spread_val: Optional[float] = None
+        z_score: Optional[float] = None
+        arb_signal = "NEUTRAL_IN_BAND"
+
+        if brent_price is not None and wti_price is not None:
+            spread_val = round(brent_price - wti_price, 2)
+            z_score = round((spread_val - mean_spread) / max(1e-5, std_spread), 2)
+            if z_score >= 2.0:
+                arb_signal = "SHORT_BRENT_LONG_WTI (Spread over-extended, expect mean reversion)"
+            elif z_score <= -2.0:
+                arb_signal = "LONG_BRENT_SHORT_WTI (Spread under-extended, expect widening)"
+
+        crack_spread_321: Optional[float] = None
+        if gasoline_price is not None and distillate_price is not None and crude_price is not None:
+            crack_spread_321 = round(
+                ((2 * gasoline_price * 42) + (1 * distillate_price * 42) - (3 * crude_price)) / 3, 2
+            )
+
+        return {
+            "asset_class": "CRUDE_OIL",
+            "brent_wti_spread": {
+                "brent_price": brent_price,
+                "wti_price": wti_price,
+                "current_spread": spread_val,
+                "historical_mean": mean_spread,
+                "historical_std": std_spread,
+                "z_score": z_score,
+                "statistical_arbitrage_verdict": arb_signal,
+            },
+            "crack_spread_3_2_1_usd_bbl": crack_spread_321,
+        }
+
+    elif asset in ("BTC", "BTCUSD", "CRYPTO"):
+        etf_stance = "NEUTRAL"
+        if etf_net_inflow_m is not None:
+            if etf_net_inflow_m > 200.0:
+                etf_stance = "HEAVY_INSTITUTIONAL_INFLOW"
+            elif etf_net_inflow_m < -150.0:
+                etf_stance = "INSTITUTIONAL_OUTFLOW_PRESSURE"
+
+        funding_stance = "NORMAL"
+        if funding_rate_8h_pct is not None:
+            if funding_rate_8h_pct >= 0.05:
+                funding_stance = "OVERHEATED_LONG_LEVERAGE (Squeeze Danger)"
+            elif funding_rate_8h_pct <= -0.02:
+                funding_stance = "EXTREME_SHORT_SQUEEZE_POTENTIAL"
+
+        return {
+            "asset_class": "BITCOIN_CRYPTO",
+            "spot_etf_flow_millions": etf_net_inflow_m,
+            "etf_flow_regime": etf_stance,
+            "perpetual_funding_8h_pct": funding_rate_8h_pct,
+            "funding_regime": funding_stance,
+            "open_interest_change_pct": open_interest_chg_pct,
+        }
+
+    elif asset in ("CARRY", "CARRY_TRADE", "FX_CARRY"):
+        cr_ratio: Optional[float] = None
+        if long_rate is not None and short_rate is not None and implied_vol_pct is not None:
+            rate_diff = long_rate - short_rate
+            cr_ratio = round(rate_diff / max(1e-5, implied_vol_pct), 3)
+
+        carry_stance = "ATTRACTIVE" if (cr_ratio is not None and cr_ratio >= 0.50) else "UNATTRACTIVE"
+
+        if vix > 28.0:
+            unwind_status = "FULL_EMERGENCY_UNWIND (Close all Long Carry, Reverse to Long JPY/CHF)"
+        elif vix > 22.0:
+            unwind_status = "DEFENSIVE_HAIRCUT (Cut Carry exposure by 50%)"
+        else:
+            unwind_status = "SAFE_STABLE_CARRY_ENVIRONMENT"
+
+        return {
+            "asset_class": "FX_CARRY_TRADE",
+            "rate_differential_pct": (
+                round(long_rate - short_rate, 3) if (long_rate is not None and short_rate is not None) else None
+            ),
+            "implied_volatility_pct": implied_vol_pct,
+            "carry_to_risk_ratio_cr": cr_ratio,
+            "carry_attractiveness": carry_stance,
+            "vix_level": vix,
+            "unwind_ladder_protocol": unwind_status,
+        }
+
+    elif asset in ("GOLD", "XAU", "XAUUSD"):
+        regime = "NORMAL_NEGATIVE_CORRELATION"
+        if tips10y is not None:
+            if tips10y > 2.0:
+                regime = "SOVEREIGN_DEBT_STRESS_REGIME (Gold decouples and rises despite high Real Yields)"
+            elif tips10y < 1.0:
+                regime = "NEGATIVE_REAL_YIELD_TAILWIND (Gold rallies aggressively)"
+
+        return {
+            "asset_class": "GOLD_XAUUSD",
+            "tips_10y_real_yield": tips10y,
+            "dxy_index": dxy,
+            "shanghai_gold_premium_usd": shanghai_premium_usd,
+            "gold_macro_regime": regime,
+        }
+
+    return {"error": f"Unsupported asset class: '{asset_type}'"}
+
+
+# ==============================================================================
+# 11. SUBCOMMAND: PRE-COMPUTED DETERMINISTIC BRACKET GENERATOR
 # ==============================================================================
 
 
@@ -975,10 +1165,14 @@ def audit_risk_gate(
     spec = get_asset_spec(sym_clean)
 
     # 1. Finite Numerical Validation
-    vals = [entry, sl, tp, atr14, adr5d, pos, equity]
-    if any(not math.isfinite(v) or v <= 0.0 for v in vals if v is not pos):
+    strictly_positive_vals = [entry, sl, tp, atr14, adr5d, equity]
+    if (
+        any(not math.isfinite(v) or v <= 0.0 for v in strictly_positive_vals)
+        or not math.isfinite(pos)
+        or not (0.0 <= pos <= 1.0)
+    ):
         checks_failed.append("valid_finite_inputs")
-        reasons.append("Inputs contain NaN, infinite, or non-positive values")
+        reasons.append("Inputs contain NaN, infinite, or out-of-bounds values (pos must be finite in [0.0, 1.0])")
     else:
         checks_passed.append("valid_finite_inputs")
 
@@ -1052,7 +1246,15 @@ def audit_risk_gate(
         checks_passed.append("spread_spike_gate")
 
     # 9. Rollover Window Blackout (21:55 - 22:15 UTC)
-    now = datetime.fromisoformat(now_utc_str.replace("Z", "+00:00")) if now_utc_str else datetime.now(UTC)
+    if now_utc_str:
+        try:
+            now = datetime.fromisoformat(now_utc_str.replace("Z", "+00:00"))
+        except Exception:
+            reasons.append(f"Invalid now-utc format '{now_utc_str}', defaulted to current UTC time")
+            now = datetime.now(UTC)
+    else:
+        now = datetime.now(UTC)
+
     if now.tzinfo is None:
         now = now.replace(tzinfo=UTC)
     minute_of_day = now.hour * 60 + now.minute
@@ -1120,10 +1322,10 @@ def main() -> int:
     p_cb.add_argument("--quote-currency", type=str, required=True)
     p_cb.add_argument("--base-rate", type=float, required=True)
     p_cb.add_argument("--quote-rate", type=float, required=True)
-    p_cb.add_argument("--base-r-star", type=float, required=True)
-    p_cb.add_argument("--quote-r-star", type=float, required=True)
-    p_cb.add_argument("--base-inflation", type=float, required=True)
-    p_cb.add_argument("--quote-inflation", type=float, required=True)
+    p_cb.add_argument("--base-r-star", type=float, default=None)
+    p_cb.add_argument("--quote-r-star", type=float, default=None)
+    p_cb.add_argument("--base-inflation", type=float, default=None)
+    p_cb.add_argument("--quote-inflation", type=float, default=None)
     p_cb.add_argument("--base-unemp-chg", type=float, default=0.0)
     p_cb.add_argument("--quote-unemp-chg", type=float, default=0.0)
 
@@ -1149,6 +1351,8 @@ def main() -> int:
     p_ev.add_argument("--priced-in-cot", type=float, default=5.0)
     p_ev.add_argument("--priced-in-exhaustion", type=float, default=5.0)
     p_ev.add_argument("--priced-in-historical", type=float, default=5.0)
+    p_ev.add_argument("--event-high", type=float, default=None)
+    p_ev.add_argument("--event-low", type=float, default=None)
 
     # 5. cot-synergy
     p_cot = subparsers.add_parser("cot-synergy")
@@ -1191,7 +1395,33 @@ def main() -> int:
     p_deb.add_argument("--bear-brier", type=float, default=0.20)
     p_deb.add_argument("--active-criteria-met", type=int, default=4)
 
-    # 9. brackets
+    # 9. asset-special
+    p_asp = subparsers.add_parser("asset-special")
+    p_asp.add_argument(
+        "--asset",
+        type=str,
+        required=True,
+        help="Asset type or symbol: OIL/CRUDE/XTIUSD, BTC/BTCUSD, CARRY/FX_CARRY, GOLD/XAUUSD",
+    )
+    p_asp.add_argument("--brent-price", type=float, default=None)
+    p_asp.add_argument("--wti-price", type=float, default=None)
+    p_asp.add_argument("--mean-spread", type=float, default=4.50)
+    p_asp.add_argument("--std-spread", type=float, default=0.85)
+    p_asp.add_argument("--gasoline-price", type=float, default=None)
+    p_asp.add_argument("--distillate-price", type=float, default=None)
+    p_asp.add_argument("--crude-price", type=float, default=None)
+    p_asp.add_argument("--etf-net-inflow-m", type=float, default=None)
+    p_asp.add_argument("--funding-rate-8h", type=float, default=None)
+    p_asp.add_argument("--open-interest-chg-pct", type=float, default=None)
+    p_asp.add_argument("--long-rate", type=float, default=None)
+    p_asp.add_argument("--short-rate", type=float, default=None)
+    p_asp.add_argument("--implied-vol", type=float, default=None)
+    p_asp.add_argument("--vix", type=float, default=16.0)
+    p_asp.add_argument("--tips10y", type=float, default=None)
+    p_asp.add_argument("--dxy", type=float, default=None)
+    p_asp.add_argument("--shanghai-premium", type=float, default=None)
+
+    # 10. brackets
     p_brk = subparsers.add_parser("brackets")
     p_brk.add_argument("--symbol", type=str, required=True)
     p_brk.add_argument("--price", type=float, required=True)
@@ -1279,6 +1509,8 @@ def main() -> int:
             priced_in_cot=args.priced_in_cot,
             priced_in_exhaustion=args.priced_in_exhaustion,
             priced_in_historical=args.priced_in_historical,
+            event_high=args.event_high,
+            event_low=args.event_low,
         )
     elif args.subcommand == "cot-synergy":
         out = cot_synergy(
@@ -1320,6 +1552,27 @@ def main() -> int:
             bull_brier=args.bull_brier,
             bear_brier=args.bear_brier,
             active_criteria_met=args.active_criteria_met,
+        )
+    elif args.subcommand == "asset-special":
+        out = asset_special(
+            asset_type=args.asset,
+            brent_price=args.brent_price,
+            wti_price=args.wti_price,
+            mean_spread=args.mean_spread,
+            std_spread=args.std_spread,
+            gasoline_price=args.gasoline_price,
+            distillate_price=args.distillate_price,
+            crude_price=args.crude_price,
+            etf_net_inflow_m=args.etf_net_inflow_m,
+            funding_rate_8h_pct=args.funding_rate_8h,
+            open_interest_chg_pct=args.open_interest_chg_pct,
+            long_rate=args.long_rate,
+            short_rate=args.short_rate,
+            implied_vol_pct=args.implied_vol,
+            vix=args.vix,
+            tips10y=args.tips10y,
+            dxy=args.dxy,
+            shanghai_premium_usd=args.shanghai_premium,
         )
     elif args.subcommand == "brackets":
         out = generate_brackets(

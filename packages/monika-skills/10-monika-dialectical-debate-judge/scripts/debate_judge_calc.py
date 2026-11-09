@@ -50,11 +50,11 @@ def arbitrate_debate(
     r_key = regime.lower().strip()
     weights = REGIME_WEIGHT_MATRIX.get(r_key, REGIME_WEIGHT_MATRIX["trending"])
 
-    # 3. Brier Calibration Weights: w_i = (1 / B_i) / sum(1 / B_j) clamped to [0.15, 0.65]
+    # 3. Brier Calibration Weights: w_i = (1 / B_i) / sum(1 / B_j) clamped to [0.20, 0.80]
     inv_bull = 1.0 / max(0.01, bull_brier)
     inv_bear = 1.0 / max(0.01, bear_brier)
     sum_inv = inv_bull + inv_bear
-    w_bull = round(max(0.15, min(0.65, inv_bull / sum_inv)), 3)
+    w_bull = round(max(0.20, min(0.80, inv_bull / sum_inv)), 3)
     w_bear = round(1.0 - w_bull, 3)
 
     score_diff = att_bull - att_bear

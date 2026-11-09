@@ -42,11 +42,13 @@ def evaluate_event_nowcast(
     # Event Anchor Range
     anchor_range: Optional[Dict[str, float]] = None
     if event_high is not None and event_low is not None:
-        rng = event_high - event_low
+        hi = max(float(event_high), float(event_low))
+        lo = min(float(event_high), float(event_low))
+        rng = hi - lo
         anchor_range = {
-            "event_high": event_high,
-            "event_low": event_low,
-            "event_midpoint": round(event_low + (rng * 0.5), 5),
+            "event_high": hi,
+            "event_low": lo,
+            "event_midpoint": round(lo + (rng * 0.5), 5),
             "range_size": round(rng, 5),
         }
 
