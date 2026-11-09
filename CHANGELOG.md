@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-11-10
+
+### Performance, Stability, Native Rust Acceleration & 24/7 Endurance
+
+#### High-Performance Quantitative Computing & Native Kernels
+- **Expanded Native Rust C-ABI Accelerator (`monika_core_rs`)**:
+  - High-performance compiled shared library loaded via ctypes with SHA-256 shadow-copy loading on Windows to prevent runtime DLL locking.
+  - Accelerated kernels: SMC fractal swing detection (`find_swings_f64`, `find_swing_pivots_f64`), Microstructure VPIN informed trading toxicity (`vpin_fractional_f64`), Kyle's Lambda rolling OLS price impact (`kyle_lambda_ols_f64`), Lee-Ready Tick-Rule CVD (`tick_rule_cvd_f64`), Monte Carlo equity path simulation (`eval_equity_paths_f64`, `monte_carlo_simulate_f64`), Combinatorially Symmetric Cross-Validation (CSCV) Probability of Backtest Overfitting (`cscv_pbo_from_chunks_f64`), and 14 classic indicators (fast EMA, SMA, RSI, ATR, Bollinger, Donchian, Supertrend, etc.).
+  - Enforced 100% mathematical parity with vectorized NumPy fallbacks when native library is absent or disabled (`MONIKA_DISABLE_RUST_ACCEL=1`).
+- **Polars Adoption for High-Throughput Matrix Operations**:
+  - Columnar Apache Arrow memory backend (`core/dataframe/polars_bridge.py`) for zero-copy multi-asset dataframe alignment and vectorized indicator calculation.
+  - Zero-lookahead historical bar stepping with monotonic HTF cursors in point-in-time backtesting.
+- **In-Memory MarketDataBus & RingBufferHub**:
+  - High-throughput read-through cache and ring buffer eliminating disk query thrashing during live tick streams.
+
+#### Endurance Stability, Memory Lifecycle & Concurrency
+- **Adaptive Memory Supervisor & Compaction**:
+  - Enforced bounded memory ceiling and automatic context compaction across long-running turns.
+  - Eradicated DataFrame `iterrows` anti-patterns across factor zoos and backtest harnesses.
+  - Resolved cascading stall and sleep deadlock in agent harness turn-state transitions.
+- **Windows Platform Resiliency**:
+  - Windows ProactorEventLoop migration handling `WinError 10054` socket disconnects gracefully.
+  - Stdin prompt piping for Antigravity Bridge bypassing Windows Win32 command line character limits.
+  - Resilient startup connection loop with TCP keepalives for Telegram bot.
+- **Modular Refactoring of God Modules**:
+  - Decomposed 14 historical files exceeding 1,500 lines across domain models (`domain_models/`), application orchestrator (`application/orchestrator/`), trading routes (`trading_endpoints/`), and Telegram routers.
+
+#### Deterministic RiskGate & Antigravity AI Bridge
+- **Over 30 Deterministic RiskGate Validation Checks**:
+  - Modularized into `RiskExecutionChecksMixin`, `RiskPortfolioChecksMixin`, `RiskMarketChecksMixin`, and `RiskIntelligenceChecksMixin`.
+  - Added Clayton Copula multi-asset tail risk, VPIN toxicity floor, ADV liquidity floor, Schmitt trigger regime hysteresis, and asymmetric exit pass-through.
+- **Google Antigravity Desktop OAuth & Gemini 3.8 Flash**:
+  - Native PKCE authentication flow and seamless proxy bridge.
+  - Zero-cost classification in token expenditure logging for Antigravity-routed calls.
+  - Synchronized `jev_thinking_router` and `gemini-3.8-flash` task roles.
+- **Dual-Tier Database Modernization**:
+  - Canonical SQLite (WAL mode, connection pooling) for Trial package and PostgreSQL 16+ for Production.
+  - Alembic migrations up to head `0018_add_technical_indicators_unique_constraint`.
+
+---
+
 ## [1.0.0] - 2026-10-14
 
 ### Official Release: Clean Architecture & Mechanical Fortress Hardening

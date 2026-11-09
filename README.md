@@ -15,7 +15,7 @@
   <a href="https://langchain-ai.github.io/langgraph/"><img src="https://img.shields.io/badge/Orchestration-LangGraph-1C75BC.svg?logo=langchain&logoColor=white" alt="LangGraph" /></a>
   <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi&logoColor=white" alt="FastAPI" /></a>
   <a href="https://react.dev/"><img src="https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-61DAFB.svg?logo=react&logoColor=black" alt="React 19" /></a>
-  <a href="https://www.postgresql.org"><img src="https://img.shields.io/badge/Database-PostgreSQL%2016%2B-336791.svg?logo=postgresql&logoColor=white" alt="PostgreSQL 16+" /></a>
+  <a href="https://www.postgresql.org"><img src="https://img.shields.io/badge/Database-SQLite%20%7C%20PostgreSQL%2016%2B-336791.svg?logo=postgresql&logoColor=white" alt="SQLite | PostgreSQL 16+" /></a>
   <a href="https://www.metatrader5.com"><img src="https://img.shields.io/badge/Execution-MetaTrader%205-red.svg" alt="MetaTrader 5" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License" /></a>
   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/badge/Code%20Style-Ruff-black.svg" alt="Ruff" /></a>
@@ -167,13 +167,20 @@ flowchart LR
 - **Yield Curves & Macro Data:** Ingests US Treasury yield data and macroeconomic indices via the FRED API.
 - **News Clustering:** Aggregates headlines from financial feeds and filters them into currency-specific summaries.
 
-### Market Structure and Technical Indicators
-- **Deterministic Indicator Engine:** Indicator calculations are performed directly in Python:
-  - Swing highs and lows (fractal pivots).
+### Market Structure, Quantitative Indicators & High-Performance Compute
+- **Native Rust C-ABI Accelerator (`monika_core_rs`):**
+  - High-performance compiled shared library (`monika_core_rs.dll` / `.so` / `.dylib`) with automated SHA-256 shadow-copy loading on Windows to prevent runtime file locks.
+  - Native C-ABI kernels: SMC fractal pivot detection (`find_swings_f64`, `find_swing_pivots_f64`), Microstructure VPIN informed trading toxicity (`vpin_fractional_f64`), Kyle's Lambda rolling OLS price impact (`kyle_lambda_ols_f64`), Lee-Ready Tick-Rule CVD (`tick_rule_cvd_f64`), Monte Carlo equity simulation (`eval_equity_paths_f64`, `monte_carlo_simulate_f64`), CSCV probability of backtest overfitting (`cscv_pbo_from_chunks_f64`), and 14 vectorized classic indicators (EMA, SMA, RSI, ATR, Bollinger, Donchian, Supertrend, etc.).
+  - Guaranteed 100% mathematical parity with vectorized NumPy fallback if the native library is disabled (`MONIKA_DISABLE_RUST_ACCEL=1`).
+- **Polars Columnar Pipeline (`core/dataframe/polars_bridge.py`):**
+  - Apache Arrow columnar memory for zero-copy transforms and rapid multi-asset matrix alignment.
+  - Zero-lookahead historical bar stepping with strict point-in-time cursors.
+- **Smart Money Concepts (SMC) & Microstructure:**
   - Break of Structure (BOS) and Change of Character (CHoCH).
-  - Fair Value Gaps (FVG) and liquidity pools.
-  - Level-2 Depth of Market (DOM) imbalance and Cumulative Volume Delta (CVD) where broker data permits.
-  - Optional Google TimesFM time-series volatility bands.
+  - Fair Value Gaps (FVG) and Order Blocks categorized by mitigation state (unfilled, partially filled, mitigated) with candle delta-checking to avoid redundant calculations.
+  - Buy-side and sell-side liquidity pools and sweep verification.
+  - Over 463 quantitative factor formulas across WorldQuant 101, Qlib 158, Academic, and Microstructure factor libraries.
+  - Optional Google TimesFM 3.0 deep forecasting for forward-looking quantile volatility bands.
 
 ### Bull vs. Bear Adversarial Debate
 Rather than querying a single prompt, Monika coordinates a multi-agent debate within a LangGraph state machine:
@@ -206,30 +213,62 @@ flowchart TD
 - **Coordinate Snapping:** Automatically snaps proposed price levels to validated swing levels or gap boundaries.
 
 ### Pre-Trade Risk Controls (`RiskGate`)
-Every trade proposal must clear an immutable checklist before an order reaches MetaTrader 5:
-1. **Operating Status:** Verifies the system is not globally paused.
-2. **Parameter Validity:** Confirms that entry, stop loss, and take profit prices are mathematically valid.
-3. **Daily & Weekly Drawdown Limits:** Halts new orders if realized or unrealized loss thresholds are breached.
-4. **Concurrent Position Limits:** Enforces an absolute cap on open positions.
-5. **Single-Symbol Exposure:** Blocks duplicate directional exposure on the same asset.
-6. **News Event Proximity:** Enforces trading blackouts within a configurable window around tier-1 events.
-7. **Correlated Exposure:** Monitors cross-asset currency correlation across open trades.
-8. **Spread Thresholds:** Blocks orders during illiquid market rollovers or abnormal spread spikes.
-9. **Risk-to-Reward Ratio (RRR):** Requires a minimum planned ratio (e.g. 1:1.5).
-10. **Weekend Gap Protection:** Suspends new positions ahead of weekend market closes.
+Every trade proposal must clear an immutable battery of **over 30 deterministic risk checks** across four modular dimensions before reaching MetaTrader 5:
+
+1. **System & Safety State:**
+   - *Emergency Disk Kill Switch:* Immediate fail-closed rejection if `data/kill_switch.flag` is present.
+   - *Live Capital Protection:* Fails closed if live account equity is zero, negative, or unavailable.
+   - *Operational Status:* Verifies the system is not globally paused (`trading_not_paused`).
+   - *Quantitative Edge Status:* Verifies the rule runner is not in pause status (`edge_status_not_paused`).
+   - *Daily Trade Count Ceiling:* Caps max executions per calendar day (`max_daily_trades`).
+2. **Execution & Lot Math Bounds:**
+   - *Sizing Validity:* Rejects proposals violating price geometry (e.g. SL on wrong side of entry, zero/negative stop distance).
+   - *Broker Lot Constraints:* Enforces symbol min, max, and volume step bounds, always rounding volume **down**.
+   - *Minimum Risk-to-Reward Ratio (RRR):* Enforces minimum planned payoff ratio (default $\ge 1:1.5$).
+   - *Maximum Spread Threshold:* Blocks orders during abnormal broker spread spikes or illiquid rollovers.
+   - *Asymmetric Exit Pass-Through:* Stop loss triggers, trailing stops, and manual liquidations reduce risk and are never blocked by entry constraints.
+3. **Portfolio & Capital Preservation:**
+   - *Daily Drawdown Ceiling:* Halts new entries when realized + unrealized daily loss reaches threshold (default 4.0%).
+   - *Weekly Drawdown Ceiling:* Enforces weekly cumulative loss ceiling (default 15.0%).
+   - *Concurrent Open Positions:* Absolute ceiling on simultaneous open exposures (default maximum 5).
+   - *Single-Symbol Duplicate Exposure:* Prevents duplicate directional exposure on identical assets.
+   - *Total Portfolio Heat Ceiling:* Restricts total aggregate open risk across all positions (default 4.0%).
+   - *Bounded Mandate Compliance:* Enforces portfolio asset allocation caps.
+   - *Correlation Exposure Matrix:* Monitors rolling cross-asset return correlation to prevent concentrated currency exposure.
+   - *Consecutive Loss Streak Breaker:* Suspends trading on symbols experiencing consecutive loss streaks.
+4. **Market Microstructure & Intelligence Quality:**
+   - *Macro Volatility Ceiling (VIX):* Blocks entries during broad market volatility spikes.
+   - *Flash Crash Cooldown:* Enforces trading freeze after abnormal rapid price dislocation ($>5\times$ ATR in 30s).
+   - *Tier-1 News Blackout Window:* Enforces $\pm 15$ minutes blackout around tier-1 economic events (NFP, CPI, FOMC, GDP).
+   - *Weekend Gap Quarantine:* Halts new positions late Friday UTC ahead of market close.
+   - *Daily Rollover Liquidity Freeze:* Halts entries during illiquid market rollover / swap periods.
+   - *Post-Stop-Loss Cooldown:* Enforces cooling-off periods after stop-loss hits to avoid whipsaws.
+   - *Data Freshness Guard:* Rejects orders with stale quotes or delayed bar timestamps.
+   - *TimesFM Expectancy:* Validates deep learning volatility envelope and directional skew alignment.
+   - *Schmitt Trigger Regime Hysteresis:* Prevents whipsaw regime switching during transitional market states.
+   - *Macro Policy Alignment:* Ensures trade direction harmonizes with active central bank monetary policies.
+   - *VPIN Toxicity Filter:* Rejects setups exhibiting elevated informed trading order flow toxicity.
+   - *ADV Liquidity Floor:* Verifies sufficient underlying market turnover volume.
+   - *Clayton Copula Tail Risk:* Computes joint multi-asset crash probability.
+   - *Evidence Gate:* Requires validated strategy evidence and valid quant scorecard.
+   - *Judicial Confidence Floor:* Rejects LLM proposals with arbitration confidence below threshold (e.g. $<0.70$).
+   - *Factor Crowding Cap:* Restricts excessive exposure to identical factor families (e.g. all momentum).
+   - *Modular Risk Registry Plugins:* Executes dynamically registered user and domain risk plugins.
 
 ### Rule-Based Strategies and Signal Arbitration
 - **Rule-Based Runners (`EdgeStrategyRunner`):** Runs standalone algorithms (e.g. Donchian breakout, gap fade, trend models) alongside the LLM workflow.
 - **Signal Arbitrator:** Reconciles signals between quantitative rules and the LLM debate. If both agree, the setup is prioritized; if they conflict, the system defaults to avoidance (`WAIT`).
+- **Strategy Evidence Store:** Tracks sample size, win rate, and profit factor per strategy; incubation is granted only after validated paper-trade records.
 
 ### MetaTrader 5 Interface and Watchdog EA
 - **Native Python IPC:** Direct local communication with the MetaTrader 5 desktop terminal on Windows.
-- **MQL5 Watchdog (`AIAgent_EA.mq5`):** A lightweight Expert Advisor running inside MT5 that checks a local `heartbeat.txt` updated periodically by Python. If Python stops responding, the EA can take defensive action.
+- **Linux Wine / Docker RPC Bridge:** Transparent execution via containerized Wine RPC server (`deploy/Dockerfile.mt5-wine`).
+- **MQL5 Watchdog (`AIAgent_EA.mq5`):** A lightweight Expert Advisor running inside MT5 that checks a local `heartbeat.txt` updated periodically by Python. If Python stops responding for $>240$ seconds, the EA can take defensive action.
 - **Enforced Paper Trading:** Defaults to `paper_trading.enabled: true` to prevent accidental real-money execution.
 
 ### Persistence and Post-Trade Review
-- **Audit Database:** Stores every prompt, debate exchange, model output, and execution ticket in PostgreSQL.
-- **Post-Trade Reflection:** A background task reviews closed trades to note whether market movement aligned with the original thesis.
+- **Dual-Tier Database Backend:** Supports embedded canonical SQLite (WAL mode) for Trial evaluation and PostgreSQL 16+ for production, across 75 mapped tables with Alembic migrations up to head `0018`.
+- **Post-Trade Reflection:** A background task reviews closed trades to note whether market movement aligned with the original thesis and crystallizes winning playbooks.
 
 ---
 
@@ -355,26 +394,53 @@ flowchart TD
     end
 ```
 
-### Background Task Schedulers
+### Background Tasks & Supervisory Tree
 
-Monika coordinates multiple asynchronous loops managed through Python's `asyncio`:
+Monika coordinates over **35 concurrent background tasks** supervised by `TaskRegistry` with automatic restart, exponential backoff, error categorization (`PERMANENT_ERRORS` vs `LONG_RETRY_ERRORS`), and clean shutdown tracking:
 
-| Task Component | Interval | Operational Responsibility |
-| :--- | :--- | :--- |
-| `GraphCycleScheduler` | Every 6-8 hrs | Runs the full macro analysis and asset debate workflow. |
-| `NewsWatcher` | Every 5 min | Checks for fresh news headlines from RSS and calendar feeds. |
-| `TriggerChecker` | Every 2 min | Monitors pending conditional triggers (e.g. price entering a specified zone). |
-| `ActiveCalendarPoller` | Real-time | Accelerates check frequency around scheduled tier-1 economic events. |
-| `PositionGuardian` | Every 5 min | Reviews open positions against upcoming news blackouts and risk rules. |
-| `TrailingStopManager` | Every 30 sec | Adjusts trailing stops or moves stops to breakeven when thresholds are reached. |
-| `FlashCrashDetector` | Every 30 sec | Detects abnormal rapid price travel (>5x ATR) and moves stops defensively. |
-| `EdgeStrategyRunner` | Continuous | Evaluates rule-based quant models in parallel with the LLM cycle. |
-| `HeartbeatManager` | Every 20 sec | Writes a timestamp to `heartbeat.txt` for the MQL5 watchdog EA. |
-| `OrderReconciler` | Every 5 min | Verifies that database position records match active MT5 broker tickets. |
-| `PositionExitReviewer` | Event-driven | Triggers post-exit reflections to log observations from closed trades. |
-| `PositionSupervisor` | Every 1 min | Monitors margin utilization and overall portfolio leverage. |
-| `TelegramBot` | Continuous | Long-polling daemon for remote notifications and manual operator commands. |
-| `Dashboard API` | Continuous | FastAPI backend serving REST endpoints and WebSockets to the web dashboard. |
+| Subsystem | Task Component | Interval / Mode | Operational Responsibility |
+| :--- | :--- | :--- | :--- |
+| **Market Data** | `MarketDataScheduler` | Dynamic / Tick | Ingests live quotes, maintains in-memory `RingBufferHub` cache, and updates OHLCV bars. |
+| | `MacroDataScheduler` | Scheduled / Daily | Ingests US Treasury yields, DXY, and macro statistics via FRED API. |
+| | `ActiveCalendarPoller` | Real-time | Accelerates polling frequency around scheduled tier-1 economic events. |
+| | `TickStream` | Real-time | Continuous tick ingestion and event emission over `EventBus`. |
+| **Analysis & Deliberation** | `GraphCycleScheduler` | Every 6–8 hrs | Orchestrates the full LangGraph Stage 1 Macro & Stage 2 Asset Deliberation cycle. |
+| | `DailyReportScheduler` | Daily / Scheduled | Emits daily executive trading and macroeconomic performance summaries. |
+| | `NewsWatcher` | Every 5 min | Scrapes RSS financial feeds, deduplicates headlines, and triggers targeted evaluations. |
+| | `DigestSliceScheduler` | Periodic | Compiles periodic thematic news digests and sentiment vectors. |
+| | `PostReleaseAnalyzer` | Post-Release | Measures reported macroeconomic surprise metrics against forecast consensus. |
+| | `TriggerChecker` | Every 2 min | Evaluates pending conditional price triggers (e.g. FVG mitigation / order block tests). |
+| **Strategy & Playbooks** | `EdgeStrategyRunner` | Continuous | Executes standalone rule-based quant models alongside the LLM workflow. |
+| | `AlphaDiscoveryScheduler`| Periodic | Automated alpha mining and formula screening across 463 factor formulas. |
+| | `StrategySynthesisScheduler` | Periodic | Synthesizes multi-indicator confluences and generates candidate strategies. |
+| | `PlaybookCurator` | Scheduled | Evaluates empirical performance of trading playbooks and manages lifecycle tiers. |
+| | `MicroPlaybookCompiler`| Periodic | Compiles validated micro-structures into crystallized strategy assets. |
+| | `SkillCurator` | Periodic | Curates autonomous skill repositories and validates markdown playbooks. |
+| **Financial Guardians** | `PositionGuardian` | Every 5 min | Checks open positions against news blackouts and enforces protective trailing stops. |
+| | `TrailingStopManager` | Every 30 sec | Evaluates trailing stop triggers and breakeven adjustments. |
+| | `PositionSupervisor` | Every 10–60 sec | Coordinates position evaluation, margin utilization, and risk checks across workers. |
+| | `OrderReconciler` | Every 5 min | Verifies and reconciles local database records with active MT5 broker tickets. |
+| | `FlashCrashDetector` | Every 30 sec | Detects abnormal rapid price travel (>5x ATR) and moves stops defensively. |
+| | `FridayCloseGuardian` | Friday PM UTC | Manages weekend gap exposure by evaluating profitable position closure. |
+| | `FloatingDrawdownMonitor`| Every 15 sec | Tracks real-time floating equity drawdown against maximum daily risk limits. |
+| | `MarginGuardian` | Every 30 sec | Monitors margin utilization and triggers defensive scaling if margin exceeds bounds. |
+| | `PaperTradeMonitor` | Periodic | Tracks simulated trade graduation criteria (win rate, count, profit factor). |
+| | `PositionExitReviewer` | Event-driven | Triggers post-exit reflections to log observations from closed trades. |
+| **System & Monitoring** | `HeartbeatManager` | Every 20 sec | Emits periodic heartbeat timestamps to `heartbeat.txt` for the MT5 Watchdog EA. |
+| | `EAWatchdog` | Every 30 sec | Monitors broker connectivity and dead-man switch health. |
+| | `Dashboard API` | Continuous | FastAPI backend serving REST endpoints and WebSockets to the web dashboard. |
+| | `MT5HealthMonitor` | Every 30 sec | Monitors MT5 terminal IPC connection health with flake-tolerant grace windows. |
+| | `DBHealthCheck` | Every 60 sec | Verifies database connection pool health and executes safe auto-reconnects. |
+| | `CacheReaper` | Hourly | Prunes expired in-memory caches, ring buffers, and old alert history. |
+| | `MemorySupervisor` | Continuous | Monitors memory growth and executes adaptive compaction to prevent OOM. |
+| | `ScraperLoop` | Periodic | Executes scheduled data scrapers and updates central bank documents. |
+| | `WhatIfResolver` | Periodic | Solves counterfactual what-if audits on missed or avoided trading opportunities. |
+| | `RiskParameterReloader` | Every 15 sec | Hot-reloads risk parameters dynamically from `settings.yaml` without restarts. |
+| | `ConfigManagerWatcher` | Event-driven | Pub/sub configuration event propagation across active components. |
+| | `TelegramBot` | Continuous | Long-polling daemon for remote notifications and manual operator commands. |
+| | `PluginEngine` | Continuous | Universal plugin manager supporting topological lifecycle management. |
+| | `UniversalCron` | Continuous | High-precision cron engine managing scheduled jobs and triggers. |
+| | `GuardianSupervisor` | Continuous | Independent multi-process watchdog on port 8001 providing unblockable `/kill`. |
 
 ---
 
@@ -507,8 +573,9 @@ python -m monika.interfaces.cli.main doctor --offline
 | :--- | :--- |
 | `python -m monika.interfaces.cli.main setup` | Interactive terminal wizard to configure `.env` and broker parameters. |
 | `python -m monika.interfaces.cli.main upgrade` | Interactively upgrades Monika from Trial to Full package. |
-| `python -m monika.interfaces.cli.main doctor` | Runs diagnostic health checks for PostgreSQL, MT5, and LLM API keys. |
+| `python -m monika.interfaces.cli.main doctor` | Runs diagnostic health checks for database, MT5, and LLM API keys (`--offline` supported). |
 | `python -m monika.interfaces.cli.main run` | Starts the background trading agent daemon. |
+| `python -m monika.interfaces.cli.main stop` | Gracefully requests the running trading daemon to shut down. |
 | `python -m monika.interfaces.cli.main status` | Displays system health, active background tasks, and account equity. |
 | `python -m monika.interfaces.cli.main positions` | Lists open demo positions, active stops, and unrealized profit/loss. |
 | `python -m monika.interfaces.cli.main analyze [SYMBOL]` | Executes an on-demand analysis cycle for a specified instrument (e.g. `XAUUSD`). |
@@ -516,10 +583,21 @@ python -m monika.interfaces.cli.main doctor --offline
 | `python -m monika.interfaces.cli.main ask "QUERY"` | Executes a one-off query and prints the response. |
 | `python -m monika.interfaces.cli.main pause` | Pauses automated trade proposal execution. |
 | `python -m monika.interfaces.cli.main resume` | Resumes automated trade proposal execution. |
-| `python -m monika.interfaces.cli.main kill` | Emergency stop: closes open positions and terminates the daemon. |
-| `python -m monika.interfaces.cli.main tui` | Launches the full-screen terminal interface (Textual). |
+| `python -m monika.interfaces.cli.main kill` | Emergency stop: closes open positions and halts daemon execution. |
+| `python -m monika.interfaces.cli.main tui` | Launches the full-screen terminal user interface (Textual). |
 | `python -m monika.interfaces.cli.main backtest` | Runs strategy evaluations against historical price data. |
 | `python -m monika.interfaces.cli.main benchmark` | Evaluates and compares reasoning responses across configured models. |
+| `python -m monika.interfaces.cli.main config [get\|set\|show\|edit]` | Inspects, modifies, and validates system configuration keys. |
+| `python -m monika.interfaces.cli.main profile [list\|switch]` | Manages configuration profiles for different trading environments. |
+| `python -m monika.interfaces.cli.main backup` | Generates a timestamped backup of the operational database. |
+| `python -m monika.interfaces.cli.main logs` | Displays recent activity and system logs from the terminal. |
+| `python -m monika.interfaces.cli.main sessions` | Inspects stored multi-agent chat and deliberation sessions. |
+| `python -m monika.interfaces.cli.main onboarding` | Launches the interactive onboarding experience for new operators. |
+| `python -m monika.interfaces.cli.main unsuspend [SYMBOL]` | Manually unsuspends a symbol placed in cooldown after consecutive losses. |
+| `python -m monika.interfaces.cli.main stress_test` | Executes Monte Carlo equity path simulation and portfolio stress tests. |
+| `python -m monika.interfaces.cli.main auth` | Manages Google Antigravity Desktop OAuth PKCE tokens and credentials. |
+| `python -m monika.interfaces.cli.main plugins` | Lists discovered plugins and inspects lifecycle states. |
+| `python -m monika.interfaces.cli.main mcp` | Starts the Model Context Protocol (MCP) server for external agent integration. |
 
 ---
 
@@ -586,8 +664,11 @@ Monika is an experimental Python framework that explores whether language models
 ### Why not let language models place orders directly?
 Language models make arithmetic mistakes, misjudge lot sizes, hallucinate price levels, and suffer from confirmation bias. Leaving position sizing, stop placement, and risk rules to deterministic Python code prevents the model from making catastrophic execution errors.
 
-### Why is PostgreSQL required instead of SQLite?
-Monika coordinates numerous concurrent asynchronous tasks (market streaming, news polling, trailing stops, dashboard WebSockets). SQLite experiences database lock contention under concurrent async writes. PostgreSQL handles concurrent operations reliably and provides advisory locks to prevent duplicate order generation.
+### Which database engine should I use: SQLite or PostgreSQL?
+Monika features a **dual-tier database architecture**:
+- **Trial Tier (Default)**: Embedded canonical SQLite (`data/monika.db`) in Write-Ahead Logging (WAL) mode. Zero configuration required, up and running in ~2 minutes! Suitable for single-instance paper trading, backtesting, and evaluation.
+- **Full Tier (Production)**: PostgreSQL 16+ with connection pooling and transactional advisory locks. Recommended for high-concurrency production deployments with live MetaTrader 5 bridges, continuous websocket streaming, and multi-process architecture.
+You can easily upgrade anytime from Trial to Full using `python -m monika.interfaces.cli.main upgrade` without losing any historical data or paper trades.
 
 ### Why is paper trading enforced by default?
 Accidental execution errors are common during automated trading development. Keeping `paper_trading.enabled: true` as the default ensures users can test and debug safely without risking capital.

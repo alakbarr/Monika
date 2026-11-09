@@ -51,7 +51,7 @@ Monika menyediakan dua profil paket instalasi yang dirancang untuk kebutuhan ber
 - macOS: Apple Silicon (M1/M2/M3) atau Intel x64 (Khusus mode Paper Trading dan Web Dashboard)
 
 ### Dependensi Dasar
-- Python: Versi 3.11 atau 3.12 (64-bit)
+- Python: Versi 3.14+ (64-bit)
 - Git: Versi terbaru
 - Node.js & npm: Versi 18 LTS ke atas (Hanya diperlukan untuk Full Package Web Dashboard)
 
@@ -95,8 +95,8 @@ Instalasi pada sistem operasi Windows menggunakan launcher tunggal `start_monika
    start_monika.bat
    ```
 3. Launcher akan mengeksekusi alur verifikasi otomatis:
-   - Memeriksa ketersediaan Python 3.11+. Jika belum terpasang, sistem menawarkan instalasi instan melalui Windows Package Manager (`winget`).
-   - Membuat virtual environment di folder `trading-agent\venv`.
+   - Memeriksa ketersediaan Python 3.14+. Jika belum terpasang, sistem menawarkan instalasi instan melalui Windows Package Manager (`winget`).
+   - Membuat virtual environment di folder `venv`.
    - Menginstal dependensi Python dari file `requirements.txt`.
    - Membuka Interactive Setup Wizard:
      - Pilih opsi `[1] Trial Package` untuk konfigurasi cepat tanpa database eksternal.
@@ -329,7 +329,7 @@ Monika provides two distinct operational profiles tailored for different deploym
 - macOS: Apple Silicon (M1/M2/M3) or Intel x64 (Paper trading sandbox and observability dashboard only)
 
 ### Runtime Dependencies
-- Python: Version 3.11 or 3.12 (64-bit)
+- Python: Version 3.14+ (64-bit)
 - Git: Latest release
 - Node.js & npm: Version 18 LTS or higher (Required exclusively for compiling the Full Package Web Dashboard)
 
@@ -373,8 +373,8 @@ On Windows operating systems, the complete installation, environment bootstrap, 
    start_monika.bat
    ```
 3. The script executes the following automated pipeline:
-   - Validates system Python 3.11+. If missing, offers automated installation via `winget`.
-   - Bootstraps an isolated virtual environment at `trading-agent\venv`.
+   - Validates system Python 3.14+. If missing, offers automated installation via `winget`.
+   - Bootstraps an isolated virtual environment at `venv`.
    - Resolves and installs dependencies from `requirements.txt`.
    - Detects missing configuration and launches the Interactive Setup Wizard:
      - Select `[1] Trial Package` for zero-configuration setup.

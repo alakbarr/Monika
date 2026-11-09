@@ -72,7 +72,7 @@ ssh root@YOUR_VPS_IP
 
 ### Step 2: Clone the Monika Repository
 ```bash
-git clone https://github.com/your-username/monika.git /opt/monika
+git clone https://github.com/alakbarr/Monika.git /opt/monika
 cd /opt/monika
 ```
 
@@ -114,7 +114,7 @@ Windows VPS offers the most straightforward path for traders wishing to run Meta
 ### Step 2: Clone or Download Monika
 Open PowerShell on the Windows VPS and clone the repository:
 ```powershell
-git clone https://github.com/your-username/monika.git C:\Monika
+git clone https://github.com/alakbarr/Monika.git C:\Monika
 cd C:\Monika
 ```
 

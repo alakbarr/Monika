@@ -4,7 +4,7 @@
 **Project Status:** Active Quantitative Research & Production Development
 **Primary System Role:** Domain-Specific Trading Agent Harness & Multi-Agent Execution Framework for MetaTrader 5 (MT5)
 **Execution Runtime:** MetaTrader 5 (Windows Native IPC & Linux Wine/Docker RPC Bridge)
-**Database Backend:** PostgreSQL 16+ (Asyncpg + SQLAlchemy 2.0 + Alembic Migrations)
+**Database Backend:** Dual-Tier: PostgreSQL 16+ (Asyncpg + SQLAlchemy 2.0 + Alembic Migrations) & Canonical SQLite (WAL Mode via aiosqlite)
 **Cognitive Architecture:** Dual-System Cognitive Engine (System 1 JEV Fast-Reflex + System 2 LangGraph StateGraph Synthesis)
 **Author & Maintainer:** Saiful Akbar & Contributors
 
@@ -21,7 +21,7 @@ Rather than relying on naive single-prompt LLM execution or rigid, static indica
 3. **Dual-System Reasoning Architecture:**
    - **System 1 (JEV Fast-Reflex):** Sub-second rule-based reflex filters, session timing gates, realtime news escalations, and position safety guards.
    - **System 2 (Cognitive Synthesis):** Multi-agent dialectical adversarial debates (Bull vs. Bear specialists) adjudicated by an impartial Investment Judge on a stateful LangGraph StateGraph.
-4. **Mechanical Capital Fortress (`RiskGate`):** An unbypassable mathematical validation layer enforcing 10 non-negotiable risk checks, position sizing (Kelly / Volatility Parity), slippage budgets, and emergency circuit breakers.
+4. **Mechanical Capital Fortress (`RiskGate`):** An unbypassable mathematical validation layer enforcing over 30 non-negotiable deterministic risk checks across execution, portfolio, market, and intelligence dimensions, position sizing (Kelly / Volatility Parity), slippage budgets, and emergency circuit breakers.
 5. **Resilient Execution & Dead-Man's Switch:** Dual-layer broker bridge pairing native Python IPC with a compiled MQL5 Expert Advisor (`AIAgent_EA.mq5`) monitoring independent heartbeat pulses to guarantee emergency position protection in the event of Python runtime failure.
 6. **Continuous Learning & Model Benchmarking:** Closed-loop crystallization of winning strategies into executable playbooks, accompanied by the **Alpha Arena** tournament engine and multi-layer benchmark harness.
 
@@ -128,6 +128,7 @@ flowchart TD
   - **WorldQuant 101:** Full implementation of WorldQuant's 101 quantitative alpha formulas (`wq_alpha_001.py` through `wq_alpha_101.py`).
   - **Qlib 158:** High-capacity feature library comprising 158 normalized financial factors.
   - **Microstructure & Academic Factors:** Native Rust C-ABI (`monika_core_rs`) and vectorized NumPy computation of Volume-Synchronized Probability of Informed Trading (VPIN fractional bucket slicing), Kyle's Lambda rolling OLS price impact, Lee-Ready Tick-Rule Cumulative Volume Delta (CVD), Roll Effective Spread, Amihud Illiquidity, Cointegration testing, Copula tail risk estimation, and Extreme Value Theory (EVT) calculations.
+  - **Polars Adoption & High-Throughput Matrix Bridge (`core/dataframe/polars_bridge.py`):** Apache Arrow columnar memory backend for vectorized indicator calculation, zero-copy multi-asset dataframe alignment, and zero-lookahead backtest stepping.
 - **FR-2.4 (Deep Volatility Forecasting):** Optional integration with **Google TimesFM 3.0** generating forward-looking quantile volatility bounds ($q_{0.1}$ to $q_{0.9}$) for intraday boundary guidance.
 
 ### FR-3: Multi-Agent Adversarial Debate & Cognitive Synthesis
@@ -138,17 +139,42 @@ flowchart TD
 - **FR-3.5 (Signal Arbitration Governance):** The `SignalArbitrator` may only let a quantitative signal override an LLM stance (WAIT, AVOID, or the opposite direction) with TimesFM directional confirmation ($|skew| \geq 0.20$ in the trade direction). Without confirmation, the LLM stance is preserved or the conflict is avoided. Strategy promotion is decided exclusively by the strategy evidence store; incubation is granted only after real paper-trade results.
 
 ### FR-4: Deterministic Capital Protection (RiskGate) & Portfolio Optimization
-- **FR-4.1 (Mandatory 10-Point Risk Clearance):**
-  1. System operational status (active / pause).
-  2. Positive lot sizing and broker minimum volume verification.
-  3. Daily realized and unrealized drawdown ceilings (default maximum 4.0%; weekly 15.0%).
-  4. Maximum concurrent open positions ceiling (default maximum 5).
-  5. Duplicate asset and direction exposure block.
-  6. High-impact news event proximity filter ($\pm 15$ minutes blackout).
-  7. Cross-asset portfolio correlation cap (prevents concentrated directional exposure).
-  8. Maximum spread threshold filter (blocks execution during broker spread expansion).
-  9. Minimum Risk-to-Reward ratio verification (default minimum $1:1.5$ or $1:2.0$). Quantitative (non-LLM) proposals must additionally carry an explicit, valid `quant_scorecard`; the evidence gate fails closed when the strategy evidence store or the originating analysis is unavailable.
-  10. Weekend gap risk quarantine (halts new trades late Friday UTC).
+- **FR-4.1 (Mandatory Deterministic Risk Clearance — Over 30 Checks across 4 Mixins):**
+  1. *Emergency Disk Kill Switch:* Fails closed if `data/kill_switch.flag` is detected.
+  2. *Live Capital Availability:* Fails closed if live account equity is missing, negative, or zero.
+  3. *Daily Trade Frequency Ceiling:* Rejects orders exceeding max daily trade allotments (`max_daily_trades`).
+  4. *Global Operational State:* Rejects orders if system is manually paused (`trading_not_paused`).
+  5. *Quantitative Edge Status:* Rejects orders if the strategy runner is paused.
+  6. *Macro Volatility Ceiling (VIX):* Blocks entries when broad volatility exceeds threshold.
+  7. *Flash Crash Quarantines:* Blocks trading during cooldown following severe price dislocation.
+  8. *Sizing Mathematical Bounds:* Enforces positive stop distances, proper direction-geometry invariants, and non-zero lot sizing.
+  9. *Broker Lot Size Bounds:* Validates symbol step, min, and max lot constraints, rounding volume **down**.
+  10. *Daily Drawdown Ceiling:* Halts trading when realized + unrealized daily losses breach threshold (default 4.0%).
+  11. *Weekly Drawdown Ceiling:* Enforces weekly cumulative drawdown protection (default 15.0%).
+  12. *Concurrent Open Positions Ceiling:* Caps simultaneous market exposures (default maximum 5).
+  13. *Single-Symbol Duplicate Exposure:* Blocks duplicate directional exposure on identical assets.
+  14. *Total Portfolio Heat Ceiling:* Restricts total aggregate open risk across all positions (default 4.0%).
+  15. *Weekend Proximity Quarantine:* Halts new entries late Friday UTC to eliminate weekend gap risks.
+  16. *Daily Rollover Liquidity Freeze:* Halts entries during illiquid market rollover / swap hours.
+  17. *Post-Stop-Loss Cooldown:* Enforces emotional / whipsaw cooling-off windows after consecutive SL hits.
+  18. *High-Impact News Blackout Window:* Enforces $\pm 15$ minutes blackout around tier-1 economic announcements.
+  19. *Dynamic Cross-Asset Correlation Cap:* Evaluates rolling asset return correlation matrix to prevent concentrated systemic currency exposure.
+  20. *Consecutive Loss Circuit Breaker:* Suspends trading on symbols experiencing consecutive loss streaks.
+  21. *Data Freshness & Timestamp Hygiene:* Rejects orders with stale quotes or delayed bar timestamps.
+  22. *TimesFM Directional Expectancy:* Validates deep learning volatility and directional consistency.
+  23. *Schmitt Trigger Regime Hysteresis:* Prevents whipsaw regime switching during transitional market states.
+  24. *Macro Regime Policy Alignment:* Ensures trade thesis aligns with active central bank monetary policies.
+  25. *Microstructure Toxicity Filter (VPIN):* Rejects setups with elevated informed trading volume imbalance.
+  26. *Average Daily Volume (ADV) Liquidity Floor:* Verifies sufficient underlying market liquidity.
+  27. *Clayton Copula Multi-Asset Tail Risk:* Computes joint crash probability across correlated holdings.
+  28. *Quant Scorecard Evidence Gate:* Verifies minimum sample size and empirical performance before strategy deployment.
+  29. *Bounded Mandate Compliance:* Enforces portfolio asset allocation caps.
+  30. *Minimum Risk-to-Reward Ratio (RRR):* Enforces minimum expected payoff ratio (default $\ge 1:1.5$).
+  31. *Maximum Broker Spread Threshold:* Blocks execution during abnormal broker spread widening.
+  32. *Judicial Confidence Score Floor:* Rejects LLM proposals with judicial confidence below threshold.
+  33. *Strategy Factor Crowding Cap:* Prevents excessive concentration in single factor families (e.g. all momentum).
+  34. *Modular Risk Registry Plugins:* Executes dynamically registered external risk rules.
+  35. *Asymmetric Exit Pass-Through:* Guarantees stop losses, trailing stops, and liquidations reduce market exposure and are never blocked by entry limits.
 - **FR-4.2 (Position Sizing & Portfolio Optimization):** Volatility parity, fractional Kelly criterion sizing, and risk parity portfolio allocation (`portfolio_optimizer.py`).
 - **FR-4.3 (Circuit Breakers & Flash Crash Protection):** Automatic trading freeze and defensive stop trailing upon detecting abnormal price dislocation ($>5\times$ ATR within 30 seconds) or drawdown breach.
 - **FR-4.4 (Pending Action & Crypto Audit Ledger):** Persistent ledger tracking pending broker requests (`pending_action.py`) and cryptographic audit records (`crypto_audit_ledger.py`).
@@ -229,7 +255,7 @@ flowchart TD
 
 ## 6. Data Schema & Persistence Model
 
-Managed via **PostgreSQL 16+** (with SQLite trial-tier support) using async SQLAlchemy 2.0 and tracked through versioned Alembic migrations up to head `0016_dedup_price_ohlcv_indexes` across 75 mapped tables.
+Managed via **PostgreSQL 16+** (with canonical SQLite WAL trial-tier support) using async SQLAlchemy 2.0 and tracked through versioned Alembic migrations up to head `0018_add_technical_indicators_unique_constraint` across 75 mapped tables decomposed into modular domain model packages (`domain_models/`).
 
 ### Database Entity Architecture
 ```
