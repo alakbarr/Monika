@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import os
 import re
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -23,6 +24,75 @@ IS_WINDOWS: bool = sys.platform == "win32"
 IS_LINUX: bool = sys.platform.startswith("linux")
 IS_DARWIN: bool = sys.platform == "darwin"
 IS_WINE: bool = "WINEPREFIX" in os.environ or os.path.exists("/.wine")
+
+
+def patch_proactor_connection_lost() -> bool:
+    """
+    Safely patch asyncio._ProactorBasePipeTransport._call_connection_lost on Windows.
+
+    Under Windows IOCP (ProactorEventLoop), when a remote client (e.g. browser WebSocket,
+    HTTP client) abruptly disconnects or sends a TCP RST, WinSock marks the socket as reset.
+    CPython's standard library calls `self._sock.shutdown(socket.SHUT_RDWR)` without catching
+    ConnectionResetError (WinError 10054).
+
+    When this unhandled exception is raised inside the finally block of _call_connection_lost:
+    1. The exception escapes and triggers an alarming asyncio ERROR log in the event loop.
+    2. Crucially, self._sock.close() and server._detach(self) are SKIPPED, leaking socket
+       descriptors and leaving zombie client transports inside server._clients indefinitely.
+
+    This patch safely wraps the shutdown call in `try...except OSError: pass`, allowing
+    clean closure of the socket, proper detachment from the server, and silent teardown of
+    already-severed connections without resource leaks.
+
+    Returns:
+        True if the patch was successfully applied or already present, False otherwise.
+    """
+    if not IS_WINDOWS:
+        return False
+
+    try:
+        import asyncio.proactor_events as pe
+    except ImportError:
+        return False
+
+    transport_cls = getattr(pe, "_ProactorBasePipeTransport", None)
+    if transport_cls is None:
+        return False
+
+    if getattr(transport_cls, "_monika_patched_connection_lost", False):
+        return True
+
+    orig_call_connection_lost = getattr(transport_cls, "_call_connection_lost", None)
+    if orig_call_connection_lost is None:
+        return False
+
+    def _safe_call_connection_lost(self: Any, exc: Any) -> None:
+        if self._called_connection_lost:
+            return
+        try:
+            self._protocol.connection_lost(exc)
+        finally:
+            if hasattr(self._sock, "shutdown") and self._sock.fileno() != -1:
+                try:
+                    self._sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+            if self._sock is not None:
+                self._sock.close()
+                self._sock = None
+            server = self._server
+            if server is not None:
+                server._detach(self)
+                self._server = None
+            self._called_connection_lost = True
+
+    setattr(transport_cls, "_call_connection_lost", _safe_call_connection_lost)
+    setattr(transport_cls, "_monika_patched_connection_lost", True)
+    return True
+
+
+if IS_WINDOWS:
+    patch_proactor_connection_lost()
 
 
 def configure_event_loop() -> Dict[str, Any]:
@@ -45,6 +115,7 @@ def configure_event_loop() -> Dict[str, Any]:
         return {}
 
     if IS_WINDOWS:
+        patch_proactor_connection_lost()
         proactor = getattr(asyncio, "ProactorEventLoop", None)
         if proactor is not None:
             return {"loop_factory": proactor}
@@ -270,6 +341,7 @@ __all__ = [
     "IS_LINUX",
     "IS_DARWIN",
     "IS_WINE",
+    "patch_proactor_connection_lost",
     "configure_event_loop",
     "get_loop_factory",
     "run_async",

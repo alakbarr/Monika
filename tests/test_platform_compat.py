@@ -12,6 +12,7 @@ from monika.core.platform import (
     configure_event_loop,
     safe_subprocess_run,
     normalize_path,
+    patch_proactor_connection_lost,
 )
 from monika.infrastructure.brokers.broker_adapter import MT5RemoteGatewayAdapter
 
@@ -278,3 +279,57 @@ async def test_trading_agent_start_connects_remote_gateway():
         connected = await custom_adapter.ensure_connected()
         assert connected is True
         mock_ensure.assert_awaited_once()
+
+
+def test_patch_proactor_connection_lost_handles_winerror_10054():
+    """Verify patch_proactor_connection_lost safely absorbs WinError 10054 and cleans up socket & server."""
+    import asyncio
+    from unittest.mock import MagicMock
+
+    patch_proactor_connection_lost()
+
+    try:
+        import asyncio.proactor_events as pe
+
+        transport_cls = getattr(pe, "_ProactorBasePipeTransport", None)
+    except ImportError:
+        transport_cls = None
+
+    if transport_cls is None:
+        pytest.skip("Proactor transport not available on this platform")
+
+    loop = asyncio.new_event_loop()
+    try:
+        protocol = MagicMock()
+        sock = MagicMock()
+        sock.shutdown.side_effect = ConnectionResetError(
+            10054, "An existing connection was forcibly closed by the remote host"
+        )
+        sock.fileno.return_value = 42
+
+        server = MagicMock()
+        transport = transport_cls(loop, sock, protocol, waiter=None, extra=None, server=server)
+
+        # Call connection lost - should NOT raise ConnectionResetError
+        transport._call_connection_lost(None)
+
+        # Invariants: socket closed, server detached, connection lost marked True
+        assert sock.close.called
+        assert server._detach.called
+        assert transport._called_connection_lost is True
+        assert transport._sock is None
+        assert transport._server is None
+    finally:
+        loop.close()
+
+
+def test_patch_proactor_connection_lost_idempotent():
+    """Verify patch_proactor_connection_lost can be invoked repeatedly without adverse effects."""
+    result1 = patch_proactor_connection_lost()
+    result2 = patch_proactor_connection_lost()
+    if IS_WINDOWS:
+        assert result1 is True
+        assert result2 is True
+    else:
+        assert result1 is False
+        assert result2 is False

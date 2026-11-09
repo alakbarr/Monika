@@ -236,6 +236,7 @@
 #### `platform.py` - *Universal Cross-Platform & Event Loop Compatibility Engine.*
 - **Path**: [`src/monika/core/platform.py`](src/monika/core/platform.py)
 - **Top-Level Functions**:
+  - `patch_proactor_connection_lost() -> bool`: Safely patch asyncio._ProactorBasePipeTransport._call_connection_lost on Windows.
   - `configure_event_loop() -> Dict[str, Any]`: Configure and return keyword arguments for optimal event loop factory based on OS.
   - `get_loop_factory() -> Dict[str, Any]`: Return loop_factory keyword arguments for asyncio.run() or asyncio.Runner.
   - `run_async(coroutine: Any) -> Any`: Execute coroutine using asyncio.run() with optimal event loop on Windows and POSIX.
