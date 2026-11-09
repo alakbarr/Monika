@@ -262,16 +262,37 @@ def _run_guardian_loop(
     server_thread.start()
 
     hb_path = _get_heartbeat_path()
+    last_resume_grace_until = 0.0
 
     try:
         while not stop_event.is_set() and not local_stop.is_set():
+            t_before_sleep = time.time()
             time.sleep(2.0)
+            slept = time.time() - t_before_sleep
+
+            # Detect OS sleep / Modern Standby: if thread was paused for >10s (intended 2s)
+            if slept > 10.0:
+                logger.warning(
+                    f"[GuardianProcess] Detected OS sleep/standby resume (loop slept {slept:.1f}s). "
+                    f"Granting {stale_threshold:.0f}s heartbeat grace period."
+                )
+                last_resume_grace_until = time.time() + stale_threshold
+                try:
+                    # Re-stamp heartbeat to current time so primary loop has time to wake and continue
+                    hb_path.write_text(str(time.time()), encoding="utf-8")
+                except Exception:
+                    pass
+                continue
 
             # Check primary process heartbeat
             if hb_path.exists():
                 try:
+                    now = time.time()
+                    if now < last_resume_grace_until:
+                        continue
+
                     last_hb = float(hb_path.read_text(encoding="utf-8").strip())
-                    age = time.time() - last_hb
+                    age = now - last_hb
                     if age > stale_threshold:
                         logger.critical(
                             f"[GuardianProcess] WARNING: Primary trading loop unresponsive! "

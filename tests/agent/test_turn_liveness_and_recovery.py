@@ -5,7 +5,7 @@
 
 import asyncio
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from monika.application.agent.turn_liveness import TurnLivenessWatchdog
 from monika.application.agent.empty_response_guard import EmptyResponseGuard, EmptyRecoveryAction
@@ -44,6 +44,43 @@ async def test_turn_liveness_watchdog_generation_and_stall():
         await asyncio.sleep(0.35)
         assert len(stalls) > 0
         assert "generation stalled" in stalls[0]
+
+
+@pytest.mark.asyncio
+async def test_turn_liveness_watchdog_sleep_resume_detection():
+    """Verify watchdog detects OS sleep pause, re-baselines, and avoids deadlocks."""
+    cancel_evt = asyncio.Event()
+    hangs = []
+
+    watchdog = TurnLivenessWatchdog(
+        turn_id="test_sleep_turn",
+        timeout_seconds=2.0,
+        stall_timeout_seconds=1.0,
+        check_interval_seconds=0.1,
+        cancel_event=cancel_evt,
+        on_hang_detected=lambda msg: hangs.append(msg),
+    )
+
+    # Simulate loop wake after 2500s sleep
+    call_idx = 0
+
+    def mock_time():
+        nonlocal call_idx
+        call_idx += 1
+        # Calls 1 & 2: start() and loop t_before occur before sleep
+        if call_idx <= 2:
+            return 1000.0
+        # Subsequent calls: waking up from 2500s sleep
+        return 3500.0
+
+    with patch("time.time", side_effect=mock_time):
+        watchdog.start()
+        await asyncio.sleep(0.15)
+        watchdog.stop()
+
+    assert not watchdog.hang_detected
+    assert not cancel_evt.is_set()
+    assert len(hangs) == 0
 
 
 def test_empty_response_guard_7_step_ladder():

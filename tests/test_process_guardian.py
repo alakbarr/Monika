@@ -327,3 +327,50 @@ def test_guardian_supervisor_heals_stale_flag_on_start(tmp_path: Path):
             assert (tmp_path / "guardian_restart.json").exists()
         finally:
             supervisor.stop()
+
+
+def test_guardian_process_sleep_resume_detection(tmp_path: Path):
+    """Verify _run_guardian_loop detects system sleep/resume and grants grace period without killing."""
+    from monika.application.agent.monitors.process_guardian import _run_guardian_loop
+
+    hb_file = tmp_path / "monika_main.hb"
+    # Heartbeat from 2500 seconds ago (simulating 41.5 min sleep)
+    initial_time = 1000000.0
+    hb_file.write_text(str(initial_time), encoding="utf-8")
+
+    stop_event = threading.Event()
+    times = [
+        initial_time,  # entry before sleep
+        initial_time + 2500.0,  # after waking up (slept 2500s)
+        initial_time + 2500.0,  # now in check
+        initial_time + 2501.0,  # next iteration
+        initial_time + 2501.0,
+    ]
+
+    def mock_time():
+        if times:
+            return times.pop(0)
+        return initial_time + 3000.0
+
+    call_count = 0
+
+    def mock_sleep(_duration):
+        nonlocal call_count
+        call_count += 1
+        if call_count >= 2:
+            stop_event.set()
+
+    with (
+        patch("monika.application.agent.monitors.process_guardian._get_heartbeat_path", return_value=hb_file),
+        patch("monika.application.agent.monitors.process_guardian.trigger_emergency_kill") as mock_kill,
+        patch("time.time", side_effect=mock_time),
+        patch("time.sleep", side_effect=mock_sleep),
+        patch("http.server.ThreadingHTTPServer"),
+    ):
+        _run_guardian_loop(port=9098, primary_pid=12345, stop_event=stop_event, stale_threshold=240.0)
+
+        # Emergency kill MUST NOT be triggered because system sleep was detected
+        assert not mock_kill.called
+        # Heartbeat file was re-stamped with wake time
+        new_hb = float(hb_file.read_text(encoding="utf-8").strip())
+        assert new_hb >= initial_time + 2400.0

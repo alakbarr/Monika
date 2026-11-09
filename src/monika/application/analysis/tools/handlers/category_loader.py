@@ -47,6 +47,48 @@ async def handle_get_institutional_data(
     return await execute_institutional_data(executor, symbol, cot_code=cot_code)
 
 
+async def handle_get_macro_rates(
+    args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
+) -> dict:
+    from monika.application.analysis.tools.composite_tools import execute_macro_rates
+
+    return await execute_macro_rates(executor, currencies=args.get("currencies"))
+
+
+async def handle_get_macro_sentiment(
+    args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
+) -> dict:
+    from monika.application.analysis.tools.composite_tools import execute_macro_sentiment
+
+    return await execute_macro_sentiment(executor, symbols=args.get("symbols"))
+
+
+async def handle_get_macro_events(
+    args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
+) -> dict:
+    from monika.application.analysis.tools.composite_tools import execute_macro_events
+
+    return await execute_macro_events(
+        executor, days_ahead=args.get("days_ahead", 3), hours_back=args.get("hours_back", 24)
+    )
+
+
+async def handle_get_crypto_context(
+    args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
+) -> dict:
+    from monika.application.analysis.tools.composite_tools import execute_crypto_context
+
+    return await execute_crypto_context(executor, symbols=args.get("symbols"))
+
+
+async def handle_get_portfolio_state(
+    args: dict, session: Optional[AsyncSession] = None, executor: Optional[Any] = None, **kwargs
+) -> dict:
+    from monika.application.analysis.tools.composite_tools import execute_portfolio_state
+
+    return await execute_portfolio_state(executor, symbol=args.get("symbol"))
+
+
 @register_tool("load_tool_category", aliases=["load_category"], category="GENERAL", parallel_safe=False)
 class LoadToolCategoryHandler(ToolHandler):
     name = "load_tool_category"
@@ -81,6 +123,66 @@ class GetInstitutionalDataHandler(ToolHandler):
         self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs
     ) -> Any:
         return await handle_get_institutional_data(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("get_macro_rates", aliases=["macro_rates"], category="GENERAL", parallel_safe=True)
+class GetMacroRatesHandler(ToolHandler):
+    name = "get_macro_rates"
+    category = "GENERAL"
+    parallel_safe = True
+
+    async def execute(
+        self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs
+    ) -> Any:
+        return await handle_get_macro_rates(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("get_macro_sentiment", aliases=["macro_sentiment"], category="GENERAL", parallel_safe=True)
+class GetMacroSentimentHandler(ToolHandler):
+    name = "get_macro_sentiment"
+    category = "GENERAL"
+    parallel_safe = True
+
+    async def execute(
+        self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs
+    ) -> Any:
+        return await handle_get_macro_sentiment(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("get_macro_events", aliases=["macro_events"], category="GENERAL", parallel_safe=True)
+class GetMacroEventsHandler(ToolHandler):
+    name = "get_macro_events"
+    category = "GENERAL"
+    parallel_safe = True
+
+    async def execute(
+        self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs
+    ) -> Any:
+        return await handle_get_macro_events(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("get_crypto_context", aliases=["crypto_context"], category="GENERAL", parallel_safe=True)
+class GetCryptoContextHandler(ToolHandler):
+    name = "get_crypto_context"
+    category = "GENERAL"
+    parallel_safe = True
+
+    async def execute(
+        self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs
+    ) -> Any:
+        return await handle_get_crypto_context(args, session=session, executor=executor, **kwargs)
+
+
+@register_tool("get_portfolio_state", aliases=["portfolio_state"], category="GENERAL", parallel_safe=True)
+class GetPortfolioStateHandler(ToolHandler):
+    name = "get_portfolio_state"
+    category = "GENERAL"
+    parallel_safe = True
+
+    async def execute(
+        self, args: Dict[str, Any], session: AsyncSession, executor: Optional[Any] = None, **kwargs
+    ) -> Any:
+        return await handle_get_portfolio_state(args, session=session, executor=executor, **kwargs)
 
 
 async def handle_search_tools(args: dict, **kwargs) -> Any:

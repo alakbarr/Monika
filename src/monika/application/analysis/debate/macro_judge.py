@@ -136,6 +136,8 @@ Evaluate the merits, assign scores (1-10), declare the winner ('RISK_ON_USD_BEAR
             )
 
             macro_verification_names = {
+                "get_macro_rates",
+                "get_macro_sentiment",
                 "get_bond_yield_spreads",
                 "get_treasury_yields",
                 "get_interest_rates",

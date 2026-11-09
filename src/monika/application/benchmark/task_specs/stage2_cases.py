@@ -14,7 +14,7 @@ from typing import Any
 from monika.application.analysis.calculators.unified_threshold_calculator import compute_unified_confluence_threshold
 from monika.application.analysis.prefetch.stage2_prefetcher import Stage2DataBundler
 from monika.application.analysis.stages.per_asset_stage import SYMBOL_TO_COT
-from monika.application.analysis.tools.tools_definitions import PER_ASSET_ANALYSIS_TOOLS
+from monika.application.analysis.tools.tools_definitions import ASSET_RESTRICTED_TOOLS, PER_ASSET_ANALYSIS_TOOLS
 from monika.application.skills.loader import compose_system_prompt
 
 from ..fixture_loader import (
@@ -73,7 +73,7 @@ async def _build_stage2_case(session: Any, settings: dict[str, Any], symbol: str
             "trade_decision",
             sysp,
             user_msg,
-            tools=PER_ASSET_ANALYSIS_TOOLS,
+            tools=ASSET_RESTRICTED_TOOLS,
             stage_name=f"benchmark_{stage_tag}_{symbol}",
             role_kwargs=dict(
                 max_tokens=12000,

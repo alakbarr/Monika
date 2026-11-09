@@ -278,6 +278,36 @@ class TurnLLMRunner:
                             abort_on_hang=True,
                         ) as watchdog:
                             _watchdog_ref = watchdog
+                            # Dual-Layer Adaptive Thinking: resolve cognitive budget for this turn phase
+                            try:
+                                from monika.infrastructure.llm.adaptive_thinking import resolve_turn_thinking_budget
+
+                                called_set = set()
+                                if hasattr(harness, "tracking") and hasattr(harness.tracking, "called_tools"):
+                                    called_set = set(harness.tracking.called_tools)
+                                elif hasattr(harness, "called_tools"):
+                                    called_set = set(harness.called_tools)
+
+                                turn_thinking_budget = resolve_turn_thinking_budget(
+                                    turn=turns,
+                                    called_tools=called_set,
+                                    base_thinking=getattr(harness.llm_client, "thinking_level", None),
+                                    is_agentic=True,
+                                )
+                                if hasattr(harness.llm_client, "thinking_budget"):
+                                    harness.llm_client.thinking_budget = turn_thinking_budget
+                                if hasattr(harness.llm_client, "kwargs") and isinstance(
+                                    harness.llm_client.kwargs, dict
+                                ):
+                                    harness.llm_client.kwargs["thinking_budget"] = turn_thinking_budget
+                                    harness.llm_client.kwargs["reasoning_effort"] = (
+                                        "low"
+                                        if turn_thinking_budget <= 1536
+                                        else ("medium" if turn_thinking_budget <= 6144 else "high")
+                                    )
+                            except Exception as th_err:
+                                logger.debug(f"[{stage_name}] Turn thinking budget calculation non-fatal: {th_err}")
+
                             try:
                                 api_call = harness.llm_client.run_tool_agent(
                                     send_messages, effective_tools, effective_sys, tool_choice=effective_tool_choice

@@ -217,10 +217,37 @@ class BriefContaminationGuard:
             )
             risk_score += penalty
         if risk_sentiment == "risk-off" and jpy_bias == "bearish":
-            issues.append(
-                "SENTIMENT MISMATCH: risk_sentiment='risk-off' but JPY='bearish'. JPY typically strengthens as a safe-haven during risk-off flows."
+            has_jpy_divergence_driver = any(
+                w in narrative_l
+                for w in (
+                    "boj",
+                    "carry",
+                    "yield spread",
+                    "rate spread",
+                    "yield differential",
+                    "rate differential",
+                    "rate advantage",
+                    "policy divergence",
+                    "monetary divergence",
+                    "divergence",
+                    "intervention",
+                )
+            ) or bool(
+                any(
+                    any(w in str(c).lower() for w in ("boj", "carry", "yield spread", "rate spread", "divergence"))
+                    for c in (brief_data.get("macro_catalysts") or [])
+                )
             )
-            risk_score += 0.20
+            if not has_jpy_divergence_driver:
+                issues.append(
+                    "SENTIMENT MISMATCH: risk_sentiment='risk-off' but JPY='bearish'. "
+                    "JPY typically strengthens as a safe-haven during risk-off flows unless carry/yield divergence dominates."
+                )
+                risk_score += 0.20
+            else:
+                logger.debug(
+                    "BriefContaminationGuard: JPY bearish during risk-off justified by policy/yield divergence."
+                )
 
         # Check 2: Safe-haven consistency with risk sentiment
         xau_bias = normalize_bias(currency_bias.get("XAU", "neutral"))
@@ -506,7 +533,7 @@ def _build_contextmerge_prompt(symbol: str, cds: float, breakdown: dict, force_w
 
     force_wait_instruction = (
         (
-            "\\n MANDATORY: Due to HIGH CDS, you MUST submit WAIT unless you can provide "
+            "\\n MANDATORY: Due to HIGH CDS, inspect technical structure and submit WAIT unless you can provide "
             "an extremely clear and specific adjudication resolving ALL conflicts above. "
             "Ambiguous rationale = WAIT submission required.\\n"
         )

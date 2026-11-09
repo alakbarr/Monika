@@ -41,6 +41,15 @@ class ToolObservationCondenser:
         "get_cot_report",
         "get_treasury_yields",
         "get_bond_yield_spreads",
+        "get_macro_rates",
+        "get_macro_sentiment",
+        "get_macro_events",
+        "get_crypto_context",
+        "get_portfolio_state",
+        "get_market_context",
+        "get_price_data",
+        "get_institutional_data",
+        "get_technical_analysis",
     }
 
     def __init__(self, settings: Optional[dict] = None):

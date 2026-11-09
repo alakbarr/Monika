@@ -307,6 +307,9 @@ class ContextCompactionEngine:
             "get_fibonacci_levels",
             "get_optimal_intraday_levels",
             "get_daily_range_context",
+            "get_market_context",
+            "get_price_data",
+            "get_technical_analysis",
         ],
         "news": ["get_news_items", "get_news_digest"],
         "sentiment": [
@@ -316,6 +319,7 @@ class ContextCompactionEngine:
             "get_forex_sentiment",
             "get_fxssi_sentiment",
             "get_structured_sentiment",
+            "get_institutional_data",
         ],
         "macro": [
             "get_dxy",
@@ -324,6 +328,10 @@ class ContextCompactionEngine:
             "get_yield_data",
             "get_cot_report",
             "get_economic_calendar",
+            "get_macro_rates",
+            "get_macro_sentiment",
+            "get_macro_events",
+            "get_crypto_context",
         ],
     }
     FAMILY_QUOTAS = {

@@ -66,6 +66,15 @@ DATA_READ_TOOLS: Set[str] = {
     "get_candles",
     "inspect_database_schema",
     "read_database_records",
+    "get_macro_rates",
+    "get_macro_sentiment",
+    "get_macro_events",
+    "get_crypto_context",
+    "get_portfolio_state",
+    "get_market_context",
+    "get_price_data",
+    "get_institutional_data",
+    "get_technical_analysis",
 }
 
 DATABASE_IMMUTABLE_TABLES: Set[str] = {
@@ -96,6 +105,10 @@ TOOL_CATEGORIES: Dict[str, List[str]] = {
         "get_yield_data",
         "get_cot_report",
         "get_economic_calendar",
+        "get_macro_rates",
+        "get_macro_sentiment",
+        "get_macro_events",
+        "get_crypto_context",
     ],
     "news": [
         "get_news_items",
@@ -332,8 +345,8 @@ class ReadBeforeActGuard:
     ) -> GuardrailVerdict:
         if tool_name in TERMINAL_ACTION_TOOLS:
             decision = str(args.get("decision") or args.get("action") or "").lower().strip()
-            # Non-directional defensive decisions (wait/avoid) carry zero market risk and do not require prior data queries
-            if decision in ("avoid", "wait"):
+            # Non-directional defensive decisions (wait/avoid/hold) carry zero market risk and do not require prior data queries
+            if decision in ("avoid", "wait", "hold", "neutral", "pass", "no_trade"):
                 return GuardrailVerdict(allowed=True, guard_name="ReadBeforeActGuard", reason="OK")
 
             # Check if market data was pre-bundled / satisfied in execution context

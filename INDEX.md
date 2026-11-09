@@ -235,6 +235,8 @@
 
 #### `platform.py` - *Universal Cross-Platform & Event Loop Compatibility Engine.*
 - **Path**: [`src/monika/core/platform.py`](src/monika/core/platform.py)
+- **Classes**:
+  - `class SystemSleepGuard`: Context manager (sync and async) to prevent Windows system sleep / Modern Standby
 - **Top-Level Functions**:
   - `patch_proactor_connection_lost() -> bool`: Safely patch asyncio._ProactorBasePipeTransport._call_connection_lost on Windows.
   - `configure_event_loop() -> Dict[str, Any]`: Configure and return keyword arguments for optimal event loop factory based on OS.
@@ -244,6 +246,8 @@
   - `async safe_subprocess_run(cmd: List[str], cwd: Optional[Union[str, Path]], env: Optional[Dict[str, str]], ...) -> Tuple[int, str, str]`: Run subprocess safely across platforms without triggering NotImplementedError.
   - `get_platform_info() -> Dict[str, Any]`: Return normalized host platform and shell environment details for LLM prompting and tools.
   - `normalize_shell_command_for_platform(command: str) -> str`: Normalizes shell command strings across host operating systems.
+  - `set_thread_execution_state(prevent_sleep: bool) -> bool`: Prevent Windows from entering sleep / Modern Standby during active trading cycles.
+  - `prevent_system_sleep() -> SystemSleepGuard`: Return a sync/async context manager that prevents Windows sleep / Modern Standby.
 
 ### Folder: `src/monika/core/analytics` <a id="folder-srcmonikacoreanalytics"></a>
 
@@ -828,6 +832,7 @@
   - `build_scenario_branch_questions() -> dict[str, Union[Choice, Score]]`: Scenario Tree branch classifier for dominant market path and conviction.
   - `build_adversarial_check_questions(symbol: str) -> dict[str, Union[Choice, Noul, Score]]`: Structured System One questions for adversarial trade checks.
   - `build_trigger_validator_questions(symbol: str, trigger_type: str) -> dict[str, Union[Noul, Score]]`: System One validation questions for trade triggers before execution.
+  - `build_thinking_tier_questions(symbol: str) -> dict[str, Union[Choice, Score]]`: Evaluates required reasoning complexity ceiling (low, medium, high)
   - `async classify_news_batch_with_jev(client: Any, batch: list, now_utc: Any, ...) -> list[dict[str, Any]] | None`: Classifies a batch of NewsItem instances using TypeSafe Jev System One in parallel.
 
 #### `prompt_primitives.py`
@@ -7654,10 +7659,15 @@
 #### `composite_tools.py` - *Composite Tools — Multi-tool execution in a single call.*
 - **Path**: [`src/monika/application/analysis/tools/composite_tools.py`](src/monika/application/analysis/tools/composite_tools.py)
 - **Top-Level Functions**:
-  - `async execute_market_context(executor, symbol: str) -> Dict[str, Any]`: Executes: market_session, DXY, VIX, fundamental_brief, open_positions, risk_state.
+  - `async execute_macro_rates(executor, currencies: Optional[List[str]]) -> Dict[str, Any]`: Executes macro rates suite:
+  - `async execute_macro_sentiment(executor, symbols: Optional[List[str]]) -> Dict[str, Any]`: Executes macro market sentiment suite:
+  - `async execute_macro_events(executor, days_ahead: int, hours_back: int) -> Dict[str, Any]`: Executes macro events & news catalyst suite:
+  - `async execute_crypto_context(executor, symbols: Optional[List[str]]) -> Dict[str, Any]`: Executes crypto derivatives and sentiment suite:
+  - `async execute_portfolio_state(executor, symbol: Optional[str]) -> Dict[str, Any]`: Executes portfolio and operator account state suite:
+  - `async execute_market_context(executor, symbol: str) -> Dict[str, Any]`: Executes: market_session, DXY, VIX, fundamental_brief, open_positions, risk_state,
   - `async execute_technical_analysis(executor, symbol: str, timeframes: Optional[List[str]]) -> Dict[str, Any]`: Multi-timeframe technical analysis in a single call.
-  - `async execute_price_data(executor, symbol: str, direction: Optional[str], ...) -> Dict[str, Any]`: Fetches price history (OHLCV), ATR, and optimal intraday structural levels.
-  - `async execute_institutional_data(executor, symbol: str, cot_code: Optional[str]) -> Dict[str, Any]`: Fetches COT report and sentiment indicators (retail/crypto/oil).
+  - `async execute_price_data(executor, symbol: str, direction: Optional[str], ...) -> Dict[str, Any]`: Fetches price history (OHLCV), ATR, optimal intraday structural levels,
+  - `async execute_institutional_data(executor, symbol: str, cot_code: Optional[str]) -> Dict[str, Any]`: Fetches COT report and sentiment indicators (retail/crypto/oil),
 
 #### `executor.py` - *Core Tool Executor: Primary engine for routing and executing AI Agent tools.*
 - **Path**: [`src/monika/application/analysis/tools/executor.py`](src/monika/application/analysis/tools/executor.py)
@@ -8373,6 +8383,16 @@
     - `async execute(args: Dict[str, Any], session: AsyncSession, executor: Optional[Any]) -> Any`
   - `class GetInstitutionalDataHandler(ToolHandler)`
     - `async execute(args: Dict[str, Any], session: AsyncSession, executor: Optional[Any]) -> Any`
+  - `class GetMacroRatesHandler(ToolHandler)`
+    - `async execute(args: Dict[str, Any], session: AsyncSession, executor: Optional[Any]) -> Any`
+  - `class GetMacroSentimentHandler(ToolHandler)`
+    - `async execute(args: Dict[str, Any], session: AsyncSession, executor: Optional[Any]) -> Any`
+  - `class GetMacroEventsHandler(ToolHandler)`
+    - `async execute(args: Dict[str, Any], session: AsyncSession, executor: Optional[Any]) -> Any`
+  - `class GetCryptoContextHandler(ToolHandler)`
+    - `async execute(args: Dict[str, Any], session: AsyncSession, executor: Optional[Any]) -> Any`
+  - `class GetPortfolioStateHandler(ToolHandler)`
+    - `async execute(args: Dict[str, Any], session: AsyncSession, executor: Optional[Any]) -> Any`
   - `class SearchToolsHandler(ToolHandler)`
     - `async execute(args: Dict[str, Any], session: AsyncSession, executor: Optional[Any]) -> Any`
   - `class DescribeToolHandler(ToolHandler)`
@@ -8381,6 +8401,11 @@
   - `async handle_load_tool_category(args: dict) -> Any`
   - `async handle_get_market_context(args: dict, session: Optional[AsyncSession], executor: Optional[Any]) -> dict`
   - `async handle_get_institutional_data(args: dict, session: Optional[AsyncSession], executor: Optional[Any]) -> dict`
+  - `async handle_get_macro_rates(args: dict, session: Optional[AsyncSession], executor: Optional[Any]) -> dict`
+  - `async handle_get_macro_sentiment(args: dict, session: Optional[AsyncSession], executor: Optional[Any]) -> dict`
+  - `async handle_get_macro_events(args: dict, session: Optional[AsyncSession], executor: Optional[Any]) -> dict`
+  - `async handle_get_crypto_context(args: dict, session: Optional[AsyncSession], executor: Optional[Any]) -> dict`
+  - `async handle_get_portfolio_state(args: dict, session: Optional[AsyncSession], executor: Optional[Any]) -> dict`
   - `async handle_search_tools(args: dict) -> Any`
   - `async handle_describe_tool(args: dict) -> Any`
 
@@ -12855,6 +12880,7 @@
     - `get_thinking_budget_for_task(task_role: Optional[str], symbol: str, context: Optional[Dict[str, Any]], ...) -> int` - *Determines the appropriate thinking token budget based on task role and symbol context.*
 - **Top-Level Functions**:
   - `clamp_thinking_budget_to_answer_room(budget: int, max_tokens: int, min_answer_tokens: int, ...) -> int`: Clamps thinking token budget so it never starves max_tokens of answer completion headroom.
+  - `resolve_turn_thinking_budget(turn: int, called_tools: Optional[Any], base_thinking: Union[str, int, None], ...) -> int`: Computes turn-phase cognitive routing budget for agentic cycles:
 
 #### `cache_breakpoint_manager.py` - *Cache Breakpoint Manager — Optimizes Anthropic / Gemini Prompt Caching.*
 - **Path**: [`src/monika/infrastructure/llm/cache_breakpoint_manager.py`](src/monika/infrastructure/llm/cache_breakpoint_manager.py)

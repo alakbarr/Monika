@@ -501,6 +501,80 @@ GET_EARNINGS_CALENDAR = _tool(
 )
 
 
+GET_MACRO_RATES = _tool(
+    name="get_macro_rates",
+    description=(
+        "Fetch comprehensive interest rate, yield curve, and central bank policy suite in one call. "
+        "Returns official policy rates, US Treasury yields (2Y, 5Y, 10Y, 30Y), international bond yield spreads "
+        "(US-DE, US-UK, US-JP, US-AU), market-implied central bank expectations, FedWatch probabilities, and DXY trend."
+    ),
+    properties={
+        "currencies": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Optional list of currencies (e.g. ['USD', 'EUR', 'GBP', 'JPY']). Default: all major currencies.",
+        },
+    },
+    required=[],
+)
+
+
+GET_MACRO_SENTIMENT = _tool(
+    name="get_macro_sentiment",
+    description=(
+        "Fetch institutional and retail sentiment indicators in one call. "
+        "Returns VIX volatility index, market regime, cross-asset correlations, "
+        "precomputed COT institutional positioning, retail trader sentiment, and Crypto Fear & Greed."
+    ),
+    properties={
+        "symbols": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Optional list of symbols (e.g. ['EURUSD', 'GBPUSD', 'USDJPY', 'XAUUSD']). Default: active major pairs.",
+        },
+    },
+    required=[],
+)
+
+
+GET_MACRO_EVENTS = _tool(
+    name="get_macro_events",
+    description=(
+        "Fetch macroeconomic calendar events and news narrative catalysts in one call. "
+        "Returns high/medium-impact economic releases, processed news digest narrative, "
+        "breaking news headlines, and US Treasury auction outcomes."
+    ),
+    properties={
+        "days_ahead": {
+            "type": "integer",
+            "description": "How many days ahead to look for upcoming economic releases (default: 3).",
+        },
+        "hours_back": {
+            "type": "integer",
+            "description": "How many hours back to look for news and recent events (default: 24).",
+        },
+    },
+    required=[],
+)
+
+
+GET_CRYPTO_CONTEXT = _tool(
+    name="get_crypto_context",
+    description=(
+        "Fetch cryptocurrency market state and derivatives sentiment in one call. "
+        "Returns Bitcoin perpetual funding rates, Fear & Greed index, H4 price history, and technical indicators."
+    ),
+    properties={
+        "symbols": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Optional list of crypto symbols (default: ['BTCUSD']).",
+        },
+    },
+    required=[],
+)
+
+
 __all__ = [
     "GET_ECONOMIC_CALENDAR",
     "GET_WEEKLY_MACRO_SUMMARY",
@@ -530,4 +604,8 @@ __all__ = [
     "GET_MACRO_PRICED_IN_SCORE",
     "GET_INDONESIA_MACRO",
     "GET_EARNINGS_CALENDAR",
+    "GET_MACRO_RATES",
+    "GET_MACRO_SENTIMENT",
+    "GET_MACRO_EVENTS",
+    "GET_CRYPTO_CONTEXT",
 ]

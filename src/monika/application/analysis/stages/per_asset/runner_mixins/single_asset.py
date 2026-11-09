@@ -381,12 +381,12 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
                 f"[{symbol}] Data bundle injected ({len(data_bundle or '')} chars), verbose instructions removed"
             )
         elif is_agentic:
-            # Lean user message without 40 KB pre-fetched dump
+            # Lean user message without pre-fetched dump
             parts = [core_instructions]
             if context_blocks:
                 parts.append("\n".join(f"[{label}]\n{content}" for label, content in context_blocks))
             user_message = "\n\n".join(parts)
-            logger.info(f"[{symbol}] Agentic active — 40 KB pre-fetch dump eliminated")
+            logger.info(f"[{symbol}] Agentic active — lean prompt ready")
         else:
             logger.warning(f"[{symbol}] Data bundle empty — AI will call all tools manually")
 
@@ -591,7 +591,8 @@ class SingleAssetAnalysisMixin(_RunnerMixinBase):
                     elif k.startswith("technical_indicators_"):
                         prefetch_satisfied_tools.add("get_technical_indicators")
 
-        if is_agentic:
+        # In agentic mode, only clear prefetch_satisfied_tools if data_bundle was NOT injected into prompt
+        if is_agentic and not (bundle_success and data_bundle):
             prefetch_satisfied_tools = set()
 
         # Rate limiting

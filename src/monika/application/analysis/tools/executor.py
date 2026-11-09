@@ -598,6 +598,8 @@ class ToolExecutor(
                 "get_multi_timeframe_summary",
                 "get_price_data",
                 "get_technical_analysis",
+                "get_market_context",
+                "get_institutional_data",
             }
             if not (self.effective_called_tools & DATA_READING_TOOLS):
                 return {
@@ -645,6 +647,10 @@ class ToolExecutor(
                     }
 
         self.called_tools.add(normalized_name)
+        from monika.application.analysis.tools.composite_tools import COMPOSITE_BUNDLE_SUBTOOLS_MAP
+
+        if normalized_name in COMPOSITE_BUNDLE_SUBTOOLS_MAP:
+            self.called_tools.update(COMPOSITE_BUNDLE_SUBTOOLS_MAP[normalized_name])
 
         # 1. Primary dispatch via UnifiedToolRegistry (Single Source of Truth)
         handler = None
@@ -760,6 +766,11 @@ class ToolExecutor(
 
         if isinstance(tool_input, dict):
             self._resolve_symbol(tool_input)
+            if normalized_name in ("get_macro_rates", "get_macro_sentiment", "get_crypto_context"):
+                for list_key in ("currencies", "symbols"):
+                    val = tool_input.get(list_key)
+                    if isinstance(val, str):
+                        tool_input[list_key] = [s.strip() for s in val.split(",") if s.strip()]
 
         cacheable_tools = ["get_treasury_yields", "get_bond_yield_spreads", "get_interest_rates"]
         is_force_refresh = isinstance(tool_input, dict) and bool(tool_input.get("force_refresh"))

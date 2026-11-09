@@ -353,6 +353,10 @@ Proceed with evaluation based strictly on the data above. Respond in valid JSON 
                 )
 
                 asset_verification_names = {
+                    "get_market_context",
+                    "get_price_data",
+                    "get_institutional_data",
+                    "get_portfolio_state",
                     "get_market_quote",
                     "get_spread_snapshot",
                     "get_technical_indicators",

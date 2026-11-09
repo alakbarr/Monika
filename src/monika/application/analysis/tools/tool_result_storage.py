@@ -48,7 +48,13 @@ class ToolResultStorage:
                 content_str = str(raw_result)
 
             content_bytes = content_str.encode("utf-8")
-            if len(content_bytes) <= self.threshold_bytes:
+            threshold = self.threshold_bytes
+            from monika.application.analysis.tools.composite_tools import COMPOSITE_BUNDLE_TOOLS
+
+            if tool_name in COMPOSITE_BUNDLE_TOOLS:
+                threshold = max(threshold, 48 * 1024)
+
+            if len(content_bytes) <= threshold:
                 return raw_result, False
 
             digest = hashlib.sha256(content_bytes).hexdigest()[:16]

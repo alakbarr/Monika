@@ -49,6 +49,7 @@ def _stage1_system_prompt(settings: dict[str, Any]) -> str:
 async def _case_stage1_fundamental(session: Any, settings: dict[str, Any], ex: Any) -> BenchmarkCase:
     if settings.get("analysis", {}).get("agentic", {}).get("enabled", False):
         from monika.application.analysis.prompt.prompt_assembler import build_stage1_agentic_prompt
+        from monika.application.analysis.tools.tools_definitions import MACRO_BUNDLED_TOOLS
 
         sysp, user_msg = build_stage1_agentic_prompt(settings)
         return BenchmarkCase(
@@ -56,7 +57,7 @@ async def _case_stage1_fundamental(session: Any, settings: dict[str, Any], ex: A
             "macro",
             sysp,
             user_msg,
-            tools=MACRO_ANALYSIS_TOOLS,
+            tools=MACRO_BUNDLED_TOOLS,
             role_kwargs=dict(max_tool_turns=settings.get("analysis", {}).get("agentic", {}).get("max_turns", 25)),
         )
 

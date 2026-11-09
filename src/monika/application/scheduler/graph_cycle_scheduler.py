@@ -520,7 +520,9 @@ class GraphCycleScheduler(CycleScheduler):
             logger.info("Graph cycle already running — skipping concurrent invocation")
             return {"status": "skipped", "reason": "cycle_already_running"}
 
-        async with self._cycle_lock:
+        from monika.core.platform import prevent_system_sleep
+
+        async with self._cycle_lock, prevent_system_sleep():
             import monika.core.primitives.clock as clock
 
             start = clock.now()

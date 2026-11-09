@@ -426,6 +426,9 @@ class TurnToolPipeline:
                         "get_mt5_bars",
                         "get_atr",
                         "get_swing_points",
+                        "get_market_context",
+                        "get_price_data",
+                        "get_technical_analysis",
                     }
 
                     def _normalize_inspection_name(t_name: str) -> str:
@@ -450,7 +453,27 @@ class TurnToolPipeline:
 
                     raw_inspected = set(tracking.called_tools) | set(prefetch_satisfied_tools or [])
                     all_inspected_tools = {_normalize_inspection_name(t) for t in raw_inspected} | raw_inspected
-                    if not any(t in all_inspected_tools for t in inspection_tools):
+                    rationale_l = str(
+                        c_input.get("rationale")
+                        or c_input.get("reason")
+                        or c_input.get("reasoning")
+                        or c_input.get("analysis")
+                        or ""
+                    ).lower()
+                    has_ssvp_wait_rationale = any(
+                        m in rationale_l
+                        for m in (
+                            "contradiction unresolved",
+                            "ssvp",
+                            "high cds",
+                            "context merge",
+                            "unresolvable",
+                            "risk of hallucination",
+                            "macro conflict",
+                            "regime conflict",
+                        )
+                    )
+                    if not any(t in all_inspected_tools for t in inspection_tools) and not has_ssvp_wait_rationale:
                         logger.warning(
                             f"[{stage_name}][AgentHarness] Anti-laziness: blocked premature WAIT on turn 1 without technical inspection."
                         )
@@ -652,6 +675,13 @@ class TurnToolPipeline:
 
                     with tool_span(c_name, symbol=stage_symbol):
                         res_obj = await executor.execute(c_name, c_input)
+
+                    from monika.application.analysis.tools.composite_tools import COMPOSITE_BUNDLE_SUBTOOLS_MAP
+
+                    if c_name in COMPOSITE_BUNDLE_SUBTOOLS_MAP:
+                        tracking.called_tools.update(COMPOSITE_BUNDLE_SUBTOOLS_MAP[c_name])
+                    if hasattr(executor, "called_tools"):
+                        tracking.called_tools.update(executor.called_tools)
 
                     await plugin_mgr.emit(
                         PluginHook.POST_TOOL_CALL,

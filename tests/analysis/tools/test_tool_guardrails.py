@@ -85,13 +85,19 @@ def test_read_before_act_guard():
     v_after_read = guard.evaluate("submit_asset_analysis", {"decision": "buy", "symbol": "GBPUSD"})
     assert v_after_read.allowed is True
 
-    # New guard: 'wait' and 'avoid' do not require tool reads
+    # New guard: 'wait', 'avoid', 'hold', 'neutral', 'pass' do not require tool reads
     guard_fresh = ReadBeforeActGuard()
     v_wait = guard_fresh.evaluate("submit_asset_analysis", {"decision": "wait", "symbol": "GBPUSD"})
     assert v_wait.allowed is True
 
     v_avoid = guard_fresh.evaluate("submit_asset_analysis", {"decision": "avoid", "symbol": "GBPUSD"})
     assert v_avoid.allowed is True
+
+    v_hold = guard_fresh.evaluate("submit_asset_analysis", {"decision": "hold", "symbol": "GBPUSD"})
+    assert v_hold.allowed is True
+
+    v_neutral = guard_fresh.evaluate("submit_asset_analysis", {"decision": "neutral", "symbol": "GBPUSD"})
+    assert v_neutral.allowed is True
 
     # New guard: prefetch satisfied tools or raw bundle data in context bypasses block
     v_prefetch = guard_fresh.evaluate(

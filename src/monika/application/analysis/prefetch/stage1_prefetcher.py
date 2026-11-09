@@ -77,9 +77,18 @@ def prune_stage1_tools(
 
     # Partial prefetch: keep mandatory conclusion tool and any unsatisfied tools
     pruned: list[dict[str, Any]] = []
+    from monika.application.analysis.tools.composite_tools import COMPOSITE_BUNDLE_SUBTOOLS_MAP
+
     for tool in base_tools:
         name = str(tool.get("name") if isinstance(tool, dict) else getattr(tool, "name", ""))
-        if name == mandatory_conclusion_tool or name not in satisfied_tools:
+        if name == mandatory_conclusion_tool:
+            pruned.append(tool)
+        elif name in COMPOSITE_BUNDLE_SUBTOOLS_MAP:
+            # Only prune bundle tool if all its constituent subtools are already satisfied
+            subtools = set(COMPOSITE_BUNDLE_SUBTOOLS_MAP[name])
+            if not subtools.issubset(satisfied_tools):
+                pruned.append(tool)
+        elif name not in satisfied_tools:
             pruned.append(tool)
 
     pruned.sort(key=lambda t: str(t.get("name") if isinstance(t, dict) else getattr(t, "name", "")))

@@ -102,3 +102,40 @@ async def test_brief_clean_consistency(mock_settings):
     assert is_safe is True
     assert risk_score == 0.0
     assert len(issues) == 0
+
+
+@pytest.mark.asyncio
+async def test_brief_jpy_bearish_risk_off_justified(mock_settings):
+    session = DummySession()
+
+    # JPY bearish during risk-off WITH macro yield spread / BoJ carry justification
+    brief_justified = {
+        "currency_bias": {"USD": "bullish", "EUR": "bearish", "GBP": "bearish", "AUD": "bearish", "JPY": "bearish"},
+        "risk_sentiment": "risk-off",
+        "confidence": 0.85,
+        "macro_narrative": "Wide US-JP yield spread (+263 bps) and BoJ dovish policy maintain structural JPY carry depreciation.",
+    }
+    is_safe, issues, risk_score = await BriefContaminationGuard.validate_brief_integrity(
+        session, brief_justified, mock_settings
+    )
+    assert is_safe is True
+    assert risk_score == 0.0
+    assert not any("JPY typically strengthens" in iss for iss in issues)
+
+
+@pytest.mark.asyncio
+async def test_brief_jpy_bearish_risk_off_unjustified(mock_settings):
+    session = DummySession()
+
+    # JPY bearish during risk-off WITHOUT justification
+    brief_unjustified = {
+        "currency_bias": {"USD": "bullish", "EUR": "bearish", "GBP": "bearish", "AUD": "bearish", "JPY": "bearish"},
+        "risk_sentiment": "risk-off",
+        "confidence": 0.85,
+        "macro_narrative": "General equities sell-off across all sectors.",
+    }
+    is_safe, issues, risk_score = await BriefContaminationGuard.validate_brief_integrity(
+        session, brief_unjustified, mock_settings
+    )
+    assert risk_score >= 0.20
+    assert any("JPY typically strengthens as a safe-haven" in iss for iss in issues)

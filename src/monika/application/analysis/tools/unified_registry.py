@@ -74,6 +74,16 @@ TRADING_TOOLSET: Set[str] = {
     "get_prediction_market_odds",
     "submit_asset_analysis",
     "submit_fundamental_brief",
+    # Composite bundle tools
+    "get_macro_rates",
+    "get_macro_sentiment",
+    "get_macro_events",
+    "get_crypto_context",
+    "get_portfolio_state",
+    "get_market_context",
+    "get_price_data",
+    "get_institutional_data",
+    "get_technical_analysis",
     # Backward compatibility aliases
     "get_market_data",
     "fetch_market_data",

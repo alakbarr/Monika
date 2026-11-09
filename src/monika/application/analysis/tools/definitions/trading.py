@@ -713,6 +713,22 @@ GET_CARRY_TRADE_RANKINGS_TOOL = _tool(
 )
 
 
+GET_PORTFOLIO_STATE = _tool(
+    name="get_portfolio_state",
+    description=(
+        "Fetch complete portfolio, account, open positions, pending orders, risk state, "
+        "and market session status in one call. Use this to quickly inspect account health and exposure."
+    ),
+    properties={
+        "symbol": {
+            "type": "string",
+            "description": "Optional specific symbol to evaluate (e.g. 'EURUSD').",
+        },
+    },
+    required=[],
+)
+
+
 __all__ = [
     "_fundamental_brief_schema",
     "_asset_analysis_schema",
@@ -751,4 +767,5 @@ __all__ = [
     "SIMULATE_PORTFOLIO_DRAWDOWN_TOOL",
     "CALCULATE_KELLY_CRITERION_TOOL",
     "GET_CARRY_TRADE_RANKINGS_TOOL",
+    "GET_PORTFOLIO_STATE",
 ]

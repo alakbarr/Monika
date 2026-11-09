@@ -28,7 +28,9 @@ from monika.application.analysis.prefetch.stage1_prefetcher import (
 )
 from monika.application.analysis.tools.tools_definitions import (
     MACRO_ANALYSIS_TOOLS,
+    MACRO_BUNDLED_TOOLS,
     WEEKEND_CRYPTO_MACRO_TOOLS,
+    WEEKEND_CRYPTO_BUNDLED_TOOLS,
     minify_tool_definitions,
 )
 from monika.application.analysis.validators.fundamental_verifier import verify_fundamental_brief
@@ -548,7 +550,17 @@ class FundamentalStage:
         )
 
         if is_agentic:
-            tools_to_use = minify_tool_definitions(base_tools)
+            agentic_base = WEEKEND_CRYPTO_BUNDLED_TOOLS if weekend_btc_only_mode else MACRO_BUNDLED_TOOLS
+            tools_to_use = minify_tool_definitions(agentic_base)
+            actual_user_message += (
+                "\n\n[AGENTIC EXECUTION DIRECTIVE]:\n"
+                "Use high-efficiency bundle tools to gather macro context rapidly:\n"
+                "- `get_macro_rates`: fetch policy rates, Treasury yields, yield spreads, CB expectations, and DXY.\n"
+                "- `get_macro_sentiment`: fetch VIX, market regime, correlations, COT positioning, and retail sentiment.\n"
+                "- `get_macro_events`: fetch high-impact calendar, news digest, and breaking news.\n"
+                "- `get_crypto_context`: fetch crypto derivatives and funding rates.\n"
+                "You can execute these bundle tools in Turn 1, then immediately synthesize and call `submit_fundamental_brief`."
+            )
             agentic_max_turns = self.settings.get("analysis", {}).get("agentic", {}).get("max_turns", 25)
             stage1_max_turns = agentic_max_turns
             prefetch_satisfied_tools = set()

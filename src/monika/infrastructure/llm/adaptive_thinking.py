@@ -8,7 +8,7 @@ guaranteeing deep chain-of-thought exploration on volatile/uncertain assets.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 logger = logging.getLogger("TradingAgent.AdaptiveThinking")
 
@@ -291,3 +291,56 @@ def clamp_thinking_budget_to_answer_room(
         ratio_limit = int(max_tokens * max_thinking_ratio)
         max_allowed_thinking = min(max_allowed_thinking, ratio_limit)
     return max(0, min(budget, max_allowed_thinking))
+
+
+def resolve_turn_thinking_budget(
+    turn: int,
+    called_tools: Optional[Any] = None,
+    base_thinking: Union[str, int, None] = None,
+    is_agentic: bool = True,
+    complexity_ceiling: Optional[str] = None,
+) -> int:
+    """
+    Computes turn-phase cognitive routing budget for agentic cycles:
+    - Phase 1 (Data Gathering, Turn 1, no data tools called yet):
+      Uses LOW budget (1024) to rapidly select bundle tools without wasting 60s thinking.
+    - Phase 2 (Follow-up / Risk verification):
+      Uses MEDIUM budget (4096) to evaluate confluence and verify sizing/risk parameters.
+    - Phase 3 (Terminal Synthesis & Submission):
+      Uses high/ceiling budget (4096 - 12288) calibrated by Jev complexity router.
+    """
+    if not is_agentic:
+        if isinstance(base_thinking, int):
+            return base_thinking
+        if isinstance(base_thinking, str):
+            mapping = {"low": 1024, "medium": 4096, "high": 10000, "max": 16000}
+            return mapping.get(base_thinking.lower(), 4096)
+        return 4096
+
+    called = set(called_tools or [])
+    from monika.application.analysis.tools.composite_tools import COMPOSITE_BUNDLE_TOOLS
+
+    has_gathered_data = bool(called & COMPOSITE_BUNDLE_TOOLS) or len(called) >= 2
+
+    # Phase 1: Pure data gathering turn
+    if turn == 1 and not has_gathered_data:
+        return 1024
+
+    # Determine ceiling
+    ceiling_str = str(complexity_ceiling or base_thinking or "medium").lower()
+    ceiling_budget = 10000 if ceiling_str == "high" else (16000 if ceiling_str == "max" else 4096)
+
+    # Stage 1 macro synthesis elevation: once rates and sentiment bundles are in hand, elevate to ceiling for deep brief synthesis
+    has_macro_bundles = (
+        "get_macro_rates" in called or "get_macro_events" in called or "get_crypto_context" in called
+    ) and ("get_macro_sentiment" in called or "get_vix" in called)
+    if has_macro_bundles:
+        return ceiling_budget
+
+    # Phase 2: intermediate verification for per-asset trade decisions
+    if not ("submit_fundamental_brief" in called or "submit_asset_analysis" in called):
+        if "calculate_position_size" not in called and "validate_trade_risk" not in called:
+            return min(4096, ceiling_budget)
+
+    # Phase 3: Final terminal synthesis
+    return ceiling_budget

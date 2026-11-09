@@ -349,9 +349,9 @@ GET_TIMESFM_FORECAST = _tool(
 GET_MARKET_CONTEXT = _tool(
     name="get_market_context",
     description=(
-        "Composite macro context tool — returns market_session, DXY, VIX, "
-        "fundamental_brief, open_positions, and risk_state in a single unified call. "
-        "Use this FIRST to fetch all environment context at once."
+        "Composite market context tool — returns market_session, DXY, VIX, fundamental_brief, "
+        "open_positions, risk_state, live market quote (bid/ask), and spread snapshot in a single unified call. "
+        "Use this FIRST to fetch complete market environment context."
     ),
     properties={
         "symbol": {"type": "string", "description": "Trading symbol for brief and position context."},
@@ -381,8 +381,9 @@ GET_TECHNICAL_ANALYSIS = _tool(
 GET_PRICE_DATA = _tool(
     name="get_price_data",
     description=(
-        "Composite price & levels tool — returns recent H4 OHLCV price history, "
-        "ATR_14 volatility, and optimal intraday structural TP/SL candidate levels."
+        "Composite price, volatility & structure tool — returns recent H4 OHLCV price history, "
+        "ATR volatility, daily range context, volatility regime, volume profile, liquidity sweep, "
+        "SMC zones, structure breaks, swing points, and optimal intraday structural TP/SL levels in one call."
     ),
     properties={
         "symbol": {"type": "string", "description": "Trading symbol."},
@@ -400,8 +401,9 @@ GET_PRICE_DATA = _tool(
 GET_INSTITUTIONAL_DATA = _tool(
     name="get_institutional_data",
     description=(
-        "Composite institutional & positioning tool — returns precomputed COT signals, "
-        "raw COT report, and asset-specific retail sentiment / funding rate / fear & greed."
+        "Composite institutional positioning & catalysts tool — returns precomputed COT signals, "
+        "raw COT report, asset-specific retail sentiment / funding rate / fear & greed, pair-filtered economic calendar, "
+        "pair-filtered breaking news, and cross-asset correlations."
     ),
     properties={
         "symbol": {"type": "string", "description": "Trading symbol."},

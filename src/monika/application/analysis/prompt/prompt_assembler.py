@@ -705,25 +705,24 @@ You start with ZERO pre-fetched data. No giant market dump has been injected.
 You must gather your live market telemetry step-by-step through a rigorous 5-phase workflow before submitting your brief.
 Do NOT skip phases or jump to conclusions prematurely. Reason about each layer before proceeding:
 
-### PHASE 1: Sovereign Yields, Curve Health & Dollar Dominance
-- Mandatory Queries: Call `get_treasury_yields`, `get_bond_yield_spreads`, and `get_dxy` (in parallel).
+### PHASE 1: Sovereign Yields, Curve Health & Rate Policy Suite
+- Mandatory Queries: Call `get_macro_rates` (fetches official rates, Treasury yields, bond spreads, central bank expectations, FedWatch probabilities, and DXY in one unified call).
 - Reasoning Checkpoint:
   * Determine the US 10Y-2Y yield curve status (un-inverting, flat, or inverted).
   * Calculate cross-border yield differentials: US-DE, US-JP, and US-UK spreads.
   * Evaluate DXY momentum against key support and resistance levels.
 
-### PHASE 2: Central Bank Policy & Market Rate Pricing (Apply Central Banks Framework)
-- Mandatory Queries: Call `get_interest_rates`, `get_fedwatch_probabilities`, and `get_central_bank_expectations`.
-- Reasoning Checkpoint:
-  * Apply the Central Banks Framework: evaluate policy cycle divergence (Fed vs ECB vs BoE vs BoJ vs RBA).
-  * Assess Priced-In score (1-10) using FedWatch probability buckets.
-
-### PHASE 3: Macro Stress, Volatility & Institutional Positioning (Apply COT Playbook)
-- Mandatory Queries: Call `get_vix`, `get_economic_calendar`, and `get_precomputed_cot_signals` (or `get_cot_report`).
+### PHASE 2: Macro Stress, Volatility & Institutional Positioning (Apply COT Playbook)
+- Mandatory Queries: Call `get_macro_sentiment` (fetches VIX, volatility regime, cross-asset correlations, precomputed COT signals, retail sentiment, and Crypto Fear & Greed).
 - Reasoning Checkpoint:
   * Gauge macro risk appetite via VIX regime.
-  * Check for Tier-1 economic calendar events within 24-48 hours.
   * Inspect CFTC COT positioning percentiles to identify institutional crowdedness or extreme unwinds.
+
+### PHASE 3: Economic Calendar, Breaking News Catalysts & Crypto Context
+- Mandatory Queries: Call `get_macro_events` (fetches high/medium economic calendar, news digest, breaking news, and Treasury auctions) and `get_crypto_context` (if crypto/cross-asset relevant).
+- Reasoning Checkpoint:
+  * Check for Tier-1 economic calendar events within 24-48 hours.
+  * Verify breaking news catalysts and market narrative driver.
 
 ### PHASE 4: Web Research Escalation Gate (Contradiction & Ambiguity Resolution)
 - Trigger Conditions:
@@ -868,15 +867,15 @@ You start with ZERO pre-fetched data. No indicator or price bundle has been inje
 You must gather your live market telemetry step-by-step through a rigorous 5-phase workflow before submitting your analysis.
 Do NOT skip phases or jump to conclusions prematurely. Reason about each layer before proceeding:
 
-### PHASE 1: Macro Alignment & Core Trend Baseline
-- Mandatory Queries: Call `get_market_quote` (or `get_verified_market_snapshot`), `get_technical_analysis` (or `get_technical_indicators` for H4 and D1 in parallel).
+### PHASE 1: Macro Alignment & Core Market Context
+- Mandatory Queries: Call `get_market_context` (fetches live quote, spread snapshot, session, DXY, VIX, fundamental brief, open positions, and risk state in one unified call).
 - Reasoning Checkpoint:
   * Check live bid/ask quote and spread.
   * Determine multi-timeframe trend alignment (D1 macro trend vs H4 swing trend).
   * Inspect ADX (trend strength) and EMA stack (20/50/200).
 
-### PHASE 2: Market Structure & Smart Money Concepts (SMC)
-- Mandatory Queries: Call `get_optimal_intraday_levels` and `get_price_data` (across M15, H1, H4, D1) or `get_smc_zones`/`get_order_blocks`/`get_liquidity_zones`.
+### PHASE 2: Market Structure, SMC & Price Geometry
+- Mandatory Queries: Call `get_price_data` (fetches H4 price history, ATR volatility, optimal intraday levels, daily range context, volatility regime, volume profile, liquidity sweep, SMC zones, structure breaks, and swing points).
 - Reasoning Checkpoint:
   * Calculate Dealing Range Position: pos = (Close - Low_20) / (High_20 - Low_20).
   * Classify Regime:
@@ -885,8 +884,8 @@ Do NOT skip phases or jump to conclusions prematurely. Reason about each layer b
     - EQUILIBRIUM CHOP (0.40 <= pos <= 0.60 with low displacement): Default to WAIT / AVOID to preserve capital.
   * Locate unmitigated order blocks, fair value gaps (FVG), and resting buy-side/sell-side liquidity pools.
 
-### PHASE 3: Volatility Environment, Intraday Geometry & Institutional / Retail Positioning
-- Mandatory Queries: Call `get_spread_snapshot`, `get_institutional_data` (or `get_cot_report`), `get_economic_calendar`, and `get_news_items` (or `get_retail_sentiment`).
+### PHASE 3: Institutional Positioning & Catalysts
+- Mandatory Queries: Call `get_institutional_data` (fetches precomputed COT signals, raw COT report, retail sentiment, pair-filtered economic calendar, pair-filtered breaking news, and cross-asset correlations).
 - Reasoning Checkpoint:
   * Measure H4 ATR to establish the minimum structural Stop Loss floor (>= 1.0x ATR).
   * Inspect ADR boundaries for Take Profit ceiling (TP = min(1.50x ATR, 0.68x ADR), net R:R >= {min_rr:.2f}).

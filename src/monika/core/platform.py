@@ -12,6 +12,7 @@ safe asynchronous subprocess execution, and normalized cross-platform path handl
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import re
 import socket
@@ -336,6 +337,57 @@ def normalize_shell_command_for_platform(command: str) -> str:
     return cmd
 
 
+def set_thread_execution_state(prevent_sleep: bool = True) -> bool:
+    """
+    Prevent Windows from entering sleep / Modern Standby during active trading cycles.
+
+    When prevent_sleep=True, sets ES_CONTINUOUS | ES_SYSTEM_REQUIRED.
+    When prevent_sleep=False, resets to ES_CONTINUOUS.
+    On non-Windows systems, this is a safe no-op returning False.
+    """
+    if not IS_WINDOWS:
+        return False
+    try:
+        import ctypes
+
+        flags = 0x80000000  # ES_CONTINUOUS
+        if prevent_sleep:
+            flags |= 0x00000001  # ES_SYSTEM_REQUIRED
+        prev = ctypes.windll.kernel32.SetThreadExecutionState(flags)
+        return prev != 0
+    except Exception:
+        return False
+
+
+class SystemSleepGuard:
+    """
+    Context manager (sync and async) to prevent Windows system sleep / Modern Standby
+    during critical execution blocks. Restores default power policy upon exit.
+    """
+
+    def __enter__(self) -> "SystemSleepGuard":
+        set_thread_execution_state(True)
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        set_thread_execution_state(False)
+
+    async def __aenter__(self) -> "SystemSleepGuard":
+        set_thread_execution_state(True)
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        set_thread_execution_state(False)
+
+
+def prevent_system_sleep() -> SystemSleepGuard:
+    """
+    Return a sync/async context manager that prevents Windows sleep / Modern Standby.
+    Safe on non-Windows platforms (no-op).
+    """
+    return SystemSleepGuard()
+
+
 __all__ = [
     "IS_WINDOWS",
     "IS_LINUX",
@@ -349,4 +401,6 @@ __all__ = [
     "safe_subprocess_run",
     "get_platform_info",
     "normalize_shell_command_for_platform",
+    "set_thread_execution_state",
+    "prevent_system_sleep",
 ]

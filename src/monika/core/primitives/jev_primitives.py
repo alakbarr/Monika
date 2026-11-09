@@ -1113,6 +1113,32 @@ def build_trigger_validator_questions(symbol: str = "", trigger_type: str = "") 
     }
 
 
+def build_thinking_tier_questions(symbol: str = "") -> dict[str, Union[Choice, Score]]:
+    """
+    Evaluates required reasoning complexity ceiling (low, medium, high)
+    for the upcoming agentic analysis cycle. Instructions are completely static.
+    """
+    return {
+        "complexity_tier": Choice(
+            instructions="Determine required cognitive thinking depth ceiling for this analytical context:",
+            criteria={
+                "low": "Standard regime, low volatility, straightforward technical setup, no macro conflict.",
+                "medium": "Elevated volatility, mixed signals, major economic release nearby, moderate structural conflict.",
+                "high": "Crisis regime, extreme VIX, high CDS spread, fundamental narrative contradiction, severe conflict.",
+            },
+        ),
+        "reasoning_budget_tokens": Score(
+            instructions="Target reasoning thinking budget token ceiling (between 1000 and 16000 tokens):",
+            criteria=[
+                "1000 - Minimal thinking for clean clear setup",
+                "4000 - Moderate thinking for standard technical/macro evaluation",
+                "8000 - Deep thinking for nuanced multi-factor conflict resolution",
+                "16000 - Maximum exhaustive thinking for extreme crisis volatility",
+            ],
+        ),
+    }
+
+
 _DATA_POINT_REGEX = re.compile(
     r"(?:"
     r"(?:(?:actual|reported)\s*)?[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?%?(?:\s*(?:bps|bp|points|[kKmMbBtT]))?"

@@ -118,6 +118,15 @@ def normalize_effort(effort_raw: object) -> str | None:
 
 
 def extract_request_effort(req_data: dict) -> str | None:
+    for key in ("thinking_budget", "reasoning_budget", "budget_tokens"):
+        if key in req_data and isinstance(req_data[key], (int, float)):
+            b = int(req_data[key])
+            if b <= 1536:
+                return "low"
+            elif b <= 6144:
+                return "medium"
+            else:
+                return "high"
     for key in ("reasoning_effort", "thinking_level", "effort"):
         if key in req_data:
             eff = normalize_effort(req_data[key])

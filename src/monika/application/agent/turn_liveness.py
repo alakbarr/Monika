@@ -105,8 +105,21 @@ class TurnLivenessWatchdog:
     async def _monitor_loop(self) -> None:
         while self._is_active:
             try:
+                t_before = time.time()
                 await asyncio.sleep(self.check_interval_seconds)
                 now = time.time()
+                actual_slept = now - t_before
+
+                # Detect OS sleep / Modern Standby: if sleep paused for > (check_interval * 3.0)
+                if actual_slept > (self.check_interval_seconds * 3.0):
+                    logger.warning(
+                        f"[TurnLiveness:{self.turn_id}] Detected system sleep/resume (loop paused {actual_slept:.1f}s). "
+                        "Re-baselining liveness timers."
+                    )
+                    self._last_activity_time = now
+                    self._last_gen_advance_time = now
+                    continue
+
                 idle_duration = now - self._last_activity_time
 
                 # 1. Total dead-stall check

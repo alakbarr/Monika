@@ -33,6 +33,10 @@ class BenchmarkToolExecutor(ToolExecutor):
         normalized = getattr(self, "TOOL_ALIASES", {}).get(tool_name, tool_name)
         if hasattr(self, "called_tools"):
             self.called_tools.add(normalized)
+            from monika.application.analysis.tools.composite_tools import COMPOSITE_BUNDLE_SUBTOOLS_MAP
+
+            if normalized in COMPOSITE_BUNDLE_SUBTOOLS_MAP:
+                self.called_tools.update(COMPOSITE_BUNDLE_SUBTOOLS_MAP[normalized])
         if normalized == "submit_fundamental_brief":
             return await self._tool_submit_fundamental_brief(tool_input)
         if normalized == "submit_asset_analysis":

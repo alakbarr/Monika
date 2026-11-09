@@ -590,6 +590,55 @@ async def test_harness_anti_laziness_allows_wait_with_suffixed_prefetch_tools(du
     assert call_args[0] == "submit_asset_analysis"
 
 
+@pytest.mark.asyncio
+async def test_harness_anti_laziness_allows_wait_with_ssvp_rationale(dummy_client, mock_session):
+    """Verify that SSVP conflict/high CDS rationale allows immediate WAIT on turn 1 without prior reads."""
+    harness = AgentHarness(dummy_client, max_tool_turns=3)
+
+    mock_executor = AsyncMock()
+    mock_executor.execute = AsyncMock(return_value={"status": "submitted"})
+
+    resp1 = MockResponse(
+        content=[
+            MockBlock(
+                "tool_use",
+                name="submit_asset_analysis",
+                input={
+                    "symbol": "EURUSD",
+                    "decision": "WAIT",
+                    "rationale": "High CDS: Contradiction unresolved between macro catalysts and yield differentials.",
+                },
+                id="c1",
+            )
+        ],
+        stop_reason="tool_use",
+        input_tokens=50,
+        output_tokens=20,
+    )
+    resp2 = MockResponse(
+        content=[MockBlock("text", text="Defensive wait submitted")],
+        stop_reason="end_turn",
+        input_tokens=50,
+        output_tokens=20,
+    )
+    dummy_client.mock_run_tool_agent.side_effect = [resp1, resp2]
+
+    result = await harness.run_agent_from_messages(
+        session=mock_session,
+        system_prompt="Analyze EURUSD",
+        messages=[{"role": "user", "content": "Start"}],
+        tools=[{"name": "submit_asset_analysis"}],
+        stage_name="per_asset_EURUSD",
+        prefetch_satisfied_tools=set(),  # No pre-fetched tools
+        tool_executor=mock_executor,
+    )
+
+    assert result["success"] is True
+    assert mock_executor.execute.call_count == 1
+    call_args = mock_executor.execute.call_args[0]
+    assert call_args[0] == "submit_asset_analysis"
+
+
 def test_harness_per_turn_timeout_setting_default(dummy_client):
     """Verify AgentHarness initializes per_turn_timeout_seconds from settings or default 360.0."""
     harness_default = AgentHarness(dummy_client)
