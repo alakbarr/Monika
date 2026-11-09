@@ -488,55 +488,18 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
     async def _check_anchoring_and_require_justification(
         self, current_bias: dict, justification_map: dict
     ) -> list[str]:
-        import json as _json
+        from monika.application.protocol.brief_contamination_guard import BriefContaminationGuard
 
-        # Fetch recent briefs with distinct hourly/cycle timestamps to avoid duplicate same-cycle records
-        raw_briefs = (
-            (
-                await self.session.execute(
-                    select(FundamentalBrief).order_by(FundamentalBrief.generated_at.desc()).limit(20)
-                )
-            )
-            .scalars()
-            .all()
-        )
-
-        distinct_cycle_briefs = []
-        last_time = None
-        for b in raw_briefs:
-            if b.generated_at:
-                if last_time is None or (last_time - b.generated_at).total_seconds() > 1800:
-                    distinct_cycle_briefs.append(b)
-                    last_time = b.generated_at
-            if len(distinct_cycle_briefs) == 4:
-                break
-
-        if len(distinct_cycle_briefs) < 4:
-            return []
-
-        parsed_biases = []
-        for rb in distinct_cycle_briefs:
-            cb = getattr(rb, "currency_bias", None)
-            if isinstance(cb, dict) and cb:
-                parsed_biases.append(cb)
-            elif getattr(rb, "structured_json", None):
-                try:
-                    b_data = _json.loads(rb.structured_json)
-                    if isinstance(b_data, dict):
-                        parsed_biases.append(b_data.get("currency_bias", {}))
-                except Exception:
-                    pass
-        if len(parsed_biases) < 4:
+        sticky_currencies = await BriefContaminationGuard.get_sticky_currencies(self.session)
+        if not sticky_currencies:
             return []
 
         is_weekend = clock.now().weekday() >= 5
         errors = []
         justification_map = justification_map or {}
-        for currency, bias in current_bias.items():
-            if bias == "neutral":
-                continue
-            is_anchored = all(pb.get(currency) == bias for pb in parsed_biases)
-            if is_anchored:
+        for currency, sticky_bias in sticky_currencies.items():
+            current = current_bias.get(currency)
+            if current and current == sticky_bias:
                 just = justification_map.get(currency, "")
                 has_number = any(ch.isdigit() for ch in just)
                 weekend_ref = is_weekend and any(
@@ -544,10 +507,10 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                 )
                 if currency not in justification_map or len(just) < 15 or (not has_number and not weekend_ref):
                     errors.append(
-                        f"ANCHORING_RISK: {currency} bias ('{bias}') has persisted across >= 4 consecutive cycles. "
+                        f"ANCHORING_RISK: {currency} bias ('{sticky_bias}') has persisted across >= 4 consecutive cycles. "
                         f"bias_continuity_justification for {currency} is missing, too brief, or lacks updated numerical evidence "
                         f"(REQUIRED: >= 15 characters citing price levels, %, dates, or yield basis points). "
-                        f'Example: bias_continuity_justification={{"{currency}": "{currency} {bias} bias maintained as 2026-08-22 print confirms 102.50 support holding and yields up 5 bps"}}.'
+                        f'Example: bias_continuity_justification={{"{currency}": "{currency} {sticky_bias} bias maintained as 2026-08-22 print confirms 102.50 support holding and yields up 5 bps"}}.'
                     )
         return errors
 
@@ -632,6 +595,15 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                         )
                         if m_max is not None:
                             all_meeting_dominant_probs.append(m_max)
+
+                    try:
+                        cb_exp = await self.execute("get_central_bank_expectations", {})
+                        fed_exp = (cb_exp.get("expectations") or {}).get("FED") or {}
+                        fed_dom = fed_exp.get("dominant_probability_pct")
+                        if fed_dom is not None:
+                            all_meeting_dominant_probs.append(float(fed_dom))
+                    except Exception:
+                        pass
 
                     if all_meeting_dominant_probs:
                         claimed = float(kdp.get("fedwatch_dominant_pct"))

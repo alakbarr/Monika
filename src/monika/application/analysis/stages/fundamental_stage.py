@@ -161,7 +161,7 @@ MANDATORY PRE-SUBMISSION CHECKLIST (You must self-verify before calling submit_f
 [ ] Did I include `priced_in_assessment` with numerical percentiles, `sell_the_news_risk`, and `fedwatch_shift_summary`?
     Example: priced_in_assessment={"dominant_driver": "Fed 25bps cut expectations", "priced_in_score": 6, "sell_the_news_risk": "medium", "cot_positioning_percentile": 65.0, "retail_sentiment_percentile": 45.0, "fedwatch_shift_summary": "Hike odds 37.1% vs 45.0% pre-PCE (-7.9%)", "upcoming_event_context": "FOMC meeting in 7 days"}
 [ ] Did I include `key_data_points_used` with pure numeric values (e.g. key_data_points_used={"dxy_trend_5d": "strengthening +0.8%", "vix_close": 15.5, "cot_leveraged_long_pct": 58.4, "fedwatch_dominant_pct": 85.0, "fedwatch_repricing_delta_pct": -7.9, "treasury_10y_yield_pct": 4.25})? If COT was not cited, use null.
-[ ] If any currencies are listed in [STICKY BIAS CONTEXT], did I provide quantitative `bias_continuity_justification` with >= 40 characters and concrete numbers/levels (e.g. "BTC bullish bias maintained due to ETF net inflows of +$240M on 2026-08-22 and neutral perpetual funding rate at 0.01%")?
+[ ] If any currencies are listed in [STICKY BIAS CONTEXT], did I provide quantitative `bias_continuity_justification` with >= 15 characters (recommended >= 40 chars) and concrete numbers/levels (e.g. "BTC bullish bias maintained due to ETF net inflows of +$240M on 2026-08-22 and neutral perpetual funding rate at 0.01%")?
 """
 
 
@@ -433,64 +433,18 @@ class FundamentalStage:
         except Exception as e:
             logger.debug(f"Circuit breaker alert check non-fatal error: {e}")
 
-        # Pre-compute sticky currency biases (held >=4 distinct cycles within last 24h) to alert the model upfront
+        # Pre-compute sticky currency biases (held >=4 distinct cycles within last 7 days) to alert the model upfront
         try:
-            brief_recency_cutoff = clock.now() - timedelta(hours=24)
-            raw_briefs = (
-                (
-                    await session.execute(
-                        select(FundamentalBrief)
-                        .where(FundamentalBrief.generated_at >= brief_recency_cutoff)
-                        .order_by(FundamentalBrief.generated_at.desc())
-                        .limit(20)
-                    )
+            sticky_currencies = await BriefContaminationGuard.get_sticky_currencies(session)
+            if sticky_currencies:
+                sticky_lines = "\n".join(
+                    [f"- {cur}: '{bias}' (held for 4+ consecutive cycles)" for cur, bias in sticky_currencies.items()]
                 )
-                .scalars()
-                .all()
-            )
-            distinct_cycle_briefs = []
-            last_time = None
-            for b in raw_briefs:
-                if b.generated_at:
-                    if last_time is None or (last_time - b.generated_at).total_seconds() > 1800:
-                        distinct_cycle_briefs.append(b)
-                        last_time = b.generated_at
-                if len(distinct_cycle_briefs) == 4:
-                    break
-
-            if len(distinct_cycle_briefs) >= 4:
-                parsed_biases = []
-                for rb in distinct_cycle_briefs:
-                    cb = getattr(rb, "currency_bias", None)
-                    if isinstance(cb, dict) and cb:
-                        parsed_biases.append(cb)
-                    elif getattr(rb, "structured_json", None):
-                        try:
-                            b_data = json.loads(rb.structured_json)
-                            if isinstance(b_data, dict):
-                                parsed_biases.append(b_data.get("currency_bias", {}))
-                        except Exception:
-                            pass
-                if len(parsed_biases) >= 4:
-                    last_4_biases = parsed_biases[:4]
-                    sticky_currencies = {}
-                    all_currencies = set().union(*[pb.keys() for pb in last_4_biases])
-                    for cur in all_currencies:
-                        cur_biases = [pb.get(cur) for pb in last_4_biases if cur in pb]
-                        if len(cur_biases) == 4 and all(b == cur_biases[0] and b != "neutral" for b in cur_biases):
-                            sticky_currencies[cur] = cur_biases[0]
-                    if sticky_currencies:
-                        sticky_lines = "\n".join(
-                            [
-                                f"- {cur}: '{bias}' (held for 4+ consecutive cycles)"
-                                for cur, bias in sticky_currencies.items()
-                            ]
-                        )
-                        actual_user_message += (
-                            f"\n\n[STICKY BIAS CONTEXT & ANCHORING REQUIREMENT]\n"
-                            f"The following currencies are anchored across recent distinct cycles:\n{sticky_lines}\n"
-                            f'If your analysis maintains any of these sticky biases, you MUST populate `bias_continuity_justification` in submit_fundamental_brief with >= 15 characters and concrete numeric evidence from this cycle (e.g. price levels, yield bps, dates, economic figures). Example: bias_continuity_justification={{"USD": "USD bearish bias maintained as DXY remains below 102.50 resistance and 10Y yields fell 4 bps on 2026-08-23"}}.'
-                        )
+                actual_user_message += (
+                    f"\n\n[STICKY BIAS CONTEXT & ANCHORING REQUIREMENT]\n"
+                    f"The following currencies are anchored across recent distinct cycles:\n{sticky_lines}\n"
+                    f'If your analysis maintains any of these sticky biases, you MUST populate `bias_continuity_justification` in submit_fundamental_brief with >= 15 characters and concrete numeric evidence from this cycle (e.g. price levels, yield bps, dates, economic figures). Example: bias_continuity_justification={{"USD": "USD bearish bias maintained as DXY remains below 102.50 resistance and 10Y yields fell 4 bps on 2026-08-23"}}.'
+                )
         except Exception as _sticky_err:
             logger.warning(f"Sticky bias pre-computation error: {_sticky_err}")
 
@@ -962,7 +916,7 @@ INSTRUCTIONS:
 1. Re-weigh all fresh and pre-fetched macroeconomic data with zero confirmation bias.
 2. Submit an authoritative NEW fundamental brief via `submit_fundamental_brief` that resolves all ambiguities.
    - For ANY non-neutral bias, ensure `invalidation_conditions` has >= 40 chars and concrete numerical levels.
-   - For ANY sticky currency (bias held >=4 cycles), ensure `bias_continuity_justification` has >= 40 chars with concrete numeric evidence.
+   - For ANY sticky currency (bias held >=4 cycles), ensure `bias_continuity_justification` has >= 15 chars (recommended >= 40 chars) with concrete numeric evidence.
 """
                         )
                         esc_result = await escalation_client.run_agent(

@@ -483,12 +483,34 @@ async def handle_get_fedwatch_probabilities(args: dict, **ctx) -> dict:
             }
 
     meetings = list(meetings_by_date.values())
-    meetings.sort(key=lambda m: str(m.get("meeting_date", "")))
-    meetings = meetings[:limit]
+
+    def _meeting_sort_key(m: dict) -> datetime:
+        parsed_dt = _parse_iso_or_str_dt(m.get("meeting_date"))
+        if parsed_dt is not None:
+            return parsed_dt
+        return datetime.max.replace(tzinfo=timezone.utc)
+
+    now_dt = clock.now()
+    cutoff_dt = now_dt - timedelta(days=1)
+    upcoming_meetings = [m for m in meetings if _meeting_sort_key(m) >= cutoff_dt]
+    past_meetings = [m for m in meetings if _meeting_sort_key(m) < cutoff_dt]
+
+    upcoming_meetings.sort(key=_meeting_sort_key)
+    past_meetings.sort(key=_meeting_sort_key, reverse=True)
+
+    sorted_meetings = upcoming_meetings + past_meetings
+    meetings = sorted_meetings[:limit]
+
+    next_meeting_date = (
+        upcoming_meetings[0]["meeting_date"]
+        if upcoming_meetings
+        else (meetings[0]["meeting_date"] if meetings else None)
+    )
 
     result = {
         "count": len(meetings),
         "meetings": meetings,
+        "next_meeting_date": next_meeting_date,
     }
 
     if not meetings:

@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from monika.core.primitives import clock
-from monika.infrastructure.database.models import DXYData, VIXData
+from monika.infrastructure.database.models import DXYData, FundamentalBrief, VIXData
 
 logger = logging.getLogger("TradingAgent.BriefContaminationGuard")
 
@@ -46,6 +46,77 @@ class BriefContaminationGuard:
         "usd_short_pairs": ["USDJPY"],
         "safe_haven": ["XAUUSD"],
     }
+
+    @staticmethod
+    async def get_sticky_currencies(
+        session: AsyncSession,
+        min_consecutive_cycles: int = 4,
+        cycle_gap_seconds: int = 1800,
+        lookback_days: int = 7,
+        limit: int = 20,
+    ) -> dict[str, str]:
+        """Detect currencies whose non-neutral directional bias has persisted across >= min_consecutive_cycles distinct cycles.
+
+        Used symmetrically by both prompt generation and validation to guarantee zero desynchronization.
+        """
+        try:
+            cutoff = clock.now() - timedelta(days=lookback_days)
+            raw_briefs = (
+                (
+                    await session.execute(
+                        select(FundamentalBrief)
+                        .where(FundamentalBrief.generated_at >= cutoff)
+                        .order_by(FundamentalBrief.generated_at.desc())
+                        .limit(limit)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
+            distinct_cycle_briefs = []
+            last_time = None
+            for b in raw_briefs:
+                if b.generated_at:
+                    if last_time is None or (last_time - b.generated_at).total_seconds() > cycle_gap_seconds:
+                        distinct_cycle_briefs.append(b)
+                        last_time = b.generated_at
+                if len(distinct_cycle_briefs) == min_consecutive_cycles:
+                    break
+
+            if len(distinct_cycle_briefs) < min_consecutive_cycles:
+                return {}
+
+            parsed_biases = []
+            for rb in distinct_cycle_briefs:
+                cb = getattr(rb, "currency_bias", None)
+                if isinstance(cb, dict) and cb:
+                    parsed_biases.append(cb)
+                elif getattr(rb, "structured_json", None):
+                    try:
+                        b_data = json.loads(rb.structured_json)
+                        if isinstance(b_data, dict):
+                            parsed_biases.append(b_data.get("currency_bias", {}))
+                    except Exception:
+                        pass
+
+            if len(parsed_biases) < min_consecutive_cycles:
+                return {}
+
+            last_n_biases = parsed_biases[:min_consecutive_cycles]
+            sticky_currencies: dict[str, str] = {}
+            all_currencies = set().union(*[pb.keys() for pb in last_n_biases])
+            for cur in all_currencies:
+                cur_biases = [pb.get(cur) for pb in last_n_biases if cur in pb]
+                if len(cur_biases) == min_consecutive_cycles and all(
+                    b == cur_biases[0] and b != "neutral" for b in cur_biases
+                ):
+                    sticky_currencies[cur] = str(cur_biases[0])
+
+            return sticky_currencies
+        except Exception as e:
+            logger.warning(f"Error computing sticky currencies: {e}")
+            return {}
 
     @staticmethod
     async def validate_brief_integrity(
