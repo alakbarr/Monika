@@ -27,7 +27,7 @@ import inspect
 import json
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from monika.application.agent.estop import is_estop_active
@@ -105,6 +105,7 @@ class ToolExecutionTracking:
     called_tools: Set[str]
     persisted_mandatory_tools: Set[str]
     unpersisted_validation_failures: Set[str]
+    direct_calls: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -263,6 +264,11 @@ class TurnToolPipeline:
                     "is_error": False,
                 }
 
+            direct_calls = getattr(tracking, "direct_calls", None)
+            if direct_calls is None:
+                direct_calls = []
+                tracking.direct_calls = direct_calls
+
             # Final Turn Read Tools Lockdown
             terminal_tool = (
                 "submit_fundamental_brief"
@@ -276,6 +282,7 @@ class TurnToolPipeline:
             if turns >= effective_max_turns and terminal_tool and c_name != terminal_tool:
                 if c_name.startswith(("get_", "read_", "search_", "inspect_", "diff_")):
                     tracking.tool_calls_made += 1
+                    direct_calls.append(c_name)
                     logger.warning(
                         f"[{stage_name}][AgentHarness] Final turn read tool lockdown: blocked '{c_name}'. Forcing '{terminal_tool}'."
                     )
@@ -294,6 +301,7 @@ class TurnToolPipeline:
 
             if call_item.get("_schema_error"):
                 tracking.tool_calls_made += 1
+                direct_calls.append(c_name)
                 if c_name not in ("submit_fundamental_brief", "submit_asset_analysis"):
                     harness.guardrail_controller.record_denial()
                 else:
@@ -312,6 +320,7 @@ class TurnToolPipeline:
                 )
                 tracking.tool_calls_made += 1
                 tracking.called_tools.add(c_name)
+                direct_calls.append(c_name)
                 if guard_verdict.action in ("reject", "nudge"):
                     if c_name not in ("submit_fundamental_brief", "submit_asset_analysis"):
                         harness.guardrail_controller.record_denial()
@@ -385,6 +394,7 @@ class TurnToolPipeline:
                 }
                 tracking.tool_calls_made += 1
                 tracking.called_tools.add(c_name)
+                direct_calls.append(c_name)
                 return {
                     "type": "tool_result",
                     "tool_use_id": c_id,
@@ -398,7 +408,9 @@ class TurnToolPipeline:
             tracking.sliding_window_sigs.append(call_sig)
 
             # Tool Family Quota Enforcement
-            allowed, quota_warn = harness.compactor.check_tool_family_quota(c_name, list(tracking.called_tools))
+            max_q = (harness.settings.get("family_quotas") or {}).get(c_name)
+            allowed, quota_warn = harness.compactor.check_tool_family_quota(c_name, direct_calls, max_quota=max_q)
+            direct_calls.append(c_name)
             if not allowed:
                 logger.warning(f"[{stage_name}][AgentHarness] Tool Family Quota Exceeded for '{c_name}': {quota_warn}")
                 suppressed_result = {"status": "quota_exceeded", "notice": quota_warn}

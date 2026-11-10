@@ -1242,6 +1242,116 @@ class TestToolExecutor:
         assert saved_json["systemic_liquidity_trend"] == "expanding"
 
     @pytest.mark.asyncio
+    async def test_submit_fundamental_brief_crypto_context_no_contamination(self):
+        mock_session = create_mock_async_session()
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
+        mock_session.refresh = AsyncMock()
+        executor = ToolExecutor(mock_session)
+
+        # Simulate Stage 1 bundle tools being executed, including get_crypto_context
+        # which unpacks get_technical_indicators and get_price_history.
+        executor.called_tools.update(
+            {
+                "get_macro_rates",
+                "get_dxy",
+                "get_macro_sentiment",
+                "get_vix",
+                "get_macro_events",
+                "get_crypto_context",
+                "get_technical_indicators",
+                "get_price_history",
+            }
+        )
+
+        def assign_id(brief):
+            brief.id = 77
+
+        mock_session.refresh.side_effect = assign_id
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_result.scalar.return_value = 0
+        mock_result.scalars.return_value.all.return_value = []
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        brief_payload = {
+            "macro_narrative": "test DXY is up, VIX is down, systemic liquidity stable",
+            "currency_bias": {
+                "USD": "bullish",
+                "EUR": "bearish",
+                "GBP": "neutral",
+                "JPY": "neutral",
+                "AUD": "neutral",
+                "XAU": "bearish",
+                "OIL": "bearish",
+                "BTC": "bullish",
+            },
+            "key_upcoming_risks": [],
+            "risk_sentiment": "risk-on",
+            "macro_regime": "mixed",
+            "confidence": 0.8,
+            "invalidation_conditions": {
+                "USD": "dxy drops below 103 level and stays there for more than 2 days",
+                "EUR": "ecb cuts rates by 50bps and indicates more cuts are coming",
+                "XAU": "yields surge above 4.5% and stay elevated through the week",
+                "OIL": "demand drops by 100k bpd according to the next eia report",
+                "BTC": "etf outflows > 1B and regulatory scrutiny increases significantly",
+            },
+            "currency_confidence": {"USD": 0.8, "EUR": 0.7, "XAU": 0.9, "OIL": 0.6, "BTC": 0.75},
+            "strongest_counter_thesis": "A valid counter thesis of sufficient length for test pass condition.",
+            "checklist": {"bias_vs_narrative_match": True, "contradiction_existed": False},
+            "key_data_points_used": {"dxy_trend_5d": "+0.5%", "vix_close": 14.5},
+            "priced_in_assessment": {
+                "dominant_driver": "Fed",
+                "priced_in_score": 7,
+                "sell_the_news_risk": "low",
+                "cot_positioning_percentile": 50,
+                "retail_sentiment_percentile": 50,
+            },
+        }
+
+        res = await executor._tool_submit_fundamental_brief(brief_payload)
+        # Must not be rejected for Stage 1 contamination!
+        assert res.get("status") == "saved", f"Expected 'saved' but got {res}"
+
+    @pytest.mark.asyncio
+    async def test_submit_fundamental_brief_real_contamination_rejected(self):
+        mock_session = create_mock_async_session()
+        executor = ToolExecutor(mock_session)
+
+        # Direct Stage 2 tool execution during Stage 1
+        executor.called_tools.update(
+            {
+                "get_dxy",
+                "get_vix",
+                "get_smc_zones",  # Illegal Stage 2 tool in Stage 1!
+            }
+        )
+
+        brief_payload = {
+            "macro_narrative": "test DXY is up, VIX is down",
+            "currency_bias": {
+                "USD": "bullish",
+                "EUR": "bearish",
+                "GBP": "neutral",
+                "JPY": "neutral",
+                "AUD": "neutral",
+                "XAU": "bearish",
+                "OIL": "bearish",
+                "BTC": "bullish",
+            },
+            "invalidation_conditions": {
+                "USD": "dxy drops below 103 level and stays there for more than 2 days",
+            },
+            "strongest_counter_thesis": "A valid counter thesis of sufficient length for test pass condition.",
+        }
+
+        res = await executor._tool_submit_fundamental_brief(brief_payload)
+        assert res.get("status") == "rejected"
+        assert res.get("error_classification") == "CONTAMINATION_ERROR"
+        assert "get_smc_zones" in str(res.get("errors"))
+
+    @pytest.mark.asyncio
     @patch("monika.application.analysis.calculators.confluence_calculator.calculate_confluence")
     async def test_submit_asset_analysis_contra_macro_hard_reject(self, mock_calc_conf):
         mock_calc_conf.return_value = {"computed_score": 9}

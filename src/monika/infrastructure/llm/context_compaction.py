@@ -335,10 +335,10 @@ class ContextCompactionEngine:
         ],
     }
     FAMILY_QUOTAS = {
-        "price_history": 5,
-        "news": 3,
-        "sentiment": 3,
-        "macro": 8,
+        "price_history": 6,
+        "news": 5,
+        "sentiment": 6,
+        "macro": 12,
     }
     DEFAULT_FAMILY_QUOTA = 4
 

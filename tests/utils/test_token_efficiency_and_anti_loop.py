@@ -62,6 +62,52 @@ def test_tool_family_quota_throttling():
     assert allowed_news is True
 
 
+def test_tool_repetition_limit_throttling():
+    # Calling the exact same tool once: 2nd call allowed
+    session_history = ["get_macro_rates"]
+    allowed, warning = ContextCompactionEngine.check_tool_family_quota(
+        tool_name="get_macro_rates", session_calls=session_history
+    )
+    assert allowed is True
+    assert warning is None
+
+    # Calling the exact same tool twice: 3rd call must be blocked by repetition limit
+    session_history.append("get_macro_rates")
+    allowed, warning = ContextCompactionEngine.check_tool_family_quota(
+        tool_name="get_macro_rates", session_calls=session_history
+    )
+    assert allowed is False
+    assert warning is not None
+    assert "Tool repetition limit reached for 'get_macro_rates' (2 calls)" in warning
+
+
+def test_composite_bundle_direct_calls_macro_quota():
+    # Calling 4 distinct bundle tools in Turn 1
+    turn1_calls = ["get_macro_rates", "get_macro_sentiment", "get_macro_events", "get_crypto_context"]
+
+    # In Turn 2, retrying a tool should be allowed (same tool count = 1 < 2, macro calls = 4 < 12)
+    allowed, warning = ContextCompactionEngine.check_tool_family_quota(
+        tool_name="get_macro_rates", session_calls=turn1_calls
+    )
+    assert allowed is True
+    assert warning is None
+
+    # All 4 bundle tools in Turn 2 should be allowed
+    turn2_calls = list(turn1_calls)
+    for tool in ["get_macro_rates", "get_macro_sentiment", "get_macro_events", "get_crypto_context"]:
+        allowed, _ = ContextCompactionEngine.check_tool_family_quota(tool_name=tool, session_calls=turn2_calls)
+        assert allowed is True
+        turn2_calls.append(tool)
+
+    # 3rd call in Turn 3 must hit repetition limit (2 calls already present)
+    allowed_3rd, warning_3rd = ContextCompactionEngine.check_tool_family_quota(
+        tool_name="get_macro_rates", session_calls=turn2_calls
+    )
+    assert allowed_3rd is False
+    assert warning_3rd is not None
+    assert "Tool repetition limit reached for 'get_macro_rates'" in warning_3rd
+
+
 def test_cache_breakpoint_wrap_classify_json():
     cbm = CacheBreakpointManager()
     sys_prompt = "You are an adjudication verifier."

@@ -1079,6 +1079,7 @@ class AgentHarness:
             called_tools=set(),
             persisted_mandatory_tools=set(),
             unpersisted_validation_failures=set(),
+            direct_calls=[],
         )
 
         # Reset all guardrails for fresh stage execution

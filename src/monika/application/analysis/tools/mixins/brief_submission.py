@@ -806,7 +806,13 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
             "get_fvg_zones",
             "get_order_blocks",
         }
-        contaminated = stage2_tools.intersection(self.called_tools)
+        effective_stage1_called = set(self.called_tools)
+        if "get_crypto_context" in effective_stage1_called:
+            # get_technical_indicators is a constituent subtool of get_crypto_context
+            # providing cross-asset BTC context, not Stage 2 single-asset technical bias.
+            effective_stage1_called.discard("get_technical_indicators")
+
+        contaminated = stage2_tools.intersection(effective_stage1_called)
         if contaminated:
             logger.warning(f"Stage 1 contamination detected: {contaminated}. Blocking submission.")
             return {

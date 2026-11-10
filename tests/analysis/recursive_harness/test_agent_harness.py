@@ -272,6 +272,67 @@ async def test_harness_tool_family_quota_suppression(dummy_client, mock_session)
     assert any("quota_exceeded" in str(c) for c in tool_results)
 
 
+@pytest.mark.asyncio
+async def test_harness_composite_tools_do_not_exhaust_quota_via_subtools(dummy_client, mock_session):
+    """Verify that composite bundle subtools do not falsely inflate direct tool quota."""
+    settings = {}
+    harness = AgentHarness(dummy_client, settings=settings, max_tool_turns=4)
+
+    mock_executor = AsyncMock()
+    mock_executor.execute = AsyncMock(return_value={"rates": "ok"})
+    mock_executor.called_tools = set()
+
+    # Turn 1: 4 composite tools executed
+    resp1 = MockResponse(
+        content=[
+            MockBlock("tool_use", name="get_macro_rates", input={}, id="c1"),
+            MockBlock("tool_use", name="get_macro_sentiment", input={}, id="c2"),
+            MockBlock("tool_use", name="get_macro_events", input={}, id="c3"),
+            MockBlock("tool_use", name="get_crypto_context", input={}, id="c4"),
+        ],
+        stop_reason="tool_use",
+        input_tokens=50,
+        output_tokens=20,
+    )
+    # Turn 2: Calling get_macro_rates again must NOT be blocked by quota
+    resp2 = MockResponse(
+        content=[MockBlock("tool_use", name="get_macro_rates", input={"symbol": "USD"}, id="c5")],
+        stop_reason="tool_use",
+        input_tokens=50,
+        output_tokens=20,
+    )
+    resp3 = MockResponse(
+        content=[MockBlock("text", text="Done")],
+        stop_reason="end_turn",
+        input_tokens=50,
+        output_tokens=20,
+    )
+
+    dummy_client.mock_run_tool_agent.side_effect = [resp1, resp2, resp3]
+
+    result = await harness.run_agent_from_messages(
+        session=mock_session,
+        system_prompt="System",
+        messages=[{"role": "user", "content": "Start"}],
+        tools=[],
+        tool_executor=mock_executor,
+    )
+
+    assert result["success"] is True
+    # In Turn 1 (4 calls) + Turn 2 (1 call) = 5 calls must all execute without quota exceeded
+    assert mock_executor.execute.call_count == 5
+
+    tool_results = [
+        b["content"]
+        for m in result["context_messages"]
+        if m["role"] == "user" and isinstance(m["content"], list)
+        for b in m["content"]
+        if b.get("type") == "tool_result"
+    ]
+    # No quota exceeded in tool results!
+    assert not any("quota_exceeded" in str(c) for c in tool_results)
+
+
 def test_harness_state_preservation_truncation(dummy_client):
     """Verify that trimming large conversation histories preserves key numeric state facts."""
     harness = AgentHarness(dummy_client)
