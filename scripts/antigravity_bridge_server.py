@@ -332,14 +332,16 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
             len(tool_names),
         )
 
-        # 3. Invoke Antigravity Engine via STDIN to bypass OS command-line character limits
+        # 3. Invoke Antigravity Engine via STDIN NDJSON to bypass OS command-line character limits
         agy_timeout = int(os.environ.get("ANTIGRAVITY_TIMEOUT", 360))
         cmd = [
             AGY_PATH,
             "--model",
             agy_model,
+            "--input-format",
+            "stream-json",
             "--output-format",
-            "json",
+            "stream-json",
             "--print-timeout",
             f"{max(agy_timeout - 5, 10)}s",
             "--disable-slash-commands",
@@ -349,7 +351,18 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
             cmd.extend(["--effort", "max"])
         elif resolved_effort:
             cmd.extend(["--effort", resolved_effort])
-        cmd.extend(["--print", full_prompt])
+
+        ndjson_input = (
+            json.dumps(
+                {
+                    "event": "user",
+                    "message": {
+                        "content": full_prompt,
+                    },
+                }
+            )
+            + "\n"
+        )
 
         start_t = time.time()
         output_text = ""
@@ -363,7 +376,7 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
             if is_mocked_run:
                 proc = subprocess.run(
                     cmd,
-                    input=full_prompt,
+                    input=ndjson_input,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
@@ -390,18 +403,19 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
             else:
                 proc = subprocess.Popen(
                     cmd,
+                    stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
                     encoding="utf-8",
                     cwd=str(sandbox_dir),
                 )
-                stdout_text, stderr_text = proc.communicate(timeout=agy_timeout)
+                stdout_text, stderr_text = proc.communicate(input=ndjson_input, timeout=agy_timeout)
                 raw_out = (stdout_text or "").strip()
                 stderr_chunks = [stderr_text] if stderr_text else []
                 elapsed = time.time() - start_t
-                if not raw_out:
-                    err_msg = "".join(stderr_chunks).strip() or "Process exited without producing JSON output"
+                if not raw_out and proc.returncode != 0:
+                    err_msg = "".join(stderr_chunks).strip() or f"Process exited with code {proc.returncode}"
                     logger.error("agy execution failed in %.2fs: %s", elapsed, err_msg)
                     self._send_json(
                         502,
@@ -416,29 +430,54 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
                     return
 
             try:
-                agy_data = json.loads(raw_out)
-                status = str(agy_data.get("status", "")).upper()
-                if status and status not in ("SUCCESS", "OK", "COMPLETED"):
-                    err_detail = agy_data.get("error") or agy_data.get("message") or status
-                    logger.error("agy execution returned error status in %.2fs: %s", elapsed, err_detail)
-                    self._send_json(
-                        502,
-                        {
-                            "error": {
-                                "message": f"Antigravity CLI error status: {err_detail}",
-                                "type": "server_error",
-                                "code": "antigravity_error_status",
-                            }
-                        },
-                    )
-                    return
-                output_text = str(agy_data.get("response", "")).strip()
-                usage_data = agy_data.get("usage", {})
-                if usage_data:
-                    prompt_tokens = usage_data.get("input_tokens", prompt_tokens)
-                    completion_tokens = usage_data.get("output_tokens", completion_tokens)
-                    thinking_tokens = usage_data.get("thinking_tokens", 0)
-                    cached_tokens = usage_data.get("cache_read_tokens", 0)
+                agy_data = None
+                for line in reversed(raw_out.splitlines()):
+                    line_str = line.strip()
+                    if not line_str:
+                        continue
+                    try:
+                        item = json.loads(line_str)
+                        if isinstance(item, dict):
+                            if item.get("event") == "result" and isinstance(item.get("result"), dict):
+                                agy_data = item["result"]
+                                break
+                            elif "response" in item or "status" in item:
+                                agy_data = item
+                                break
+                    except Exception:
+                        continue
+
+                if agy_data is None:
+                    try:
+                        agy_data = json.loads(raw_out)
+                    except Exception:
+                        output_text = raw_out
+
+                if isinstance(agy_data, dict):
+                    status = str(agy_data.get("status", "")).upper()
+                    if status and status not in ("SUCCESS", "OK", "COMPLETED"):
+                        err_detail = agy_data.get("error") or agy_data.get("message") or status
+                        logger.error("agy execution returned error status in %.2fs: %s", elapsed, err_detail)
+                        self._send_json(
+                            502,
+                            {
+                                "error": {
+                                    "message": f"Antigravity CLI error status: {err_detail}",
+                                    "type": "server_error",
+                                    "code": "antigravity_error_status",
+                                }
+                            },
+                        )
+                        return
+                    output_text = str(agy_data.get("response", "")).strip()
+                    usage_data = agy_data.get("usage", {})
+                    if usage_data:
+                        prompt_tokens = usage_data.get("input_tokens", prompt_tokens)
+                        completion_tokens = usage_data.get("output_tokens", completion_tokens)
+                        thinking_tokens = usage_data.get("thinking_tokens", 0)
+                        cached_tokens = usage_data.get("cache_read_tokens", 0)
+                else:
+                    output_text = raw_out
             except Exception:
                 output_text = raw_out
             logger.info(

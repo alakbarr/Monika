@@ -332,10 +332,69 @@ def test_antigravity_bridge_handler_large_prompt_via_stdin():
         call_args, call_kwargs = mock_run.call_args
         cmd = call_args[0]
         assert "-p" not in cmd
+        assert "--print" not in cmd
+        assert "--input-format" in cmd
+        assert "stream-json" in cmd
         assert "input" in call_kwargs
         assert large_text in call_kwargs["input"]
         assert "cwd" in call_kwargs
         assert "monika_antigravity_sandbox" in call_kwargs["cwd"]
+
+
+def test_antigravity_bridge_handler_stream_json_ndjson_response():
+    import importlib.util
+    from monika.core.paths import get_repo_root
+
+    bridge_server_path = get_repo_root() / "scripts" / "antigravity_bridge_server.py"
+    spec = importlib.util.spec_from_file_location("antigravity_bridge_server", str(bridge_server_path))
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    HandlerClass = mod.AntigravityBridgeHandler
+
+    body_dict = {
+        "model": "gemini-3.8-flash",
+        "messages": [{"role": "user", "content": "Hello"}],
+    }
+    body_bytes = json.dumps(body_dict).encode("utf-8")
+
+    mock_wfile = io.BytesIO()
+    mock_rfile = io.BytesIO(body_bytes)
+
+    class TestBridgeHandler(HandlerClass):
+        def __init__(self):
+            self.path = "/v1/chat/completions"
+            self.headers = {"Content-Length": str(len(body_bytes))}
+            self.rfile = mock_rfile
+            self.wfile = mock_wfile
+            self._headers_buffer = []
+
+        def send_response(self, code, message=None):
+            self.status_code = code
+
+        def send_header(self, keyword, value):
+            pass
+
+        def end_headers(self):
+            pass
+
+    mock_proc = MagicMock()
+    mock_proc.returncode = 0
+    mock_proc.stdout = (
+        '{"event":"init","init":{"model":"gemini-3.8-flash"}}\n'
+        '{"event":"step_update","step_update":{"state":"RUNNING"}}\n'
+        '{"event":"result","result":{"status":"SUCCESS","response":"PARSED_FROM_STREAM_NDJSON","usage":{"input_tokens":120,"output_tokens":45}}}\n'
+    )
+
+    with patch("subprocess.run", return_value=mock_proc):
+        handler = TestBridgeHandler()
+        handler.do_POST()
+        assert handler.status_code == 200
+        resp = json.loads(mock_wfile.getvalue().decode("utf-8"))
+        assert resp["choices"][0]["message"]["content"] == "PARSED_FROM_STREAM_NDJSON"
+        assert resp["usage"]["prompt_tokens"] == 120
+        assert resp["usage"]["completion_tokens"] == 45
 
 
 def test_antigravity_bridge_handler_failure_returns_502():
