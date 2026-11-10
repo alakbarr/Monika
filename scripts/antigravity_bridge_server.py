@@ -103,7 +103,7 @@ def get_isolated_sandbox_dir() -> Path:
 
 
 def normalize_effort(effort_raw: object) -> str | None:
-    if not effort_raw:
+    if effort_raw is None or effort_raw == "":
         return None
     val = str(effort_raw).strip().lower()
     if val in ("low", "min", "minimal", "1"):
@@ -333,7 +333,8 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
         )
 
         # 3. Invoke Antigravity Engine via STDIN NDJSON to bypass OS command-line character limits
-        agy_timeout = int(os.environ.get("ANTIGRAVITY_TIMEOUT", 360))
+        agy_timeout = int(os.environ.get("ANTIGRAVITY_TIMEOUT", 180))
+        print_timeout = max(agy_timeout - 10, 10)
         cmd = [
             AGY_PATH,
             "--model",
@@ -343,7 +344,7 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
             "--output-format",
             "stream-json",
             "--print-timeout",
-            f"{max(agy_timeout - 5, 10)}s",
+            f"{print_timeout}s",
             "--disable-slash-commands",
         ]
         raw_effort = extract_request_effort(req_data)
@@ -372,6 +373,7 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
         cached_tokens = 0
         sandbox_dir = get_isolated_sandbox_dir()
         is_mocked_run = hasattr(subprocess.run, "return_value") or "Mock" in type(subprocess.run).__name__
+        proc = None
         try:
             if is_mocked_run:
                 proc = subprocess.run(
@@ -385,8 +387,9 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
                     cwd=str(sandbox_dir),
                 )
                 elapsed = time.time() - start_t
+                stderr_text = getattr(proc, "stderr", "") or ""
                 if getattr(proc, "returncode", 0) != 0:
-                    err_msg = getattr(proc, "stderr", "").strip() or f"Process exited with code {proc.returncode}"
+                    err_msg = stderr_text.strip() or f"Process exited with code {proc.returncode}"
                     logger.error("agy execution failed in %.2fs: %s", elapsed, err_msg)
                     self._send_json(
                         502,
@@ -410,7 +413,25 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
                     encoding="utf-8",
                     cwd=str(sandbox_dir),
                 )
-                stdout_text, stderr_text = proc.communicate(input=ndjson_input, timeout=agy_timeout)
+                try:
+                    stdout_text, stderr_text = proc.communicate(input=ndjson_input, timeout=agy_timeout)
+                except subprocess.TimeoutExpired:
+                    if proc.poll() is None:
+                        proc.kill()
+                    stdout_text, stderr_text = proc.communicate()
+                    elapsed = time.time() - start_t
+                    logger.error("agy execution timed out after %.2fs (process killed)", elapsed)
+                    self._send_json(
+                        504,
+                        {
+                            "error": {
+                                "message": f"Antigravity CLI execution timed out after {elapsed:.1f}s",
+                                "type": "timeout_error",
+                                "code": "gateway_timeout",
+                            }
+                        },
+                    )
+                    return
                 raw_out = (stdout_text or "").strip()
                 stderr_chunks = [stderr_text] if stderr_text else []
                 elapsed = time.time() - start_t
@@ -453,8 +474,30 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
                     except Exception:
                         output_text = raw_out
 
+                finished_reason_raw = ""
+                stderr_str = (stderr_text or "").lower()
                 if isinstance(agy_data, dict):
                     status = str(agy_data.get("status", "")).upper()
+                    finished_reason_raw = str(agy_data.get("finished_reason", "")).lower()
+
+                    # Check for print_timeout condition
+                    if finished_reason_raw == "print_timeout" or "print timeout" in stderr_str:
+                        logger.error("agy execution hit print_timeout in %.2fs: deadline exceeded", elapsed)
+                        self._send_json(
+                            504,
+                            {
+                                "error": {
+                                    "message": (
+                                        f"Antigravity CLI execution timed out after {elapsed:.1f}s "
+                                        "(print_timeout deadline exceeded)"
+                                    ),
+                                    "type": "timeout_error",
+                                    "code": "gateway_timeout",
+                                }
+                            },
+                        )
+                        return
+
                     if status and status not in ("SUCCESS", "OK", "COMPLETED"):
                         err_detail = agy_data.get("error") or agy_data.get("message") or status
                         logger.error("agy execution returned error status in %.2fs: %s", elapsed, err_detail)
@@ -477,11 +520,27 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
                         thinking_tokens = usage_data.get("thinking_tokens", 0)
                         cached_tokens = usage_data.get("cache_read_tokens", 0)
                 else:
+                    if "print timeout" in stderr_str:
+                        logger.error("agy execution hit print_timeout in %.2fs: deadline exceeded", elapsed)
+                        self._send_json(
+                            504,
+                            {
+                                "error": {
+                                    "message": (
+                                        f"Antigravity CLI execution timed out after {elapsed:.1f}s "
+                                        "(print_timeout deadline exceeded)"
+                                    ),
+                                    "type": "timeout_error",
+                                    "code": "gateway_timeout",
+                                }
+                            },
+                        )
+                        return
                     output_text = raw_out
             except Exception:
                 output_text = raw_out
             logger.info(
-                "agy execution succeeded in %.2fs (%d chars, prompt_tok: %d, comp_tok: %d, cached_tok: %d)",
+                "agy execution completed in %.2fs (%d chars, prompt_tok: %d, comp_tok: %d, cached_tok: %d)",
                 elapsed,
                 len(output_text),
                 prompt_tokens,
@@ -502,6 +561,12 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
                 },
             )
             return
+        finally:
+            if proc and hasattr(proc, "poll") and proc.poll() is None:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
 
         completion_id = f"chatcmpl-{uuid.uuid4().hex[:16]}"
         usage_payload = {
@@ -580,6 +645,20 @@ class AntigravityBridgeHandler(http.server.BaseHTTPRequestHandler):
                     ", ".join(c["function"]["name"] for c in parsed_tool_calls),
                 )
                 output_text = None
+
+        if not parsed_tool_calls and not output_text:
+            logger.error("agy execution returned empty completion without tool calls in %.2fs", elapsed)
+            self._send_json(
+                502,
+                {
+                    "error": {
+                        "message": "Antigravity CLI returned empty completion text",
+                        "type": "server_error",
+                        "code": "antigravity_empty_response",
+                    }
+                },
+            )
+            return
 
         # 5. Format OpenAI Compatible Response
         if is_stream:

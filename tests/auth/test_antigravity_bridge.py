@@ -448,6 +448,117 @@ def test_antigravity_bridge_handler_failure_returns_502():
         assert "You are not logged into Antigravity" in response_data["error"]["message"]
 
 
+def test_antigravity_bridge_detects_print_timeout_and_returns_504():
+    import importlib.util
+    from monika.core.paths import get_repo_root
+
+    bridge_server_path = get_repo_root() / "scripts" / "antigravity_bridge_server.py"
+    spec = importlib.util.spec_from_file_location("antigravity_bridge_server", str(bridge_server_path))
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    HandlerClass = mod.AntigravityBridgeHandler
+
+    body_dict = {
+        "model": "gemini-3.8-flash",
+        "messages": [{"role": "user", "content": "Complex prompt"}],
+    }
+    body_bytes = json.dumps(body_dict).encode("utf-8")
+
+    mock_wfile = io.BytesIO()
+    mock_rfile = io.BytesIO(body_bytes)
+
+    class TestBridgeHandler(HandlerClass):
+        def __init__(self):
+            self.path = "/v1/chat/completions"
+            self.headers = {"Content-Length": str(len(body_bytes))}
+            self.rfile = mock_rfile
+            self.wfile = mock_wfile
+            self._headers_buffer = []
+
+        def send_response(self, code, message=None):
+            self.status_code = code
+
+        def send_header(self, keyword, value):
+            pass
+
+        def end_headers(self):
+            pass
+
+    mock_proc = MagicMock()
+    mock_proc.returncode = 0
+    mock_proc.stdout = (
+        '{"event":"init","init":{"model":"gemini-3.8-flash"}}\n'
+        '{"event":"result","result":{"status":"SUCCESS","response":"","duration_seconds":170,"usage":{"input_tokens":0,"output_tokens":0},"finished_reason":"print_timeout"}}\n'
+    )
+    mock_proc.stderr = "error: print timeout after 170s with the turn still in progress"
+
+    with patch("subprocess.run", return_value=mock_proc):
+        handler = TestBridgeHandler()
+        handler.do_POST()
+        assert handler.status_code == 504
+        response_data = json.loads(mock_wfile.getvalue().decode("utf-8"))
+        assert "error" in response_data
+        assert response_data["error"]["code"] == "gateway_timeout"
+        assert "print_timeout" in response_data["error"]["message"]
+
+
+def test_antigravity_bridge_rejects_empty_response_without_tools():
+    import importlib.util
+    from monika.core.paths import get_repo_root
+
+    bridge_server_path = get_repo_root() / "scripts" / "antigravity_bridge_server.py"
+    spec = importlib.util.spec_from_file_location("antigravity_bridge_server", str(bridge_server_path))
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    HandlerClass = mod.AntigravityBridgeHandler
+
+    body_dict = {
+        "model": "gemini-3.8-flash",
+        "messages": [{"role": "user", "content": "Prompt resulting in empty output"}],
+    }
+    body_bytes = json.dumps(body_dict).encode("utf-8")
+
+    mock_wfile = io.BytesIO()
+    mock_rfile = io.BytesIO(body_bytes)
+
+    class TestBridgeHandler(HandlerClass):
+        def __init__(self):
+            self.path = "/v1/chat/completions"
+            self.headers = {"Content-Length": str(len(body_bytes))}
+            self.rfile = mock_rfile
+            self.wfile = mock_wfile
+            self._headers_buffer = []
+
+        def send_response(self, code, message=None):
+            self.status_code = code
+
+        def send_header(self, keyword, value):
+            pass
+
+        def end_headers(self):
+            pass
+
+    mock_proc = MagicMock()
+    mock_proc.returncode = 0
+    mock_proc.stdout = (
+        '{"event":"init","init":{"model":"gemini-3.8-flash"}}\n'
+        '{"event":"result","result":{"status":"SUCCESS","response":"","usage":{"input_tokens":10,"output_tokens":0},"finished_reason":"stop"}}\n'
+    )
+    mock_proc.stderr = ""
+
+    with patch("subprocess.run", return_value=mock_proc):
+        handler = TestBridgeHandler()
+        handler.do_POST()
+        assert handler.status_code == 502
+        response_data = json.loads(mock_wfile.getvalue().decode("utf-8"))
+        assert "error" in response_data
+        assert response_data["error"]["code"] == "antigravity_empty_response"
+
+
 def test_antigravity_bridge_dynamic_thinking_resolution():
     import importlib.util
     from monika.core.paths import get_repo_root
@@ -467,6 +578,9 @@ def test_antigravity_bridge_dynamic_thinking_resolution():
     assert resolve_fn("gemini-3.8-flash", {"reasoning_effort": "xhigh"}) == ("gemini-3.8-flash-high", "high")
     assert resolve_fn("gemini-3.8-flash", {"thinking": "max"}) == ("gemini-3.8-flash-high", "high")
     assert resolve_fn("gemini-3.8-flash", {"thinking": "none"}) == ("gemini-3.8-flash-low", "low")
+    assert resolve_fn("gemini-3.8-flash", {"thinking_budget": 0}) == ("gemini-3.8-flash-low", "low")
+    assert mod.normalize_effort(0) == "low"
+    assert mod.normalize_effort("0") == "low"
     assert resolve_fn("gemini-3.8-flash", {}) == ("gemini-3.8-flash-medium", "medium")  # Smart default for flash
 
     # Argon with various thinking levels

@@ -253,6 +253,8 @@ class OpenAIProvider(OpenAIChatMixin):
                 kwargs.pop("max_tokens", None)
             else:
                 kwargs["max_tokens"] = safe_tokens
+        elif provider_name in ("antigravity", "agy") and supports_reasoning_effort:
+            kwargs["reasoning_effort"] = "low"
         elif is_reasoning_model:
             from monika.infrastructure.providers.capabilities import resolve_effective_max_tokens
 
