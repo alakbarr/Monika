@@ -615,10 +615,19 @@ class FallbackClientWrapper(BaseLLMClient):
                             or bool(model_thinking_budget and model_thinking_budget > 0)
                             or model_floor >= 180.0
                         )
+                        stage_hint = str(safe_kwargs.get("stage_name") or "").lower()
+                        is_macro_fundamental = (
+                            "fundamental" in stage_hint or "macro" in stage_hint or "stage1" in stage_hint
+                        )
+                        floor_budget = (
+                            900.0
+                            if (is_thinking_active and is_macro_fundamental)
+                            else (600.0 if is_thinking_active else 300.0)
+                        )
                         if is_thinking_active:
-                            slot_timeout = max(per_model_timeout, model_floor, role_turns * 90.0, 600.0)
+                            slot_timeout = max(per_model_timeout, model_floor, role_turns * 90.0, floor_budget)
                         else:
-                            slot_timeout = max(per_model_timeout, role_turns * 45.0, 300.0)
+                            slot_timeout = max(per_model_timeout, role_turns * 45.0, floor_budget)
                     else:
                         model_floor = resolve_stale_timeout_floor(
                             model_name=model,

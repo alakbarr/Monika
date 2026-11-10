@@ -561,20 +561,25 @@ async def handle_get_dxy(args: dict, **ctx) -> dict:
         latest_close = 0.0
 
     trend = "unknown"
+    pct_change = 0.0
+    ref_row = None
     if len(rows) >= 5:
-        older = rows[4]
-        try:
-            older_close = float(getattr(older, "close", 0.0) or 0.0)
-            diff = latest_close - older_close
-            trend = "strengthening" if diff > 0 else "weakening"
-        except TypeError, ValueError:
-            trend = "unknown"
+        ref_row = rows[4]
     elif len(rows) >= 2:
-        older = rows[-1]
+        ref_row = rows[-1]
+
+    if ref_row is not None:
         try:
-            older_close = float(getattr(older, "close", 0.0) or 0.0)
-            diff = latest_close - older_close
-            trend = "strengthening" if diff > 0 else "weakening"
+            older_close = float(getattr(ref_row, "close", 0.0) or 0.0)
+            if older_close > 0:
+                diff = latest_close - older_close
+                pct_change = (diff / older_close) * 100.0
+                if pct_change > 0.20:
+                    trend = "strengthening"
+                elif pct_change < -0.20:
+                    trend = "weakening"
+                else:
+                    trend = "neutral"
         except TypeError, ValueError:
             trend = "unknown"
 
@@ -588,15 +593,26 @@ async def handle_get_dxy(args: dict, **ctx) -> dict:
             rc = 0.0
         dxy_history.append({"date": r_dxy_dt, "close": rc})
 
+    interp_direction = (
+        "USD strength suppresses gold and non-USD pairs."
+        if trend == "strengthening"
+        else (
+            "USD weakness supports gold and non-USD pairs."
+            if trend == "weakening"
+            else "USD range-bound / consolidating."
+        )
+    )
+
     return {
         "latest": {"date": latest_dxy_date, "close": round(latest_close, 3)},
         "trend_5d": trend,
+        "change_5d_pct": round(pct_change, 2),
         "history": dxy_history,
         "is_weekend": is_weekend,
         "staleness_note": staleness_note,
         "interpretation": (
-            f"DXY at {latest_close:.3f}, {trend} over 5 days. "
-            f"{'USD strength suppresses gold and non-USD pairs.' if trend == 'strengthening' else 'USD weakness supports gold and non-USD pairs.'} "
+            f"DXY at {latest_close:.3f}, {trend} ({pct_change:+.2f}%) over 5 days. "
+            f"{interp_direction} "
             f"{'[Weekend - last close data]' if is_weekend else ''}"
         ).strip(),
     }

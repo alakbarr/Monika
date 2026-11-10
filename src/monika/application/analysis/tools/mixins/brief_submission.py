@@ -543,6 +543,7 @@ class FundamentalBriefMixin(_ToolExecutorMixinBase):
                     (real_is_bull and claimed_is_bull)
                     or (real_is_bear and claimed_is_bear)
                     or (real_is_neutral and claimed_is_neutral)
+                    or real_is_neutral
                     or (real_trend in claimed_trend)
                 )
                 if not match:

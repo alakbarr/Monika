@@ -273,7 +273,9 @@ class BriefContaminationGuard:
             )
 
             if len(dxy_rows) >= 3:
-                dxy_trend = "strengthening" if dxy_rows[0].close > dxy_rows[-1].close else "weakening"
+                dxy_diff = dxy_rows[0].close - dxy_rows[-1].close
+                dxy_pct = (dxy_diff / dxy_rows[-1].close * 100.0) if dxy_rows[-1].close > 0 else 0.0
+                dxy_trend = "strengthening" if dxy_pct > 0.20 else ("weakening" if dxy_pct < -0.20 else "neutral")
                 dxy_1d_change = dxy_rows[0].close - dxy_rows[1].close
                 dxy_1d_up = dxy_1d_change > 0
 

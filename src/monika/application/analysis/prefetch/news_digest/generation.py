@@ -347,9 +347,12 @@ class NewsDigestGenerationMixin(_NewsDigestMixinBase):
             # DXY
             dxy_rows = (await session.execute(select(DXYData).order_by(DXYData.date.desc()).limit(5))).scalars().all()
             if len(dxy_rows) >= 3:
+                dxy_diff = dxy_rows[0].close - dxy_rows[-1].close
+                dxy_pct = (dxy_diff / dxy_rows[-1].close * 100.0) if dxy_rows[-1].close > 0 else 0.0
+                dxy_trend_lbl = "strengthening" if dxy_pct > 0.20 else ("weakening" if dxy_pct < -0.20 else "neutral")
                 market_ctx["dxy"] = {
                     "latest": dxy_rows[0].close,
-                    "trend_5d": "strengthening" if dxy_rows[0].close > dxy_rows[-1].close else "weakening",
+                    "trend_5d": dxy_trend_lbl,
                 }
             # FedWatch
             fedwatch = (

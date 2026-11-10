@@ -1391,6 +1391,27 @@ class AgentHarness:
             tool_results = pipe_res.tool_results
             current_messages.append({"role": "user", "content": tool_results})
 
+            # Early stage conclusion: if mandatory terminal submission tool successfully persisted to DB,
+            # conclude stage cleanly to eliminate superfluous closing turn, save latency/tokens, and prevent false timeout.
+            mandatory_tool = self.get_mandatory_tool_for_stage(stage_name)
+            has_persisted_mandatory = bool(
+                mandatory_tool
+                and mandatory_tool in tracking.persisted_mandatory_tools
+                and mandatory_tool not in tracking.unpersisted_validation_failures
+                and not any(
+                    isinstance(tr, dict) and tr.get("is_error") and tr.get("name") == mandatory_tool
+                    for tr in tool_results
+                )
+            )
+            if has_persisted_mandatory:
+                logger.info(
+                    f"[{stage_name}][AgentHarness] Terminal mandatory tool '{mandatory_tool}' successfully "
+                    f"executed and persisted on turn {turns}. Concluding stage execution cleanly."
+                )
+                if not final_text:
+                    final_text = f"[{stage_name}] Analysis completed successfully. Persisted via {mandatory_tool}."
+                break
+
             # Emergency turn extension if mandatory submission tool failed on final turn
             mandatory_tool = self.get_mandatory_tool_for_stage(stage_name)
             has_failed_mandatory = mandatory_tool in tracking.unpersisted_validation_failures or any(
