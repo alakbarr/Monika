@@ -2330,6 +2330,7 @@ Monika/
 │   │   ├── test_digest_slice_generator.py
 │   │   ├── test_domain_handlers.py
 │   │   ├── test_dual_engine_smc_and_dealing_range.py
+│   │   ├── test_dxy_trend_and_harness_early_stop.py
 │   │   ├── test_economic_surprise.py
 │   │   ├── test_error_classifier.py
 │   │   ├── test_event_broadcaster.py
@@ -3271,4 +3272,4 @@ Monika/
 ├── STRUCTURE.md
 ```
 
-**Total Tracked Directories**: 282 | **Total Tracked Files**: 2959
+**Total Tracked Directories**: 282 | **Total Tracked Files**: 2960

@@ -19,7 +19,7 @@ import re
 import socket
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
@@ -77,6 +77,26 @@ class _BoundedChatAgentsDict(dict):
             oldest_key = next(iter(self))
             self.pop(oldest_key, None)
         super().__setitem__(key, value)
+
+
+class _PollingBotProxy:
+    """Lightweight proxy for updater.bot that intercepts get_updates to detect network recovery."""
+
+    def __init__(self, real_bot: Any, on_poll_success: Optional[Callable[[], None]] = None) -> None:
+        self._real_bot = real_bot
+        self._on_poll_success = on_poll_success
+
+    async def get_updates(self, *args: Any, **kwargs: Any) -> Any:
+        updates = await self._real_bot.get_updates(*args, **kwargs)
+        if self._on_poll_success:
+            try:
+                self._on_poll_success()
+            except Exception as e:
+                logger.debug(f"[TelegramBot] on_poll_success error: {e}")
+        return updates
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._real_bot, name)
 
 
 class TelegramBot(
@@ -142,6 +162,7 @@ class TelegramBot(
         self._last_send_global: float = 0.0
         self._last_send_per_chat: dict[int, float] = {}
         self._offline_queue_file: str = os.path.join("data", "telegram_offline_queue.jsonl")
+        self._offline_flush_lock: asyncio.Lock = asyncio.Lock()
         self._background_tasks: set[asyncio.Task[Any]] = set()
         self._consecutive_network_errors: int = 0
 
@@ -151,11 +172,11 @@ class TelegramBot(
         else:
             tg_cfg = (self.settings or {}).get("telegram", {})
             proxy_url = os.getenv("TELEGRAM_PROXY") or tg_cfg.get("proxy_url")
-            connect_timeout = float(tg_cfg.get("connect_timeout", 10.0))
-            read_timeout = float(tg_cfg.get("read_timeout", 20.0))
-            write_timeout = float(tg_cfg.get("write_timeout", 10.0))
+            connect_timeout = float(tg_cfg.get("connect_timeout", 15.0))
+            read_timeout = float(tg_cfg.get("read_timeout", 30.0))
+            write_timeout = float(tg_cfg.get("write_timeout", 20.0))
             pool_timeout = float(tg_cfg.get("pool_timeout", 5.0))
-            get_updates_read_timeout = float(tg_cfg.get("get_updates_read_timeout", 25.0))
+            get_updates_read_timeout = float(tg_cfg.get("get_updates_read_timeout", 30.0))
 
             # Configure TCP socket keep-alive to prevent silent NAT/firewall drops during idle long-polling
             sock_opts: list[Any] = [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
@@ -185,6 +206,8 @@ class TelegramBot(
                 logger.info(f"[TelegramBot] Routing Telegram traffic via configured proxy: {proxy_url}")
 
             self._app = builder.build()
+            if self._app and getattr(self._app, "updater", None) and hasattr(self._app.updater, "bot"):
+                self._app.updater.bot = _PollingBotProxy(self._app.updater.bot, on_poll_success=self._on_poll_success)
             self._register_handlers()
 
     @property
@@ -307,14 +330,22 @@ class TelegramBot(
         # Centralized error handler
         app.add_error_handler(self._on_telegram_error)
 
-    async def _on_any_update(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Global interceptor to detect and log network recovery when polling resumes."""
+    def _on_poll_success(self) -> None:
+        """Callback invoked by _MonitoredExtBot on each successful get_updates polling cycle."""
         if self._consecutive_network_errors > 0:
             logger.info(
                 f"[TelegramBot] Telegram API connection recovered successfully after "
                 f"{self._consecutive_network_errors} network blips."
             )
             self._consecutive_network_errors = 0
+            if self._is_running:
+                task = asyncio.create_task(self._flush_offline_queue())
+                self._background_tasks.add(task)
+                task.add_done_callback(self._background_tasks.discard)
+
+    async def _on_any_update(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Global interceptor to detect and log network recovery when polling resumes."""
+        self._on_poll_success()
 
     async def _on_telegram_error(self, update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Centralized Telegram error handler with Conflict backoff recovery and tiered logging."""
@@ -505,7 +536,7 @@ class TelegramBot(
 
     async def _process_outbound_queue(self) -> None:
         """Background worker consuming outbound queue with token-bucket rate limiter and RetryAfter backoff."""
-        from telegram.error import RetryAfter
+        from telegram.error import NetworkError, RetryAfter, TimedOut
 
         while self._is_running:
             try:
@@ -563,6 +594,31 @@ class TelegramBot(
                         self._outbound_queue.put_nowait(item)
                     except asyncio.QueueFull:
                         logger.warning("[TelegramOutbound] Queue full during FloodControl requeue; dropping item.")
+            except (TimedOut, NetworkError) as net_err:
+                if is_critical:
+                    logger.warning(
+                        f"[TelegramOutbound] Network error sending critical alert to {chat_id}: {net_err}. "
+                        "Persisting to offline disk buffer."
+                    )
+                    self._save_to_offline_buffer(item)
+                else:
+                    retry_count = int(item.get("retry_count", 0)) + 1
+                    item["retry_count"] = retry_count
+                    if retry_count <= 3:
+                        backoff = min(10.0, 1.5 * retry_count)
+                        logger.warning(
+                            f"[TelegramOutbound] Transient network error sending to {chat_id}: {net_err}. "
+                            f"Re-queuing (attempt {retry_count}/3) in {backoff:.1f}s..."
+                        )
+                        await asyncio.sleep(backoff)
+                        try:
+                            await self._outbound_queue.put(item)
+                        except Exception as q_err:
+                            logger.error(f"[TelegramOutbound] Failed to re-queue item: {q_err}")
+                    else:
+                        logger.error(
+                            f"[TelegramOutbound] Failed to send message to {chat_id} after {retry_count - 1} retries: {net_err}"
+                        )
             except Exception as send_err:
                 if "can't parse entities" in str(send_err).lower() or "parsing entity" in str(send_err).lower():
                     try:
@@ -608,31 +664,35 @@ class TelegramBot(
 
     async def _flush_offline_queue(self) -> None:
         """Drain and send cached offline alerts once Telegram connection restores."""
-        if not os.path.exists(self._offline_queue_file):
-            return
-        try:
-            with open(self._offline_queue_file, "r", encoding="utf-8") as f:
-                lines = [line.strip() for line in f if line.strip()]
-            if not lines:
+        if not hasattr(self, "_offline_flush_lock"):
+            self._offline_flush_lock = asyncio.Lock()
+
+        async with self._offline_flush_lock:
+            if not os.path.exists(self._offline_queue_file):
                 return
-            logger.info(f"[TelegramOutbound] Flushing {len(lines)} offline buffered messages...")
-            for line in lines:
-                try:
-                    entry = json.loads(line)
-                    await self._outbound_queue.put(
-                        {
-                            "chat_id": entry.get("chat_id") or self.admin_chat_id,
-                            "text": f"⚠️ [RECOVERED OFFLINE ALERT - {entry.get('timestamp')}]\n\n{entry.get('text')}",
-                            "raw_text": entry.get("text"),
-                            "parse_mode": None,
-                            "is_critical": False,
-                        }
-                    )
-                except Exception:
-                    pass
-            os.remove(self._offline_queue_file)
-        except Exception as flush_err:
-            logger.error(f"[TelegramOutbound] Error flushing offline queue: {flush_err}")
+            try:
+                with open(self._offline_queue_file, "r", encoding="utf-8") as f:
+                    lines = [line.strip() for line in f if line.strip()]
+                if not lines:
+                    return
+                logger.info(f"[TelegramOutbound] Flushing {len(lines)} offline buffered messages...")
+                for line in lines:
+                    try:
+                        entry = json.loads(line)
+                        await self._outbound_queue.put(
+                            {
+                                "chat_id": entry.get("chat_id") or self.admin_chat_id,
+                                "text": f"⚠️ [RECOVERED OFFLINE ALERT - {entry.get('timestamp')}]\n\n{entry.get('text')}",
+                                "raw_text": entry.get("text"),
+                                "parse_mode": None,
+                                "is_critical": False,
+                            }
+                        )
+                    except Exception:
+                        pass
+                os.remove(self._offline_queue_file)
+            except Exception as flush_err:
+                logger.error(f"[TelegramOutbound] Error flushing offline queue: {flush_err}")
 
     async def send_notification(
         self,

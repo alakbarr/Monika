@@ -11,9 +11,9 @@ import time
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
-from telegram.error import RetryAfter, NetworkError
+from telegram.error import NetworkError, RetryAfter, TimedOut
 
-from monika.interfaces.telegram.bot import TelegramBot
+from monika.interfaces.telegram.bot import TelegramBot, _PollingBotProxy
 from monika.interfaces.dashboard.api import app, _allowed_origins
 from tests.conftest import create_mock_async_session
 
@@ -128,6 +128,93 @@ async def test_telegram_offline_buffer_persistence_and_flush(tmp_path):
     recovered_item = await bot._outbound_queue.get()
     assert "RECOVERED OFFLINE ALERT" in recovered_item["text"]
     assert not os.path.exists(offline_file)
+
+
+@pytest.mark.asyncio
+async def test_telegram_outbound_transient_network_error_retry(tmp_path, monkeypatch):
+    """Verify outbound queue worker retries transient NetworkError/TimedOut up to 3 times before dropping."""
+    bot = TelegramBot(settings={})
+    bot.admin_chat_id = 12345
+    bot._is_running = True
+    bot._offline_queue_file = str(tmp_path / "offline_queue.jsonl")
+
+    call_count = 0
+
+    async def flaky_send(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count <= 2:
+            raise TimedOut("Connection timed out")
+        return MagicMock()
+
+    mock_app = MagicMock()
+    mock_app.bot.send_message = AsyncMock(side_effect=flaky_send)
+    bot._app = mock_app
+
+    worker = asyncio.create_task(bot._process_outbound_queue())
+    bot._outbound_worker_task = worker
+
+    orig_sleep = asyncio.sleep
+
+    async def fast_sleep(s):
+        if s > 0.05:
+            await orig_sleep(0.01)
+        else:
+            await orig_sleep(s)
+
+    monkeypatch.setattr(asyncio, "sleep", fast_sleep)
+    await bot.send_notification("Transient test notification", is_critical=False)
+
+    for _ in range(50):
+        if call_count >= 3:
+            break
+        await orig_sleep(0.05)
+
+    bot._is_running = False
+    worker.cancel()
+    try:
+        await worker
+    except asyncio.CancelledError, Exception:
+        pass
+
+    assert call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_telegram_idle_polling_recovery_observation(tmp_path):
+    """Verify _PollingBotProxy observes successful idle get_updates, resets consecutive errors, and auto-flushes offline buffer."""
+    offline_file = str(tmp_path / "offline_queue.jsonl")
+    bot = TelegramBot(settings={})
+    bot.admin_chat_id = 12345
+    bot._is_running = True
+    bot._offline_queue_file = offline_file
+    bot._consecutive_network_errors = 5
+
+    # Write a test offline message
+    with open(offline_file, "w", encoding="utf-8") as f:
+        f.write('{"chat_id": 12345, "text": "Urgent alert", "timestamp": "2026-11-10T18:00:00Z"}\n')
+
+    # Mock real bot returning empty updates (idle condition)
+    mock_real_bot = AsyncMock()
+    mock_real_bot.get_updates = AsyncMock(return_value=())
+
+    proxy = _PollingBotProxy(mock_real_bot, on_poll_success=bot._on_poll_success)
+
+    # Call get_updates on proxy (simulating idle polling iteration in Updater)
+    res = await proxy.get_updates(offset=100)
+    assert res == ()
+
+    # Verify recovery: counter reset to 0
+    assert bot._consecutive_network_errors == 0
+
+    # Wait for flush background task
+    await asyncio.sleep(0.2)
+
+    # Verify offline file was flushed
+    assert not os.path.exists(offline_file)
+    assert bot._outbound_queue.qsize() == 1
+    item = await bot._outbound_queue.get()
+    assert "RECOVERED OFFLINE ALERT" in item["text"]
 
 
 def test_action_close_batch_contract_synchronization():

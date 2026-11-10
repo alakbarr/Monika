@@ -550,11 +550,11 @@ data_sources:
     update_frequency: daily
 telegram:
   voice_transcription_model: gemini-3.8-flash
-  connect_timeout: 10.0
-  read_timeout: 20.0
-  write_timeout: 10.0
+  connect_timeout: 15.0
+  read_timeout: 30.0
+  write_timeout: 20.0
   pool_timeout: 5.0
-  get_updates_read_timeout: 25.0
+  get_updates_read_timeout: 30.0
   proxy_url: ""
   notification_events:
     - order_executed
