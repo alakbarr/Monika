@@ -114,4 +114,5 @@ class TestGeminiTokenGovernance(unittest.IsolatedAsyncioTestCase):
 
             self.assertTrue(result["success"])
             self.assertEqual(result["tool_calls_made"], 1)
-            self.assertEqual(mock_run_tool.call_count, 3)
+            # Mandatory tool submit_asset_analysis persists on turn 2, triggering early clean stage conclusion
+            self.assertEqual(mock_run_tool.call_count, 2)

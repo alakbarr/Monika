@@ -281,11 +281,12 @@ class TestAgentHarness:
         )
 
         assert result["success"] is True
-        assert result["turns"] == 3
+        # Early stage conclusion: mandatory submit_asset_analysis was persisted on turn 2
+        assert result["turns"] == 2
         assert result["tool_calls_made"] == 2
-        assert result["final_text"] == "Analysis complete."
-        assert result["input_tokens"] == 430
-        assert result["output_tokens"] == 130
+        assert result["final_text"] == "Based on ATR, market is steady."
+        assert result["input_tokens"] == 250
+        assert result["output_tokens"] == 110
         assert mock_executor.execute.await_count == 2
 
     @pytest.mark.asyncio
@@ -883,7 +884,8 @@ class TestEventDrivenHarnessEdgeCases:
 
         assert res["success"] is True
         assert res["tool_calls_made"] == 2
-        assert res["turns"] == 3
+        # Early stage conclusion: mandatory submit_asset_analysis was persisted on turn 2
+        assert res["turns"] == 2
         # Check that reasoning_content was preserved in the assistant message
         hist = res["context_messages"]
         ast_msgs = [m for m in hist if m.get("role") == "assistant"]
